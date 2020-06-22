@@ -214,9 +214,17 @@ def xbmcVersionGreaterOrEqual(major, minor=0, tag=None):
     tagCmp = versionTagCompare(tag, vtag)
     return tagCmp < 1
 
-def getSetting(key,default=None):
-    setting = xbmcaddon.Addon(ADDON_ID).getSetting(key)
-    return _processSetting(setting,default)
+
+def getSetting(key, default=None):
+    VERBOSE_LOG('utils.getSetting: ' + key)
+    # setting = xbmcaddon.Addon(ADDON_ID).getSetting(key)
+    if key in shadow_settings:
+        setting = shadow_settings.get(key)
+    else:
+        setting = xbmcaddon.Addon().getSetting(key)
+
+    VERBOSE_LOG('utils.getSetting value: ' + str(setting))
+    return _processSetting(setting, default)
 
 
 def _processSetting(setting, default):
@@ -239,7 +247,17 @@ def _processSetting(setting, default):
 
 def setSetting(key, value):
     value = _processSettingForWrite(value)
-    xbmcaddon.Addon(ADDON_ID).setSetting(key,value)
+    VERBOSE_LOG('util.setSetting key: ' + key + ' value: ' + value)
+    # xbmcaddon.Addon(ADDON_ID).setSetting(key,value)
+    addon = xbmcaddon.Addon()
+    addon.setSetting(key, value)
+    shadow_settings[key] = value
+    newValue = addon.getSetting(key)
+    VERBOSE_LOG('getSetting after save value: {}'.format(str(newValue)))
+
+    VERBOSE_LOG('Just saved setting')
+    getSetting(key)
+
 
 def _processSettingForWrite(value):
     if isinstance(value, list):
@@ -412,6 +430,69 @@ def notifySayText(text, interrupt=False):
     command = BASE_COMMAND.format(text, repr(interrupt).lower())
     # print command
     xbmc.executebuiltin(command)
+
+
+class MyMonitor(xbmc.Monitor):
+
+    def onSettingsChanged(self):
+        VERBOSE_LOG('Settings changed,clearing shadow_settings')
+        self.settings_changed()
+        shadow_settings.clear()
+
+    def settings_changed(self):
+        change_file = xbmc.translatePath(
+            'special://userdata/addon_data/{}/settings_changed.pickle'.format(ADDON_ID))
+        settings_file = xbmc.translatePath(
+            'special://userdata/addon_data/{}/settings.xml'.format(ADDON_ID))
+
+        with io.open(settings_file, mode='rb') as settings_file_fd:
+            settings = settings_file_fd.read()
+            new_settings_digest = hashlib.md5(settings).hexdigest()
+
+        changed = False
+        change_record = dict()
+        if not os.path.exists(change_file):
+            changed = True
+        else:
+            if not os.access(change_file, os.R_OK | os.W_OK):
+                ERROR('No rw access: {}'.format(change_file))
+                changed = True
+                try:
+                    os.remove(change_file)
+                except Exception as e:
+                    ERROR('Can not delete {}'.format(change_file))
+
+        if not changed:
+            try:
+                settings_digest = None
+                with io.open(change_file, mode='rb') as settings_changed_fd:
+                    change_record = pickle.load(settings_changed_fd)
+                    settings_digest = change_record.get(
+                        'SETTINGS_DIGEST', None)
+
+                if new_settings_digest != settings_digest:
+                    changed = True
+
+            except (IOError) as e:
+                ERROR('Error reading {} or {}'.format(
+                    change_file, settings_file))
+                changed = True
+            except (Exception) as e:
+                ERROR('Error processing {} or {}'.format(
+                    change_file, settings_file))
+                changed = True
+
+        if changed:
+            change_record['SETTINGS_DIGEST'] = new_settings_digest
+            with io.open(change_file, mode='wb') as change_file_fd:
+                pickle.dump(change_record, change_file_fd)
+
+            VoiceCache.clean_cache(purge=True)
+        else:
+            VoiceCache.clean_cache(purge=False)
+
+
+my_monitor = MyMonitor()
 
 ################################################################
 # Deprecated in Gotham - now using NotifyAll
