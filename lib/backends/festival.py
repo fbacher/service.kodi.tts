@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import os, subprocess
-from base import SimpleTTSBackendBase
+from .base import SimpleTTSBackendBase
 
 class FestivalTTSBackend(SimpleTTSBackendBase):
     provider = 'Festival'
@@ -25,9 +25,11 @@ class FestivalTTSBackend(SimpleTTSBackendBase):
         voice = self.voice and '(voice_{0})'.format(self.voice) or ''
         durMult = self.durationMultiplier and "(Parameter.set 'Duration_Stretch {0})".format(self.durationMultiplier) or ''
         pitch = self.pitch != 105 and "(require 'prosody-param)(set-pitch {0})".format(self.pitch) or ''
-        self.festivalProcess = subprocess.Popen(['festival','--pipe'],stdin=subprocess.PIPE)
+        self.festivalProcess = subprocess.Popen(['festival','--pipe'],
+                                                stdin=subprocess.PIPE,
+                                                universal_newlines=True)
         text = text.replace('"', '\\"')
-        out = '(audio_mode \'async){0}{1}{2}(utt.save.wave (utt.wave.rescale (SynthText "{3}") {4:.2f} nil)"{5}")\n'.format(voice,durMult,pitch,text.encode('utf-8'),self.volume,outFile)
+        out = '(audio_mode \'async){0}{1}{2}(utt.save.wave (utt.wave.rescale (SynthText "{3}") {4:.2f} nil)"{5}")\n'.format(voice,durMult,pitch,text,self.volume,outFile)
         self.festivalProcess.communicate(out)
         return True
 
@@ -49,18 +51,21 @@ class FestivalTTSBackend(SimpleTTSBackendBase):
     @classmethod
     def settingList(cls,setting,*args):
         if setting == 'voice':
-            p = subprocess.Popen(['festival','-i'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            p = subprocess.Popen(['festival','-i'],stdin=subprocess.PIPE,
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                 universal_newlines=True)
             d = p.communicate('(voice.list)')
             import xbmc
             xbmc.log(repr(d), xbmc.LOGNOTICE)
-            l = map(str.strip,d[0].rsplit('> (',1)[-1].rsplit(')',1)[0].split(' '))
+            l = list(map(str.strip,d[0].rsplit('> (',1)[-1].rsplit(')',1)[0].split(' ')))
             if l: return [(v,v) for v in l]
         return None
 
     @staticmethod
     def available():
         try:
-            subprocess.call(['festival', '--help'], stdout=(open(os.path.devnull, 'w')), stderr=subprocess.STDOUT)
+            subprocess.call(['festival', '--help'], stdout=(open(os.path.devnull, 'w')),
+                            stderr=subprocess.STDOUT, universal_newlines=True)
         except (OSError, IOError):
             return False
         return True

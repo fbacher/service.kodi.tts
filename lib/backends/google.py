@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
-import urllib, urllib2, shutil, os, subprocess
-import base, audio
+import urllib.request, urllib.parse, urllib.error, urllib.request, urllib.error, urllib.parse,\
+    shutil, os, subprocess
+from lib.backends import base, audio
 from lib import util
 import textwrap
 
@@ -42,7 +43,8 @@ LANGUAGES = [    ('af', 'Afrikaans'),
 class GoogleTTSBackend(base.SimpleTTSBackendBase):
     provider = 'Google'
     displayName = 'Google'
-    ttsURL = 'http://translate.google.com/translate_tts?client=t&tl={0}&q={1}'
+    # ttsURL = 'http://translate.google.com/translate_tts?client=t&tl={0}&q={1}'
+    ttsURL='https://translate.google.com/translate_tts?&q={1}&tl={0}&client=tw-ob'
     canStreamWav = util.commandIsAvailable('mpg123')
     playerClass = audio.MP3AudioPlayerHandler
     settings = {
@@ -71,10 +73,17 @@ class GoogleTTSBackend(base.SimpleTTSBackendBase):
                 self.player.play()
 
     def runCommand(self,text,outFile):
-        url = self.ttsURL.format(self.language,urllib.quote(text.encode('utf-8')))
-        req = urllib2.Request(url, headers={ 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.116 Safari/537.36' })
+        url = self.ttsURL.format(self.language,urllib.parse.quote(text))
+        util.VERBOSE_LOG('Google url: ' + url)
+        #
+
+        # local IFS = +; /usr/bin/mplayer -ao alsa -really -quiet -noconsolecontrols "http://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&q=$*&tl=en";
+        headers = {'Referer': 'http://translate.google.com',
+                   'User-Agent': 'stagefright/1.2 (Linux;Android 5.0)'
+                   }
+        req = urllib.request.Request(url, headers=headers)
         try:
-            resp = urllib2.urlopen(req)
+            resp = urllib.request.urlopen(req)
         except:
             util.ERROR('Failed to open Google TTS URL',hide_tb=True)
             return False
@@ -84,10 +93,17 @@ class GoogleTTSBackend(base.SimpleTTSBackendBase):
         return True
 
     def runCommandAndPipe(self,text):
-        url = self.ttsURL.format(self.language,urllib.quote(text.encode('utf-8')))
-        req = urllib2.Request(url, headers={ 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.116 Safari/537.36' })
+        url = self.ttsURL.format(self.language,urllib.parse.quote(text))
+        util.VERBOSE_LOG('Google url: ' + url)
+        #req = urllib.request.Request(url) #, headers={ 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.116 Safari/537.36' })
+        headers = {'Referer': 'http://translate.google.com/',
+                   'User-Agent': 'stagefright/1.2 (Linux;Android 5.0)'
+                   }
+        req = urllib.request.Request(url, headers=headers)
         try:
-            resp = urllib2.urlopen(req)
+            resp = urllib.request.urlopen(req)
+            util.VERBOSE_LOG('url: ' + req.get_full_url())
+            util.VERBOSE_LOG('headers: ' + str(req.header_items()))
         except:
             util.ERROR('Failed to open Google TTS URL',hide_tb=True)
             return None
@@ -97,8 +113,11 @@ class GoogleTTSBackend(base.SimpleTTSBackendBase):
         wav_path = os.path.join(util.getTmpfs(),'speech.wav')
         mp3_path = os.path.join(util.getTmpfs(),'speech.mp3')
         self.runCommand(text,mp3_path)
-        self.process = subprocess.Popen(['mpg123','-w',wav_path,mp3_path],stdout=(open(os.path.devnull, 'w')), stderr=subprocess.STDOUT)
-        while self.process.poll() == None and self.active: util.sleep(10)
+        self.process = subprocess.Popen(['mpg123','-w',wav_path,mp3_path],
+                                        stdout=(open(os.path.devnull, 'w')),
+                                        stderr=subprocess.STDOUT,
+                                        universal_newlines=True)
+        while self.process.poll() is None and self.active: util.sleep(10)
         os.remove(mp3_path)
         return open(wav_path,'rb')
 

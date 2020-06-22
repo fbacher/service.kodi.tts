@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import base
+from . import base
 import subprocess
 import sys
 from lib import util
@@ -12,10 +12,14 @@ class VoiceOverBackend(base.SimpleTTSBackendBase):
         self.setMode(base.SimpleTTSBackendBase.ENGINESPEAK)
 
     def runCommandAndSpeak(self,text):
-        subprocess.call(['osascript', '-e', 'tell application "voiceover" to output "{0}"'.format(text.replace('"','').encode('utf-8'))])
+        subprocess.call(['osascript', '-e',
+                         'tell application "voiceover" to output "{0}"'.format(
+                             text.replace('"',''))], universal_newlines=True)
 
     def stop(self):
-        subprocess.call(['osascript', '-e', 'tell application "voiceover" to output ""'])
+        subprocess.call(['osascript', '-e',
+                         'tell application "voiceover" to output ""'],
+                        universal_newlines=True)
 
     @staticmethod
     def available():

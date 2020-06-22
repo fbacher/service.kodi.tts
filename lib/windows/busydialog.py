@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import time
-from base import WindowReaderBase
+from .base import WindowReaderBase
 from lib import util
 
 class BusyDialogReader(WindowReaderBase):

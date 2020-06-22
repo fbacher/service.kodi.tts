@@ -32,8 +32,8 @@ try:
 except:
     import dummy_threading as threading
 
-import paths
-    
+from . import paths
+
 class CallbackType(object):
     """Constants describing the available types of callbacks"""
     INDEX_MARK = 'index_marks'
@@ -59,7 +59,7 @@ class CallbackType(object):
 
 class SSIPError(Exception):
     """Common base class for exceptions during SSIP communication."""
-    
+
 class SSIPCommunicationError(SSIPError):
     """Exception raised when trying to operate on a closed connection."""
 
@@ -80,14 +80,14 @@ class SSIPCommunicationError(SSIPError):
 
     def set_additional_exception(self, exception):
         """Set an additional exception
-        
+
         See method additional_exception().
         """
         self._additional_exception = exception
 
     def additional_exception(self):
         """Return an additional exception
-        
+
         Additional exceptions araise from failed attempts to resolve
         the former problem"""
         return self._additional_exception
@@ -116,7 +116,7 @@ class SSIPResponseError(Exception):
     def code(self):
         """Return the server response error code as integer number."""
         return self._code
-        
+
     def msg(self):
         """Return server response error message as string."""
         return self._msg
@@ -129,7 +129,7 @@ class SSIPCommandError(SSIPResponseError):
         """Return the command string which resulted in this error."""
         return self._data
 
-    
+
 class SSIPDataError(SSIPResponseError):
     """Exception raised on error response after sending data."""
 
@@ -137,7 +137,7 @@ class SSIPDataError(SSIPResponseError):
         """Return the data which resulted in this error."""
         return self._data
 
-    
+
 class SpawnError(Exception):
     """Indicates failure in server autospawn."""
 
@@ -150,7 +150,7 @@ class CommunicationMethod(object):
 
 class _SSIP_Connection(object):
     """Implemantation of low level SSIP communication."""
-    
+
     _NEWLINE = "\r\n"
     _END_OF_DATA_MARKER = '.'
     _END_OF_DATA_MARKER_ESCAPED = '..'
@@ -187,7 +187,7 @@ class _SSIP_Connection(object):
         try:
             self._socket = socket.socket(socket_family, socket.SOCK_STREAM)
             self._socket.connect(socket_connect_args)
-        except socket.error, ex:
+        except socket.error as ex:
             raise SSIPCommunicationError("Can't open socket using method "
                                          + communication_method,
                                          original_exception = ex)
@@ -200,7 +200,7 @@ class _SSIP_Connection(object):
                 threading.Thread(target=self._communication, kwargs={},
                                  name="SSIP client communication thread")
         self._communication_thread.start()
-    
+
     def close(self):
         """Close the server connection, destroy the communication thread."""
         # Read-write shutdown here is necessary, otherwise the socket.recv()
@@ -212,7 +212,7 @@ class _SSIP_Connection(object):
         self._socket.close()
         # Wait for the other thread to terminate
         self._communication_thread.join()
-        
+
     def _communication(self):
         """Handle incomming socket communication.
 
@@ -245,15 +245,15 @@ class _SSIP_Connection(object):
                 else:
                     kwargs = {}
                 # Get message and client ID of the event
-                msg_id, client_id = map(int, data[:2])
+                msg_id, client_id = list(map(int, data[:2]))
                 self._callback(msg_id, client_id, type, **kwargs)
-                
-                
+
+
     def _readline(self):
         """Read one whole line from the socket.
 
         Blocks until the line delimiter ('_NEWLINE') is read.
-        
+
         """
         pointer = self._buffer.find(self._NEWLINE)
         while pointer == -1:
@@ -308,12 +308,12 @@ class _SSIP_Connection(object):
         response code as an integer, 'msg' is an SSIP rsponse message as string
         and 'data' is a tuple of strings (all lines of response data) when a
         response contains some data.
-        
+
         'SSIPCommandError' is raised in case of non 2xx return code.  See SSIP
         documentation for more information about server responses and codes.
 
         'IOError' is raised when the socket was closed by the remote side.
-        
+
         """
         if __debug__:
             if command in ('SET', 'CANCEL', 'STOP',):
@@ -328,7 +328,7 @@ class _SSIP_Connection(object):
         if code/100 != 2:
             raise SSIPCommandError(code, msg, cmd)
         return code, msg, data
-        
+
     def send_data(self, data):
         """Send multiline data and read server response.
 
@@ -336,9 +336,9 @@ class _SSIP_Connection(object):
 
         'SSIPDataError' is raised in case of non 2xx return code. See SSIP
         documentation for more information about server responses and codes.
-        
+
         'IOError' is raised when the socket was closed by the remote side.
-        
+
         """
         # Escape the end-of-data marker even if present at the beginning
         # The start of the string is also the start of a line.
@@ -422,20 +422,20 @@ class Scope(object):
     The constants of this class should be used to specify the 'scope' argument
     for the 'Client' methods.
 
-    """    
+    """
     SELF = 'self'
     """The command (mostly a setting) applies to current connection only."""
     ALL = 'all'
     """The command applies to all current Speech Dispatcher connections."""
 
-    
+
 class Priority(object):
     """An enumeration of valid SSIP message priorities.
 
     The constants of this class should be used to specify the 'priority'
     argument for the 'Client' methods.  For more information about message
     priorities and their interaction, see the SSIP documentation.
-    
+
     """
     IMPORTANT = 'important'
     TEXT = 'text'
@@ -443,7 +443,7 @@ class Priority(object):
     NOTIFICATION = 'notification'
     PROGRESS = 'progress'
 
-    
+
 class PunctuationMode(object):
     """Constants for selecting a punctuation mode.
 
@@ -479,7 +479,7 @@ class SSIPClient(object):
     over an SSIP connection.  The API maps directly to available SSIP commands.
     Each connection to Speech Dispatcher is represented by one instance of this
     class.
-    
+
     Many commands take the 'scope' argument, thus it is shortly documented
     here.  It is either one of 'Scope' constants or a number of connection.  By
     specifying the connection number, you are applying the command to a
@@ -488,14 +488,14 @@ class SSIPClient(object):
     Speech Dispatcher documentation.
 
     """
-    
+
     DEFAULT_HOST = '127.0.0.1'
     """Default host for server connections."""
     DEFAULT_PORT = 6560
     """Default port number for server connections."""
     DEFAULT_SOCKET_PATH = "speech-dispatcher/speechd.sock"
     """Default name of the communication unix socket"""
-    
+
     def __init__(self, name, component='default', user='unknown', address=None,
                  autospawn=None,
                  # Deprecated ->
@@ -530,7 +530,7 @@ class SSIPClient(object):
             port as number or None.  If None, the default value is
             taken from SPEECHD_PORT environment variable (if it
             exists) or from the DEFAULT_PORT attribute of this class.
-         
+
         For more information on client identification strings see Speech
         Dispatcher documentation.
         """
@@ -545,7 +545,7 @@ class SSIPClient(object):
                            'port': self.DEFAULT_PORT,
                            }
         # Respect address method argument and SPEECHD_ADDRESS environemt variable
-        _address = address or os.environ.get("SPEECHD_ADDRESS")        
+        _address = address or os.environ.get("SPEECHD_ADDRESS")
 
         if _address:
             connection_args.update(self._connection_arguments_from_address(_address))
@@ -579,14 +579,14 @@ class SSIPClient(object):
         """Establish new connection (and/or autospawn server)"""
         try:
             self._conn = _SSIP_Connection(**connection_args)
-        except SSIPCommunicationError, ce:
+        except SSIPCommunicationError as ce:
             # Suppose server might not be running, try the autospawn mechanism
             if autospawn != False:
                 # Autospawn is however not guaranteed to start the server. The server
                 # will decide, based on it's configuration, whether to honor the request.
                 try:
                     self._server_spawn(connection_args)
-                except SpawnError, se:
+                except SpawnError as se:
                     ce.set_additional_exception(se)
                     raise ce
                 self._conn = _SSIP_Connection(**connection_args)
@@ -635,7 +635,7 @@ class SSIPClient(object):
         else:
             raise SSIPCommunicationError("Unknown communication method in address.");
         return connection_args
-    
+
     def __del__(self):
         """Close the connection"""
         self.close()
@@ -666,12 +666,13 @@ class SSIPClient(object):
                                                                                str(ip_addresses),))
         if os.path.exists(paths.SPD_SPAWN_CMD):
             connection_params = []
-            for param, value in connection_args.items():
+            for param, value in list(connection_args.items()):
                 if param not in ["host",]:
                     connection_params += ["--"+param.replace("_","-"), str(value)]
 
             server = subprocess.Popen([paths.SPD_SPAWN_CMD, "--spawn"]+connection_params,
-                                      stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                                      stdin=None, stdout=subprocess.PIPE,
+                                      stderr=subprocess.PIPE, universal_newlines=True)
             stdout_reply, stderr_reply = server.communicate()
             retcode = server.wait()
             if retcode != 0:
@@ -740,8 +741,8 @@ class SSIPClient(object):
 
         """
         self._conn.send_command('SPEAK')
-        if isinstance(text, unicode):
-            text = text.encode('utf-8')
+        if isinstance(text, str):
+            text = text
         result = self._conn.send_data(text)
         if callback:
             msg_id = int(result[2][0])
@@ -762,10 +763,10 @@ class SSIPClient(object):
         message is queued on the server and the method returns immediately.
 
         """
-        if isinstance(char, unicode):
-            char = char.encode('utf-8')
+        if isinstance(char, str):
+            char = char
         self._conn.send_command('CHAR', char.replace(' ', 'space'))
-        
+
     def key(self, key):
         """Say given key name.
 
@@ -787,15 +788,15 @@ class SSIPClient(object):
         This method is non-blocking; it just sends the command, given message
         is queued on the server and the method returns immediately.
 
-        """        
+        """
         self._conn.send_command('SOUND_ICON', sound_icon)
-                    
+
     def cancel(self, scope=Scope.SELF):
         """Immediately stop speaking and discard messages in queues.
 
         Arguments:
           scope -- see the documentation of this class.
-            
+
         """
         self._conn.send_command('CANCEL', scope)
 
@@ -805,7 +806,7 @@ class SSIPClient(object):
 
         Arguments:
           scope -- see the documentation of this class.
-        
+
         """
         self._conn.send_command('STOP', scope)
 
@@ -818,7 +819,7 @@ class SSIPClient(object):
 
         Arguments:
           scope -- see the documentation of this class.
-        
+
         """
         self._conn.send_command('PAUSE', scope)
 
@@ -831,7 +832,7 @@ class SSIPClient(object):
 
         Arguments:
           scope -- see the documentation of this class.
-        
+
         """
         self._conn.send_command('RESUME', scope)
 
@@ -864,7 +865,7 @@ class SSIPClient(object):
         Arguments:
           language -- two letter language code according to RFC 1776 as string.
           scope -- see the documentation of this class.
-            
+
         """
         assert isinstance(language, str) and len(language) == 2
         self._conn.send_command('SET', scope, 'LANGUAGE', language)
@@ -875,7 +876,7 @@ class SSIPClient(object):
         Arguments:
           name -- module (string) as returned by 'list_output_modules()'.
           scope -- see the documentation of this class.
-        
+
         """
         self._conn.send_command('SET', scope, 'OUTPUT_MODULE', name)
 
@@ -888,7 +889,7 @@ class SSIPClient(object):
             output module, lower values meaning lower pitch and higher values
             meaning higher pitch.
           scope -- see the documentation of this class.
-          
+
         """
         assert isinstance(value, int) and -100 <= value <= 100, value
         self._conn.send_command('SET', scope, 'PITCH', value)
@@ -902,7 +903,7 @@ class SSIPClient(object):
             synthesis output module, lower values meaning slower speech and
             higher values meaning faster speech.
           scope -- see the documentation of this class.
-            
+
         """
         assert isinstance(value, int) and -100 <= value <= 100
         self._conn.send_command('SET', scope, 'RATE', value)
@@ -915,7 +916,7 @@ class SSIPClient(object):
             corresponding to the default speech volume of the current speech
             synthesis output module, lower values meaning softer speech.
           scope -- see the documentation of this class.
-            
+
         """
         assert isinstance(value, int) and -100 <= value <= 100
         self._conn.send_command('SET', scope, 'VOLUME', value)
@@ -926,7 +927,7 @@ class SSIPClient(object):
         Arguments:
           value -- one of the 'PunctuationMode' constants.
           scope -- see the documentation of this class.
-            
+
         """
         assert value in (PunctuationMode.ALL, PunctuationMode.SOME,
                          PunctuationMode.NONE), value
@@ -940,7 +941,7 @@ class SSIPClient(object):
             instead of being read as normal words. 'False' switches
             this behavior off.
           scope -- see the documentation of this class.
-            
+
         """
         assert value in [True, False]
         if value == True:
@@ -957,7 +958,7 @@ class SSIPClient(object):
             with a syntetic voice and 'icon' means that the capital-letter icon
             will be prepended before each capital letter.
           scope -- see the documentation of this class.
-            
+
         """
         assert value in ("none", "spell", "icon")
         self._conn.send_command('SET', scope, 'CAP_LET_RECOGN', value)
@@ -973,7 +974,7 @@ class SSIPClient(object):
         Symbolic voice names are mapped to real synthesizer voices in the
         configuration of the output module.  Use the method
         'set_synthesis_voice()' if you want to work with real voices.
-            
+
         """
         assert isinstance(value, str) and \
                value.lower() in ("male1", "male2", "male3", "female1",
@@ -987,10 +988,10 @@ class SSIPClient(object):
         Arguments:
           value -- voice name as returned by 'list_synthesis_voices()'
           scope -- see the documentation of this class.
-            
+
         """
         self._conn.send_command('SET', scope, 'SYNTHESIS_VOICE', value)
-        
+
     def set_pause_context(self, value, scope=Scope.SELF):
         """Set the amount of context when resuming a paused message.
 
@@ -998,7 +999,7 @@ class SSIPClient(object):
           value -- a positive or negative value meaning how many chunks of data
             after or before the pause should be read when resume() is executed.
           scope -- see the documentation of this class.
-            
+
         """
         assert isinstance(value, int)
         self._conn.send_command('SET', scope, 'PAUSE_CONTEXT', value)
@@ -1019,7 +1020,7 @@ class SSIPClient(object):
           val -- a boolean value determining whether debugging
                  is switched on or off
           scope -- see the documentation of this class.
-        
+
         """
         assert isinstance(val, bool)
         if val == True:
@@ -1037,7 +1038,7 @@ class SSIPClient(object):
           path -- path (string) to the directory where debuging
                   files will be created
           scope -- see the documentation of this class.
-        
+
         """
         assert isinstance(val, string)
 
@@ -1078,7 +1079,7 @@ class Client(SSIPClient):
     def __init__(self, name=None, client=None, **kwargs):
         name = name or client or 'python'
         super(Client, self).__init__(name, **kwargs)
-        
+
     def say(self, text, priority=Priority.MESSAGE):
         self.set_priority(priority)
         self.speak(text)
@@ -1094,7 +1095,7 @@ class Client(SSIPClient):
     def sound_icon(self, sound_icon, priority=Priority.TEXT):
         self.set_priority(priority)
         super(Client, self).sound_icon(sound_icon)
-        
+
 
 class Speaker(SSIPClient):
     """Extended Speech Dispatcher Interface.
@@ -1103,7 +1104,7 @@ class Speaker(SSIPClient):
     functionality and tries to hide most of the lower level details of SSIP
     (such as a more sophisticated handling of blocks and priorities and
     advanced event notifications) under a more convenient API.
-    
+
     Please note that the API is not yet stabilized and thus is subject to
     change!  Please contact the authors if you plan using it and/or if you have
     any suggestions.
@@ -1111,7 +1112,7 @@ class Speaker(SSIPClient):
     Well, in fact this class is currently not implemented at all.  It is just a
     draft.  The intention is to hide the SSIP details and provide a generic
     interface practical for screen readers.
-    
+
     """
 
 

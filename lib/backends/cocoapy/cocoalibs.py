@@ -40,7 +40,7 @@ cf.CFAttributedStringCreate.argtypes = [CFAllocatorRef, c_void_p, c_void_p]
 
 def CFSTR(string):
     return ObjCInstance(c_void_p(cf.CFStringCreateWithCString(
-            None, string.encode('utf8'), kCFStringEncodingUTF8)))
+            None, string, kCFStringEncodingUTF8)))
 
 # Other possible names for this method:
 # at, ampersat, arobe, apenstaartje (little monkey tail), strudel,
@@ -57,7 +57,7 @@ def cfstring_to_string(cfstring):
     buffer = c_buffer(size + 1)
     result = cf.CFStringGetCString(cfstring, buffer, len(buffer), kCFStringEncodingUTF8)
     if result:
-        return unicode(buffer.value, 'utf-8')
+        return str(buffer.value, 'utf-8')
 
 cf.CFDataCreate.restype = c_void_p
 cf.CFDataCreate.argtypes = [c_void_p, c_void_p, CFIndex]
@@ -164,7 +164,7 @@ def cfset_to_set(cfset):
     buffer = (c_void_p * count)()
     cf.CFSetGetValues(cfset, byref(buffer))
     return set([ cftype_to_value(c_void_p(buffer[i])) for i in range(count) ])
-    
+
 cf.CFArrayGetCount.restype = CFIndex
 cf.CFArrayGetCount.argtypes = [c_void_p]
 
@@ -174,7 +174,7 @@ cf.CFArrayGetValueAtIndex.argtypes = [c_void_p, CFIndex]
 def cfarray_to_list(cfarray):
     """Convert CFArray to python list."""
     count = cf.CFArrayGetCount(cfarray)
-    return [ cftype_to_value(c_void_p(cf.CFArrayGetValueAtIndex(cfarray, i))) 
+    return [ cftype_to_value(c_void_p(cf.CFArrayGetValueAtIndex(cfarray, i)))
              for i in range(count) ]
 
 
@@ -200,7 +200,7 @@ NSApplicationDidHideNotification = c_void_p.in_dll(appkit, 'NSApplicationDidHide
 NSApplicationDidUnhideNotification = c_void_p.in_dll(appkit, 'NSApplicationDidUnhideNotification')
 
 # /System/Library/Frameworks/AppKit.framework/Headers/NSEvent.h
-NSAnyEventMask = 0xFFFFFFFFL     # NSUIntegerMax
+NSAnyEventMask = 0xFFFFFFFF     # NSUIntegerMax
 
 NSKeyDown            = 10
 NSKeyUp              = 11
@@ -246,43 +246,43 @@ NSTrackingCursorUpdate          = 0x04
 NSTrackingActiveInActiveApp      = 0x40
 
 # /System/Library/Frameworks/AppKit.framework/Headers/NSOpenGL.h
-NSOpenGLPFAAllRenderers       =   1   # choose from all available renderers          
-NSOpenGLPFADoubleBuffer       =   5   # choose a double buffered pixel format        
-NSOpenGLPFAStereo             =   6   # stereo buffering supported                   
-NSOpenGLPFAAuxBuffers         =   7   # number of aux buffers                        
-NSOpenGLPFAColorSize          =   8   # number of color buffer bits                  
-NSOpenGLPFAAlphaSize          =  11   # number of alpha component bits               
-NSOpenGLPFADepthSize          =  12   # number of depth buffer bits                  
-NSOpenGLPFAStencilSize        =  13   # number of stencil buffer bits                
-NSOpenGLPFAAccumSize          =  14   # number of accum buffer bits                  
-NSOpenGLPFAMinimumPolicy      =  51   # never choose smaller buffers than requested  
-NSOpenGLPFAMaximumPolicy      =  52   # choose largest buffers of type requested     
-NSOpenGLPFAOffScreen          =  53   # choose an off-screen capable renderer        
-NSOpenGLPFAFullScreen         =  54   # choose a full-screen capable renderer        
-NSOpenGLPFASampleBuffers      =  55   # number of multi sample buffers               
-NSOpenGLPFASamples            =  56   # number of samples per multi sample buffer    
-NSOpenGLPFAAuxDepthStencil    =  57   # each aux buffer has its own depth stencil    
-NSOpenGLPFAColorFloat         =  58   # color buffers store floating point pixels    
-NSOpenGLPFAMultisample        =  59   # choose multisampling                         
-NSOpenGLPFASupersample        =  60   # choose supersampling                         
-NSOpenGLPFASampleAlpha        =  61   # request alpha filtering                      
-NSOpenGLPFARendererID         =  70   # request renderer by ID                       
-NSOpenGLPFASingleRenderer     =  71   # choose a single renderer for all screens     
-NSOpenGLPFANoRecovery         =  72   # disable all failure recovery systems         
-NSOpenGLPFAAccelerated        =  73   # choose a hardware accelerated renderer       
-NSOpenGLPFAClosestPolicy      =  74   # choose the closest color buffer to request   
-NSOpenGLPFARobust             =  75   # renderer does not need failure recovery      
-NSOpenGLPFABackingStore       =  76   # back buffer contents are valid after swap    
-NSOpenGLPFAMPSafe             =  78   # renderer is multi-processor safe             
-NSOpenGLPFAWindow             =  80   # can be used to render to an onscreen window  
-NSOpenGLPFAMultiScreen        =  81   # single window can span multiple screens      
-NSOpenGLPFACompliant          =  83   # renderer is opengl compliant                 
-NSOpenGLPFAScreenMask         =  84   # bit mask of supported physical screens       
-NSOpenGLPFAPixelBuffer        =  90   # can be used to render to a pbuffer           
-NSOpenGLPFARemotePixelBuffer  =  91   # can be used to render offline to a pbuffer   
-NSOpenGLPFAAllowOfflineRenderers = 96 # allow use of offline renderers               
-NSOpenGLPFAAcceleratedCompute =  97   # choose a hardware accelerated compute device 
-NSOpenGLPFAVirtualScreenCount = 128   # number of virtual screens in this format     
+NSOpenGLPFAAllRenderers       =   1   # choose from all available renderers
+NSOpenGLPFADoubleBuffer       =   5   # choose a double buffered pixel format
+NSOpenGLPFAStereo             =   6   # stereo buffering supported
+NSOpenGLPFAAuxBuffers         =   7   # number of aux buffers
+NSOpenGLPFAColorSize          =   8   # number of color buffer bits
+NSOpenGLPFAAlphaSize          =  11   # number of alpha component bits
+NSOpenGLPFADepthSize          =  12   # number of depth buffer bits
+NSOpenGLPFAStencilSize        =  13   # number of stencil buffer bits
+NSOpenGLPFAAccumSize          =  14   # number of accum buffer bits
+NSOpenGLPFAMinimumPolicy      =  51   # never choose smaller buffers than requested
+NSOpenGLPFAMaximumPolicy      =  52   # choose largest buffers of type requested
+NSOpenGLPFAOffScreen          =  53   # choose an off-screen capable renderer
+NSOpenGLPFAFullScreen         =  54   # choose a full-screen capable renderer
+NSOpenGLPFASampleBuffers      =  55   # number of multi sample buffers
+NSOpenGLPFASamples            =  56   # number of samples per multi sample buffer
+NSOpenGLPFAAuxDepthStencil    =  57   # each aux buffer has its own depth stencil
+NSOpenGLPFAColorFloat         =  58   # color buffers store floating point pixels
+NSOpenGLPFAMultisample        =  59   # choose multisampling
+NSOpenGLPFASupersample        =  60   # choose supersampling
+NSOpenGLPFASampleAlpha        =  61   # request alpha filtering
+NSOpenGLPFARendererID         =  70   # request renderer by ID
+NSOpenGLPFASingleRenderer     =  71   # choose a single renderer for all screens
+NSOpenGLPFANoRecovery         =  72   # disable all failure recovery systems
+NSOpenGLPFAAccelerated        =  73   # choose a hardware accelerated renderer
+NSOpenGLPFAClosestPolicy      =  74   # choose the closest color buffer to request
+NSOpenGLPFARobust             =  75   # renderer does not need failure recovery
+NSOpenGLPFABackingStore       =  76   # back buffer contents are valid after swap
+NSOpenGLPFAMPSafe             =  78   # renderer is multi-processor safe
+NSOpenGLPFAWindow             =  80   # can be used to render to an onscreen window
+NSOpenGLPFAMultiScreen        =  81   # single window can span multiple screens
+NSOpenGLPFACompliant          =  83   # renderer is opengl compliant
+NSOpenGLPFAScreenMask         =  84   # bit mask of supported physical screens
+NSOpenGLPFAPixelBuffer        =  90   # can be used to render to a pbuffer
+NSOpenGLPFARemotePixelBuffer  =  91   # can be used to render offline to a pbuffer
+NSOpenGLPFAAllowOfflineRenderers = 96 # allow use of offline renderers
+NSOpenGLPFAAcceleratedCompute =  97   # choose a hardware accelerated compute device
+NSOpenGLPFAVirtualScreenCount = 128   # number of virtual screens in this format
 
 NSOpenGLCPSwapInterval        = 222
 
@@ -371,7 +371,7 @@ quartz.CGDisplayModeGetRefreshRate.restype = c_double
 quartz.CGDisplayModeGetRefreshRate.argtypes = [c_void_p]
 
 quartz.CGDisplayModeRetain.restype = c_void_p
-quartz.CGDisplayModeRetain.argtypes = [c_void_p] 
+quartz.CGDisplayModeRetain.argtypes = [c_void_p]
 
 quartz.CGDisplayModeRelease.restype = None
 quartz.CGDisplayModeRelease.argtypes = [c_void_p]

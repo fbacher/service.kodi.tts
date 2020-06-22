@@ -1,20 +1,22 @@
 # -*- coding: utf-8 -*-
 import os, hashlib, json
 import xbmc
-import util
+from . import util
 
 DATAPATH = os.path.join(util.profileDirectory(),'addon_data.json')
 BASE = '{ "jsonrpc": "2.0", "id": 1, "method": "Addons.GetAddons", "params": {"enabled": true,"properties": ["name","version"]}}'
 NEW_VERSIONS = False
 
 def getAddonsMD5():
-    return hashlib.md5(xbmc.executeJSONRPC(BASE)).hexdigest()
+    return hashlib.md5(xbmc.executeJSONRPC(BASE).encode('utf-8')).hexdigest()
 
 def saveAddonsMD5(md5):
+    util.VERBOSE_LOG('addoninfo.saveAddonsMD5')
     util.setSetting('addons_MD5',md5)
 
 def loadAddonsMD5():
-    return util.getSetting('addons_MD5')    
+    util.VERBOSE_LOG('addoninfo.loadAddonsMD5')
+    return util.getSetting('addons_MD5')
 
 def initAddonsData(force=False):
     if not force and loadAddonsMD5() and os.path.exists(DATAPATH): return
@@ -23,17 +25,17 @@ def initAddonsData(force=False):
     jsonString = xbmc.executeJSONRPC(BASE)
     with open(DATAPATH,'w') as f:
         f.write(jsonString)
-    
+
 def getAddonsDetails():
     data = json.loads(xbmc.executeJSONRPC(BASE))
-    details = data[u'result'][u'addons']
+    details = data['result']['addons']
     return details
 
 def loadAddonsDetails(as_dict=False):
     if not os.path.exists(DATAPATH): return None
     with open(DATAPATH,'r') as f:
         data = json.load(f)
-    detailsList = data[u'result'][u'addons']
+    detailsList = data['result']['addons']
     if as_dict:  return dict((d['addonid'],d) for d in detailsList)
     return detailsList
 

@@ -3,7 +3,7 @@
 import time
 import xbmc, xbmcgui
 from lib import util
-from base import WindowReaderBase, WindowHandlerBase
+from .base import WindowReaderBase, WindowHandlerBase
 T = util.T
         
 class ProgressNotice(xbmcgui.Window):
@@ -56,7 +56,7 @@ class ProgressNotice(xbmcgui.Window):
                         self.finish()
                         return None
             self.progress = new_prog
-            self.currentProgress = u'{0}%'.format(self.progress)
+            self.currentProgress = '{0}%'.format(self.progress)
         except:
             util.ERROR('BG Progress',hide_tb=True)
 

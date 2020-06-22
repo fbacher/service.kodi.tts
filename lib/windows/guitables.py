@@ -43,7 +43,7 @@ winNames = {    10000: 10000, #Home
                 10107: T(32129), #info dialog
                 10109: T(32130), #numeric input
                 10111: T(32131), #shutdown menu
-                10113: u'mute bug',
+                10113: 'mute bug',
                 10114: T(32132), #player controls
                 10115: T(32133), #seek bar
                 10120: T(32134), #music OSD
@@ -136,7 +136,7 @@ winListItemProperties = {        10040:('$INFO[ListItem.Property(Addon.Status)]'
 
 
 def getWindowAddonID(winID):
-    path = xbmc.getInfoLabel('Window({0}).Property(xmlfile)'.format(winID)).decode('utf-8')
+    path = xbmc.getInfoLabel('Window({0}).Property(xmlfile)'.format(winID))
     addonID = path.replace('\\', '/').split('/addons/',1)[-1].split('/',1)[0]
     return addonID
 
@@ -151,7 +151,7 @@ def getWindowName(winID):
         if isinstance(name,int): name = xbmc.getLocalizedString(name)
     elif winID > 12999:
         return getWindowAddonName(winID)
-    return name or xbmc.getInfoLabel('System.CurrentWindow').decode('utf-8') or T(32165) #T(unknown)
+    return name or xbmc.getInfoLabel('System.CurrentWindow') or T(32165) #T(unknown)
 
 def convertTexts(winID,data_list):
     ret = []
@@ -159,10 +159,10 @@ def convertTexts(winID,data_list):
         if isinstance(sid,int):
             sid = xbmc.getLocalizedString(sid)
         elif sid.isdigit():
-            sid = xbmc.getInfoLabel('Control.GetLabel({0})'.format(sid)).decode('utf-8')
+            sid = xbmc.getInfoLabel('Control.GetLabel({0})'.format(sid))
         elif sid.startswith('$INFO['):
             info = sid[6:-1]
-            sid = xbmc.getInfoLabel(info).decode('utf-8')
+            sid = xbmc.getInfoLabel(info)
         if sid: ret.append(sid)
     return ret
 
@@ -179,7 +179,7 @@ def getItemExtraTexts(winID):
 def getListItemProperty(winID):
     texts = getWindowTexts(winID,table=winListItemProperties)
     if not texts: return None
-    return u','.join(texts)
+    return ','.join(texts)
 
 def getSongInfo():
     if xbmc.getCondVisibility('ListItem.IsFolder'): return None
@@ -190,12 +190,12 @@ def getSongInfo():
     ret = []
     if title:
         ret.append(xbmc.getLocalizedString(556))
-        ret.append(title.decode('utf-8'))
+        ret.append(title)
     if genre:
         ret.append(xbmc.getLocalizedString(515))
-        ret.append(genre.decode('utf-8'))
+        ret.append(genre)
     if duration:
         ret.append(xbmc.getLocalizedString(180))
-        ret.append(duration.decode('utf-8'))
+        ret.append(duration)
     return ret
 

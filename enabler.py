@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import os, sys, xbmc, xbmcaddon
 
-DISABLE_PATH = os.path.join(xbmc.translatePath('special://profile').decode('utf-8'), 'addon_data', 'service.xbmc.tts', 'DISABLED')
-ENABLE_PATH = os.path.join(xbmc.translatePath('special://profile').decode('utf-8'), 'addon_data', 'service.xbmc.tts', 'ENABLED')
+DISABLE_PATH = os.path.join(xbmc.translatePath('special://profile'), 'addon_data', 'service.xbmc.tts', 'DISABLED')
+ENABLE_PATH = os.path.join(xbmc.translatePath('special://profile'), 'addon_data', 'service.xbmc.tts', 'ENABLED')
 
 def getXBMCVersion():
     import json
@@ -74,7 +74,7 @@ def toggleEnabled():
         if not addonIsEnabled(): raise Exception('Addon Disabled')
         xbmcaddon.Addon('service.xbmc.tts')
         xbmc.log('service.xbmc.tts: DISABLING')
-        xbmc.executebuiltin('XBMC.RunScript(service.xbmc.tts,key.SHUTDOWN)')
+        xbmc.executebuiltin('RunScript(service.xbmc.tts,key.SHUTDOWN)')
     except:
         xbmc.log('service.xbmc.tts: ENABLING')
         enableAddon()
@@ -91,7 +91,7 @@ def reset():
 
 
 def isPostInstalled():
-    homePath = xbmc.translatePath('special://home').decode('utf-8')
+    homePath = xbmc.translatePath('special://home')
     postInstalledPath = os.path.join(homePath, 'addons', 'service.xbmc.tts')
     return os.path.exists(postInstalledPath)
 

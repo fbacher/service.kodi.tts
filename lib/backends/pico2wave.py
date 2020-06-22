@@ -1,15 +1,16 @@
 # -*- coding: utf-8 -*-
 import os, subprocess
-import base
+from . import base
+from lib import util
 
 class Pico2WaveTTSBackend(base.SimpleTTSBackendBase):
     provider = 'pico2wave'
     displayName = 'pico2wave'
     speedConstraints = (20,100,200,True)
-    settings = {        'language':'',
-                    'speed':0,
-                    'player':None,
-                    'volume':0
+    settings = {'language': '',
+                    'speed': 0,
+                    'player': None,
+                    'volume': 0
     }
 
     def init(self):
@@ -18,9 +19,10 @@ class Pico2WaveTTSBackend(base.SimpleTTSBackendBase):
 
     def runCommand(self,text,outFile):
         args = ['pico2wave']
-        if self.language: args.extend(['-l',self.language])
-        args.extend(['-w', '{0}'.format(outFile), '{0}'.format(text.encode('utf-8'))])
-        subprocess.call(args)
+            if self.language:
+                args.extend(['-l', self.language])
+            args.extend(['-w', '{0}'.format(outFile), '{0}'.format(text_to_voice)])
+        subprocess.call(args, universal_newlines=True)
         return True
 
     def update(self):
@@ -33,8 +35,10 @@ class Pico2WaveTTSBackend(base.SimpleTTSBackendBase):
     def settingList(cls,setting,*args):
         if setting == 'language':
             try:
-                out = subprocess.check_output(['pico2wave','-l','NONE','-w','/dev/null','X'],stderr=subprocess.STDOUT)
-            except subprocess.CalledProcessError, e:
+                out = subprocess.check_output(['pico2wave','-l','NONE','-w','/dev/null','X'],
+                                              stderr=subprocess.STDOUT,
+                                              universal_newlines=True)
+            except subprocess.CalledProcessError as e:
                 out = e.output
             if not 'languages:' in out: return None
 
@@ -43,7 +47,8 @@ class Pico2WaveTTSBackend(base.SimpleTTSBackendBase):
     @staticmethod
     def available():
         try:
-            subprocess.call(['pico2wave', '--help'], stdout=(open(os.path.devnull, 'w')), stderr=subprocess.STDOUT)
+            subprocess.call(['pico2wave', '--help'],  universal_newlines=True,
+                            stdout=(open(os.path.devnull, 'w')), stderr=subprocess.STDOUT)
         except (OSError, IOError):
             return False
         return True

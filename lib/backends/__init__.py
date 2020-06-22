@@ -4,21 +4,21 @@ import sys, os
 sys.path.insert(0,os.path.dirname(__file__))
 
 from lib import util
-from base import LogOnlyTTSBackend
-from nvda import NVDATTSBackend
-from festival import FestivalTTSBackend
-from pico2wave import Pico2WaveTTSBackend
-from flite import FliteTTSBackend
-from osxsay import OSXSayTTSBackend
-from sapi import SAPITTSBackend
-from espeak import ESpeakTTSBackend, ESpeakCtypesTTSBackend
-from speechdispatcher import SpeechDispatcherTTSBackend
-from jaws import JAWSTTSBackend
-from speech_server import SpeechServerBackend
-from cepstral import CepstralTTSBackend #, CepstralTTSOEBackend
-# from google import GoogleTTSBackend
+from .base import LogOnlyTTSBackend
+from .nvda import NVDATTSBackend
+from .festival import FestivalTTSBackend
+from .pico2wave import Pico2WaveTTSBackend
+from .flite import FliteTTSBackend
+from .osxsay import OSXSayTTSBackend
+from .sapi import SAPITTSBackend
+from .espeak import ESpeakTTSBackend, ESpeakCtypesTTSBackend
+from .speechdispatcher import SpeechDispatcherTTSBackend
+from .jaws import JAWSTTSBackend
+from .speech_server import SpeechServerBackend
+from .cepstral import CepstralTTSBackend #, CepstralTTSOEBackend
+#from .google import GoogleTTSBackend
 # from speechutil import SpeechUtilComTTSBackend
-from recite import ReciteTTSBackend
+from .recite import ReciteTTSBackend
 #from voiceover import VoiceOverBackend #Can't test
 
 backendsByPriority = [  SAPITTSBackend,
@@ -50,7 +50,9 @@ def removeBackendsByProvider(to_remove):
 
 def getAvailableBackends(can_stream_wav=False):
     available = []
+    util.VERBOSE_LOG('backends.__init__.getAvailableBackends can_stream_wav: ' + str(can_stream_wav))
     for b in backendsByPriority:
+        util.VERBOSE_LOG('backend:' + str(b))
         if not b._available(): continue
         if can_stream_wav and not b.canStreamWav: continue
         available.append(b)
@@ -98,6 +100,7 @@ def getPlayers(provider):
     return players
 
 def getBackend(provider='auto'):
+    util.VERBOSE_LOG('backends.__init__.getBackend provider: ' + provider)
     provider = util.getSetting('backend') or provider
     b = getBackendByProvider(provider)
     if not b or not b._available():

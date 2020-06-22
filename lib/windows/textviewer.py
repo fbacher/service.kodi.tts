@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import xbmc, time, re, hashlib
-from base import WindowReaderBase
+from .base import WindowReaderBase
 
 class TextViewerReader(WindowReaderBase):
     ID = 'textviewer'
@@ -16,7 +16,7 @@ class TextViewerReader(WindowReaderBase):
         self._last_md5sum = md5sum
 
     def getViewerTexts(self):
-        text = xbmc.getInfoLabel('Control.GetLabel(5)').decode('utf-8') or xbmc.getInfoLabel('Control.GetLabel(2000)').decode('utf-8')
+        text = xbmc.getInfoLabel('Control.GetLabel(5)') or xbmc.getInfoLabel('Control.GetLabel(2000)')
         if text:
             return self.processLines(text.splitlines())
         else:
@@ -48,7 +48,7 @@ class TextViewerReader(WindowReaderBase):
         return None
 
     def getControlText(self,controlID):
-        return (u'',u'')
+        return ('','')
 
     def getMonitoredText(self,isSpeaking=False):
         if self.doubleChecked: return None

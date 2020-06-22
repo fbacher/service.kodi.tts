@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-import base
-import urllib, urllib2
+from . import base
+import urllib.request, urllib.parse, urllib.error, urllib.request, urllib.error, urllib.parse
 from lib import util
 import shutil
 
@@ -49,17 +49,17 @@ class SpeechServerBackend(base.SimpleTTSBackendBase):
         postdata['volume'] = self.remote_volume
 
     def runCommand(self,text,outFile):
-        postdata = {'text': text.encode('utf-8')} #TODO: This fixes encoding errors for non ascii characters, but I'm not sure if it will work properly for other languages
+        postdata = {'text': text} #TODO: This fixes encoding errors for non ascii characters, but I'm not sure if it will work properly for other languages
         if self.perlServer:
             postdata['voice'] = self.voice
             postdata['rate'] = self.remote_speed
-            req = urllib2.Request(self.httphost + 'speak.wav', urllib.urlencode(postdata))
+            req = urllib.request.Request(self.httphost + 'speak.wav', urllib.parse.urlencode(postdata))
         else:
             self.updatePostdata(postdata)
-            req = urllib2.Request(self.httphost + 'wav', urllib.urlencode(postdata))
+            req = urllib.request.Request(self.httphost + 'wav', urllib.parse.urlencode(postdata))
         with open(outFile, "w") as wav:
             try:
-                res = urllib2.urlopen(req)
+                res = urllib.request.urlopen(req)
                 if not res.info().get('Content-Type') == 'audio/x-wav': return False #If not a wav we will crash XBMC
                 shutil.copyfileobj(res,wav)
                 self.failFlag = False
@@ -71,11 +71,11 @@ class SpeechServerBackend(base.SimpleTTSBackendBase):
         return True
 
     def runCommandAndSpeak(self,text):
-        postdata = {'text': text.encode('utf-8')} #TODO: This fixes encoding errors for non ascii characters, but I'm not sure if it will work properly for other languages
+        postdata = {'text': text} #TODO: This fixes encoding errors for non ascii characters, but I'm not sure if it will work properly for other languages
         self.updatePostdata(postdata)
-        req = urllib2.Request(self.httphost + 'say', urllib.urlencode(postdata))
+        req = urllib.request.Request(self.httphost + 'say', urllib.parse.urlencode(postdata))
         try:
-            urllib2.urlopen(req)
+            urllib.request.urlopen(req)
             self.failFlag = False
         except:
             err = util.ERROR('SpeechServerBackend: say',hide_tb=True)
@@ -84,16 +84,16 @@ class SpeechServerBackend(base.SimpleTTSBackendBase):
             return False
 
     def runCommandAndPipe(self,text):
-        postdata = {'text': text.encode('utf-8')} #TODO: This fixes encoding errors for non ascii characters, but I'm not sure if it will work properly for other languages
+        postdata = {'text': text} #TODO: This fixes encoding errors for non ascii characters, but I'm not sure if it will work properly for other languages
         if self.perlServer:
             postdata['voice'] = self.voice
             postdata['rate'] = self.remote_speed
-            req = urllib2.Request(self.httphost + 'speak.wav', urllib.urlencode(postdata))
+            req = urllib.request.Request(self.httphost + 'speak.wav', urllib.parse.urlencode(postdata))
         else:
             self.updatePostdata(postdata)
-            req = urllib2.Request(self.httphost + 'wav', urllib.urlencode(postdata))
+            req = urllib.request.Request(self.httphost + 'wav', urllib.parse.urlencode(postdata))
         try:
-            res = urllib2.urlopen(req)
+            res = urllib.request.urlopen(req)
             if not res.info().get('Content-Type') == 'audio/x-wav': return None
             self.failFlag = False
             return res
@@ -147,11 +147,11 @@ class SpeechServerBackend(base.SimpleTTSBackendBase):
         self.setVolume(self.setting('player_volume'))
 
     def getVersion(self):
-        req = urllib2.Request(self.httphost + 'version')
+        req = urllib.request.Request(self.httphost + 'version')
         try:
-            resp = urllib2.urlopen(req)
+            resp = urllib.request.urlopen(req)
             return resp.read()
-        except urllib2.HTTPError, e:
+        except urllib.error.HTTPError as e:
             if e.code == 404: return 'perl.server'
             err = util.ERROR('Failed to get speech.server version',hide_tb=True)
             return err
@@ -160,9 +160,9 @@ class SpeechServerBackend(base.SimpleTTSBackendBase):
             return err
 
     def serverStop(self):
-        req = urllib2.Request(self.httphost + 'stop', '')
+        req = urllib.request.Request(self.httphost + 'stop', '')
         try:
-            urllib2.urlopen(req)
+            urllib.request.urlopen(req)
         except:
             util.ERROR('SpeechServerBackend: stop',hide_tb=True)
 
@@ -177,8 +177,8 @@ class SpeechServerBackend(base.SimpleTTSBackendBase):
     def voices(self,engine=''):
         if engine: engine = '?engine={0}'.format(engine)
         try:
-            return urllib2.urlopen(self.httphost + 'voices{0}'.format(engine)).read().splitlines()
-        except urllib2.HTTPError:
+            return urllib.request.urlopen(self.httphost + 'voices{0}'.format(engine)).read().splitlines()
+        except urllib.error.HTTPError:
             return None
         except:
             util.ERROR('SpeechServerBackend: voices',hide_tb=True)
@@ -190,8 +190,8 @@ class SpeechServerBackend(base.SimpleTTSBackendBase):
         self = cls()
         if setting == 'engine':
             try:
-                engines = urllib2.urlopen(self.httphost + 'engines/wav',data='').read().splitlines()
-            except urllib2.HTTPError:
+                engines = urllib.request.urlopen(self.httphost + 'engines/wav',data='').read().splitlines()
+            except urllib.error.HTTPError:
                 return None
             except:
                 util.ERROR('SpeechServerBackend: engines',hide_tb=True)

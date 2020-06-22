@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-import urllib, urllib2, shutil, os
-import base, audio
+import urllib.request, urllib.parse, urllib.error, urllib.request, urllib.error, urllib.parse, shutil, os
+from . import base, audio
 from lib import util
 import textwrap
-import asyncconnections
+from . import asyncconnections
 
 class SpeechUtilComTTSBackend(base.SimpleTTSBackendBase):
     provider = 'speechutil'
@@ -26,9 +26,9 @@ class SpeechUtilComTTSBackend(base.SimpleTTSBackendBase):
 
     def runCommand(self,text,outFile):
         h = asyncconnections.Handler()
-        o = urllib2.build_opener(h)
-        url = self.ttsURL.format(urllib.quote(text.encode('utf-8')))
-        req = urllib2.Request(url, headers=self.headers)
+        o = urllib.request.build_opener(h)
+        url = self.ttsURL.format(urllib.parse.quote(text))
+        req = urllib.request.Request(url, headers=self.headers)
         try:
             resp = o.open(req)
         except (asyncconnections.StopRequestedException, asyncconnections.AbortRequestedException):

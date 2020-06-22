@@ -30,7 +30,7 @@ class _mci:
     def directsend(self, txt):
         (err, buf) = self.send(txt)
         if err != 0:
-            print 'Error %s for "%s": %s' % (str(err), txt, buf)
+            print('Error %s for "%s": %s' % (str(err), txt, buf))
         return (err, buf)
 
 # TODO: detect errors in all mci calls

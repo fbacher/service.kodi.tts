@@ -1,28 +1,28 @@
 # -*- coding: utf-8 -*-
 import xbmc
 
-from base import DefaultWindowReader, NullReader, KeymapKeyInputReader
-from progressdialog import ProgressDialogReader
-from virtualkeyboard import VirtualKeyboardReader
-from virtualkeyboard import PVRSGuideSearchDialogReader
-from pvrguideinfo import PVRGuideInfoReader
-from textviewer import TextViewerReader
-from busydialog import BusyDialogReader
-from contextmenu import ContextMenuReader
-from pvr import PVRWindowReader
-from pvr import PVRGuideWindowReader
-from pvr import PVRChannelsWindowReader
-from pvr import PVRRecordingsWindowReader
-from pvr import PVRTimersWindowReader
-from pvr import PVRSearchWindowReader
-from libraryviews import VideoLibraryWindowReader
-from weather import WeatherReader
-from playerstatus import PlayerStatusReader
-from settings import SettingsReader
-from selectdialog import SelectDialogReader
-from yesnodialog import YesNoDialogReader
-from videoinfodialog import VideoInfoDialogReader
-from subtitlesdialog import SubtitlesDialogReader
+from .base import DefaultWindowReader, NullReader, KeymapKeyInputReader
+from .progressdialog import ProgressDialogReader
+from .virtualkeyboard import VirtualKeyboardReader
+from .virtualkeyboard import PVRSGuideSearchDialogReader
+from .pvrguideinfo import PVRGuideInfoReader
+from .textviewer import TextViewerReader
+from .busydialog import BusyDialogReader
+from .contextmenu import ContextMenuReader
+from .pvr import PVRWindowReader
+from .pvr import PVRGuideWindowReader
+from .pvr import PVRChannelsWindowReader
+from .pvr import PVRRecordingsWindowReader
+from .pvr import PVRTimersWindowReader
+from .pvr import PVRSearchWindowReader
+from .libraryviews import VideoLibraryWindowReader
+from .weather import WeatherReader
+from .playerstatus import PlayerStatusReader
+from .settings import SettingsReader
+from .selectdialog import SelectDialogReader
+from .yesnodialog import YesNoDialogReader
+from .videoinfodialog import VideoInfoDialogReader
+from .subtitlesdialog import SubtitlesDialogReader
 READERS = (
     KeymapKeyInputReader,
     DefaultWindowReader,

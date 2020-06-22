@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import xbmc
-import base
+from . import base
 
 class VideoInfoDialogReader(base.DefaultWindowReader):
     ID = 'videoinfodialog'
@@ -27,14 +27,14 @@ class VideoInfoDialogReader(base.DefaultWindowReader):
         }
 
     def getHeading(self):
-        return xbmc.getInfoLabel('ListItem.Title').decode('utf-8') or u''
+        return xbmc.getInfoLabel('ListItem.Title') or ''
 
     def getControlText(self,controlID):
-        if not controlID: return (u'',u'')
-        text = u''
+        if not controlID: return ('','')
+        text = ''
         if controlID == 49:
             text = xbmc.getInfoLabel('System.CurrentControl'.format(controlID)).strip(': ')
-            for k in self.listMap.keys():
+            for k in list(self.listMap.keys()):
                 if text == xbmc.getLocalizedString(k).strip(': '):
                     text = '{0}: {1}'.format(text,self.listMap[k])
                     break
@@ -43,13 +43,13 @@ class VideoInfoDialogReader(base.DefaultWindowReader):
         elif controlID == 61:
             text = '{0}: {1}'.format(xbmc.getLocalizedString(207),xbmc.getInfoLabel('ListItem.Plot'))
         elif controlID == 138:
-            text = xbmc.getInfoLabel('ListItem.Plot').decode('utf-8')
+            text = xbmc.getInfoLabel('ListItem.Plot')
         else:
             text = xbmc.getInfoLabel('Control.GetLabel({0})'.format(controlID))
 
         if not text: text = xbmc.getInfoLabel('System.CurrentControl')
-        if not text: return (u'',u'')
-        return (text.decode('utf-8'),text)
+        if not text: return ('','')
+        return (text,text)
 
     def getControlPostfix(self, controlID):
         post = base.DefaultWindowReader.getControlPostfix(self, self.service.controlID)

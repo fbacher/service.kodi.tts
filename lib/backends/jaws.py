@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import sys
-from base import ThreadedTTSBackend
+from .base import ThreadedTTSBackend
 
 class JAWSTTSBackend(ThreadedTTSBackend):
     provider = 'JAWS'
@@ -14,22 +14,22 @@ class JAWSTTSBackend(ThreadedTTSBackend):
             self.jaws = comtypes.client.CreateObject('FreedomSci.JawsApi')
         except:
             self.jaws = comtypes.client.CreateObject('jfwapi')
-        
+
     def threadedSay(self,text):
         if not self.jaws: return
         if not self.jaws.SayString(text,False): self.flagAsDead('Not running')
-        
+
     def stop(self):
         if not self.jaws: return
         self.jaws.StopSpeech()
 
     def isSpeaking(self):
         return ThreadedTTSBackend.isSpeaking(self) or None
-        
+
     def close(self):
         del self.jaws
         self.jaws = None
-        
+
     @staticmethod
     def available():
         if not sys.platform.lower().startswith('win'): return False

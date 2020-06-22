@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-from base import ThreadedTTSBackend
+from .base import ThreadedTTSBackend
 import locale, os
-import speechd
+from . import speechd
 from lib import util
 
 def getSpeechDSpeaker(test=False):

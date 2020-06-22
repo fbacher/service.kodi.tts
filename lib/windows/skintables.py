@@ -29,7 +29,7 @@ def getControlText(winID,controlID):
     if isinstance(label,int): label = xbmc.getLocalizedString(label)
     if not label: return
     if not 'prefix' in table[winID][controlID]: return label
-    return u'{0}: {1}'.format(table[winID][controlID]['prefix'],label)
+    return '{0}: {1}'.format(table[winID][controlID]['prefix'],label)
 
 
 def getSkinTable():
@@ -38,7 +38,7 @@ def getSkinTable():
     skinPath = xbmc.translatePath('special://skin')
     skinName = os.path.basename(skinPath.rstrip('\/')).split('skin.',1)[-1]
     CURRENT_SKIN = skinName
-    print 'service.xbmc.tts: SKIN: %s' % skinName
+    print('service.xbmc.tts: SKIN: %s' % skinName)
     return skins.get(skinName)
 
 def updateSkinTable():

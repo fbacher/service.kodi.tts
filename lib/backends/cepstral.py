@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os, subprocess
-import base
+from . import base
 from lib import util
 
 def getStartupInfo():
@@ -33,7 +33,7 @@ class CepstralTTSOEBackend(base.SimpleTTSBackendBase):
 
     def runCommandAndPipe(self,text):
         args = ['/lib/ld-linux.so.3', '--library-path',  '/storage/music/callie/lib', '/storage/music/callie/bin/swift.bin', '-d', '/storage/music/callie/voices/Callie', '-o', '-', text]
-        self.process = subprocess.Popen(args,stdout=subprocess.PIPE)
+        self.process = subprocess.Popen(args,stdout=subprocess.PIPE,  universal_newlines=True)
         return self.process.stdout
 
     def runCommandAndSpeak(self,text):
@@ -42,8 +42,13 @@ class CepstralTTSOEBackend(base.SimpleTTSBackendBase):
     def restartProcess(self):
         self.stopProcess()
         args = ['/lib/ld-linux.so.3', '--library-path',  '/storage/music/callie/lib', '/storage/music/callie/bin/swift.bin', '-d', '/storage/music/callie/voices/Callie', '-f','-','-o', '-']
-        self.process = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=(open(os.path.devnull, 'w')))
-        self.aplayProcess = subprocess.Popen(['aplay','-q'], stdin=self.proces.stdout, stdout=(open(os.path.devnull, 'w')), stderr=subprocess.STDOUT)
+        self.process = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                        stderr=(open(os.path.devnull, 'w')),
+                                        universal_newlines=True)
+        self.aplayProcess = subprocess.Popen(['aplay','-q'], stdin=self.process.stdout,
+                                             stdout=(open(os.path.devnull, 'w')),
+                                             stderr=subprocess.STDOUT,
+                                             universal_newlines=True)
 
     def stopProcess(self):
         if self.process:
@@ -100,7 +105,10 @@ class CepstralTTSBackend(base.SimpleTTSBackendBase):
         if self.voice: args.extend(('-n',self.voice))
         args.extend(('-p','audio/volume={0},speech/rate={1},speech/pitch/shift={2}'.format(self.volume,self.rate,self.pitch)))
         args.extend(('-f','-'))
-        self.process = subprocess.Popen(args, startupinfo=self.startupinfo, stdin=subprocess.PIPE, stdout=(open(os.path.devnull, 'w')), stderr=subprocess.STDOUT)
+        self.process = subprocess.Popen(args, startupinfo=self.startupinfo,
+                                        stdin=subprocess.PIPE,
+                                        stdout=(open(os.path.devnull, 'w')),
+                                        stderr=subprocess.STDOUT, universal_newlines=True)
 
     def stopProcess(self):
         if self.process:
@@ -134,7 +142,9 @@ class CepstralTTSBackend(base.SimpleTTSBackendBase):
     def getVoiceLines(cls):
         import re
         ret = []
-        out = subprocess.check_output(['swift','--voices'],startupinfo=getStartupInfo()).splitlines()
+        out = subprocess.check_output(['swift','--voices'],
+                                      startupinfo=getStartupInfo(),
+                                      universal_newlines=True).splitlines()
         for l in reversed(out):
             if l.startswith(' ') or l.startswith('-'): break
             ret.append(re.split('\s+\|\s+',l.strip(),6))
@@ -157,7 +167,9 @@ class CepstralTTSBackend(base.SimpleTTSBackendBase):
     @staticmethod
     def available():
         try:
-            subprocess.call(['swift', '-V'], startupinfo=getStartupInfo(),stdout=(open(os.path.devnull, 'w')), stderr=subprocess.STDOUT)
+            subprocess.call(['swift', '-V'], startupinfo=getStartupInfo(),
+                            stdout=(open(os.path.devnull, 'w')),
+                            stderr=subprocess.STDOUT, universal_newlines=True)
         except (OSError, IOError):
             return False
         return True

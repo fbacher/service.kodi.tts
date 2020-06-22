@@ -2,7 +2,7 @@
 #
 # This module is needed to run generated parsers.
 
-from string import join, count, find, rfind
+#from string import join, count, find, rfind
 import re
 
 class SyntaxError(Exception):
@@ -38,7 +38,7 @@ class Scanner:
             self.patterns = []
             for k, r in patterns:
                 self.patterns.append( (k, re.compile(r)) )
-    
+
     def token(self, i, restrict=0):
         """Get the i'th token, and if i is one past the end, then scan
         for another token; restrict is a list of tokens that
@@ -52,14 +52,14 @@ class Scanner:
                         raise NotImplementedError("Unimplemented: restriction set changed")
                 return self.tokens[i]
         raise NoMoreTokens()
-    
+
     def __repr__(self):
         """Print the last 10 tokens that have been scanned in"""
         output = ''
         for t in self.tokens[-10:]:
             output = '%s\n  (@%s)  %s  =  %s' % (output,t[0],t[2],repr(t[3]))
         return output
-    
+
     def scan(self, restrict):
         """Should scan another token and add it to the list, self.tokens,
         and add the restriction to self.restrictions"""
@@ -78,14 +78,14 @@ class Scanner:
                     # We got a match that's better than the previous one
                     best_pat = p
                     best_match = len(m.group(0))
-                
+
             # If we didn't find anything, raise an error
             if best_pat == '(error)' and best_match < 0:
                 msg = "Bad Token"
                 if restrict:
                     msg = "Trying to find one of "+join(restrict,", ")
                 raise SyntaxError(self.pos, msg)
-    
+
             # If we found something that isn't to be ignored, return it
             if best_pat not in self.ignore:
                 # Create a token with this data
@@ -106,13 +106,13 @@ class Parser:
     def __init__(self, scanner):
         self._scanner = scanner
         self._pos = 0
-        
+
     def _peek(self, *types):
         """Returns the token type for lookahead; if there are any args
         then the list of args is the set of token types to allow"""
         tok = self._scanner.token(self._pos, types)
         return tok[2]
-        
+
     def _scan(self, type):
         """Returns the matched text, and moves to the next token"""
         tok = self._scanner.token(self._pos, [type])
@@ -128,7 +128,7 @@ def print_error(input, err, scanner):
     p = err.pos
     # Figure out the line number
     line = count(input[:p], '\n')
-    print err.msg+" on line "+repr(line+1)+":"
+    print(err.msg+" on line "+repr(line+1)+":")
     # Now try printing part of the line
     text = input[max(p-80, 0):p+80]
     p = p - max(p-80, 0)
@@ -155,21 +155,21 @@ def print_error(input, err, scanner):
         p = p - 7
 
     # Now print the string, along with an indicator
-    print '> ',text
-    print '> ',' '*p + '^'
-    print 'List of nearby tokens:', scanner
+    print('> ',text)
+    print('> ',' '*p + '^')
+    print('List of nearby tokens:', scanner)
 
 def wrap_error_reporter(parser, rule):
     return_value = None
     try:
         return_value = getattr(parser, rule)()
-    except SyntaxError, s:
+    except SyntaxError as s:
         input = parser._scanner.input
         try:
             print_error(input, s, parser._scanner)
         except ImportError:
-            print 'Syntax Error',s.msg,'on line',1+count(input[:s.pos], '\n')
+            print('Syntax Error',s.msg,'on line',1+count(input[:s.pos], '\n'))
     except NoMoreTokens:
-        print 'Could not complete parsing; stopped around here:'
-        print parser._scanner
+        print('Could not complete parsing; stopped around here:')
+        print(parser._scanner)
     return return_value

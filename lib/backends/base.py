@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-import time, threading, Queue, os
+import time, threading, queue, os
 from lib import util
-import audio
+from . import audio
 
 class TTSBackendBase(object):
     """The base class for all speech engine backends
@@ -11,7 +11,7 @@ class TTSBackendBase(object):
     """
     provider = 'auto'
     displayName = 'Auto'
-    pauseInsert = u'...'
+    pauseInsert = '...'
     settings = None
     canStreamWav = False
     inWavStreamMode = False
@@ -81,7 +81,7 @@ class TTSBackendBase(object):
         if vol > self.volumeExternalEndpoints[1]: vol = self.volumeExternalEndpoints[1]
         util.setSetting('{0}.{1}'.format('volume',self.provider),vol)
         if util.DEBUG: util.LOG('Volume UP: {0}'.format(vol))
-        return u'{0} {1}'.format(vol,self.volumeSuffix)
+        return '{0} {1}'.format(vol,self.volumeSuffix)
 
     def volumeDown(self):
         if not self.settings or not 'volume' in self.settings: return util.T(32180)
@@ -90,7 +90,7 @@ class TTSBackendBase(object):
         if vol < self.volumeExternalEndpoints[0]: vol = self.volumeExternalEndpoints[0]
         util.setSetting('{0}.{1}'.format('volume',self.provider),vol)
         if util.DEBUG: util.LOG('Volume DOWN: {0}'.format(vol))
-        return u'{0} {1}'.format(vol,self.volumeSuffix)
+        return '{0} {1}'.format(vol,self.volumeSuffix)
 
     def flagAsDead(self,reason=''):
         self.dead = True
@@ -166,7 +166,7 @@ class TTSBackendBase(object):
     def stop(self):
         """Stop all speech, implicitly called when close() is called
 
-        Subclasses shoud override this to respond to requests to stop speech.
+        Subclasses should override this to respond to requests to stop speech.
         Default implementation does nothing.
         """
         pass
@@ -174,7 +174,7 @@ class TTSBackendBase(object):
     def close(self):
         """Close the speech engine
 
-        Subclasses shoud override this to clean up after themselves.
+        Subclasses should override this to clean up after themselves.
         Default implementation does nothing.
         """
         pass
@@ -222,13 +222,13 @@ class ThreadedTTSBackend(TTSBackendBase):
     Handles all the threading mechanics internally.
     Subclasses must at least implement the threadedSay() method, and can use
     whatever means are available to speak text.
-    They say() and sayList() and insertPause() methods are not meant to be overridden.
+    The say() and sayList() and insertPause() methods are not meant to be overridden.
     """
 
     def __init__(self):
         self.active = True
         self._threadedIsSpeaking = False
-        self.queue = Queue.Queue()
+        self.queue = queue.Queue()
         self.thread = threading.Thread(target=self._handleQueue,name='TTSThread: %s' % self.provider)
         self.thread.start()
         TTSBackendBase.__init__(self)
@@ -245,16 +245,19 @@ class ThreadedTTSBackend(TTSBackendBase):
                     self._threadedIsSpeaking = True
                     self.threadedSay(text)
                     self._threadedIsSpeaking = False
-            except Queue.Empty:
+            except queue.Empty:
+                util.VERBOSE_LOG('queue empty')
                 pass
         util.LOG('Threaded TTS Finished: {0}'.format(self.provider))
 
     def _emptyQueue(self):
         try:
+            util.VERBOSE_LOG('_emptyQueue')
             while True:
                 self.queue.get_nowait()
                 self.queue.task_done()
-        except Queue.Empty:
+        except queue.Empty:
+            util.VERBOSE_LOG('_emptyQueue is empty')
             return
 
     def say(self,text,interrupt=False):
@@ -291,6 +294,7 @@ class ThreadedTTSBackend(TTSBackendBase):
         self.active = False
         TTSBackendBase._close(self)
         self._emptyQueue()
+
 
 class SimpleTTSBackendBase(ThreadedTTSBackend):
     WAVOUT = 0
@@ -360,6 +364,7 @@ class SimpleTTSBackendBase(ThreadedTTSBackend):
 
     def getWavStream(self,text):
         fpath = os.path.join(util.getTmpfs(),'speech.wav')
+        util.VERBOSE_LOG('base.getWavStream tmpfile: ' + fpath)
         self.runCommand(text,fpath)
         return open(fpath,'rb')
 

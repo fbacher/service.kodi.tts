@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os, ctypes
 from lib import util
-from base import TTSBackendBase
+from .base import TTSBackendBase
 
 def getDLLPath():
     p = os.path.join(util.profileDirectory(),'nvdaControllerClient32.dll')
@@ -14,7 +14,7 @@ def getDLLPath():
             if util.DEBUG: util.LOG('Found script.module.nvdacontrollerclient module for NVDA')
             import xbmcaddon
             nvdaCCAddon = xbmcaddon.Addon('script.module.nvdacontrollerclient')
-            p = os.path.join(nvdaCCAddon.getAddonInfo('path').decode('utf-8'),'nvda','nvdaControllerClient32.dll')
+            p = os.path.join(nvdaCCAddon.getAddonInfo('path'),'nvda','nvdaControllerClient32.dll')
             if os.path.exists(p): return p
     except (ImportError,AttributeError):
         return None

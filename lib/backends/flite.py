@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os, subprocess
 from lib import util
-import base
+from . import base
 
 class FliteTTSBackend(base.SimpleTTSBackendBase):
     provider = 'Flite'
@@ -20,14 +20,16 @@ class FliteTTSBackend(base.SimpleTTSBackendBase):
 
     def runCommand(self,text,outFile):
         if self.onATV2:
-            os.system('flite -t "{0}" -o "{1}"'.format(text.encode('utf-8'),outFile))
+            os.system('flite -t "{0}" -o "{1}"'.format(text,outFile))
         else:
-            subprocess.call(['flite', '-voice', self.voice, '-t', text.encode('utf-8'),'-o',outFile])
+            subprocess.call(['flite', '-voice', self.voice, '-t', text,'-o',outFile],
+                            universal_newlines=True)
         return True
 
     def runCommandAndSpeak(self,text):
-        self.process = subprocess.Popen(['flite', '-voice', self.voice, '-t', text.encode('utf-8')])
-        while self.process.poll() == None and self.active: util.sleep(10)
+        self.process = subprocess.Popen(['flite', '-voice', self.voice, '-t', text],
+                                        universal_newlines=True)
+        while self.process.poll() is None and self.active: util.sleep(10)
 
     def update(self):
         self.voice = self.setting('voice')
@@ -53,18 +55,20 @@ class FliteTTSBackend(base.SimpleTTSBackendBase):
     def settingList(cls,setting,*args):
         if cls.onATV2: return None
         if setting == 'voice':
-            return [(v,v) for v in subprocess.check_output(['flite','-lv']).split(': ',1)[-1].strip().split(' ')]
+            return [(v,v) for v in subprocess.check_output(['flite','-lv'],
+                                                           universal_newlines=True).split(': ',1)[-1].strip().split(' ')]
 
     @staticmethod
     def available():
         try:
-            subprocess.call(['flite', '--help'], stdout=(open(os.path.devnull, 'w')), stderr=subprocess.STDOUT)
+            subprocess.call(['flite', '--help'], stdout=(open(os.path.devnull, 'w')),
+                            universal_newlines=True, stderr=subprocess.STDOUT)
         except (OSError, IOError):
             return util.isATV2() and util.commandIsAvailable('flite')
         return True
 
 #class FliteTTSBackend(TTSBackendBase):
-#    provider = 'Flite'
+#    provider = 'Flite':q:q
 #    def __init__(self):
 #        import ctypes
 #        self.flite = ctypes.CDLL('libflite.so.1',mode=ctypes.RTLD_GLOBAL)
@@ -94,15 +98,16 @@ class FliteTTSBackend(base.SimpleTTSBackendBase):
 #    def say(self,text,interrupt=False):
 #        if not text: return
 #        voice = self.currentVoice() or 'kal16'
-#        subprocess.call(['flite', '-voice', voice, '-t', text])
+#        subprocess.call(['flite', '-voice', voice, '-t', text], universal_newlines=True)
 #
 #    def voices(self):
-#        return subprocess.check_output(['flite','-lv']).split(': ',1)[-1].strip().split(' ')
+#        return subprocess.check_output(['flite','-lv'], universal_newlines=True).split(': ',1)[-1].strip().split(' ')
 #
 #    @staticmethod
 #    def available():
 #        try:
-#            subprocess.call(['flite', '--help'], stdout=(open(os.path.devnull, 'w')), stderr=subprocess.STDOUT)
+#            subprocess.call(['flite', '--help'], stdout=(open(os.path.devnull, 'w')),
+#            stderr=subprocess.STDOUT, universal_newlines=True)
 #        except (OSError, IOError):
 #            return False
 #        return True

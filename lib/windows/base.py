@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import xbmc, xbmcgui
-import guitables
-import windowparser
-import skintables
+from . import guitables
+from . import windowparser
+from . import skintables
 from lib import util
 
 CURRENT_SKIN = skintables.CURRENT_SKIN
@@ -47,16 +47,16 @@ class WindowReaderBase(WindowHandlerBase):
     def getControlDescription(self,controlID): return None
 
     def getControlText(self,controlID):
-        text = xbmc.getInfoLabel('System.CurrentControl').decode('utf-8')
+        text = xbmc.getInfoLabel('System.CurrentControl')
         return (text,text)
 
     def getControlPostfix(self, controlID, ):
         if not self.service.speakListCount:
-            return u''
-        numItems = xbmc.getInfoLabel('Container({0}).NumItems'.format(self.service.controlID)).decode('utf-8')
+            return ''
+        numItems = xbmc.getInfoLabel('Container({0}).NumItems'.format(self.service.controlID))
         if numItems:
-            return u'... {0} {1}'.format(numItems,numItems != '1' and util.T(32107) or util.T(32106))
-        return u''
+            return '... {0} {1}'.format(numItems,numItems != '1' and util.T(32107) or util.T(32106))
+        return ''
 
     def getSecondaryText(self): return None
 
@@ -78,44 +78,44 @@ class WindowReaderBase(WindowHandlerBase):
 
     def getSlideoutText(self,controlID):
         text = self.getSettingControlText(controlID)
-        if not text: return (u'',u'')
-        return (text.decode('utf-8'),text)
+        if not text: return ('','')
+        return (text,text)
 
 class DefaultWindowReader(WindowReaderBase):
     ID = 'default'
 
     def getHeading(self):
-        return xbmc.getInfoLabel('Control.GetLabel(1)').decode('utf-8') or u''
+        return xbmc.getInfoLabel('Control.GetLabel(1)') or ''
 
     def getWindowTexts(self):
         return guitables.getWindowTexts(self.winID)
 
     def getControlDescription(self,controlID):
-        return skintables.getControlText(self.winID, controlID) or u''
+        return skintables.getControlText(self.winID, controlID) or ''
 
     def getControlText(self,controlID):
         if self.slideoutHasFocus():
             return self.getSlideoutText(controlID)
 
-        if not controlID: return (u'',u'')
+        if not controlID: return ('','')
         text = xbmc.getInfoLabel('ListItem.Title')
         if not text: text = xbmc.getInfoLabel('Container({0}).ListItem.Label'.format(controlID))
         if not text: text = xbmc.getInfoLabel('Control.GetLabel({0})'.format(controlID))
         if not text: text = xbmc.getInfoLabel('System.CurrentControl')
-        if not text: return (u'',u'')
+        if not text: return ('','')
         compare = text + xbmc.getInfoLabel('ListItem.StartTime') + xbmc.getInfoLabel('ListItem.EndTime')
-        return (text.decode('utf-8'),compare)
+        return (text,compare)
 
     def getSecondaryText(self):
         return guitables.getListItemProperty(self.winID)
 
     def getItemExtraTexts(self,controlID):
         text = guitables.getItemExtraTexts(self.winID)
-        if not text: text = xbmc.getInfoLabel('ListItem.Plot').decode('utf-8')
-        if not text: text = xbmc.getInfoLabel('Container.ShowPlot').decode('utf-8')
-        if not text: text = xbmc.getInfoLabel('ListItem.Property(Artist_Description)').decode('utf-8')
-        if not text: text = xbmc.getInfoLabel('ListItem.Property(Album_Description)').decode('utf-8')
-        if not text: text = xbmc.getInfoLabel('ListItem.Property(Addon.Description)').decode('utf-8')
+        if not text: text = xbmc.getInfoLabel('ListItem.Plot')
+        if not text: text = xbmc.getInfoLabel('Container.ShowPlot')
+        if not text: text = xbmc.getInfoLabel('ListItem.Property(Artist_Description)')
+        if not text: text = xbmc.getInfoLabel('ListItem.Property(Album_Description)')
+        if not text: text = xbmc.getInfoLabel('ListItem.Property(Addon.Description)')
         if not text: text = guitables.getSongInfo()
         if not text: text = parseItemExtra(controlID,self.getControlText(controlID)[0])
         if not text: return None
@@ -126,7 +126,7 @@ class NullReader(WindowReaderBase):
     ID = 'null'
     def getName(self): return None
 
-    def getControlText(self,controlID): return (u'',u'')
+    def getControlText(self,controlID): return ('','')
 
     def getWindowExtraTexts(self): return None
 

@@ -1,4 +1,4 @@
-import socket, urllib2, httplib, select, time
+import socket, urllib.request, urllib.error, urllib.parse, http.client, select, time
 
 from lib import util
 
@@ -9,11 +9,11 @@ DEBUG = False
 class AbortRequestedException(Exception): pass
 class StopRequestedException(Exception): pass
 
-if not hasattr(httplib.HTTPResponse, 'fileno'):
-    class ModHTTPResponse(httplib.HTTPResponse):
+if not hasattr(http.client.HTTPResponse, 'fileno'):
+    class ModHTTPResponse(http.client.HTTPResponse):
         def fileno(self):
             return self.fp.fileno()
-    httplib.HTTPResponse = ModHTTPResponse
+    http.client.HTTPResponse = ModHTTPResponse
 
 def StopConnection():
     global STOP_REQUESTED
@@ -31,7 +31,7 @@ def resetStopRequest():
     global STOP_REQUESTED
     STOP_REQUESTED = False
     
-class _AsyncHTTPResponse(httplib.HTTPResponse):
+class _AsyncHTTPResponse(http.client.HTTPResponse):
     _prog_callback = None
     def _read_status(self):
         ## Do non-blocking checks for server response until something arrives.
@@ -57,17 +57,17 @@ class _AsyncHTTPResponse(httplib.HTTPResponse):
                         raise StopRequestedException('httplib.HTTPResponse._read_status')
                     
                 time.sleep(0.1)
-            return httplib.HTTPResponse._read_status(self)
+            return http.client.HTTPResponse._read_status(self)
         finally:
             setStoppable(False)
             resetStopRequest()
 
 AsyncHTTPResponse = _AsyncHTTPResponse
 
-class Connection(httplib.HTTPConnection):
+class Connection(http.client.HTTPConnection):
     response_class = AsyncHTTPResponse
 
-class _Handler(urllib2.HTTPHandler):
+class _Handler(urllib.request.HTTPHandler):
     def http_open(self, req):
         return self.do_open(Connection, req)
 
@@ -159,8 +159,8 @@ def setEnabled(enable=True):
         Handler = _Handler
     else:
         if DEBUG: util.LOG('Asynchronous connections: Disabled')
-        AsyncHTTPResponse = httplib.HTTPResponse
-        Handler = urllib2.HTTPHandler
+        AsyncHTTPResponse = http.client.HTTPResponse
+        Handler = urllib.request.HTTPHandler
         if OLD_socket_create_connection: socket.create_connection = OLD_socket_create_connection
         
     

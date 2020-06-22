@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import base
+from . import base
 import subprocess
 import os
 from lib import util
@@ -14,8 +14,8 @@ class ReciteTTSBackend(base.SimpleTTSBackendBase):
 
     def runCommandAndSpeak(self,text):
         args = ['recite',text]
-        self.process = subprocess.Popen(args)
-        while self.process.poll() == None and self.active: util.sleep(10)
+        self.process = subprocess.Popen(args, universal_newlines=True)
+        while self.process.poll() is None and self.active: util.sleep(10)
 
     def stop(self):
         if not self.process: return
@@ -27,7 +27,8 @@ class ReciteTTSBackend(base.SimpleTTSBackendBase):
     @staticmethod
     def available():
         try:
-            subprocess.call(['recite','-VERSion'], stdout=(open(os.path.devnull, 'w')), stderr=subprocess.STDOUT)
+            subprocess.call(['recite','-VERSion'], stdout=(open(os.path.devnull, 'w')),
+                            stderr=subprocess.STDOUT, universal_newlines=True)
         except:
             return False
         return True

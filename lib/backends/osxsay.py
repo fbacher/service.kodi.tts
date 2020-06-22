@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import sys, subprocess, os
 from lib import util
-from base import ThreadedTTSBackend
+from .base import ThreadedTTSBackend
 
 class OSXSayTTSBackend_Internal(ThreadedTTSBackend):
     provider = 'OSXSay'
@@ -27,7 +27,7 @@ class OSXSayTTSBackend_Internal(ThreadedTTSBackend):
         return OSXSayTTSBackend_SubProcess()
 
     def init(self):
-        import cocoapy
+        from . import cocoapy
         self.cocoapy = cocoapy
         self.pool = cocoapy.ObjCClass('NSAutoreleasePool').alloc().init()
         self.synth = cocoapy.ObjCClass('NSSpeechSynthesizer').alloc().init()
@@ -43,7 +43,9 @@ class OSXSayTTSBackend_Internal(ThreadedTTSBackend):
 
     def getWavStream(self,text):
         wav_path = os.path.join(util.getTmpfs(),'speech.wav')
-        subprocess.call(['say', '-o', wav_path,'--file-format','WAVE','--data-format','LEI16@22050',text.encode('utf-8')])
+        subprocess.call(['say', '-o', wav_path,
+                         '--file-format','WAVE','--data-format','LEI16@22050',text],
+                        universal_newlines=True)
         return open(wav_path,'rb')
 
     def isSpeaking(self):
@@ -105,16 +107,18 @@ class OSXSayTTSBackend(ThreadedTTSBackend):
 
     def threadedSay(self,text):
         if not text: return
-        self.process = subprocess.Popen(['say', text.encode('utf-8')])
-        while self.process.poll() == None and self.active: util.sleep(10)
+        self.process = subprocess.Popen(['say', text], universal_newlines=True)
+        while self.process.poll() is None and self.active: util.sleep(10)
 
     def getWavStream(self,text):
         wav_path = os.path.join(util.getTmpfs(),'speech.wav')
-        subprocess.call(['say', '-o', wav_path,'--file-format','WAVE','--data-format','LEI16@22050',text.encode('utf-8')])
+        subprocess.call(['say', '-o', wav_path,
+                         '--file-format','WAVE','--data-format','LEI16@22050',
+                         text], universal_newlines=True)
         return open(wav_path,'rb')
 
     def isSpeaking(self):
-        return (self.process and self.process.poll() == None) or ThreadedTTSBackend.isSpeaking(self)
+        return (self.process and self.process.poll() is None) or ThreadedTTSBackend.isSpeaking(self)
 
     def stop(self):
         if not self.process: return
