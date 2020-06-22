@@ -616,6 +616,23 @@ msgstr ""
 msgctxt "#32201"
 msgid "Subtitles dialog"
 msgstr ""
+
+msgctxt "#32202"
+msgid "Current Backend"
+msgstr ""
+
+msgctxt "#32203"
+msgid "Current Voice"
+msgstr ""
+
+msgctxt "#32204"
+msgid "Current Player"
+msgstr ""
+
+msgctxt "#32205"
+msgid "Connection"
+msgstr ""
+
 msgctxt "#32206"
 msgid "Cache voiced text"
 msgstr ""
@@ -636,3 +653,22 @@ msgctxt "#32210"
 msgid "Days"
 msgstr ""
 
+msgctxt "#32211"
+msgid "Gender"
+msgstr ""
+
+msgctxt "#32212"
+msgid "Male"
+msgstr ""
+
+msgctxt "#32213"
+msgid "Female"
+msgstr ""
+
+msgctxt "#32214"
+msgid "Responsive Voice API Key"
+msgstr ""
+
+msgctxt "#32215"
+msgid "Key"
+msgstr ""
