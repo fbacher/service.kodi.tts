@@ -135,24 +135,6 @@ class PlaySFXAudioPlayer(AudioPlayer):
     def available(ext=None):
         return xbmc and hasattr(xbmc, 'stopSFX') and PLAYSFX_HAS_USECACHED
 
-class PlaySFXAudioPlayer_Legacy(PlaySFXAudioPlayer):
-    ID = 'PlaySFX_Legacy'
-    name = 'XBMC PlaySFX (Legacy)'
-    needsHashedFilename = True
-
-    def doPlaySFX(self,path):
-        xbmc.playSFX(path)
-
-    def play(self,path):
-        PlaySFXAudioPlayer.play(self,path)
-        if os.path.exists(path): os.remove(path)
-
-    def stop(self):
-        self.event.set()
-
-    @staticmethod
-    def available(ext=None):
-        return xbmc and hasattr(xbmc,'playSFX') and (not hasattr(xbmc,'stopSFX') or not PLAYSFX_HAS_USECACHED)
 
 class WindowsAudioPlayer(AudioPlayer):
     ID = 'Windows'
@@ -505,8 +487,10 @@ class BasePlayerHandler:
 
 
 class WavAudioPlayerHandler(BasePlayerHandler):
-    players = (PlaySFXAudioPlayer,PlaySFXAudioPlayer_Legacy,WindowsAudioPlayer,AfplayPlayer,SOXAudioPlayer,PaplayAudioPlayer,AplayAudioPlayer,MPlayerAudioPlayer)
-    def __init__(self,preferred=None,advanced=False):
+    players = (PlaySFXAudioPlayer, WindowsAudioPlayer, AfplayPlayer, SOXAudioPlayer,
+               PaplayAudioPlayer, AplayAudioPlayer, MPlayerAudioPlayer)
+
+    def __init__(self, preferred=None, advanced=False):
         self.preferred = False
         self.advanced = advanced
         self.setOutDir()
