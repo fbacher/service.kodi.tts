@@ -616,3 +616,23 @@ msgstr ""
 msgctxt "#32201"
 msgid "Subtitles dialog"
 msgstr ""
+msgctxt "#32206"
+msgid "Cache voiced text"
+msgstr ""
+
+msgctxt "#32207"
+msgid "Cache voiced text"
+msgstr ""
+
+msgctxt "#32208"
+msgid "Set path"
+msgstr ""
+
+msgctxt "#32209"
+msgid "Days to keep cached files"
+msgstr ""
+
+msgctxt "#32210"
+msgid "Days"
+msgstr ""
+

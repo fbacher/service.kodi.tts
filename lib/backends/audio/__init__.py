@@ -68,7 +68,7 @@ class AudioPlayer:
     name = ''
 
     _advanced = False
-    needsHashedFilename = False
+    needsHashedFilename = util.getSetting('cache_voice_files', False)
 
     types = ('wav',)
 
@@ -213,18 +213,24 @@ class SubprocessAudioPlayer(AudioPlayer):
     def canPipe(self):
         return bool(self._pipeArgs)
 
-    def pipe(self,source):
-        self._wavProcess = subprocess.Popen(self._pipeArgs,stdin=subprocess.PIPE,stdout=(open(os.path.devnull, 'w')), stderr=subprocess.STDOUT)
-        try:
-            shutil.copyfileobj(source,self._wavProcess.stdin)
-        except IOError,e:
-            if e.errno != errno.EPIPE:
-                util.ERROR('Error piping audio',hide_tb=True)
-        except:
-            util.ERROR('Error piping audio',hide_tb=True)
-        source.close()
-        self._wavProcess.stdin.close()
-        while self._wavProcess.poll() == None and self.active: util.sleep(10)
+    def pipe(self, source):
+        with subprocess.Popen(self._pipeArgs, stdin=subprocess.PIPE,
+                                            stdout=(
+                                                open(os.path.devnull, 'w')),
+                                            stderr=subprocess.STDOUT) as self._wavProcess:
+            try:
+                shutil.copyfileobj(source, self._wavProcess.stdin)
+            except IOError as e:
+                if e.errno != errno.EPIPE:
+                    util.ERROR('Error piping audio', hide_tb=True)
+            except:
+                util.ERROR('Error piping audio', hide_tb=True)
+
+            finally:
+                source.close()
+                self._wavProcess.stdin.close()
+
+        self._wavProcess = None
 
     def setSpeed(self, speed):
         self.speed = speed
@@ -234,9 +240,11 @@ class SubprocessAudioPlayer(AudioPlayer):
 
     def play(self, path):
         args = self.playArgs(path)
-        self._wavProcess = subprocess.Popen(args,stdout=(open(os.path.devnull, 'w')), stderr=subprocess.STDOUT)
+        with subprocess.Popen(args, stdout=(open(os.path.devnull, 'w')),
+                                            stderr=subprocess.STDOUT) as self._wavProcess:
+            pass
 
-        while self._wavProcess.poll() == None and self.active: util.sleep(10)
+        self._wavProcess = None
 
     def isPlaying(self):
         return self._wavProcess and self._wavProcess.poll() is None
@@ -251,6 +259,8 @@ class SubprocessAudioPlayer(AudioPlayer):
                 self._wavProcess.terminate()
         except:
             pass
+        finally:
+            self._wavProcess = None
 
     def close(self):
         self.active = False
@@ -260,6 +270,8 @@ class SubprocessAudioPlayer(AudioPlayer):
             self._wavProcess.kill()
         except:
             pass
+        finally:
+            self._wavProcess = None
 
     @classmethod
     def available(cls, ext=None):
@@ -465,8 +477,11 @@ class BasePlayerHandler:
     def player(self): return None
 
     def canPipe(self): return False
-    def pipeAudio(self,source): pass
-    def getOutFile(self,text): raise Exception('Not Implemented')
+
+    def pipeAudio(self, source): pass
+
+    def getOutFile(self, text, sound_file_type=None): raise Exception('Not Implemented')
+
     def play(self): raise Exception('Not Implemented')
 
     def isPlaying(self): raise Exception('Not Implemented')
@@ -493,6 +508,7 @@ class WavAudioPlayerHandler(BasePlayerHandler):
     def __init__(self, preferred=None, advanced=False):
         self.preferred = False
         self.advanced = advanced
+        self.sound_file_type = '.wav'
         self.setOutDir()
         self.outFileBase = os.path.join(self.outDir, 'speech{}.wav')
         self.outFile = os.path.join(self.outDir, 'speech.wav')
@@ -558,7 +574,7 @@ class WavAudioPlayerHandler(BasePlayerHandler):
         if os.path.exists(self.outFile):
             os.remove(self.outFile)
 
-    def getOutFile(self,text):
+    def getOutFile(self, text, sound_file_type=None):
         if self._player.needsHashedFilename:
             self.outFile = self.outFileBase.format(hashlib.md5(
                 text.encode('UTF-8')).hexdigest())

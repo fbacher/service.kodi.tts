@@ -12,6 +12,8 @@ import binascii
 import xbmc
 import xbmcaddon
 
+from lib.cache.voicecache import VoiceCache
+
 ADDON_ID = 'service.xbmc.tts'
 
 T = xbmcaddon.Addon(ADDON_ID).getLocalizedString
