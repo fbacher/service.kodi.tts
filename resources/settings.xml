@@ -1,671 +1,816 @@
 <?xml version="1.0" ?>
 <settings version="1">
-	<section id="service.xbmc.tts">
-		<category help="" id="engine" label="32001">
-			<group id="1">
-				<setting help="" id="backend" label="32002" type="string">
-					<level>0</level>
-					<default/>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<control type="button" format="action">
-						<data>NotifyAll(service.xbmc.tts,SETTINGS.BACKEND_DIALOG)</data>
+    <section id="service.kodi.tts">
+        <category help="" id="engine" label="32001">
+                <group id="1">
+                    <setting help="" id="gui" label="32219" type="string">
+                        <level>0</level>
+                        <default/>
+                        <constraints>
+                            <allowempty>true</allowempty>
+                        </constraints>
+                        <control type="button" format="action">
+                            <data>NotifyAll(service.kodi.tts,SETTINGS.BACKEND_GUI)</data>
+                        </control>
+                    </setting>
+                </group>
+            <!--
+            <group id="1">
+                <setting help="" id="backend" label="32002" type="string">
+                    <level>0</level>
+                    <default/>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="button" format="action">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.BACKEND_DIALOG)</data>
                     </control>
-				</setting>
-				<setting help="" id="voice.Flite" label="32003" parent="backend" type="string">
-					<level>0</level>
-					<default/>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<control type="button" format="action">
-						<data>NotifyAll(service.xbmc.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;Flite\&quot;,\&quot;voice\&quot;]&quot;)</data>
-					</control>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">Flite</condition>
-						</dependency>
-					</dependencies>
-				</setting>
-				<setting help="" id="output_via_flite.Flite" label="32008" parent="backend" type="boolean">
-					<level>0</level>
-					<default>false</default>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">Flite</condition>
-						</dependency>
-					</dependencies>
-					<control type="toggle"/>
-				</setting>
-				<setting help="" id="player.Flite" label="32007" parent="backend" type="string">
-					<level>0</level>
-					<default/>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<control type="button" format="action">
-						<data>NotifyAll(service.xbmc.tts,SETTINGS.PLAYER_DIALOG,{&quot;backend&quot;:&quot;Flite&quot;})</data>
-					</control>
-					<dependencies>
-						<dependency type="enable">
-							<condition operator="is" setting="output_via_flite.Flite">false</condition>
-						</dependency>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">Flite</condition>
-						</dependency>
-					</dependencies>
-				</setting>
-				<setting help="" id="speed.Flite" label="32009" parent="output_via_flite.Flite" type="integer">
-					<level>0</level>
-					<default>100</default>
-					<constraints>
-						<minimum>20</minimum>
-						<maximum>200</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="enable">
-							<or>
-								<condition operator="is" setting="player.Flite">sox</condition>
-								<condition operator="is" setting="player.Flite">mplayer</condition>
-							</or>
-						</dependency>
-						<dependency type="visible">
-							<and>
-								<condition operator="is" setting="output_via_flite.Flite">false</condition>
-								<condition operator="is" setting="backend">Flite</condition>
-							</and>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
-				<setting help="" id="volume.Flite" label="32010" parent="output_via_flite.Flite" type="integer">
-					<level>0</level>
-					<default>0</default>
-					<constraints>
-						<minimum>-12</minimum>
-						<maximum>12</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">Flite</condition>
-						</dependency>
-						<dependency type="enable">
-							<or>
-								<condition operator="is" setting="player.Flite">mplayer</condition>
-								<condition operator="is" setting="player.Flite">sox</condition>
-								<condition operator="is" setting="player.Flite">paplay</condition>
-							</or>
-						</dependency>
-						<dependency type="visible">
-							<and>
-								<condition operator="is" setting="output_via_flite.Flite">false</condition>
-								<condition operator="is" setting="backend">Flite</condition>
-							</and>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
+                </setting>
+                  <setting help="" id="language" label="32016" parent="backend" type="string">
+                    <level>0</level>
+                    <default/>
+                    <control type="button" format="action">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;language\&quot;]&quot;)</data>
+                    </control>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="language_visible">true</condition>
+                        </dependency>
+                    </dependencies>
+                </setting>
+                 <setting help="" id="gender" label="32211" parent="backend" type="string">
+                     <level>0</level>
+                     <control type="button" format="action">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;gender\&quot;]&quot;)</data>
+                     </control>
+                     <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="gender_visible">true</condition>
+                        </dependency>
+                    </dependencies>
+                </setting>
+                <setting help="" id="pitch" label="32005" parent="backend" type="string">
+                    <level>0</level>
+                    <default>50</default>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="pitch_visible">true</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="action" type="button">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.SETTING_SLIDER,&quot;[\&quot;pitch\&quot;]&quot;)</data>
+                    </control>
+                </setting>
 
-				<!-- eSpeak -->
-				<setting help="" id="voice.eSpeak-ctypes" label="32003" parent="backend" type="string">
-					<level>0</level>
-					<default/>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<control type="button" format="action">
-						<data>NotifyAll(service.xbmc.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;eSpeak-ctypes\&quot;,\&quot;voice\&quot;]&quot;)</data>
-					</control>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">eSpeak-ctypes</condition>
-						</dependency>
-					</dependencies>
-				</setting>
-				<setting help="" id="voice.eSpeak" label="32003" parent="backend" type="string">
-					<level>0</level>
-					<default/>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<control type="button" format="action">
-						<data>NotifyAll(service.xbmc.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;eSpeak\&quot;,\&quot;voice\&quot;]&quot;)</data>
-					</control>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">eSpeak</condition>
-						</dependency>
-					</dependencies>
-				</setting>
-				<setting help="" id="speed.eSpeak" label="32011" parent="backend" type="integer">
-					<level>0</level>
-					<default>175</default>
-					<constraints>
-						<minimum>80</minimum>
-						<maximum>450</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">eSpeak</condition>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
-					<setting help="" id="pitch.eSpeak" label="32005" parent="backend" type="integer">
-					<level>0</level>
-					<default>50</default>
-					<constraints>
-						<minimum>0</minimum>
-						<maximum>99</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">eSpeak</condition>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
-				<setting help="" id="output_via_espeak.eSpeak" label="32012" parent="backend" type="boolean">
-					<level>0</level>
-					<default>false</default>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">eSpeak</condition>
-						</dependency>
-					</dependencies>
-					<control type="toggle"/>
-				</setting>
-				<setting help="" id="player.eSpeak" label="32007" parent="backend" type="action">
-					<level>0</level>
-					<default/>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<control format="action" type="button">
-						<data>NotifyAll(service.xbmc.tts,SETTINGS.PLAYER_DIALOG,{&quot;backend&quot;:&quot;eSpeak&quot;})</data>
-					</control>
-					<dependencies>
-						<dependency type="enable">
-							<condition operator="is" setting="output_via_espeak.eSpeak">false</condition>
-						</dependency>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">eSpeak</condition>
-						</dependency>
-					</dependencies>
-				</setting>
-				<setting help="" id="pipe.eSpeak" label="32013" parent="backend"  type="boolean">
-					<level>0</level>
-					<default>false</default>
-					<dependencies>
-						<dependency type="enable">
-							<condition operator="is" setting="output_via_espeak.eSpeak">false</condition>
-						</dependency>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">eSpeak</condition>
-						</dependency>
-					</dependencies>
-					<control type="toggle"/>
-				</setting>
-				<setting help="" id="volume.eSpeak" label="32010" parent="backend" type="integer">
-					<level>0</level>
-					<default>0</default>
-					<constraints>
-						<minimum>-12</minimum>
-						<maximum>12</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">eSpeak</condition>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
+                <setting help="" id="voice" label="32003" parent="backend" type="string">
+                    <level>0</level>
+                    <default/>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="button" format="action">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;voice\&quot;]&quot;)</data>
+                    </control>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="voice_visible">true</condition>
+                        </dependency>
+                    </dependencies>
+                </setting>
+                <setting help="" id="output" label="32008" parent="backend" type="string">
+                    <level>0</level>
+                    <default>false</default>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="output_visible">true</condition>
+                        </dependency>
+                    </dependencies>
+                    <control type="button" format="action">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;output\&quot;]&quot;)</data>
+                    </control>
+                </setting>
+                <setting help="" id="player" label="32007" parent="backend" type="string">
+                    <level>0</level>
+                    <default/>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="button" format="action">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.PLAYER_DIALOG)</data>
 
-				<!-- SAPI -->
-				<setting help="" id="voice.SAPI" label="32003" parent="backend" type="string">
-					<level>0</level>
-					<default/>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<control format="action" type="button">
-						<data>NotifyAll(service.xbmc.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;SAPI\&quot;,\&quot;voice\&quot;]&quot;)</data>
-					</control>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">SAPI</condition>
-						</dependency>
-					</dependencies>
-				</setting>
-				<setting help="" id="speed.SAPI" label="32004" parent="backend" type="integer">
-					<level>0</level>
-					<default>0</default>
-					<constraints>
-						<minimum>-10</minimum>
-						<maximum>10</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">SAPI</condition>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
-				<setting help="" id="pitch.SAPI" label="32005" parent="backend" type="integer">
-					<level>0</level>
-					<default>0</default>
-					<constraints>
-						<minimum>-10</minimum>
-						<maximum>10</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">SAPI</condition>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
-				<setting help="" id="volume.SAPI" label="32014" parent="backend" type="integer">
-					<level>0</level>
-					<default>100</default>
-					<constraints>
-						<minimum>0</minimum>
-						<maximum>100</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">SAPI</condition>
-						</dependency>
-					</dependencies>
-					<control format="percentage" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
-				<setting help="" id="speak_via_xbmc.SAPI" label="32015" parent="backend" type="boolean">
-					<level>0</level>
-					<default>false</default>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">SAPI</condition>
-						</dependency>
-					</dependencies>
-					<control type="toggle"/>
-				</setting>
+                    </control>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="player_visible">true</condition>
+                        </dependency>
+                        <dependency type="enable">
+                            <condition operator="is" setting="player_enabled">true</condition>
+                        </dependency>
+                    </dependencies>
+                </setting>
+                <setting help="" id="speed" label="32009" parent="backend" type="string">
+                    <level>0</level>
+                    <default>100</default>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="speed_visible">true</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="action" type="button">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.SETTING_SLIDER,&quot;[\&quot;speed\&quot;]&quot;)</data>
+                    </control>
+                </setting>
+                <setting help="" id="volume" label="32010" parent="backend" type="string">
+                    <level>0</level>
+                    <default>0</default>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="volume_visible">true</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="action" type="button">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.SETTING_SLIDER,&quot;[\&quot;volume\&quot;]&quot;)</data>
+                    </control>
+                </setting>
+                <setting help="" id="api_key" label="32214" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control format="string" type="edit">
+                        <heading>32215</heading>
+                        <visible>false</visible>
+                    </control>
+                </setting>
+                <setting help="" id="pipe" label="32013" parent="backend"  type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                </setting>
 
-				<!-- pico2wave -->
-				<setting help="" id="language.pico2wave" label="32016" parent="backend" type="string">
-					<level>0</level>
-					<default/>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<control type="button" format="action">
-						<data>NotifyAll(service.xbmc.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;pico2wave\&quot;,\&quot;language\&quot;]&quot;)</data>
-					</control>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">pico2wave</condition>
-						</dependency>
-					</dependencies>
-				</setting>
-				<setting help="" id="player.pico2wave" label="32007" parent="backend" type="string">
-					<level>0</level>
-					<default/>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<control type="button" format="action">
-						<data>NotifyAll(service.xbmc.tts,SETTINGS.PLAYER_DIALOG,{&quot;backend&quot;:&quot;pico2wave&quot;})</data>
-					</control>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">pico2wave</condition>
-						</dependency>
-					</dependencies>
-				</setting>
-				<setting help="" id="speed.pico2wave" label="32009" parent="backend" type="integer">
-					<level>0</level>
-					<default>100</default>
-					<constraints>
-						<minimum>20</minimum>
-						<maximum>200</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="enable">
-							<or>
-								<condition operator="is" setting="player.pico2wave">sox</condition>
-								<condition operator="is" setting="player.pico2wave">mplayer</condition>
-							</or>
-						</dependency>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">pico2wave</condition>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
-				<setting help="" id="volume.pico2wave" label="32010" parent="backend" type="integer">
-					<level>0</level>
-					<default>0</default>
-					<constraints>
-						<minimum>-12</minimum>
-						<maximum>12</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="enable">
-							<or>
-								<condition operator="is" setting="player.pico2wave">sox</condition>
-								<condition operator="is" setting="player.pico2wave">mplayer</condition>
-								<condition operator="is" setting="player.pico2wave">paplay</condition>
-							</or>
-						</dependency>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">pico2wave</condition>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
+                < ! - - Flite - - >
 
-				<!-- Cepstral -->
-				<setting help="" id="voice.Cepstral" label="32003" parent="backend" type="string">
-					<level>0</level>
-					<default/>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<control type="button" format="action">
-						<data>NotifyAll(service.xbmc.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;Cepstral\&quot;,\&quot;voice\&quot;]&quot;)</data>
-					</control>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">Cepstral</condition>
-						</dependency>
-					</dependencies>
-					<control format="action" type="button"/>
-				</setting>
-				<setting help="" id="use_aoss.Cepstral" label="32017" parent="backend" type="boolean">
-					<level>0</level>
-					<default>false</default>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">Cepstral</condition>
-						</dependency>
-					</dependencies>
-					<control type="toggle"/>
-				</setting>
-				<setting help="" id="speed.Cepstral" label="32011" parent="backend" type="integer">
-					<level>0</level>
-					<default>170</default>
-					<constraints>
-						<minimum>80</minimum>
-						<maximum>450</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">Cepstral</condition>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
-				<setting help="" id="pitch.Cepstral" label="32005" parent="backend" type="integer">
-					<level>0</level>
-					<default>0</default>
-					<constraints>
-						<minimum>-6</minimum>
-						<maximum>14</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">Cepstral</condition>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
-				<setting help="" id="volume.Cepstral" label="32010" parent="backend" type="integer">
-					<level>0</level>
-					<default>0</default>
-					<constraints>
-						<minimum>-12</minimum>
-						<maximum>12</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">Cepstral</condition>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
+                <setting help="" id="voice.Flite" label="32003" parent="backend" type="string">
+                    <level>0</level>
+                    <default/>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="button" format="action">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.SETTING_DIALOG,"[\&quot;Flite\&quot;,\&quot;voice\&quot;]&quot;)</data>
+                    </control>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">Flite</condition>
+                        </dependency>
+                    </dependencies>
+                </setting>
+                <setting help="" id="output_via_flite.Flite" label="32008" parent="backend" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">Flite</condition>
+                        </dependency>
+                    </dependencies>
+                    <control type="toggle"/>
+                </setting>
+                <setting help="" id="player.Flite" label="32007" parent="backend" type="string">
+                    <level>0</level>
+                    <default/>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="button" format="action">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.PLAYER_DIALOG,{&quot;backend&quot;:&quot;Flite&quot;})</data>
+                    </control>
+                    <dependencies>
+                        <dependency type="enable">
+                            <condition operator="is" setting="output_via_flite.Flite">false</condition>
+                        </dependency>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">Flite</condition>
+                        </dependency>
+                    </dependencies>
+                </setting>
+                <setting help="" id="speed.Flite" label="32009" parent="output_via_flite.Flite" type="integer">
+                    <level>0</level>
+                    <default>100</default>
+                    <constraints>
+                        <minimum>20</minimum>
+                        <maximum>200</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="enable">
+                            <or>
+                                <condition operator="is" setting="player.Flite">sox</condition>
+                                <condition operator="is" setting="player.Flite">mplayer</condition>
+                            </or>
+                        </dependency>
+                        <dependency type="visible">
+                            <and>
+                                <condition operator="is" setting="output_via_flite.Flite">false</condition>
+                                <condition operator="is" setting="backend">Flite</condition>
+                            </and>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
+                <setting help="" id="volume.Flite" label="32010" parent="output_via_flite.Flite" type="integer">
+                    <level>0</level>
+                    <default>0</default>
+                    <constraints>
+                        <minimum>-12</minimum>
+                        <maximum>12</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">Flite</condition>
+                        </dependency>
+                        <dependency type="enable">
+                            <or>
+                                <condition operator="is" setting="player.Flite">mplayer</condition>
+                                <condition operator="is" setting="player.Flite">sox</condition>
+                                <condition operator="is" setting="player.Flite">paplay</condition>
+                            </or>
+                        </dependency>
+                        <dependency type="visible">
+                            <and>
+                                <condition operator="is" setting="output_via_flite.Flite">false</condition>
+                                <condition operator="is" setting="backend">Flite</condition>
+                            </and>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting> - - >
 
-				<!-- OSX Say -->
-				<!-- Reverted to old OSXSay hander (for now) which doesn't have these -->
-				<setting help="" id="voice.OSXSay" label="32003" parent="backend" type="string">
-					<level>0</level>
-					<default/>
-					<control type="button" format="action">
-						<data>NotifyAll(service.xbmc.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;OSXSay\&quot;,\&quot;voice\&quot;]&quot;)</data>
-					</control>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">OSXSay</condition>
-						</dependency>
-					</dependencies>
-					<control format="action" type="button"/>
-				</setting>
-				<setting help="" id="speed.OSXSay" label="32011" parent="backend" type="integer">
-					<level>0</level>
-					<default>200</default>
-					<constraints>
-						<minimum>80</minimum>
-						<maximum>450</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">OSXSay"</condition>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
-				<setting help="" id="volume.OSXSay" label="32014" parent="backend" type="integer">
-					<level>0</level>
-					<default>100</default>
-					<constraints>
-						<minimum>0</minimum>
-						<maximum>100</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">OSXSay"</condition>
-						</dependency>
-					</dependencies>
-					<control format="percentage" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
 
-				<!-- Festival -->
-				<setting help="" id="voice.Festival" label="32003" parent="backend" type="string">
-					<level>0</level>
-					<default/>
-					<control type="button" format="action">
-						<data>NotifyAll(service.xbmc.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;Festival\&quot;,\&quot;voice\&quot;]&quot;)</data>
-					</control>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">Festival</condition>
-						</dependency>
-					</dependencies>
-					<control format="action" type="button"/>
-				</setting>
-				<setting help="" id="player.Festival" label="32007" parent="backend" type="string">
-					<level>0</level>
-					<default/>
-					<control type="button" format="action">
-						<data>NotifyAll(service.xbmc.tts,SETTINGS.PLAYER_DIALOG,{&quot;backend&quot;:&quot;Festival&quot;})</data>
-					</control>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">Festival</condition>
-						</dependency>
-					</dependencies>
-					<control format="action" type="button"/>
-				</setting>
-				<setting help="" id="speed.Festival" label="32006" parent="backend" type="integer">
-					<level>0</level>
-					<default>0</default>
-					<constraints>
-						<minimum>-16</minimum>
-						<maximum>12</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">Festival</condition>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
-				<setting help="" id="pitch.Festival" label="32005" parent="backend" type="integer">
-					<level>0</level>
-					<default>105</default>
-					<constraints>
-						<minimum>50</minimum>
-						<maximum>500</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">Festival</condition>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
-				<setting help="" id="volume.Festival" label="32010" parent="backend" type="integer">
-					<level>0</level>
-					<default>0</default>
-					<constraints>
-						<minimum>-12</minimum>
-						<maximum>12</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">Festival</condition>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
+                < ! - - eSpeak - - >
 
-				<!-- Google (Dead) -->
-				<setting help="" id="language.Google" label="32016" parent="backend" type="string">
-					<level>0</level>
-					<default/>
-					<control type="button" format="action">
-						<data>NotifyAll(service.xbmc.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;Google\&quot;,\&quot;language\&quot;]&quot;)</data>
-					</control>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">Google</condition>
-						</dependency>
-					</dependencies>
-					<control format="action" type="button"/>
-				</setting>
-				<setting help="" id="player.Google" label="32007" parent="language.Google" type="string">
-					<level>0</level>
-					<default/>
-					<control type="button" format="action">
-						<data>NotifyAll(service.xbmc.tts,SETTINGS.PLAYER_DIALOG,{&quot;backend&quot;:&quot;Google&quot;})</data>
-					</control>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">Google</condition>
-						</dependency>
-					</dependencies>
-					<control format="action" type="button"/>
-				</setting>
-				<setting help="" id="pipe.Google" label="32013" parent="language.Google" type="boolean">
-					<level>0</level>
-					<default>false</default>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">Google</condition>
-						</dependency>
-					</dependencies>
-					<control type="toggle"/>
-				</setting>
-				<setting help="" id="volume.Google" label="32010" parent="language.Google" type="integer">
-					<level>0</level>
-					<default>0</default>
-					<constraints>
-						<minimum>-12</minimum>
-						<maximum>12</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="enable">
-							<or>
-								<condition operator="is" setting="player.Google">sox</condition>
-								<condition operator="is" setting="player.Google">mplayer</condition>
-								<condition operator="is" setting="player.Google">afplay</condition>
-							</or>
-						</dependency>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">Google</condition>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
+                <setting help="" id="voice.eSpeak-ctypes" label="32003" parent="backend" type="string">
+                    <level>0</level>
+                    <default/>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="button" format="action">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;eSpeak-ctypes\&quot;,\&quot;voice\&quot;]&quot;)</data>
+                    </control>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">eSpeak-ctypes</condition>
+                        </dependency>
+                    </dependencies>
+                </setting>
+                <setting help="" id="voice.eSpeak" label="32003" parent="backend" type="string">
+                    <level>0</level>
+                    <default/>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="button" format="action">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;eSpeak\&quot;,\&quot;voice\&quot;]&quot;)</data>
+                    </control>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">eSpeak</condition>
+                        </dependency>
+                    </dependencies>
+                </setting>
+                <setting help="" id="speed.eSpeak" label="32011" parent="backend" type="integer">
+                    <level>0</level>
+                    <default>175</default>
+                    <constraints>
+                        <minimum>80</minimum>
+                        <maximum>450</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">eSpeak</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
+                    <setting help="" id="pitch.eSpeak" label="32005" parent="backend" type="integer">
+                    <level>0</level>
+                    <default>50</default>
+                    <constraints>
+                        <minimum>0</minimum>
+                        <maximum>99</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">eSpeak</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
+                <setting help="" id="output_via_espeak.eSpeak" label="32012" parent="backend" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">eSpeak</condition>
+                        </dependency>
+                    </dependencies>
+                    <control type="toggle"/>
+                </setting>
+                <setting help="" id="player.eSpeak" label="32007" parent="backend" type="action">
+                    <level>0</level>
+                    <default/>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control format="action" type="button">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.PLAYER_DIALOG,{&quot;backend&quot;:&quot;eSpeak&quot;})</data>
+                    </control>
+                    <dependencies>
+                        <dependency type="enable">
+                            <condition operator="is" setting="output_via_espeak.eSpeak">false</condition>
+                        </dependency>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">eSpeak</condition>
+                        </dependency>
+                    </dependencies>
+                </setting>
+                <setting help="" id="pipe.eSpeak" label="32013" parent="backend"  type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <dependencies>
+                        <dependency type="enable">
+                            <condition operator="is" setting="output_via_espeak.eSpeak">false</condition>
+                        </dependency>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">eSpeak</condition>
+                        </dependency>
+                    </dependencies>
+                    <control type="toggle"/>
+                </setting>
+                <setting help="" id="volume.eSpeak" label="32010" parent="backend" type="integer">
+                    <level>0</level>
+                    <default>0</default>
+                    <constraints>
+                        <minimum>-12</minimum>
+                        <maximum>12</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">eSpeak</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
 
-                <!-- Responsive Voice-->
+                < ! - - SAPI - - >
+                <setting help="" id="voice.SAPI" label="32003" parent="backend" type="string">
+                    <level>0</level>
+                    <default/>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control format="action" type="button">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;SAPI\&quot;,\&quot;voice\&quot;]&quot;)</data>
+                    </control>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">SAPI</condition>
+                        </dependency>
+                    </dependencies>
+                </setting>
+                <setting help="" id="speed.SAPI" label="32004" parent="backend" type="integer">
+                    <level>0</level>
+                    <default>0</default>
+                    <constraints>
+                        <minimum>-10</minimum>
+                        <maximum>10</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">SAPI</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
+                <setting help="" id="pitch.SAPI" label="32005" parent="backend" type="integer">
+                    <level>0</level>
+                    <default>0</default>
+                    <constraints>
+                        <minimum>-10</minimum>
+                        <maximum>10</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">SAPI</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
+                <setting help="" id="volume.SAPI" label="32014" parent="backend" type="integer">
+                    <level>0</level>
+                    <default>100</default>
+                    <constraints>
+                        <minimum>0</minimum>
+                        <maximum>100</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">SAPI</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="percentage" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
+                <setting help="" id="speak_via_xbmc.SAPI" label="32015" parent="backend" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">SAPI</condition>
+                        </dependency>
+                    </dependencies>
+                    <control type="toggle"/>
+                </setting>
+
+                < ! - - pico2wave - - >
+                <setting help="" id="language.pico2wave" label="32016" parent="backend" type="string">
+                    <level>0</level>
+                    <default/>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="button" format="action">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;pico2wave\&quot;,\&quot;language\&quot;]&quot;)</data>
+                    </control>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">pico2wave</condition>
+                        </dependency>
+                    </dependencies>
+                </setting>
+                <setting help="" id="player.pico2wave" label="32007" parent="backend" type="string">
+                    <level>0</level>
+                    <default/>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="button" format="action">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.PLAYER_DIALOG,{&quot;backend&quot;:&quot;pico2wave&quot;})</data>
+                    </control>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">pico2wave</condition>
+                        </dependency>
+                    </dependencies>
+                </setting>
+                <setting help="" id="speed.pico2wave" label="32009" parent="backend" type="integer">
+                    <level>0</level>
+                    <default>100</default>
+                    <constraints>
+                        <minimum>20</minimum>
+                        <maximum>200</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="enable">
+                            <or>
+                                <condition operator="is" setting="player.pico2wave">sox</condition>
+                                <condition operator="is" setting="player.pico2wave">mplayer</condition>
+                            </or>
+                        </dependency>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">pico2wave</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
+                <setting help="" id="volume.pico2wave" label="32010" parent="backend" type="integer">
+                    <level>0</level>
+                    <default>0</default>
+                    <constraints>
+                        <minimum>-12</minimum>
+                        <maximum>12</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="enable">
+                            <or>
+                                <condition operator="is" setting="player.pico2wave">sox</condition>
+                                <condition operator="is" setting="player.pico2wave">mplayer</condition>
+                                <condition operator="is" setting="player.pico2wave">paplay</condition>
+                            </or>
+                        </dependency>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">pico2wave</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
+
+                < ! - - Cepstral - - >
+                <setting help="" id="voice.Cepstral" label="32003" parent="backend" type="string">
+                    <level>0</level>
+                    <default/>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="button" format="action">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;Cepstral\&quot;,\&quot;voice\&quot;]&quot;)</data>
+                    </control>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">Cepstral</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="action" type="button"/>
+                </setting>
+                <setting help="" id="use_aoss.Cepstral" label="32017" parent="backend" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">Cepstral</condition>
+                        </dependency>
+                    </dependencies>
+                    <control type="toggle"/>
+                </setting>
+                <setting help="" id="speed.Cepstral" label="32011" parent="backend" type="integer">
+                    <level>0</level>
+                    <default>170</default>
+                    <constraints>
+                        <minimum>80</minimum>
+                        <maximum>450</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">Cepstral</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
+                <setting help="" id="pitch.Cepstral" label="32005" parent="backend" type="integer">
+                    <level>0</level>
+                    <default>0</default>
+                    <constraints>
+                        <minimum>-6</minimum>
+                        <maximum>14</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">Cepstral</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
+                <setting help="" id="volume.Cepstral" label="32010" parent="backend" type="integer">
+                    <level>0</level>
+                    <default>0</default>
+                    <constraints>
+                        <minimum>-12</minimum>
+                        <maximum>12</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">Cepstral</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
+
+                < ! - - OSX Say - - >
+                < ! - - Reverted to old OSXSay hander (for now) which doesn't have these - - >
+                <setting help="" id="voice.OSXSay" label="32003" parent="backend" type="string">
+                    <level>0</level>
+                    <default/>
+                    <control type="button" format="action">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;OSXSay\&quot;,\&quot;voice\&quot;]&quot;)</data>
+                    </control>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">OSXSay</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="action" type="button"/>
+                </setting>
+                <setting help="" id="speed.OSXSay" label="32011" parent="backend" type="integer">
+                    <level>0</level>
+                    <default>200</default>
+                    <constraints>
+                        <minimum>80</minimum>
+                        <maximum>450</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">OSXSay"</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
+                <setting help="" id="volume.OSXSay" label="32014" parent="backend" type="integer">
+                    <level>0</level>
+                    <default>100</default>
+                    <constraints>
+                        <minimum>0</minimum>
+                        <maximum>100</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">OSXSay"</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="percentage" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
+
+                < ! - - Festival - - >
+                <setting help="" id="voice.Festival" label="32003" parent="backend" type="string">
+                    <level>0</level>
+                    <default/>
+                    <control type="button" format="action">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;Festival\&quot;,\&quot;voice\&quot;]&quot;)</data>
+                    </control>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">Festival</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="action" type="button"/>
+                </setting>
+                <setting help="" id="player.Festival" label="32007" parent="backend" type="string">
+                    <level>0</level>
+                    <default/>
+                    <control type="button" format="action">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.PLAYER_DIALOG,{&quot;backend&quot;:&quot;Festival&quot;})</data>
+                    </control>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">Festival</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="action" type="button"/>
+                </setting>
+                <setting help="" id="speed.Festival" label="32006" parent="backend" type="integer">
+                    <level>0</level>
+                    <default>0</default>
+                    <constraints>
+                        <minimum>-16</minimum>
+                        <maximum>12</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">Festival</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
+                <setting help="" id="pitch.Festival" label="32005" parent="backend" type="integer">
+                    <level>0</level>
+                    <default>105</default>
+                    <constraints>
+                        <minimum>50</minimum>
+                        <maximum>500</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">Festival</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
+                <setting help="" id="volume.Festival" label="32010" parent="backend" type="integer">
+                    <level>0</level>
+                    <default>0</default>
+                    <constraints>
+                        <minimum>-12</minimum>
+                        <maximum>12</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">Festival</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
+
+                < ! - - Google (Dead) - - >
+                <setting help="" id="language.Google" label="32016" parent="backend" type="string">
+                    <level>0</level>
+                    <default/>
+                    <control type="button" format="action">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;Google\&quot;,\&quot;language\&quot;]&quot;)</data>
+                    </control>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">Google</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="action" type="button"/>
+                </setting>
+                <setting help="" id="player.Google" label="32007" parent="language.Google" type="string">
+                    <level>0</level>
+                    <default/>
+                    <control type="button" format="action">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.PLAYER_DIALOG,{&quot;backend&quot;:&quot;Google&quot;})</data>
+                    </control>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">Google</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="action" type="button"/>
+                </setting>
+                <setting help="" id="pipe.Google" label="32013" parent="language.Google" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">Google</condition>
+                        </dependency>
+                    </dependencies>
+                    <control type="toggle"/>
+                </setting>
+                <setting help="" id="volume.Google" label="32010" parent="language.Google" type="integer">
+                    <level>0</level>
+                    <default>0</default>
+                    <constraints>
+                        <minimum>-12</minimum>
+                        <maximum>12</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="enable">
+                            <or>
+                                <condition operator="is" setting="player.Google">sox</condition>
+                                <condition operator="is" setting="player.Google">mplayer</condition>
+                                <condition operator="is" setting="player.Google">afplay</condition>
+                            </or>
+                        </dependency>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">Google</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
+
+                < ! - - Responsive Voice - - >
                 <setting help="" id="language.ResponsiveVoice" label="32016" parent="backend" type="string">
                     <level>0</level>
                     <default/>
                     <control type="button" format="action">
-                        <data>NotifyAll(service.xbmc.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;ResponsiveVoice\&quot;,\&quot;language\&quot;]&quot;)</data>
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;ResponsiveVoice\&quot;,\&quot;language\&quot;]&quot;)</data>
                     </control>
                     <constraints>
                         <allowempty>true</allowempty>
@@ -678,12 +823,13 @@
                     <control format="action" type="button"/>
                 </setting>
                  <setting help="" id="gender.ResponsiveVoice" label="32211" parent="language.ResponsiveVoice" type="string">
-                    <level>0</level>
-                    <default>0</default>
+             <level>0</level>
+             <default>unknown</default>
                     <constraints>
                         <options>
-                            <option label="32212">0</option>
-                            <option label="32213">1</option>
+                            <option label="32212">male</option>
+                            <option label="32213">female</option>
+                <option label="32165">unknown</option>
                         </options>
                     </constraints>
                     <dependencies>
@@ -731,7 +877,7 @@
                     <level>0</level>
                     <default/>
                     <control type="button" format="action">
-                        <data>NotifyAll(service.xbmc.tts,SETTINGS.PLAYER_DIALOG,{&quot;backend&quot;:&quot;ResponsiveVoice&quot;})</data>
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.PLAYER_DIALOG,{&quot;backend&quot;:&quot;ResponsiveVoice&quot;})</data>
                     </control>
                     <constraints>
                         <allowempty>true</allowempty>
@@ -776,624 +922,626 @@
                         <popup>false</popup>
                     </control>
                 </setting>
-					<setting help="" id="api_key.ResponsiveVoice" label="32214" type="string">
-					<level>0</level>
-                    <default></default>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<control format="string" type="edit">
-						<heading>32215</heading>
-					</control>
-				</setting>
+                    <setting help="" id="api_key.ResponsiveVoice" label="32214" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control format="string" type="edit">
+                        <heading>32215</heading>
+                    </control>
+                </setting>
 
-				<!-- Speech-Dispatcher -->
-				<setting help="" id="module.Speech-Dispatcher" label="32018" parent="backend" type="string">
-					<level>0</level>
-					<default/>
-					<control type="button" format="action">
-						<data>NotifyAll(service.xbmc.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;Speech-Dispatcher\&quot;,\&quot;module\&quot;]&quot;)</data>
-					</control>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">Speech-Dispatcher</condition>
-						</dependency>
-					</dependencies>
-					<control format="action" type="button"/>
-				</setting>
-				<setting help="" id="voice.Speech-Dispatcher" label="32003" parent="backend" type="string">
-					<level>0</level>
-					<default/>
-					<control type="button" format="action">
-						<data>NotifyAll(service.xbmc.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;Speech-Dispatcher\&quot;,\&quot;voice\&quot;]&quot;)</data>
-					</control>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">Speech-Dispatcher</condition>
-						</dependency>
-					</dependencies>
-					<control format="action" type="button"/>
-				</setting>
-				<setting help="" id="speed.Speech-Dispatcher" label="32006" parent="backend" type="integer">
-					<level>0</level>
-					<default>0</default>
-					<constraints>
-						<minimum>-100</minimum>
-						<maximum>100</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">Speech-Dispatcher</condition>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
-				<setting help="" id="pitch.Speech-Dispatcher" label="32005" parent="backend" type="integer">
-					<level>0</level>
-					<default>0</default>
-					<constraints>
-						<minimum>-100</minimum>
-						<maximum>100</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">Speech-Dispatcher</condition>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
-				<setting help="" id="volume.Speech-Dispatcher" label="32014" parent="backend" type="integer">
-					<level>0</level>
-					<default>100</default>
-					<constraints>
-						<minimum>0</minimum>
-						<maximum>200</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">Speech-Dispatcher</condition>
-						</dependency>
-					</dependencies>
-					<control format="percentage" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
-			</group>
+                < ! - - Speech-Dispatcher - - >
+                <setting help="" id="module.Speech-Dispatcher" label="32018" parent="backend" type="string">
+                    <level>0</level>
+                    <control type="button" format="action">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;Speech-Dispatcher\&quot;,\&quot;module\&quot;]&quot;)</data>
+                    </control>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">Speech-Dispatcher</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="action" type="button"/>
+                </setting>
+                <setting help="" id="voice.Speech-Dispatcher" label="32003" parent="backend" type="string">
+                    <level>0</level>
+                    <default/>
+                    <control type="button" format="action">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;Speech-Dispatcher\&quot;,\&quot;voice\&quot;]&quot;)</data>
+                    </control>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">Speech-Dispatcher</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="action" type="button"/>
+                </setting>
+                <setting help="" id="speed.Speech-Dispatcher" label="32006" parent="backend" type="integer">
+                    <level>0</level>
+                    <default>0</default>
+                    <constraints>
+                        <minimum>-100</minimum>
+                        <maximum>100</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">Speech-Dispatcher</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
+                <setting help="" id="pitch.Speech-Dispatcher" label="32005" parent="backend" type="integer">
+                    <level>0</level>
+                    <default>0</default>
+                    <constraints>
+                        <minimum>-100</minimum>
+                        <maximum>100</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">Speech-Dispatcher</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
+                <setting help="" id="volume.Speech-Dispatcher" label="32014" parent="backend" type="integer">
+                    <level>0</level>
+                    <default>100</default>
+                    <constraints>
+                        <minimum>0</minimum>
+                        <maximum>200</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">Speech-Dispatcher</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="percentage" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
+            </group> -->
 
-			<!-- TTSD -->
-			<!-- SERVER -->
-			<group id="2" label="32019">
-				<setting help="" id="perl_server.ttsd" label="32020" parent="backend" type="boolean">
-					<level>0</level>
-					<default>true</default>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">ttsd</condition>
-						</dependency>
-					</dependencies>
-					<control type="toggle"/>
-				</setting>
-				<setting help="" id="speak_on_server.ttsd" label="32021" parent="perl_server.ttsd" type="boolean">
-					<level>0</level>
-					<default>false</default>
-					<dependencies>
-						<dependency type="enable">
-							<condition operator="is" setting="perl_server.ttsd">false</condition>
-						</dependency>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">ttsd</condition>
-						</dependency>
-					</dependencies>
-					<control type="toggle"/>
-				</setting>
-				<setting help="" id="engine.ttsd" label="32001" parent="speak_on_server.ttsd" type="string">
-					<level>0</level>
-					<default/>
-					<control type="button" format="action">
-						<data>NotifyAll(service.xbmc.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;ttsd\&quot;,\&quot;engine\&quot;]&quot;)</data>
-					</control>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<dependencies>
-						<dependency type="enable">
-							<condition operator="is" setting="perl_server.ttsd">false</condition>
-						</dependency>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">ttsd</condition>
-						</dependency>
-					</dependencies>
-					<control format="action" type="button"/>
-				</setting>
-				<setting help="" id="voice.Flite.ttsd" label="32003" parent="engine.ttsd" type="string">
-					<level>0</level>
-					<default/>
-					<control type="button" format="action">
-						<data>NotifyAll(service.xbmc.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;ttsd\&quot;,\&quot;voice.Flite\&quot;,\&quot;Flite\&quot;]&quot;)</data>
-					</control>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<and>
-								<condition operator="is" setting="backend">ttsd</condition>
-								<condition operator="is" setting="perl_server.ttsd">false</condition>
-								<condition operator="is" setting="engine.ttsd">Flite</condition>
-							</and>
-						</dependency>
-					</dependencies>
-					<control format="action" type="button"/>
-				</setting>
-				<setting help="" id="voice.eSpeak.ttsd" label="32003" parent="voice.Flite.ttsd" type="string">
-					<level>0</level>
-					<data>NotifyAll(service.xbmc.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;ttsd\&quot;,\&quot;voice.eSpeak\&quot;,\&quot;eSpeak\&quot;]&quot;)</data>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<and>
-								<condition operator="is" setting="backend">ttsd</condition>
-								<condition name="InfoBool" on="property"> eq(-4,false) </condition>
-								<condition name="InfoBool" on="property"> eq(-2,eSpeak)</condition>
-							</and>
-						</dependency>
-					</dependencies>
-					<control format="action" type="button"/>
-				</setting>
-				<setting help="" id="voice.SAPI.ttsd" label="32003" parent="voice.eSpeak.ttsd" type="string">
-					<level>0</level>
-					<default/>
-					<control type="button" format="action">
-						<data>NotifyAll(service.xbmc.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;ttsd\&quot;,\&quot;voice.SAPI\&quot;,\&quot;SAPI\&quot;]&quot;)</data>
-					</control>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<and>
-								<condition operator="is" setting="backend">ttsd</condition>
-								<condition operator="is" setting="perl_server.ttsd">false</condition>
-								<condition operator="is" setting="engine.ttsd">SAPI</condition>
-							</and>
-						</dependency>
-					</dependencies>
-					<control format="action" type="button"/>
-				</setting>
-				<setting help="" id="voice.Cepstral.ttsd" label="32003" parent="voice.SAPI.ttsd" type="string">
-					<level>0</level>
-					<default/>
-					<control type="button" format="action">
-						<data>NotifyAll(service.xbmc.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;ttsd\&quot;,\&quot;voice.Cepstral\&quot;,\&quot;Cepstral\&quot;]&quot;)</data>
-					</control>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<and>
-								<condition operator="is" setting="backend">ttsd</condition>
-								<condition operator="is" setting="perl_server.ttsd">false</condition>
-								<condition operator="is" setting="engine.ttsd">Cepstral</condition>
-							</and>
-						</dependency>
-					</dependencies>
-					<control format="action" type="button"/>
-				</setting>
-				<setting help="" id="voice.OSXSay.ttsd" label="32003" parent="voice.Cepstral.ttsd" type="string">
-					<level>0</level>
-					<default/>
-					<control type="button" format="action">
-						<data>NotifyAll(service.xbmc.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;ttsd\&quot;,\&quot;voice.OSXSay\&quot;,\&quot;OSXSay\&quot;]&quot;)</data>
-					</control>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<and>
-								<condition operator="is" setting="backend">ttsd</condition>
-								<condition operator="is" setting="perl_server.ttsd">false</condition>
-								<condition operator="is" setting="engine.ttsd">OSXSay</condition>
-							</and>
-						</dependency>
-					</dependencies>
-					<control format="action" type="button"/>
-				</setting>
-				<setting help="" id="voice.Festival.ttsd" label="32003" parent="voice.OSXSay.ttsd" type="string">
-					<level>0</level>
-					<default/>
-					<control type="button" format="action">
-						<data>NotifyAll(service.xbmc.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;ttsd\&quot;,\&quot;voice.Festival\&quot;,\&quot;Festival\&quot;]&quot;)</data>
-					</control>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<and>
-								<condition operator="is" setting="backend">ttsd</condition>
-								<condition operator="is" setting="perl_server.ttsd">false</condition>
-								<condition operator="is" setting="engine.ttsd">Festival</condition>
-							</and>
-						</dependency>
-					</dependencies>
-					<control format="action" type="button"/>
-				</setting>
-				<setting help="" id="voice.ttsd" label="32003" parent="voice.Festival.ttsd" type="string">
-					<level>0</level>
-					<default/>
-					<control type="button" format="action">
-						<data>RunScript(service.xbmc.tts,voice_dialog,ttsd)</data>
-					</control>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<dependencies>
-						<dependency type="visible">
-							<and>
-								<condition operator="is" setting="backend">ttsd</condition>
-								<condition operator="is" setting="perl_server.ttsd">true</condition>
-							</and>
-						</dependency>
-					</dependencies>
-					<control format="action" type="button"/>
-				</setting>
-				<setting help="" id="remote_speed.ttsd" label="32022" parent="voice.ttsd" type="integer">
-					<level>0</level>
-					<default>0</default>
-					<constraints>
-						<minimum>-20</minimum>
-						<maximum>20</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="enable">
-							<or>
-								<condition operator="is" setting="engine.ttsd">eSpeak</condition>
-								<condition operator="is" setting="engine.ttsd">SAPI</condition>
-								<condition operator="is" setting="engine.ttsd">pico2wave</condition>
-								<condition operator="is" setting="engine.ttsd">Festival</condition>
-							</or>
-						</dependency>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">ttsd</condition>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
-				<setting help="" id="remote_pitch.ttsd" label="32023" parent="remote_speed.ttsd" type="integer">
-					<level>0</level>
-					<default>0</default>
-					<constraints>
-						<minimum>-50</minimum>
-						<maximum>50</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="enable">
-							<or>
-								<condition operator="is" setting="engine.ttsd">eSpeak</condition>
-								<condition operator="is" setting="engine.ttsd">Festival</condition>
-								<condition operator="is" setting="engine.ttsd">SAPI</condition>
-							</or>
-						</dependency>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">ttsd</condition>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
-				<setting help="" id="remote_volume.ttsd" label="32024" parent="remote_pitch.ttsd" type="integer">
-					<level>0</level>
-					<default>0</default>
-					<constraints>
-						<minimum>-12</minimum>
-						<maximum>12</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="enable">
-							<condition operator="is" setting="perl_server.ttsd">false</condition>
-						</dependency>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">ttsd</condition>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
-			</group>
+            <!-- TTSD -->
+            <!-- SERVER -->
+            <group id="2" label="32019">
+                <setting help="" id="perl_server.ttsd" label="32020" parent="backend" type="boolean">
+                    <level>0</level>
+                    <default>true</default>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">ttsd</condition>
+                        </dependency>
+                    </dependencies>
+                    <control type="toggle"/>
+                </setting>
+                <setting help="" id="speak_on_server.ttsd" label="32021" parent="perl_server.ttsd" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <dependencies>
+                        <dependency type="enable">
+                            <condition operator="is" setting="perl_server.ttsd">false</condition>
+                        </dependency>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">ttsd</condition>
+                        </dependency>
+                    </dependencies>
+                    <control type="toggle"/>
+                </setting>
+                <setting help="" id="engine.ttsd" label="32001" parent="speak_on_server.ttsd" type="string">
+                    <level>0</level>
+                    <default/>
+                    <control type="button" format="action">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;ttsd\&quot;,\&quot;engine\&quot;]&quot;)</data>
+                    </control>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="enable">
+                            <condition operator="is" setting="perl_server.ttsd">false</condition>
+                        </dependency>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">ttsd</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="action" type="button"/>
+                </setting>
+                <setting help="" id="voice.Flite.ttsd" label="32003" parent="engine.ttsd" type="string">
+                    <level>0</level>
+                    <default/>
+                    <control type="button" format="action">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;ttsd\&quot;,\&quot;voice.Flite\&quot;,\&quot;Flite\&quot;]&quot;)</data>
+                    </control>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <and>
+                                <condition operator="is" setting="backend">ttsd</condition>
+                                <condition operator="is" setting="perl_server.ttsd">false</condition>
+                                <condition operator="is" setting="engine.ttsd">Flite</condition>
+                            </and>
+                        </dependency>
+                    </dependencies>
+                    <control format="action" type="button"/>
+                </setting>
+                <setting help="" id="voice.eSpeak.ttsd" label="32003" parent="voice.Flite.ttsd" type="string">
+                    <level>0</level>
+                    <data>NotifyAll(service.kodi.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;ttsd\&quot;,\&quot;voice.eSpeak\&quot;,\&quot;eSpeak\&quot;]&quot;)</data>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <and>
+                                <condition operator="is" setting="backend">ttsd</condition>
+                                <condition name="InfoBool" on="property">eq(-4,false)</condition>
+                                <condition name="InfoBool" on="property">eq(-2,eSpeak)</condition>
+                            </and>
+                        </dependency>
+                    </dependencies>
+                    <control format="action" type="button"/>
+                </setting>
+                <setting help="" id="voice.SAPI.ttsd" label="32003" parent="voice.eSpeak.ttsd" type="string">
+                    <level>0</level>
+                    <default/>
+                    <control type="button" format="action">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;ttsd\&quot;,\&quot;voice.SAPI\&quot;,\&quot;SAPI\&quot;]&quot;)</data>
+                    </control>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <and>
+                                <condition operator="is" setting="backend">ttsd</condition>
+                                <condition operator="is" setting="perl_server.ttsd">false</condition>
+                                <condition operator="is" setting="engine.ttsd">SAPI</condition>
+                            </and>
+                        </dependency>
+                    </dependencies>
+                    <control format="action" type="button"/>
+                </setting>
+                <setting help="" id="voice.Cepstral.ttsd" label="32003" parent="voice.SAPI.ttsd" type="string">
+                    <level>0</level>
+                    <default/>
+                    <control type="button" format="action">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;ttsd\&quot;,\&quot;voice.Cepstral\&quot;,\&quot;Cepstral\&quot;]&quot;)</data>
+                    </control>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <and>
+                                <condition operator="is" setting="backend">ttsd</condition>
+                                <condition operator="is" setting="perl_server.ttsd">false</condition>
+                                <condition operator="is" setting="engine.ttsd">Cepstral</condition>
+                            </and>
+                        </dependency>
+                    </dependencies>
+                    <control format="action" type="button"/>
+                </setting>
+                <setting help="" id="voice.OSXSay.ttsd" label="32003" parent="voice.Cepstral.ttsd" type="string">
+                    <level>0</level>
+                    <default/>
+                    <control type="button" format="action">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;ttsd\&quot;,\&quot;voice.OSXSay\&quot;,\&quot;OSXSay\&quot;]&quot;)</data>
+                    </control>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <and>
+                                <condition operator="is" setting="backend">ttsd</condition>
+                                <condition operator="is" setting="perl_server.ttsd">false</condition>
+                                <condition operator="is" setting="engine.ttsd">OSXSay</condition>
+                            </and>
+                        </dependency>
+                    </dependencies>
+                    <control format="action" type="button"/>
+                </setting>
+                <setting help="" id="voice.Festival.ttsd" label="32003" parent="voice.OSXSay.ttsd" type="string">
+                    <level>0</level>
+                    <default/>
+                    <control type="button" format="action">
+                        <data>NotifyAll(service.kodi.tts,SETTINGS.SETTING_DIALOG,&quot;[\&quot;ttsd\&quot;,\&quot;voice.Festival\&quot;,\&quot;Festival\&quot;]&quot;)</data>
+                    </control>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <and>
+                                <condition operator="is" setting="backend">ttsd</condition>
+                                <condition operator="is" setting="perl_server.ttsd">false</condition>
+                                <condition operator="is" setting="engine.ttsd">Festival</condition>
+                            </and>
+                        </dependency>
+                    </dependencies>
+                    <control format="action" type="button"/>
+                </setting>
+                <setting help="" id="voice.ttsd" label="32003" parent="voice.Festival.ttsd" type="string">
+                    <level>0</level>
+                    <default/>
+                    <control type="button" format="action">
+                        <data>RunScript(service.kodi.tts,voice_dialog,ttsd)</data>
+                    </control>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="visible">
+                            <and>
+                                <condition operator="is" setting="backend">ttsd</condition>
+                                <condition operator="is" setting="perl_server.ttsd">true</condition>
+                            </and>
+                        </dependency>
+                    </dependencies>
+                    <control format="action" type="button"/>
+                </setting>
+                <setting help="" id="remote_speed.ttsd" label="32022" parent="voice.ttsd" type="integer">
+                    <level>0</level>
+                    <default>0</default>
+                    <constraints>
+                        <minimum>-20</minimum>
+                        <maximum>20</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="enable">
+                            <or>
+                                <condition operator="is" setting="engine.ttsd">eSpeak</condition>
+                                <condition operator="is" setting="engine.ttsd">SAPI</condition>
+                                <condition operator="is" setting="engine.ttsd">pico2wave</condition>
+                                <condition operator="is" setting="engine.ttsd">Festival</condition>
+                            </or>
+                        </dependency>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">ttsd</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
+                <setting help="" id="remote_pitch.ttsd" label="32023" parent="remote_speed.ttsd" type="integer">
+                    <level>0</level>
+                    <default>0</default>
+                    <constraints>
+                        <minimum>-50</minimum>
+                        <maximum>50</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="enable">
+                            <or>
+                                <condition operator="is" setting="engine.ttsd">eSpeak</condition>
+                                <condition operator="is" setting="engine.ttsd">Festival</condition>
+                                <condition operator="is" setting="engine.ttsd">SAPI</condition>
+                            </or>
+                        </dependency>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">ttsd</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
+                <setting help="" id="remote_volume.ttsd" label="32024" parent="remote_pitch.ttsd" type="integer">
+                    <level>0</level>
+                    <default>0</default>
+                    <constraints>
+                        <minimum>-12</minimum>
+                        <maximum>12</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="enable">
+                            <condition operator="is" setting="perl_server.ttsd">false</condition>
+                        </dependency>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">ttsd</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
+            </group>
 
-			<!-- PLAYER -->
-			<group id="3" label="32007">
-				<setting help="" id="player.ttsd" label="32007" parent="" type="string">
-					<level>0</level>
-						<default/>
-					<control type="button" format="action">
-						<data>NotifyAll(service.xbmc.tts,SETTINGS.PLAYER_DIALOG,{&quot;backend&quot;:&quot;ttsd&quot;})</data>
-					</control>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<dependencies>
-						<dependency type="enable">
-							<condition operator="is" setting="speak_on_server.ttsd">false</condition>
-						</dependency>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">ttsd</condition>
-						</dependency>
-					</dependencies>
-					<control format="action" type="button"/>
-				</setting>
-				<setting help="" id="pipe.ttsd" label="32013" parent="player.ttsd" type="boolean">
-					<level>0</level>
-					<default>false</default>
-					<dependencies>
-						<dependency type="enable">
-							<condition operator="is" setting="speak_on_server.ttsd">false</condition>
-						</dependency>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">ttsd</condition>
-						</dependency>
-					</dependencies>
-					<control type="toggle"/>
-				</setting>
-				<setting help="" id="player_speed.ttsd" label="32025" parent="pipe.ttsd" type="integer">
-					<level>0</level>
-					<default>100</default>
-					<constraints>
-						<minimum>20</minimum>
-						<maximum>200</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="enable">
-							<or>
-								<condition operator="is" setting="player.ttsd">sox</condition>
-								<condition operator="is" setting="player.ttsd">mplayer</condition>
-								<condition operator="is" setting="player.ttsd">afplay</condition>
-							</or>
-						</dependency>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">ttsd</condition>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
-				<setting help="" id="player_volume.ttsd" label="32026" parent="player_speed.ttsd" type="integer">
-					<level>0</level>
-					<default>0</default>
-					<constraints>
-						<minimum>-12</minimum>
-						<maximum>12</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="enable">
-							<or>
-								<condition operator="is" setting="player.ttsd">sox</condition>
-								<condition operator="is" setting="player.ttsd">mplayer</condition>
-								<condition operator="is" setting="player.ttsd">paplay</condition>
-								<condition operator="is" setting="player.ttsd">afplay</condition>
-							</or>
-						</dependency>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">ttsd</condition>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
-			</group>
+            <!-- PLAYER -->
+            <group id="3" label="32007">
+                <setting help="" id="player.ttsd" label="32007" parent="" type="string">
+                    <level>0</level>
+                    <default/>
+                    <control type="button" format="action">
+                        <data>
+                            NotifyAll(service.kodi.tts,SETTINGS.PLAYER_DIALOG,{&quot;backend&quot;:&quot;ttsd&quot;})
+                        </data>
+                    </control>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="enable">
+                            <condition operator="is" setting="speak_on_server.ttsd">false</condition>
+                        </dependency>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">ttsd</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="action" type="button"/>
+                </setting>
+                <setting help="" id="pipe.ttsd" label="32013" parent="player.ttsd" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <dependencies>
+                        <dependency type="enable">
+                            <condition operator="is" setting="speak_on_server.ttsd">false</condition>
+                        </dependency>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">ttsd</condition>
+                        </dependency>
+                    </dependencies>
+                    <control type="toggle"/>
+                </setting>
+                <setting help="" id="player_speed.ttsd" label="32025" parent="pipe.ttsd" type="integer">
+                    <level>0</level>
+                    <default>100</default>
+                    <constraints>
+                        <minimum>20</minimum>
+                        <maximum>200</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="enable">
+                            <or>
+                                <condition operator="is" setting="player.ttsd">sox</condition>
+                                <condition operator="is" setting="player.ttsd">mplayer</condition>
+                                <condition operator="is" setting="player.ttsd">afplay</condition>
+                            </or>
+                        </dependency>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">ttsd</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
+                <setting help="" id="player_volume.ttsd" label="32026" parent="player_speed.ttsd" type="integer">
+                    <level>0</level>
+                    <default>0</default>
+                    <constraints>
+                        <minimum>-12</minimum>
+                        <maximum>12</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="enable">
+                            <or>
+                                <condition operator="is" setting="player.ttsd">sox</condition>
+                                <condition operator="is" setting="player.ttsd">mplayer</condition>
+                                <condition operator="is" setting="player.ttsd">paplay</condition>
+                                <condition operator="is" setting="player.ttsd">afplay</condition>
+                            </or>
+                        </dependency>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">ttsd</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
+            </group>
 
-			<!-- Connection -->
-			<group id="4" label="32205">
-				<setting help="" id="host.ttsd" label="32027" parent="" type="string">
-					<level>0</level>
-					<default>127.0.0.1</default>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">ttsd</condition>
-						</dependency>
-					</dependencies>
-					<control format="ip" type="edit">
-						<heading>32027</heading>
-					</control>
-				</setting>
-				<setting help="" id="port.ttsd" label="32028" parent="host.ttsd" type="integer">
-					<level>0</level>
-					<default>8256</default>
-					<dependencies>
-						<dependency type="visible">
-							<condition operator="is" setting="backend">ttsd</condition>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="edit">
-						<heading>32028</heading>
-					</control>
-				</setting>
-			</group>
-		</category>
+            <!-- Connection -->
+            <group id="4" label="32205">
+                <setting help="" id="host.ttsd" label="32027" parent="" type="string">
+                    <level>0</level>
+                    <default>127.0.0.1</default>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">ttsd</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="ip" type="edit">
+                        <heading>32027</heading>
+                    </control>
+                </setting>
+                <setting help="" id="port.ttsd" label="32028" parent="host.ttsd" type="integer">
+                    <level>0</level>
+                    <default>8256</default>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="backend">ttsd</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="edit">
+                        <heading>32028</heading>
+                    </control>
+                </setting>
+            </group>
+        </category>
 
-		<!-- Options -->
-		<category help="" id="options" label="32029">
-			<group id="1">
-				<setting help="" id="reader_off" label="32032" type="boolean">
-					<level>0</level>
-					<default>false</default>
-					<control type="toggle"/>
-				</setting>
-				<setting help="" id="auto_item_extra" label="32033" type="boolean">
-					<level>0</level>
-					<default>false</default>
-					<control type="toggle"/>
-				</setting>
-				<setting help="" id="auto_item_extra_delay" label="32034" parent="auto_item_extra" type="integer">
-					<level>0</level>
-					<default>2</default>
-					<constraints>
-						<minimum>1</minimum>
-						<maximum>60</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="enable">
-							<condition operator="is" setting="auto_item_extra">true</condition>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
-				<setting help="" id="speak_list_count" label="32035" type="boolean">
-					<level>0</level>
-					<default>true</default>
-					<control type="toggle"/>
-				</setting>
-				<setting help="" id="speak_background_progress" label="32036" type="boolean">
-					<level>0</level>
-					<default>false</default>
-					<control type="toggle"/>
-				</setting>
-				<setting help="" id="background_progress_interval" label="32037" parent="speak_background_progress" type="integer">
-					<level>0</level>
-					<default>5</default>
-					<constraints>
-						<minimum>0</minimum>
-						<maximum>60</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="enable">
-							<condition operator="is" setting="speak_background_progress">true</condition>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
-				<setting help="" id="speak_background_progress_during_media" label="32038" parent="speak_background_progress" type="boolean">
-					<level>0</level>
-					<default>false</default>
-					<dependencies>
-						<dependency type="enable">
-							<condition operator="is" setting="speak_background_progress">true</condition>
-						</dependency>
-					</dependencies>
-					<control type="toggle"/>
-				</setting>
-			</group>
-		</category>
+        <!-- Options -->
+        <category help="" id="options" label="32029">
+            <group id="1">
+                <setting help="" id="reader_off" label="32032" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                </setting>
+                <setting help="" id="auto_item_extra" label="32033" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                </setting>
+                <setting help="" id="auto_item_extra_delay" label="32034" parent="auto_item_extra" type="integer">
+                    <level>0</level>
+                    <default>2</default>
+                    <constraints>
+                        <minimum>1</minimum>
+                        <maximum>60</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="enable">
+                            <condition operator="is" setting="auto_item_extra">true</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
+                <setting help="" id="speak_list_count" label="32035" type="boolean">
+                    <level>0</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                </setting>
+                <setting help="" id="speak_background_progress" label="32036" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                </setting>
+                <setting help="" id="background_progress_interval" label="32037" parent="speak_background_progress"
+                         type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <constraints>
+                        <minimum>0</minimum>
+                        <maximum>60</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="enable">
+                            <condition operator="is" setting="speak_background_progress">true</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
+                <setting help="" id="speak_background_progress_during_media" label="32038"
+                         parent="speak_background_progress" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <dependencies>
+                        <dependency type="enable">
+                            <condition operator="is" setting="speak_background_progress">true</condition>
+                        </dependency>
+                    </dependencies>
+                    <control type="toggle"/>
+                </setting>
+            </group>
+        </category>
 
-		<!-- Keymap -->
-		<category help="" id="keymap" label="32030">
-			<group id="1">
-				<setting help="" id="ACTION_KEYMAP_INSTALL_DEFAULT" label="32039" type="action">
-					<level>0</level>
-					<data>RunScript(service.xbmc.tts,keymap.INSTALL_DEFAULT)</data>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<control format="action" type="button"/>
-				</setting>
-				<setting help="" id="ACTION_KEYMAP_INSTALL_CUSTOM" label="32040" type="action">
-					<level>0</level>
-					<data>RunScript(service.xbmc.tts,keymap.INSTALL_CUSTOM)</data>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<control format="action" type="button"/>
-				</setting>
-				<setting help="" id="ACTION_KEYMAP_EDIT" label="32041" type="action">
-					<level>0</level>
-					<data>RunScript(service.xbmc.tts,keymap.EDIT)</data>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<control format="action" type="button"/>
-				</setting>
-				<setting help="" id="ACTION_KEYMAP_RESET" label="32042" type="action">
-					<level>0</level>
-					<data>RunScript(service.xbmc.tts,keymap.RESET)</data>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<control format="action" type="button"/>
-				</setting>
-				<setting help="" id="ACTION_KEYMAP_REMOVE" label="32043" type="action">
-					<level>0</level>
-					<data>RunScript(service.xbmc.tts,keymap.REMOVE)</data>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<control format="action" type="button"/>
-				</setting>
-			</group>
-		</category>
+        <!-- Keymap -->
+        <category help="" id="keymap" label="32030">
+            <group id="1">
+                <setting help="" id="ACTION_KEYMAP_INSTALL_DEFAULT" label="32039" type="action">
+                    <level>0</level>
+                    <data>RunScript(service.kodi.tts,keymap.INSTALL_DEFAULT)</data>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control format="action" type="button"/>
+                </setting>
+                <setting help="" id="ACTION_KEYMAP_INSTALL_CUSTOM" label="32040" type="action">
+                    <level>0</level>
+                    <data>RunScript(service.kodi.tts,keymap.INSTALL_CUSTOM)</data>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control format="action" type="button"/>
+                </setting>
+                <setting help="" id="ACTION_KEYMAP_EDIT" label="32041" type="action">
+                    <level>0</level>
+                    <data>RunScript(service.kodi.tts,keymap.EDIT)</data>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control format="action" type="button"/>
+                </setting>
+                <setting help="" id="ACTION_KEYMAP_RESET" label="32042" type="action">
+                    <level>0</level>
+                    <data>RunScript(service.kodi.tts,keymap.RESET)</data>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control format="action" type="button"/>
+                </setting>
+                <setting help="" id="ACTION_KEYMAP_REMOVE" label="32043" type="action">
+                    <level>0</level>
+                    <data>RunScript(service.kodi.tts,keymap.REMOVE)</data>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control format="action" type="button"/>
+                </setting>
+            </group>
+        </category>
 
-		<!-- Advanced -->
-		<category help="" id="advanced" label="32031">
-			<group id="1">
-				<setting help="" id="use_tmpfs" label="32044" type="boolean">
-					<level>0</level>
-					<default>true</default>
-					<control type="toggle"/>
-				</setting>
-				<setting help="" id="disable_broken_backends" label="32045" type="boolean">
-					<level>0</level>
-					<default>true</default>
-					<control type="toggle"/>
-				</setting>
-				<setting help="" id="debug_logging" label="32046" type="boolean">
-					<level>0</level>
-					<default>false</default>
-					<control type="toggle"/>
-				</setting>
-				<setting help="" id="verbose_logging" label="32049" parent="debug_logging" type="boolean">
-					<level>0</level>
-					<default>false</default>
-					<dependencies>
-						<dependency type="enable">
-							<condition operator="is" setting="debug_logging">true</condition>
-						</dependency>
-					</dependencies>
-					<control type="toggle"/>
-				</setting>
-				<setting help="" id="override_poll_interval" label="32047" type="boolean">
-					<level>0</level>
-					<default>false</default>
-					<control type="toggle"/>
-				</setting>
-				<setting help="" id="poll_interval" label="32048" parent="override_poll_interval" type="integer">
-					<level>0</level>
-					<default>100</default>
-					<constraints>
-						<minimum>50</minimum>
-						<maximum>1000</maximum>
-					</constraints>
-					<dependencies>
-						<dependency type="enable">
-							<condition operator="is" setting="override_poll_interval">true</condition>
-						</dependency>
-					</dependencies>
-					<control format="integer" type="slider">
-						<popup>false</popup>
-					</control>
-				</setting>
+        <!-- Advanced -->
+        <category help="" id="advanced" label="32031">
+            <group id="1">
+                <setting help="" id="use_tmpfs" label="32044" type="boolean">
+                    <level>0</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                </setting>
+                <setting help="" id="disable_broken_backends" label="32045" type="boolean">
+                    <level>0</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                </setting>
+                <setting help="" id="debug_logging" label="32046" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                </setting>
+                <setting help="" id="verbose_logging" label="32049" parent="debug_logging" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <dependencies>
+                        <dependency type="enable">
+                            <condition operator="is" setting="debug_logging">true</condition>
+                        </dependency>
+                    </dependencies>
+                    <control type="toggle"/>
+                </setting>
+                <setting help="" id="override_poll_interval" label="32047" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                </setting>
+                <setting help="" id="poll_interval" label="32048" parent="override_poll_interval" type="integer">
+                    <level>0</level>
+                    <default>100</default>
+                    <constraints>
+                        <minimum>50</minimum>
+                        <maximum>1000</maximum>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="enable">
+                            <condition operator="is" setting="override_poll_interval">true</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                </setting>
                 <setting help="" id="cache_voice_files" label="32206" type="boolean">
                     <level>0</level>
                     <default>true</default>
@@ -1401,7 +1549,7 @@
                 </setting>
                 <setting help="" id="cache_path" label="32207" parent="cache_voice_files" type="path">
                     <level>0</level>
-                    <default>special://userdata/addon_data/service.xbmc.tts/cache</default>
+                    <default>special://userdata/addon_data/service.kodi.tts/cache</default>
                     <dependencies>
                         <dependency type="enable">
                             <condition operator="is" setting="cache_voice_files">true</condition>
@@ -1423,39 +1571,808 @@
                         <heading>32210</heading>
                     </control>
                 </setting>
-			</group>
-			<group id="1">
-				<setting help="" id="version" label="32178" type="string">
-					<level>0</level>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<control type="edit" format="string">
-		                <heading>32178</heading>
-	                </control>
-					<visible>false</visible>
-				</setting>
-				<setting help="" id="addons_MD5" label="32178" type="string">
-					<level>0</level>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					  <control type="edit" format="string">
-		                <heading>32178</heading>
-	                </control>
-					<visible>false</visible>
-				</setting>
-				<setting help="" id="EXTERNAL_COMMAND" label="32178" type="string">
-					<level>0</level>
-					<constraints>
-						<allowempty>true</allowempty>
-					</constraints>
-					<control type="edit" format="string">
-		                <heading>32178</heading>
-	                </control>
-					<visible>false</visible>
-				</setting>
-			</group>
-         </category>
-	</section>
+            </group>
+            <group id="1">
+                <setting help="" id="version" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="addons_MD5" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="EXTERNAL_COMMAND" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+
+                <setting help="" id="backend" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                               <setting help="" id="api_key.Cepstral" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="gender.Cepstral" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="language.Cepstral" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="pipe.Cepstral" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="pitch.Cepstral" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="player.Cepstral" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="speed.Cepstral" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="voice.Cepstral" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="volume.Cepstral" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                 <setting help="" id="gender.eSpeak" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="language.eSpeak" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="pipe.eSpeak" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="pitch.eSpeak" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="player.eSpeak" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="speed.eSpeak" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="voice.eSpeak" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="volume.eSpeak" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                 <setting help="" id="gender.eSpeak" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="language.Festival" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="pipe.Festival" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="pitch.Festival" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="player.Festival" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="speed.Festival" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="voice.Festival" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="volume.Festival" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                 <setting help="" id="gender.Flite" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="language.Flite" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="pipe.Flite" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="pitch.Flite" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="player.Flite" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="speed.Flite" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="voice.Flite" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="volume.Flite" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                 <setting help="" id="gender.Google" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="language.Google" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="pipe.Google" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="pitch.Google" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="player.Google" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="speed.Google" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="voice.Google" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="volume.Google" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                 <setting help="" id="gender.OSXSay" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="language.OSXSay" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="pipe.OSXSay" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="pitch.OSXSay" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="player.OSXSay" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="speed.OSXSay" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="voice.OSXSay" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="volume.OSXSay" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                 <setting help="" id="gender.pico2wave" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="language.pico2wave" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="pipe.pico2wave" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="pitch.pico2wave" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="player.pico2wave" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="speed.pico2wave" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="voice.pico2wave" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="volume.pico2wave" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                 <setting help="" id="api_key.ResponsiveVoice" label="32214" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control format="string" type="edit">
+                        <heading>32215</heading>
+                    </control>
+                     <visible>false</visible>
+                </setting>
+                 <setting help="" id="gender.ResponsiveVoice" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="language.ResponsiveVoice" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="pipe.ResponsiveVoice" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="pitch.ResponsiveVoice" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="player.ResponsiveVoice" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="speed.ResponsiveVoice" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="voice.ResponsiveVoice" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="volume.ResponsiveVoice" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                   <setting help="" id="cache_speech.ResponsiveVoice" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                 <setting help="" id="gender.SAPI" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="language.SAPI" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="pipe.SAPI" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="pitch.SAPI" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="player.SAPI" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="speed.SAPI" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="voice.SAPI" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="volume.SAPI" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                 <setting help="" id="gender.Speech-Dispatcher" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="language.Speech-Dispatcher" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="pipe.Speech-Dispatcher" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="pitch.Speech-Dispatcher" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="player.Speech-Dispatcher" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="speed.Speech-Dispatcher" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="voice.Speech-Dispatcher" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="volume.Speech-Dispatcher" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+
+                <!--
+                <setting help="" id="language_visible" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="gender_visible" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="voice_visible" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="output_visible" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="player_visible" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="player_enabled" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="speed_visible" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="speed_enabled" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="volume_visible" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                 <setting help="" id="pitch_visible" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="pipe_visible" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting> -->
+                <setting help="" id="use_temp_settings" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="use_tmpfs" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="do_debug" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="log_level" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+            </group>
+        </category>
+    </section>
 </settings>
