@@ -1,17 +1,17 @@
 <keymap>
   <global>
     <keyboard>
-      <REPEAT>NotifyAll(service.xbmc.tts,REPEAT)</REPEAT>
-      <EXTRA>NotifyAll(service.xbmc.tts,EXTRA)</EXTRA>
-      <ITEM_EXTRA>.NotifyAll(service.xbmc.tts,ITEM_EXTRA)</ITEM_EXTRA>
-      <STOP>NotifyAll(service.xbmc.tts,STOP)</STOP>
-      <SETTINGS>.Addon.OpenSettings(service.xbmc.tts)</SETTINGS>
-      <DISABLE>RunScript(special://{SPECIAL}/addons/service.xbmc.tts/enabler.py)</DISABLE>
-      <VOL_UP>NotifyAll(service.xbmc.tts,VOL_UP)</VOL_UP>
-      <VOL_DOWN>NotifyAll(service.xbmc.tts,VOL_DOWN)</VOL_DOWN>
-      <plus mod="ctrl">NotifyAll(service.xbmc.tts,VOL_UP)</plus>
-      <minus mod="ctrl">NotifyAll(service.xbmc.tts,VOL_DOWN)</minus>
-      <equals mod="ctrl">NotifyAll(service.xbmc.tts,VOL_UP)</equals>
+      <REPEAT>NotifyAll(service.kodi.tts,REPEAT)</REPEAT>
+      <EXTRA>NotifyAll(service.kodi.tts,EXTRA)</EXTRA>
+      <ITEM_EXTRA>NotifyAll(service.kodi.tts,ITEM_EXTRA)</ITEM_EXTRA>
+      <STOP>NotifyAll(service.kodi.tts,STOP)</STOP>
+      <SETTINGS>Addon.OpenSettings(service.kodi.tts)</SETTINGS>
+      <DISABLE>RunScript(special://{SPECIAL}/addons/service.kodi.tts/enabler.py)</DISABLE>
+      <VOL_UP>NotifyAll(service.kodi.tts,VOL_UP)</VOL_UP>
+      <VOL_DOWN>NotifyAll(service.kodi.tts,VOL_DOWN)</VOL_DOWN>
+      <plus mod="ctrl">NotifyAll(service.kodi.tts,VOL_UP)</plus>
+      <minus mod="ctrl">NotifyAll(service.kodi.tts,VOL_DOWN)</minus>
+      <equals mod="ctrl">NotifyAll(service.kodi.tts,VOL_UP)</equals>
     </keyboard>
   </global>
 </keymap>
