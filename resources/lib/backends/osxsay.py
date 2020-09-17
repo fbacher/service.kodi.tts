@@ -1,30 +1,49 @@
 # -*- coding: utf-8 -*-
 import sys, subprocess, os
-from lib import util
+
+from common.constants import Constants
+from common.setting_constants import Languages, Players, Genders, Misc
+from common.logger import LazyLogger
+from common.messages import Messages
+from common.settings import Settings
+from common.system_queries import SystemQueries
+from common import utils
+
 from .base import ThreadedTTSBackend
+
+
+if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
+    module_logger = LazyLogger.get_addon_module_logger().getChild(
+        'lib.backends')
+else:
+    module_logger = LazyLogger.get_addon_module_logger()
+
+
 
 class OSXSayTTSBackend_Internal(ThreadedTTSBackend):
     provider = 'OSXSay'
     displayName = 'OSX Say (OSX Internal)'
     canStreamWav = True
     volumeConstraints = (0,100,100,True)
+    speedConstraints = (80, 200, 450, True)
+
     volumeExternalEndpoints = (0,100)
     volumeStep = 5
     volumeSuffix = '%'
-    voicesPath = os.path.join(util.configDirectory(),'{0}.voices'.format(provider))
+    voicesPath = os.path.join(Constants.PROFILE_PATH,'{0}.voices'.format(provider))
     settings = {
-                    'voice':'',
-                    'volume':100,
-                    'speed':0
-    }
+                'speed': 0,
+                'voice': '',
+                'volume': 100
+                }
 
     def __new__(cls):
         try:
             import xbmc #analysis:ignore
-            return super(OSXSayTTSBackend, cls).__new__(cls)
+            return super().__new__()
         except:
             pass
-        return OSXSayTTSBackend_SubProcess()
+        return # OSXSayTTSBackend_SubProcess() #  TODO: does not exist!
 
     def init(self):
         from . import cocoapy
@@ -39,10 +58,10 @@ class OSXSayTTSBackend_Internal(ThreadedTTSBackend):
         if not text: return
         self.synth.startSpeakingString_(self.cocoapy.get_NSString(text))
         while self.synth.isSpeaking():
-            util.sleep(10)
+            utils.sleep(10)
 
     def getWavStream(self,text):
-        wav_path = os.path.join(util.getTmpfs(),'speech.wav')
+        wav_path = os.path.join(utils.getTmpfs(),'speech.wav')
         subprocess.call(['say', '-o', wav_path,
                          '--file-format','WAVE','--data-format','LEI16@22050',text],
                         universal_newlines=True)
@@ -53,7 +72,9 @@ class OSXSayTTSBackend_Internal(ThreadedTTSBackend):
 
     def longVoices(self):
         vNSCFArray = self.synth.availableVoices()
-        voices = [self.cocoapy.cfstring_to_string(vNSCFArray.objectAtIndex_(i,self.cocoapy.get_NSString('UTF8String'))) for i in range(vNSCFArray.count())]
+        voices = [self.cocoapy.cfstring_to_string(
+            vNSCFArray.objectAtIndex_(i,self.cocoapy.get_NSString('UTF8String')))
+            for i in range(vNSCFArray.count())]
         return voices
 
     def update(self):
@@ -92,7 +113,7 @@ class OSXSayTTSBackend_Internal(ThreadedTTSBackend):
 
     @staticmethod
     def available():
-        return sys.platform == 'darwin' and not util.isATV2()
+        return sys.platform == 'darwin' and not SystemQueries.isATV2()
 
 #OLD
 class OSXSayTTSBackend(ThreadedTTSBackend):
@@ -101,17 +122,25 @@ class OSXSayTTSBackend(ThreadedTTSBackend):
     canStreamWav = True
 
     def __init__(self):
-        util.LOG('OSXSay using subprocess method class')
+        #util.LOG('OSXSay using subprocess method class')
         self.process = None
         ThreadedTTSBackend.__init__(self)
+
+    @staticmethod
+    def isSupportedOnPlatform():
+        return SystemQueries.isOSX()
+
+    @staticmethod
+    def isInstalled():
+        return OSXSayTTSBackend.isSupportedOnPlatform()
 
     def threadedSay(self,text):
         if not text: return
         self.process = subprocess.Popen(['say', text], universal_newlines=True)
-        while self.process.poll() is None and self.active: util.sleep(10)
+        while self.process.poll() is None and self.active: utils.sleep(10)
 
     def getWavStream(self,text):
-        wav_path = os.path.join(util.getTmpfs(),'speech.wav')
+        wav_path = os.path.join(utils.getTmpfs(),'speech.wav')
         subprocess.call(['say', '-o', wav_path,
                          '--file-format','WAVE','--data-format','LEI16@22050',
                          text], universal_newlines=True)
@@ -129,4 +158,4 @@ class OSXSayTTSBackend(ThreadedTTSBackend):
 
     @staticmethod
     def available():
-        return sys.platform == 'darwin' and not util.isATV2()
+        return sys.platform == 'darwin' and not SystemQueries.isATV2()

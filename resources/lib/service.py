@@ -5,20 +5,31 @@ import xbmcgui
 import time
 import queue
 import json
-from lib import util, addoninfo
-T = util.T
+from utils import addoninfo, enabler
 
-__version__ = util.xbmcaddon.Addon().getAddonInfo('version')
-util.LOG(__version__)
-util.LOG('Platform: {0}'.format(sys.platform))
+import backends
+from backends import audio
+import windows
+from windows import playerstatus, notice, backgroundprogress
+from windowNavigation.custom_settings_ui import SettingsGUI
+from common.logger import LazyLogger
+from common.messages import Messages
+from common.constants import Constants
+from common.configuration_utils import ConfigUtils
+from common.settings import Settings
+from common.system_queries import SystemQueries
+from common import utils
 
-from lib import backends
-from lib import windows
-from lib.windows import playerstatus, notice, backgroundprogress
+# TODO Remove after eliminating util.getCommand
 
-import xbmc
+from utils import util
 
-REMOTE_DBG = True
+module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
+
+__version__ = Constants.VERSION
+module_logger.info(__version__)
+module_logger.info('Platform: {0}'.format(sys.platform))
+REMOTE_DBG = False
 
 # append pydev remote debugger
 if REMOTE_DBG:
@@ -64,13 +75,12 @@ if REMOTE_DBG:
         xbmc.log('Waiting on Debug connection', xbmc.LOGDEBUG)
         xbmc.log(str(e), xbmc.LOGDEBUG)
 
-
-if backends.audio.PLAYSFX_HAS_USECACHED:
-    util.LOG('playSFX() has useCached')
+if audio.PLAYSFX_HAS_USECACHED:
+    module_logger.info('playSFX() has useCached')
 else:
-    util.LOG('playSFX() does NOT have useCached')
+    module_logger.info('playSFX() does NOT have useCached')
 
-util.initCommands()
+# util.initCommands()
 addoninfo.initAddonsData()
 
 RESET = False
@@ -81,9 +91,9 @@ def resetAddon():
     if RESET:
         return
     RESET = True
-    util.LOG('Resetting addon...')
+    module_logger.info('Resetting addon...')
     xbmc.executebuiltin(
-        'RunScript(special://home/addons/service.xbmc.tts/enabler.py,RESET)')
+        'RunScript(special://home/addons/service.kodi.tts/resources/lib/enabler.py,RESET)')
 
 
 class TTSClosedException(Exception):
@@ -91,7 +101,12 @@ class TTSClosedException(Exception):
 
 
 class TTSService(xbmc.Monitor):
+    instance = None
+
     def __init__(self):
+        self._logger = module_logger.getChild(
+            self.__class__.__name__)  # type: LazyLogger
+        super().__init__() # Appears to not do anything
         self.readerOn = True
         self.stop = False
         self.disable = False
@@ -99,13 +114,19 @@ class TTSService(xbmc.Monitor):
         self.initState()
         self._tts = None
         self.backendProvider = None
-        util.stopSounds()  # To kill sounds we may have started before an update
-        util.playSound('on')
+        utils.stopSounds()  # To kill sounds we may have started before an update
+        utils.playSound('on')
         self.playerStatus = playerstatus.PlayerStatus(10115).init()
         self.bgProgress = backgroundprogress.BackgroundProgress(10151).init()
         self.noticeDialog = notice.NoticeDialog(10107).init()
         self.initTTS()
-        util.LOG('SERVICE STARTED :: Interval: %sms' % self.tts.interval)
+        module_logger.info(
+            'SERVICE STARTED :: Interval: %sms' % self.tts.interval)
+        TTSService.instance = self
+
+    @staticmethod
+    def get_instance():  # type: () -> TTSService
+        return TTSService.instance
 
     def onAbortRequested(self):
         self.stop = True
@@ -137,8 +158,8 @@ class TTSService(xbmc.Monitor):
         self.processCommand(command)
 
     def processCommand(self, command, data=None):
-        from lib import util  # Earlier import apparently not seen when called via NotifyAll
-        util.LOG(command)
+        from utils import util  # Earlier import apparently not seen when called via NotifyAll
+        self._logger.debug('command', command)
         if command == 'REPEAT':
             self.repeatText()
         elif command == 'EXTRA':
@@ -162,53 +183,98 @@ class TTSService(xbmc.Monitor):
             text = args.get('text')
             if text:
                 self.queueNotice(text, args.get('interrupt'))
-        elif command == 'SETTINGS.BACKEND_DIALOG':
-            util.runInThread(util.selectBackend,
-                             name='SETTINGS.BACKEND_DIALOG')
-        elif command == 'SETTINGS.PLAYER_DIALOG':
+        if command == 'PREPARE_TO_SAY':
+            # Used to preload text cache when caller anticipates text will be voiced
             if not data:
                 return
             args = json.loads(data)
             if not args:
                 return
-            backend = args.get('backend')
-            util.selectPlayer(backend)
+            text = args.get('text')
+            if text:
+                self.queueNotice(text, interrupt=False, preload_cache=True)
+        elif command == 'SETTINGS.BACKEND_GUI':
+            util.runInThread(SettingsGUI.launch,
+                             name='SETTINGS.BACKEND_GUI')
+        elif command == 'SETTINGS.BACKEND_DIALOG':
+            util.runInThread(ConfigUtils.selectBackend,
+                             name='SETTINGS.BACKEND_DIALOG')
+        elif command == 'SETTINGS.PLAYER_DIALOG':
+            # if not data:
+            #     return
+            # args = json.loads(data)
+            # if not args:
+            #     return
+            # backend = args.get('backend')
+
+            provider = Settings.getSetting('backend')
+
+            ConfigUtils.selectPlayer(provider)
         elif command == 'SETTINGS.SETTING_DIALOG':
             if not data:
                 return
+            provider = Settings.getSetting('backend')
             args = json.loads(data)
-            util.selectSetting(*args)
+            if args[0] == 'voice':
+                voice = args[0]
+                ConfigUtils.selectSetting(provider, voice)
+            elif args[0] == 'language':
+                language = args[0]
+                ConfigUtils.selectSetting(provider, language)
+            elif args[0] == 'gender':
+                ConfigUtils.selectGenderSetting(provider)
+        elif command == 'SETTINGS.SETTING_SLIDER':
+            if not data:
+                return
+            args = json.loads(data)
+            provider = Settings.getSetting('backend')
+            if args[0] == 'volume':
+                ConfigUtils.selectVolumeSetting(provider, *args)
+
+        elif command == 'RELOAD_ENGINE':
+            self.checkBackend()
+
 #        elif command.startswith('keymap.'): #Not using because will import keymapeditor into running service. May need if RunScript is not working as was my spontaneous experience
 #            command = command[7:]
 #            from lib import keymapeditor
 #            util.runInThread(keymapeditor.processCommand,(command,),name='keymap.INSTALL_DEFAULT')
 
     def reloadSettings(self):
-        self.readerOn = not util.getSetting('reader_off', False)
-        util.reload()
-        self.speakListCount = util.getSetting('speak_list_count', True)
+        self.readerOn = not Settings.getSetting(Settings.READER_OFF, False)
+        # OldLogger.reload()
+        self.speakListCount = Settings.getSetting(Settings.SPEAK_LIST_COUNT,
+                                                  True)
         self.autoItemExtra = False
-        if util.getSetting('auto_item_extra', False):
-            self.autoItemExtra = util.getSetting('auto_item_extra_delay', 2)
+        if Settings.getSetting(Settings.AUTO_ITEM_EXTRA, False):
+            self.autoItemExtra = Settings.getSetting(
+                Settings.AUTO_ITEM_EXTRA_DELAY, 2)
 
     def onDatabaseScanStarted(self, database):
-        util.LOG('DB SCAN STARTED: {0} - Notifying...'.format(database))
-        self.queueNotice('{0}: {1}'.format(database, T(32100)))
+        module_logger.info(
+            'DB SCAN STARTED: {0} - Notifying...'.format(database))
+        self.queueNotice('{0}: {1}'
+                         .format(database,
+                                 Messages.get_msg(Messages.DATABASE_SCAN_STARTED)))
 
     def onDatabaseUpdated(self, database):
-        util.LOG('DB SCAN UPDATED: {0} - Notifying...'.format(database))
-        self.queueNotice('{0}: {1}'.format(database, T(32101)))
+        module_logger.info(
+            'DB SCAN UPDATED: {0} - Notifying...'.format(database))
+        self.queueNotice('{0}: {1}'
+                         .format(database,
+                                 Messages.get_msg(Messages.DATABASE_SCAN_STARTED)))
 
     def onNotification(self, sender, method, data):
-        if not sender == 'service.xbmc.tts':
+        self._logger.debug('onNotification: sender: {} method: {}'
+                           .format(sender, method))
+        if not sender == Constants.ADDON_ID:
             return
         # Remove the "Other." prefix
         self.processCommand(method.split('.', 1)[-1], data)
-#        util.LOG('NOTIFY: {0} :: {1} :: {2}'.format(sender,method,data))
+#        module_logger.info('NOTIFY: {0} :: {1} :: {2}'.format(sender,method,data))
 #        #xbmc :: VideoLibrary.OnUpdate :: {"item":{"id":1418,"type":"episode"}}
 
-    def queueNotice(self, text, interrupt=False):
-        self.noticeQueue.put((text, interrupt))
+    def queueNotice(self, text, interrupt=False, preload_cache=False):
+        self.noticeQueue.put((text, interrupt, preload_cache))
 
     def clearNoticeQueue(self):
         try:
@@ -222,8 +288,8 @@ class TTSService(xbmc.Monitor):
         if self.noticeQueue.empty():
             return False
         while not self.noticeQueue.empty():
-            text, interrupt = self.noticeQueue.get()
-            self.sayText(text, interrupt)
+            text, interrupt, preload_cache = self.noticeQueue.get()
+            self.sayText(text, interrupt, preload_cache)
             self.noticeQueue.task_done()
         return True
 
@@ -244,23 +310,26 @@ class TTSService(xbmc.Monitor):
         self.waitingToReadItemExtra = None
         self.reloadSettings()
 
-    def initTTS(self, backendClass=None):
+    def initTTS(self, backendClass=None, changed=False):
         if not backendClass:
             backendClass = backends.getBackend()
         provider = self.setBackend(backendClass())
         self.backendProvider = provider
         self.updateInterval()
-        util.LOG('Backend: %s' % provider)
+        module_logger.info('Backend: %s' % provider)
 
     def fallbackTTS(self, reason=None):
         if reason == 'RESET':
             return resetAddon()
         backend = backends.getBackendFallback()
-        util.LOG('Backend falling back to: {0}'.format(backend.provider))
+        module_logger.info(
+            'Backend falling back to: {0}'.format(backend.provider))
         self.initTTS(backend)
-        self.sayText(T(32102).format(backend.displayName), interrupt=True)
+        self.sayText(Messages.get_msg(Messages.SPEECH_ENGINE_FALLING_BACK_TO)
+                     .format(backend.displayName), interrupt=True)
         if reason:
-            self.sayText('{0}: {1}'.format(T(32103), reason), interrupt=False)
+            self.sayText('{0}: {1}'.format(
+                Messages.get_msg(Messages.Reason), reason), interrupt=False)
 
     def checkNewVersion(self):
         try:
@@ -281,21 +350,23 @@ class TTSService(xbmc.Monitor):
                 comp.append(fifth)
                 return comp
 
-        lastVersion = util.getSetting('version', '0.0.0')
-        util.setSetting('version', __version__)
+        lastVersion = Settings.getSetting('version', '0.0.0')
+        Settings.setSetting(Settings.VERSION, __version__)
 
         if lastVersion == '0.0.0':
             self.firstRun()
             return True
         elif LooseVersion(lastVersion) < LooseVersion(__version__):
-            self.queueNotice('{0}... {1}'.format(T(32104), __version__))
+            self.queueNotice('{0}... {1}'
+                             .format(Messages.get_msg(Messages.NEW_TTS_VERSION),
+                                     __version__))
             return True
         return False
 
     def firstRun(self):
-        util.LOG('FIRST RUN')
-        util.LOG('Installing default keymap')
-        from lib import keymapeditor
+        from utils import keymapeditor
+        module_logger.info('FIRST RUN')
+        module_logger.info('Installing default keymap')
         keymapeditor.installDefaultKeymap(quiet=True)
 
     def start(self):
@@ -309,17 +380,14 @@ class TTSService(xbmc.Monitor):
                     try:
                         self.checkForText()
                     except RuntimeError:
-                        util.ERROR('start()', hide_tb=True)
+                        module_logger.error('start()', hide_tb=True)
                     except SystemExit:
-                        if util.DEBUG:
-                            util.ERROR('SystemExit: Quitting')
-                        else:
-                            util.LOG('SystemExit: Quitting')
+                        module_logger.info('SystemExit: Quitting')
                         break
                     except TTSClosedException:
-                        util.LOG('TTSCLOSED')
+                        module_logger.info('TTSCLOSED')
                     except:  # Because we don't want to kill speech on an error
-                        util.ERROR('start()', notify=True)
+                        module_logger.error('start()', notify=True)
                         self.initState()  # To help keep errors from repeating on the loop
 
                 # Idle mode
@@ -331,17 +399,14 @@ class TTSService(xbmc.Monitor):
                     except queue.Empty:
                         pass
                     except RuntimeError:
-                        util.ERROR('start()', hide_tb=True)
+                        module_logger.error('start()', hide_tb=True)
                     except SystemExit:
-                        if util.DEBUG:
-                            util.ERROR('SystemExit: Quitting')
-                        else:
-                            util.LOG('SystemExit: Quitting')
+                        module_logger.info('SystemExit: Quitting')
                         break
                     except TTSClosedException:
-                        util.LOG('TTSCLOSED')
+                        module_logger.info('TTSCLOSED')
                     except:  # Because we don't want to kill speech on an error
-                        util.ERROR('start()', notify=True)
+                        module_logger.error('start()', notify=True)
                         self.initState()  # To help keep errors from repeating on the loop
                     for x in range(5):  # Check the queue every 100ms, check state every 500ms
                         if self.noticeQueue.empty():
@@ -349,27 +414,27 @@ class TTSService(xbmc.Monitor):
         finally:
             self._tts._close()
             self.end()
-            util.playSound('off')
-            util.LOG('SERVICE STOPPED')
+            utils.playSound('off')
+            module_logger.info('SERVICE STOPPED')
             if self.disable:
-                import enabler
                 enabler.disableAddon()
 
     def end(self):
-        if util.DEBUG:
+        if module_logger.isEnabledFor(LazyLogger.DEBUG):
             xbmc.sleep(500)  # Give threads a chance to finish
             import threading
-            util.LOG('Remaining Threads:')
+            module_logger.info('Remaining Threads:')
             for t in threading.enumerate():
-                util.DEBUG_LOG('  {0}'.format(t.name))
+                module_logger.debug('  {0}'.format(t.name))
 
     def shutdown(self):
         self.stop = True
         self.disable = True
 
     def updateInterval(self):
-        if util.getSetting('override_poll_interval', False):
-            self.interval = util.getSetting('poll_interval', self.tts.interval)
+        if Settings.getSetting(Settings.OVERRIDE_POLL_INTERVAL, False):
+            self.interval = Settings.getSetting(
+                Settings.POLL_INTERVAL, self.tts.interval)
         else:
             self.interval = self.tts.interval
 
@@ -380,10 +445,10 @@ class TTSService(xbmc.Monitor):
         return backend.provider
 
     def checkBackend(self):
-        provider = util.getSetting('backend', None)
+        provider = Settings.getSetting('backend', None)
         if provider == self.backendProvider:
             return
-        self.initTTS()
+        self.initTTS(changed=True)
 
     def checkForText(self):
         self.checkAutoRead()
@@ -444,12 +509,12 @@ class TTSService(xbmc.Monitor):
         texts = self.windowReader.getItemExtraTexts(self.controlID)
         self.sayTexts(texts, interrupt=interrupt)
 
-    def sayText(self, text, interrupt=False):
+    def sayText(self, text, interrupt=False, preload_cache=False):
         assert isinstance(text, str), "Not Unicode"
         if self.tts.dead:
             return self.fallbackTTS(self.tts.deadReason)
-        util.VERBOSE_LOG(repr(text))
-        self.tts.say(self.cleanText(text), interrupt)
+        module_logger.debug_verbose(repr(text))
+        self.tts.say(self.cleanText(text), interrupt, preload_cache)
 
     def sayTexts(self, texts, interrupt=True):
         if not texts:
@@ -457,7 +522,7 @@ class TTSService(xbmc.Monitor):
         assert all(isinstance(t, str) for t in texts), "Not Unicode"
         if self.tts.dead:
             return self.fallbackTTS(self.tts.deadReason)
-        util.VERBOSE_LOG(repr(texts))
+        module_logger.debug_verbose(repr(texts))
         self.tts.sayList(self.cleanText(texts), interrupt=interrupt)
 
     def insertPause(self, ms=500):
@@ -499,13 +564,14 @@ class TTSService(xbmc.Monitor):
             return newN
         self.winID = winID
         self.updateWindowReader()
-        if util.DEBUG:
-            util.DEBUG_LOG('Window ID: {0} Handler: {1} File: {2}'.format(
+        if module_logger.isEnabledFor(LazyLogger.DEBUG):
+            module_logger.debug('Window ID: {0} Handler: {1} File: {2}'.format(
                 winID, self.windowReader.ID, xbmc.getInfoLabel('Window.Property(xmlfile)')))
 
         name = self.windowReader.getName()
         if name:
-            self.sayText('{0}: {1}'.format(T(32105), name), interrupt=not newN)
+            self.sayText('{0}: {1}'.format(Messages.get_msg(Messages.WINDOW), name),
+                         interrupt=not newN)
             self.insertPause()
         else:
             self.sayText(' ', interrupt=not newN)
@@ -529,8 +595,8 @@ class TTSService(xbmc.Monitor):
         controlID = self.window().getFocusId()
         if controlID == self.controlID:
             return newW
-        if util.DEBUG:
-            util.DEBUG_LOG('Control: %s' % controlID)
+        if module_logger.isEnabledFor(LazyLogger.DEBUG):
+            module_logger.debug('Control: %s' % controlID)
         self.controlID = controlID
         if not controlID:
             return newW
@@ -575,7 +641,9 @@ class TTSService(xbmc.Monitor):
     def formatSeasonEp(self, seasEp):
         if not seasEp:
             return ''
-        return seasEp.replace('S', '{0} '.format(T(32108))).replace('E', '{0} '.format(T(32109)))
+        return seasEp.replace('S', '{0} '
+                              .format(Messages.get_msg(Messages.SEASON)))\
+            .replace('E', '{0} '.format(Messages.get_msg(Messages.EPISODE)))
 
     _formatTagRE = re.compile(r'\[/?(?:CR|B|I|UPPERCASE|LOWERCASE)\](?i)')
     _colorTagRE = re.compile(r'\[/?COLOR[^\]\[]*?\](?i)')
@@ -589,9 +657,9 @@ class TTSService(xbmc.Monitor):
         # getLabel() on lists wrapped in [] and some speech engines have
         # problems with text starting with -
         text = text.strip('-[]')
-        text = text.replace('XBMC', 'X B M C')
+        text = text.replace('XBMC', 'Kodi')
         if text == '..':
-            text = T(32110)
+            text = Messages.get_msg(Messages.PARENT_DIRECTORY)
         return text
 
     def cleanText(self, text):
@@ -602,22 +670,19 @@ class TTSService(xbmc.Monitor):
 
 
 def preInstalledFirstRun():
-    if not util.isPreInstalled():  # Do as little as possible if there is no pre-install
-        if util.wasPreInstalled():
-            util.LOG('PRE INSTALL: REMOVED')
+    if not SystemQueries.isPreInstalled():  # Do as little as possible if there is no pre-install
+        if SystemQueries.wasPreInstalled():
+            module_logger.info('PRE INSTALL: REMOVED')
             # Set version to 0.0.0 so normal first run will execute and fix the
             # keymap
-            util.setSetting('version', '0.0.0')
-            import enabler
+            Settings.setSetting('version', '0.0.0')
             enabler.markPreOrPost()  # Update the install status
         return False
 
-    import enabler
+    lastVersion = Settings.getSetting('version')
 
-    lastVersion = util.getSetting('version')
-
-    if not enabler.isPostInstalled() and util.wasPostInstalled():
-        util.LOG('POST INSTALL: UN-INSTALLED OR REMOVED')
+    if not enabler.isPostInstalled() and SystemQueries.wasPostInstalled():
+        module_logger.info('POST INSTALL: UN-INSTALLED OR REMOVED')
         # Add-on was removed. Assume un-installed and treat this as a
         # pre-installed first run to disable the addon
     elif lastVersion:
@@ -625,16 +690,16 @@ def preInstalledFirstRun():
         return False
 
     # Set version to 0.0.0 so normal first run will execute on first enable
-    util.setSetting('version', '0.0.0')
+    Settings.setSetting('version', '0.0.0')
 
-    util.LOG('PRE-INSTALLED FIRST RUN')
-    util.LOG('Installing basic keymap')
+    module_logger.info('PRE-INSTALLED FIRST RUN')
+    module_logger.info('Installing basic keymap')
 
     # Install keymap with just F12 enabling included
-    from lib import keymapeditor
+    from utils import keymapeditor
     keymapeditor.installBasicKeymap()
 
-    util.LOG('Pre-installed - DISABLING')
+    module_logger.info('Pre-installed - DISABLING')
 
     enabler.disableAddon()
     return True
@@ -645,10 +710,8 @@ def startService():
         return
 
     TTSService().start()
+    xbmc.log('service.startService thread started', xbmc.LOGDEBUG)
 
 
 if __name__ == '__main__':
-    if len(sys.argv) > 1 and sys.argv[1] == 'voice_dialog':
-        backends.selectVoice()
-    else:
-        startService()
+    startService()

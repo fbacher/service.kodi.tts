@@ -2,7 +2,8 @@
 import xbmc
 from . import guitables
 from .base import WindowReaderBase
-from lib import util
+from common.messages import Messages
+
 
 class PVRWindowReaderBase(WindowReaderBase):
     def controlIsOnView(self,controlID):
@@ -26,7 +27,7 @@ class PVRWindowReaderBase(WindowReaderBase):
 
 class PVRGuideWindowReader(PVRWindowReaderBase):
     ID = 'pvrguide'
-    timelineInfo = (    util.T(32171), #PVR
+    timelineInfo = (    Messages.get_msg(Messages.CHANNEL), #PVR
                         '$INFO[ListItem.ChannelNumber]',
                         '$INFO[ListItem.ChannelName]',
                         '$INFO[ListItem.StartTime]',
@@ -35,7 +36,7 @@ class PVRGuideWindowReader(PVRWindowReaderBase):
                         '$INFO[ListItem.Plot]'
     )
 
-    nowNextInfo = (    util.T(32171),
+    nowNextInfo = ( Messages.get_msg(Messages.CHANNEL),
                         '$INFO[ListItem.ChannelNumber]',
                         '$INFO[ListItem.ChannelName]',
                         '$INFO[ListItem.StartTime]',
@@ -159,7 +160,7 @@ class PVRSearchWindowReader(PVRWindowReaderBase):
 
 class PVRWindowReader(PVRWindowReaderBase):
     ID = 'pvr'
-    timelineInfo = (    util.T(32171), #PVR
+    timelineInfo = (Messages.get_msg(Messages.CHANNEL),
                         '$INFO[ListItem.ChannelNumber]',
                         '$INFO[ListItem.ChannelName]',
                         '$INFO[ListItem.StartTime]',
@@ -174,7 +175,7 @@ class PVRWindowReader(PVRWindowReaderBase):
                         '$INFO[ListItem.Plot]'
     )
 
-    nowNextInfo = (    util.T(32171),
+    nowNextInfo = (Messages.get_msg(Messages.CHANNEL),
                         '$INFO[ListItem.ChannelNumber]',
                         '$INFO[ListItem.ChannelName]',
                         '$INFO[ListItem.StartTime]',

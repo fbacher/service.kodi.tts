@@ -1,42 +1,82 @@
 # -*- coding: utf-8 -*-
 import os, subprocess
-from lib import util
-from . import base
+import xbmc
+
+from typing import Any, List, Union, Type
+
+from backends.audio import BasePlayerHandler, WavAudioPlayerHandler
+from backends.base import SimpleTTSBackendBase
+from backends import base
+from backends.audio import BuiltInAudioPlayer, BuiltInAudioPlayerHandler
+from common.constants import Constants
+from common.setting_constants import Backends, Languages, Players, Genders, Misc
+from common.logger import LazyLogger
+from common.messages import Messages
+from common.settings import Settings
+from common.system_queries import SystemQueries
+
+if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
+    module_logger = LazyLogger.get_addon_module_logger().getChild(
+        'lib.backends')
+else:
+    module_logger = LazyLogger.get_addon_module_logger()
+
 
 class FliteTTSBackend(base.SimpleTTSBackendBase):
-    provider = 'Flite'
+    provider = Backends.FLITE_ID
     displayName = 'Flite'
-    settings = {    'voice':'kal16',
-                    'player':None,
-                    'speed':100,
-                    'volume':0,
-                    'output_via_flite':False
+    speedConstraints = (20, 100, 200, True)
+
+    settings = {
+        Settings.PIPE: False,
+                Settings.PLAYER: Players.INTERNAL,
+                Settings.SPEED: 100,
+                Settings.VOICE: 'kal16',
+        Settings.VOLUME: 0
     }
-    onATV2 = util.isATV2()
+    onATV2 = SystemQueries.isATV2()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._logger = module_logger.getChild(self.__class__.__name__)  # type: LazyLogger
+        self.process = None
 
     def init(self):
         self.process = None
         self.update()
 
-    def runCommand(self,text,outFile):
+    @staticmethod
+    def isSupportedOnPlatform():
+        return SystemQueries.isLinux()
+
+    @staticmethod
+    def isInstalled():
+        installed = False
+        if FliteTTSBackend.isSupportedOnPlatform():
+            installed = True
+        return installed
+
+    def runCommand(self,text_to_voice,dummy):
+        wave_file, exists = self.get_path_to_voice_file(text_to_voice,
+                                                        use_cache=False)
+
         if self.onATV2:
-            os.system('flite -t "{0}" -o "{1}"'.format(text,outFile))
+            os.system('flite -t "{0}" -o "{1}"'.format(text_to_voice,wave_file))
         else:
-            subprocess.call(['flite', '-voice', self.voice, '-t', text,'-o',outFile],
+            voice = type(self).getVoice()
+            subprocess.call(['flite', '-voice', voice, '-t', text_to_voice,'-o',wave_file],
                             universal_newlines=True)
         return True
 
-    def runCommandAndSpeak(self,text):
-        self.process = subprocess.Popen(['flite', '-voice', self.voice, '-t', text],
+    def runCommandAndSpeak(self,text_to_voice):
+
+        voice = type(self).getVoice()
+        self.process = subprocess.Popen(['flite', '-voice', voice, '-t', text_to_voice],
                                         universal_newlines=True)
-        while self.process.poll() is None and self.active: util.sleep(10)
+        while self.process.poll() is None and self.active: xbmc.sleep(10)
 
     def update(self):
-        self.voice = self.setting('voice')
-        self.setMode(self.getMode())
-        self.setPlayer(self.setting('player'))
-        self.setSpeed(self.setting('speed'))
-        self.setVolume(self.setting('volume'))
+        pass
 
     def getMode(self):
         if not self.onATV2 and self.setting('output_via_flite'):
@@ -53,8 +93,18 @@ class FliteTTSBackend(base.SimpleTTSBackendBase):
 
     @classmethod
     def settingList(cls,setting,*args):
-        if cls.onATV2: return None
-        if setting == 'voice':
+        if cls.onATV2:
+            return None
+
+        elif setting == Settings.PLAYER:
+            # Get list of player ids. Id is same as is stored in settings.xml
+
+            players = cls.get_players(include_builtin=False)
+            default_player = cls.get_setting_default(Settings.PLAYER)
+
+            return players, default_player
+
+        elif setting == 'voice':
             return [(v,v) for v in subprocess.check_output(['flite','-lv'],
                                                            universal_newlines=True).split(': ',1)[-1].strip().split(' ')]
 
@@ -64,7 +114,7 @@ class FliteTTSBackend(base.SimpleTTSBackendBase):
             subprocess.call(['flite', '--help'], stdout=(open(os.path.devnull, 'w')),
                             universal_newlines=True, stderr=subprocess.STDOUT)
         except (OSError, IOError):
-            return util.isATV2() and util.commandIsAvailable('flite')
+            return SystemQueries.isATV2() and SystemQueries.commandIsAvailable('flite')
         return True
 
 #class FliteTTSBackend(TTSBackendBase):

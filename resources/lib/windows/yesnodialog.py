@@ -3,6 +3,7 @@ import xbmc
 from .base import WindowReaderBase
 from . import guitables
 
+
 class YesNoDialogReader(WindowReaderBase):
     ID = 'yesnodialog'
 

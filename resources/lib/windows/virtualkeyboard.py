@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 import xbmc, re, difflib, time
+
 from .base import WindowReaderBase
-from lib import util
+from common.messages import Messages
+
+
 class VirtualKeyboardReader(WindowReaderBase):
     ID = 'virtualkeyboard'
     ip_re = re.compile('^[\d ]{3}\.[\d ]{3}\.[\d ]{3}.[\d ]{3}$')
@@ -47,7 +50,7 @@ class VirtualKeyboardReader(WindowReaderBase):
             d = difflib.Differ()
             if not text and self.keyboardText:
                 self.keyboardText = ''
-                out = util.T(32178)
+                out = Messages.get_msg(Messages.NO_TEXT)
             elif self.isIP(text):
                 if self.isIP(text) and self.isIP(self.keyboardText): #IP Address
                     oldip = self.keyboardText.replace(' ','').split('.')
@@ -59,11 +62,13 @@ class VirtualKeyboardReader(WindowReaderBase):
             elif len(text) > len(self.keyboardText):
                 for c in d.compare(self.keyboardText,text):
                     if c.startswith('+'):
-                        out += ' ' + (c.strip(' +') or util.T(32177))
+                        out += ' ' + (c.strip(' +') or Messages.get_msg(Messages.SPACE))
             else:
                 for c in d.compare(self.keyboardText,text):
-                    if c.startswith('-'): out += ' ' + (c.strip(' -') or util.T(32177))
-                if out: out = out.strip() + ' {0}'.format(util.T(32179))
+                    if c.startswith('-'): out += ' ' + (c.strip(' -') or
+                                                        Messages.get_msg(Messages.SPACE))
+                if out: out = out.strip() + ' {0}'.format(
+                    Messages.get_msg(Messages.DELETED))
             self.keyboardText = text
             if out:
                 return out.strip()
@@ -96,7 +101,12 @@ class PVRSGuideSearchDialogReader(VirtualKeyboardReader):
             text = xbmc.getLocalizedString(19133)
         else:
             text = xbmc.getInfoLabel('System.CurrentControl')
-            text = text.replace('( )','{0} {1}'.format(self.service.tts.pauseInsert,util.T(32174))).replace('(*)','{0} {1}'.format(self.service.tts.pauseInsert,util.T(32173))) #For boolean settings
+            text = text.replace('( )',
+                                '{0} {1}'.format(self.service.tts.pauseInsert,
+                                                 Messages.get_msg(Messages.NO))).replace('(*)',
+                                                 '{0} {1}'.format(
+                                                                  self.service.tts.pauseInsert,
+                                                                   Messages.get_msg(Messages.YES)))  # For boolean settings
         return (text,text)
 
     def getMonitoredText(self,isSpeaking=False):

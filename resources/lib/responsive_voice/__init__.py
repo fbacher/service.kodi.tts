@@ -61,7 +61,7 @@ class ResponsiveVoice:
     GREEK = "el-GR"
     JAPANESE = "ja-JP"
 
-    def __init__(self, lang=None, gender=None,
+    def __init__(self, lang=None, gender='',
                  pitch=0.5, rate=0.5, vol=1,
                  voice_name="", service="", key=None):
         self.pitch = pitch
@@ -110,12 +110,18 @@ class ResponsiveVoice:
             "gender": gender or self.gender
         }
 
-        r = requests.get(self.API_URL, params)
-        if os.path.isfile(mp3_file):
-            os.unlink(mp3_file)
+        r = None
+        try:
+            r = requests.get(self.API_URL, params=params, timeout=35.0)
 
-        with open(mp3_file, "wb") as f:
-            f.write(r.content)
+            if os.path.isfile(mp3_file):
+                os.unlink(mp3_file)
+
+            with open(mp3_file, "wb") as f:
+                f.write(r.content)
+        except Exception as e:
+            a = e
+
         return mp3_file
 
     def say(self, sentence, mp3_file=None, pitch=None, rate=None, vol=None,
@@ -127,12 +133,12 @@ class ResponsiveVoice:
 
 
 def get_voices(lang=None, normalize=False):
-    import lib.responsive_voice.voices
+    import responsive_voice.voices
     voices = {}
 
-    for k in lib.responsive_voice.voices.__dict__:
+    for k in responsive_voice.voices.__dict__:
         if not k.startswith("_") and k != "ResponsiveVoice":
-            voice = lib.responsive_voice.voices.__dict__[k]
+            voice = responsive_voice.voices.__dict__[k]
             if lang:
                 if voice().lang != lang:
                     continue

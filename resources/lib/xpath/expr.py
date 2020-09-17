@@ -8,7 +8,7 @@ import weakref
 
 import sys
 
-from .exceptions import *
+from xpath.exceptions import *
 
 
 #

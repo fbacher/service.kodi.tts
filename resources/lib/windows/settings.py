@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
-from .base import WindowReaderBase
 import xbmc
-from lib import util
+
+from .base import WindowReaderBase
+from common.messages import Messages
+
 
 class SettingsReader(WindowReaderBase):
     ID = 'settings'
@@ -12,11 +14,11 @@ class SettingsReader(WindowReaderBase):
     def getItemExtraTexts(self,controlID):
         text = xbmc.getInfoLabel('Container({0}).ListItem.Label2'.format(controlID))
         if not text: return None
-        return [text.decode]
+        return [text]
 
     def getControlText(self,controlID):
         if not controlID: return ('','')
         sub = ''
         text = self.getSettingControlText(controlID)
-        if text.startswith('-'): sub = '{0}: '.format(util.T(32172))
+        if text.startswith('-'): sub = '{0}: '.format(Messages.get_msg(Messages.SUB_SETTING))
         return ('{0}{1}'.format(sub,text),text)

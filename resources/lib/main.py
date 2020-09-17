@@ -2,15 +2,19 @@
 import os
 import sys
 import xbmc
+import xbmcvfs
 
-REMOTE_DBG = False  # True
+from utils import util
+from common.configuration_utils import ConfigUtils
+
+REMOTE_DBG = True  # True
 
 # append pydev remote debugger
 if REMOTE_DBG:
     # Make pydev debugger works for auto reload.
     # Note pydevd module need to be copied in XBMC\system\python\Lib\pysrc
     try:
-        xbmc.log('service.tts trying to attach to debugger', xbmc.LOGDEBUG)
+        xbmc.log('service.kodi.tts main trying to attach to debugger', xbmc.LOGDEBUG)
 
         '''
             If the server (your python process) has the structure
@@ -51,41 +55,26 @@ if REMOTE_DBG:
 
 
 def main():
-    if os.path.exists(os.path.join(xbmc.translatePath('special://profile'),
-                                   'addon_data', 'service.xbmc.tts', 'DISABLED')):
-        xbmc.log('service.xbmc.tts: DISABLED - NOT STARTING')
+    if os.path.exists(os.path.join(xbmcvfs.translatePath('special://profile'),
+                                   'addon_data', 'service.kodi.tts', 'DISABLED')):
+        xbmc.log('service.kodi.tts: DISABLED - NOT STARTING')
         return
 
     arg = None
     if len(sys.argv) > 1:
         arg = sys.argv[1] or False
     extra = sys.argv[2:]
-    # Deprecated in Gotham - now using NotifyAll
-    if arg and arg.startswith('key.'):
-        command = arg[4:]
-        from lib import util
-        util.sendCommand(command)
-    elif arg and arg.startswith('keymap.'):
+
+    if arg and arg.startswith('keymap.'):
         command = arg[7:]
-        from lib import keymapeditor
+        from utils import keymapeditor
         keymapeditor.processCommand(command)
     elif arg == 'settings_dialog':
-        from lib import util
-        util.selectSetting(*extra)
-    elif arg == 'player_dialog':  # Deprecated in 0.0.86 - now using NotifyAll
-        from lib import util
-        util.selectPlayer(*extra)
-    elif arg == 'backend_dialog':  # Deprecated in 0.0.86 - now using NotifyAll
-        from lib import util
-        util.selectBackend()
-    # No longer used, using XBMC.Addon.OpenSettings(service.xbmc.tts) in
-    # keymap instead
-    elif arg == 'settings':
-        from lib import util
-        util.xbmcaddon.Addon().openSettings()
+        ConfigUtils.selectSetting(*extra)
     elif arg is None:
         from service import startService
         startService()
+        xbmc.log('main service thread started', xbmc.LOGDEBUG)
 
 
 if __name__ == '__main__':

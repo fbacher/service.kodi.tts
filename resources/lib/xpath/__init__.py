@@ -1,9 +1,9 @@
 import sys
-from lib.xpath.exceptions import *
-import lib.xpath.exceptions
-import lib.xpath.expr
-import lib.xpath.parser
-import lib.xpath.yappsrt
+from xpath.exceptions import *
+import xpath.exceptions
+import xpath.expr
+import xpath.parser
+import xpath.yappsrt
 xpath = sys.modules[__name__]
 
 __all__ = ['find', 'findnode', 'findvalue', 'XPathContext', 'XPath']

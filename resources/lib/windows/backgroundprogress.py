@@ -2,15 +2,31 @@
 
 import time
 import xbmc, xbmcgui
-from lib import util
-from .base import WindowReaderBase, WindowHandlerBase
-T = util.T
-        
+from windows.base import WindowReaderBase, WindowHandlerBase
+from common.constants import Constants
+from common.logger import LazyLogger
+from common.messages import Messages
+from common.settings import Settings
+from common import utils
+
+
+if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
+    module_logger = LazyLogger.get_addon_module_logger().getChild(
+        'lib.windows')
+else:
+    module_logger = LazyLogger.get_addon_module_logger()
+
+
 class ProgressNotice(xbmcgui.Window):
     def __init__(self,winID):
+
+        def __init__(self):
+            super().__init__()
+        self._logger = module_logger.getChild(
+                self.__class__.__name__)  # type: LazyLogger
         self.winID = winID
         xbmcgui.Window.__init__(self,winID)
-        
+
         self.started = False
         self.finished = False
         self.seen = False
@@ -19,33 +35,35 @@ class ProgressNotice(xbmcgui.Window):
         self.progress = None
         self.currentProgress = None
         self.last = 0
-        
-        if util.DEBUG: util.LOG('BG Prog: Created')
-        
+
+        if self._logger.isEnabledFor(LazyLogger.DEBUG):
+            self._logger.debug('BG Prog: Created')
+
     def ready(self):
         if self.started and self.title: return True
         self.started = True
         self.setTitle()
-        if util.DEBUG: util.LOG('BG Prog: Ready ({0})'.format(self.title))
+        if self._logger.isEnabledFor(LazyLogger.DEBUG):
+            self._logger.debug('BG Prog: Ready ({0})'.format(self.title))
         return False
 
     def setTitle(self):
         if self.title: return
-        tail = util.tailXBMCLog()
+        tail = utils.tailXBMCLog()
         for t in reversed(tail):
             l = t.lower()
             if 'thread epgupdater start' in l:
-                self.title = T(32120)
+                self.title = Messages.get_msg(Messages.IMPORTING_PVR_EPG)
                 return
             elif 'thread pvrguiinfo start' in l:
-                self.title = T(32121)
+                self.title = Messages.get_msg(Messages.LOADING_PVR_EPG)
                 return
-            
-        if self.progress: self.title = T(32122)
+
+        if self.progress: self.title = Messages.get_msg(Messages.BACKGROUND_PROGRESS_STARTED)
 
     def visible(self):
         return xbmc.getCondVisibility('Window.IsVisible({0})'.format(self.winID))
-    
+
     def updateProgress(self):
         try:
             new_prog = int(self.getControl(32).getPercent())
@@ -58,13 +76,13 @@ class ProgressNotice(xbmcgui.Window):
             self.progress = new_prog
             self.currentProgress = '{0}%'.format(self.progress)
         except:
-            util.ERROR('BG Progress',hide_tb=True)
+            self._logger.error('BG Progress',hide_tb=True)
 
     def finish(self):
         if self.finished: return
         self.finished = True
-        if util.DEBUG: util.LOG('BG Prog: Finished - Seen: {0}'.format(self.seen))
-        
+        if self._logger.isEnabledFor(LazyLogger.DEBUG): self._logger.debug('BG Prog: Finished - Seen: {0}'.format(self.seen))
+
     def done(self):
         return self.finished and not self.valid
 
@@ -86,7 +104,7 @@ class ProgressNotice(xbmcgui.Window):
         if self.seen:
             if self.finished:
                 self.valid = False
-                return T(32123)
+                return Messages.get_msg(Messages.BACKGROUND_PROGRESS_DONE)
             else:
                 return self.getProgress()
         else:
@@ -99,7 +117,7 @@ class ProgressNotice(xbmcgui.Window):
 
 class BackgroundProgress(WindowHandlerBase):
     ID = 'backgroundprogress'
-    
+
     def init(self):
         self._win = None
         self.updateFromSettings()
@@ -107,16 +125,19 @@ class BackgroundProgress(WindowHandlerBase):
 
     def updateFromSettings(self):
         self.last = 0
-        self.interval = util.getSetting('background_progress_interval',5)
-        self.playDuringMedia = util.getSetting('speak_background_progress_during_media',False)
-        
+        self.interval = Settings.getSetting(Settings.BACKGROUND_PROGRESS_INTERVAL,5)
+        self.playDuringMedia = Settings.getSetting(
+            Settings.SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA,False)
+
     def _visible(self):
         return WindowHandlerBase.visible(self)
 
     def visible(self):
         visible = self._visible()
         if visible:
-            if not util.getSetting('speak_background_progress',False): return False
+            if not Settings.getSetting(Settings.SPEAK_BACKGROUND_PROGRESS,
+                                       False):
+                return False
         else:
             if self._win: return True
 
@@ -136,7 +157,7 @@ class BackgroundProgress(WindowHandlerBase):
         if now - self.last < self.interval: return False
         if not isSpeaking: return now
 
-    def getMonitoredText(self,isSpeaking=False):    
+    def getMonitoredText(self,isSpeaking=False):
         win = self.win()
         if not win: return None
         win.update()
@@ -149,5 +170,7 @@ class BackgroundProgress(WindowHandlerBase):
                 self.last = now
                 return message
         return None
-        
-class BackgroundProgressReader(BackgroundProgress,WindowReaderBase): pass
+
+
+class BackgroundProgressReader(BackgroundProgress,WindowReaderBase):
+    pass

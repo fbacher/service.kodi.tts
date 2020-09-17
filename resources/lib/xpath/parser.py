@@ -5,6 +5,7 @@ from .yappsrt import *
 from string import *
 import re
 
+
 class XPathScanner(Scanner):
     patterns = [
         ("r'\\:'", re.compile('\\:')),

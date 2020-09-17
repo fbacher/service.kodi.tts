@@ -2,6 +2,7 @@
 import xbmc
 from .base import WindowReaderBase
 
+
 class ContextMenuReader(WindowReaderBase):
     ID = 'contextmenu'
 

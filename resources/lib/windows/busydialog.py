@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import time
 from .base import WindowReaderBase
-from lib import util
+from common import utils
+
 
 class BusyDialogReader(WindowReaderBase):
     ID = 'busydialog'
@@ -11,7 +12,7 @@ class BusyDialogReader(WindowReaderBase):
         self.play()
 
     def play(self):
-        duration = util.playSound('busy',return_duration=True)
+        duration = utils.playSound('busy',return_duration=True)
         self.next = time.time() + duration
 
     def getMonitoredText(self,isSpeaking=False):
@@ -20,4 +21,4 @@ class BusyDialogReader(WindowReaderBase):
             self.play()
 
     def close(self):
-        util.stopSounds()
+        utils.stopSounds()

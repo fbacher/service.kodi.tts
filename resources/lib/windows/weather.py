@@ -3,6 +3,7 @@ from .base import WindowReaderBase, parseItemExtra
 import xbmc
 from . import windowparser
 
+
 class WeatherReader(WindowReaderBase):
     ID = 'weather'
 

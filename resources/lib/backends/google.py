@@ -1,10 +1,15 @@
 # -*- coding: utf-8 -*-
 
 import urllib.request, urllib.parse, urllib.error, urllib.request, urllib.error, urllib.parse,\
-    shutil, os, subprocess
-from lib.backends import base, audio
-from lib import util
-import textwrap
+    shutil, os, subprocess, textwrap
+
+import xbmc
+
+from backends import base, audio
+from common.system_queries import SystemQueries
+from common.old_logger import OldLogger
+from common import utils
+
 
 LANGUAGES = [    ('af', 'Afrikaans'),
                 ('sq', 'Albanian'),
@@ -45,18 +50,30 @@ class GoogleTTSBackend(base.SimpleTTSBackendBase):
     displayName = 'Google'
     # ttsURL = 'http://translate.google.com/translate_tts?client=t&tl={0}&q={1}'
     ttsURL='https://translate.google.com/translate_tts?&q={1}&tl={0}&client=tw-ob'
-    canStreamWav = util.commandIsAvailable('mpg123')
+    canStreamWav = SystemQueries.commandIsAvailable('mpg123')
     playerClass = audio.MP3AudioPlayerHandler
     settings = {
-                    'language':'en',
-                    'player':'mpg123',
-                    'volume':0,
-                    'pipe':False
-    }
+                'language': 'en',
+                'pipe': False,
+                'player': 'mpg123',
+                'volume': 0
+                }
 
     def init(self):
         self.process = None
         self.update()
+
+    @staticmethod
+    def isSupportedOnPlatform():
+        return (SystemQueries.isLinux() or SystemQueries.isWindows() or
+                SystemQueries.isOSX())
+
+    @staticmethod
+    def isInstalled():
+        installed = False
+        if GoogleTTSBackend.isSupportedOnPlatform():
+            installed = True
+        return installed
 
     def threadedSay(self,text):
         if not text: return
@@ -65,16 +82,16 @@ class GoogleTTSBackend(base.SimpleTTSBackendBase):
             for text in sections:
                 source = self.runCommandAndPipe(text)
                 if not source: continue
-                self.player.pipeAudio(source)
+                self.player_handler.pipeAudio(source)
         else:
             for text in sections:
-                outFile = self.player.getOutFile(text)
+                outFile = self.player_handler.getOutFile(text, use_cache=False)
                 if not self.runCommand(text,outFile): return
-                self.player.play()
+                self.player_handler.play()
 
     def runCommand(self,text,outFile):
         url = self.ttsURL.format(self.language,urllib.parse.quote(text))
-        util.VERBOSE_LOG('Google url: ' + url)
+        LazyLogger.debug_verbose('Google url: ' + url)
         #
 
         # local IFS = +; /usr/bin/mplayer -ao alsa -really -quiet -noconsolecontrols "http://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&q=$*&tl=en";
@@ -85,7 +102,7 @@ class GoogleTTSBackend(base.SimpleTTSBackendBase):
         try:
             resp = urllib.request.urlopen(req)
         except:
-            util.ERROR('Failed to open Google TTS URL',hide_tb=True)
+            OldLogger.ERROR('Failed to open Google TTS URL',hide_tb=True)
             return False
 
         with open(outFile,'wb') as out:
@@ -94,7 +111,7 @@ class GoogleTTSBackend(base.SimpleTTSBackendBase):
 
     def runCommandAndPipe(self,text):
         url = self.ttsURL.format(self.language,urllib.parse.quote(text))
-        util.VERBOSE_LOG('Google url: ' + url)
+        LazyLogger.debug_verbose('Google url: ' + url)
         #req = urllib.request.Request(url) #, headers={ 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.116 Safari/537.36' })
         headers = {'Referer': 'http://translate.google.com/',
                    'User-Agent': 'stagefright/1.2 (Linux;Android 5.0)'
@@ -102,22 +119,23 @@ class GoogleTTSBackend(base.SimpleTTSBackendBase):
         req = urllib.request.Request(url, headers=headers)
         try:
             resp = urllib.request.urlopen(req)
-            util.VERBOSE_LOG('url: ' + req.get_full_url())
-            util.VERBOSE_LOG('headers: ' + str(req.header_items()))
+            LazyLogger.debug_verbose('url: ' + req.get_full_url())
+            LazyLogger.debug_verbose('headers: ' + str(req.header_items()))
         except:
-            util.ERROR('Failed to open Google TTS URL',hide_tb=True)
+            OldLogger.ERROR('Failed to open Google TTS URL',hide_tb=True)
             return None
         return resp
 
     def getWavStream(self,text):
-        wav_path = os.path.join(util.getTmpfs(),'speech.wav')
-        mp3_path = os.path.join(util.getTmpfs(),'speech.mp3')
+
+        wav_path = os.path.join(utils.getTmpfs(),'speech.wav')
+        mp3_path = os.path.join(utils.getTmpfs(),'speech.mp3')
         self.runCommand(text,mp3_path)
         self.process = subprocess.Popen(['mpg123','-w',wav_path,mp3_path],
                                         stdout=(open(os.path.devnull, 'w')),
                                         stderr=subprocess.STDOUT,
                                         universal_newlines=True)
-        while self.process.poll() is None and self.active: util.sleep(10)
+        while self.process.poll() is None and self.active: xbmc.sleep(10)
         os.remove(mp3_path)
         return open(wav_path,'rb')
 

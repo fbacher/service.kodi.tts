@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import xbmc,binascii
 
-BASE_COMMAND = 'XBMC.NotifyAll(service.xbmc.tts,SAY,"{{\\"text\\":\\"{0}\\",\\"interrupt\\":{1}}}")'
+BASE_COMMAND = 'XBMC.NotifyAll(service.kodi.tts,SAY,"{{\\"text\\":\\"{0}\\",\\"interrupt\\":{1}}}")'
 
 #def safeEncode(text):
 #    return binascii.hexlify(text.encode('utf-8'))
@@ -15,4 +15,4 @@ def sayText(text,interrupt=False):
     xbmc.executebuiltin(command)
 
 def stop():
-    xbmc.executebuiltin('XBMC.NotifyAll(service.xbmc.tts,STOP)')
+    xbmc.executebuiltin('XBMC.NotifyAll(service.kodi.tts,STOP)')

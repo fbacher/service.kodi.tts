@@ -1,8 +1,18 @@
 # -*- coding: utf-8 -*-
 
 import os, subprocess
-from . import base
-from lib import util
+
+from backends import base
+from common.constants import Constants
+from common.system_queries import SystemQueries
+from common.logger import LazyLogger
+
+
+if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
+    module_logger = LazyLogger.get_addon_module_logger().getChild(
+        'lib.backends')
+else:
+    module_logger = LazyLogger.get_addon_module_logger()
 
 def getStartupInfo():
     if hasattr(subprocess,'STARTUPINFO'): #Windows
@@ -19,8 +29,24 @@ class CepstralTTSOEBackend(base.SimpleTTSBackendBase):
     provider = 'Cepstral_OE'
     displayName = 'Cepstral OpenElec'
     canStreamWav = True
+    pitchConstraints = (-6, 0, 14, True)
+    speedConstraints = (80, 170, 450, True)
+    volumeConstraints = (12, 0, 12, True)
+
+    settings = {
+        'pitch',
+        'speed',
+        'use_aoss',
+        'voice',
+        'volume'}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if type(self)._logger is None:
+            type(self)._logger = module_logger.getChild(type(self).__name__)  # type: LazyLogger
 
     def init(self):
+
         self.process = None
         self.aplayProcess = None
         self.setMode(base.SimpleTTSBackendBase.ENGINESPEAK)
@@ -91,12 +117,27 @@ class CepstralTTSBackend(base.SimpleTTSBackendBase):
 
     }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._logger = module_logger.getChild(self.__class__.__name__)  # type: LazyLogger
+
     def init(self):
         self.setMode(base.SimpleTTSBackendBase.ENGINESPEAK)
         self.startupinfo = getStartupInfo()
         self.update()
         self.process = None
         self.restartProcess()
+
+    @staticmethod
+    def isSupportedOnPlatform():
+        return SystemQueries.isLinux() or SystemQueries.isWindows() or SystemQueries.isOSX()
+
+    @staticmethod
+    def isInstalled():
+        installed = False
+        if CepstralTTSBackend.isSupportedOnPlatform():
+            installed = True
+        return installed
 
     def restartProcess(self):
         self.stopProcess()
@@ -124,8 +165,8 @@ class CepstralTTSBackend(base.SimpleTTSBackendBase):
         self.voice = self.setting('voice')
         self.rate = self.setting('speed')
         self.useAOSS = self.setting('use_aoss')
-        if self.useAOSS and not util.commandIsAvailable('aoss'):
-            util.LOG('Cepstral: Use aoss is enabled, but aoss is not found. Disabling.')
+        if self.useAOSS and not SystemQueries.commandIsAvailable('aoss'):
+            self._logger.info('Cepstral: Use aoss is enabled, but aoss is not found. Disabling.')
             self.useAOSS = False
         volume = self.setting('volume')
         self.volume = int(round(100 * (10**(volume/20.0)))) #convert from dB to percent

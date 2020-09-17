@@ -1,17 +1,18 @@
 #TODO: NOT WORKING AND NOT USED CURRENTLY
 
 # -*- coding: utf-8 -*-
-from .base import WindowHandlerBase
-from lib import addoninfo, util
 import xbmcgui
-T = util.T
+
+from .base import WindowHandlerBase
+from common.messages import Messages
+from utils import addoninfo
 
 class NoticeDialog(WindowHandlerBase):
-    ID = 'notice'
+    ID = 'info'
 
     def init(self):
         self.notices = []
-        self._visible = True #Pretend notice was show so we check stuff on startup
+        self._visible = True #Pretend info was show so we check stuff on startup
         self.lastHeading = '' #401
         self.lastMessage = '' #402
         self.setWindow()
@@ -42,7 +43,7 @@ class NoticeDialog(WindowHandlerBase):
         if not self.notices: return None
         ret = []
         for n in self.notices:
-            ret.append('{0}: {1}... {2}'.format(T(32168),n[0],n[1]))
+            ret.append('{0}: {1}... {2}'.format(Messages.get_msg(Messages.NOTICE),n[0],n[1]))
         self.init()
         #print ret
         return ret
@@ -52,9 +53,9 @@ class NoticeDialog(WindowHandlerBase):
         if not addoninfo.checkForNewVersions(): return None
         details = addoninfo.getUpdatedAddons()
         if not details: return None
-        ret = ['{0}... '.format(T(32166))]
+        ret = ['{0}... '.format(Messages.get_msg(Messages.ADDONS_UPDATED))]
         for d in details:
-            item = '{0} {1} {2}'.format(d['name'],T(32167),d['version'])
+            item = '{0} {1} {2}'.format(d['name'],Messages.get_msg(Messages.VERSION),d['version'])
             if not item in ret:
                 ret.append(item)
         #print ret

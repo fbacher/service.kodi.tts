@@ -1,17 +1,40 @@
 # -*- coding: utf-8 -*-
 
 import urllib.request, urllib.parse, urllib.error, urllib.request, urllib.error, urllib.parse, shutil, os
-from . import base, audio
-from lib import util
-import textwrap
-from . import asyncconnections
 
-class SpeechUtilComTTSBackend(base.SimpleTTSBackendBase):
+import textwrap
+
+
+from common.constants import Constants
+from common.setting_constants import Languages, Players, Genders, Misc
+from common.logger import LazyLogger
+from common.messages import Messages
+from common.settings import Settings
+from common.system_queries import SystemQueries
+from common import utils
+from backends import asyncconnections
+from backends.base import SimpleTTSBackendBase
+from backends import audio
+
+
+if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
+    module_logger = LazyLogger.get_addon_module_logger().getChild(
+        'lib.backends')
+else:
+    module_logger = LazyLogger.get_addon_module_logger()
+
+
+class SpeechUtilComTTSBackend(SimpleTTSBackendBase):
     provider = 'speechutil'
     displayName = 'speechutil.com'
     ttsURL = 'http://speechutil.com/convert/wav?text={0}'
     headers = { 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.116 Safari/537.36' }
     canStreamWav = True
+
+
+    def __init__(self):
+        super().__init__()
+        self._logger = module_logger.getChild(self.__class__.__name__)  # type: LazyLogger
 
     def init(self):
         self.process = None
@@ -20,9 +43,9 @@ class SpeechUtilComTTSBackend(base.SimpleTTSBackendBase):
         if not text: return
         sections = textwrap.wrap(text,100)
         for text in sections:
-            outFile = self.player.getOutFile(text)
+            outFile = self.player_handler.getOutFile(text, use_cache=False)
             if not self.runCommand(text,outFile): return
-            self.player.play()
+            self.player_handler.play()
 
     def runCommand(self,text,outFile):
         h = asyncconnections.Handler()
@@ -34,7 +57,7 @@ class SpeechUtilComTTSBackend(base.SimpleTTSBackendBase):
         except (asyncconnections.StopRequestedException, asyncconnections.AbortRequestedException):
             return False
         except:
-            util.ERROR('Failed to open speechutil.com TTS URL',hide_tb=True)
+            self._logger.error('Failed to open speechutil.com TTS URL',hide_tb=True)
             return False
 
         with open(outFile,'wb') as out:
@@ -42,7 +65,7 @@ class SpeechUtilComTTSBackend(base.SimpleTTSBackendBase):
         return True
 
     def getWavStream(self,text):
-        wav_path = os.path.join(util.getTmpfs(),'speech.wav')
+        wav_path = os.path.join(utils.getTmpfs(),'speech.wav')
         if not self.runCommand(text,wav_path): return None
         return open(wav_path,'rb')
 

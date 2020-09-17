@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import xbmc
 from . import base
-from lib import util
+from common.messages import Messages
 
 class VideoLibraryWindowReader(base.DefaultWindowReader):
     ID = 'videolibrary'
@@ -14,8 +14,8 @@ class VideoLibraryWindowReader(base.DefaultWindowReader):
         if not text: return base.DefaultWindowReader.getControlText(self,controlID)
         status = ''
         if xbmc.getCondVisibility('ListItem.IsResumable'):
-            status = ': {0}'.format(util.T(32199))
+            status = ': {0}'.format(Messages.get_msg(Messages.RESUMABLE))
         else:
             if xbmc.getInfoLabel('ListItem.Overlay') == 'OverlayWatched.png':
-                status = ': {0}'.format(util.T(32198))
+                status = ': {0}'.format(Messages.get_msg(Messages.WATCHED))
         return ('{0}{1}'.format(text,status),text)

@@ -1,37 +1,69 @@
 # -*- coding: utf-8 -*-
-from . import base
+
 import urllib.request, urllib.parse, urllib.error, urllib.request, urllib.error, urllib.parse
-from lib import util
 import shutil
 
-class SpeechServerBackend(base.SimpleTTSBackendBase):
+
+from common.constants import Constants
+from common.logger import LazyLogger
+from common.messages import Messages
+from common.settings import Settings
+from common.system_queries import SystemQueries
+from backends.base import SimpleTTSBackendBase
+
+
+if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
+    module_logger = LazyLogger.get_addon_module_logger().getChild(
+        'lib.backends')
+else:
+    module_logger = LazyLogger.get_addon_module_logger()
+
+
+class SpeechServerBackend(SimpleTTSBackendBase):
     provider = 'ttsd'
     displayName = 'HTTP TTS Server (Requires Running Server)'
     canStreamWav = False
+    pitchConstraints = (-100, 0, 100, True)
+    speedConstraints = (-20, 0, 20, True)
 
-    settings = {    'engine': None,
-                    'voice': None,
-                    'voice.Flite': None,
-                    'voice.eSpeak': None,
-                    'voice.SAPI': None,
-                    'voice.Cepstral': None,
-                    'remote_speed': 0,
-                    'player_speed': 0,
-                    'remote_pitch': 0,
-                    'remote_volume': 0,
-                    'player_volume': 0,
-                    'host':     '127.0.0.1',
-                    'port':     8256,
-                    'player': None,
-                    'perl_server': True,
-                    'speak_on_server': False,
-                    'pipe': False
-    }
+    settings = {'engine': None,
+                'host': '127.0.0.1',
+                'perl_server': True,
+                'pipe': False,
+                'player': None,
+                'player_speed': 0,
+                'player_volume': 0,
+                'port': 8256,
+                'remote_pitch': 0,
+                'remote_speed': 0,
+                'remote_volume': 0,
+                'speak_on_server': False,
+                'voice': None,
+                'voice.Flite': None,
+                'voice.eSpeak': None,
+                'voice.SAPI': None,
+                'voice.Cepstral': None
+                }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._logger = module_logger.getChild(self.__class__.__name__)  # type: LazyLogger
 
     def init(self):
         self.process = None
         self.failFlag = False
         self.update()
+
+    @staticmethod
+    def isSupportedOnPlatform():
+        return SystemQueries.isLinux() or SystemQueries.isWindows() or SystemQueries.isOSX()
+
+    @staticmethod
+    def isInstalled():
+        installed = False
+        if SpeechServerBackend.isSupportedOnPlatform():
+            installed = True
+        return installed
 
     def setHTTPURL(self):
         host = self.setting('host')
@@ -64,7 +96,7 @@ class SpeechServerBackend(base.SimpleTTSBackendBase):
                 shutil.copyfileobj(res,wav)
                 self.failFlag = False
             except:
-                err = util.ERROR('SpeechServerBackend: wav.write',hide_tb=True)
+                err = self._logger.error('SpeechServerBackend: wav.write',hide_tb=True)
                 if self.failFlag: self.flagAsDead(reason=err) #This is the second fail in a row, mark dead
                 self.failFlag = True
                 return False
@@ -78,7 +110,7 @@ class SpeechServerBackend(base.SimpleTTSBackendBase):
             urllib.request.urlopen(req)
             self.failFlag = False
         except:
-            err = util.ERROR('SpeechServerBackend: say',hide_tb=True)
+            err = self._logger.error('SpeechServerBackend: say',hide_tb=True)
             if self.failFlag: self.flagAsDead(reason=err) #This is the second fail in a row, mark dead
             self.failFlag = True
             return False
@@ -98,7 +130,7 @@ class SpeechServerBackend(base.SimpleTTSBackendBase):
             self.failFlag = False
             return res
         except:
-            err = util.ERROR('SpeechServerBackend: Failed to get wav from server',hide_tb=True)
+            err = self._logger.error('SpeechServerBackend: Failed to get wav from server',hide_tb=True)
             if self.failFlag: self.flagAsDead(reason=err) #This is the second fail in a row, mark dead
             self.failFlag = True
             return False
@@ -108,11 +140,11 @@ class SpeechServerBackend(base.SimpleTTSBackendBase):
         self.serverMode = False
         if self.setting('speak_on_server'):
             self.serverMode = True
-            return base.SimpleTTSBackendBase.ENGINESPEAK
+            return self.ENGINESPEAK
         elif self.setting('pipe'):
-            return base.SimpleTTSBackendBase.PIPE
+            return self.PIPE
         else:
-            return base.SimpleTTSBackendBase.WAVOUT
+            return self.WAVOUT
 
     def update(self):
         self.setPlayer(self.setting('player'))
@@ -123,14 +155,14 @@ class SpeechServerBackend(base.SimpleTTSBackendBase):
         version = self.getVersion()
         if version.startswith('speech.server'):
             if self.perlServer:
-                util.LOG('Perl server not detected. Switch to speech.server mode.')
+                self._logger.debug('Perl server not detected. Switch to speech.server mode.')
                 self.perlServer = False
         elif version.startswith('perl.server'):
             if not self.perlServer:
-                util.LOG('speech.server not detected. Switch to Perl server mode.')
+                self._logger.debug('speech.server not detected. Switch to Perl server mode.')
                 self.perlServer = True
         else:
-            util.LOG('No server detected. Flagging as dead.')
+            self._logger.debug('No server detected. Flagging as dead.')
             self.flagAsDead(reason=version)
 
         if self.perlServer:
@@ -153,10 +185,10 @@ class SpeechServerBackend(base.SimpleTTSBackendBase):
             return resp.read()
         except urllib.error.HTTPError as e:
             if e.code == 404: return 'perl.server'
-            err = util.ERROR('Failed to get speech.server version',hide_tb=True)
+            err = self._logger.error('Failed to get speech.server version',hide_tb=True)
             return err
         except:
-            err = util.ERROR('Failed to get speech.server version',hide_tb=True)
+            err = self._logger.error('Failed to get speech.server version',hide_tb=True)
             return err
 
     def serverStop(self):
@@ -164,7 +196,7 @@ class SpeechServerBackend(base.SimpleTTSBackendBase):
         try:
             urllib.request.urlopen(req)
         except:
-            util.ERROR('SpeechServerBackend: stop',hide_tb=True)
+            self._logger.error('SpeechServerBackend: stop',hide_tb=True)
 
     def stop(self):
         if self.serverMode: self.serverStop()
@@ -181,7 +213,7 @@ class SpeechServerBackend(base.SimpleTTSBackendBase):
         except urllib.error.HTTPError:
             return None
         except:
-            util.ERROR('SpeechServerBackend: voices',hide_tb=True)
+            self._logger.error('SpeechServerBackend: voices',hide_tb=True)
             self.failFlag = True
             return None
 
@@ -194,7 +226,7 @@ class SpeechServerBackend(base.SimpleTTSBackendBase):
             except urllib.error.HTTPError:
                 return None
             except:
-                util.ERROR('SpeechServerBackend: engines',hide_tb=True)
+                self._logger.error('SpeechServerBackend: engines',hide_tb=True)
                 self.failFlag = True
                 return None
 

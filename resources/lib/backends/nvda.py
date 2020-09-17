@@ -1,17 +1,23 @@
 # -*- coding: utf-8 -*-
 import os, ctypes
-from lib import util
 from .base import TTSBackendBase
+from common.constants import Constants
+from common.configuration_utils import ConfigUtils
+from common.old_logger import OldLogger
+from common.logger import LazyLogger
+
+module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
+
 
 def getDLLPath():
-    p = os.path.join(util.profileDirectory(),'nvdaControllerClient32.dll')
+    p = os.path.join(Constants.PROFILE_PATH,'nvdaControllerClient32.dll')
     if os.path.exists(p): return p
-    p = os.path.join(util.backendsDirectory(),'nvda','nvdaControllerClient32.dll')
+    p = os.path.join(Constants.BACKENDS_DIRECTORY,'nvda','nvdaControllerClient32.dll')
     if os.path.exists(p): return p
     try:
         import xbmc
         if xbmc.getCondVisibility('System.HasAddon(script.module.nvdacontrollerclient)'):
-            if util.DEBUG: util.LOG('Found script.module.nvdacontrollerclient module for NVDA')
+            if OldLogger.DEBUG: module_logger.info('Found script.module.nvdacontrollerclient module for NVDA')
             import xbmcaddon
             nvdaCCAddon = xbmcaddon.Addon('script.module.nvdacontrollerclient')
             p = os.path.join(nvdaCCAddon.getAddonInfo('path'),'nvda','nvdaControllerClient32.dll')
@@ -28,6 +34,8 @@ except ImportError:
 class NVDATTSBackend(TTSBackendBase):
     provider = 'nvda'
     displayName = 'NVDA'
+    _logger = module_logger.getChild('NVDATTSBackend')
+
 
     @staticmethod
     def available():
@@ -49,10 +57,22 @@ class NVDATTSBackend(TTSBackendBase):
         except:
             self.dll = None
 
+    @staticmethod
+    def isSupportedOnPlatform():
+        return ConfigUtils.isWindows()
+
+    @staticmethod
+    def isInstalled():
+        installed = False
+        if NVDATTSBackend.isSupportedOnPlatform():
+            installed = NVDATTSBackend.available()
+
+        return installed
+
     def isRunning(self):
         return self.dll.nvdaController_testIfRunning() == 0
 
-    def say(self,text,interrupt=False):
+    def say(self,text,interrupt=False, preload_cache=False):
         if not self.dll:
             return
 

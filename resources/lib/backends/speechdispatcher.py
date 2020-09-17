@@ -1,45 +1,99 @@
 # -*- coding: utf-8 -*-
-from .base import ThreadedTTSBackend
 import locale, os
-from . import speechd
-from lib import util
+from typing import Any, List, Union, Type
+
+from backends.audio import BasePlayerHandler, WavAudioPlayerHandler
+from backends.base import SimpleTTSBackendBase, ThreadedTTSBackend
+from backends import base
+from backends.audio import BuiltInAudioPlayer, BuiltInAudioPlayerHandler
+from backends.speechd import Speaker, SSIPCommunicationError
+from common.constants import Constants
+from common.setting_constants import Backends, Languages, Players, Genders, Misc
+from common.logger import LazyLogger
+from common.messages import Messages
+from common.settings import Settings
+from common.system_queries import SystemQueries
+from common import utils
+
+
+if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
+    module_logger = LazyLogger.get_addon_module_logger().getChild(
+        'lib.backends')
+else:
+    module_logger = LazyLogger.get_addon_module_logger()
+
+'''
+    Speech Dispatcher is a Linux TTS abstraction layer. It allows for programs
+    to interact with a speech engine using a consistent interface. It also allows
+    the user to conveniently change which speech engine that they want to use system
+    wide without having to go modify settings everywhere.
+    
+    Speech Dispatcher is long in the tooth, but still useful.
+'''
+
+if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
+    module_logger = LazyLogger.get_addon_module_logger().getChild(
+        'lib.backends')
+else:
+    module_logger = LazyLogger.get_addon_module_logger()
+
 
 def getSpeechDSpeaker(test=False):
     try:
-        return speechd.Speaker('XBMC', 'XBMC')
+        return Speaker('kodi', 'kodi')
     except:
         try:
             socket_path = os.path.expanduser('~/.speech-dispatcher/speechd.sock')
-            so = speechd.Speaker('XBMC', 'XBMC',socket_path=socket_path)
+            so = Speaker('kodi', 'kodi',socket_path=socket_path)
             try:
                 so.set_language(locale.getdefaultlocale()[0][:2])
             except (KeyError,IndexError):
                 pass
             return so
         except:
-            if not test: util.ERROR('Speech-Dispatcher: failed to create Speaker',hide_tb=True)
+            if not test: module_logger.error('Speech-Dispatcher: failed to create Speaker',
+                                             hide_tb=True)
     return None
+
 
 class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
     """Supports The speech-dispatcher on linux"""
 
-    provider = 'Speech-Dispatcher'
+    provider = Backends.SPEECH_DISPATCHER_ID
     displayName = 'Speech Dispatcher'
-    volumeConstraints = (-100,0,100,True)
     volumeExternalEndpoints = (0,200)
     volumeStep = 5
     volumeSuffix = '%'
+    pitchConstraints = (0, 0, 100, True)
+    speedConstraints = (-100, 0, 100, True)
+    volumeConstraints = (-100,0,100,True)
+
     settings = {
-                    'module':None,
-                    'voice':None,
-                    'speed':0,
-                    'pitch':0,
-                    'volume':100
-    }
+                'module': None,
+                'pitch': 0,
+                'speed': 0,
+                'voice': None,
+                'volume': 100
+                }
+
+    def __init__(self):
+        super().__init__()
+        self._logger = module_logger.getChild(self.__class__.__name__)  # type: LazyLogger
 
     def init(self):
         self.updateMessage = None
         self.connect()
+
+    @staticmethod
+    def isSupportedOnPlatform():
+        return SystemQueries.isLinux()
+
+    @staticmethod
+    def isInstalled():
+        installed = False
+        if SpeechDispatcherTTSBackend.isSupportedOnPlatform():
+            installed = True
+        return installed
 
     def connect(self):
         self.speechdObject = getSpeechDSpeaker()
@@ -51,7 +105,7 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
             return
         try:
             self.speechdObject.speak(text)
-        except speechd.SSIPCommunicationError:
+        except SSIPCommunicationError:
             self.reconnect()
         except AttributeError: #Happens on shutdown
             pass
@@ -59,7 +113,7 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
     def stop(self):
         try:
             self.speechdObject.cancel()
-        except speechd.SSIPCommunicationError:
+        except SSIPCommunicationError:
             self.reconnect()
         except AttributeError: #Happens on shutdown
             pass
@@ -67,7 +121,7 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
     def reconnect(self):
         self.close()
         if self.active:
-            util.LOG('Speech-Dispatcher reconnecting...')
+            self._logger.debug('Speech-Dispatcher reconnecting...')
             self.connect()
 
     def volumeUp(self):
@@ -95,8 +149,8 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
             self.speechdObject.set_pitch(self.setting('pitch'))
             vol = self.setting('volume')
             self.speechdObject.set_volume(vol - 100) #Covert from % to (-100 to 100)
-        except speechd.SSIPCommunicationError:
-            util.ERROR('SpeechDispatcherTTSBackend.update()',hide_tb=True)
+        except SSIPCommunicationError:
+            self._logger.error('SpeechDispatcherTTSBackend.update()',hide_tb=True)
         msg = self.getUpdateMessage()
         if msg: self.say(msg,interrupt=True)
 

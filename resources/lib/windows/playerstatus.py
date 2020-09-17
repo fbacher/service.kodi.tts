@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
-from .base import WindowReaderBase, WindowHandlerBase
-from lib import util
 import xbmc
-T = util.T
+
+from .base import WindowReaderBase, WindowHandlerBase
+from common import utils
+from common.messages import Messages
+
 
 class PlayerStatus(WindowHandlerBase):
     ID = 'playerstatus'
@@ -24,7 +26,7 @@ class PlayerStatus(WindowHandlerBase):
 
     def seek(self,isSpeaking):
         if self.updateMode('seeking'):
-            return util.XT(773)
+            return utils.XT(773)
         else:
             st = xbmc.getInfoLabel('Player.Time')
             if not isSpeaking and self.updateProgress(st):
@@ -40,19 +42,20 @@ class PlayerStatus(WindowHandlerBase):
         elif xbmc.getCondVisibility('Player.Paused'):
             if xbmc.getCondVisibility('Player.Caching'):
                 if self.updateMode('buffering'):
-                    return util.XT(15107)
+                    return utils.XT(15107)
                 else:
                     pct = xbmc.getInfoLabel('Player.CacheLevel')
                     if not isSpeaking and self.updateProgress(pct):
                         return pct
             elif xbmc.getCondVisibility('!Player.Seeking + !Player.DisplayAfterSeek'):
                 if self.updateMode('paused'):
-                    return '{0}... {1} {2}'.format(util.XT(112),util.XT(143), xbmc.getInfoLabel('$INFO[MusicPlayer.Artist,$LOCALIZE[557]: ,:] $INFO[Player.Title,$LOCALIZE[369]: ,:]'))
+                    return '{0}... {1} {2}'.format(utils.XT(112),utils.XT(143),
+                                                   xbmc.getInfoLabel('$INFO[MusicPlayer.Artist,$LOCALIZE[557]: ,:] $INFO[Player.Title,$LOCALIZE[369]: ,:]'))
             elif xbmc.getCondVisibility('Player.DisplayAfterSeek'):
                 return self.seek(isSpeaking)
         elif xbmc.getCondVisibility('Player.Forwarding'):
             if self.updateMode('fastforward'):
-                return T(32170)
+                return Messages.get_msg(Messages.FAST_FORWARD)
             else:
                 if not isSpeaking:
                     if        xbmc.getCondVisibility('Player.Forwarding2x') and self.updateProgress('2x'): return '2 X'
@@ -62,7 +65,7 @@ class PlayerStatus(WindowHandlerBase):
                     elif    xbmc.getCondVisibility('Player.Forwarding32x') and self.updateProgress('32x'): return '32 X'
         elif xbmc.getCondVisibility('Player.Rewinding'):
             if self.updateMode('rewind'):
-                return T(32169)
+                return Messages.get_msg(Messages.REWIND)
             else:
                 if not isSpeaking:
                     if        xbmc.getCondVisibility('Player.Rewinding2x') and self.updateProgress('2x'): return '2 X'

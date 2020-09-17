@@ -1,9 +1,15 @@
 # -*- coding: utf-8 -*-
+
 import sys, os
 
-sys.path.insert(0,os.path.dirname(__file__))
+# sys.path.insert(0,os.path.dirname(__file__))
 
-from lib import util
+from common.constants import Constants
+from common.system_queries import SystemQueries
+from common.settings import Settings
+from common.logger import LazyLogger
+
+from .base import TTSBackendBase
 from .base import LogOnlyTTSBackend
 from .nvda import NVDATTSBackend
 from .festival import FestivalTTSBackend
@@ -21,6 +27,14 @@ from .responsive_voice import ResponsiveVoiceTTSBackend
 # from speechutil import SpeechUtilComTTSBackend
 from .recite import ReciteTTSBackend
 #from voiceover import VoiceOverBackend #Can't test
+
+
+if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
+    module_logger = LazyLogger.get_addon_module_logger().getChild(
+        'lib.backends')
+else:
+    module_logger = LazyLogger.get_addon_module_logger()
+
 
 backendsByPriority = [  SAPITTSBackend,
                         OSXSayTTSBackend,
@@ -41,7 +55,8 @@ backendsByPriority = [  SAPITTSBackend,
 #                        SpeechUtilComTTSBackend,
                         ESpeakCtypesTTSBackend,
                         LogOnlyTTSBackend
-]
+                     ]
+
 
 def removeBackendsByProvider(to_remove):
     rem = []
@@ -50,28 +65,35 @@ def removeBackendsByProvider(to_remove):
             rem.append(b)
     for r in rem: backendsByPriority.remove(r)
 
+
 def getAvailableBackends(can_stream_wav=False):
     available = []
-    util.VERBOSE_LOG('backends.__init__.getAvailableBackends can_stream_wav: ' + str(can_stream_wav))
+    module_logger.debug_verbose('backends.__init__.getAvailableBackends can_stream_wav: ' + str(can_stream_wav))
     for b in backendsByPriority:
-        util.VERBOSE_LOG('backend:' + str(b))
+        if module_logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+            module_logger.debug_verbose('backend: {}'.format(type(b)))
+
         if not b._available(): continue
+        if not b.isSupportedOnPlatform():
+            continue
         if can_stream_wav and not b.canStreamWav: continue
         available.append(b)
     return available
 
+
 def getBackendFallback():
-    if util.isATV2():
+    if SystemQueries.isATV2():
         return FliteTTSBackend
-    elif util.isWindows():
+    elif SystemQueries.isWindows():
         return SAPITTSBackend
-    elif util.isOSX():
+    elif SystemQueries.isOSX():
         return OSXSayTTSBackend
-    elif util.isOpenElec():
+    elif SystemQueries.isOpenElec():
         return ESpeakTTSBackend
     for b in backendsByPriority:
         if b._available(): return b
     return None
+
 
 def getVoices(provider):
     voices = None
@@ -80,12 +102,14 @@ def getVoices(provider):
         voices = bClass.voices()
     return voices
 
+
 def getLanguages(provider):
     languages = None
     bClass = getBackendByProvider(provider)
     if bClass:
         with bClass() as b: languages = b.languages()
     return languages
+
 
 def getSettingsList(provider,setting,*args):
     settings = None
@@ -94,6 +118,7 @@ def getSettingsList(provider,setting,*args):
         settings = bClass.settingList(setting,*args)
     return settings
 
+
 def getPlayers(provider):
     players = None
     bClass = getBackendByProvider(provider)
@@ -101,14 +126,19 @@ def getPlayers(provider):
         players = bClass.players()
     return players
 
-def getBackend(provider='auto'):
-    util.VERBOSE_LOG('backends.__init__.getBackend provider: ' + provider)
-    provider = util.getSetting('backend') or provider
+
+def getBackend(provider: str = Settings.BACKEND_DEFAULT) -> TTSBackendBase:
+    if module_logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+        module_logger.debug_verbose('backends.__init__.getBackend provider: {}'
+                                    .format(str(provider)))
+
+    provider = Settings.getSetting('backend') or provider
     b = getBackendByProvider(provider)
     if not b or not b._available():
          for b in backendsByPriority:
             if b._available(): break
     return b
+
 
 def getWavStreamBackend(provider='auto'):
     b = getBackendByProvider(provider)
@@ -116,6 +146,7 @@ def getWavStreamBackend(provider='auto'):
          for b in backendsByPriority:
             if b._available() and b.canStreamWav: break
     return b
+
 
 def getBackendByProvider(name):
     if name == 'auto': return None

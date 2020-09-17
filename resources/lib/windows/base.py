@@ -1,17 +1,22 @@
 # -*- coding: utf-8 -*-
-import xbmc, xbmcgui
+
+from common.messages import Messages
 from . import guitables
 from . import windowparser
 from . import skintables
-from lib import util
+
+import xbmc, xbmcgui
+
 
 CURRENT_SKIN = skintables.CURRENT_SKIN
+
 
 def parseItemExtra(controlID,current=None):
     texts = windowparser.getWindowParser().getListItemTexts(controlID)
     if current and texts:
         while current in texts: texts.pop(texts.index(current))
     return texts
+
 
 class WindowHandlerBase:
     ID = None
@@ -35,6 +40,7 @@ class WindowHandlerBase:
 
     def close(self): pass
 
+
 class WindowReaderBase(WindowHandlerBase):
     _slideoutGroupID = 9000
 
@@ -55,7 +61,10 @@ class WindowReaderBase(WindowHandlerBase):
             return ''
         numItems = xbmc.getInfoLabel('Container({0}).NumItems'.format(self.service.controlID))
         if numItems:
-            return '... {0} {1}'.format(numItems,numItems != '1' and util.T(32107) or util.T(32106))
+            return '... {0} {1}'.format(numItems,
+                                        numItems != '1'
+                                        and Messages.get_msg(Messages.ITEMS)
+                                        or Messages.get_msg(Messages.ITEM))
         return ''
 
     def getSecondaryText(self): return None
@@ -73,13 +82,17 @@ class WindowReaderBase(WindowHandlerBase):
     def getSettingControlText(self,controlID):
         text = xbmc.getInfoLabel('System.CurrentControl')
         if text.endswith(')'): #Skip this most of the time
-            text = text.replace('( )','{0} {1}'.format(self.service.tts.pauseInsert,util.T(32174))).replace('(*)','{0} {1}'.format(self.service.tts.pauseInsert,util.T(32173))) #For boolean settings
+            text = text.replace('( )','{0} {1}'.format(self.service.tts.pauseInsert,
+                                                       Messages.get_msg(Messages.NO))
+                                .replace('(*)','{0} {1}'.format(self.service.tts.pauseInsert,
+                                                                Messages.get_msg(Messages.YES)))) #For boolean settings
         return text
 
     def getSlideoutText(self,controlID):
         text = self.getSettingControlText(controlID)
         if not text: return ('','')
         return (text,text)
+
 
 class DefaultWindowReader(WindowReaderBase):
     ID = 'default'
@@ -122,6 +135,7 @@ class DefaultWindowReader(WindowReaderBase):
         if not isinstance(text,(list,tuple)): text = [text]
         return text
 
+
 class NullReader(WindowReaderBase):
     ID = 'null'
     def getName(self): return None
@@ -130,6 +144,7 @@ class NullReader(WindowReaderBase):
 
     def getWindowExtraTexts(self): return None
 
+
 class KeymapKeyInputReader(NullReader):
     ID = 'keymapkeyinput'
-    def getWindowTexts(self): return [util.T(32124)]
+    def getWindowTexts(self): return [Messages.get_msg(Messages.PRESS_THE_KEY_TO_ASSIGN)]

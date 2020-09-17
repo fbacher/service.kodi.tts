@@ -1,15 +1,37 @@
 # -*- coding: utf-8 -*-
-from . import base
 import subprocess
 import sys
-from lib import util
 
-class VoiceOverBackend(base.SimpleTTSBackendBase):
+
+from common.constants import Constants
+from common.setting_constants import Languages, Players, Genders, Misc
+from common.logger import LazyLogger
+from common.messages import Messages
+from common.settings import Settings
+from common.system_queries import SystemQueries
+from common import utils
+from common.system_queries import SystemQueries
+from backends.base import SimpleTTSBackendBase
+
+if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
+    module_logger = LazyLogger.get_addon_module_logger().getChild(
+        'lib.backends')
+else:
+    module_logger = LazyLogger.get_addon_module_logger()
+
+
+class VoiceOverBackend(SimpleTTSBackendBase):
     provider = 'voiceover'
     displayName = 'VoiceOver'
 
+
+    def __init__(self):
+        super().__init__()
+        self._logger = module_logger.getChild(self.__class__.__name__)  # type: LazyLogger
+
+
     def init(self):
-        self.setMode(base.SimpleTTSBackendBase.ENGINESPEAK)
+        self.setMode(SimpleTTSBackendBase.ENGINESPEAK)
 
     def runCommandAndSpeak(self,text):
         subprocess.call(['osascript', '-e',
@@ -23,7 +45,7 @@ class VoiceOverBackend(base.SimpleTTSBackendBase):
 
     @staticmethod
     def available():
-        return sys.platform == 'darwin' and not util.isATV2()
+        return sys.platform == 'darwin' and not SystemQueries.isATV2()
 
 #on isVoiceOverRunning()
 #	set isRunning to false
