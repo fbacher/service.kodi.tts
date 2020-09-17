@@ -1,7 +1,7 @@
-service.xbmc.tts
+service.kodi.tts
 ================
 
-Text to speech for Kodi (XBMC)
+Text to speech for Kodi
 ------------------------------
 Adds speech to Kodi. It does this by using the available speech engines for the particular platform, and aims to
 work 'out of the box' as much as possible.
@@ -12,7 +12,7 @@ If you want to ensure you are using the latest version of the addon you can inst
 
 Installation of the repository should be done through Kodi System::Settings::Add-ons::Install from zip file
 
-Support is available at: http://forum.xbmc.org/showthread.php?tid=196757
+Support is available at: https://forum.kodi.tv/showthread.php?tid=117199
 
 Ideas:
  * Enable F12 key by default at installation
