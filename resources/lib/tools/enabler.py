@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
-import os, sys, xbmc, xbmcaddon
+import os
+import sys
+import xbmc
+import xbmcaddon
+import xbmcvfs
 
-DISABLE_PATH = os.path.join(xbmc.translatePath('special://profile'), 'addon_data', 'service.xbmc.tts', 'DISABLED')
-ENABLE_PATH = os.path.join(xbmc.translatePath('special://profile'), 'addon_data', 'service.xbmc.tts', 'ENABLED')
+DISABLE_PATH = os.path.join(xbmcvfs.translatePath('special://profile'), 'addon_data', 'service.kodi.tts', 'DISABLED')
+ENABLE_PATH = os.path.join(xbmcvfs.translatePath('special://profile'), 'addon_data', 'service.kodi.tts', 'ENABLED')
 
 def getXBMCVersion():
     import json
@@ -12,7 +16,7 @@ def getXBMCVersion():
     if not 'version' in data['result']: return None
     return data['result']['version']
 
-BASE = '{ "jsonrpc": "2.0", "method": "Addons.SetAddonEnabled", "params": { "addonid": "service.xbmc.tts","enabled":%s}, "id": 1 }'
+BASE = '{ "jsonrpc": "2.0", "method": "Addons.SetAddonEnabled", "params": { "addonid": "service.kodi.tts","enabled":%s}, "id": 1 }'
 
 
 def enableAddon():
@@ -23,11 +27,11 @@ def enableAddon():
 
     if isPostInstalled():
         if addonIsEnabled():
-            xbmc.executebuiltin('RunScript(service.xbmc.tts)')
+            xbmc.executebuiltin('RunScript(service.kodi.tts)')
         else:
             xbmc.executeJSONRPC(BASE % 'true') #So enable it instead
     else:
-        xbmc.executebuiltin('RunScript(service.xbmc.tts)')
+        xbmc.executebuiltin('RunScript(service.kodi.tts)')
 
 
 def disableAddon():
@@ -59,11 +63,11 @@ def addonIsEnabled():
 
     if isPostInstalled():
         import json
-        resp = xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "id": 1, "method": "Addons.GetAddonDetails", "params": {"addonid":"service.xbmc.tts","properties": ["name","version","enabled"]}}')
+        resp = xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "id": 1, "method": "Addons.GetAddonDetails", "params": {"addonid":"service.kodi.tts","properties": ["name","version","enabled"]}}')
         data = json.loads(resp)
-        if not 'result' in data: return False
-        if not 'addon' in data['result']: return False
-        if not 'enabled' in data['result']['addon']: return False
+        if 'result' not in data: return False
+        if 'addon' not in data['result']: return False
+        if 'enabled' not in data['result']['addon']: return False
         return data['result']['addon']['enabled']
     else:
         return True
@@ -72,11 +76,11 @@ def addonIsEnabled():
 def toggleEnabled():
     try:
         if not addonIsEnabled(): raise Exception('Addon Disabled')
-        xbmcaddon.Addon('service.xbmc.tts')
-        xbmc.log('service.xbmc.tts: DISABLING')
-        xbmc.executebuiltin('RunScript(service.xbmc.tts,key.SHUTDOWN)')
+        xbmcaddon.Addon('service.kodi.tts')
+        xbmc.log('service.kodi.tts: DISABLING')
+        xbmc.executebuiltin('RunScript(service.kodi.tts,key.SHUTDOWN)')
     except:
-        xbmc.log('service.xbmc.tts: ENABLING')
+        xbmc.log('service.kodi.tts: ENABLING')
         enableAddon()
 
 
@@ -91,8 +95,8 @@ def reset():
 
 
 def isPostInstalled():
-    homePath = xbmc.translatePath('special://home')
-    postInstalledPath = os.path.join(homePath, 'addons', 'service.xbmc.tts')
+    homePath = xbmcvfs.translatePath('special://home')
+    postInstalledPath = os.path.join(homePath, 'addons', 'service.kodi.tts')
     return os.path.exists(postInstalledPath)
 
 
