@@ -1,55 +1,51 @@
-
+import os
 import sys
+
 import xbmc
-import xbmcgui
-import xbmcplugin
-import backends
 
-REMOTE_DBG = False
+from common.constants import Constants
+REMOTE_DEBUG: bool = False
 
-# append pydev remote debugger
-if REMOTE_DBG:
-    # Make pydev debugger works for auto reload.
-    # Note pydevd module need to be copied in XBMC\system\python\Lib\pysrc
+if REMOTE_DEBUG:
     try:
-        xbmc.log('service.tts.service trying to attach to debugger', xbmc.LOGDEBUG)
-
-        '''
-            If the server (your python process) has the structure
-                /user/projects/my_project/src/package/module1.py
-
-            and the client has:
-                c:\my_project\src\package\module1.py
-
-            the PATHS_FROM_ECLIPSE_TO_PYTHON would have to be:
-                PATHS_FROM_ECLIPSE_TO_PYTHON = [(r'c:\my_project\src', 
-                r'/user/projects/my_project/src')
-            # with the addon script.module.pydevd, only use `import pydevd`
-            # import pysrc.pydevd as pydevd
-        '''
-        sys.path.append('/home/fbacher/.kodi/addons/script.module.pydevd/lib')
         import pydevd
 
-        # stdoutToServer and stderrToServer redirect stdout and stderr to eclipse
-        # console
+        # Note pydevd module need to be copied in XBMC\system\python\Lib\pysrc
         try:
-            pydevd.settrace('localhost', stdoutToServer=True,
-                            stderrToServer=True)
-        except (Exception) as e:
-            xbmc.log(
-                'Looks like remote debugger was not started prior to plugin start',
-                xbmc.LOGDEBUG)
-            xbmc.log(str(e), xbmc.LOGDEBUG)
+            xbmc.log('Trying to attach to debugger', xbmc.LOGDEBUG)
+            '''
+                If the server (your python process) has the structure
+                    /user/projects/my_project/src/package/module1.py
 
-    except (ImportError) as e:
-        msg = 'Error:  You must add org.python.pydev.debug.pysrc to your PYTHONPATH.'
-        xbmc.log(msg, xbmc.LOGDEBUG)
-        xbmc.log(str(e), xbmc.LOGDEBUG)
-        sys.stderr.write(msg)
-        sys.exit(1)
-    except (BaseException) as e:
-        xbmc.log('Waiting on Debug connection', xbmc.LOGDEBUG)
-        xbmc.log(str(e), xbmc.LOGDEBUG)
+                and the client has:
+                    c:\my_project\src\package\module1.py
+
+                the PATHS_FROM_ECLIPSE_TO_PYTHON would have to be:
+                    PATHS_FROM_ECLIPSE_TO_PYTHON = \
+                          [(r'c:\my_project\src', r'/user/projects/my_project/src')
+                # with the addon script.module.pydevd, only use `import pydevd`
+                # import pysrc.pydevd as pydevd
+            '''
+            addons_path = os.path.join(Constants.ADDON_PATH, '..',
+                                       'script.module.pydevd', 'lib', 'pydevd.py')
+
+            sys.path.append(addons_path)
+            # stdoutToServer and stderrToServer redirect stdout and stderr to eclipse
+            # console
+            try:
+                pydevd.settrace('localhost', stdoutToServer=True,
+                                stderrToServer=True)
+            except AbortException:
+                exit(0)
+            except Exception as e:
+                xbmc.log(
+                    ' Looks like remote debugger was not started prior to plugin start',
+                    xbmc.LOGDEBUG)
+        except BaseException:
+            xbmc.log('Waiting on Debug connection', xbmc.LOGDEBUG)
+    except ImportError:
+        REMOTE_DEBUG = False
+        pydevd = None
 
 
 def main():
@@ -77,7 +73,7 @@ def main():
 
     xbmcplugin.endOfDirectory(addon_handle)
     '''
-    
+
 
 if __name__ == '__main__':
     main()

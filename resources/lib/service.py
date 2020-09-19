@@ -1,17 +1,22 @@
+# -*- coding: utf-8 -*-
+#
 import sys
 import re
-import xbmc
-import xbmcgui
 import time
 import queue
 import json
-from utils import addoninfo, enabler
+import os
 
+import xbmc
+import xbmcgui
+
+from utils import addoninfo
 import backends
 from backends import audio
 import windows
 from windows import playerstatus, notice, backgroundprogress
 from windowNavigation.custom_settings_ui import SettingsGUI
+from common.exceptions import AbortException
 from common.logger import LazyLogger
 from common.messages import Messages
 from common.constants import Constants
@@ -19,6 +24,8 @@ from common.configuration_utils import ConfigUtils
 from common.settings import Settings
 from common.system_queries import SystemQueries
 from common import utils
+
+from tools import enabler
 
 # TODO Remove after eliminating util.getCommand
 
@@ -29,51 +36,49 @@ module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
 __version__ = Constants.VERSION
 module_logger.info(__version__)
 module_logger.info('Platform: {0}'.format(sys.platform))
-REMOTE_DBG = False
 
-# append pydev remote debugger
-if REMOTE_DBG:
-    # Make pydev debugger works for auto reload.
-    # Note pydevd module need to be copied in XBMC\system\python\Lib\pysrc
+REMOTE_DEBUG: bool = False
+
+if REMOTE_DEBUG:
     try:
-        xbmc.log('service.tts.service trying to attach to debugger', xbmc.LOGDEBUG)
-
-        '''
-            If the server (your python process) has the structure
-                /user/projects/my_project/src/package/module1.py
-
-            and the client has:
-                c:\my_project\src\package\module1.py
-
-            the PATHS_FROM_ECLIPSE_TO_PYTHON would have to be:
-                PATHS_FROM_ECLIPSE_TO_PYTHON = [(r'c:\my_project\src', 
-                r'/user/projects/my_project/src')
-            # with the addon script.module.pydevd, only use `import pydevd`
-            # import pysrc.pydevd as pydevd
-        '''
-        sys.path.append('/home/fbacher/.kodi/addons/script.module.pydevd/lib')
         import pydevd
 
-        # stdoutToServer and stderrToServer redirect stdout and stderr to eclipse
-        # console
+        # Note pydevd module need to be copied in XBMC\system\python\Lib\pysrc
         try:
-            pydevd.settrace('localhost', stdoutToServer=True,
-                            stderrToServer=True)
-        except (Exception) as e:
-            xbmc.log(
-                'Looks like remote debugger was not started prior to plugin start',
-                xbmc.LOGDEBUG)
-            xbmc.log(str(e), xbmc.LOGDEBUG)
+            xbmc.log('Trying to attach to debugger', xbmc.LOGDEBUG)
+            '''
+                If the server (your python process) has the structure
+                    /user/projects/my_project/src/package/module1.py
 
-    except (ImportError) as e:
-        msg = 'Error:  You must add org.python.pydev.debug.pysrc to your PYTHONPATH.'
-        xbmc.log(msg, xbmc.LOGDEBUG)
-        xbmc.log(str(e), xbmc.LOGDEBUG)
-        sys.stderr.write(msg)
-        sys.exit(1)
-    except (BaseException) as e:
-        xbmc.log('Waiting on Debug connection', xbmc.LOGDEBUG)
-        xbmc.log(str(e), xbmc.LOGDEBUG)
+                and the client has:
+                    c:\my_project\src\package\module1.py
+
+                the PATHS_FROM_ECLIPSE_TO_PYTHON would have to be:
+                    PATHS_FROM_ECLIPSE_TO_PYTHON = \
+                          [(r'c:\my_project\src', r'/user/projects/my_project/src')
+                # with the addon script.module.pydevd, only use `import pydevd`
+                # import pysrc.pydevd as pydevd
+            '''
+            addons_path = os.path.join(Constants.ADDON_PATH, '..',
+                                       'script.module.pydevd', 'lib', 'pydevd.py')
+
+            sys.path.append(addons_path)
+            # stdoutToServer and stderrToServer redirect stdout and stderr to eclipse
+            # console
+            try:
+                pydevd.settrace('localhost', stdoutToServer=True,
+                                stderrToServer=True)
+            except AbortException:
+                exit(0)
+            except Exception as e:
+                xbmc.log(
+                    ' Looks like remote debugger was not started prior to plugin start',
+                    xbmc.LOGDEBUG)
+        except BaseException:
+            xbmc.log('Waiting on Debug connection', xbmc.LOGDEBUG)
+    except ImportError:
+        REMOTE_DEBUG = False
+        pydevd = None
 
 if audio.PLAYSFX_HAS_USECACHED:
     module_logger.info('playSFX() has useCached')
@@ -93,7 +98,7 @@ def resetAddon():
     RESET = True
     module_logger.info('Resetting addon...')
     xbmc.executebuiltin(
-        'RunScript(special://home/addons/service.kodi.tts/resources/lib/enabler.py,RESET)')
+        'RunScript(special://home/addons/service.kodi.tts/resources/lib/tools/enabler.py,RESET)')
 
 
 class TTSClosedException(Exception):
