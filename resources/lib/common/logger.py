@@ -831,7 +831,7 @@ class LazyLogger(Logger):
             super().__init__(name, level=level)
 
             if LazyLogger._addon_name is None:
-                LazyLogger._addon_name = Constants.CURRENT_ADDON_SHORT_NAME
+                LazyLogger._addon_name = Constants.ADDON_SHORT_NAME
 
             # self.addHandler(MyHandler())
             self.setLevel(level)
@@ -1330,7 +1330,7 @@ class MyFormatter(logging.Formatter):
             [service.randomtrailers.backend:DiscoverTmdbMovies:process_page] 
             [service.randomtrailers.backend:FolderMovieData:add_to_discovered_trailers  TRACE_DISCOVERY]
         """
-        # threadName Constants.CURRENT_ADDON_SHORT_NAME funcName:lineno
+        # threadName Constants.ADDON_SHORT_NAME funcName:lineno
         # [threadName name funcName:lineno]
 
         text = ''

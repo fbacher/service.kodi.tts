@@ -21,7 +21,7 @@ class Constants(object):
     """
         Constants common to all plugins
     """
-    INCLUDE_MODULE_PATH_IN_LOGGER = False
+    INCLUDE_MODULE_PATH_IN_LOGGER = True
     addonName = 'service.kodi.tts'
     ADDON_DATA = None
     ADDON_NAME = None
@@ -77,7 +77,7 @@ class Constants(object):
 
         Constants.ADDON_DIRECTORY = xbmcvfs.translatePath(addon.PATH)
         Constants.BACKENDS_DIRECTORY = os.path.join(
-            Constants.ADDON_DIRECTORY, 'lib', 'backends')
+            Constants.PYTHON_ROOT_PATH, 'backends')
         Constants.DISABLE_PATH = os.path.join(addon.DATA_PATH, 'DISABLED')
         Constants.ENABLE_PATH = os.path.join(addon.DATA_PATH, 'ENABLED')
         Constants.DEFAULT_CACHE_DIRECTORY = os.path.join(Constants.USER_DATA_PATH,
