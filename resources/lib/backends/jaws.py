@@ -13,11 +13,7 @@ from common.settings import Settings
 from .base import ThreadedTTSBackend
 
 
-if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = LazyLogger.get_addon_module_logger().getChild(
-        'lib.backends')
-else:
-    module_logger = LazyLogger.get_addon_module_logger()
+module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
 
 
 class JAWSTTSBackend(ThreadedTTSBackend):

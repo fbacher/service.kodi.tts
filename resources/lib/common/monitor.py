@@ -14,11 +14,7 @@ from common.settings import Settings
 from cache.voicecache import VoiceCache
 
 
-if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = LazyLogger.get_addon_module_logger().getChild(
-        'lib.common')
-else:
-    module_logger = LazyLogger.get_addon_module_logger()
+module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
 
 
 class MyMonitor(xbmc.Monitor):

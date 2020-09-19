@@ -9,11 +9,7 @@ from common.constants import Constants
 from common.logger import LazyLogger
 from typing import Type, Any, Callable, Union, List
 
-if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = LazyLogger.get_addon_module_logger().getChild(
-        'lib.common')
-else:
-    module_logger = LazyLogger.get_addon_module_logger()
+module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
 
 
 class Settings:

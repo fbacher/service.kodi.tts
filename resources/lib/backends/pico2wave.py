@@ -11,11 +11,7 @@ from common.messages import Messages
 from common.setting_constants import Backends, Languages, Genders, Players
 from common.settings import Settings
 
-if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = LazyLogger.get_addon_module_logger().getChild(
-        'lib.backends')
-else:
-    module_logger = LazyLogger.get_addon_module_logger()
+module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
 
 
 class Pico2WaveTTSBackend(SimpleTTSBackendBase):

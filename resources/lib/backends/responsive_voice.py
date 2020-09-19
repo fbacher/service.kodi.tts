@@ -19,11 +19,7 @@ from backends.base import SimpleTTSBackendBase
 from cache.voicecache import VoiceCache
 
 
-if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = LazyLogger.get_addon_module_logger().getChild(
-        os.path.dirname(os.__loader__.fullname))
-else:
-    module_logger = LazyLogger.get_addon_module_logger()
+module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
 
 
 class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):

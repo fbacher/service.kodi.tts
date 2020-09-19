@@ -8,11 +8,7 @@ import xbmcvfs
 from common.constants import Constants
 from common.logger import LazyLogger
 
-if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = LazyLogger.get_addon_module_logger().getChild(
-        'lib.cache')
-else:
-    module_logger = LazyLogger.get_addon_module_logger()
+module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
 
 
 class SystemQueries:

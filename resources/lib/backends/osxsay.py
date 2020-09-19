@@ -12,12 +12,7 @@ from common import utils
 from .base import ThreadedTTSBackend
 
 
-if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = LazyLogger.get_addon_module_logger().getChild(
-        'lib.backends')
-else:
-    module_logger = LazyLogger.get_addon_module_logger()
-
+module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
 
 
 class OSXSayTTSBackend_Internal(ThreadedTTSBackend):
@@ -37,15 +32,16 @@ class OSXSayTTSBackend_Internal(ThreadedTTSBackend):
                 'volume': 100
                 }
 
-    def __new__(cls):
-        try:
-            import xbmc #analysis:ignore
-            return super().__new__()
-        except:
-            pass
-        return # OSXSayTTSBackend_SubProcess() #  TODO: does not exist!
+    #  def __new__(cls):
+    #      try:
+    #          import xbmc #analysis:ignore
+    #          return super().__new__()
+    #      except:
+    #          pass
+    #      return # OSXSayTTSBackend_SubProcess() #  TODO: does not exist!
 
-    def init(self):
+    def __init__(self):
+        super().__init__()
         from . import cocoapy
         self.cocoapy = cocoapy
         self.pool = cocoapy.ObjCClass('NSAutoreleasePool').alloc().init()

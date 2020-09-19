@@ -16,11 +16,7 @@ from common.system_queries import SystemQueries
 from common import utils
 
 
-if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = LazyLogger.get_addon_module_logger().getChild(
-        'lib.backends')
-else:
-    module_logger = LazyLogger.get_addon_module_logger()
+module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
 
 '''
     Speech Dispatcher is a Linux TTS abstraction layer. It allows for programs

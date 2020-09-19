@@ -15,11 +15,7 @@ from common.messages import Messages
 from common.settings import Settings
 from common.system_queries import SystemQueries
 
-if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = LazyLogger.get_addon_module_logger().getChild(
-        'lib.backends')
-else:
-    module_logger = LazyLogger.get_addon_module_logger()
+module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
 
 
 class FliteTTSBackend(base.SimpleTTSBackendBase):

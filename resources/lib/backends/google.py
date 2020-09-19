@@ -6,9 +6,12 @@ import urllib.request, urllib.parse, urllib.error, urllib.request, urllib.error,
 import xbmc
 
 from backends import base, audio
+from common.logger import LazyLogger
 from common.system_queries import SystemQueries
 from common.old_logger import OldLogger
 from common import utils
+
+module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
 
 
 LANGUAGES = [    ('af', 'Afrikaans'),
