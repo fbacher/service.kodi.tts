@@ -9,6 +9,7 @@
     <import addon="xbmc.addon" version="18.9.701"/>
     <import addon="script.module.pydevd" version="4.4.0" optional="true"/>
     <import addon="script.module.kodi65" version="1.2.1"/>
+    <import addon="script.module.six" version="1.14.0"/> <!-- just for reraise -->
   </requires>
   <extension point="xbmc.service" library="resources/lib/main.py" start="login"/>
   <extension point="xbmc.python.pluginsource" library="resources/lib/plugin.py">
