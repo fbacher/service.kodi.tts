@@ -1,25 +1,11 @@
 # -*- coding: utf-8 -*-
 import os
 from threading import Timer
-
 import xbmc
 import xbmcgui
 import xbmcaddon
-import xbmcvfs
-
-from common.constants import Constants
-from common.logger import LazyLogger
-from common.messages import Messages
-from common.system_queries import SystemQueries
-from common import utils
-
-if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = LazyLogger.get_addon_module_logger(
-    ).getChild('common.messages')  #  type: LazyLogger
-else:
-    module_logger = LazyLogger.get_addon_module_logger()  # type: LazyLogger
-
-
+from . import util
+T = util.T
 
 ACTIONS = (
     ('REPEAT', 'f1'),
@@ -37,7 +23,6 @@ BASIC_ACTIONS = (
     ('DISABLE', 'f12'),
 )
 
-
 def processCommand(command):
     if command == 'INSTALL_DEFAULT':
         installDefaultKeymap()
@@ -52,15 +37,15 @@ def processCommand(command):
 
 
 def _keymapTarget():
-    return os.path.join(xbmcvfs.translatePath('special://userdata'), 'keymaps', 'service.kodi.tts.keyboard.xml')
+    return os.path.join(xbmc.translatePath('special://userdata'), 'keymaps', 'service.xbmc.tts.keyboard.xml')
 
 
 def _keymapSource(kind='base'):
-    return os.path.join(xbmcvfs.translatePath(xbmcaddon.Addon(Constants.ADDON_ID).getAddonInfo('path')), 'resources', 'keymap.{0}.xml'.format(kind))
+    return os.path.join(xbmc.translatePath(xbmcaddon.Addon(util.ADDON_ID).getAddonInfo('path')), 'resources', 'keymap.{0}.xml'.format(kind))
 
 
 def _keyMapDefsPath():
-    return os.path.join(xbmcvfs.translatePath(xbmcaddon.Addon(Constants.ADDON_ID).getAddonInfo('profile')), 'custom.keymap.defs')
+    return os.path.join(xbmc.translatePath(xbmcaddon.Addon(util.ADDON_ID).getAddonInfo('profile')), 'custom.keymap.defs')
 
 
 def loadCustomKeymapDefs():
@@ -78,7 +63,7 @@ def loadCustomKeymapDefs():
             defs[key] = val
         return defs
     except:
-        module_logger.ERROR('Error reading custom keymap definitions')
+        util.ERROR('Error reading custom keymap definitions')
     return {}
 
 
@@ -94,8 +79,7 @@ def saveCustomKeymapDefs(defs):
 def installDefaultKeymap(quiet=False):
     buildKeymap(defaults=True)
     if not quiet:
-        xbmcgui.Dialog().ok(Messages.get_msg(Messages.INSTALLED),
-                            Messages.get_msg(Messages.DEFAULT_KEYMAP_INSTALLED))
+        xbmcgui.Dialog().ok(T(32111), T(32113))
 
 
 def installBasicKeymap():
@@ -110,27 +94,26 @@ def installBasicKeymap():
 
 def installCustomKeymap():
     buildKeymap()
-    xbmcgui.Dialog().ok(Messages.get_msg(Messages.UPDATED),
-                        Messages.get_msg(Messages.CUSTOM_KEYMAP_INSTALLED))
+    xbmcgui.Dialog().ok(T(32112), T(32114))
 
 
 def resetKeymap():
     saveCustomKeymapDefs({})
     buildKeymap()
-    xbmcgui.Dialog().ok(Messages.get_msg(Messages.UPDATED),
-                        Messages.get_msg(Messages.CUSTOM_KEYMAP_RESET))
+    xbmcgui.Dialog().ok(T(32112), T(32115))
 
 
 def removeKeymap():
     targetPath = _keymapTarget()
+    import xbmcvfs
     if os.path.exists(targetPath):
         xbmcvfs.delete(targetPath)
     xbmc.executebuiltin("action(reloadkeymaps)")
-    xbmcgui.Dialog().ok(Messages.get_msg(Messages.REMOVED),
-                        Messages.get_msg(Messages.KEYMAP_REMOVED))
+    xbmcgui.Dialog().ok(T(32116), T(32117))
 
 
 def saveKeymapXML(xml):
+    import xbmcvfs
     targetPath = _keymapTarget()
     if os.path.exists(targetPath):
         xbmcvfs.delete(targetPath)
@@ -156,7 +139,7 @@ def buildKeymap(defaults=False):  # TODO: Build XML with ElementTree?
         else:
             xml = xml.replace('<{0}>'.format(action), '<{0}>'.format(default)).replace('</{0}>'.format(action), '</{0}>'.format(default.split(' ', 1)[0]))
 
-    xml = xml.format(SPECIAL=SystemQueries.isPreInstalled() and 'xbmc' or 'home')
+    xml = xml.format(SPECIAL=util.isPreInstalled() and 'xbmc' or 'home')
 
     saveKeymapXML(xml)
 
@@ -190,7 +173,7 @@ def editKey(key_id, defs):
     key = KeyListener.record_key()
     if not key:
         return
-    utils.notifySayText('Key set', interrupt=True)
+    util.notifySayText('Key set', interrupt=True)
     defs[key_id] = key
     saveCustomKeymapDefs(defs)
 
@@ -204,10 +187,8 @@ class KeyListener(xbmcgui.WindowXMLDialog):
         return super(KeyListener, cls).__new__(cls, "DialogKaiToast.xml", "")
 
     def __init__(self):
-        super().__init__()
-        self.msg1 = Messages.get_msg(Messages.PRESS_KEY_TO_ASSIGN)
-        self.msg2 = '{0}...'.format(Messages.TIMEOUT_IN_X_SECONDS) \
-                                    .format('%.0f' % self.TIMEOUT)
+        self.msg1 = T(32118)
+        self.msg2 = '{0}...'.format(T(32119).format('%.0f' % self.TIMEOUT))
         self.key = None
 
     def onInit(self):
