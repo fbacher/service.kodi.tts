@@ -1,51 +1,33 @@
-import os
-import sys
 
+from common.logger import *
 import xbmc
+import io
+import signal
+import faulthandler
+from time import sleep
+from common.python_debugger import PythonDebugger
 
-from common.constants import Constants
 REMOTE_DEBUG: bool = False
 
+# PATCH PATCH PATCH
+# Monkey-Patch a well known, embedded Python problem
+#
+# from common.strptime_patch import StripTimePatch
+# StripTimePatch.monkey_patch_strptime()
+
+debug_file = io.open("/home/fbacher/.kodi/temp/kodi.crash", mode='w', buffering=1,
+                     newline=None,
+                     encoding='ASCII')
+
+faulthandler.register(signal.SIGUSR1, file=debug_file, all_threads=True)
+
 if REMOTE_DEBUG:
-    try:
-        import pydevd
+    xbmc.log('About to PythonDebugger.enable from tts.plugin', xbmc.LOGINFO)
+    PythonDebugger.enable('kodi.tts')
+    sleep(1)
 
-        # Note pydevd module need to be copied in XBMC\system\python\Lib\pysrc
-        try:
-            xbmc.log('Trying to attach to debugger', xbmc.LOGDEBUG)
-            '''
-                If the server (your python process) has the structure
-                    /user/projects/my_project/src/package/module1.py
 
-                and the client has:
-                    c:\my_project\src\package\module1.py
-
-                the PATHS_FROM_ECLIPSE_TO_PYTHON would have to be:
-                    PATHS_FROM_ECLIPSE_TO_PYTHON = \
-                          [(r'c:\my_project\src', r'/user/projects/my_project/src')
-                # with the addon script.module.pydevd, only use `import pydevd`
-                # import pysrc.pydevd as pydevd
-            '''
-            addons_path = os.path.join(Constants.ADDON_PATH, '..',
-                                       'script.module.pydevd', 'lib', 'pydevd.py')
-
-            sys.path.append(addons_path)
-            # stdoutToServer and stderrToServer redirect stdout and stderr to eclipse
-            # console
-            try:
-                pydevd.settrace('localhost', stdoutToServer=True,
-                                stderrToServer=True)
-            except AbortException:
-                exit(0)
-            except Exception as e:
-                xbmc.log(
-                    ' Looks like remote debugger was not started prior to plugin start',
-                    xbmc.LOGDEBUG)
-        except BaseException:
-            xbmc.log('Waiting on Debug connection', xbmc.LOGDEBUG)
-    except ImportError:
-        REMOTE_DEBUG = False
-        pydevd = None
+module_logger = LazyLogger.get_module_logger(module_path=__file__)
 
 
 def main():

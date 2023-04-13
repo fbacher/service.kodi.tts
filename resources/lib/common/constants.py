@@ -13,16 +13,17 @@ import locale
 import os
 
 import xbmcvfs
-from kodi65 import addon
-from kodi65.kodiaddon import Addon
-
+from kutils.kodiaddon import Addon
+addonName = 'service.kodi.tts'
+addon = Addon(addonName)
+from kutils import addon
 
 class Constants(object):
     """
         Constants common to all plugins
     """
     INCLUDE_MODULE_PATH_IN_LOGGER = True
-    addonName = 'service.kodi.tts'
+
     ADDON_DATA = None
     ADDON_NAME = None
     ADDON_SHORT_NAME = 'service.kodi.tts'
@@ -57,7 +58,7 @@ class Constants(object):
         :return:
         """
         # Constants.addonName)
-        Constants.KODI_ADDON = addon  # From kodi65 import addon, same as kodiaddon.Addon()
+        Constants.KODI_ADDON = addon  # From kutils import addon, same as kodiaddon.Addon()
         Constants.ADDON = addon.addon
 
         Constants.ADDON_PATH = addon.PATH

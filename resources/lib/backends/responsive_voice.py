@@ -3,7 +3,10 @@
 import requests
 import io
 import os
+import re
 from typing import Any, List, Union, Type
+
+import xbmc
 
 from backends.audio import (BuiltInAudioPlayer, MP3AudioPlayerHandler, WavAudioPlayerHandler,
                             BasePlayerHandler)
@@ -20,6 +23,7 @@ from cache.voicecache import VoiceCache
 
 
 module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
+PUNCTUATION_PATTERN = re.compile(r'([.,:])', re.DOTALL)
 
 
 class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
@@ -33,6 +37,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
     volumeConstraints = (-12, 8, 12, True)
 
     RESPONSIVE_VOICE_URL = "http://responsivevoice.org/responsivevoice/getvoice.php"
+    MAXIMUM_PHRASE_LENGTH = 200
 
     settings = {
         Settings.API_KEY: None,
@@ -236,7 +241,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
         if not exists:
             file_path, mp3_voice = self.download_speech(
                 text_to_voice, file_path)
-            if mp3_voice is not None and not self.stop_processing:
+            if mp3_voice != b'' and not self.stop_processing:
                 try:
                     if os.path.isfile(file_path):
                         os.unlink(file_path)
@@ -306,19 +311,27 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
 
         return mp3_pipe
 
-    def download_speech(self, text_to_voice, voice_file):
+    def download_speech(self, text_to_voice: str,
+                        voice_file_path: str) -> (str, bytes):
         # If voice file is None, then don't save voiced text to it,
         # just return the voiced text as bytes
 
-        key = type(self).getAPIKey()
-        lang = type(self).getLanguage()
-        gender = type(self).getGender()
-        pitch = type(self).getPitch()
-        speed = type(self).getSpeed()
-        volume = type(self).getVolume()  # 0.1 .. 1.0
-        service = type(self).getVoice()
-        if type(self)._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
-            type(self)._logger.debug_verbose(
+        clz = type(self)
+        # if len(text_to_voice) > 250:
+        #    clz._logger.error('Text longer than 250. len:', len(text_to_voice),
+        #                             text_to_voice)
+        #    return None, None
+        clz._logger.debug_extra_verbose(f'Text len: {len(text_to_voice)} {text_to_voice}')
+
+        key = clz.getAPIKey()
+        lang = clz.getLanguage()
+        gender = clz.getGender()
+        pitch = clz.getPitch()
+        speed = clz.getSpeed()
+        volume = clz.getVolume()  # 0.1 .. 1.0
+        service = clz.getVoice()
+        if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+            clz._logger.debug_verbose(
                 'text: {} lang: {} gender: {} pitch {} speed: {} volume: {} service: {}'
                 .format(text_to_voice, lang, gender, pitch, speed, volume, service))
         api_volume = "1.0"  # volume
@@ -326,7 +339,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
         api_pitch = pitch
         params = {
             "key": key,
-            "t": text_to_voice,
+            # "t": text_to_voice,
             "tl": lang,
             "pitch": api_pitch,
             "rate": api_speed,
@@ -336,57 +349,181 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
             "gender": gender
         }
 
-        voiced_bytes = None
+        aggregate_voiced_bytes: bytes = b''
         if not self.stop_processing:
             try:
-                r = requests.get(type(self).RESPONSIVE_VOICE_URL, params=params,
-                                 timeout=10.0)
-                if type(self)._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
-                    type(self)._logger.debug_extra_verbose('Request status: {} elapsed: {}'
-                                                     .format(str(r.status_code),
-                                                             str(r.elapsed)))
-                if r is None or r.status_code != 200:
-                    if type(self)._logger.isEnabledFor(LazyLogger.ERROR):
-                        type(self)._logger.error(
-                            'Failed to download voice for {} status: {:d} reason {}'
-                            .format(text_to_voice, r.status_code, r.reason))
-                elif not self.stop_processing:
-                    voiced_bytes = r.content
-                    bad_file = False
-                    if len(voiced_bytes) < 2048:
-                        bad_file = True
+                # If we failed to get speech before, don't try again.
+
+                failing_voice_file = voice_file_path + '.txt'
+                if os.path.isfile(failing_voice_file):
+                    clz._logger.debug_extra_verbose(
+                        'Previous attempt to get speech failed. Skipping.')
+                    return None, None
+
+                # The service will not voice text which is too long.
+
+                phrases = self.split_into_phrases(text_to_voice)
+                if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+                    clz._logger.debug_verbose(f'phrases len: {len(phrases)}')
+                voiced_bytes: [bytes] = []
+                failed = False
+                phrase: str = ''
+                r = None
+                while len(phrases) > 0:
+                    phrase = phrases.pop(0)
+                    if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+                        clz._logger.debug_verbose(f'phrase: {phrase}'
+                                                  f' length: {len(phrase)}')
+                    params['t'] = phrase
+                    r = requests.get(clz.RESPONSIVE_VOICE_URL, params=params,
+                                     timeout=10.0)
+                    if r is None or r.status_code != 200:
+                        failed = True
+                        break
                     else:
-                        magic = b'<!DOCTYPE'
-                        if voiced_bytes[0:len(magic)] == magic:
-                            bad_file = True
-                    if bad_file:
-                        if type(self)._logger.isEnabledFor(LazyLogger.ERROR):
-                            type(self)._logger.error('Response not valid sound file')
-                        voiced_bytes = None
+                        voiced_bytes.append(r.content)
+                        if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+                            clz._logger.debug_extra_verbose(
+                                f'Request status: {r.status_code}'
+                                f' elapsed: {r.elapsed}'
+                                f' content len: {len(r.content)}'
+                                f' voiced_bytes len: {len(voiced_bytes)}')
 
-                    if voiced_bytes is not None and voice_file is not None:
+                if failed:
+                    if clz._logger.isEnabledFor(LazyLogger.ERROR):
+                        clz._logger.error(
+                            'Failed to download voice for {} status: {:d} reason {}'
+                            .format(phrase, r.status_code, r.reason))
+                    if text_to_voice is not None and voice_file_path is not None:
                         try:
-                            if os.path.isfile(voice_file):
-                                os.unlink(voice_file)
+                            if os.path.isfile(failing_voice_file):
+                                os.unlink(failing_voice_file)
 
-                            with open(voice_file, "wb") as f:
-                                f.write(voiced_bytes)
+                            with open(failing_voice_file, 'wt') as f:
+                                f.write(text_to_voice)
+                                f.write(f'\nPhrase: {phrase}')
                             exists = True
                         except Exception as e:
-                            if type(self)._logger.isEnabledFor(LazyLogger.ERROR):
-                                type(self)._logger.error(
+                            if clz._logger.isEnabledFor(LazyLogger.ERROR):
+                                clz._logger.error(
+                                    f'Failed to save sample text to voice file: {str(e)}')
+                            try:
+                                os.remove(failing_voice_file)
+                            except Exception as e2:
+                                pass
+                elif not self.stop_processing:
+                    bad_file = False
+                    magic = b'<!DOCTYPE'
+                    if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+                        clz._logger.debug_verbose(f'voiced_bytes: {len(voiced_bytes)}')
+
+                    for voiced_text in voiced_bytes:
+                        if voiced_text[0:len(magic)] == magic:
+                            bad_file = True
+                        if len(voiced_text) < 2048:
+                            bad_file = True
+                        aggregate_voiced_bytes += voiced_text
+                        if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+                            clz._logger.debug_verbose(f'voiced_text: {len(voiced_text)}'
+                                                      f' aggregate: {len(aggregate_voiced_bytes)}'
+                                                      f' bad: {bad_file}')
+
+                    if bad_file:
+                        if clz._logger.isEnabledFor(LazyLogger.ERROR):
+                            clz._logger.error('Response not valid sound file')
+                        aggregate_voiced_bytes = b''
+
+                    if aggregate_voiced_bytes != b'' and voice_file_path is not None:
+                        try:
+                            if os.path.isfile(voice_file_path):
+                                os.unlink(voice_file_path)
+
+                            with open(voice_file_path, "wb") as f:
+                                f.write(aggregate_voiced_bytes)
+                            exists = True
+                        except Exception as e:
+                            if clz._logger.isEnabledFor(LazyLogger.ERROR):
+                                clz._logger.error(
                                     'Failed to download voice file: {}'.format(str(e)))
                             try:
-                                os.remove(voice_file)
+                                os.remove(voice_file_path)
                             except Exception as e2:
                                 pass
             except Exception as e:
-                if type(self)._logger.isEnabledFor(LazyLogger.ERROR):
-                    type(self)._logger.error(
+                if clz._logger.isEnabledFor(LazyLogger.ERROR):
+                    clz._logger.error(
                         'Failed to download voice: {}'.format(str(e)))
-                voice_file = None
-                voiced_bytes = None
-        return voice_file, voiced_bytes
+                voice_file_path = None
+                aggregate_voiced_bytes = b''
+        if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+            clz._logger.debug_verbose(f'aggregate_voiced_bytes:'
+                                      f' {len(aggregate_voiced_bytes)}')
+        return voice_file_path, aggregate_voiced_bytes
+
+    def split_into_phrases(self, text_to_voice: str) -> List[str]:
+        clz = type(self)
+        phrase_chunks: List[str] = []
+        try:
+            phrases: List[str] = re.split(PUNCTUATION_PATTERN, text_to_voice)
+            if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+                clz._logger.debug_verbose(f'len phrases: {len(phrases)}')
+            xbmc.log(f'len phrases: {len(phrases)}', xbmc.LOGDEBUG)
+            while len(phrases) > 0:
+                if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+                    clz._logger.debug_verbose(f'len phrases: {len(phrases)}')
+                xbmc.log(f'len phrases: {len(phrases)}', xbmc.LOGDEBUG)
+                phrase_chunk = phrases.pop(0)
+                if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+                    clz._logger.debug_verbose(f'phrase: {phrase_chunk}'
+                                              f' len: {len(phrase_chunk)}')
+                xbmc.log(f'phrase: {phrase_chunk}'
+                         f' len: {len(phrase_chunk)}', xbmc.LOGDEBUG)
+
+                # When a phrase exceeds the maximum phrase length,
+                # go ahead and return the over-length phrase.
+
+                if (len(phrase_chunk) >=
+                        ResponsiveVoiceTTSBackend.MAXIMUM_PHRASE_LENGTH):
+                    if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+                        clz._logger.debug_verbose(f'Long phrase: {phrase_chunk}'
+                                                  f' length: {len(phrase_chunk)}')
+                    xbmc.log(f'Long phrase: {phrase_chunk}'
+                             f' length: {len(phrase_chunk)}', xbmc.LOGDEBUG)
+                    phrase_chunks.append(phrase_chunk)
+                    phrase_chunk = ''
+                else:
+                    # Append phrases onto phrase_chunk as long as there is room
+                    while len(phrases) > 0:
+                        next_phrase = phrases[0]  # Don't pop yet
+                        if ((len(phrase_chunk) + len(next_phrase)) <=
+                                ResponsiveVoiceTTSBackend.MAXIMUM_PHRASE_LENGTH):
+                            if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+                                clz._logger.debug_verbose(f'Appending to phrase_chunk:'
+                                                          f' {next_phrase}'
+                                                          f' len: {len(next_phrase)}')
+                            xbmc.log(f'Appending to phrase_chunk:'
+                                     f' {next_phrase}'
+                                     f' len: {len(next_phrase)}', xbmc.LOGDEBUG)
+                            phrase_chunk += phrases.pop(0)
+                        else:
+                            phrase_chunks.append(phrase_chunk)
+                            if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+                                clz._logger.debug_verbose(f'Normal phrase: {phrase_chunk}'
+                                                          f' length: {len(phrase_chunk)}')
+                            xbmc.log(f'Normal phrase: {phrase_chunk}'
+                                     f' length: {len(phrase_chunk)}', xbmc.LOGDEBUG)
+                            phrase_chunk = ''
+                            break
+                if len(phrase_chunk) > 0:
+                    phrase_chunks.append(phrase_chunk)
+                    if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+                        clz._logger.debug_verbose(f'Last phrase: {phrase_chunk}'
+                                                  f' length: {len(phrase_chunk)}')
+                    xbmc.log(f'Last phrase: {phrase_chunk}'
+                             f' length: {len(phrase_chunk)}', xbmc.LOGDEBUG)
+        except Exception as e:
+            clz._logger.exception(e)
+        return phrase_chunks
 
     def update(self):
         self.process = None
@@ -568,6 +705,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
     @classmethod
     def getGender(cls):
         gender = 'female'
+        return gender
 
     @classmethod
     def is_use_cache(cls):

@@ -2368,7 +2368,7 @@
                 </setting>
                 <setting help="" id="log_level" label="32178" type="integer">
                     <level>0</level>
-                    <default>5</default>
+                    <default>2</default>
                     <control type="toggle"/>
                     <visible>false</visible>
                 </setting>

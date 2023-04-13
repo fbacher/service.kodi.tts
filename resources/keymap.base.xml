@@ -6,7 +6,7 @@
       <ITEM_EXTRA>NotifyAll(service.kodi.tts,ITEM_EXTRA)</ITEM_EXTRA>
       <STOP>NotifyAll(service.kodi.tts,STOP)</STOP>
       <SETTINGS>Addon.OpenSettings(service.kodi.tts)</SETTINGS>
-      <DISABLE>RunScript(special://{SPECIAL}/addons/service.kodi.tts/enabler.py)</DISABLE>
+      <DISABLE>NotifyAll(service.kodi.tts,TOGGLE_ON_OFF)</DISABLE>
       <VOL_UP>NotifyAll(service.kodi.tts,VOL_UP)</VOL_UP>
       <VOL_DOWN>NotifyAll(service.kodi.tts,VOL_DOWN)</VOL_DOWN>
       <plus mod="ctrl">NotifyAll(service.kodi.tts,VOL_UP)</plus>

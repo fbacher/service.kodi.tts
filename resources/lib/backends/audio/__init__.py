@@ -273,8 +273,7 @@ class SubprocessAudioPlayer(AudioPlayer):
                                    .format(' '.join(pipe_args)))
 
         with subprocess.Popen(pipe_args, stdin=subprocess.PIPE,
-                              stdout=(
-                                  open(os.path.devnull, 'w')),
+                              stdout=subprocess.DEVNULL,
                               stderr=subprocess.STDOUT) as self._wavProcess:
             try:
                 shutil.copyfileobj(source, self._wavProcess.stdin)

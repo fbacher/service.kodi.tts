@@ -930,8 +930,7 @@ class LazyLogger(Logger):
 
         self._log(*args, **kwargs)
 
-    def debug_verbose(self, *args, **kwargs):
-        # type: ( *Any, **str ) -> None
+    def debug_verbose(self, *args: Any, **kwargs: Any) -> None:
         """
             Convenience method for log(xxx kwargs['log_level' : xbmc.LOGDEBUG)
         :param args: Any (almost) arbitrary arguments. Typically "msg:", value

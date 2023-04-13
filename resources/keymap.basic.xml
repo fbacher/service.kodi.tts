@@ -1,7 +1,7 @@
 <keymap>
   <global>
     <keyboard>
-      <f12>RunScript(special://xbmc/addons/service.kodi.tts/enabler.py)</f12>
+      <f12>NotifyAll(service.kodi.tts,TOGGLE_ON_OFF)</f12>
     </keyboard>
   </global>
 </keymap>

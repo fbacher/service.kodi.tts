@@ -3,6 +3,7 @@
 import sys, os
 
 # sys.path.insert(0,os.path.dirname(__file__))
+from typing import Type
 
 from common.constants import Constants
 from common.system_queries import SystemQueries
@@ -123,7 +124,7 @@ def getPlayers(provider):
     return players
 
 
-def getBackend(provider: str = Settings.BACKEND_DEFAULT) -> TTSBackendBase:
+def getBackend(provider: str = Settings.BACKEND_DEFAULT) -> Type[TTSBackendBase]:
     if module_logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
         module_logger.debug_verbose('backends.__init__.getBackend provider: {}'
                                     .format(str(provider)))

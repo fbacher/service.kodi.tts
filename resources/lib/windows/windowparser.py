@@ -128,6 +128,7 @@ def extractInfos(text, container):
 
 class WindowParser:
     def __init__(self, xml_path):
+        module_logger.debug(f'xml_path {xml_path}')
         self.xml = minidom.parse(xml_path)
         self.currentControl = None
         self.includes = None

@@ -57,9 +57,16 @@ class SAPI:
         'voice': None,
         'volume': 0
     }
+    _logger: LazyLogger = None
+
+    @classmethod
+    def class_init(cls):
+        if cls._logger is None:
+            cls._logger = module_logger.getChild(cls.__class__.__name__)
 
     def __init__(self, *args, **kwargs):
-        self._logger = module_logger.getChild(self.__class__.__name__)  # type: LazyLogger
+        cls = type(self)
+        cls._logger.enter()
 
         self.SpVoice = None
         self.comtypesClient = None
@@ -81,9 +88,12 @@ class SAPI:
         self.valid = True
         self.COMError = importHelper('_ctypes').COMError
         self.setStreamFlags()
+        cls._logger.exit()
 
     def importComtypes(self):
         # Remove all (hopefully) references to comtypes import...
+        cls = type(self)
+        cls._logger.enter()
         del self.comtypesClient
         self.comtypesClient = None
         for m in list(sys.modules.keys()):
@@ -93,33 +103,46 @@ class SAPI:
         gc.collect()
         # and then import
         self.comtypesClient = importHelper('comtypes.client')
+        cls._logger.exit()
 
     def reset(self):
+        cls = type(self)
+        cls._logger.enter()
         del self.SpVoice
         self.SpVoice = None
         self.cleanComtypes()
         self.importComtypes()
         self.resetSpVoice()
+        cls._logger.exit()
 
     def resetSpVoice(self):
+        cls = type(self)
+        cls._logger.enter()
         self.SpVoice = self.comtypesClient.CreateObject("SAPI.SpVoice")
         voice = self._getVoice()
         if voice:
             self.SpVoice.Voice = voice
+        cls._logger.exit()
 
     def setStreamFlags(self):
+        cls = type(self)
+        cls._logger.enter()
         self.flags = self.PARSE_SAPI | self.IS_XML | self.ASYNC
         self.streamFlags = self.PARSE_SAPI | self.IS_XML | self.ASYNC
         try:
             self.SpVoice.Speak('', self.flags)
         except self.COMError as e:
-            if self._logger.isEnabledFor(LazyLogger.DEBUG):
+            if cls._logger.isEnabledFor(LazyLogger.DEBUG):
                 self.logSAPIError(e)
-                self._logger.debug('SAPI: XP Detected - changing flags')
+                cls._logger.debug('SAPI: XP Detected - changing flags')
             self.flags = self.ASYNC
             self.streamFlags = self.ASYNC
+        finally:
+            cls._logger.exit()
 
     def cleanComtypes(self):  # TODO: Make this SAPI specific?
+        cls = type(self)
+        cls._logger.enter()
         try:
             gen = os.path.join(Constants.BACKENDS_DIRECTORY, 'comtypes', 'gen')
             import stat, shutil
@@ -128,9 +151,13 @@ class SAPI:
             if not os.path.exists(gen):
                 os.makedirs(gen)
         except:
-            self._logger.exception('SAPI: Failed to empty comtypes gen dir')
+            cls._logger.exception('SAPI: Failed to empty comtypes gen dir')
+        finally:
+            cls._logger.exit()
 
     def logSAPIError(self, com_error, extra=''):
+        cls = type(self)
+        cls._logger.enter()
         try:
             errno = str(com_error.hresult)
             with open(os.path.join(Constants.BACKENDS_DIRECTORY,
@@ -139,27 +166,30 @@ class SAPI:
             for l1, l2 in zip(lines[0::2], lines[1::2]):
                 bits = l1.split()
                 if errno in bits:
-                    self._logger.debug(
+                    cls._logger.debug(
                         'SAPI specific COM error ({0})[{1}]: {2}'.format(errno, bits[0],
                                                                          l2 or '?'))
                     break
             else:
                 error = lookupGenericComError(com_error)
                 if error:
-                    self._logger.debug(
+                    cls._logger.debug(
                         'SAPI generic COM error ({0})[{1}]: {2}'.format(errno, error[0],
                                                                         error[1] or '?'))
                 else:
                     self._logger.debug(
                         'Failed to lookup SAPI/COM error: {0}'.format(com_error))
         except:
-            self._logger.exception('Error looking up SAPI error: {0}'.format(com_error))
-        self._logger.debug(
+            cls._logger.exception('Error looking up SAPI error: {0}'.format(com_error))
+        cls._logger.debug(
             'Line: {1} In: {0}{2}'.format(sys.exc_info()[2].tb_frame.f_code.co_name,
                                           sys.exc_info()[2].tb_lineno,
                                           extra and ' ({0})'.format(extra) or ''))
+        cls._logger.exit()
 
     def _getVoice(self, voice_name=None):
+        cls = type(self)
+        cls._logger.enter()
         voice_name = voice_name or self._voiceName
         if voice_name:
             v = self.SpVoice.getVoices() or []
@@ -167,65 +197,84 @@ class SAPI:
                 voice = v[i]
                 if voice_name == voice.GetDescription():
                     return voice
+        cls._logger.exit()
         return None
 
     def checkSAPI(func):
         def checker(self, *args, **kwargs):
+            cls = type(self)
+            cls._logger.enter()
             if not self.valid:
-                self._logger.debug('SAPI: Broken - ignoring {0}'.format(func.__name__))
+                cls._logger.debug('SAPI: Broken - ignoring {0}'.format(func.__name__))
                 return None
             try:
                 return func(self, *args, **kwargs)
             except self.COMError as e:
                 self.logSAPIError(e, func.__name__)
             except:
-                self._logger.exception('SAPI: {0} error'.format(func.__name__))
+                cls._logger.exception('SAPI: {0} error'.format(func.__name__))
             self.valid = False
-            self._logger.debug('SAPI: Resetting...')
+            cls._logger.debug('SAPI: Resetting...')
             utils.sleep(1000)
             try:
                 self.reset()
                 self.valid = True
-                self._logger.debug('SAPI: Resetting succeded.')
+                cls._logger.debug('SAPI: Resetting succeeded.')
                 return func(self, *args, **kwargs)
             except self.COMError as e:
                 self.valid = False
                 self.logSAPIError(e, func.__name__)
             except:
                 self.valid = False
-                self._logger.error('SAPI: {0} error'.format(func.__name__))
+                cls._logger.error('SAPI: {0} error'.format(func.__name__))
+            finally:
+                cls._logger.exit()
 
         return checker
 
     # Wrapped SAPI methods
     @checkSAPI
     def SpVoice_Speak(self, ssml, flags):
+        cls = type(self)
+        cls._logger.enter()
         return self.SpVoice.Speak(ssml, flags)
 
     @checkSAPI
     def SpVoice_GetVoices(self):
+        cls = type(self)
+        cls._logger.enter()
         return self.SpVoice.getVoices()
 
     @checkSAPI
     def stopSpeech(self):
+        cls = type(self)
+        cls._logger.enter()
         self.SpVoice.Speak('', self.ASYNC | self.PURGE_BEFORE_SPEAK)
 
     @checkSAPI
     def SpFileStream(self):
+        cls = type(self)
+        cls._logger.enter()
         return self.comtypesClient.CreateObject("SAPI.SpFileStream")
 
     @checkSAPI
     def SpAudioFormat(self):
+        cls = type(self)
+        cls._logger.enter()
         return self.comtypesClient.CreateObject("SAPI.SpAudioFormat")
 
     @checkSAPI
     def SpMemoryStream(self):
+        cls = type(self)
+        cls._logger.enter()
         return self.comtypesClient.CreateObject("SAPI.SpMemoryStream")
 
     def validCheck(func):
         def checker(self, *args, **kwargs):
+            cls = type(self)
+            cls._logger.enter()
             if not self.valid:
-                self._logger.debug('SAPI: Broken - ignoring {0}'.format(func.__name__))
+                cls._logger.debug('SAPI: Broken - ignoring {0}'.format(func.__name__))
                 return
             return func(self, *args, **kwargs)
 
@@ -233,13 +282,22 @@ class SAPI:
 
     @validCheck
     def set_SpVoice_Voice(self, voice_name):
+        cls = type(self)
+        cls._logger.enter()
         self._voiceName = voice_name
         voice = self._getVoice(voice_name)
         self.SpVoice.Voice = voice
+        cls._logger.exit()
 
     @validCheck
     def set_SpVoice_AudioOutputStream(self, stream):
+        cls = type(self)
+        cls._logger.enter()
         self.SpVoice.AudioOutputStream = stream
+        cls._logger.exit()
+
+
+SAPI.class_init()
 
 
 class SAPITTSBackend(SimpleTTSBackendBase):
@@ -270,9 +328,21 @@ class SAPITTSBackend(SimpleTTSBackendBase):
   <rate absspeed="{speed}" />
   <p>{text}</p>
 </speak>'''
+    _logger = None
+
+    @classmethod
+    def class_init(cls):
+        if cls._logger is not None:
+            return
+
+        cls._logger = module_logger.getChild(cls.__name__)
 
     def __init__(self):
+        cls = type(self)
+
         super().__init__()
+
+        self._logger.enter()
         self.ssml = None
         self.streamFlags = None
         self.sapi = SAPI()
@@ -280,17 +350,22 @@ class SAPITTSBackend(SimpleTTSBackendBase):
             self.flagAsDead('RESET')
             return
         self.update()
+        cls._logger.exit()
 
-    @staticmethod
-    def isSupportedOnPlatform():
+    @classmethod
+    def isSupportedOnPlatform(cls):
+        cls._logger.enter()
         return SystemQueries.isWindows()
 
-    @staticmethod
-    def isInstalled():
-        return SAPITTSBackend.isSupportedOnPlatform()
+    @classmethod
+    def isInstalled(cls):
+        cls._logger.enter()
+        return cls.isSupportedOnPlatform()
 
     def sapiValidCheck(func):
         def checker(self, *args, **kwargs):
+            cls = type(self)
+            cls._logger.enter()
             if not self.sapi or not self.sapi.valid:
                 return self.flagAsDead('RESET')
             else:
@@ -300,8 +375,11 @@ class SAPITTSBackend(SimpleTTSBackendBase):
 
     @sapiValidCheck
     def runCommand(self, text, outFile):
+        cls = type(self)
+        cls._logger.enter()
         stream = self.sapi.SpFileStream()
         if not stream:
+            cls._logger.exit()
             return False
         try:
             stream.Open(outFile, 3)  # 3=SSFMCreateForWrite
@@ -311,22 +389,30 @@ class SAPITTSBackend(SimpleTTSBackendBase):
         ssml = self.ssml.format(text=saxutils.escape(text))
         self.sapi.SpVoice_Speak(ssml, self.sapi.streamFlags)
         stream.close()
+        cls._logger.exit()
         return True
 
     @sapiValidCheck
     def runCommandAndSpeak(self, text):
+        cls = type(self)
+        cls._logger.enter()
         ssml = self.ssml.format(text=saxutils.escape(text))
         self.sapi.SpVoice_Speak(ssml, self.sapi.flags)
+        cls._logger.exit()
 
     @sapiValidCheck
     def getWavStream(self, text):
+        cls = type(self)
+        cls._logger.enter()
         fmt = self.sapi.SpAudioFormat()
         if not fmt:
+            cls._logger.exit()
             return None
         fmt.Type = 22
 
         stream = self.sapi.SpMemoryStream()
         if not stream:
+            cls._logger.exit()
             return None
         stream.Format = fmt
         self.sapi.set_SpVoice_AudioOutputStream(stream)
@@ -336,39 +422,55 @@ class SAPITTSBackend(SimpleTTSBackendBase):
 
         wavIO = io.StringIO()
         self.createWavFileObject(wavIO, stream)
+        cls._logger.exit()
         return wavIO
 
     def createWavFileObject(self, wavIO, stream):
+        cls = type(self)
+        cls._logger.enter()
         # Write wave via the wave module
         wavFileObj = wave.open(wavIO, 'wb')
         wavFileObj.setparams((1, 2, 22050, 0, 'NONE', 'not compressed'))
         wavFileObj.writeframes(array.array('B', stream.GetData()).tostring())
         wavFileObj.close()
+        cls._logger.exit()
 
     def stop(self):
+        cls = type(self)
+        cls._logger.enter()
         if not self.sapi:
+            cls._logger.exit()
             return
         if not self.inWavStreamMode:
             self.sapi.stopSpeech()
+        cls._logger.exit()
 
     def update(self):
+        cls = type(self)
+        cls._logger.enter()
         self.setMode(self.getMode())
         self.ssml = self.baseSSML.format(text='{text}', volume=self.setting('volume'),
                                          speed=self.setting('speed'),
                                          pitch=self.setting('pitch'))
         voice_name = self.setting('voice')
         self.sapi.set_SpVoice_Voice(voice_name)
+        cls._logger.exit()
 
     def getMode(self):
+        cls = type(self)
+        cls._logger.enter()
         if self.setting('speak_via_xbmc'):
+            cls._logger.exit()
             return SimpleTTSBackendBase.WAVOUT
         else:
             if self.sapi:
                 self.sapi.set_SpVoice_AudioOutputStream(None)
+            cls._logger.exit()
             return SimpleTTSBackendBase.ENGINESPEAK
 
     @classmethod
     def settingList(cls, setting, *args):
+        cls._logger.enter()
         sapi = SAPI()
         if setting == 'voice':
             voices = []
@@ -382,10 +484,12 @@ class SAPITTSBackend(SimpleTTSBackendBase):
                 except Exception as e:  # COMError as e: #analysis:ignore
                     sapi.logSAPIError(e)
                 voices.append((name, name))
+            cls._logger.exit()
             return voices
 
     @staticmethod
     def available():
+        SAPITTSBackend._logger.enter()
         return SystemQueries.isWindows()
 
 #    def getWavStream(self,text):
@@ -420,3 +524,6 @@ class SAPITTSBackend(SimpleTTSBackendBase):
 #        )
 #        wavIO.write(header)
 #        wavIO.write(data)
+
+
+SAPITTSBackend.class_init()

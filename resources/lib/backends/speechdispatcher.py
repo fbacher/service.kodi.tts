@@ -34,7 +34,7 @@ else:
     module_logger = LazyLogger.get_addon_module_logger()
 
 
-def getSpeechDSpeaker(test=False):
+def getSpeechDSpeaker(test=False) -> Speaker:
     try:
         return Speaker('kodi', 'kodi')
     except:
@@ -75,6 +75,7 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
     def __init__(self):
         super().__init__()
         self._logger = module_logger.getChild(self.__class__.__name__)  # type: LazyLogger
+        self.speechdObject: Speaker = None
 
     def init(self):
         self.updateMessage = None

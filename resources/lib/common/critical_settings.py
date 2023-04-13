@@ -17,7 +17,7 @@ import traceback
 
 import xbmc
 import six
-from kodi65.kodiaddon import Addon
+from kutils.kodiaddon import Addon
 
 
 class CriticalSettings(object):

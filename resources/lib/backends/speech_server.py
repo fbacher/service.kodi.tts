@@ -12,7 +12,7 @@ from common.system_queries import SystemQueries
 from backends.base import SimpleTTSBackendBase
 
 
-imodule_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
+module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
 
 
 class SpeechServerBackend(SimpleTTSBackendBase):
@@ -243,4 +243,3 @@ class SpeechServerBackend(SimpleTTSBackendBase):
     @staticmethod
     def available():
         return True
-

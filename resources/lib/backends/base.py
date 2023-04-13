@@ -46,7 +46,13 @@ class TTSBackendBase:
     # Min, Default, Max, Integer_Only (no float)
     speedConstraints = (0, 0, 0, True)
     pitchConstraints = (0, 0, 0, True)
+
+    # Volume constraints imposed by the api being called
+
     volumeConstraints = (-12, 0, 12, True)
+
+    # Volume scale as presented to the user
+
     volumeExternalEndpoints = (-12, 12)
     volumeStep = 1
     volumeSuffix = 'dB'
@@ -111,28 +117,42 @@ class TTSBackendBase:
         return scaled_value
 
     def volumeUp(self):
+        clz = type(self)
         if not self.settings or not 'volume' in self.settings:
             return Messages.get_msg(Messages.CANNOT_ADJUST_VOLUME)
         vol = type(self).getSetting('volume')
-        vol += self.volumeStep
-        if vol > self.volumeExternalEndpoints[1]:
-            vol = self.volumeExternalEndpoints[1]
+        max_volume: int = self.volumeExternalEndpoints[1]
+        volume_step: int = self.volumeStep
+        if clz._logger.isEnabledFor(LazyLogger.DEBUG):
+            clz._logger.debug(f'Volume UP: {vol} Upper Limit: {max_volume} '
+                              f'step {self.volumeStep}')
+        vol += volume_step
+        if vol > max_volume:
+            volume_step = volume_step - (vol - max_volume)
+            vol = max_volume
         self.setSetting('volume', vol)
-        if type(self)._logger.isEnabledFor(LazyLogger.DEBUG):
-            type(self)._logger.debug('Volume UP: {0}'.format(vol))
-        return '{0} {1}'.format(vol, self.volumeSuffix)
+        if clz._logger.isEnabledFor(LazyLogger.DEBUG):
+            clz._logger.debug('Volume UP: {0}'.format(vol))
+        return f'Volume Up by {volume_step} now {vol} {self.volumeSuffix}'
 
     def volumeDown(self):
+        clz = type(self)
         if not self.settings or not Settings.VOLUME in self.settings:
             return Messages.get_msg(Messages.CANNOT_ADJUST_VOLUME)
-        vol = type(self).getSetting(Settings.VOLUME)
-        vol -= self.volumeStep
-        if vol < self.volumeExternalEndpoints[0]:
-            vol = self.volumeExternalEndpoints[0]
+        min_volume: int = self.volumeExternalEndpoints[0]
+        volume_step: int = self.volumeStep
+        vol = clz.getSetting(Settings.VOLUME)
+        if clz._logger.isEnabledFor(LazyLogger.DEBUG):
+            clz._logger.debug(f'Volume Down: {vol} Lower Limit: {min_volume} '
+                              f'step {volume_step}')
+        vol -= volume_step
+        if vol < min_volume:
+            volume_step = volume_step - (min_volume - vol)
+            vol = min_volume
         self.setSetting(Settings.VOLUME, vol)
         if type(self)._logger.isEnabledFor(LazyLogger.DEBUG):
             type(self)._logger.debug('Volume DOWN: {0}'.format(vol))
-        return '{0} {1}'.format(vol, self.volumeSuffix)
+        return f'Volume Down by {volume_step} now {vol} {self.volumeSuffix}'
 
     def flagAsDead(self, reason=''):
         self.dead = True

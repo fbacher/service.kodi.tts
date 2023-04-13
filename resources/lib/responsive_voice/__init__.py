@@ -89,7 +89,23 @@ class ResponsiveVoice:
             if blocking:
                 return subprocess.call(play_mp3_cmd)
             else:
+                '''
+                if xbmc.getCondVisibility('System.Platform.Windows'):
+                    # Prevent console for ffmpeg from opening
+
+                    self.process = subprocess.Popen(
+                        self.args, stdin=None, stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE, shell=False, universal_newlines=True,
+                        env=env,
+                        close_fds=True, creationflags=subprocess.DETACHED_PROCESS)
+                else:
+                    self.process = subprocess.Popen(
+                        self.args, stdin=None, stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE, shell=False, universal_newlines=True,
+                        env=env,
+                        close_fds=True)
                 return subprocess.Popen(play_mp3_cmd)
+                '''
 
     def get_mp3(self, sentence, mp3_file=None, pitch=None, rate=None,
                 vol=None, gender=None):

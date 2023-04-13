@@ -1,84 +1,72 @@
 # -*- coding: utf-8 -*-
 #
-import sys
-import re
-import time
-import queue
-import json
-import os
 
-import xbmc
-import xbmcgui
-
-from utils import addoninfo
-import backends
-from backends import audio
-import windows
-from windows import playerstatus, notice, backgroundprogress
-from windowNavigation.custom_settings_ui import SettingsGUI
-from common.exceptions import AbortException
-from common.logger import LazyLogger
-from common.messages import Messages
-from common.constants import Constants
-from common.configuration_utils import ConfigUtils
-from common.settings import Settings
-from common.system_queries import SystemQueries
+from utils import util
+import enabler
 from common import utils
+from common.system_queries import SystemQueries
+from common.settings import Settings
+from common.configuration_utils import ConfigUtils
+from common.constants import Constants
+from common.messages import Messages
+from common.logger import LazyLogger
+from common.exceptions import AbortException
+from windowNavigation.custom_settings_ui import SettingsGUI
+from windows import playerstatus, notice, backgroundprogress
+import windows
+from backends import audio, TTSBackendBase
+import backends
+from utils import addoninfo
+import xbmcgui
+from typing import ClassVar, Type
+import os
+import json
+import queue
+import time
+import re
+import sys
+import xbmc
+import io
+import signal
+import faulthandler
+from time import sleep
+from common.python_debugger import PythonDebugger
 
-from tools import enabler
+REMOTE_DEBUG: bool = True
+
+# PATCH PATCH PATCH
+# Monkey-Patch a well known, embedded Python problem
+#
+# from common.strptime_patch import StripTimePatch
+# StripTimePatch.monkey_patch_strptime()
+
+debug_file = io.open("/home/fbacher/.kodi/temp/kodi.crash", mode='w', buffering=1,
+                     newline=None,
+                     encoding='ASCII')
+
+faulthandler.register(signal.SIGUSR1, file=debug_file, all_threads=True)
+
+if REMOTE_DEBUG:
+    xbmc.log('About to PythonDebugger.enable from tts service', xbmc.LOGINFO)
+    PythonDebugger.enable('kodi.tts')
+    sleep(1)
+try:
+    pass
+    # import web_pdb;
+
+    # web_pdb.set_trace()
+except Exception as e:
+    pass
+
 
 # TODO Remove after eliminating util.getCommand
 
-from utils import util
 
 module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
 
 __version__ = Constants.VERSION
 module_logger.info(__version__)
 module_logger.info('Platform: {0}'.format(sys.platform))
-
-REMOTE_DEBUG: bool = False
-
-if REMOTE_DEBUG:
-    try:
-        import pydevd
-
-        # Note pydevd module need to be copied in XBMC\system\python\Lib\pysrc
-        try:
-            xbmc.log('Trying to attach to debugger', xbmc.LOGDEBUG)
-            '''
-                If the server (your python process) has the structure
-                    /user/projects/my_project/src/package/module1.py
-
-                and the client has:
-                    c:\my_project\src\package\module1.py
-
-                the PATHS_FROM_ECLIPSE_TO_PYTHON would have to be:
-                    PATHS_FROM_ECLIPSE_TO_PYTHON = \
-                          [(r'c:\my_project\src', r'/user/projects/my_project/src')
-                # with the addon script.module.pydevd, only use `import pydevd`
-                # import pysrc.pydevd as pydevd
-            '''
-            addons_path = os.path.join(Constants.ADDON_PATH, '..',
-                                       'script.module.pydevd', 'lib', 'pydevd.py')
-
-            sys.path.append(addons_path)
-            # stdoutToServer and stderrToServer redirect stdout and stderr to eclipse
-            # console
-            try:
-                pydevd.settrace('localhost', stdoutToServer=True,
-                                stderrToServer=True)
-            except AbortException:
-                exit(0)
-            except Exception as e:
-                xbmc.log(
-                    ' Looks like remote debugger was not started prior to plugin start',
-                    xbmc.LOGDEBUG)
-        except BaseException:
-            xbmc.log('Waiting on Debug connection', xbmc.LOGDEBUG)
-    except ImportError:
-        REMOTE_DEBUG = False
-        pydevd = None
 
 if audio.PLAYSFX_HAS_USECACHED:
     module_logger.info('playSFX() has useCached')
@@ -111,19 +99,32 @@ class TTSService(xbmc.Monitor):
     def __init__(self):
         self._logger = module_logger.getChild(
             self.__class__.__name__)  # type: LazyLogger
-        super().__init__() # Appears to not do anything
+        super().__init__()  # Appears to not do anything
         self.readerOn = True
-        self.stop = False
-        self.disable = False
-        self.noticeQueue = queue.Queue()
+        self.stop: bool = False
+        self.disable: bool = False
+        self.noticeQueue: queue.Queue = queue.Queue()
         self.initState()
-        self._tts = None
+        self._tts: Type[TTSBackendBase] = None
         self.backendProvider = None
+        self.toggle_on: bool = True
         utils.stopSounds()  # To kill sounds we may have started before an update
         utils.playSound('on')
         self.playerStatus = playerstatus.PlayerStatus(10115).init()
         self.bgProgress = backgroundprogress.BackgroundProgress(10151).init()
         self.noticeDialog = notice.NoticeDialog(10107).init()
+        self.winID = None
+        self.windowReader = None
+        self.controlID = None
+        self.text = None
+        self.textCompare = None
+        self.secondaryText = None
+        self.keyboardText = ''
+        self.progressPercent = ''
+        self.lastProgressPercentUnixtime = 0
+        self.interval = 400
+        self.listIndex = None
+        self.waitingToReadItemExtra = None
         self.initTTS()
         module_logger.info(
             'SERVICE STARTED :: Interval: %sms' % self.tts.interval)
@@ -136,7 +137,7 @@ class TTSService(xbmc.Monitor):
     def onAbortRequested(self):
         self.stop = True
         try:
-            self.tts._close()
+            self._tts._close()
         except TTSClosedException:
             pass
 
@@ -164,8 +165,19 @@ class TTSService(xbmc.Monitor):
 
     def processCommand(self, command, data=None):
         from utils import util  # Earlier import apparently not seen when called via NotifyAll
-        self._logger.debug('command', command)
-        if command == 'REPEAT':
+        self._logger.debug(f'command: {command} toggle_on: {self.toggle_on}')
+        if command == 'TOGGLE_ON_OFF':
+            if self.toggle_on:
+                self.toggle_on = False
+                utils.playSound('off')
+            else:
+                self.toggle_on = True
+                utils.playSound('on')
+        if not self.toggle_on:
+            return
+        elif command == 'RESET':
+            pass
+        elif command == 'REPEAT':
             self.repeatText()
         elif command == 'EXTRA':
             self.sayExtra()
@@ -189,7 +201,8 @@ class TTSService(xbmc.Monitor):
             if text:
                 self.queueNotice(text, args.get('interrupt'))
         if command == 'PREPARE_TO_SAY':
-            # Used to preload text cache when caller anticipates text will be voiced
+            # Used to preload text cache when caller anticipates text will be
+            # voiced
             if not data:
                 return
             args = json.loads(data)
@@ -315,7 +328,8 @@ class TTSService(xbmc.Monitor):
         self.waitingToReadItemExtra = None
         self.reloadSettings()
 
-    def initTTS(self, backendClass=None, changed=False):
+    def initTTS(self, backendClass: Type[TTSBackendBase] = None,
+                changed: bool = False):
         if not backendClass:
             backendClass = backends.getBackend()
         provider = self.setBackend(backendClass())
@@ -326,7 +340,7 @@ class TTSService(xbmc.Monitor):
     def fallbackTTS(self, reason=None):
         if reason == 'RESET':
             return resetAddon()
-        backend = backends.getBackendFallback()
+        backend: Type[TTSBackendBase] = backends.getBackendFallback()
         module_logger.info(
             'Backend falling back to: {0}'.format(backend.provider))
         self.initTTS(backend)
@@ -336,38 +350,6 @@ class TTSService(xbmc.Monitor):
             self.sayText('{0}: {1}'.format(
                 Messages.get_msg(Messages.Reason), reason), interrupt=False)
 
-    def checkNewVersion(self):
-        try:
-            # Fails on Helix beta 1 on OpenElec #1103
-            from distutils.version import LooseVersion
-        except ImportError:
-            def LooseVersion(v):
-                comp = [int(x) for x in re.split(r'a|b', v)[0].split(".")]
-                fourth = 2
-                fifth = 0
-                if 'b' in v:
-                    fourth = 1
-                    fifth = int(v.split('b')[-1] or 0)
-                elif 'a' in 'v':
-                    fourth = 0
-                    fifth = int(v.split('a')[-1] or 0)
-                comp.append(fourth)
-                comp.append(fifth)
-                return comp
-
-        lastVersion = Settings.getSetting('version', '0.0.0')
-        Settings.setSetting(Settings.VERSION, __version__)
-
-        if lastVersion == '0.0.0':
-            self.firstRun()
-            return True
-        elif LooseVersion(lastVersion) < LooseVersion(__version__):
-            self.queueNotice('{0}... {1}'
-                             .format(Messages.get_msg(Messages.NEW_TTS_VERSION),
-                                     __version__))
-            return True
-        return False
-
     def firstRun(self):
         from utils import keymapeditor
         module_logger.info('FIRST RUN')
@@ -375,7 +357,6 @@ class TTSService(xbmc.Monitor):
         keymapeditor.installDefaultKeymap(quiet=True)
 
     def start(self):
-        self.checkNewVersion()
         monitor = xbmc.Monitor()
         try:
             while (not monitor.abortRequested()) and (not self.stop):
@@ -443,7 +424,7 @@ class TTSService(xbmc.Monitor):
         else:
             self.interval = self.tts.interval
 
-    def setBackend(self, backend):
+    def setBackend(self, backend: Type[TTSBackendBase]):
         if self._tts:
             self._tts._close()
         self._tts = backend
@@ -515,7 +496,6 @@ class TTSService(xbmc.Monitor):
         self.sayTexts(texts, interrupt=interrupt)
 
     def sayText(self, text, interrupt=False, preload_cache=False):
-        assert isinstance(text, str), "Not Unicode"
         if self.tts.dead:
             return self.fallbackTTS(self.tts.deadReason)
         module_logger.debug_verbose(repr(text))
@@ -524,7 +504,6 @@ class TTSService(xbmc.Monitor):
     def sayTexts(self, texts, interrupt=True):
         if not texts:
             return
-        assert all(isinstance(t, str) for t in texts), "Not Unicode"
         if self.tts.dead:
             return self.fallbackTTS(self.tts.deadReason)
         module_logger.debug_verbose(repr(texts))
