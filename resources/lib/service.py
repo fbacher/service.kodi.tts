@@ -1,36 +1,15 @@
 # -*- coding: utf-8 -*-
 #
-
-from utils import util
-import enabler
-from common import utils
-from common.system_queries import SystemQueries
-from common.settings import Settings
-from common.configuration_utils import ConfigUtils
-from common.constants import Constants
-from common.messages import Messages
-from common.logger import LazyLogger
-from common.exceptions import AbortException
-from windowNavigation.custom_settings_ui import SettingsGUI
-from windows import playerstatus, notice, backgroundprogress
-import windows
-from backends import audio, TTSBackendBase
-import backends
-from utils import addoninfo
-import xbmcgui
-from typing import ClassVar, Type
-import os
-import json
-import queue
-import time
-import re
-import sys
-import xbmc
 import io
 import signal
+import sys
 import faulthandler
 from time import sleep
+
+import xbmc
+
 from common.python_debugger import PythonDebugger
+
 
 REMOTE_DEBUG: bool = True
 
@@ -47,7 +26,8 @@ debug_file = io.open("/home/fbacher/.kodi/temp/kodi.crash", mode='w', buffering=
 faulthandler.register(signal.SIGUSR1, file=debug_file, all_threads=True)
 
 if REMOTE_DEBUG:
-    xbmc.log('About to PythonDebugger.enable from tts service', xbmc.LOGINFO)
+    xbmc.log(f'About to PythonDebugger.enable from tts service', xbmc.LOGINFO)
+    xbmc.log(f'PYTHONPATH: {sys.path}', xbmc.LOGINFO)
     PythonDebugger.enable('kodi.tts')
     sleep(1)
 try:
@@ -58,11 +38,34 @@ try:
 except Exception as e:
     pass
 
+from utils import util
+import enabler
+from common import utils
+from common.system_queries import SystemQueries
+from common.settings import Settings
+from common.configuration_utils import ConfigUtils
+from common.constants import Constants
+from common.messages import Messages
+from common.logger import *
+from common.exceptions import AbortException
+from windowNavigation.custom_settings_ui import SettingsGUI
+from windows import playerstatus, notice, backgroundprogress
+import windows
+from backends import audio, TTSBackendBase
+import backends
+from utils import addoninfo
+import xbmcgui
+from typing import ClassVar, Type
+import json
+import queue
+import time
+import re
+
 
 # TODO Remove after eliminating util.getCommand
 
 
-module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 __version__ = Constants.VERSION
 module_logger.info(__version__)
@@ -97,10 +100,11 @@ class TTSService(xbmc.Monitor):
     instance = None
 
     def __init__(self):
+        self.speakListCount = None
         self._logger = module_logger.getChild(
-            self.__class__.__name__)  # type: LazyLogger
+            self.__class__.__name__)  # type: BasicLogger
         super().__init__()  # Appears to not do anything
-        self.readerOn = True
+        self.readerOn: bool = True
         self.stop: bool = False
         self.disable: bool = False
         self.noticeQueue: queue.Queue = queue.Queue()
@@ -225,29 +229,29 @@ class TTSService(xbmc.Monitor):
             #     return
             # backend = args.get('backend')
 
-            provider = Settings.getSetting('backend')
+            backend_id = Settings.get_backend_id()
 
-            ConfigUtils.selectPlayer(provider)
+            ConfigUtils.selectPlayer(backend_id)
         elif command == 'SETTINGS.SETTING_DIALOG':
             if not data:
                 return
-            provider = Settings.getSetting('backend')
+            backend_id = Settings.get_backend_id()
             args = json.loads(data)
             if args[0] == 'voice':
                 voice = args[0]
-                ConfigUtils.selectSetting(provider, voice)
+                ConfigUtils.selectSetting(backend_id, voice)
             elif args[0] == 'language':
                 language = args[0]
-                ConfigUtils.selectSetting(provider, language)
+                ConfigUtils.selectSetting(backend_id, language)
             elif args[0] == 'gender':
-                ConfigUtils.selectGenderSetting(provider)
+                ConfigUtils.selectGenderSetting(backend_id)
         elif command == 'SETTINGS.SETTING_SLIDER':
             if not data:
                 return
             args = json.loads(data)
-            provider = Settings.getSetting('backend')
+            backend_id = Settings.get_backend_id()
             if args[0] == 'volume':
-                ConfigUtils.selectVolumeSetting(provider, *args)
+                ConfigUtils.selectVolumeSetting(backend_id, *args)
 
         elif command == 'RELOAD_ENGINE':
             self.checkBackend()
@@ -258,14 +262,13 @@ class TTSService(xbmc.Monitor):
 #            util.runInThread(keymapeditor.processCommand,(command,),name='keymap.INSTALL_DEFAULT')
 
     def reloadSettings(self):
-        self.readerOn = not Settings.getSetting(Settings.READER_OFF, False)
+        self.readerOn = not Settings.get_reader_off(False)
+
         # OldLogger.reload()
-        self.speakListCount = Settings.getSetting(Settings.SPEAK_LIST_COUNT,
-                                                  True)
+        self.speakListCount = Settings.get_speak_list_count(True)
         self.autoItemExtra = False
-        if Settings.getSetting(Settings.AUTO_ITEM_EXTRA, False):
-            self.autoItemExtra = Settings.getSetting(
-                Settings.AUTO_ITEM_EXTRA_DELAY, 2)
+        if Settings.get_auto_item_extra(False):
+            self.autoItemExtra = Settings.get_auto_item_extra_delay(2)
 
     def onDatabaseScanStarted(self, database):
         module_logger.info(
@@ -332,17 +335,17 @@ class TTSService(xbmc.Monitor):
                 changed: bool = False):
         if not backendClass:
             backendClass = backends.getBackend()
-        provider = self.setBackend(backendClass())
-        self.backendProvider = provider
-        self.updateInterval()
-        module_logger.info('Backend: %s' % provider)
+        Settings.load_backend(backendClass.provider) # get_backend_id())
+        backend_id = self.setBackend(backendClass()) # get_backend_id())
+        self.backend_id = backend_id
+        self.updateInterval()  # Poll interval
+        module_logger.info(f'Backend: {backend_id}')
 
     def fallbackTTS(self, reason=None):
         if reason == 'RESET':
             return resetAddon()
         backend: Type[TTSBackendBase] = backends.getBackendFallback()
-        module_logger.info(
-            'Backend falling back to: {0}'.format(backend.provider))
+        module_logger.info(f'Backend falling back to: {backend.provider}') # backend_id}')
         self.initTTS(backend)
         self.sayText(Messages.get_msg(Messages.SPEECH_ENGINE_FALLING_BACK_TO)
                      .format(backend.displayName), interrupt=True)
@@ -406,7 +409,7 @@ class TTSService(xbmc.Monitor):
                 enabler.disableAddon()
 
     def end(self):
-        if module_logger.isEnabledFor(LazyLogger.DEBUG):
+        if module_logger.isEnabledFor(DEBUG):
             xbmc.sleep(500)  # Give threads a chance to finish
             import threading
             module_logger.info('Remaining Threads:')
@@ -428,11 +431,11 @@ class TTSService(xbmc.Monitor):
         if self._tts:
             self._tts._close()
         self._tts = backend
-        return backend.provider
+        return backend.provider # backend_id
 
     def checkBackend(self):
-        provider = Settings.getSetting('backend', None)
-        if provider == self.backendProvider:
+        backend_id = Settings.get_backend_id()
+        if backend_id == self.backend_id:
             return
         self.initTTS(changed=True)
 
@@ -548,7 +551,7 @@ class TTSService(xbmc.Monitor):
             return newN
         self.winID = winID
         self.updateWindowReader()
-        if module_logger.isEnabledFor(LazyLogger.DEBUG):
+        if module_logger.isEnabledFor(DEBUG):
             module_logger.debug('Window ID: {0} Handler: {1} File: {2}'.format(
                 winID, self.windowReader.ID, xbmc.getInfoLabel('Window.Property(xmlfile)')))
 
@@ -579,7 +582,7 @@ class TTSService(xbmc.Monitor):
         controlID = self.window().getFocusId()
         if controlID == self.controlID:
             return newW
-        if module_logger.isEnabledFor(LazyLogger.DEBUG):
+        if module_logger.isEnabledFor(DEBUG):
             module_logger.debug('Control: %s' % controlID)
         self.controlID = controlID
         if not controlID:

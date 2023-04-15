@@ -3,7 +3,7 @@ import sys, subprocess, os
 
 from common.constants import Constants
 from common.setting_constants import Languages, Players, Genders, Misc
-from common.logger import LazyLogger
+from common.logger import *
 from common.messages import Messages
 from common.settings import Settings
 from common.system_queries import SystemQueries
@@ -12,7 +12,7 @@ from common import utils
 from .base import ThreadedTTSBackend
 
 
-module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class OSXSayTTSBackend_Internal(ThreadedTTSBackend):

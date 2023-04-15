@@ -9,15 +9,14 @@ import xbmcvfs
 
 from common.configuration_utils import ConfigUtils
 from common.constants import Constants
-from common.logger import LazyLogger
+from common.logger import *
 from common.settings import Settings
 
 
 if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = LazyLogger.get_addon_module_logger().getChild(
-        'lib.cache')
+    module_logger = BasicLogger.get_module_logger(module_path=__file__)
 else:
-    module_logger = LazyLogger.get_addon_module_logger()
+    module_logger = BasicLogger.get_module_logger()
 
 
 class VoiceCache:
@@ -27,7 +26,7 @@ class VoiceCache:
 
     def __init__(self):
         VoiceCache._logger = module_logger.getChild(
-            self.__class__.__name__)  # type: LazyLogger
+            self.__class__.__name__)  # type: BasicLogger
 
     @classmethod
     def for_debug_setting_changed(cls):
@@ -124,18 +123,20 @@ class VoiceCache:
                 'found: {} for: {}'.format(path, text_to_voice))
         return path, voiced_text
 
-    @staticmethod
-    def get_path_to_voice_file(text_to_voice, suffix):
+    @classmethod
+    def get_path_to_voice_file(cls, text_to_voice, suffix):
         file_name = VoiceCache.get_hash(text_to_voice) + suffix
         cache_directory = Settings.getSetting(Settings.CACHE_PATH)
         cache_directory = xbmcvfs.translatePath(cache_directory)
         path = os.path.join(cache_directory, file_name)
+        cls._logger.debug(f'Cached sound file path: {path}')
+        cls._logger.debug(f'text: {text_to_voice}')
         return path
 
-    @staticmethod
-    def get_hash(text_to_voice):
+    @classmethod
+    def get_hash(cls, text_to_voice):
         hash_value = hashlib.md5(text_to_voice.encode('UTF-8')).hexdigest()
-
+        cls._logger.debug(f'text: |{text_to_voice}|\n hash: {hash_value}')
         return hash_value
 
     @classmethod

@@ -9,14 +9,14 @@ from backends.audio import BuiltInAudioPlayer, BuiltInAudioPlayerHandler
 from backends.speechd import Speaker, SSIPCommunicationError
 from common.constants import Constants
 from common.setting_constants import Backends, Languages, Players, Genders, Misc
-from common.logger import LazyLogger
+from common.logger import *
 from common.messages import Messages
 from common.settings import Settings
 from common.system_queries import SystemQueries
 from common import utils
 
 
-module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 '''
     Speech Dispatcher is a Linux TTS abstraction layer. It allows for programs
@@ -28,10 +28,9 @@ module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
 '''
 
 if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = LazyLogger.get_addon_module_logger().getChild(
-        'lib.backends')
+    module_logger = BasicLogger.get_module_logger(module_path=__file__)
 else:
-    module_logger = LazyLogger.get_addon_module_logger()
+    module_logger = BasicLogger.get_module_logger()
 
 
 def getSpeechDSpeaker(test=False) -> Speaker:
@@ -74,7 +73,7 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
 
     def __init__(self):
         super().__init__()
-        self._logger = module_logger.getChild(self.__class__.__name__)  # type: LazyLogger
+        self._logger = module_logger.getChild(self.__class__.__name__)  # type: BasicLogger
         self.speechdObject: Speaker = None
 
     def init(self):
@@ -179,4 +178,3 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
     @staticmethod
     def available():
         return bool(getSpeechDSpeaker(test=True))
-

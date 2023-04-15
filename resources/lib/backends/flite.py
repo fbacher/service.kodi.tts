@@ -10,12 +10,12 @@ from backends import base
 from backends.audio import BuiltInAudioPlayer, BuiltInAudioPlayerHandler
 from common.constants import Constants
 from common.setting_constants import Backends, Languages, Players, Genders, Misc
-from common.logger import LazyLogger
+from common.logger import *
 from common.messages import Messages
 from common.settings import Settings
 from common.system_queries import SystemQueries
 
-module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class FliteTTSBackend(base.SimpleTTSBackendBase):
@@ -34,7 +34,7 @@ class FliteTTSBackend(base.SimpleTTSBackendBase):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._logger = module_logger.getChild(self.__class__.__name__)  # type: LazyLogger
+        self._logger = module_logger.getChild(self.__class__.__name__)  # type: BasicLogger
         self.process = None
 
     def init(self):

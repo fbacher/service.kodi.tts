@@ -12,14 +12,14 @@ from cache.voicecache import VoiceCache
 from common.settings import Settings
 from common.setting_constants import Genders, Misc, Languages, Players
 from common.constants import Constants
-from common.logger import LazyLogger
+from common.logger import *
 from common.messages import Messages
 from common.monitor import my_monitor
 from common import utils
 
 import xbmc
 
-module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class Constraints:
@@ -58,7 +58,7 @@ class TTSBackendBase:
     volumeSuffix = 'dB'
     speedInt = True
     # _loadedSettings = {}
-    _logger = module_logger.getChild('TTSBackendBase')  # type: LazyLogger
+    _logger = module_logger.getChild('TTSBackendBase')  # type: BasicLogger
     dead = False  # Backend should flag this true if it's no longer usable
     deadReason = ''  # Backend should set this reason when marking itself dead
     _closed = False
@@ -70,7 +70,7 @@ class TTSBackendBase:
         super().__init__(*args, **kwargs)
         if type(self)._logger is None:
             type(self)._logger = module_logger.getChild(
-                type(self).__name__)  # type: LazyLogger
+                type(self).__name__)  # type: BasicLogger
 
     def __enter__(self):
         return self
@@ -123,7 +123,7 @@ class TTSBackendBase:
         vol = type(self).getSetting('volume')
         max_volume: int = self.volumeExternalEndpoints[1]
         volume_step: int = self.volumeStep
-        if clz._logger.isEnabledFor(LazyLogger.DEBUG):
+        if clz._logger.isEnabledFor(DEBUG):
             clz._logger.debug(f'Volume UP: {vol} Upper Limit: {max_volume} '
                               f'step {self.volumeStep}')
         vol += volume_step
@@ -131,7 +131,7 @@ class TTSBackendBase:
             volume_step = volume_step - (vol - max_volume)
             vol = max_volume
         self.setSetting('volume', vol)
-        if clz._logger.isEnabledFor(LazyLogger.DEBUG):
+        if clz._logger.isEnabledFor(DEBUG):
             clz._logger.debug('Volume UP: {0}'.format(vol))
         return f'Volume Up by {volume_step} now {vol} {self.volumeSuffix}'
 
@@ -142,7 +142,7 @@ class TTSBackendBase:
         min_volume: int = self.volumeExternalEndpoints[0]
         volume_step: int = self.volumeStep
         vol = clz.getSetting(Settings.VOLUME)
-        if clz._logger.isEnabledFor(LazyLogger.DEBUG):
+        if clz._logger.isEnabledFor(DEBUG):
             clz._logger.debug(f'Volume Down: {vol} Lower Limit: {min_volume} '
                               f'step {volume_step}')
         vol -= volume_step
@@ -150,7 +150,7 @@ class TTSBackendBase:
             volume_step = volume_step - (min_volume - vol)
             vol = min_volume
         self.setSetting(Settings.VOLUME, vol)
-        if type(self)._logger.isEnabledFor(LazyLogger.DEBUG):
+        if type(self)._logger.isEnabledFor(DEBUG):
             type(self)._logger.debug('Volume DOWN: {0}'.format(vol))
         return f'Volume Down by {volume_step} now {vol} {self.volumeSuffix}'
 
@@ -334,7 +334,7 @@ class TTSBackendBase:
         :return:
         """
         if (not cls.isSettingSupported(key)
-                and cls._logger.isEnabledFor(LazyLogger.WARNING)):
+                and cls._logger.isEnabledFor(BasicLogger.WARNING)):
             cls._logger.warning('Setting: {}, not supported by voicing engine: {}'
                                 .format(key, cls.get_provider_name()))
         fully_qualified_key = key
@@ -350,7 +350,7 @@ class TTSBackendBase:
 
     @classmethod
     def get_provider_name(cls):
-        return type(cls).__name__
+        return cls.provider  # TODO: Change to backend_id
 
     def insertPause(self, ms=500):
         """Insert a pause of ms milliseconds
@@ -453,7 +453,7 @@ class ThreadedTTSBackend(TTSBackendBase):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._logger = module_logger.getChild(type(self).__name__)  # type: LazyLogger
+        self._logger = module_logger.getChild(type(self).__name__)  # type: BasicLogger
         self.active = True
         self._threadedIsSpeaking = False
         self.queue = queue.Queue()
@@ -463,7 +463,7 @@ class ThreadedTTSBackend(TTSBackendBase):
         self.process = None
 
     def _handleQueue(self):
-        if type(self)._logger.isEnabledFor(LazyLogger.DEBUG):
+        if type(self)._logger.isEnabledFor(DEBUG):
             self._logger.debug('Threaded TTS Started: {0}'.format(self.provider))
 
         while self.active and not my_monitor.abortRequested():
@@ -479,18 +479,18 @@ class ThreadedTTSBackend(TTSBackendBase):
             except queue.Empty:
                 # self._logger.debug_verbose('queue empty')
                 pass
-        if type(self)._logger.isEnabledFor(LazyLogger.DEBUG):
+        if type(self)._logger.isEnabledFor(DEBUG):
             self._logger.debug('Threaded TTS Finished: {0}'.format(self.provider))
 
     def _emptyQueue(self):
         try:
-            if type(self)._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+            if type(self)._logger.isEnabledFor(DEBUG_VERBOSE):
                 self._logger.debug_verbose('_emptyQueue')
             while True:
                 self.queue.get_nowait()
                 self.queue.task_done()
         except queue.Empty:
-            if type(self)._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+            if type(self)._logger.isEnabledFor(DEBUG_VERBOSE):
                 self._logger.debug_verbose('_emptyQueue is empty')
             return
 
@@ -556,7 +556,7 @@ class SimpleTTSBackendBase(ThreadedTTSBackend):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        type(self)._logger = module_logger.getChild(type(self).__name__)  # type: LazyLogger
+        type(self)._logger = module_logger.getChild(type(self).__name__)  # type: BasicLogger
         self._simpleIsSpeaking = False
         self.mode = None
         player = type(self).getSetting(Settings.PLAYER)
@@ -584,17 +584,17 @@ class SimpleTTSBackendBase(ThreadedTTSBackend):
         assert isinstance(mode, int), 'Bad mode'
         if mode == self.PIPE:
             if self.player_handler.canSetPipe():
-                if type(self)._logger.isEnabledFor(LazyLogger.DEBUG):
+                if type(self)._logger.isEnabledFor(DEBUG):
                     type(self)._logger.debug('Mode: PIPE')
             else:
                 mode = self.WAVOUT
         self.mode = mode
         if mode == self.WAVOUT:
-            if type(self)._logger.isEnabledFor(LazyLogger.DEBUG):
+            if type(self)._logger.isEnabledFor(DEBUG):
                 type(self)._logger.debug('Mode: WAVOUT')
         elif mode == self.ENGINESPEAK:
             audio.load_snd_bm2835()
-            if type(self)._logger.isEnabledFor(LazyLogger.DEBUG):
+            if type(self)._logger.isEnabledFor(DEBUG):
                 type(self)._logger.debug('Mode: ENGINESPEAK')
 
     def get_player_handler(self) -> audio.AudioPlayer:
@@ -665,7 +665,7 @@ class SimpleTTSBackendBase(ThreadedTTSBackend):
 
     def getWavStream(self, text):
         fpath = os.path.join(utils.getTmpfs(), 'speech.wav')
-        if type(self)._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+        if type(self)._logger.isEnabledFor(DEBUG_VERBOSE):
             type(self)._logger.debug_verbose('tmpfile: ' + fpath)
 
         self.runCommand(text, fpath)
@@ -732,7 +732,7 @@ class LogOnlyTTSBackend(TTSBackendBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if type(self)._logger is None:
-            type(self)._logger = module_logger.getChild(type(self).__name__)  # type: LazyLogger
+            type(self)._logger = module_logger.getChild(type(self).__name__)  # type: BasicLogger
 
     @staticmethod
     def isSupportedOnPlatform():
@@ -743,7 +743,7 @@ class LogOnlyTTSBackend(TTSBackendBase):
         return LogOnlyTTSBackend.isSupportedOnPlatform()
 
     def say(self, text, interrupt=False, preload_cache=False):
-        if type(self)._logger.isEnabledFor(LazyLogger.DEBUG):
+        if type(self)._logger.isEnabledFor(DEBUG):
             type(self)._logger.debug(
                 'say(Interrupt={1}): {0}'.format(repr(text), interrupt))
 

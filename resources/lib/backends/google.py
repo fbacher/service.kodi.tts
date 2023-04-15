@@ -6,12 +6,11 @@ import urllib.request, urllib.parse, urllib.error, urllib.request, urllib.error,
 import xbmc
 
 from backends import base, audio
-from common.logger import LazyLogger
+from common.logger import *
 from common.system_queries import SystemQueries
-from common.old_logger import OldLogger
 from common import utils
 
-module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 LANGUAGES = [    ('af', 'Afrikaans'),
@@ -94,7 +93,7 @@ class GoogleTTSBackend(base.SimpleTTSBackendBase):
 
     def runCommand(self,text,outFile):
         url = self.ttsURL.format(self.language,urllib.parse.quote(text))
-        LazyLogger.debug_verbose('Google url: ' + url)
+        BasicLogger.debug_verbose('Google url: ' + url)
         #
 
         # local IFS = +; /usr/bin/mplayer -ao alsa -really -quiet -noconsolecontrols "http://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&q=$*&tl=en";
@@ -105,7 +104,7 @@ class GoogleTTSBackend(base.SimpleTTSBackendBase):
         try:
             resp = urllib.request.urlopen(req)
         except:
-            OldLogger.ERROR('Failed to open Google TTS URL',hide_tb=True)
+            # OldLogger.ERROR('Failed to open Google TTS URL',hide_tb=True)
             return False
 
         with open(outFile,'wb') as out:
@@ -114,7 +113,7 @@ class GoogleTTSBackend(base.SimpleTTSBackendBase):
 
     def runCommandAndPipe(self,text):
         url = self.ttsURL.format(self.language,urllib.parse.quote(text))
-        LazyLogger.debug_verbose('Google url: ' + url)
+        BasicLogger.debug_verbose('Google url: ' + url)
         #req = urllib.request.Request(url) #, headers={ 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.116 Safari/537.36' })
         headers = {'Referer': 'http://translate.google.com/',
                    'User-Agent': 'stagefright/1.2 (Linux;Android 5.0)'
@@ -122,10 +121,10 @@ class GoogleTTSBackend(base.SimpleTTSBackendBase):
         req = urllib.request.Request(url, headers=headers)
         try:
             resp = urllib.request.urlopen(req)
-            LazyLogger.debug_verbose('url: ' + req.get_full_url())
-            LazyLogger.debug_verbose('headers: ' + str(req.header_items()))
+            BasicLogger.debug_verbose('url: ' + req.get_full_url())
+            BasicLogger.debug_verbose('headers: ' + str(req.header_items()))
         except:
-            OldLogger.ERROR('Failed to open Google TTS URL',hide_tb=True)
+            # OldLogger.ERROR('Failed to open Google TTS URL',hide_tb=True)
             return None
         return resp
 

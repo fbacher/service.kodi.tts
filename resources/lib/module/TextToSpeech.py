@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-import xbmc,binascii
+import xbmc
+from common.critical_settings import *
 
 BASE_COMMAND = 'XBMC.NotifyAll(service.kodi.tts,SAY,"{{\\"text\\":\\"{0}\\",\\"interrupt\\":{1}}}")'
 
@@ -9,10 +10,12 @@ BASE_COMMAND = 'XBMC.NotifyAll(service.kodi.tts,SAY,"{{\\"text\\":\\"{0}\\",\\"i
 #def safeDecode(enc_text):
 #    return binascii.unhexlify(enc_text)
 
+
 def sayText(text,interrupt=False):
     command = BASE_COMMAND.format(text,repr(interrupt).lower())
     #print command
     xbmc.executebuiltin(command)
 
+
 def stop():
-    xbmc.executebuiltin('XBMC.NotifyAll(service.kodi.tts,STOP)')
+    xbmc.executebuiltin(f'XBMC.NotifyAll({CriticalSettings.ADDON_ID}),STOP)')

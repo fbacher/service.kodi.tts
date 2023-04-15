@@ -1,20 +1,28 @@
 # -*- coding: utf-8 -*-
 
-
-from common.exceptions import AbortException
-from common.constants import Constants
-from common.configuration_utils import ConfigUtils
-import xbmcvfs
-import sys
-import os
 import xbmc
+import os
+import sys
+import xbmcvfs
+from common.configuration_utils import ConfigUtils
 import io
 import signal
 import faulthandler
 from time import sleep
-from common.python_debugger import PythonDebugger
 
-REMOTE_DEBUG: bool = False
+from common.python_debugger import PythonDebugger
+from common.critical_settings import *
+
+
+REMOTE_DEBUG: bool = True
+
+# PATCH PATCH PATCH
+# Monkey-Patch a well known, embedded Python problem
+#
+# from common.strptime_patch import StripTimePatch
+# StripTimePatch.monkey_patch_strptime()
+
+addon_id: str = CriticalSettings.ADDON_ID
 
 debug_file = io.open("/home/fbacher/.kodi/temp/kodi.crash", mode='w', buffering=1,
                      newline=None,
@@ -23,8 +31,8 @@ debug_file = io.open("/home/fbacher/.kodi/temp/kodi.crash", mode='w', buffering=
 faulthandler.register(signal.SIGUSR1, file=debug_file, all_threads=True)
 
 if REMOTE_DEBUG:
-    xbmc.log('About to PythonDebugger.enable tts.main', xbmc.LOGINFO)
-    PythonDebugger.enable('kodi.tts')
+    xbmc.log('About to PythonDebugger.enable from tts main', xbmc.LOGINFO)
+    PythonDebugger.enable(addon_id)
     sleep(1)
 try:
     pass

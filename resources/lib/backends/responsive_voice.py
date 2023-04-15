@@ -12,7 +12,7 @@ from backends.audio import (BuiltInAudioPlayer, MP3AudioPlayerHandler, WavAudioP
                             BasePlayerHandler)
 from backends import base
 from common.constants import Constants
-from common.logger import LazyLogger
+from common.logger import *
 from common.system_queries import SystemQueries
 from common.messages import Messages
 from common.setting_constants import Backends, Languages, Genders, Players
@@ -22,7 +22,7 @@ from backends.base import SimpleTTSBackendBase
 from cache.voicecache import VoiceCache
 
 
-module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 PUNCTUATION_PATTERN = re.compile(r'([.,:])', re.DOTALL)
 
 
@@ -205,7 +205,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
     def __init__(self):
         super().__init__()
         type(self)._logger = module_logger.getChild(
-            type(self).__name__)  # type: LazyLogger
+            type(self).__name__)  # type: BasicLogger
         self.process = None
         self.update()
         self.stop_processing = False
@@ -238,6 +238,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
         self.stop_processing = False
         file_path, exists = self.get_path_to_voice_file(text_to_voice,
                                                         use_cache=self.is_use_cache())
+        self._logger.debug(f'file_path: {file_path} exists: {exists}')
         if not exists:
             file_path, mp3_voice = self.download_speech(
                 text_to_voice, file_path)
@@ -250,7 +251,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
                         f.write(mp3_voice)
                     exists = True
                 except Exception as e:
-                    if type(self)._logger.isEnabledFor(LazyLogger.ERROR):
+                    if type(self)._logger.isEnabledFor(ERROR):
                         type(self)._logger.error(
                             'Failed to download voice file: {}'.format(str(e)))
                     try:
@@ -259,7 +260,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
                         pass
 
         if self.stop_processing:
-            if type(self)._logger.isEnabledFor(LazyLogger.DEBUG_EXTRA_VERBOSE):
+            if type(self)._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
                 type(self)._logger.debug_extra_verbose('stop_processing')
             return False
 
@@ -330,7 +331,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
         speed = clz.getSpeed()
         volume = clz.getVolume()  # 0.1 .. 1.0
         service = clz.getVoice()
-        if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
             clz._logger.debug_verbose(
                 'text: {} lang: {} gender: {} pitch {} speed: {} volume: {} service: {}'
                 .format(text_to_voice, lang, gender, pitch, speed, volume, service))
@@ -363,7 +364,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
                 # The service will not voice text which is too long.
 
                 phrases = self.split_into_phrases(text_to_voice)
-                if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+                if clz._logger.isEnabledFor(DEBUG_VERBOSE):
                     clz._logger.debug_verbose(f'phrases len: {len(phrases)}')
                 voiced_bytes: [bytes] = []
                 failed = False
@@ -371,9 +372,9 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
                 r = None
                 while len(phrases) > 0:
                     phrase = phrases.pop(0)
-                    if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+                    if clz._logger.isEnabledFor(DEBUG_VERBOSE):
                         clz._logger.debug_verbose(f'phrase: {phrase}'
-                                                  f' length: {len(phrase)}')
+                                                  f' length: {len(phrase)} api_key: {params["key"]}')
                     params['t'] = phrase
                     r = requests.get(clz.RESPONSIVE_VOICE_URL, params=params,
                                      timeout=10.0)
@@ -382,7 +383,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
                         break
                     else:
                         voiced_bytes.append(r.content)
-                        if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+                        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
                             clz._logger.debug_extra_verbose(
                                 f'Request status: {r.status_code}'
                                 f' elapsed: {r.elapsed}'
@@ -390,7 +391,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
                                 f' voiced_bytes len: {len(voiced_bytes)}')
 
                 if failed:
-                    if clz._logger.isEnabledFor(LazyLogger.ERROR):
+                    if clz._logger.isEnabledFor(ERROR):
                         clz._logger.error(
                             'Failed to download voice for {} status: {:d} reason {}'
                             .format(phrase, r.status_code, r.reason))
@@ -404,7 +405,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
                                 f.write(f'\nPhrase: {phrase}')
                             exists = True
                         except Exception as e:
-                            if clz._logger.isEnabledFor(LazyLogger.ERROR):
+                            if clz._logger.isEnabledFor(ERROR):
                                 clz._logger.error(
                                     f'Failed to save sample text to voice file: {str(e)}')
                             try:
@@ -414,7 +415,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
                 elif not self.stop_processing:
                     bad_file = False
                     magic = b'<!DOCTYPE'
-                    if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+                    if clz._logger.isEnabledFor(DEBUG_VERBOSE):
                         clz._logger.debug_verbose(f'voiced_bytes: {len(voiced_bytes)}')
 
                     for voiced_text in voiced_bytes:
@@ -423,13 +424,13 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
                         if len(voiced_text) < 2048:
                             bad_file = True
                         aggregate_voiced_bytes += voiced_text
-                        if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+                        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
                             clz._logger.debug_verbose(f'voiced_text: {len(voiced_text)}'
                                                       f' aggregate: {len(aggregate_voiced_bytes)}'
                                                       f' bad: {bad_file}')
 
                     if bad_file:
-                        if clz._logger.isEnabledFor(LazyLogger.ERROR):
+                        if clz._logger.isEnabledFor(ERROR):
                             clz._logger.error('Response not valid sound file')
                         aggregate_voiced_bytes = b''
 
@@ -442,7 +443,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
                                 f.write(aggregate_voiced_bytes)
                             exists = True
                         except Exception as e:
-                            if clz._logger.isEnabledFor(LazyLogger.ERROR):
+                            if clz._logger.isEnabledFor(ERROR):
                                 clz._logger.error(
                                     'Failed to download voice file: {}'.format(str(e)))
                             try:
@@ -450,12 +451,12 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
                             except Exception as e2:
                                 pass
             except Exception as e:
-                if clz._logger.isEnabledFor(LazyLogger.ERROR):
+                if clz._logger.isEnabledFor(ERROR):
                     clz._logger.error(
                         'Failed to download voice: {}'.format(str(e)))
                 voice_file_path = None
                 aggregate_voiced_bytes = b''
-        if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
             clz._logger.debug_verbose(f'aggregate_voiced_bytes:'
                                       f' {len(aggregate_voiced_bytes)}')
         return voice_file_path, aggregate_voiced_bytes
@@ -465,15 +466,15 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
         phrase_chunks: List[str] = []
         try:
             phrases: List[str] = re.split(PUNCTUATION_PATTERN, text_to_voice)
-            if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+            if clz._logger.isEnabledFor(DEBUG_VERBOSE):
                 clz._logger.debug_verbose(f'len phrases: {len(phrases)}')
             xbmc.log(f'len phrases: {len(phrases)}', xbmc.LOGDEBUG)
             while len(phrases) > 0:
-                if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+                if clz._logger.isEnabledFor(DEBUG_VERBOSE):
                     clz._logger.debug_verbose(f'len phrases: {len(phrases)}')
                 xbmc.log(f'len phrases: {len(phrases)}', xbmc.LOGDEBUG)
                 phrase_chunk = phrases.pop(0)
-                if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+                if clz._logger.isEnabledFor(DEBUG_VERBOSE):
                     clz._logger.debug_verbose(f'phrase: {phrase_chunk}'
                                               f' len: {len(phrase_chunk)}')
                 xbmc.log(f'phrase: {phrase_chunk}'
@@ -484,7 +485,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
 
                 if (len(phrase_chunk) >=
                         ResponsiveVoiceTTSBackend.MAXIMUM_PHRASE_LENGTH):
-                    if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+                    if clz._logger.isEnabledFor(DEBUG_VERBOSE):
                         clz._logger.debug_verbose(f'Long phrase: {phrase_chunk}'
                                                   f' length: {len(phrase_chunk)}')
                     xbmc.log(f'Long phrase: {phrase_chunk}'
@@ -497,7 +498,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
                         next_phrase = phrases[0]  # Don't pop yet
                         if ((len(phrase_chunk) + len(next_phrase)) <=
                                 ResponsiveVoiceTTSBackend.MAXIMUM_PHRASE_LENGTH):
-                            if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+                            if clz._logger.isEnabledFor(DEBUG_VERBOSE):
                                 clz._logger.debug_verbose(f'Appending to phrase_chunk:'
                                                           f' {next_phrase}'
                                                           f' len: {len(next_phrase)}')
@@ -507,7 +508,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
                             phrase_chunk += phrases.pop(0)
                         else:
                             phrase_chunks.append(phrase_chunk)
-                            if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+                            if clz._logger.isEnabledFor(DEBUG_VERBOSE):
                                 clz._logger.debug_verbose(f'Normal phrase: {phrase_chunk}'
                                                           f' length: {len(phrase_chunk)}')
                             xbmc.log(f'Normal phrase: {phrase_chunk}'
@@ -516,7 +517,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
                             break
                 if len(phrase_chunk) > 0:
                     phrase_chunks.append(phrase_chunk)
-                    if clz._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+                    if clz._logger.isEnabledFor(DEBUG_VERBOSE):
                         clz._logger.debug_verbose(f'Last phrase: {phrase_chunk}'
                                                   f' length: {len(phrase_chunk)}')
                     xbmc.log(f'Last phrase: {phrase_chunk}'
@@ -530,13 +531,13 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
         self.stop_processing = False
 
     def stop(self):
-        if type(self)._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+        if type(self)._logger.isEnabledFor(DEBUG_VERBOSE):
             type(self)._logger.debug_verbose('stop')
         self.stop_processing = True
         if not self.process:
             return
         try:
-            if type(self)._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+            if type(self)._logger.isEnabledFor(DEBUG_VERBOSE):
                 type(self)._logger.debug_verbose('terminate')
             self.process.terminate()  # Could use self.process.kill()
         except:

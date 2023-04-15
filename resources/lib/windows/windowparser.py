@@ -8,14 +8,13 @@ import xbmcvfs
 
 import xpath
 from common.constants import Constants
-from common.logger import LazyLogger
+from common.logger import *
 
 
 if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = LazyLogger.get_addon_module_logger().getChild(
-        'windows')
+    module_logger = BasicLogger.get_module_logger(module_path=__file__)
 else:
-    module_logger = LazyLogger.get_addon_module_logger()
+    module_logger = BasicLogger.get_module_logger()
 
 
 def currentWindowXMLFile():

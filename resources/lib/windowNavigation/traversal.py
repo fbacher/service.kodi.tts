@@ -2,15 +2,15 @@
 import xbmc, xbmcgui
 
 from common.constants import Constants
-from common.logger import (Logger, LazyLogger)
+from common.logger import (Logger, BasicLogger)
 import windows.guitables as guitables
 
 
 if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = LazyLogger.get_addon_module_logger(
+    module_logger = BasicLogger.get_module_logger(
     ).getChild('lib.windowNavigation')
 else:
-    module_logger = LazyLogger.get_addon_module_logger()
+    module_logger = BasicLogger.get_module_logger()
 
 
 class WindowTraversal:
@@ -129,4 +129,3 @@ class WindowTraversal:
             control_text_box = control  # type: xbmcgui.ControlTextBox
             self._logger.debug_extra_verbose('WindowTraversal: ControlTextBox text: {}'
                              .format(control_text_box.getText()))
-

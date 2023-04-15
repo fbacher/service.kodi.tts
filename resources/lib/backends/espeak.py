@@ -13,14 +13,14 @@ from backends import base
 from backends.audio import BuiltInAudioPlayer, BuiltInAudioPlayerHandler
 from common.constants import Constants
 from common.setting_constants import Backends, Languages, Players, Genders, Misc
-from common.logger import LazyLogger
+from common.logger import *
 from common.messages import Messages
 from common.settings import Settings
 from common.system_queries import SystemQueries
 from common import utils
 
 
-imodule_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class ESpeakTTSBackend(base.SimpleTTSBackendBase):
@@ -48,12 +48,16 @@ class ESpeakTTSBackend(base.SimpleTTSBackendBase):
         super().__init__()
         if type(self)._logger is None:
             type(self)._logger = module_logger.getChild(
-                                        type(self).__name__)  # type: LazyLogger
+                                        type(self).__name__)  # type: BasicLogger
         type(self).init_voices()
 
     def init(self):
         self.process = None
         self.update()
+
+    @classmethod
+    def get_backend_id(cls) -> str:
+        return Backends.ESPEAK_ID
 
     @classmethod
     def init_voices(cls):
@@ -151,14 +155,14 @@ class ESpeakTTSBackend(base.SimpleTTSBackendBase):
             return SimpleTTSBackendBase.WAVOUT
 
     def runCommand(self, text, outFile):
-        if type(self)._logger.isEnabledFor(LazyLogger.DEBUG_VERBOSE):
+        if type(self)._logger.isEnabledFor(DEBUG_VERBOSE):
             type(self)._logger.debug_verbose('espeak.runCommand outFile: ' + outFile)
         args = ['espeak', '-w', outFile]
         self.addCommonArgs(args, text)
         try:
             rc = subprocess.call(args)
         except (Exception) as e:
-            if type(self)._logger.isEnabledFor(LazyLogger.DEBUG):
+            if type(self)._logger.isEnabledFor(DEBUG):
                 type(self)._logger.debug('espeak.runCommand Exception: ' + str(e))
         return True
 
@@ -170,7 +174,7 @@ class ESpeakTTSBackend(base.SimpleTTSBackendBase):
             while self.process.poll() is None and self.active:
                 utils.sleep(10)
         except Exception as e:
-            if type(self)._logger.isEnabledFor(LazyLogger.ERROR):
+            if type(self)._logger.isEnabledFor(ERROR):
                 type(self)._logger.error(e)
 
     def runCommandAndPipe(self, text):

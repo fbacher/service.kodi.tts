@@ -5,13 +5,13 @@ from typing import Any, List, Union, Type
 from backends.audio import BasePlayerHandler, WavAudioPlayerHandler
 from backends.base import SimpleTTSBackendBase
 from common.constants import Constants
-from common.logger import LazyLogger
+from common.logger import *
 from common.system_queries import SystemQueries
 from common.messages import Messages
 from common.setting_constants import Backends, Languages, Genders, Players
 from common.settings import Settings
 
-module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class Pico2WaveTTSBackend(SimpleTTSBackendBase):
@@ -28,7 +28,7 @@ class Pico2WaveTTSBackend(SimpleTTSBackendBase):
 
     def __init__(self):
         super().__init__()
-        self._logger = module_logger.getChild(self.__class__.__name__)  # type: LazyLogger
+        self._logger = module_logger.getChild(self.__class__.__name__)  # type: BasicLogger
 
         self.language = None
         self.stop_processing = False

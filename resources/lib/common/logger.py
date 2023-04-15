@@ -1,1206 +1,451 @@
 # -*- coding: utf-8 -*-
-
 """
-Created on Apr 17, 2019
+Created on 2/3/22
 
 @author: Frank Feuerbacher
 """
 
-from functools import wraps
 import inspect
 import logging
 import os
 import sys
 import threading
 import traceback
+import warnings
+
 from io import StringIO
+from logging import *
 
-import six
-import xbmc
+import xbmc, xbmcaddon, xbmcvfs
 
-from common.exceptions import AbortException
-from common.constants import Constants
+__all__ = ['BASIC_FORMAT', 'CRITICAL', 'DEBUG', 'DEBUG_VERBOSE',
+           'DEBUG_EXTRA_VERBOSE', 'ERROR', 'DISABLED',
+           'FATAL', 'FileHandler', 'Filter', 'Formatter', 'Handler', 'INFO',
+           'LogRecord', 'BasicLogger', 'LoggerAdapter', 'NOTSET', 'NullHandler',
+           'StreamHandler', 'WARN', 'WARNING', 'addLevelName', 'basicConfig',
+           'captureWarnings', 'critical', 'debug', 'disable', 'error',
+           'exception', 'fatal', 'getLevelName', 'getLogger', 'getLoggerClass',
+           'info', 'log', 'makeLogRecord', 'setLoggerClass', 'shutdown',
+           'warn', 'warning', 'getLogRecordFactory', 'setLogRecordFactory',
+           'lastResort', 'raiseExceptions', 'Trace']
+
 from common.critical_settings import CriticalSettings
-from common.imports import *
+from .__init__ import *
 
-TOP_PACKAGE_PATH = Constants.PYTHON_ROOT_PATH
-INCLUDE_THREAD_INFO = False
+ADDON_ID: str = CriticalSettings.ADDON_ID
+ADDON: xbmcaddon = CriticalSettings.ADDON
 
-if hasattr(sys, '_getframe'):
-    def current_frame(ignore_frames: int = 0) -> traceback:
-        """
+# If you have a setting that controls whether to log, then specify the
+# setting name here. Otherwise, define DEFAULT_INCLUDE_THREAD_INFO
 
-        : ignore_frames: By default, ignore the first frame since it is the line
-                         here that captures the frame. When called by logger
-                         code, it will probably set to ignore 2 or more frames.
-        :return:
-        """
-        ignore_frames += 1
-        frame = None
-        try:
-            raise Exception
-        except:
-            frame = sys._getframe(ignore_frames)
+DEFAULT_LOG_LEVEL: Final[int] = CriticalSettings.get_logging_level()
 
-        return frame
-else:
-    def current_frame(ignore_frames: int = 0) -> traceback:
-        """
+# Controls what is printed by logging formatter
 
-        : ignore_frames: Specifies how many frames to ignore.
-        :return:
-        """
-        ignore_frames += 1
-        try:
-            raise Exception
-        except:
-            return sys.exc_info()[2].tb_frame.f_back
-# done filching
-
-#
-# _srcfile is used when walking the stack to check when we've got the first
-# caller stack frame.
-#
-_srcfile = os.path.normcase(current_frame.__code__.co_filename)
+INCLUDE_THREAD_INFO: bool = CriticalSettings.is_debug_include_thread_info()
+INCLUDE_THREAD_LABEL: bool = True
+INCLUDE_DEBUG_LEVEL: bool = True
 
 
-class Logger(logging.Logger):
+# Define extra log levels in between predefined values.
+
+DISABLED = NOTSET  # Simply to be able to use DISABLED to clearly mark non-logged code
+# DEBUG_VERBOSE = 8
+# DEBUG_EXTRA_VERBOSE = 6
+NOTSET = logging.NOTSET  # 0
+
+#  XBMC levels
+LOGDEBUG: Final[int] = xbmc.LOGDEBUG
+LOGINFO: Final[int] = xbmc.LOGINFO
+LOGWARNING: Final[int] = xbmc.LOGWARNING
+LOGERROR: Final[int] = xbmc.LOGERROR
+LOGFATAL: Final[int] = xbmc.LOGFATAL
+LOGNONE: Final[int] = xbmc.LOGNONE
+
+#  Kodi BasicLogger values (in addition to those defined in logging)
+
+DEBUG_VERBOSE: Final[int] = 8
+DEBUG_EXTRA_VERBOSE: Final[int] = 6
+
+INCLUDE_MODULE_PATH_IN_LOGGER: bool = True
+
+# DEBUG, DEBUG_VERBOSE AND DEBUG_EXTRA_VERBOSE will all print as xbmc.DEBUG
+# messages, however the message text will indicate their debug level.
+
+logging_to_kodi_level = {DISABLED: 100,
+                         FATAL: xbmc.LOGFATAL,
+                         ERROR: xbmc.LOGERROR,
+                         WARNING: xbmc.LOGWARNING,
+                         INFO: xbmc.LOGINFO,
+                         DEBUG_EXTRA_VERBOSE: xbmc.LOGDEBUG,
+                         DEBUG_VERBOSE: xbmc.LOGDEBUG,
+                         DEBUG: xbmc.LOGDEBUG}
+
+
+def get_kodi_level(logging_level: int) -> int:
     """
-        Provides logging capabilities that are more convenient than
-        xbmc.log.
+    Transforms logger logging level to Kodi log level
 
-        Typical usage:
-
-        class abc:
-            def __init__(self):
-                self._logger = LazyLogger(self.__class__.__name__)
-
-            def method_a(self):
-                local_logger = self._logger('method_a')
-                local_logger.enter()
-                ...
-                local_logger.debug('something happened', 'value1:',
-                                    value1, 'whatever', almost_any_type)
-                local_logger.exit()
-
-        In addition, there is the Trace class which provides more granularity
-        for controlling what messages are logged as well as tagging of the
-        messages for searching the logs.
-
+    :param logging_level:
+    :return:
     """
-    _addon_name = None
-    _logger = None
-    _trace_groups = {}
-    _log_handler_added = False
-    _root_logger = None
-    _addon_logger = None
+    return logging_to_kodi_level.get(logging_level, None)
 
-    def __init__(self,
-                 name,  # type: str
-                 level=logging.NOTSET  # type : Optional[int]
-                 ):
-        # type: (...) -> None
-        """
-            Creates a config_logger for (typically) a class.
 
-        :param name: label to be printed on each logged entry
-        :param level:
-        """
-        # noinspection PyRedundantParentheses
-        try:
-            super().__init__(name, level=level)
+class BasicLogger(Logger):
+    """
+          Provides logging capabilities that are more convenient than
+          xbmc.log.
 
-        except AbortException:
-            six.reraise(*sys.exc_info())
-        except Exception:
-            Logger.log_exception()
+          Typical usage:
 
-    @staticmethod
-    def set_addon_name(name):
-        # type: (str) ->None
-        """
-            Sets the optional addon name to be added to each log entry
+          class abc:
+              def __init__(self):
+                  self._debug_logger = BasicLogger(self.__class__.__name__)
 
-        :param name: str
-        :return:
-        """
-        Logger._addon_name = name
+              def method_a(self):
+                  local_logger = self._debug_logger('method_a')
+                  local_logger.debug('enter')
+                  ...
+                  local_logger.debug(f'something happenedL value1: '
+                                     f'{value1}')
+                  local_logger.debug()
 
-    @staticmethod
-    def get_addon_name():
-        # type:() -> str
-        """
+          In addition, there is the Trace class which provides more granularity
+          for controlling what messages are logged as well as tagging of the
+          messages for searching the logs.
 
-        :return:
-        """
-        if Logger._addon_name is None:
-            Logger._addon_name = Constants.ADDON_SHORT_NAME
+      """
 
-        return Logger._addon_name
+    @classmethod
+    def _class_init_(cls):
+        setLoggerClass(cls)
+        Logger.manager.setLoggerClass(cls)
 
-    @staticmethod
-    def get_root_logger():
-        # type: () -> Logger
-        """
+    def __init__(self, name, level=DEFAULT_LOG_LEVEL):
+        super().__init__(name, level)
 
-        :return:
-        """
-        if Logger._root_logger is None:
-            logging.setLoggerClass(LazyLogger)
-            root_logger = logging.RootLogger(Logger.DEBUG)
-            root_logger = logging.root
-            root_logger.addHandler(MyHandler())
-            logging_level = CriticalSettings.get_logging_level()
-            xbmc.log('get_root_logger logging_level: ' +
-                     str(logging_level), xbmc.LOGDEBUG)
-            root_logger.setLevel(logging_level)
-            Trace.enable_all()
-            root_logger.addFilter(
-                MyFilter(enabled_traces=Trace.get_enabled_traces()))
-            Logger._root_logger = root_logger
-        return Logger._root_logger
-
-    @staticmethod
-    def get_addon_module_logger(file_path: str = None,
-                                addon_name: str = None):
-        #  type () -> Logger
-        """
-
-        :return:
-        """
-
-        logger = None
-        if Logger._addon_logger is None:
-            if addon_name is None:
-                addon_name = Constants.ADDON_SHORT_NAME
-            Logger._addon_logger = Logger.get_root_logger().getChild(addon_name)
-            xbmc.log('get_addon_module_logger', xbmc.LOGDEBUG)
-
-        logger = Logger._addon_logger
-        if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-            if file_path is not None:
-                file_path = file_path.replace('.py', '', 1)
-                suffix = file_path.replace(TOP_PACKAGE_PATH, '', 1)
-                suffix = suffix.replace('/', '.')
-                if suffix.startswith('.'):
-                    suffix = suffix.replace('.', '', 1)
-
-                logger = Logger._addon_logger.getChild(suffix)
-            else:
-                logger.debug('Expected file_path')
-
-        return logger
-
-    def log(self, *args, **kwargs):
-        # type: ( *Any, **str) -> None
+    def log(self, level: int, msg: str, *args: Any, **kwargs: Any) -> None:
         """
             Creates a log entry
 
-            *args are printed in the log, comma separated. Values are
-            converted to strings.
-
-            **Kwargs Optional Trace tags. Message is logged only if tracing
-            is enabled for one or more of the tags. Further, the tag is also
-            logged.
-
             Note, the default xbmc.log logging level is xbmc.LOGDEBUG. This can
-            be overridden by including the kwarg {'log_level' : xbmc.<log_level>}
+            be overridden by including the kwarg {'level' : xbmc.<level>}
 
-        :param args: Any (almost) arbitrary arguments. Typically "msg:", value
-        :param kwargs: str Possible values:
-                        'log_level'
-                        'separator'
+        :param level: Debugging level
+        :param msg: Message to print
+        :param args: Arbitrary arguments.
+        :param kwargs: str Some possible values:
                         'exc_info'
+                        'notify=true'
                         'start_frame'
                         'trace'
-                        'lazy_logger'
                         'test_expected_stack_top'
                         'test_expected_stack_file'
                         'test_expected_stack_method'
 
         :return:
         """
-        # noinspection PyRedundantParentheses
-        self._log(*args, **kwargs)
-
-    def _log(self, *args, **kwargs):
-        # type: ( *Any, **str) -> None
         """
-            Creates a log entry
-
-            *args are printed in the log, comma separated. Values are
-            converted to strings.
-
-            **Kwargs Optional Trace tags. Message is logged only if tracing
-            is enabled for one or more of the tags. Further, the tag is also
-            logged.
-
-            Note, the default xbmc.log logging level is xbmc.LOGDEBUG. This can
-            be overridden by including the kwarg {'log_level' : xbmc.<log_level>}
-
-        :param args: Any (almost) arbitrary arguments. Typically "msg:", value
-        :param kwargs: str  Meant for Trace usage:
-        :return:
-        """
-        # noinspection PyRedundantParentheses
-        start_frame = None
-        try:
-            kwargs.setdefault('log_level', Logger.DEBUG)
-            log_level = kwargs['log_level']
-            if not self.isEnabledFor(log_level):
-                return
-
-            kwargs.setdefault('ignore_frames', 0)
-            ignore_frames = kwargs['ignore_frames'] + 1
-            kwargs['ignore_frames'] = ignore_frames
-            kwargs.setdefault('separator', ' ')
-
-            exc_info = kwargs.get('exc_info', None)
-            if exc_info is not None:
-                start_frame = exc_info[2].tb_frame
-                frame_info = inspect.getframeinfo(exc_info[2], context=1)
-                # start_file = (pathname, lineno, func)
-
-                start_file = (frame_info[0], frame_info[1], frame_info[2])
-            else:
-                start_file = tuple()
-                start_frame = kwargs.get('start_frame', None)
-                if start_frame is None:
-                    start_frame = current_frame(ignore_frames=ignore_frames)
-                # On some versions of IronPython, current_frame() returns None if
-                # IronPython isn't run with -X:Frames.
-                if start_frame is not None:
-                    #     start_frame = start_frame.f_back
-                    rv = "(unknown file)", 0, "(unknown function)"
-                    while hasattr(start_frame, "f_code"):
-                        co = start_frame.f_code
-                        filename = os.path.normcase(co.co_filename)
-                        if filename == _srcfile:
-                            start_frame = start_frame.f_back
-                            continue
-                        start_file = (co.co_filename,
-                                      start_frame.f_lineno, co.co_name)
-                        break
-
-            log_level = kwargs['log_level']
-            separator = kwargs['separator']
-            trace = kwargs.pop('trace', None)
-            lazy_logger = kwargs.pop('lazy_logger', False)
-
-            # The first argument is a string format, unless 'lazy_logger' is set.
-            # With lazy_logger, a simple string format is generated based upon
-            # the number of other args.
-
-            format_str = ''
-            if lazy_logger:
-                format_proto = []  # ['[%s]']
-                format_proto.extend(['%s'] * len(args))
-                format_str = separator.join(format_proto)
-            else:
-                # Extract the format string from the first arg, then delete
-                # the first arg.
-
-                if len(args) > 0:
-                    format_str = args[0]
-                if len(args) > 1:
-                    args = args[1:]
-                else:
-                    args = []
-
-            args = tuple(args)  # MUST be a tuple
-
-            my_trace = None
-            if trace is None:
-                my_trace = set()
-            elif isinstance(trace, list):
-                my_trace = set(trace)
-            elif isinstance(trace, str):  # Single trace keyword
-                my_trace = {trace, }  # comma creates set
-
-            extra = {'trace': my_trace, 'start_file': start_file,
-                     'ignore_frames': ignore_frames}
-
-            super()._log(log_level, format_str, args, exc_info=exc_info,
-                         extra=extra)
-
-        except AbortException:
-            six.reraise(*sys.exc_info())
-        except Exception:
-            Logger.log_exception()
-        finally:
-            del start_frame
-            if 'start_frame' in kwargs:
-                del kwargs['start_frame']
-
-    def debug(self, format, *args, **kwargs):
-        # type: ( str, *Any, **str ) -> None
-        # TODO: Get rid of format arg
-        """
-            Convenience method for log(xxx kwargs['log_level' : xbmc.LOGDEBUG)
-        :param format: Format string for args
-        :param args: Any (almost) arbitrary arguments. Typically "msg:", value
-        :param kwargs: str  Meant for Trace usage:
-        :return:
-        """
-        if self.isEnabledFor(Logger.DEBUG):
-            kwargs['log_level'] = Logger.DEBUG
-            kwargs.setdefault('ignore_frames', 0)
-            ignore_frames = kwargs['ignore_frames'] + 1
-            kwargs['ignore_frames'] = ignore_frames
-
-            self._log(format, *args, **kwargs)
-
-    def debug_verbose(self, text, *args, **kwargs):
-        # type: ( str, *Any, **str ) -> None
-        # TODO: Get rid of text arg
-        """
-            Convenience method for log(xxx kwargs['log_level' : xbmc.LOGDEBUG)
-        :param text: Arbitrary text to include in log
-        :param args: Any (almost) arbitrary arguments. Typically "msg:", value
-        :param kwargs: str  Meant for Trace usage:
-        :return:
-        """
-        if self.isEnabledFor(Logger.DEBUG_VERBOSE):
-            kwargs['log_level'] = Logger.DEBUG_VERBOSE
-            if kwargs.get('start_frame', None) is None:
-                kwargs.setdefault('start_frame', current_frame())
-
-            self._log(text, *args, **kwargs)
-
-    def debug_extra_verbose(self, text, *args, **kwargs):
-        # type: ( str, *Any, **str ) -> None
-        # TODO: Get rid of text arg
-        """
-            Convenience method for log(xxx kwargs['log_level' : xbmc.LOGDEBUG)
-        :param text: Arbitrary text to include in log
-        :param args: Any (almost) arbitrary arguments. Typically "msg:", value
-        :param kwargs: str  Meant for Trace usage:
-        :return:
-        """
-        if self.isEnabledFor(Logger.DEBUG_EXTRA_VERBOSE):
-            kwargs['log_level'] = Logger.DEBUG_EXTRA_VERBOSE
-            if kwargs.get('start_frame', None) is None:
-                kwargs.setdefault('start_frame', current_frame())
-
-            self._log(text, *args, **kwargs)
-
-    def info(self, text, *args, **kwargs):
-        # type: ( str, *Any, **str ) -> None
-        # TODO: Get rid of text arg
-        """
-            Convenience method for log(xxx kwargs['log_level' : xbmc.LOGINFO)
-        :param text: Arbitrary text
-        :param args: Any (almost) arbitrary arguments. Typically "msg:", value
-        :param kwargs: str  Meant for Trace usage:
-        :return:
-        """
-        if self.isEnabledFor(Logger.INFO):
-            kwargs['log_level'] = Logger.INFO
-            if kwargs.get('start_frame', None) is None:
-                kwargs.setdefault('start_frame', current_frame())
-
-            self._log(text, *args, **kwargs)
-
-    def warning(self, text, *args, **kwargs):
-        # type: ( str, *Any, **str ) -> None
-        # TODO: Get rid of text arg
-        """
-            Convenience method for log(xxx kwargs['log_level' : xbmc.LOGWARN)
-        :param text: Arbitrary text to add to log
-        :param args: Any (almost) arbitrary arguments. Typically "msg:", value
-        :param kwargs: str  Meant for Trace usage:
-        :return:
-        """
-        if self.isEnabledFor(Logger.WARNING):
-            kwargs['log_level'] = Logger.WARNING
-            if kwargs.get('start_frame', None) is None:
-                kwargs.setdefault('start_frame', current_frame())
-
-            self._log(text, *args, **kwargs)
-
-    def error(self, text, *args, **kwargs):
-        # type: ( str, *Any, **str ) -> None
-        # TODO: Get rid of text arg
-        """
-            Convenience method for log(xxx kwargs['log_level' : xbmc.ERROR)
-        :param text: Arbitrary text to add to log
-        :param args: Any (almost) arbitrary arguments. Typically "msg:", value
-        :param kwargs: str  Meant for Trace usage:
-        :return:
-        """
-        if self.isEnabledFor(Logger.ERROR):
-            kwargs['log_level'] = Logger.ERROR
-            if kwargs.get('start_frame', None) is None:
-                kwargs.setdefault('start_frame', current_frame())
-
-            self._log(text, *args, **kwargs)
-
-    def enter(self, *args, **kwargs):
-        # type: ( *Any, **str ) -> None
-        """
-            Convenience method to log an "Entering" method entry
-
-        :param args: Any (almost) arbitrary arguments. Typically "msg:", value
-        :param kwargs: str  Meant for Trace usage:
-        :return: None
-        """
-        if self.isEnabledFor(Logger.DEBUG):
-            if kwargs.get('start_frame', None) is None:
-                kwargs.setdefault('start_frame', current_frame())
-
-            self.debug('Entering', *args, **kwargs)
-
-    def exit(self, *args, **kwargs):
-        # type: ( *Any, **str ) -> None
-        """
-               Convenience method to log an "Exiting" method entry
-
-        :param args: Any (almost) arbitrary arguments. Typically "msg:", value
-        :param kwargs: str  Meant for Trace usage:
-        :return: None
-        """
-
-        if kwargs.get('start_frame', None) is None:
-            kwargs.setdefault('start_frame', current_frame())
-
-        self.debug('Exiting', *args, **kwargs)
-
-    def exception(self, msg, *args, **kwargs):
-        """
-        Convenience method for logging an ERROR with exception information.
-        """
-        kwargs.setdefault('exc_info', sys.exc_info())
-        kwargs['log_level'] = Logger.ERROR
-        if kwargs.get('start_frame', None) is None:
-            kwargs.setdefault('start_frame', current_frame())
-        self.error(msg, *args, **kwargs)
-
-    def fatal(self, msg, *args, **kwargs):
-        """
-        Log 'msg % args' with severity 'FATAL'.
+        Log 'msg % args' with the integer severity 'level'.
 
         To pass exception information, use the keyword argument exc_info with
         a true value, e.g.
 
-        config_logger.critical("Houston, we have a %s", "major disaster", exc_info=1)
+        logger.log(level, "We have a %s", "mysterious problem", exc_info=1)
         """
-        if self.isEnabledFor(Logger.FATAL):
-            kwargs['log_level'] = Logger.FATAL
-            if kwargs.get('start_frame', None) is None:
-                kwargs.setdefault('start_frame', current_frame())
+        if not isinstance(level, int):
+            if raiseExceptions:
+                raise TypeError("level must be an integer")
+            else:
+                return
+        if self.isEnabledFor(level):
+            kwargs.setdefault('ignore_frames', 0)
+            ignore_frames = kwargs.pop('ignore_frames') + 1
+            trace = kwargs.pop('trace', None)
+            notify: str = kwargs.pop('notify', None)
 
-            self._log(msg, *args, **kwargs)
+            extra: Dict[str, Any] = kwargs.setdefault('extra', {})
+            extra['addon_name'] = CriticalSettings.get_plugin_name()
+            extra['trace'] = trace
+            if notify is not None:
+                extra['notify'] = notify
+            #  extra['start_file'] = start_file,
+            extra['ignore_frames'] = ignore_frames
+            kwargs['extra'] = extra
+            kwargs['stacklevel'] = ignore_frames  # - 1
+
+            # Call super._log directly to avoid having to compensate for
+            # ignore_frames count going through two methods...
+
+            super()._log(level, msg, args, **kwargs)
 
     @classmethod
-    def dump_stack(cls, msg='', ignore_frames=0):
-        # type (str, Union[int, newint]) -> None
-        """
-            Logs a stack dump of all Python threads
+    def get_logger(cls,
+                   file_path: str = None,
+                   class_name: str = None,
+                   clz=None) -> ForwardRef('BasicLogger'):
+        module_logger: BasicLogger = cls.get_module_logger(module_path=file_path)
+        if module_logger is None:
+            return None
+        elif clz is not None:
+            return module_logger.getChild(clz.__name__)
+        elif class_name is not None:
+            return module_logger.getChild(class_name)
+        else:
+            return module_logger
 
-        :param msg: Optional message
-        :param ignore_frames: Specifies stack frames to dump
-        :return: None
-        """
-        ignore_frames += 1
-        trace_back, thread_name = cls.capture_stack(
-            ignore_frames=ignore_frames)
-        cls.log_stack(msg, trace_back, thread_name)
+    @staticmethod
+    def get_addon_logger() -> ForwardRef('BasicLogger'):
+        root_logger: BasicLogger = BasicLogger.getLogger()
+        addon_logger: BasicLogger = root_logger.getChild(CriticalSettings.get_plugin_name())
+        return addon_logger
+
 
     @classmethod
-    def capture_stack(cls, ignore_frames=0):
-        # type (Union[int, newint]) -> List[Any]
+    def get_module_logger(cls,
+                          module_path: str = None) -> ForwardRef('BasicLogger'):
         """
-        :param ignore_frames:
+            Creates a logger based upon something like the python module naming
+            convention. Ex: lib.common.playlist.<classname>
+
+            module_path is path to the module (typically use value of __file__)
+            addon_name only needs to be supplied as the very first
         :return:
         """
-        ignore_frames += 1
-        return cls._capture_stack(ignore_frames=ignore_frames)
+        logger: BasicLogger = None
+
+        root_logger = getLogger()
+        addon_logger: BasicLogger = root_logger.getChild(CriticalSettings.get_plugin_name())
+
+        # Calculate the module path relative to the TOP_PACKAGE_PATH
+
+        if INCLUDE_MODULE_PATH_IN_LOGGER:
+            if module_path is not None:
+                file_path = module_path.replace('.py', '', 1)
+                # xbmc.log(f'TOP_PACKAGE_PATH: {TOP_PACKAGE_PATH} '
+                #          f'file_path: {file_path}')
+                suffix = file_path.replace(CriticalSettings.TOP_PACKAGE_PATH, '', 1)
+                suffix = suffix.replace('/', '.')
+                if suffix.startswith('.'):
+                    suffix = suffix.replace('.', '', 1)
+                    # xbmc.log(f'suffix: {suffix}')
+
+                logger = addon_logger.getChild(suffix)
+                #  xbmc.log(f'Created logger: {logger}')
+            else:
+                root_logger.debug('Expected file_path')
+
+            # xbmc.log(f'Returning logger: {logger}')
+        return logger
+
+    def debug(self, msg: str, *args: Any, **kwargs: Any) -> None:
+        """
+        Log 'msg % args' with severity 'DEBUG'.
+
+        To pass exception information, use the keyword argument exc_info with
+        a true value, e.g.
+
+        logger.debug("Houston, we have a %s", "thorny problem", exc_info=1)
+        """
+        level: int = CriticalSettings.get_logging_level()
+        if self.isEnabledFor(DEBUG):
+            kwargs.setdefault('ignore_frames', 0)
+            ignore_frames = kwargs['ignore_frames'] + 1
+            kwargs['ignore_frames'] = ignore_frames
+            self.log(DEBUG, msg, *args, **kwargs)
+
+    def debug_verbose(self, msg: str, *args: Any, **kwargs: Any) -> None:
+        """
+            Convenience method for log(xxx kwargs['level' : xbmc.LOGDEBUG)
+        :param msg: Message to log
+        :param args: Any (almost) arbitrary arguments. Typically "msg:", value
+        :param kwargs: str  Meant for Trace usage:
+        :return:
+        """
+        if self.isEnabledFor(DEBUG_VERBOSE):
+            ignore_frames: int = kwargs.setdefault('ignore_frames', 0) + 1
+            kwargs['ignore_frames'] = ignore_frames
+
+        self.log(DEBUG_VERBOSE, msg, *args, **kwargs)
+
+    def debug_extra_verbose(self, msg: str, *args: Any, **kwargs: Any) -> None:
+        """
+            Convenience method for log(xxx kwargs['level' : xbmc.LOGDEBUG)
+        :param msg: Message to log
+        :param args: Any (almost) arbitrary arguments. Typically "msg:", value
+        :param kwargs: str  Meant for Trace usage:
+        :return:
+        """
+        if self.isEnabledFor(DEBUG_EXTRA_VERBOSE):
+            kwargs.setdefault('ignore_frames', 0)
+            ignore_frames = kwargs['ignore_frames'] + 1
+            kwargs['ignore_frames'] = ignore_frames
+
+            self.log(DEBUG_EXTRA_VERBOSE, msg, *args, **kwargs)
+
+    def info(self, msg: str, *args: Any, **kwargs: Any) -> None:
+        """
+        Log 'msg' with severity 'INFO'.
+
+        :param msg: Message to log
+
+        To pass exception information, use the keyword argument exc_info with
+        a true value, e.g.
+
+        logger.info("Houston, we have a %s", "interesting problem", exc_info=1)
+        """
+        if self.isEnabledFor(INFO):
+            kwargs.setdefault('ignore_frames', 0)
+            ignore_frames = kwargs['ignore_frames'] + 1
+            kwargs['ignore_frames'] = ignore_frames
+            self.log(INFO, msg, *args, **kwargs)
+
+    def warning(self, msg: str, *args: Any, **kwargs: Any) -> None:
+        """
+        Log 'msg % args' with severity 'WARNING'.
+
+        To pass exception information, use the keyword argument exc_info with
+        a true value, e.g.
+
+        logger.warning("Houston, we have a %s", "bit of a problem", exc_info=1)
+        """
+        if self.isEnabledFor(WARNING):
+            kwargs.setdefault('ignore_frames', 0)
+            ignore_frames = kwargs['ignore_frames'] + 1
+            kwargs['ignore_frames'] = ignore_frames
+            self.log(WARNING, msg, *args, **kwargs)
+
+    def warn(self, msg: str, *args: Any, **kwargs: Any) -> None:
+        warnings.warn("The 'warn' method is deprecated, "
+                      "use 'warning' instead", DeprecationWarning, 2)
+        kwargs.setdefault('ignore_frames', 0)
+        ignore_frames = kwargs['ignore_frames'] + 1
+        kwargs['ignore_frames'] = ignore_frames
+        self.warning(msg, *args, **kwargs)
+
+    def error(self, msg: str, *args: Any, **kwargs: Any) -> None:
+        """
+        Log 'msg % args' with severity 'ERROR'.
+
+        To pass exception information, use the keyword argument exc_info with
+        a true value, e.g.
+
+        logger.error("Houston, we have a %s", "major problem", exc_info=1)
+        """
+        if self.isEnabledFor(ERROR):
+            kwargs.setdefault('ignore_frames', 0)
+            ignore_frames = kwargs['ignore_frames'] + 1
+            kwargs['ignore_frames'] = ignore_frames
+            self.log(ERROR, msg, *args, **kwargs)
+
+    def exception(self, msg: str, *args: Any, exc_info: bool = True,
+                  **kwargs: Any):
+        """
+        Convenience method for logging an ERROR with exception information.
+        """
+        kwargs.setdefault('ignore_frames', 0)
+        ignore_frames = kwargs['ignore_frames'] + 1
+        kwargs['ignore_frames'] = ignore_frames
+        self.error(msg, *args, exc_info=exc_info, **kwargs)
+
+    def critical(self, msg: str, *args: Any, **kwargs: Any):
+        """
+        Log 'msg % args' with severity 'CRITICAL'.
+
+        To pass exception information, use the keyword argument exc_info with
+        a true value, e.g.
+
+        logger.critical("Houston, we have a %s", "major disaster", exc_info=1)
+        """
+        if self.isEnabledFor(CRITICAL):
+            kwargs.setdefault('ignore_frames', 0)
+            ignore_frames = kwargs['ignore_frames'] + 1
+            kwargs['ignore_frames'] = ignore_frames
+            self._log(CRITICAL, msg, *args, **kwargs)
+
+    fatal = critical
 
     @classmethod
-    def _capture_stack(cls, ignore_frames=0):
-        # type (Union[int, newint]) -> List[Any]
+    def dump_stack(cls, msg: str = '', level: int = DEBUG, all_threads: bool = False,
+                   heading: str = '',
+                   ignore_frames: int = 0, limit: int = None) -> None:
         """
-        :param ignore_frames: Specifies stack frames to skip
-        :return:
-        """
-        ignore_frames += 1
-        frame = current_frame(ignore_frames=int(ignore_frames))
+        Dumps the stack for the current thread.
 
-        limit = 15
-        # frame = frame.f_back
-        trace_back = traceback.extract_stack(frame, limit)
-        thread_name = threading.current_thread().getName()
-        return trace_back, thread_name
+        :param msg: Message text to include
+        :param level: Debug level. Will not be printed unless enabled
+        for this level of debug.
+        :param all_threads: Dumps the stack for all threads
+        :param heading:
+        :param ignore_frames: Indicates how many stack frames to ignore
+        :param limit:
+        :return:
+
+        ignore_frames is used to adjust for how many method/function
+        calls are added to the stack between when the stack-dump was
+        originally requested and when it is actually processed. For
+        each intermedia call, ignore_frames is incremented by 1.
+        """
+
+        if get_addon_logger().isEnabledFor(level):
+            ignore_frames += 1
+            sio: StringIO = StringIO()
+            sio.write('LEAK Traceback StackTrace StackDump\n')
+            sio.write(f'{msg}\n')
+
+            current_thread = threading.current_thread()
+            if all_threads:
+                threads_to_dump = threading.enumerate()
+            else:
+                threads_to_dump = [current_thread]
+
+            for th in threads_to_dump:
+                th: threading.Thread = threading.current_thread()
+                sio.write(f'\n# ThreadID: {th.name} Daemon: {th.isDaemon()}\n\n')
+
+                # Remote the logger's frames from it's thread.
+
+                if th == current_thread:
+                    frames_to_ignore = ignore_frames
+                else:
+                    frames_to_ignore = 0
+
+                stack = sys._current_frames(frames_to_ignore).get(th.ident, None)
+                if stack is not None:
+                    traceback.print_stack(stack, file=sio)
+
+            # TODO:
+            #   ignore_frames not actually used at this time.
+            #   When this stack dump is changed to be processed in the
+            #   normal way, then this will be changed.
+
+            kwargs: Any = {'ignore_frames': 1}
+            msg: str = sio.getvalue()
+            sio.close()
+            del sio
+            get_addon_logger().debug(msg=msg, **kwargs)
 
     @staticmethod
-    def log_stack(msg, trace_back, thread_name=''):
-        # type: (str, List[Any], str) -> None
-        """
-
-        :param msg:
-        :param trace_back:
-        :param thread_name:
-        :return:
-        """
-
-        try:
-            msg = Constants.ADDON_ID + ': ' + msg + ' thread:' + thread_name
-            # msg = utils.py2_decode(msg)
-
-            string_buffer = msg
-            string_buffer = string_buffer + '\n' + Constants.TRACEBACK
-            lines = traceback.format_list(trace_back)
-            for line in lines:
-                string_buffer = string_buffer + '\n' + line
-
-            xbmc.log(string_buffer, xbmc.LOGERROR)
-        except Exception as e:
-            Logger.log_exception()
-
-        # XBMC levels
-
-    FATAL = logging.CRITICAL  # 50
-    SEVERE = 45
-    ERROR = logging.ERROR  # 40
-    WARNING = logging.WARNING  # 30
-    NOTICE = 25
-    INFO = logging.INFO  # 20
-    DEBUG = logging.DEBUG  # 10
-    DEBUG_VERBOSE = 8
-    DEBUG_EXTRA_VERBOSE = 6
-    NOTSET = logging.NOTSET  # 0
-
-    # XBMC levels
-    LOGDEBUG = xbmc.LOGDEBUG
-    LOGINFO = xbmc.LOGINFO
-    LOGWARNING = xbmc.LOGWARNING
-    LOGERROR = xbmc.LOGERROR
-    # LOGSEVERE = 5 Removed in Kodi 19
-    LOGFATAL = xbmc.LOGFATAL
-    LOGNONE = xbmc.LOGNONE
-
-    logging_to_kodi_level = {FATAL: xbmc.LOGFATAL,
-                             SEVERE: xbmc.LOGERROR,
-                             ERROR: xbmc.LOGERROR,
-                             WARNING: xbmc.LOGWARNING,
-                             NOTICE: xbmc.LOGINFO,
-                             INFO: xbmc.LOGINFO,
-                             DEBUG_EXTRA_VERBOSE: xbmc.LOGDEBUG,
-                             DEBUG_VERBOSE: xbmc.LOGDEBUG,
-                             DEBUG: xbmc.LOGDEBUG}
-
-    kodi_to_logging_level = {xbmc.LOGDEBUG: DEBUG,
-                             xbmc.LOGINFO: INFO,
-                             xbmc.LOGWARNING: WARNING,
-                             xbmc.LOGERROR: ERROR,
-                             xbmc.LOGFATAL: FATAL}
-
-    @staticmethod
-    def get_python_log_level(kodi_log_level):
-        # type: (int) -> int
-        """
-
-        :param kodi_log_level:
-        :return:
-        """
-        return Logger.kodi_to_logging_level.get(kodi_log_level, None)
-
-    @staticmethod
-    def get_kodi_level(logging_log_level):
-        # type: (int) -> int
-        """
-
-        :param logging_log_level:
-        :return:
-        """
-        return Logger.logging_to_kodi_level.get(logging_log_level, None)
-
-    @staticmethod
-    def on_settings_changed():
-        # type: () -> None
+    def on_settings_changed() -> None:
         """
 
         :return:
         """
         logging_level = CriticalSettings.get_logging_level()
-        root_logger = Logger.get_root_logger()
-        root_logger.setLevel(logging_level)
-
-    @staticmethod
-    def log_exception(exc_info=None, msg=None):
-        # type: (BaseException, str) -> None
-        """
-            Logs an exception.
-
-        :param exc_info: BaseException optional Exception. Not used at this time
-        :param msg: str optional msg
-        :return: None
-        """
-        # noinspection PyRedundantParentheses
-        try:
-            if not isinstance(exc_info, tuple):
-                frame = current_frame(ignore_frames=1)
-            else:
-                frame = sys.exc_info()[2].tb_frame.f_back
-
-                # stack = LazyLogger._capture_stack(ignore_frames=0)
-            thread_name = threading.current_thread().getName()
-
-            sio = StringIO()
-            LazyLogger.print_full_stack(
-                frame=frame, thread_name=thread_name, log_file=sio)
-
-            s = sio.getvalue()
-            sio.close()
-        except AbortException:
-            six.reraise(*sys.exc_info())
-        except Exception as e:
-            msg = 'Logger.log_exception raised exception during processing'
-            xbmc.log(msg, xbmc.LOGERROR)
-
-    @staticmethod
-    def print_full_stack(frame=None, thread_name='', limit=None,
-                         log_file=None):
-        # type: ( Any, str, int, cStringIO.StringIO) -> None
-        """
-
-        :param frame:
-        :param thread_name:
-        :param limit:
-        :param log_file:
-        :return:
-        """
-
-        if frame is None:
-            try:
-                raise ZeroDivisionError
-            except ZeroDivisionError:
-                f = sys.exc_info()[2].tb_frame.f_back
-
-        if log_file is None:
-            log_file = sys.stderr
-
-        lines = []
-        lines.append('LEAK Traceback StackTrace StackDump\n')
-
-        for item in reversed(inspect.getouterframes(frame)[1:]):
-            lines.append('File "{1}", line {2}, in {3}\n'.format(*item))
-            for line in item[4]:
-                lines.append(' ' + line.lstrip())
-        if hasattr(frame, 'tb_frame'):
-            for item in inspect.getinnerframes(frame):
-                lines.append(' File "{1}", line {2}, in {3}\n'.format(*item))
-                for line in item[4]:
-                    lines.append(' ' + line.lstrip())
-
-        for line in lines:
-            log_file.write(line)
+        get_addon_logger().setLevel(logging_level)
 
 
-def log_exit(func):
-    # type: (Callable) -> None
+BasicLogger._class_init_()
+
+
+class KodiHandler(logging.Handler):
+    """
+      Defines a handler for writing to Kodi's logging system.
     """
 
-    :param func:
-    :return:
-    """
-
-    @wraps(func)
-    def func_wrapper(*args, **kwargs):
-        # type: (*Any, **Any) -> Callable[Any]
-        """
-
-        :param args:
-        :param kwargs:
-        :return:
-        """
-        class_name = func.__class__.__name__
-        method_name = func.__name__
-        local_logger = LazyLogger.get_root_logger().getChild(class_name)
-        func(*args, **kwargs)
-        local_logger.exit()
-
-    return func_wrapper
-
-
-def log_entry(func):
-    # type: (Callable) -> None
-    """
-
-    :param func:
-    :return:
-    """
-
-    @wraps(func)
-    def func_wrapper(*args, **kwargs):
-        # type: (*Any, **Any) -> func_wrapper
-        """
-
-        :param args:
-        :param kwargs:
-        :return:
-        """
-        class_name = func.__class__.__name__
-        method_name = func.__name__
-
-        # TODO: Does not include addon name & path
-        local_logger = Logger.get_addon_module_logger().getChild(class_name)
-        local_logger.enter()
-
-        func(*args, **kwargs)
-
-    return func_wrapper
-
-
-def log_entry_exit(func):
-    # type: (Callable) -> None
-    """
-
-    :param func:
-    :return:
-    """
-
-    @wraps(func)
-    def func_wrapper(*args, **kwargs):
-        # type: (*Any, **Any) -> func_wrapper
-        """
-
-        :param args:
-        :param kwargs:
-        :return:
-        """
-        class_name = func.__class__.__name__
-        method_name = func.__name__
-
-        # TODO: Does not include addon name & path
-
-        local_logger = Logger.get_addon_module_logger().getChild(class_name)
-        local_logger.enter()
-        func(*args, **kwargs)
-        local_logger.exit()
-
-    return func_wrapper
-
-
-class LazyLogger(Logger):
-    """
-        Provides logging capabilities that are more convenient than
-        xbmc.log.
-
-        Typical usage:
-
-        class abc:
-            def __init__(self):
-                self._logger = LazyLogger(self.__class__.__name__)
-
-            def method_a(self):
-                local_logger = self._logger('method_a')
-                local_logger.enter()
-                ...
-                local_logger.debug('something happened', 'value1:',
-                                    value1, 'whatever', almost_any_type)
-                local_logger.exit()
-
-        In addition, there is the Trace class which provides more granularity
-        for controlling what messages are logged as well as tagging of the
-        messages for searching the logs.
-
-    """
-    _addon_name = None
-    _logger = None
-    _trace_groups = {}
-    _log_handler_added = False
-
-    def __init__(self,
-                 name='',  # type: str
-                 class_name='',  # type: Optional[str]
-                 level=logging.NOTSET  # type : Optional[int]
-                 ):
-        # type: (...) -> None
-        """
-            Creates a config_logger for (typically) a class.
-
-        :param class_name: label to be printed on each logged entry
-        :param level: Messages at this level and below get logged
-
-        """
-        # noinspection PyRedundantParentheses
-        try:
-            if name == '':
-                name = class_name
-            super().__init__(name, level=level)
-
-            if LazyLogger._addon_name is None:
-                LazyLogger._addon_name = Constants.ADDON_SHORT_NAME
-
-            # self.addHandler(MyHandler())
-            self.setLevel(level)
-            Trace.enable_all()
-            self.addFilter(
-                MyFilter(enabled_traces=Trace.get_enabled_traces()))
-
-        except AbortException:
-            six.reraise(*sys.exc_info())
-        except Exception:
-            LazyLogger.log_exception()
-
-    def log(self, *args, **kwargs):
-        # type: ( *Any, **str) -> None
-        """
-            Creates a log entry
-
-            *args are printed in the log, comma separated. Values are
-            converted to strings.
-
-            **Kwargs Optional Trace tags. Message is logged only if tracing
-            is enabled for one or more of the tags. Further, the tag is also
-            logged.
-
-            Note, the default xbmc.log logging level is xbmc.LOGDEBUG. This can
-            be overridden by including the kwarg {'log_level' : xbmc.<log_level>}
-
-        :param args: Any (almost) arbitrary arguments. Typically "msg:", value
-        :param kwargs: str  Meant for Trace usage:
-        :return:
-        """
-        # noinspection PyRedundantParentheses
-        try:
-            kwargs.setdefault('lazy_logger', True)
-            kwargs.setdefault('ignore_frames', 0)
-            ignore_frames = kwargs['ignore_frames'] + 1
-            kwargs['ignore_frames'] = ignore_frames
-            super()._log(*args, **kwargs)
-
-        except AbortException:
-            six.reraise(*sys.exc_info())
-        except Exception:
-            LazyLogger.log_exception()
-
-    def _log(self, *args, **kwargs):
-        # type: ( *Any, **str) -> None
-        """
-            Creates a log entry
-
-            *args are printed in the log, comma separated. Values are
-            converted to strings.
-
-            **Kwargs Optional Trace tags. Message is logged only if tracing
-            is enabled for one or more of the tags. Further, the tag is also
-            logged.
-
-            Note, the default xbmc.log logging level is xbmc.LOGDEBUG. This can
-            be overridden by including the kwarg {'log_level' : xbmc.<log_level>}
-
-        :param args: Any (almost) arbitrary arguments. Typically "msg:", value
-        :param kwargs: str  Meant for Trace usage:
-        :return:
-        """
-        # noinspection PyRedundantParentheses
-        try:
-            kwargs.setdefault('log_level', Logger.DEBUG)
-            log_level = kwargs['log_level']
-            if not self.isEnabledFor(log_level):
-                return
-
-            kwargs.setdefault('lazy_logger', True)
-            kwargs.setdefault('ignore_frames', 0)
-            ignore_frames = kwargs['ignore_frames'] + 1
-            kwargs['ignore_frames'] = ignore_frames
-
-            super()._log(*args, **kwargs)
-
-        except AbortException:
-            six.reraise(*sys.exc_info())
-        except Exception:
-            LazyLogger.log_exception()
-
-    def debug(self, *args, **kwargs):
-        # type: ( *Any, **str ) -> None
-        """
-            Convenience method for log(xxx kwargs['log_level' : xbmc.LOGDEBUG)
-        :param args: Any (almost) arbitrary arguments. Typically "msg:", value
-        :param kwargs: str  Meant for Trace usage:
-        :return:
-        """
-        kwargs['log_level'] = Logger.DEBUG
-        kwargs.setdefault('lazy_logger', True)
-        kwargs.setdefault('ignore_frames', 0)
-        ignore_frames = kwargs['ignore_frames'] + 1
-        kwargs['ignore_frames'] = ignore_frames
-
-        self._log(*args, **kwargs)
-
-    def debug_verbose(self, *args: Any, **kwargs: Any) -> None:
-        """
-            Convenience method for log(xxx kwargs['log_level' : xbmc.LOGDEBUG)
-        :param args: Any (almost) arbitrary arguments. Typically "msg:", value
-        :param kwargs: str  Meant for Trace usage:
-        :return:
-        """
-        kwargs['log_level'] = Logger.DEBUG_VERBOSE
-        kwargs.setdefault('lazy_logger', True)
-        kwargs.setdefault('ignore_frames', 0)
-        ignore_frames = kwargs['ignore_frames'] + 1
-        kwargs['ignore_frames'] = ignore_frames
-
-        self._log(*args, **kwargs)
-
-    def debug_extra_verbose(self, *args, **kwargs):
-        # type: ( *Any, **str ) -> None
-        """
-            Convenience method for log(xxx kwargs['log_level' : xbmc.LOGDEBUG)
-        :param args: Any (almost) arbitrary arguments. Typically "msg:", value
-        :param kwargs: str  Meant for Trace usage:
-        :return:
-        """
-        kwargs['log_level'] = Logger.DEBUG_EXTRA_VERBOSE
-        kwargs.setdefault('lazy_logger', True)
-        kwargs.setdefault('ignore_frames', 0)
-        ignore_frames = kwargs['ignore_frames'] + 1
-        kwargs['ignore_frames'] = ignore_frames
-
-        self._log(*args, **kwargs)
-
-    def info(self, *args, **kwargs):
-        # type: ( *Any, **str ) -> None
-        """
-            Convenience method for log(xxx kwargs['log_level' : xbmc.LOGINFO)
-        :param args: Any (almost) arbitrary arguments. Typically "msg:", value
-        :param kwargs: str  Meant for Trace usage:
-        :return:
-        """
-        kwargs['log_level'] = Logger.INFO
-        kwargs.setdefault('lazy_logger', True)
-        kwargs.setdefault('ignore_frames', 0)
-        ignore_frames = kwargs['ignore_frames'] + 1
-        kwargs['ignore_frames'] = ignore_frames
-
-        self._log(*args, **kwargs)
-
-    def warning(self, *args, **kwargs):
-        # type: ( *Any, **str ) -> None
-        """
-            Convenience method for log(xxx kwargs['log_level' : xbmc.LOGWARN)
-        :param args: Any (almost) arbitrary arguments. Typically "msg:", value
-        :param kwargs: str  Meant for Trace usage:
-        :return:
-        """
-        kwargs['log_level'] = Logger.WARNING
-        kwargs.setdefault('lazy_logger', True)
-        kwargs.setdefault('ignore_frames', 0)
-        ignore_frames = kwargs['ignore_frames'] + 1
-        kwargs['ignore_frames'] = ignore_frames
-
-        self._log(*args, **kwargs)
-
-    def error(self, *args, **kwargs):
-        # type: ( *Any, **str ) -> None
-        """
-            Convenience method for log(xxx kwargs['log_level' : xbmc.ERROR)
-        :param args: Any (almost) arbitrary arguments. Typically "msg:", value
-        :param kwargs: str  Meant for Trace usage:
-        :return:
-        """
-        kwargs['log_level'] = Logger.ERROR
-        kwargs.setdefault('lazy_logger', True)
-        kwargs.setdefault('ignore_frames', 0)
-        ignore_frames = kwargs['ignore_frames'] + 1
-        kwargs['ignore_frames'] = ignore_frames
-
-        self._log(*args, **kwargs)
-
-    def enter(self, *args, **kwargs):
-        # type: ( *Any, **str ) -> None
-        """
-            Convenience method to log an "Entering" method entry
-
-        :param args: Any (almost) arbitrary arguments. Typically "msg:", value
-        :param kwargs: str  Meant for Trace usage:
-        :return: None
-        """
-        kwargs.setdefault('lazy_logger', True)
-        kwargs.setdefault('ignore_frames', 0)
-        ignore_frames = kwargs['ignore_frames'] + 1
-        kwargs['ignore_frames'] = ignore_frames
-
-        self.debug('Entering', *args, **kwargs)
-
-    def exit(self, *args, **kwargs):
-        # type: ( *Any, **str ) -> None
-        """
-               Convenience method to log an "Exiting" method entry
-
-        :param args: Any (almost) arbitrary arguments. Typically "msg:", value
-        :param kwargs: str  Meant for Trace usage:
-        :return: None
-        """
-        kwargs.setdefault('lazy_logger', True)
-        kwargs.setdefault('ignore_frames', 0)
-        ignore_frames = kwargs['ignore_frames'] + 1
-        kwargs['ignore_frames'] = ignore_frames
-
-        self.debug('Exiting', *args, **kwargs)
-
-    def exception(self, *args, **kwargs):
-        """
-        Convenience method for logging an ERROR with exception information.
-        """
-        kwargs.setdefault('exc_info', sys.exc_info())
-        kwargs['log_level'] = Logger.ERROR
-        kwargs.setdefault('lazy_logger', True)
-        kwargs.setdefault('ignore_frames', 0)
-        ignore_frames = kwargs['ignore_frames'] + 1
-        kwargs['ignore_frames'] = ignore_frames
-
-        self.error(*args, **kwargs)
-
-    def fatal(self, *args, **kwargs):
-        """
-        Log 'msg % args' with severity 'FATAL'.
-
-        To pass exception information, use the keyword argument exc_info with
-        a true value, e.g.
-
-        config_logger.critical("Houston, we have a %s", "major disaster", exc_info=1)
-        """
-        if self.isEnabledFor(Logger.FATAL):
-            kwargs['log_level'] = Logger.FATAL
-            kwargs.setdefault('lazy_logger', True)
-            kwargs.setdefault('ignore_frames', 0)
-            ignore_frames = kwargs['ignore_frames'] + 1
-            kwargs['ignore_frames'] = ignore_frames
-
-            self._log(*args, **kwargs)
-
-    @classmethod
-    def dump_stack(cls, msg='', ignore_frames=0):
-        # type (str, Union[int, newint]) -> None
-        """
-            Logs a stack dump of all Python threads
-
-        :param msg: Optional message
-        :param ignore_frames: Specifies stack frames to dump
-        :return: None
-        """
-        ignore_frames += 1
-        trace_back, thread_name = cls._capture_stack(
-            ignore_frames=ignore_frames)
-        cls.log_stack(msg, trace_back, thread_name)
-
-    @classmethod
-    def capture_stack(cls, ignore_frames=0):
-        # type (Union[int, newint]) -> List[Any]
-        """
-        :param ignore_frames:
-        :return:
-        """
-        ignore_frames += 1
-        return cls._capture_stack(ignore_frames=ignore_frames)
-
-    @staticmethod
-    def log_stack(msg, trace_back, thread_name=''):
-        # type: (str, List[Any], str) -> None
-        """
-
-        :param msg:
-        :param trace_back:
-        :param thread_name:
-        :return:
-        """
-
-        try:
-            msg = Constants.ADDON_ID + ': ' + msg + ' thread:' + thread_name
-            # msg = utils.py2_decode(msg)
-
-            string_buffer = msg
-            string_buffer = string_buffer + '\n' + Constants.TRACEBACK
-            lines = traceback.format_list(trace_back)
-            for line in lines:
-                string_buffer = string_buffer + '\n' + line
-
-            xbmc.log(string_buffer, xbmc.LOGERROR)
-        except Exception as e:
-            Logger.log_exception()
-
-
-class Trace(object):
-    """
-
-    """
-    TRACE = 'TRACE'
-    STATS = 'STATS'
-    TRACE_UI = 'UI'
-    STATS_UI = 'STATS_UI'
-    TRACE_DISCOVERY = 'DISCOVERY'
-    STATS_DISCOVERY = 'STATS_DISCOVERY'
-    TRACE_MONITOR = 'MONITOR'
-    TRACE_JSON = 'JSON'
-    TRACE_SCREENSAVER = 'SCREENSAVER'
-    TRACE_UI_CONTROLLER = 'UI_CONTROLLER'
-
-    _trace_all = [TRACE, STATS, TRACE_UI, STATS_UI, TRACE_DISCOVERY,
-                  STATS_DISCOVERY, TRACE_MONITOR, TRACE_JSON, TRACE_SCREENSAVER,
-                  TRACE_UI_CONTROLLER]
-
-    _enabled_traces = set()
-    _logger = None
-
-    def __init__(self):
-        # type:( ) -> None
-        """
-        Dummy
-        """
-        pass
-
-    @staticmethod
-    def enable(*flags):
-        # type: (str) -> None
-        """
-
-        :param flags:
-        :return:
-        """
-        for flag in flags:
-            Trace._enabled_traces.add(flag)
-
-    @staticmethod
-    def enable_all():
-        # type: () -> None
-        """
-
-        :return:
-        """
-        for flag in Trace._trace_all:
-            Trace.enable(flag)
-
-    @staticmethod
-    def disable(*flags):
-        # type: (*str) -> None
-        """
-
-        :param flags:
-        :return:
-        """
-        for flag in flags:
-            Trace._enabled_traces.remove(flag)
-
-    @staticmethod
-    def get_enabled_traces():
-        # type: () -> Set[str]
-        """
-
-        :return:
-        """
-        return Trace._enabled_traces
-
-
-class MyHandler(logging.Handler):
-    """
-
-    """
-
-    def __init__(self, level=logging.NOTSET, trace=None):
-        # type: (int, Optional[Set[str]]) -> None
+    def __init__(self, level: int = logging.NOTSET,
+                 trace: Set[str] = None) -> None:
         """
 
         :param level:
@@ -1208,12 +453,19 @@ class MyHandler(logging.Handler):
         """
 
         self._trace = trace
+        self._ignore_frames: int = 0
 
-        super().__init__()
-        self.setFormatter(MyFormatter())
+        super().__init__(level=level)
+        self.setFormatter(KodiFormatter())
 
-    def emit(self, record):
-        # type: (logging.LogRecord) -> None
+
+    def handle(self, record):
+        try:
+            super().handle(record)
+        except Exception as e:
+            self.handleError(record)
+
+    def emit(self, record: logging.LogRecord) -> None:
         """
 
         :param record:
@@ -1221,81 +473,106 @@ class MyHandler(logging.Handler):
         """
 
         try:
-            kodi_level = Logger.get_kodi_level(record.levelno)
             if record.exc_info is not None:
-                ignore_frames = record.__dict__.get('ignore_frames', 0) + 4
-                msg = self.formatter.formatException(record.exc_info,
-                                                     ignore_frames)
+                self._ignore_frames = record.__dict__.get('ignore_frames', 0) + 4
+                msg = self.formatter.formatException(record.exc_info)
                 record.exc_text = msg
-            msg = self.format(record)
+            msg = self.formatter.format(record)
+            if record.__dict__.get('notify', False):
+                self.showNotification(msg)
+            kodi_level = get_kodi_level(record.levelno)
             xbmc.log(msg, kodi_level)
         except Exception as e:
+            self.handleError(record)
+
+    def showNotification(self, message, time_ms=3000, icon_path=None,
+                         header=CriticalSettings.ADDON_ID):
+        try:
+            icon_path = icon_path or xbmcvfs.translatePath(
+                    xbmcaddon.Addon(CriticalSettings.ADDON_ID).getAddonInfo('icon'))
+            xbmc.executebuiltin('Notification({0},{1},{2},{3})'.format(
+                    header, message, time_ms, icon_path))
+        except RuntimeError:  # Happens when disabling the addon
             pass
 
+    def handleError(self, record):
+        """
+        Handle errors which occur during an emit() call.
 
-class MyFilter(logging.Filter):
+        (Lifted from logging and modified to write to kodi log
+        instead of stderr. This avoids annoying formatting).
+
+        This method should be called from handlers when an exception is
+        encountered during an emit() call. If raiseExceptions is false,
+        exceptions get silently ignored. This is what is mostly wanted
+        for a logging system - most users will not care about errors in
+        the logging system, they are more interested in application errors.
+        You could, however, replace this with a custom handler if you wish.
+        The record which was being processed is passed in to this method.
+        """
+        if raiseExceptions:  # see issue 13807
+            t, v, tb = sys.exc_info()
+            sio = StringIO()
+            try:
+                sio.write('--- Logging error ---\n')
+                traceback.print_exception(t, v, tb, None, sys.stderr)
+                sio.write('Call stack:\n')
+                # Walk the stack frame up until we're out of logging,
+                # so as to print the calling context.
+                frame = tb.tb_frame
+                while (frame and os.path.dirname(frame.f_code.co_filename) ==
+                       __file__[0]):
+                    frame = frame.f_back
+                if frame:
+                    traceback.print_stack(frame, file=sio)
+                else:
+                    # couldn't find the right stack frame, for some reason
+                    sio.write('Logged from file %s, line %s\n' % (
+                                     record.filename, record.lineno))
+                # Issue 18671: output logging message and arguments
+                try:
+                    sio.write('Message: %r\n'
+                                     'Arguments: %s\n' % (record.msg,
+                                                          record.args))
+                except RecursionError:  # See issue 36272
+                    raise
+                except Exception:
+                    sio.write('Unable to print the message and arguments'
+                                     ' - possible formatting error.\nUse the'
+                                     ' traceback above to help find the error.\n'
+                                    )
+            except OSError: #pragma: no cover
+                pass    # see issue 5971
+            finally:
+                xbmc.log(sio.getvalue(), xbmc.LOGDEBUG)
+                sio.close()
+                del sio
+                del t, v, tb
+
+class KodiFormatter(logging.Formatter):
     """
 
     """
 
-    def __init__(self, name='', enabled_traces=None):
-        # type: (str, Union[Set[str], None]) -> None
+    def __init__(self, fmt=None, datefmt=None, style='%', validate=True):
         """
+        Initialize the formatter with specified format strings.
 
-        :param name:
-        :param enabled_traces:
+        Initialize the formatter either with the specified format string, or a
+        default as described above. Allow for specialized date formatting with
+        the optional datefmt argument. If datefmt is omitted, you get an
+        ISO8601-like (or RFC 3339-like) format.
+
+        Use a style parameter of '%', '{' or '$' to specify that you want to
+        use one of %-formatting, :meth:`str.format` (``{}``) formatting or
+        :class:`string.Template` formatting in your format string.
+
+        .. versionchanged:: 3.2
+           Added the ``style`` parameter.
         """
-        try:
-            super().__init__(name=name)
-            self._enabled_traces = enabled_traces
-            if self._enabled_traces is None:
-                self._enabled_traces = set()
-        except Exception as e:
-            pass
+        super().__init__(fmt=fmt, datefmt=datefmt, style=style, validate=validate)
 
-    def filter(self, record):
-        # type: (logging.LogRecord) -> int
-        """
-
-
-        :param record:
-        :return:
-        """
-        try:
-            passed_traces = record.__dict__.get('trace', set())
-            if len(passed_traces) == 0:
-                return 1
-
-            filtered_traces = self._enabled_traces.intersection(passed_traces)
-            if len(filtered_traces) > 0:
-                trace_string = ', '.join(sorted(filtered_traces))
-                trace_string = '[{}]'.format(trace_string)
-                record.__dict__['trace_string'] = trace_string
-
-                return 1  # Docs say 0 and non-zero
-        except Exception:
-            LazyLogger.log_exception()
-
-        return 0
-
-
-class MyFormatter(logging.Formatter):
-    """
-
-    """
-
-    def __init__(self, fmt=None, datefmt=None):
-        # type: (Optional[str], Optional[str]) -> None
-        """
-
-        :param fmt:
-        :param datefmt:
-        :param style:
-        """
-        super().__init__(fmt=fmt, datefmt=datefmt)
-
-    def format(self, record):
-        # type: (logging.LogRecord) -> str
+    def format(self, record: logging.LogRecord) -> str:
         """
 
         :param record:
@@ -1327,13 +604,15 @@ class MyFormatter(logging.Formatter):
             threadName 	%(threadName)s 	Thread name (if available).
 
             [service.randomtrailers.backend:DiscoverTmdbMovies:process_page] 
-            [service.randomtrailers.backend:FolderMovieData:add_to_discovered_trailers  TRACE_DISCOVERY]
+            [service.randomtrailers.backend:FolderMovieData:add_to_discovered_movies  TRACE_DISCOVERY]
         """
-        # threadName Constants.ADDON_SHORT_NAME funcName:lineno
+        # threadName Constants.CURRENT_ADDON_SHORT_NAME funcName:lineno
         # [threadName name funcName:lineno]
 
         text = ''
+        clz = type(self)
         try:
+            '''
             start_file = record.__dict__.get('start_file', None)
             try:
                 pathname, lineno, func = start_file
@@ -1349,36 +628,69 @@ class MyFormatter(logging.Formatter):
                 record.module = "Unknown module"
             record.lineno = lineno
             record.funcName = func
+            '''
+
+            addon_name: str = record.__dict__.get('addon_name', None)
 
             suffix = super().format(record)
-            passed_traces = record.__dict__.get('trace_string', None)
-            if passed_traces is None:
-                if INCLUDE_THREAD_INFO:
-                    prefix = '[Thread {!s} {!s}.{!s}:{!s}]'.format(
-                        record.threadName, record.name, record.funcName, record.lineno)
+            thread_field: str = ''
+            if INCLUDE_THREAD_INFO:
+                if INCLUDE_THREAD_LABEL:
+                    thread_label = 'T:'
                 else:
-                    prefix = '[{!s}.{!s}:{!s}]'.format(
-                        record.name, record.funcName, record.lineno)
+                    thread_label = ''
+                thread_field = f'{thread_label}{record.threadName} '
+
+            if INCLUDE_DEBUG_LEVEL:
+                level = record.levelname
             else:
-                if INCLUDE_THREAD_INFO:
-                    prefix = '[Thread {!s} {!s}.{!s}:{!s} Trace:{!s}]'.format(
-                        record.threadName, record.name, record.funcName,
-                        record.lineno, passed_traces)
-                else:
-                    prefix = '[{!s}.{!s}:{!s} Trace:{!s}]'.format(
-                        record.name, record.funcName,
-                        record.lineno, passed_traces)
-            text = '{} {}'.format(prefix, suffix)
-        except Exception as e:
+                level = ''
+
+            module_path: str = ''
+            addon_label: str = ''
+            if addon_name is not None:
+                addon_label = f'{addon_name} '
+
+                # In addition to having addon_name to print, the addon_name
+                # is also the first level node name of the record.name.
+                # To keep from looking stupid, and to reduce line length,
+                # remove the addon_name from the record.name.
+
+                if record.name.startswith(addon_name):
+                    module_path = record.name[len(addon_name) + 1:]  # Add 1 for '.'
+            else:
+                module_path = record.name
+
+            func_name: str = ''
+            if record.funcName != '<module>':
+                func_name = f'.{record.funcName}'
+
+            passed_traces = record.__dict__.get('trace_string', None)
+            if passed_traces is not None:
+                passed_traces = f' Trace: {passed_traces}'
+            else:
+                passed_traces = ''
+
+            prefix = f'[{thread_field}{addon_label}{module_path}{func_name}:{record.lineno}:' \
+                     f'{level}{passed_traces}]'
+
+            text = f'{prefix} {suffix}'
+
+        # Let emit handle exceptions
+        #
+        #  except Exception as e:
+        #     pass
+        finally:
             pass
 
         return text
 
-    def formatException(self, ei, ignore_frames=0):
-        # type: (...) -> str
+    def formatException(self, ei: List[Any] = None,
+                        ignore_frames: int = 0) -> str:
         """
 
         :param ei:
+        :param ignore_frames:
         :return:
         """
         ignore_frames += 1
@@ -1386,48 +698,383 @@ class MyFormatter(logging.Formatter):
             thread_name = threading.current_thread().getName()
 
             sio = StringIO()
-            self.print_exception(
-                ei[0], ei[1], ei[2], thread_name='', limit=None, log_file=sio)
+            '''
+            xtraceback.print_exception(etype, value, tb, limit=None, file=log_file, chain=True)
+print_exception(etype: Type = None,
+                    value: Any = None,
+                    tb: Any = None,
+                    thread_name: str = '',
+                    limit: int = None,
+                    ignore_frames: int = 0,
+                    log_file: StringIO = None '''
 
+            traceback.print_exception(ei[0], ei[1], ei[2], limit=None, file=sio)
             s = sio.getvalue()
             sio.close()
             return s
 
-    def print_exception(self, etype, value, tb, thread_name='',
-                        limit=None, log_file=None):
 
-        # type: ( Any, str, int, StringIO) -> None
+class Trace(logging.Filter):
+    """
+
+    """
+    TRACE: Final[str] = 'TRACE'
+    STATS: Final[str] = 'STATS'
+    TRACE_UI: Final[str] = 'UI'
+    STATS_UI: Final[str] = 'STATS_UI'
+    TRACE_DISCOVERY: Final[str] = 'DISCOVERY'
+    TRACE_FETCH: Final[str] = 'FETCH'
+    TRACE_TRAILER_CACHE: Final[str] = 'TRAILER_CACHE'
+    TRACE_TMDB_CACHE: Final[str] = 'TMDB_CACHE'
+    TRACE_GENRE: Final[str] = 'GENRE'
+    TRACE_CERTIFICATION: Final[str] = 'CERTIFICATION'
+    TRACE_CACHE_GARBAGE_COLLECTION: Final[str] = 'CACHE_GC'
+    TRACE_TFH: Final[str] = 'TFH'
+    STATS_DISCOVERY: Final[str] = 'STATS_DISCOVERY'
+    STATS_CACHE: Final[str] = 'STATS_CACHE'
+    TRACE_MONITOR: Final[str] = 'MONITOR'
+    TRACE_JSON: Final[str] = 'JSON'
+    TRACE_SCREENSAVER: Final[str] = 'SCREENSAVER'
+    TRACE_UI_CONTROLLER: Final[str] = 'UI_CONTROLLER'
+    TRACE_CACHE_MISSING: Final[str] = 'CACHE_MISSING'
+    TRACE_CACHE_UNPROCESSED: Final[str] = 'CACHE_UNPROCESSED'
+    TRACE_CACHE_PAGE_DATA: Final[str] = 'CACHE_PAGE_DATA'
+    TRACE_TRANSLATION: Final[str] = 'TRANSLATION'
+    TRACE_SHUTDOWN: Final[str] = 'SHUTDOWN'
+    TRACE_PLAY_STATS: Final[str] = 'PLAY_STATISTICS'
+    TRACE_NETWORK: Final[str] = 'TRACE_NETWORK'
+
+    TRACE_ENABLED: Final[bool] = True
+    TRACE_DISABLED: Final[bool] = False
+
+    _trace_map: Final[Dict[str, bool]] = {
+        TRACE: TRACE_DISABLED,
+        STATS: TRACE_DISABLED,
+        TRACE_UI: TRACE_DISABLED,
+        TRACE_DISCOVERY: TRACE_DISABLED,
+        TRACE_FETCH: TRACE_DISABLED,
+        TRACE_TRAILER_CACHE: TRACE_DISABLED,
+        TRACE_TMDB_CACHE: TRACE_DISABLED,
+        TRACE_GENRE: TRACE_DISABLED,
+        TRACE_CERTIFICATION: TRACE_DISABLED,
+        TRACE_CACHE_GARBAGE_COLLECTION: TRACE_DISABLED,
+        TRACE_TFH: TRACE_DISABLED,
+        STATS_DISCOVERY: TRACE_DISABLED,
+        STATS_CACHE: TRACE_DISABLED,
+        TRACE_MONITOR: TRACE_DISABLED,
+        TRACE_JSON: TRACE_DISABLED,
+        TRACE_SCREENSAVER: TRACE_DISABLED,
+        TRACE_UI_CONTROLLER: TRACE_DISABLED,
+        TRACE_CACHE_MISSING: TRACE_DISABLED,
+        TRACE_CACHE_UNPROCESSED: TRACE_DISABLED,
+        TRACE_CACHE_PAGE_DATA: TRACE_DISABLED,
+        TRACE_TRANSLATION: TRACE_DISABLED,
+        TRACE_SHUTDOWN: TRACE_DISABLED,
+        TRACE_PLAY_STATS: TRACE_DISABLED,
+        TRACE_NETWORK: TRACE_DISABLED
+    }
+
+    _trace_exclude = {
+        TRACE_NETWORK: TRACE_DISABLED,
+        STATS: TRACE_DISABLED,
+        STATS_DISCOVERY: TRACE_DISABLED,
+        STATS_CACHE: TRACE_DISABLED,
+        TRACE_JSON: TRACE_DISABLED,
+        TRACE_MONITOR: TRACE_DISABLED,
+        TRACE_SCREENSAVER: TRACE_DISABLED,
+        TRACE_TRANSLATION: TRACE_DISABLED,
+        TRACE_PLAY_STATS: TRACE_DISABLED,
+        TRACE_SHUTDOWN: TRACE_DISABLED
+    }
+
+    _logger = None
+
+    def __init__(self, name: str = '') -> None:
+        """
+        Dummy
+        """
+        super().__init__(name=name)
+
+    @classmethod
+    def enable(cls, *flags: str) -> None:
         """
 
-        :param frame:
-        :param thread_name:
-        :param limit:
-        :param log_file:
+        :param flags:
         :return:
         """
+        for flag in flags:
+            if flag in cls._trace_map:
+                cls._trace_map[flag] = cls.TRACE_ENABLED
+            else:
+                cls._logger.debug(f'Invalid TRACE flag: {flag}')
 
-        if tb is None:
-            tb = sys.exc_info()[2]
+    @classmethod
+    def enable_all(cls) -> None:
+        """
 
-        if log_file is None:
-            log_file = sys.stderr
+        :return:
+        """
+        for flag in cls._trace_map.keys():
+            if flag not in cls._trace_exclude.keys():
+                cls._trace_map[flag] = cls.TRACE_ENABLED
 
-        lines = []
-        lines.append(
-            'LEAK Traceback StackTrace StackDump (most recent call last)\n')
+    @classmethod
+    def disable(cls, *flags: str) -> None:
+        """
 
+        :param flags:
+        :return:
+        """
+        for flag in flags:
+            if flag in cls._trace_map:
+                cls._trace_map[flag] = cls.TRACE_DISABLED
+            else:
+                cls._logger.debug(f'Invalid TRACE flag: {flag}')
+
+    @classmethod
+    def is_enabled(cls, trace_flags: Union[str, List[str]]) -> bool:
+        try:
+            if not isinstance(trace_flags, list):
+                trace_flags = [trace_flags]
+
+            if len(trace_flags) == 0:
+                return False
+
+            for trace in trace_flags:
+                enabled = cls._trace_map.get(trace, None)
+                if enabled is None:
+                    cls._logger.warn(f'Invalid TRACE flag: {trace}')
+                elif enabled:
+                    return True
+
+            return False
+        except Exception:
+            BasicLogger.exception(msg='')
+
+        return False
+
+    def filter(self, record: logging.LogRecord) -> int:
+        """
+
+        :param record:
+        :return:
+        """
+        try:
+            passed_traces = record.__dict__.get('trace', [])
+            if len(passed_traces) == 0:
+                return 1
+
+            cls = type(self)
+            filtered_traces = []
+            for trace in passed_traces:
+                is_enabled = cls._trace_map.get(trace, None)
+                if is_enabled is None:
+                    cls._logger.debug(f'Invalid TRACE flag: {trace}')
+                elif is_enabled:
+                    filtered_traces.append(trace)
+
+            if len(filtered_traces) > 0:
+                filtered_traces.sort()
+
+                trace_string = ', '.join(filtered_traces)
+                trace_string = f'[{trace_string}]'
+                record.__dict__['trace_string'] = trace_string
+
+                return 1  # Docs say 0 and non-zero
+        except Exception:
+            BasicLogger.exception(msg='')
+
+        return 0
+
+
+"""
+
+    %(name)s            Name of the logger (logging channel)
+    %(levelno)s         Numeric logging level for the message (DEBUG, INFO,
+                        WARNING, ERROR, CRITICAL)
+    %(levelname)s       Text logging level for the message ("DEBUG", "INFO",
+                        "WARNING", "ERROR", "CRITICAL")
+    %(pathname)s        Full pathname of the source file where the logging
+                        call was issued (if available)
+    %(filename)s        Filename portion of pathname
+    %(module)s          Module (name portion of filename)
+    %(lineno)d          Source line number where the logging call was issued
+                        (if available)
+    %(funcName)s        Function name
+    %(created)f         Time when the LogRecord was created (time.time()
+                        return value)
+    %(asctime)s         Textual time when the LogRecord was created
+    %(msecs)d           Millisecond portion of the creation time
+    %(relativeCreated)d Time in milliseconds when the LogRecord was created,
+                        relative to the time the logging module was loaded
+                        (typically at application startup time)
+    %(thread)d          Thread ID (if available)
+    %(threadName)s      Thread name (if available)
+    %(process)d         Process ID (if available)
+    %(message)s         The result of record.getMessage(), computed just as
+                        the record is emitted
+                        
+BASIC_FORMAT = "%(levelname)s:%(name)s:%(message)s"
+
+_STYLES = {
+    '%': (PercentStyle, BASIC_FORMAT),
+    '{': (StrFormatStyle, '{levelname}:{name}:{message}'),
+    '$': (StringTemplateStyle, '${levelname}:${name}:${message}'),
+}
+            if clz.INCLUDE_THREAD_LABEL:
+                thread_label = 'Thread'
+            else:
+                thread_label = ''
+            if clz.INCLUDE_DEBUG_LEVEL:
+                level = record.levelname
+            else:
+                level = ''
+
+            if passed_traces is None:
+                if clz.INCLUDE_THREAD_INFO:
+                    prefix = f'[{thread_label} {record.threadName} ' \
+                             f'{record.name}.{record.funcName}:{record.lineno}:{level}]'
+                else:
+                    prefix = f'[{record.name}.{record.funcName}:{record.lineno}:{level}]'
+
+            text = f'{prefix} {suffix}'
+"""
+# Default style is:  '{': (StrFormatStyle, '{levelname}:{name}:{message}'),
+# _STYLES[style][0](fmt)
+
+
+def get_addon_logger() -> BasicLogger:
+    root_logger: BasicLogger = getLogger()
+    addon_logger: BasicLogger = root_logger.getChild(CriticalSettings.get_plugin_name())
+    return addon_logger
+
+
+thread_info: str = ''
+if INCLUDE_THREAD_INFO:
+    if INCLUDE_THREAD_LABEL:
+        thread_label = 'T:'
+    else:
+        thread_label = ''
+    thread_info = f'{thread_label}{{threadName}} '
+
+level_field: str
+if INCLUDE_DEBUG_LEVEL:
+    level_field = '{levelname} '
+else:
+    level_field = ''
+
+# format_str: str = f'[{thread_info}{{name}}.{{funcName}}:{{lineno}}:{level_field}]'
+# format_str: str = ''  # f'[{thread_info}{{filename}}.{{funcName}}:{{lineno}}:{level_field}]'
+
+handler: Handler = KodiHandler(level=CriticalSettings.get_logging_level())
+handler.setFormatter(KodiFormatter(style='{'))
+handlers: List[Handler] = [handler]
+get_addon_logger().addHandler(handler)
+get_addon_logger().setLevel(CriticalSettings.get_logging_level())
+get_addon_logger().addFilter(Trace())
+
+xbmc.log(f'Configure.get_logging_level: {CriticalSettings.get_logging_level()}')
+
+#  xbmc.log(f'format_str: {format_str}')
+my_kwargs: Dict[str, str] = {'style': '{',
+                          # 'format': format_str,
+                          'level': CriticalSettings.get_logging_level(),
+                          'handlers': handlers}
+                          #  'force': True}
+
+basicConfig(**my_kwargs)
+
+
+def print_exception(etype: Type = None,
+                    value: Any = None,
+                    tb: Any = None,
+                    thread_name: str = '',
+                    limit: int = None,
+                    ignore_frames: int = 0,
+                    log_file: StringIO = None) -> None:
+    """
+    :param etype:
+    :param value:
+    :param tb:
+    :param thread_name:
+    :param limit:
+    :param ignore_frames:
+    :param log_file:
+    :return:
+    """
+
+    if tb is None:
+        tb = sys.exc_info()[2]
+
+    log_file_created_here: bool = False
+    if log_file is None:
+        log_file = StringIO()
+        log_file_created_here = True
+
+    log_file.write('LEAK Traceback StackTrace StackDump (most recent call last)\n')
+
+    log_file.write('NORMAL TB:\n')
+
+    traceback.print_exception(etype, value, tb, limit=None, file=log_file, chain=True)
+
+    log_file.write('PRINT_TB: \n')
+    traceback.print_tb(tb, file=log_file)
+
+    log_file.write('OUTER FRAMES:\n')
+    try:
         for item in reversed(inspect.getouterframes(tb.tb_frame)[1:]):
-            lines.append('File "{1}", line {2}, in {3}\n'.format(*item))
-            for line in item[4]:
-                lines.append(' ' + line.lstrip())
-
-        if hasattr(tb, 'tb_frame'):
-            for item in inspect.getinnerframes(tb):
-                lines.append(' File "{1}", line {2}, in {3}\n'.format(*item))
+            log_file.write('File "{1}", line {2}, in {3}\n'.format(*item))
+            if item[4] is not None:
                 for line in item[4]:
-                    lines.append(' ' + line.lstrip())
+                    log_file.write(' ' + line.lstrip())
+    except Exception as e:
+        pass
 
-        lines = lines + traceback.format_exception_only(etype, value)
+    log_file.write('INNER FRAMES:\n')
+    if hasattr(tb, 'tb_frame'):
+        try:
+            for item in inspect.getinnerframes(tb):
+                log_file.write(' File "{1}", line {2}, in {3}\n'.format(*item))
+                if item[4] is not None:
+                    for line in item[4]:
+                        log_file.write(' ' + line.lstrip())
+        except Exception as e:
+            pass
 
-        for line in lines:
-            log_file.write(line)
+    # Can be None if tb only sent from a BasicLogger.dump_stack (no exception thrown)
+
+    try:
+        if etype is not None and value is not None:
+            for item in traceback.format_exception_only(etype, value):
+                log_file.write(item)
+    except Exception as e:
+        pass
+
+    if log_file_created_here:
+        xbmc.log(log_file.getvalue())
+        log_file.close()
+        del log_file
+
+
+def info(msg: str, *args, **kwargs):
+    get_addon_logger().info(msg, *args, **kwargs)
+
+
+def warning(msg: str, *args, **kwargs):
+    get_addon_logger().warning(msg, *args, **kwargs)
+
+
+def error(msg: str, *args, **kwargs):
+    get_addon_logger().error(msg, *args, **kwargs)
+
+
+def exception(msg: str, *args, **kwargs):
+    get_addon_logger().exception(msg, *args, **kwargs)
+
+
+def critical(msg: str, *args, **kwargs):
+    get_addon_logger().critical(msg, *args, **kwargs)
+
+
+def log(level: int, msg: str, *args, **kwargs):
+    get_addon_logger().log(level, msg, *args, **kwargs)

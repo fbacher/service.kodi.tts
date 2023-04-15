@@ -11,11 +11,10 @@ import xbmcvfs
 
 from common.settings import Settings
 from common.constants import Constants
-from common.logger import LazyLogger
-from common.old_logger import OldLogger
+from common.logger import *
 from common import utils
 
-module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 ADDON_ID = 'service.kodi.tts'
 ADDON = xbmcaddon.Addon(ADDON_ID)
@@ -23,7 +22,7 @@ T = xbmcaddon.Addon(ADDON_ID).getLocalizedString
 XT = xbmc.getLocalizedString
 ADDON_PATH = xbmcaddon.Addon(ADDON_ID).getAddonInfo('path')
 
-LOG_PATH = os.path.join(xbmcvfs.translatePath('special://logpath'), 'xbmc.log')
+LOG_PATH = os.path.join(xbmcvfs.translatePath('special://logpath'), 'kodi.log')
 
 DISABLE_PATH = os.path.join(xbmcvfs.translatePath(
     'special://profile'), 'addon_data', ADDON_ID, 'DISABLED')
@@ -69,10 +68,6 @@ def tailXBMCLog(num_lines=10):
 
 def getTmpfs():
     return utils.getTmpfs()
-
-
-def showNotification(message, time_ms=3000, icon_path=None, header='XBMC TTS'):
-    OldLogger.showNotification(message, time_ms, icon_path, header)
 
 
 def getXBMCVersion():

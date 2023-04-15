@@ -4,7 +4,7 @@ import xbmc
 from common.messages import Messages
 from common.constants import Constants
 from common.settings import Settings
-from common.logger import LazyLogger
+from common.logger import *
 
 '''
 Table data format:
@@ -203,4 +203,3 @@ def getSongInfo():
         ret.append(xbmc.getLocalizedString(180))
         ret.append(duration)
     return ret
-

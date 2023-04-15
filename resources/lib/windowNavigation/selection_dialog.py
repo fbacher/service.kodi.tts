@@ -9,13 +9,13 @@ from common.constants import Constants
 from common.settings import Settings
 from common.messages import Message, Messages
 from common.setting_constants import Languages, Players, Genders, Misc
-from common.logger import LazyLogger
+from common.logger import *
 
 if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = LazyLogger.get_addon_module_logger().getChild(
-        'lib.windowNavigation')
+    module_logger = BasicLogger.get_module_logger(module_path=__file__)
+
 else:
-    module_logger = LazyLogger.get_addon_module_logger()
+    module_logger = BasicLogger.get_module_logger()
 
 
 class SelectionDialog(xbmcgui.WindowXMLDialog):
@@ -29,7 +29,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         super().__init__(*args, **kwargs)
         self.exit_dialog = False
         self._logger = module_logger.getChild(
-            self.__class__.__name__)  # type: LazyLogger
+            self.__class__.__name__)  # type: BasicLogger
         self._logger.debug_verbose('SelectionDialog.__init__')
         self.initialized = False
         empty_list_items = []  # type: List[xbmcgui.ListItem]

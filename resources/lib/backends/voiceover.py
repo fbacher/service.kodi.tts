@@ -5,7 +5,7 @@ import sys
 
 from common.constants import Constants
 from common.setting_constants import Languages, Players, Genders, Misc
-from common.logger import LazyLogger
+from common.logger import *
 from common.messages import Messages
 from common.settings import Settings
 from common.system_queries import SystemQueries
@@ -13,7 +13,7 @@ from common import utils
 from common.system_queries import SystemQueries
 from backends.base import SimpleTTSBackendBase
 
-module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class VoiceOverBackend(SimpleTTSBackendBase):
@@ -23,7 +23,7 @@ class VoiceOverBackend(SimpleTTSBackendBase):
 
     def __init__(self):
         super().__init__()
-        self._logger = module_logger.getChild(self.__class__.__name__)  # type: LazyLogger
+        self._logger = module_logger.getChild(self.__class__.__name__)  # type: BasicLogger
 
 
     def init(self):

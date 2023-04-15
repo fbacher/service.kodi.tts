@@ -7,13 +7,12 @@ Created on Jul 7, 2020
 from windowNavigation.settings_dialog import SettingsDialog
 from common.settings import Settings
 from common.constants import Constants
-from common.logger import (Logger, LazyLogger)
+from common.logger import (Logger, BasicLogger)
 
 if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = LazyLogger.get_addon_module_logger(
-    ).getChild('common.messages')
+    module_logger = BasicLogger.get_module_logger(module_path=__file__)
 else:
-    module_logger = LazyLogger.get_addon_module_logger()
+    module_logger = BasicLogger.get_module_logger()
 
 
 class SettingsGUI(object):

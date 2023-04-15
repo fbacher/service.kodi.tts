@@ -8,12 +8,12 @@ import xbmcaddon
 import xbmcvfs
 
 from common.constants import Constants
-from common.logger import LazyLogger
+from common.logger import *
 from common.messages import Messages
 from common.system_queries import SystemQueries
 from common import utils
 
-module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 ACTIONS = (
     ('REPEAT', 'f1'),
@@ -159,7 +159,7 @@ def buildKeymap(defaults=False):  # TODO: Build XML with ElementTree?
             xml = xml.replace('<{0}>'.format(action), '<{0}>'.format(default)).replace(
                 '</{0}>'.format(action), '</{0}>'.format(default.split(' ', 1)[0]))
 
-    xml = xml.format(SPECIAL=SystemQueries.isPreInstalled() and 'xbmc' or 'home')
+    xml = xml.format(SPECIAL=SystemQueries.isPreInstalled() and 'kodi' or 'home')
 
     saveKeymapXML(xml)
 

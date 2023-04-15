@@ -1,12 +1,12 @@
 import socket, urllib.request, urllib.error, urllib.parse, http.client, select, time
 
-from common.logger import LazyLogger
+from common.logger import *
 from common.constants import Constants
 from common.settings import Settings
 from common.monitor import my_monitor
 
 
-module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 STOP_REQUESTED = False
@@ -33,7 +33,7 @@ def StopConnection():
     if not STOPPABLE:
         STOP_REQUESTED = False
         return
-    if module_logger.isEnabledFor(LazyLogger.DEBUG):
+    if module_logger.isEnabledFor(DEBUG):
         module_logger.debug('StopConnection: User requested stop of connection')
 
     STOP_REQUESTED = True
@@ -52,7 +52,7 @@ class _AsyncHTTPResponse(http.client.HTTPResponse):
 
     def __init__(self, *args, ** kwargs):
         super().__init__(*args, **kwargs)
-        self._logger = module_logger.getChild(self.__class__.__name__)  # type: LazyLogger
+        self._logger = module_logger.getChild(self.__class__.__name__)  # type: BasicLogger
 
     def _read_status(self):
         ## Do non-blocking checks for server response until something arrives.
@@ -64,10 +64,10 @@ class _AsyncHTTPResponse(http.client.HTTPResponse):
                     break
                 ## <--- Right here, check to see whether thread has requested to stop
                 ##      Also check to see whether timeout has elapsed
-                if my_monitor.abortRequested() and self._logger.isEnabledFor(LazyLogger.DEBUG):
+                if my_monitor.abortRequested() and self._logger.isEnabledFor(DEBUG):
                     self._logger.debug(' -- XBMC requested abort during wait for server response: raising exception -- ')
                     raise AbortRequestedException('httplib.HTTPResponse._read_status')
-                elif STOP_REQUESTED and self._logger.isEnabledFor(LazyLogger.DEBUG):
+                elif STOP_REQUESTED and self._logger.isEnabledFor(DEBUG):
                     self._logger.debug('Stop requested during wait for server response: raising exception')
                     resetStopRequest()
                     raise StopRequestedException('httplib.HTTPResponse._read_status')
@@ -111,10 +111,10 @@ Handler = _Handler
 #    return handler
 
 def checkStop():
-    if my_monitor.abortRequested() and module_logger.isEnabledFor(LazyLogger.DEBUG):
+    if my_monitor.abortRequested() and module_logger.isEnabledFor(DEBUG):
         module_logger.debug(' -- XBMC requested abort during wait for connection to server: raising exception -- ')
         raise AbortRequestedException('socket[asyncconnections].create_connection')
-    elif STOP_REQUESTED and module_logger.isEnabledFor(LazyLogger.DEBUG):
+    elif STOP_REQUESTED and module_logger.isEnabledFor(DEBUG):
         module_logger.debug('Stop requested during wait for connection to server: raising exception')
         resetStopRequest()
         raise StopRequestedException('socket[asyncconnections].create_connection')
@@ -174,14 +174,14 @@ OLD_socket_create_connection = socket.create_connection
 def setEnabled(enable=True):
     global OLD_socket_create_connection, AsyncHTTPResponse, Handler
     if enable:
-        if module_logger.isEnabledFor(LazyLogger.DEBUG):
+        if module_logger.isEnabledFor(DEBUG):
             module_logger.debug('Asynchronous connections: Enabled')
 
         socket.create_connection = create_connection
         AsyncHTTPResponse = _AsyncHTTPResponse
         Handler = _Handler
     else:
-        if module_logger.isEnabledFor(LazyLogger.DEBUG):
+        if module_logger.isEnabledFor(DEBUG):
             module_logger.debug('Asynchronous connections: Disabled')
 
         AsyncHTTPResponse = http.client.HTTPResponse

@@ -13,13 +13,12 @@ from common.constants import Constants
 from common.settings import Settings
 from common.messages import Messages
 from common.setting_constants import Backends, Players, Genders
-from common.logger import LazyLogger
+from common.logger import *
 
 if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = LazyLogger.get_addon_module_logger().getChild(
-        'lib.windowNavigation')
+    module_logger = BasicLogger.get_module_logger(module_path=__file__)
 else:
-    module_logger = LazyLogger.get_addon_module_logger()
+    module_logger = BasicLogger.get_module_logger()
 
 
 class SettingsDialog(xbmcgui.WindowXMLDialog):
@@ -76,7 +75,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         # xbmc.executebuiltin('Skin.ToggleDebug')
 
         self._logger = module_logger.getChild(
-            self.__class__.__name__)  # type: LazyLogger
+            self.__class__.__name__)  # type: BasicLogger
         self._initialized = False
         self.exit_dialog = False
         super().__init__(*args)
@@ -450,7 +449,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         if action_id == xbmcgui.ACTION_MOUSE_MOVE:
             return
 
-        if self._logger.isEnabledFor(LazyLogger.DEBUG_EXTRA_VERBOSE):
+        if self._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
             action_mapper = Action.get_instance()
             matches = action_mapper.getKeyIDInfo(action)
 
@@ -607,7 +606,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         return choices, current_choice_index
 
     def select_backend(self):
-        self._logger.enter()
+        
         choices, current_choice_index = self.get_backend_choices()
         if current_choice_index < 0:
             current_choice_index = 0

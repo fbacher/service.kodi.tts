@@ -4,17 +4,16 @@ import time
 import xbmc, xbmcgui
 from windows.base import WindowReaderBase, WindowHandlerBase
 from common.constants import Constants
-from common.logger import LazyLogger
+from common.logger import *
 from common.messages import Messages
 from common.settings import Settings
 from common import utils
 
 
 if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = LazyLogger.get_addon_module_logger().getChild(
-        'lib.windows')
+    module_logger = BasicLogger.get_module_logger(module_path=__file__)
 else:
-    module_logger = LazyLogger.get_addon_module_logger()
+    module_logger = BasicLogger.get_module_logger()
 
 
 class ProgressNotice(xbmcgui.Window):
@@ -23,7 +22,7 @@ class ProgressNotice(xbmcgui.Window):
         def __init__(self):
             super().__init__()
         self._logger = module_logger.getChild(
-                self.__class__.__name__)  # type: LazyLogger
+                self.__class__.__name__)  # type: BasicLogger
         self.winID = winID
         xbmcgui.Window.__init__(self,winID)
 
@@ -36,14 +35,14 @@ class ProgressNotice(xbmcgui.Window):
         self.currentProgress = None
         self.last = 0
 
-        if self._logger.isEnabledFor(LazyLogger.DEBUG):
+        if self._logger.isEnabledFor(DEBUG):
             self._logger.debug('BG Prog: Created')
 
     def ready(self):
         if self.started and self.title: return True
         self.started = True
         self.setTitle()
-        if self._logger.isEnabledFor(LazyLogger.DEBUG):
+        if self._logger.isEnabledFor(DEBUG):
             self._logger.debug('BG Prog: Ready ({0})'.format(self.title))
         return False
 
@@ -81,7 +80,7 @@ class ProgressNotice(xbmcgui.Window):
     def finish(self):
         if self.finished: return
         self.finished = True
-        if self._logger.isEnabledFor(LazyLogger.DEBUG): self._logger.debug('BG Prog: Finished - Seen: {0}'.format(self.seen))
+        if self._logger.isEnabledFor(DEBUG): self._logger.debug('BG Prog: Finished - Seen: {0}'.format(self.seen))
 
     def done(self):
         return self.finished and not self.valid

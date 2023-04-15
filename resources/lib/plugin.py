@@ -1,19 +1,22 @@
 
-from common.logger import *
-import xbmc
 import io
 import signal
 import faulthandler
 from time import sleep
-from common.python_debugger import PythonDebugger
 
-REMOTE_DEBUG: bool = False
+from common.python_debugger import PythonDebugger
+from common.critical_settings import *
+
+
+REMOTE_DEBUG: bool = True
 
 # PATCH PATCH PATCH
 # Monkey-Patch a well known, embedded Python problem
 #
 # from common.strptime_patch import StripTimePatch
 # StripTimePatch.monkey_patch_strptime()
+
+addon_id:str = CriticalSettings.ADDON_ID
 
 debug_file = io.open("/home/fbacher/.kodi/temp/kodi.crash", mode='w', buffering=1,
                      newline=None,
@@ -22,12 +25,22 @@ debug_file = io.open("/home/fbacher/.kodi/temp/kodi.crash", mode='w', buffering=
 faulthandler.register(signal.SIGUSR1, file=debug_file, all_threads=True)
 
 if REMOTE_DEBUG:
-    xbmc.log('About to PythonDebugger.enable from tts.plugin', xbmc.LOGINFO)
-    PythonDebugger.enable('kodi.tts')
+    xbmc.log('About to PythonDebugger.enable from tts plugin', xbmc.LOGINFO)
+    PythonDebugger.enable(addon_id)
     sleep(1)
+try:
+    pass
+    # import web_pdb;
 
+    # web_pdb.set_trace()
+except Exception as e:
+    pass
 
-module_logger = LazyLogger.get_module_logger(module_path=__file__)
+import sys
+from common.logger import *
+import xbmc
+
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 def main():

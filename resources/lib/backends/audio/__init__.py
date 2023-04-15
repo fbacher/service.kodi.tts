@@ -14,8 +14,7 @@ from cache.voicecache import VoiceCache
 from common.constants import Constants
 from common.settings import Settings
 from common.setting_constants import Players
-from common.logger import LazyLogger
-from common.old_logger import OldLogger
+from common.logger import *
 from common import utils
 
 try:
@@ -23,7 +22,7 @@ try:
 except:
     xbmc = None
 
-module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 PLAYSFX_HAS_USECACHED = False
 
 try:
@@ -58,20 +57,20 @@ def load_snd_bm2835():
         module_logger.info(
             'OpenElec on RPi detected - loading snd_bm2835 module...')
         module_logger.info(os.system('modprobe snd-bcm2835')
-                      and 'Load snd_bm2835: FAILED' or 'Load snd_bm2835: SUCCESS')
+                           and 'Load snd_bm2835: FAILED' or 'Load snd_bm2835: SUCCESS')
         # subprocess.call(['modprobe','snd-bm2835']) #doesn't work on OpenElec
         # (only tested) - can't find module
     elif getpass.getuser() == 'pi':
         module_logger.info('RaspBMC detected - loading snd_bm2835 module...')
         # Will just fail if sudo needs a password
         module_logger.info(os.system('sudo -n modprobe snd-bcm2835')
-                      and 'Load snd_bm2835: FAILED' or 'Load snd_bm2835: SUCCESS')
+                           and 'Load snd_bm2835: FAILED' or 'Load snd_bm2835: SUCCESS')
     else:
         module_logger.info(
             'UNKNOWN Raspberry Pi - maybe loading snd_bm2835 module...')
         # Will just fail if sudo needs a password
         module_logger.info(os.system('sudo -n modprobe snd-bcm2835')
-                      and 'Load snd_bm2835: FAILED' or 'Load snd_bm2835: SUCCESS')
+                           and 'Load snd_bm2835: FAILED' or 'Load snd_bm2835: SUCCESS')
 
 
 class AudioPlayer:
@@ -80,7 +79,7 @@ class AudioPlayer:
 
     _advanced = False
     types = ('wav',)
-    _logger: LazyLogger = None
+    _logger: BasicLogger = None
 
     def __init__(self):
         cls = type(self)
@@ -125,7 +124,7 @@ class AudioPlayer:
 class PlaySFXAudioPlayer(AudioPlayer):
     ID = Players.SFX
     # name = 'XBMC PlaySFX'
-    _logger: LazyLogger = None
+    _logger: BasicLogger = None
 
     def __init__(self):
         super().__init__()
@@ -174,7 +173,7 @@ class WindowsAudioPlayer(AudioPlayer):
     ID = Players.WINDOWS
     # name = 'Windows Internal'
     types = ('wav', 'mp3')
-    _logger: LazyLogger = None
+    _logger: BasicLogger = None
 
     @classmethod
     def init_class(cls):
@@ -192,7 +191,8 @@ class WindowsAudioPlayer(AudioPlayer):
 
     def play(self, path):
         if not os.path.exists(path):
-            type(self)._logger.info('WindowsAudioPlayer.play() - Missing wav file')
+            type(self)._logger.info(
+                'WindowsAudioPlayer.play() - Missing wav file')
             return
         self.audio = self._player.load(path)
         self.audio.play()
@@ -234,6 +234,7 @@ class SubprocessAudioPlayer(AudioPlayer):
     _speedArgs = None
     _speedMultiplier = 1
     _volumeArgs = None
+    _volumeMultipler = 1
     _pipeArgs = None
     kill = False
 
@@ -495,8 +496,7 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer):
     _playArgs = ('mplayer', '-really-quiet', None)
     _pipeArgs = ('mplayer', '-', '-really-quiet', '-cache', '8192')
     _speedArgs = 'scaletempo=scale={0}:speed=none'
-    #  _speedMultiplier = 0.01
-    _speedMultiplier = 1
+    _speedMultiplier = 0.01  # The base scale is 0 - 100. Mplayer is 0.0 - 1.0
     _volumeArgs = 'volume={0}'  # Volume in db -200db .. +40db Default 0
     types = ('wav', 'mp3')
 
@@ -768,7 +768,7 @@ class WavAudioPlayerHandler(BasePlayerHandler):
                AfplayPlayer, SOXAudioPlayer,
                PaplayAudioPlayer, AplayAudioPlayer, MPlayerAudioPlayer
                )
-    _logger: LazyLogger = None
+    _logger: BasicLogger = None
 
     def __init__(self, preferred=None, advanced=False):
         super().__init__()
@@ -865,10 +865,10 @@ class WavAudioPlayerHandler(BasePlayerHandler):
                 self.outFile, extension)
             cls = type(self)
             cls._logger.debug('text: {} outFile: {} correct_path: {} bad_path: {}'
-                               .format(text, self.outFile, correct_path, bad_path))
+                              .format(text, self.outFile, correct_path, bad_path))
             if os.path.exists(bad_path):
                 cls._logger.debug_extra_verbose('renamed: {} to: {}'
-                                                 .format(bad_path, correct_path))
+                                                .format(bad_path, correct_path))
                 os.rename(bad_path, correct_path)
             self.outFile = correct_path
 
@@ -930,11 +930,12 @@ class WavAudioPlayerHandler(BasePlayerHandler):
                 return True
         return False
 
+
 class MP3AudioPlayerHandler(WavAudioPlayerHandler):
     players = (WindowsAudioPlayer, AfplayPlayer, SOXAudioPlayer,
                Mpg123AudioPlayer, Mpg321AudioPlayer, MPlayerAudioPlayer)
 
-    _logger: LazyLogger = None
+    _logger: BasicLogger = None
 
     def __init__(self, preferred=None, advanced=False):
         super().__init__(preferred, advanced)

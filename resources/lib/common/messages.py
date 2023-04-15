@@ -8,9 +8,9 @@ Created on Feb 28, 2019
 import xbmc, xbmcaddon
 
 from common.constants import Constants
-from common.logger import (Logger, LazyLogger)
+from common.logger import (Logger, BasicLogger)
 
-module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class Message:

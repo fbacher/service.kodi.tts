@@ -74,7 +74,7 @@ class Constants(object):
         Constants.SCRIPT_PATH = os.path.join(
             addon.PATH, 'resources', 'skins', 'Default', '720p')
         Constants.LOG_PATH = os.path.join(
-            xbmcvfs.translatePath('special://logpath'), 'xbmc.log')
+            xbmcvfs.translatePath('special://logpath'), 'kodi.log')
 
         Constants.ADDON_DIRECTORY = xbmcvfs.translatePath(addon.PATH)
         Constants.BACKENDS_DIRECTORY = os.path.join(

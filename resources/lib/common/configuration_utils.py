@@ -4,15 +4,15 @@ import xbmc, xbmcaddon, xbmcgui
 
 from common.constants import Constants
 from common.settings import Settings
-from common.logger import LazyLogger
+from common.logger import *
 
 T = xbmcaddon.Addon(Constants.ADDON_ID).getLocalizedString
-module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class ConfigUtils:
 
-    _logger: LazyLogger = None
+    _logger: BasicLogger = None
 
     # def busyDialog(func):
     #     def inner(*args, **kwargs):

@@ -3,10 +3,9 @@ import os, ctypes
 from .base import TTSBackendBase
 from common.constants import Constants
 from common.configuration_utils import ConfigUtils
-from common.old_logger import OldLogger
-from common.logger import LazyLogger
+from common.logger import *
 
-module_logger = LazyLogger.get_addon_module_logger(file_path=__file__)
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 def getDLLPath():
@@ -17,7 +16,6 @@ def getDLLPath():
     try:
         import xbmc
         if xbmc.getCondVisibility('System.HasAddon(script.module.nvdacontrollerclient)'):
-            if OldLogger.DEBUG: module_logger.info('Found script.module.nvdacontrollerclient module for NVDA')
             import xbmcaddon
             nvdaCCAddon = xbmcaddon.Addon('script.module.nvdacontrollerclient')
             p = os.path.join(nvdaCCAddon.getAddonInfo('path'),'nvda','nvdaControllerClient32.dll')
@@ -95,4 +93,3 @@ class NVDATTSBackend(TTSBackendBase):
         ctypes.windll.kernel32.FreeLibrary(self.dll._handle)
         del self.dll
         self.dll = None
-
