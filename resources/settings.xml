@@ -3,17 +3,43 @@
     <section id="service.kodi.tts">
         <category help="" id="engine" label="32001">
                 <group id="1">
-                    <setting help="" id="gui" label="32219" type="string">
+                    <setting help="" id="gui" label="32219" type="boolean">
                         <level>0</level>
-                        <default/>
+                        <default>true</default>
                         <constraints>
-                            <allowempty>true</allowempty>
+                            <allowempty>false</allowempty>
                         </constraints>
                         <control type="button" format="action">
                             <data>NotifyAll(service.kodi.tts,SETTINGS.BACKEND_GUI)</data>
+                            <close>false</close>
                         </control>
                     </setting>
                 </group>
+            <!--
+            <setting id="test33" type="action" label="32033" help="">
+	<level>0</level>
+	<data>RunScript(script.globalsearch)</data>
+	<control type="button" format="action">
+		<close>true</close>
+	</control>
+</setting>
+
+
+<setting type="action" id="test34" label="32034" action="RunScript(weather.yahoo,Location1)" default=""/>
+
+New Setting Format
+
+<setting id="test34" type="string" label="32034" help="">
+	<level>0</level>
+	<default/>
+	<constraints>
+		<allowempty>true</allowempty>
+	</constraints>
+	<control type="button" format="action">
+		<data>RunScript(weather.yahoo,Location1)</data>
+	</control>
+</setting>
+-->
             <!--
             <group id="1">
                 <setting help="" id="backend" label="32002" type="string">
@@ -441,7 +467,7 @@
                         <popup>false</popup>
                     </control>
                 </setting>
-                <setting help="" id="speak_via_xbmc.SAPI" label="32015" parent="backend" type="boolean">
+                <setting help="" id="speak_via_kodi.SAPI" label="32015" parent="backend" type="boolean">
                     <level>0</level>
                     <default>false</default>
                     <dependencies>
@@ -1017,12 +1043,23 @@
             <!-- TTSD -->
             <!-- SERVER -->
             <group id="2" label="32019">
-                <setting help="" id="perl_server.ttsd" label="32020" parent="backend" type="boolean">
+                <setting help="" id="perl_server.ttsd" label="32020" parent="dummy" type="boolean">
                     <level>0</level>
                     <default>true</default>
                     <dependencies>
                         <dependency type="visible">
                             <condition operator="is" setting="backend">ttsd</condition>
+                        </dependency>
+                    </dependencies>
+                    <control type="toggle"/>
+                </setting>
+
+                <setting help="" id="perl_server.ttsd" label="32020" parent="dummy" type="boolean">
+                    <level>0</level>
+                    <default>true</default>
+                    <dependencies>
+                        <dependency type="visible">
+                            <condition operator="is" setting="dummy">ttsd</condition>
                         </dependency>
                     </dependencies>
                     <control type="toggle"/>
@@ -1603,18 +1640,7 @@
                     </control>
                     <visible>false</visible>
                 </setting>
-
-                <setting help="" id="backend" label="32178" type="string">
-                    <level>0</level>
-                    <constraints>
-                        <allowempty>true</allowempty>
-                    </constraints>
-                    <control type="edit" format="string">
-                        <heading>32178</heading>
-                    </control>
-                    <visible>false</visible>
-                </setting>
-                               <setting help="" id="api_key.Cepstral" label="32178" type="string">
+                <setting help="" id="api_key.Cepstral" label="32178" type="string">
                     <level>0</level>
                     <constraints>
                         <allowempty>true</allowempty>
@@ -2152,6 +2178,12 @@
                     <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
+                <setting help="" id="cache_speech.eSpeak" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
                  <setting help="" id="gender.SAPI" label="32178" type="string">
                     <level>0</level>
                     <constraints>
@@ -2236,7 +2268,7 @@
                     </control>
                     <visible>false</visible>
                 </setting>
-                <setting help="" id="pipe.Speech-Dispatcher" label="32178" type="boolean">
+                     <setting help="" id="pipe.Speech-Dispatcher" label="32178" type="boolean">
                     <level>0</level>
                     <default>false</default>
                     <control type="toggle"/>
@@ -2369,6 +2401,176 @@
                 <setting help="" id="log_level" label="32178" type="integer">
                     <level>0</level>
                     <default>2</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="remote_pitch.ResponsiveVoice" label="32178" type="integer">
+                    <level>0</level>
+                    <default>2</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="remote_speed.ResponsiveVoice" label="32178" type="integer">
+                    <level>0</level>
+                    <default>2</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="remote_volume.ResponsiveVoice" label="32178" type="integer">
+                    <level>0</level>
+                    <default>2</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="ttsd_port" label="32178" type="integer">
+                    <level>0</level>
+                    <default>2</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="settings_last_changed" label="32178" type="integer">
+                    <level>0</level>
+                    <default>2</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="gender" label="32211" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="backend" label="32211" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="ttsd_host" label="32211" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="gender_visible" label="32179" type="boolean">
+                    <level>0</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="remote_server" label="32211" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="Speech-Dispatcher-module" label="32211" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="output_via" label="32211" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="settings_digest" label="32211" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="version" label="32211" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="output_visible" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="pipe" label="32013" parent="dummy"  type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="settings_being_configured" label="32013" parent="dummy"  type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="speak_on_server.ResponsiveVoice" label="32013" parent="dummy"  type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="speak_via_kodi" label="32013" parent="dummy"  type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="speed_enabled" label="32013" parent="dummy"  type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="speed_visible" label="32013" parent="dummy"  type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="voice_visible" label="32013" parent="dummy"  type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="volume_visible" label="32013" parent="dummy"  type="boolean">
+                    <level>0</level>
+                    <default>false</default>
                     <control type="toggle"/>
                     <visible>false</visible>
                 </setting>

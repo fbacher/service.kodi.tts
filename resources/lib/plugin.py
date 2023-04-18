@@ -8,7 +8,7 @@ from common.python_debugger import PythonDebugger
 from common.critical_settings import *
 
 
-REMOTE_DEBUG: bool = True
+REMOTE_DEBUG: bool = False
 
 # PATCH PATCH PATCH
 # Monkey-Patch a well known, embedded Python problem
@@ -25,7 +25,7 @@ debug_file = io.open("/home/fbacher/.kodi/temp/kodi.crash", mode='w', buffering=
 faulthandler.register(signal.SIGUSR1, file=debug_file, all_threads=True)
 
 if REMOTE_DEBUG:
-    xbmc.log('About to PythonDebugger.enable from tts plugin', xbmc.LOGINFO)
+    xbmc.log('About to call PythonDebugger.enable from tts plugin', xbmc.LOGINFO)
     PythonDebugger.enable(addon_id)
     sleep(1)
 try:
@@ -71,4 +71,7 @@ def main():
 
 
 if __name__ == '__main__':
+    import threading
+    threading.current_thread().name = "plugin.py"
+    xbmc.log('plugin.py service.kodi.tts starting', xbmc.LOGDEBUG)
     main()

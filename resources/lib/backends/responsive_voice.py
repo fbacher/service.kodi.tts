@@ -29,7 +29,7 @@ PUNCTUATION_PATTERN = re.compile(r'([.,:])', re.DOTALL)
 class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
     # Only returns .mp3 files
 
-    provider = Backends.RESPONSIVE_VOICE_ID
+    backend_id = Backends.RESPONSIVE_VOICE_ID
     displayName = 'ResponsiveVoice'
     player_handler_class: Type[BasePlayerHandler] = MP3AudioPlayerHandler
     pitchConstraints = (0, 50, 99, True)
@@ -200,12 +200,14 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
         Languages.LOCALE_ZH_TW: ((VOICE_1, "g1", Genders.FEMALE),
                                  (VOICE_2, "g2", Genders.FEMALE))
     }
-    _logger = None
+    _logger: BasicLogger = None
+    _class_name: str = None
 
-    def __init__(self):
-        super().__init__()
-        type(self)._logger = module_logger.getChild(
-            type(self).__name__)  # type: BasicLogger
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        type(self)._class_name = self.__class__.__name__
+        if type(self)._logger is None:
+            type(self)._logger = module_logger.getChild(type(self)._class_name)
         self.process = None
         self.update()
         self.stop_processing = False
@@ -231,7 +233,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
             return base.SimpleTTSBackendBase.WAVOUT
 
     def runCommand(self, text_to_voice, dummy):
-
+        clz = type(self)
         # If caching disabled, then exists is always false. file_path
         # always contains path to cached file, or path where to download to
 
@@ -240,6 +242,8 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
                                                         use_cache=self.is_use_cache())
         self._logger.debug(f'file_path: {file_path} exists: {exists}')
         if not exists:
+            # Note that when caching, some audio settings are fixed for the engine
+            # and passed on to the player. See the note below "if the audio exists..."
             file_path, mp3_voice = self.download_speech(
                 text_to_voice, file_path)
             if mp3_voice != b'' and not self.stop_processing:
@@ -265,14 +269,37 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
             return False
 
         if exists:
-            # the following a geared towards Mplayer. Assumption is that only adjust
-            # volume in player, other settings in engine.
+            # If the audio exists in a file, then use a player rather
+            # than the engine. When the engine is set to cache to disk,
+            # the audio settings are fixed. User's audio settings (volume, pitch, speed)
+            # apply to the player when caching. Otherwise, the cached file would have
+            # whatever settings were at the time of the creation of the file and you
+            # could have different settings per phrase from the cache.
+            #
+            # The following a geared towards Mplayer.
+            # These will undoubtedly need a lot of tweaking before this is
+            # 'good enough'
 
             volume_db = type(self).get_volume_db()  # -12 .. 12
-            player_speed = 100.0  # Don't alter speed/temp (percent)
+
             # Changing pitch without impacting tempo (speed) is
-            player_pitch = 100.0  # Percent
             # not easy. One suggestion is to use lib LADSPA
+
+            # player_pitch: float = 100.0  # Percent
+
+            # Keep in mind that these settings are on top of the original settings.
+            # Because of this, amplify the effect of pitch and speed because it will
+            # be limited by the original recorded levels. In other words, a value of
+            # 100% here will simply keep the max pitch/speed at the original engine
+            # setting. We need to have ability to go beyond the original, so allow
+            # 200%. Need to refine this to scale appropriately for the player and
+            # engine so that the scale here + the original engine scale will give the
+            # entire range of values.
+
+            player_pitch = int(clz.getSetting(Settings.PITCH)) + 1
+            player_pitch *= 2.0
+            player_speed = int(clz.getSetting(Settings.SPEED)) + 1
+            player_speed *= 2.0
             self.setPlayer(type(self).getSetting(Settings.PLAYER))
             self.player_handler.setVolume(float(volume_db))  # In db -12 .. 12
             self.player_handler.setSpeed(player_speed)
@@ -281,6 +308,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
         return exists
 
     def runCommandAndPipe(self, text_to_voice):
+        clz = type(self)
 
         # If caching disabled, then voice_file and mp3_voice are always None.
         # If caching is enabled, voice_file contains path of cached file,
@@ -299,11 +327,14 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
         # the following a geared towards Mplayer. Assumption is that only adjust
         # volume in player, other settings in engine.
 
-        volume_db = type(self).get_volume_db()  # -12 .. 12
-        player_speed = 1.0  # Don't alter speed/temp
+        volume_db: float = type(self).get_volume_db()  # -12 .. 12
+        player_speed = 100.0  # Don't alter speed/temp (percent)
         # Changing pitch without impacting tempo (speed) is
-        player_pitch = 1.0
-        # not easy. One suggestion is to use lib LADSPA
+        player_pitch:float = 100.0  # Percent
+        player_pitch = int(clz.getSetting(Settings.PITCH)) + 1
+        player_pitch *= 2.0
+        player_speed = int(clz.getSetting(Settings.SPEED)) + 1
+        player_speed *= 2.0
 
         self.setPlayer(type(self).getSetting(Settings.PLAYER))
         self.player_handler.setVolume(volume_db)  # In db -12 .. 12
@@ -327,9 +358,9 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
         key = clz.getAPIKey()
         lang = clz.getLanguage()
         gender = clz.getGender()
-        pitch = clz.getPitch()
-        speed = clz.getSpeed()
-        volume = clz.getVolume()  # 0.1 .. 1.0
+        pitch = clz.getPitch()    # hard coded value when caching
+        speed = clz.getSpeed()    # ""
+        volume = clz.getVolume()  # ""
         service = clz.getVoice()
         if clz._logger.isEnabledFor(DEBUG_VERBOSE):
             clz._logger.debug_verbose(
@@ -553,7 +584,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
     def getSettingNames(cls):
         settingNames = []
         for settingName in cls.settings.keys():
-            # settingName = settingName + '.' + cls.provider
+            # settingName = settingName + '.' + cls.backend_id
             settingNames.append(settingName)
 
         return settingNames
@@ -663,16 +694,19 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
         return '{:.2f}'.format(volume)
 
     @classmethod
-    def getVolume(cls):
-        # Range -12 .. +12, 0 default
+    def getVolume(cls) -> str:
+        # Range -12 .. +12, 8 default
         # API 0.1 .. 1.0. 1.0 default
-        volume = cls.get_volume_db()
-        volume = (float(volume) + 12.0) / 24.0
+        if cls.is_use_cache():
+            volume = cls.volumeConstraints[1]
+        else:
+            volume = cls.get_volume_db()
+            volume = (float(volume) + 12.0) / 24.0
 
         return '{:.2f}'.format(volume)
 
     @classmethod
-    def getVoice(cls):
+    def getVoice(cls) -> str:
         voice = cls.getSetting(Settings.VOICE)
         if voice is None:
             lang = cls.voices_by_locale_map.get(cls.getLanguage())
@@ -682,38 +716,44 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
         return voice
 
     @classmethod
-    def getLanguage(cls):
+    def getLanguage(cls) -> str:
         language = cls.getSetting(Settings.LANGUAGE)
         language = 'en-US'
         return language
 
     @classmethod
-    def getPitch(cls):
+    def getPitch(cls) -> str:
         # Range 0 .. 99, 50 default
         # API 0.1 .. 1.0. 0.5 default
-        pitch = int(cls.getSetting(Settings.PITCH)) + 1
-        pitch = float(pitch) / 100.0
+        if cls.is_use_cache():
+            pitch = float(cls.pitchConstraints[1]) / 100.0
+        else:
+            pitch = int(cls.getSetting(Settings.PITCH)) + 1
+            pitch = float(pitch) / 100.0
         return '{:.2f}'.format(pitch)
 
     @classmethod
-    def getSpeed(cls):
+    def getSpeed(cls) -> str:
         # Range 0 .. 99, 50 default
         # API 0.1 .. 1.0. 0.5 default
-        speed = int(cls.getSetting(Settings.SPEED)) + 1
-        speed = float(speed) / 100.0
+        if cls.is_use_cache():
+            speed = float(cls.speedConstraints[1]) / 100.0
+        else:
+            speed = int(cls.getSetting(Settings.SPEED)) + 1
+            speed = float(speed) / 100.0
         return '{:.2f}'.format(speed)
 
     @classmethod
-    def getGender(cls):
+    def getGender(cls) -> str:
         gender = 'female'
         return gender
 
     @classmethod
-    def is_use_cache(cls):
+    def is_use_cache(cls) -> bool:
         return cls.getSetting(Settings.CACHE_SPEECH)
 
     @classmethod
-    def getAPIKey(cls):
+    def getAPIKey(cls) -> str:
         return cls.getSetting(Settings.API_KEY)
 
     # All voices are empty strings

@@ -15,7 +15,7 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class Pico2WaveTTSBackend(SimpleTTSBackendBase):
-    provider = Backends.PICO_TO_WAVE_ID
+    backend_id = Backends.PICO_TO_WAVE_ID
     displayName = 'pico2wave'
     speedConstraints = (20,100,200,True)
     player_handler_class: Type[BasePlayerHandler] = WavAudioPlayerHandler
@@ -26,10 +26,14 @@ class Pico2WaveTTSBackend(SimpleTTSBackendBase):
                 Settings.VOLUME: 0
                 }
 
-    def __init__(self):
-        super().__init__()
-        self._logger = module_logger.getChild(self.__class__.__name__)  # type: BasicLogger
+    _logger: BasicLogger = None
+    _class_name: str = None
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        type(self)._class_name = self.__class__.__name__
+        if type(self)._logger is None:
+            type(self)._logger = module_logger.getChild(type(self)._class_name)
         self.language = None
         self.stop_processing = False
         self.update()

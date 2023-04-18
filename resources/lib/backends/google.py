@@ -47,8 +47,9 @@ LANGUAGES = [    ('af', 'Afrikaans'),
                 ('cy', 'Welsh')
 ]
 
+
 class GoogleTTSBackend(base.SimpleTTSBackendBase):
-    provider = 'Google'
+    backend_id = 'Google'
     displayName = 'Google'
     # ttsURL = 'http://translate.google.com/translate_tts?client=t&tl={0}&q={1}'
     ttsURL='https://translate.google.com/translate_tts?&q={1}&tl={0}&client=tw-ob'

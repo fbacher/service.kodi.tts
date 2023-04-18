@@ -54,8 +54,10 @@ def getSpeechDSpeaker(test=False) -> Speaker:
 class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
     """Supports The speech-dispatcher on linux"""
 
-    provider = Backends.SPEECH_DISPATCHER_ID
+    backend_id = Backends.SPEECH_DISPATCHER_ID
     displayName = 'Speech Dispatcher'
+    _class_name: str = None
+    _logger: BasicLogger = None
     volumeExternalEndpoints = (0,200)
     volumeStep = 5
     volumeSuffix = '%'
@@ -71,9 +73,12 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
                 'volume': 100
                 }
 
-    def __init__(self):
-        super().__init__()
-        self._logger = module_logger.getChild(self.__class__.__name__)  # type: BasicLogger
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        type(self)._class_name = self.__class__.__name__
+        if type(self)._logger is None:
+            type(self)._logger = module_logger.getChild(type(self)._class_name)
+
         self.speechdObject: Speaker = None
 
     def init(self):

@@ -78,7 +78,7 @@ def loadCustomKeymapDefs():
             defs[key] = val
         return defs
     except:
-        module_logger.ERROR('Error reading custom keymap definitions')
+        module_logger.error('Error reading custom keymap definitions')
     return {}
 
 

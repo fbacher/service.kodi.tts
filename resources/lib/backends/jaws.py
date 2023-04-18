@@ -17,13 +17,18 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class JAWSTTSBackend(ThreadedTTSBackend):
-    provider = 'JAWS'
+    backend_id = 'JAWS'
     displayName = 'JAWS'
     interval = 50
 
+    _logger: BasicLogger = None
+    _class_name: str = None
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._logger = module_logger.getChild(self.__class__.__name__)  # type: BasicLogger
+        type(self)._class_name = self.__class__.__name__
+        if type(self)._logger is None:
+            type(self)._logger = module_logger.getChild(type(self)._class_name)
         self.jaws = None
 
     def init(self):

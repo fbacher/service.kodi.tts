@@ -30,7 +30,7 @@ class WindowTraversal:
                              format(str(current_window_id), window_name))
             self._logger.debug_extra_verbose('window extra texts: {} '.format(extra_texts))
             item_extra_texts = guitables.getItemExtraTexts(current_window_id)
-            self._logger.debug_extra_verbose('window item extra texts: {} '.format(item_extra_texts))
+            self._logger.debug_extra_verbose('window item extra texts: {item_extra_texts}')
             list_item_property = guitables.getListItemProperty(current_window_id)
             self._logger.debug_extra_verbose('window list item extra property: {} '.format(list_item_property))
         except Exception as e:
@@ -120,7 +120,7 @@ class WindowTraversal:
             self._logger.debug_extra_verbose('WindowTraversal: ControlRadioButton isSelected: {}'
                              .format(control_radio_button.isSelected()))
         elif isinstance(control, xbmcgui.ControlSlider):
-            control_slider = control  # type: xbmcgui.ControlSlider
+            control_slider: xbmcgui.ControlSlider = control
             self._logger.debug_extra_verbose('WindowTraversal: ControlSlider: percent {}, int {}, float{}'
                              .format(control_slider.getPercent(),
                                      control_slider.getInt(),

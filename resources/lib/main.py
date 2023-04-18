@@ -1,20 +1,15 @@
 # -*- coding: utf-8 -*-
 
-import xbmc
-import os
-import sys
-import xbmcvfs
-from common.configuration_utils import ConfigUtils
 import io
-import signal
-import faulthandler
-from time import sleep
+import os
+import xbmc
 
-from common.python_debugger import PythonDebugger
 from common.critical_settings import *
+from common.python_debugger import PythonDebugger
 
 
-REMOTE_DEBUG: bool = True
+
+REMOTE_DEBUG: bool = False
 
 # PATCH PATCH PATCH
 # Monkey-Patch a well known, embedded Python problem
@@ -24,16 +19,24 @@ REMOTE_DEBUG: bool = True
 
 addon_id: str = CriticalSettings.ADDON_ID
 
-debug_file = io.open("/home/fbacher/.kodi/temp/kodi.crash", mode='w', buffering=1,
-                     newline=None,
-                     encoding='ASCII')
+# debug_file = io.open("/home/fbacher/.kodi/temp/kodi.crash", mode='w', buffering=1,
+#                     newline=None,
+#                     encoding='ASCII')
 
-faulthandler.register(signal.SIGUSR1, file=debug_file, all_threads=True)
+# faulthandler.register(signal.SIGUSR1, file=debug_file, all_threads=True)
 
 if REMOTE_DEBUG:
     xbmc.log('About to PythonDebugger.enable from tts main', xbmc.LOGINFO)
     PythonDebugger.enable(addon_id)
-    sleep(1)
+    from time import sleep
+    sleep(5)
+
+import sys
+import xbmcvfs
+from common.configuration_utils import ConfigUtils
+# import faulthandler
+
+
 try:
     pass
     # import web_pdb;
@@ -62,9 +65,11 @@ def main():
         ConfigUtils.selectSetting(*extra)
     elif arg is None:
         from service import startService
+        xbmc.log('main.py service.kodi.tts service thread starting', xbmc.LOGDEBUG)
         startService()
-        xbmc.log('main service thread started', xbmc.LOGDEBUG)
 
 
 if __name__ == '__main__':
+    import threading
+    threading.current_thread().name = "main.py"
     main()

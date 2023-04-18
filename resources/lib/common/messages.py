@@ -4,11 +4,9 @@ Created on Feb 28, 2019
 
 @author: fbacher
 """
-
-import xbmc, xbmcaddon
-
-from common.constants import Constants
-from common.logger import (Logger, BasicLogger)
+from common.typing import *
+from common.critical_settings import CriticalSettings
+from common.logger import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -270,7 +268,7 @@ class Messages:
 
     @staticmethod
     def get_msg(msg_ref):
-        # type: (Message) -> TextType
+        # type: (Message) -> str
         """
 
         :param msg_ref:
@@ -281,8 +279,7 @@ class Messages:
         return Messages._instance.get_formatted_msg(msg_ref)
 
     @staticmethod
-    def get_formatted_msg(msg_ref, *args):
-        # type: (Message, Optional[List[TextType]]) -> TextType
+    def get_formatted_msg(msg_ref: Message, *args: Optional[List[str]]) -> str:
         """
 
         :param msg_ref:
@@ -295,15 +292,15 @@ class Messages:
         msg_id = msg_ref.get_msg_id()
         unformatted_msg = 'Message not defined'
 
-        unformatted_msg = xbmcaddon.Addon(Constants.ADDON_ID).getLocalizedString(msg_id)
+        unformatted_msg = CriticalSettings.ADDON.getLocalizedString(msg_id)
         if unformatted_msg == '':
             unformatted_msg = str(msg_id)
-            if Messages._instance._logger.isEnabledFor(Logger.ERROR):
+            if Messages._instance._logger.isEnabledFor(ERROR):
                 Messages._instance._logger.error(
                     'Can not find message from strings for message id: {} msg_key: {}'
                         .format(msg_ref.get_default_msg(),  msg_id))
 
-            if Messages._instance._logger.isEnabledFor(Logger.DEBUG):
+            if Messages._instance._logger.isEnabledFor(DEBUG):
                 unformatted_msg += '_default_message'
 
         return unformatted_msg.format(*args)

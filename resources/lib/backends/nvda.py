@@ -29,11 +29,18 @@ try:
 except ImportError:
     windll =None
 
-class NVDATTSBackend(TTSBackendBase):
-    provider = 'nvda'
-    displayName = 'NVDA'
-    _logger = module_logger.getChild('NVDATTSBackend')
 
+class NVDATTSBackend(TTSBackendBase):
+    backend_id = 'nvda'
+    displayName = 'NVDA'
+    _logger: BasicLogger = None
+    _class_name: str = None
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        type(self)._class_name = self.__class__.__name__
+        if type(self)._logger is None:
+            type(self)._logger = module_logger.getChild(type(self)._class_name)
 
     @staticmethod
     def available():

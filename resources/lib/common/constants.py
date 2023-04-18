@@ -6,9 +6,8 @@ Created on Feb 10, 2019
 @author: Frank Feuerbacher
 """
 
-from .imports import *
+from common.typing import *
 
-import datetime
 import locale
 import os
 
@@ -17,6 +16,7 @@ from kutils.kodiaddon import Addon
 addonName = 'service.kodi.tts'
 addon = Addon(addonName)
 from kutils import addon
+
 
 class Constants(object):
     """
@@ -32,6 +32,7 @@ class Constants(object):
     ADDON_PATH = None
     PYTHON_ROOT_PATH = None
     ADDON_DIRECTORY = None
+    AUTO: Final[str] = 'auto'  # Not used here
     BACKENDS_DIRECTORY = None
     MEDIA_PATH = None
     PROFILE = None
@@ -46,6 +47,7 @@ class Constants(object):
     DISABLE_PATH = None
     ENABLE_PATH = None
     DEFAULT_CACHE_DIRECTORY = None
+    IGNORE_CACHE_EXPIRATION_DATE: bool = True
 
     LOCALE = ''
 
@@ -83,7 +85,6 @@ class Constants(object):
         Constants.ENABLE_PATH = os.path.join(addon.DATA_PATH, 'ENABLED')
         Constants.DEFAULT_CACHE_DIRECTORY = os.path.join(Constants.USER_DATA_PATH,
                                                          'cache')
-
         Constants.LOCALE, encoding = locale.getdefaultlocale()
 
 # def info(key): Use Constants.ADDON.info()

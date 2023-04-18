@@ -16,7 +16,7 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class FestivalTTSBackend(SimpleTTSBackendBase):
-    provider = Backends.FESTIVAL_ID
+    backend_id = Backends.FESTIVAL_ID
     displayName = 'Festival'
     canStreamWav = SystemQueries.commandIsAvailable('mpg123')
     speedConstraints = (-16, 0, 12, True)
@@ -32,12 +32,14 @@ class FestivalTTSBackend(SimpleTTSBackendBase):
         Settings.VOICE: '',
         Settings.VOLUME: 0
     }
-    _logger = None
+    _logger: BasicLogger = None
+    _class_name: str = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        type(self)._class_name = self.__class__.__name__
         if type(self)._logger is None:
-            type(self)._logger = module_logger.getChild(self.__class__.__name__)  # type: BasicLogger
+            type(self)._logger = module_logger.getChild(type(self)._class_name)
         self.festivalProcess = None
 
     def init(self):

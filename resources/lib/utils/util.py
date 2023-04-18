@@ -133,8 +133,7 @@ def xbmcVersionGreaterOrEqual(major, minor=0, tag=None):
     return tagCmp < 1
 
 
-def get_language_code():
-    #  type: () -> str
+def get_language_code() -> str:
     global language_code
     if language_code is None:
         language_code, encoding = locale.getdefaultlocale()
@@ -154,18 +153,18 @@ def configuring_settings():
     return Settings.configuring_settings()
 
 
-def getSetting(key, default=None):
-    return Settings.getSetting(key, default)
+def getSetting(key, backend_id: str = None, default=None):
+    return Settings.getSetting(key, backend_id, default)
 
 
-def setSetting(key, value):
-    Settings.setSetting(key, value)
+def setSetting(key, value, backend_id: str = None):
+    Settings.setSetting(key, value, backend_id)
 
 
 def runInThread(func, args=(), name='?'):
     import threading
     thread = threading.Thread(target=func, args=args,
-                              name='TTSThread: {0}'.format(name))
+                              name=f'TTSThread: {name}')
     thread.start()
 
 
@@ -196,7 +195,7 @@ def initCommands():
 
 
 def sendCommand(command):
-    commandData = '{0}:{1}'.format(time.time(), command)
+    commandData: str = f'{time.time()}:{command}'
     setSetting('EXTERNAL_COMMAND', commandData)
 
 

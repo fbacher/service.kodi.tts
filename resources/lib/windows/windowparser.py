@@ -308,7 +308,7 @@ class Includes:
         for i in xpath.find('//include', xpath.findnode('//includes', self.xml)):
             fileAttr = i.attributes.get('file')
             if fileAttr:
-                xmlName = xbmc.validatePath(fileAttr.value)
+                xmlName: str = xbmcvfs.validatePath(fileAttr.value)
                 p = os.path.join(basePath, xmlName)
                 if not os.path.exists(p):
                     continue

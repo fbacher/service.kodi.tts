@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
-
+from backends.__init__ import *
 import time
 import threading
 import queue
 import os
-from typing import List, Type, Union
 
+from backends.i_tts_backend_base import ITTSBackendBase
+from backends.backend_info_bridge import BackendInfoBridge
+from backends.tts_backend_bridge import TTSBackendBridge
 from backends import audio
 from backends.audio import BuiltInAudioPlayer
 from cache.voicecache import VoiceCache
@@ -30,13 +32,13 @@ class Constraints:
         self.integer = integer
 
 
-class TTSBackendBase:
+class TTSBackendBase(ITTSBackendBase):
     """The base class for all speech engine backends
 
     Subclasses must at least implement the say() method, and can use whatever
     means are available to speak text.
     """
-    provider = 'auto'
+    backend_id = 'auto'
     displayName = 'Auto'
     pauseInsert = '...'
     canStreamWav = False
@@ -65,12 +67,13 @@ class TTSBackendBase:
     currentBackend = None
     #  currentSettings = []
     settings = {}
+    _class_name: str = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        type(self)._class_name = self.__class__.__name__
         if type(self)._logger is None:
-            type(self)._logger = module_logger.getChild(
-                type(self).__name__)  # type: BasicLogger
+            type(self)._logger = module_logger.getChild(type(self)._class_name)
 
     def __enter__(self):
         return self
@@ -118,9 +121,9 @@ class TTSBackendBase:
 
     def volumeUp(self):
         clz = type(self)
-        if not self.settings or not 'volume' in self.settings:
+        if not self.settings or not Settings.VOLUME in self.settings:
             return Messages.get_msg(Messages.CANNOT_ADJUST_VOLUME)
-        vol = type(self).getSetting('volume')
+        vol = type(self).getSetting(Settings.VOLUME)
         max_volume: int = self.volumeExternalEndpoints[1]
         volume_step: int = self.volumeStep
         if clz._logger.isEnabledFor(DEBUG):
@@ -130,7 +133,7 @@ class TTSBackendBase:
         if vol > max_volume:
             volume_step = volume_step - (vol - max_volume)
             vol = max_volume
-        self.setSetting('volume', vol)
+        self.setSetting(Settings.VOLUME, vol)
         if clz._logger.isEnabledFor(DEBUG):
             clz._logger.debug('Volume UP: {0}'.format(vol))
         return f'Volume Up by {volume_step} now {vol} {self.volumeSuffix}'
@@ -201,13 +204,13 @@ class TTSBackendBase:
     @classmethod
     def getSettingNames(cls):
         """
-        Gets a list of all of the setting names/keys that this provider uses
+        Gets a list of all of the setting names/keys that this backend uses
 
         :return:
         """
         settingNames = []
         for settingName in cls.settings.keys():
-            # settingName = settingName + '.' + cls.provider
+            # settingName = settingName + '.' + cls.backend_id
             settingNames.append(settingName)
 
         return settingNames
@@ -248,7 +251,7 @@ class TTSBackendBase:
     #
     #          for currentSetting in newSettings:
     #              currentValue = Settings.getSetting(
-    #                  currentSetting + '.' + cls.provider)
+    #                  currentSetting + '.' + cls.backend_id)
     #              Settings.setSetting(currentSetting, currentValue)
     #              TTSBackendBase.currentSettings.append(currentSetting)
 
@@ -298,7 +301,7 @@ class TTSBackendBase:
         """
         Gets a setting from addon's settings.xml
 
-        A convenience method equivalent to Settings.getSetting(key + '.'. + cls.provider,
+        A convenience method equivalent to Settings.getSetting(key + '.'. + cls.backend_id,
         default, useFullSettingName).
 
         :param key:
@@ -306,14 +309,10 @@ class TTSBackendBase:
         :param useFullSettingName:
         :return:
         """
-        fully_qualified_key = key
-        if key not in Settings.TOP_LEVEL_SETTINGS:
-            fully_qualified_key = '{}.{}'.format(key, cls.provider)
-
         if default is None:
             default = cls.get_setting_default(key)
 
-        return Settings.getSetting(fully_qualified_key, default)
+        return Settings.getSetting(key, cls.backend_id, default)
 
         # cls._loadedSettings[fully_qualified_key] = Settings.getSetting(
         #     fully_qualified_key, default)
@@ -321,36 +320,32 @@ class TTSBackendBase:
 
     @classmethod
     def setSetting(cls,
-                   key: str,
+                   setting_id: str,
                    value: Union[None, str, List, bool, int, float]
                    ) -> bool:
         """
         Saves a setting to addon's settings.xml
 
-        A convenience method for Settings.setSetting(key + '.' + cls.provider, value)
+        A convenience method for Settings.setSetting(key + '.' + cls.backend_id, value)
 
-        :param key:
+        :param setting_id:
         :param value:
         :return:
         """
-        if (not cls.isSettingSupported(key)
-                and cls._logger.isEnabledFor(BasicLogger.WARNING)):
+        if (not cls.isSettingSupported(setting_id)
+                and cls._logger.isEnabledFor(WARNING)):
             cls._logger.warning('Setting: {}, not supported by voicing engine: {}'
-                                .format(key, cls.get_provider_name()))
-        fully_qualified_key = key
-        if key not in Settings.TOP_LEVEL_SETTINGS:
-            fully_qualified_key = '{}.{}'.format(key, cls.provider)
-        previous_value = Settings.getSetting(fully_qualified_key, None,
-                                             setting_type=type(value))
+                                .format(setting_id, cls.get_backend_id()))
+        previous_value = Settings.getSetting(setting_id, cls.get_backend_id(),  None)
         changed = False
         if previous_value != value:
             changed = True
-        Settings.setSetting(fully_qualified_key, value)
+        Settings.setSetting(setting_id, value, cls.backend_id)
         return changed
 
     @classmethod
-    def get_provider_name(cls):
-        return cls.provider  # TODO: Change to backend_id
+    def get_backend_id(cls) -> str:
+        return cls.backend_id
 
     def insertPause(self, ms=500):
         """Insert a pause of ms milliseconds
@@ -425,9 +420,13 @@ class TTSBackendBase:
         self.close()
 
     @classmethod
+    def is_available_and_usable(cls):
+        return cls._available()
+
+    @classmethod
     def _available(cls):
         if cls.broken and Settings.getSetting(Settings.DISABLE_BROKEN_BACKENDS,
-                                              True):
+                                              cls.get_backend_id(), True):
             return False
         return cls.available()
 
@@ -450,21 +449,26 @@ class ThreadedTTSBackend(TTSBackendBase):
     whatever means are available to speak text.
     The say() and sayList() and insertPause() methods are not meant to be overridden.
     """
+    _class_name: str = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._logger = module_logger.getChild(type(self).__name__)  # type: BasicLogger
+        clz = type(self)
+        if clz._logger is None:
+            clz._logger = module_logger.getChild(clz._class_name)
         self.active = True
         self._threadedIsSpeaking = False
         self.queue = queue.Queue()
         self.thread = threading.Thread(
-            target=self._handleQueue, name='TTSThread: %s' % self.provider)
+            target=self._handleQueue, name=f'TTSThread: {clz.backend_id}')
         self.thread.start()
         self.process = None
 
     def _handleQueue(self):
+        clz = type(self)
         if type(self)._logger.isEnabledFor(DEBUG):
-            self._logger.debug('Threaded TTS Started: {0}'.format(self.provider))
+            self._logger.debug(
+                'Threaded TTS Started: {0}'.format(clz.backend_id))
 
         while self.active and not my_monitor.abortRequested():
             try:
@@ -480,7 +484,8 @@ class ThreadedTTSBackend(TTSBackendBase):
                 # self._logger.debug_verbose('queue empty')
                 pass
         if type(self)._logger.isEnabledFor(DEBUG):
-            self._logger.debug('Threaded TTS Finished: {0}'.format(self.provider))
+            self._logger.debug(
+                'Threaded TTS Finished: {0}'.format(clz.backend_id))
 
     def _emptyQueue(self):
         try:
@@ -554,9 +559,15 @@ class SimpleTTSBackendBase(ThreadedTTSBackend):
     must play the speech directly.
     """
 
+    _logger: BasicLogger = None
+    _class_name: str = None
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        type(self)._logger = module_logger.getChild(type(self).__name__)  # type: BasicLogger
+        clz = type(self)
+        clz._class_name = self.__class__.__name__
+        if clz._logger is None:
+            clz._logger = module_logger.getChild(clz._class_name)
         self._simpleIsSpeaking = False
         self.mode = None
         player = type(self).getSetting(Settings.PLAYER)
@@ -600,8 +611,8 @@ class SimpleTTSBackendBase(ThreadedTTSBackend):
     def get_player_handler(self) -> audio.AudioPlayer:
         return self.player_handler
 
-    def setPlayer(self, preferred):
-        return self.player_handler.setPlayer(preferred)
+    def setPlayer(self, preferred=None, advanced=None):
+        return self.player_handler.setPlayer(preferred=preferred, advanced=advanced)
 
     def setSpeed(self, speed):
         self.player_handler.setSpeed(speed)
@@ -725,14 +736,17 @@ class SimpleTTSBackendBase(ThreadedTTSBackend):
 
 
 class LogOnlyTTSBackend(TTSBackendBase):
-    provider = 'log'
+    backend_id = 'log'
     displayName = 'Log'
-    _logger = None
+    _logger: BasicLogger = None
+    _class_name: str = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if type(self)._logger is None:
-            type(self)._logger = module_logger.getChild(type(self).__name__)  # type: BasicLogger
+        clz = type(self)
+        clz._class_name = self.__class__.__name__
+        if clz._logger is None:
+            clz._logger = module_logger.getChild(clz._class_name)
 
     @staticmethod
     def isSupportedOnPlatform():
@@ -750,3 +764,5 @@ class LogOnlyTTSBackend(TTSBackendBase):
     @staticmethod
     def available():
         return True
+
+TTSBackendBridge.setBaseBackend(TTSBackendBase)

@@ -243,29 +243,31 @@ class SubprocessAudioPlayer(AudioPlayer):
         self._logger = module_logger.getChild(
             self.__class__.__name__)  # type: module_logger
         self._wavProcess = None
-        self.speed = 0
-        self.volume = None
+        self.speed: float = 0
+        self.volume: float = None
         self.active = True
 
-    def speedArg(self, speed):
+    def speedArg(self, speed: float):
+        self._logger.debug(f'speedArg speed: {speed} multiplier: {self._speedMultiplier}')
         return str(speed * self._speedMultiplier)
 
-    def baseArgs(self, path):
+    def baseArgs(self, path: str):
         args = []
         args.extend(self._playArgs)
         args[args.index(None)] = path
         return args
 
-    def playArgs(self, path):
+    def playArgs(self, path: str) -> str:
         base_args = self.baseArgs(path)
         self._logger.debug_verbose('args: {}'.format(' '.join(base_args)))
         return base_args
 
     def get_pipe_args(self):
         base_args = self._pipeArgs
+        self._logger.debug(f'playArgs: {self.playArgs("xxx")} pipeArgs: {self._pipeArgs}')
         return base_args
 
-    def canSetPipe(self):
+    def canSetPipe(self) -> bool:
         return bool(self._pipeArgs)
 
     def pipe(self, source):
@@ -280,22 +282,24 @@ class SubprocessAudioPlayer(AudioPlayer):
                 shutil.copyfileobj(source, self._wavProcess.stdin)
             except IOError as e:
                 if e.errno != errno.EPIPE:
-                    self._logger.ERROR('Error piping audio', hide_tb=True)
+                    self._logger.error('Error piping audio', hide_tb=True)
             except:
-                self._logger.ERROR('Error piping audio', hide_tb=True)
+                self._logger.error('Error piping audio', hide_tb=True)
 
             finally:
                 source.close()
 
         self._wavProcess = None
 
-    def setSpeed(self, speed):
+    def setSpeed(self, speed: float):
+        self._logger.debug(f'setSpeed: {speed}')
         self.speed = speed
 
-    def setVolume(self, volume):
+    def setVolume(self, volume: float):
+        self._logger.debug(f'setVolume: {volume}')
         self.volume = volume
 
-    def play(self, path):
+    def play(self, path: str):
         args = self.playArgs(path)
         self._logger.debug_verbose('args: {}'.format(' '.join(args)))
         with subprocess.Popen(args, stdout=(open(os.path.devnull, 'w')),
@@ -304,7 +308,7 @@ class SubprocessAudioPlayer(AudioPlayer):
 
         self._wavProcess = None
 
-    def isPlaying(self):
+    def isPlaying(self) -> bool:
         return self._wavProcess and self._wavProcess.poll() is None
 
     def stop(self):
@@ -332,7 +336,7 @@ class SubprocessAudioPlayer(AudioPlayer):
             self._wavProcess = None
 
     @classmethod
-    def available(cls, ext=None):
+    def available(cls, ext=None) -> bool:
         try:
             subprocess.call(cls._availableArgs, stdout=(open(os.path.devnull, 'w')),
                             stderr=subprocess.STDOUT, universal_newlines=True)
@@ -505,7 +509,7 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer):
         self._logger = module_logger.getChild(
             self.__class__.__name__)  # type: module_logger
 
-    def playArgs(self, path):
+    def playArgs(self, path: str):
         args = self.baseArgs(path)
         if self.speed or self.volume:
             args.append('-af')
@@ -559,6 +563,9 @@ class Mpg123AudioPlayer(SubprocessAudioPlayer):
         super().__init__()
         self._logger = module_logger.getChild(
             self.__class__.__name__)  # type: module_logger
+
+    def canSetSpeed(self):
+        return False
 
     def canSetVolume(self):  # (1-100)
         return False
@@ -636,9 +643,9 @@ class Mpg321OEPiAudioPlayer(SubprocessAudioPlayer):
             shutil.copyfileobj(source, self._wavProcess.stdin)
         except IOError as e:
             if e.errno != errno.EPIPE:
-                module_logger.ERROR('Error piping audio', hide_tb=True)
+                module_logger.error('Error piping audio', hide_tb=True)
         except:
-            module_logger.ERROR('Error piping audio', hide_tb=True)
+            module_logger.error('Error piping audio', hide_tb=True)
         source.close()
         self._wavProcess.stdin.close()
         while self._wavProcess.poll() is None and self.active:
@@ -667,6 +674,7 @@ class PlayerHandlerType:
 
 class BasePlayerHandler(PlayerHandlerType):
     def __init__(self):
+        self.outDir = None
         self._logger = module_logger.getChild(
             self.__class__.__name__)  # type: module_logger
         self.availablePlayers = None
@@ -702,7 +710,7 @@ class BasePlayerHandler(PlayerHandlerType):
 
     def setOutDir(self):
         tmpfs = utils.getTmpfs()
-        if Settings.getSetting(Settings.USE_TEMPFS, True) and tmpfs:
+        if Settings.getSetting(Settings.USE_TEMPFS, None, True) and tmpfs:
             self._logger.debug_extra_verbose(
                 'Using tmpfs at: {0}'.format(tmpfs))
             self.outDir = os.path.join(tmpfs, 'kodi_speech')
@@ -852,24 +860,16 @@ class WavAudioPlayerHandler(BasePlayerHandler):
             os.remove(self.outFile)
 
     def getOutFile(self, text, sound_file_type=None, use_cache=False):
+        clz = type(self)
         if use_cache:
             self.outFile = self.outFileBase.format(hashlib.md5(
                 text.encode('UTF-8')).hexdigest())
             _, extension = os.path.splitext(self.outFile)
-            correct_path = VoiceCache.get_path_to_voice_file(
+            success: bool
+            msg: str
+            correct_path: str
+            success, msg, correct_path = VoiceCache.get_path_to_read_voice_file(
                 text, extension)
-
-            #  TODO: Remove hack
-
-            bad_path = VoiceCache.get_path_to_voice_file(
-                self.outFile, extension)
-            cls = type(self)
-            cls._logger.debug('text: {} outFile: {} correct_path: {} bad_path: {}'
-                              .format(text, self.outFile, correct_path, bad_path))
-            if os.path.exists(bad_path):
-                cls._logger.debug_extra_verbose('renamed: {} to: {}'
-                                                .format(bad_path, correct_path))
-                os.rename(bad_path, correct_path)
             self.outFile = correct_path
 
         return self.outFile

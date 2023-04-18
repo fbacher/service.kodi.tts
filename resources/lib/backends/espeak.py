@@ -24,7 +24,8 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class ESpeakTTSBackend(base.SimpleTTSBackendBase):
-    provider = Backends.ESPEAK_ID
+    initialized: bool = False
+    backend_id = Backends.ESPEAK_ID
     displayName = 'eSpeak'
     speedConstraints = (80, 175, 450, True)
     pitchConstraints = (0, 50, 99, True)
@@ -42,16 +43,20 @@ class ESpeakTTSBackend(base.SimpleTTSBackendBase):
     }
     voice_map = dict()
     initialized = False
-    _logger = None
+    _logger: BasicLogger = None
+    _class_name: str = None
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        type(self)._class_name = self.__class__.__name__
         if type(self)._logger is None:
-            type(self)._logger = module_logger.getChild(
-                                        type(self).__name__)  # type: BasicLogger
+            type(self)._logger = module_logger.getChild(type(self)._class_name)
+
         type(self).init_voices()
 
     def init(self):
+        clz = type(self)
+        clz.initialized = False
         self.process = None
         self.update()
 
@@ -167,6 +172,7 @@ class ESpeakTTSBackend(base.SimpleTTSBackendBase):
         return True
 
     def runCommandAndSpeak(self, text):
+        clz = type(self)
         try:
             args = ['espeak']
             self.addCommonArgs(args, text)
@@ -174,8 +180,8 @@ class ESpeakTTSBackend(base.SimpleTTSBackendBase):
             while self.process.poll() is None and self.active:
                 utils.sleep(10)
         except Exception as e:
-            if type(self)._logger.isEnabledFor(ERROR):
-                type(self)._logger.error(e)
+            if clz._logger.isEnabledFor(ERROR):
+                clz._logger.exception("")
 
     def runCommandAndPipe(self, text):
         args = ['espeak', '--stdout']
@@ -184,12 +190,13 @@ class ESpeakTTSBackend(base.SimpleTTSBackendBase):
         return self.process.stdout
 
     def stop(self):
+        clz = type(self)
         if not self.process:
             return
         try:
             self.process.terminate()
         except:
-            pass
+            clz._logger.exception("")
 
     @classmethod
     def settingList(cls, setting, *args):
@@ -280,7 +287,7 @@ class ESpeakTTSBackend(base.SimpleTTSBackendBase):
     @classmethod
     def get_voice_id_for_name(cls, name):
         if len(cls.voice_map) == 0:
-            cls.settingList('voice')
+            cls.settingList(Settings.VOICE)
         return cls.voice_map[name]
 
     @staticmethod
@@ -309,9 +316,9 @@ class espeak_VOICE(ctypes.Structure):
 
 ######### BROKEN ctypes method ############
 class ESpeakCtypesTTSBackend(base.TTSBackendBase):
-    provider = 'eSpeak-ctypes'
+    backend_id = 'eSpeak-ctypes'
     displayName = 'eSpeak (ctypes)'
-    settings = {'voice': ''}
+    settings = {Settings.VOICE: ''}
     broken = True
     _eSpeak = None
 
@@ -325,7 +332,7 @@ class ESpeakCtypesTTSBackend(base.TTSBackendBase):
         return ESpeakCtypesTTSBackend._eSpeak
 
     def __init__(self):
-        self.voice = type(self).getSetting('voice')
+        self.voice = type(self).getSetting(Settings.VOICE)
 
     @staticmethod
     def isSupportedOnPlatform():
@@ -347,7 +354,7 @@ class ESpeakCtypesTTSBackend(base.TTSBackendBase):
         self.eSpeak.espeak_Synth(sb_text, size, 0, 0, 0, 0x1000, None, None)
 
     def update(self):
-        self.voice = type(self).getSetting('voice')
+        self.voice = type(self).getSetting(Settings.VOICE)
 
     def stop(self):
         if not self.eSpeak:
@@ -369,7 +376,7 @@ class ESpeakCtypesTTSBackend(base.TTSBackendBase):
     @classmethod
     def settingList(cls, setting, *args):
         return None
-        if setting == 'voice':
+        if setting == Settings.VOICE:
             if not ESpeakCtypesTTSBackend._eSpeak:
                 return None
             voices = ESpeakCtypesTTSBackend._eSpeak.espeak_ListVoices(None)

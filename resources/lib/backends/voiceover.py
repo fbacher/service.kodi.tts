@@ -17,14 +17,13 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class VoiceOverBackend(SimpleTTSBackendBase):
-    provider = 'voiceover'
+    backend_id = 'voiceover'
     displayName = 'VoiceOver'
+    _class_name: str = None
 
-
-    def __init__(self):
-        super().__init__()
-        self._logger = module_logger.getChild(self.__class__.__name__)  # type: BasicLogger
-
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        type(self)._class_name = self.__class__.__name__
 
     def init(self):
         self.setMode(SimpleTTSBackendBase.ENGINESPEAK)

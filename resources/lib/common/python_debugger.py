@@ -12,7 +12,7 @@ import threading
 
 import xbmc
 import xbmcaddon
-from .__init__ import *
+from common.__init__ import *
 
 
 class PythonDebugger:
@@ -28,7 +28,12 @@ class PythonDebugger:
     @classmethod
     def enable(cls, plugin_name: str) -> bool:
         cls.plugin_name = plugin_name
-        xbmc.log(f'Attempting to attach to debugger python version: {sys.version}', xbmc.LOGINFO)
+        if cls.remote_debug:
+            xbmc.log(f'pydevd debugger already started', xbmc.LOGINFO)
+            return cls.remote_debug
+
+        xbmc.log(
+            f'Attempting to attach to debugger python version: {sys.version}', xbmc.LOGINFO)
         try:
             if cls.REMOTE_DEBUG and not cls.remote_debug:
                 cls.pydevd_addon_path = xbmcaddon.Addon(
@@ -38,7 +43,7 @@ class PythonDebugger:
             xbmc.log(cls.plugin_name +
                      ' Debugger disabled, script.module.pydevd NOT installed',
                      xbmc.LOGDEBUG)
-            cls.remote_debug = False
+            # cls.remote_debug = False
 
         if cls.remote_debug:
             try:

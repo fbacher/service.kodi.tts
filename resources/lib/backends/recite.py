@@ -24,12 +24,16 @@ class ReciteTTSBackend(base.SimpleTTSBackendBase):
     """
      reciteme.com/
     """
-    provider = Backends.RECITE_ID
+    backend_id = Backends.RECITE_ID
     displayName = 'Recite'
+    _logger: BasicLogger = None
+    _class_name: str = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._logger = module_logger.getChild(self.__class__.__name__)  # type: BasicLogger
+        type(self)._class_name = self.__class__.__name__
+        if type(self)._logger is None:
+            type(self)._logger = module_logger.getChild(type(self)._class_name)
 
     def init(self):
         self.process = None

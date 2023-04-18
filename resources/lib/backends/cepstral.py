@@ -21,8 +21,9 @@ def getStartupInfo():
 
     return None
 
+
 class CepstralTTSOEBackend(base.SimpleTTSBackendBase):
-    provider = 'Cepstral_OE'
+    backend_id = 'Cepstral_OE'
     displayName = 'Cepstral OpenElec'
     canStreamWav = True
     pitchConstraints = (-6, 0, 14, True)
@@ -36,12 +37,14 @@ class CepstralTTSOEBackend(base.SimpleTTSBackendBase):
         'voice',
         'volume'}
 
+    _class_name: str = None
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._logger: BasicLogger = None
+        type(self)._class_name = self.__class__.__name__
         if type(self)._logger is None:
-            type(self)._logger = module_logger.getChild(type(self).__name__)  # type: BasicLogger
-
-    def init(self):
+            type(self)._logger = module_logger.getChild(type(self)._class_name)
 
         self.process = None
         self.aplayProcess = None
@@ -101,8 +104,9 @@ class CepstralTTSOEBackend(base.SimpleTTSBackendBase):
     def available():
         return True
 
+
 class CepstralTTSBackend(base.SimpleTTSBackendBase):
-    provider = 'Cepstral'
+    backend_id = 'Cepstral'
     displayName = 'Cepstral'
     canStreamWav = False
     settings = {    'voice':'',
@@ -112,12 +116,15 @@ class CepstralTTSBackend(base.SimpleTTSBackendBase):
                     'pitch':0
 
     }
+    _logger: BasicLogger = None
+    _class_name: str = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._logger = module_logger.getChild(self.__class__.__name__)  # type: BasicLogger
+        type(self)._class_name = self.__class__.__name__
+        if type(self)._logger is None:
+            type(self)._logger = module_logger.getChild(type(self)._class_name)
 
-    def init(self):
         self.setMode(base.SimpleTTSBackendBase.ENGINESPEAK)
         self.startupinfo = getStartupInfo()
         self.update()

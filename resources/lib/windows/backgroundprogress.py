@@ -124,9 +124,10 @@ class BackgroundProgress(WindowHandlerBase):
 
     def updateFromSettings(self):
         self.last = 0
-        self.interval = Settings.getSetting(Settings.BACKGROUND_PROGRESS_INTERVAL,5)
+        self.interval = Settings.getSetting(Settings.BACKGROUND_PROGRESS_INTERVAL,
+                                            None, 5)
         self.playDuringMedia = Settings.getSetting(
-            Settings.SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA,False)
+            Settings.SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA, None, False)
 
     def _visible(self):
         return WindowHandlerBase.visible(self)
@@ -134,7 +135,7 @@ class BackgroundProgress(WindowHandlerBase):
     def visible(self):
         visible = self._visible()
         if visible:
-            if not Settings.getSetting(Settings.SPEAK_BACKGROUND_PROGRESS,
+            if not Settings.getSetting(Settings.SPEAK_BACKGROUND_PROGRESS, None,
                                        False):
                 return False
         else:

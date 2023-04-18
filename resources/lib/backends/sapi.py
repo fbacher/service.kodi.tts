@@ -11,8 +11,8 @@ except ImportError:
 
 from xml.sax import saxutils
 
+from common.typing import *
 from common.constants import Constants
-from common.setting_constants import Languages, Players, Genders, Misc
 from common.logger import *
 from common.messages import Messages
 from common.settings import Settings
@@ -21,6 +21,40 @@ from common import utils
 from backends.base import SimpleTTSBackendBase
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
+
+'''
+  SAPI is a built-in Windows TTS api. SAPI 5.4 (the latest) was released 2009
+  
+  Modern Windows uses System.Speech.Synthesis 
+ 
+    If you run the following command in the terminal, it will speak the words "testing to see if this works properly"
+    PowerShell -Command "Add-Type -AssemblyName System.Speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('testing to see if this works properly');"
+    This python script generates this command with whatever text is passed to the speak function
+    
+    
+    randomString = "Hello Matt!"
+    
+    def speak(stringOfText):
+            # This function will make windows say whatever string is passed
+            # You can copy and paste this function into any script, and call it using: speak("Random String")
+            # Be sure to import os into any script you add this function to
+            stringOfText = stringOfText.strip()
+            # Removes any trailing spaces or new line characters
+            stringOfText = stringOfText.replace("'", "")
+            # Removes all single quotes by replacing all instances with a blank character
+        stringOfText = stringOfText.replace('"', "")
+            # Removes all double quotes by replacing all instances with a blank character
+        command = f"PowerShell -Command "Add-Type -AssemblyName System.Speech; \
+            (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('{stringOfText}');"
+    # This is just a really long command that tells windows to say a text out loud
+    # At the end I am adding in the stringOfText parameter to the command
+    os.system(command)
+    # This runs the command as if you opened up a terminal and typed it in
+
+    speak(randomString)
+    speak("testing 1 2 3 4 5")
+
+'''
 
 
 def lookupGenericComError(com_error):
@@ -58,9 +92,11 @@ class SAPI:
         'volume': 0
     }
     _logger: BasicLogger = None
+    _class_name: str = None
 
     @classmethod
     def class_init(cls):
+        cls._class_name = cls.__class__.__name__
         if cls._logger is None:
             cls._logger = module_logger.getChild(cls.__class__.__name__)
 
@@ -88,7 +124,6 @@ class SAPI:
         self.valid = True
         self.COMError = importHelper('_ctypes').COMError
         self.setStreamFlags()
-        cls._logger.exit()
 
     def importComtypes(self):
         # Remove all (hopefully) references to comtypes import...
@@ -103,7 +138,6 @@ class SAPI:
         gc.collect()
         # and then import
         self.comtypesClient = importHelper('comtypes.client')
-        cls._logger.exit()
 
     def reset(self):
         cls = type(self)
@@ -113,7 +147,6 @@ class SAPI:
         self.cleanComtypes()
         self.importComtypes()
         self.resetSpVoice()
-        cls._logger.exit()
 
     def resetSpVoice(self):
         cls = type(self)
@@ -122,7 +155,6 @@ class SAPI:
         voice = self._getVoice()
         if voice:
             self.SpVoice.Voice = voice
-        cls._logger.exit()
 
     def setStreamFlags(self):
         cls = type(self)
@@ -138,7 +170,7 @@ class SAPI:
             self.flags = self.ASYNC
             self.streamFlags = self.ASYNC
         finally:
-            cls._logger.exit()
+            pass
 
     def cleanComtypes(self):  # TODO: Make this SAPI specific?
         cls = type(self)
@@ -153,7 +185,7 @@ class SAPI:
         except:
             cls._logger.exception('SAPI: Failed to empty comtypes gen dir')
         finally:
-            cls._logger.exit()
+            pass
 
     def logSAPIError(self, com_error, extra=''):
         cls = type(self)
@@ -185,7 +217,6 @@ class SAPI:
             'Line: {1} In: {0}{2}'.format(sys.exc_info()[2].tb_frame.f_code.co_name,
                                           sys.exc_info()[2].tb_lineno,
                                           extra and ' ({0})'.format(extra) or ''))
-        cls._logger.exit()
 
     def _getVoice(self, voice_name=None):
         cls = type(self)
@@ -197,7 +228,6 @@ class SAPI:
                 voice = v[i]
                 if voice_name == voice.GetDescription():
                     return voice
-        cls._logger.exit()
         return None
 
     def checkSAPI(func):
@@ -228,7 +258,7 @@ class SAPI:
                 self.valid = False
                 cls._logger.error('SAPI: {0} error'.format(func.__name__))
             finally:
-                cls._logger.exit()
+                pass
 
         return checker
 
@@ -287,21 +317,19 @@ class SAPI:
         self._voiceName = voice_name
         voice = self._getVoice(voice_name)
         self.SpVoice.Voice = voice
-        cls._logger.exit()
 
     @validCheck
     def set_SpVoice_AudioOutputStream(self, stream):
         cls = type(self)
 
         self.SpVoice.AudioOutputStream = stream
-        cls._logger.exit()
 
 
 SAPI.class_init()
 
 
 class SAPITTSBackend(SimpleTTSBackendBase):
-    provider = 'SAPI'
+    backend_id = 'SAPI'
     displayName = 'SAPI (Windows Internal)'
     settings = {'speak_via_kodi': True,
                 'voice': '',
@@ -328,20 +356,19 @@ class SAPITTSBackend(SimpleTTSBackendBase):
   <rate absspeed="{speed}" />
   <p>{text}</p>
 </speak>'''
-    _logger = None
+
+    _logger: BasicLogger = None
+    _class_name: str = None
 
     @classmethod
     def class_init(cls):
-        if cls._logger is not None:
-            return
+        pass
 
-        cls._logger = module_logger.getChild(cls.__name__)
-
-    def __init__(self):
-        cls = type(self)
-
-        super().__init__()
-
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        type(self)._class_name = self.__class__.__name__
+        if type(self)._logger is None:
+            type(self)._logger = module_logger.getChild(type(self)._class_name)
 
         self.ssml = None
         self.streamFlags = None
@@ -350,7 +377,6 @@ class SAPITTSBackend(SimpleTTSBackendBase):
             self.flagAsDead('RESET')
             return
         self.update()
-        cls._logger.exit()
 
     @classmethod
     def isSupportedOnPlatform(cls):
@@ -379,7 +405,6 @@ class SAPITTSBackend(SimpleTTSBackendBase):
 
         stream = self.sapi.SpFileStream()
         if not stream:
-            cls._logger.exit()
             return False
         try:
             stream.Open(outFile, 3)  # 3=SSFMCreateForWrite
@@ -389,7 +414,6 @@ class SAPITTSBackend(SimpleTTSBackendBase):
         ssml = self.ssml.format(text=saxutils.escape(text))
         self.sapi.SpVoice_Speak(ssml, self.sapi.streamFlags)
         stream.close()
-        cls._logger.exit()
         return True
 
     @sapiValidCheck
@@ -398,7 +422,6 @@ class SAPITTSBackend(SimpleTTSBackendBase):
 
         ssml = self.ssml.format(text=saxutils.escape(text))
         self.sapi.SpVoice_Speak(ssml, self.sapi.flags)
-        cls._logger.exit()
 
     @sapiValidCheck
     def getWavStream(self, text):
@@ -406,13 +429,11 @@ class SAPITTSBackend(SimpleTTSBackendBase):
 
         fmt = self.sapi.SpAudioFormat()
         if not fmt:
-            cls._logger.exit()
             return None
         fmt.Type = 22
 
         stream = self.sapi.SpMemoryStream()
         if not stream:
-            cls._logger.exit()
             return None
         stream.Format = fmt
         self.sapi.set_SpVoice_AudioOutputStream(stream)
@@ -422,7 +443,6 @@ class SAPITTSBackend(SimpleTTSBackendBase):
 
         wavIO = io.StringIO()
         self.createWavFileObject(wavIO, stream)
-        cls._logger.exit()
         return wavIO
 
     def createWavFileObject(self, wavIO, stream):
@@ -433,17 +453,14 @@ class SAPITTSBackend(SimpleTTSBackendBase):
         wavFileObj.setparams((1, 2, 22050, 0, 'NONE', 'not compressed'))
         wavFileObj.writeframes(array.array('B', stream.GetData()).tostring())
         wavFileObj.close()
-        cls._logger.exit()
 
     def stop(self):
         cls = type(self)
 
         if not self.sapi:
-            cls._logger.exit()
             return
         if not self.inWavStreamMode:
             self.sapi.stopSpeech()
-        cls._logger.exit()
 
     def update(self):
         cls = type(self)
@@ -454,18 +471,15 @@ class SAPITTSBackend(SimpleTTSBackendBase):
                                          pitch=self.setting('pitch'))
         voice_name = self.setting('voice')
         self.sapi.set_SpVoice_Voice(voice_name)
-        cls._logger.exit()
 
     def getMode(self):
         cls = type(self)
 
         if self.setting('speak_via_kodi'):
-            cls._logger.exit()
             return SimpleTTSBackendBase.WAVOUT
         else:
             if self.sapi:
                 self.sapi.set_SpVoice_AudioOutputStream(None)
-            cls._logger.exit()
             return SimpleTTSBackendBase.ENGINESPEAK
 
     @classmethod
@@ -484,7 +498,6 @@ class SAPITTSBackend(SimpleTTSBackendBase):
                 except Exception as e:  # COMError as e: #analysis:ignore
                     sapi.logSAPIError(e)
                 voices.append((name, name))
-            cls._logger.exit()
             return voices
 
     @staticmethod

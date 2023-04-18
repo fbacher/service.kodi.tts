@@ -119,7 +119,9 @@ def isPostInstalled():
 
 if __name__ == '__main__':
     arg = None
-    if len(sys.argv) > 1: arg = sys.argv[1]
+    xbmc.log('In kodi.tts enabler.py main')
+    if len(sys.argv) > 1:
+        arg = sys.argv[1]
     if arg == 'RESET':
         reset()
     else:

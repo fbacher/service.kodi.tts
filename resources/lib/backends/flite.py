@@ -15,11 +15,11 @@ from common.messages import Messages
 from common.settings import Settings
 from common.system_queries import SystemQueries
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class FliteTTSBackend(base.SimpleTTSBackendBase):
-    provider = Backends.FLITE_ID
+    backend_id = Backends.FLITE_ID
     displayName = 'Flite'
     speedConstraints = (20, 100, 200, True)
 
@@ -32,9 +32,14 @@ class FliteTTSBackend(base.SimpleTTSBackendBase):
     }
     onATV2 = SystemQueries.isATV2()
 
+    _logger: BasicLogger = None
+    _class_name: str = None
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._logger = module_logger.getChild(self.__class__.__name__)  # type: BasicLogger
+        type(self)._class_name = self.__class__.__name__
+        if type(self)._logger is None:
+            type(self)._logger = module_logger.getChild(type(self)._class_name)
         self.process = None
 
     def init(self):
@@ -114,7 +119,7 @@ class FliteTTSBackend(base.SimpleTTSBackendBase):
         return True
 
 #class FliteTTSBackend(TTSBackendBase):
-#    provider = 'Flite':q:q
+#    backend_id = 'Flite':q:q
 #    def __init__(self):
 #        import ctypes
 #        self.flite = ctypes.CDLL('libflite.so.1',mode=ctypes.RTLD_GLOBAL)
@@ -139,7 +144,7 @@ class FliteTTSBackend(base.SimpleTTSBackendBase):
 #        return True
 
 #class FliteTTSBackend(TTSBackendBase):
-#    provider = 'Flite'
+#    backend_id = 'Flite'
 #
 #    def say(self,text,interrupt=False):
 #        if not text: return

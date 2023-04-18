@@ -37,6 +37,7 @@ class Backends(BaseSettingsConstants):
         RESPONSIVE_VOICE_ID: Messages.BACKEND_RESPONSIVE_VOICE,
     }
 
+
 class Languages(BaseSettingsConstants):
 
     LOCALE_AF = 'af'

@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 
+from common.typing import *
+
 import xbmc
 import xbmcgui
-import xbmcaddon
+from xbmcgui import (Control, ControlButton, ControlEdit, ControlGroup, ControlLabel,
+                     ControlRadioButton, ControlSlider, ControlList, ControlImage,
+                     ControlTextBox, ListItem)
 
-from common.imports import *
 from common.constants import Constants
 from common.settings import Settings
 from common.messages import Message, Messages
@@ -20,35 +23,30 @@ else:
 
 class SelectionDialog(xbmcgui.WindowXMLDialog):
 
-    def __init__(self, *args, **kwargs):
-        # type: (*Any, **Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         """
 
         :param args:
         """
         super().__init__(*args, **kwargs)
         self.exit_dialog = False
-        self._logger = module_logger.getChild(
-            self.__class__.__name__)  # type: BasicLogger
+        self._logger: BasicLogger = module_logger.getChild(
+            self.__class__.__name__)
         self._logger.debug_verbose('SelectionDialog.__init__')
         self.initialized = False
         empty_list_items = []  # type: List[xbmcgui.ListItem]
         self.list_position = 0
         self.selection_index = -1
-        # self.list_control = None  #  type: Union[xbmcgui.ControlList, None]
         self.title = kwargs.get('title', 'No Heading')
         self._init_list_items = kwargs.get('choices', empty_list_items)
         self._initial_choice = kwargs.get('initial_choice', -1)
         if self._initial_choice < 0:
             self._initial_choice = 0
 
-        self.heading_control = None  # type: Union[None, xbmcgui.ControlLabel]
-        # type: Union[None, xbmcgui.ControlRadioButton]
-        self.choices_group = None  # type: Union[None, xbmcgui.ControlGroup]
-
-        self.cancel_radio_button = None
-        # type: Union[None, xbmcgui.ControlRadioButton]
-        self.ok_radio_button = None
+        self.heading_control: ControlLabel | None = None
+        self.choices_group: ControlGroup | None = None
+        self.cancel_radio_button: ControlRadioButton | None = None
+        self.ok_radio_button: ControlRadioButton | None = None
 
     def onInit(self):
         """
@@ -66,7 +64,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         # type: Union[None, xbmcgui.ControlLabel]
 
         if not self.initialized:
-            self.heading_control = self.getControl(1)
+            self.heading_control = self.getControlLabel(1)
             self.heading_control.setLabel(self.title)
             # unused_control = self.getControl(3)
             '''def __init__(self, x, y, width, height, font=None, textColor=None,
@@ -115,8 +113,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
                     list_item.select(True)
                 else:
                     list_item.select(False)
-                radio_button_control = self.getControl(
-                    101 + idx)  # type: xbmcgui.ControlRadioButton
+                radio_button_control: ControlRadioButton = self.getControlRadioButton(101 + idx)
                 label = list_item.getLabel()
                 radio_button_control.setLabel(label)
                 radio_button_control.setRadioDimension(
@@ -128,13 +125,12 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
 
             for idx in range(min(len(self._init_list_items), 201),
                              201):  # self.list_control.size() - 1):
-                radio_button_control = self.getControl(
-                    101 + idx)  # type: xbmcgui.ControlRadioButton
+                radio_button_control: ControlRadioButton = self.getControlRadioButton(101 + idx)
                 radio_button_control.setVisible(False)
 
-            radio_button_control = self.getControl(
-                self.selection_index + 101)  # type: xbmcgui.ControlRadioButton
-            label = self._init_list_items[self._initial_choice].getLabel()
+            radio_button_control: ControlRadioButton = self.getControlRadioButton(101 + self.selection_index)
+
+            label: str = self._init_list_items[self._initial_choice].getLabel()
             self._logger.debug_verbose(
                 'SelectionDialog.onInit setting focus on control: {:d} value: {}'
                 .format(101 + self._initial_choice, label))
@@ -154,17 +150,48 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
             # self.choices_group.setVisible(True)
             self.initialized = True
 
-        self.ok_radio_button = self.getControl(
-            5)  # type: xbmcgui.ControlRadioButton
+        self.ok_radio_button = self.getControlRadioButton(5)
         self.ok_radio_button.setLabel(Messages.get_msg(Messages.OK))
         self.ok_radio_button.setVisible(True)
 
-        self.cancel_radio_button = self.getControl(
-            7)  # type: xbmcgui.ControlRadioButton
+        self.cancel_radio_button = self.getControlRadioButton(7)
         self.cancel_radio_button.setLabel(Messages.get_msg(Messages.CANCEL))
         self.cancel_radio_button.setVisible(True)
 
         self._logger.debug_verbose('SelectionDialog.onInit exiting')
+
+    def getControlButton(self, iControlId: int) -> ControlButton:
+        buttonControl: Control = super().getControl(iControlId)
+        buttonControl: ControlButton
+        return buttonControl
+
+    def getControlEdit(self, iControlId: int) -> ControlEdit:
+        control: Control = super().getControl(iControlId)
+        control: xbmcgui.ControlEdit
+        return control
+
+    def getControlGroup(self, iControlId: int) -> ControlGroup:
+        control: Control = super().getControl(iControlId)
+        control: ControlGroup
+        return control
+
+    def getControlLabel(self, iControlId: int) -> ControlLabel:
+        control: Control = super().getControl(iControlId)
+        control: ControlLabel
+        return control
+
+    def getControlRadioButton(self, iControlId: int) -> ControlRadioButton:
+        control: Control = super().getControl(iControlId)
+        control: ControlRadioButton
+        return control
+
+    def getControlSlider(self, iControlId: int) -> ControlSlider:
+        control: Control = super().getControl(iControlId)
+        control: ControlSlider
+        return control
+
+    def setRadioDimension(self):
+        self.engine_tab.setRadioDimension(x=0, y=0, width=186, height=40)
 
     def doModal(self):
         # type: () -> None
@@ -273,13 +300,11 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         elif (controlId > 100) and (controlId < (101 + len(self._init_list_items))):
             # Deselect previous
             if self.selection_index >= 0:
-                # type: xbmcgui.ControlRadioButton
-                radio_button = self.getControl(101 + self.selection_index)
+                radio_button: ControlRadioButton = self.getControlRadioButton(101 + self.selection_index)
                 radio_button.setSelected(False)
 
             self.selection_index = controlId - 101
-            # type: xbmcgui.ControlRadioButton
-            radio_button = self.getControl(controlId)
+            radio_button: ControlRadioButton = self.getControlRadioButton(controlId)
             radio_button.setSelected(True)
             '''
             # Invisible radio_button that relays onClick from list control 3,
@@ -340,8 +365,8 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
 
             self.addItem('Reboot Kodi', 0)
         """
-        self._logger.debug_verbose('SelectionDialog.addItem unexpected call item: {}'
-                         .format(item.getLabel()))
+        self._logger.debug_verbose(f'SelectionDialog.addItem unexpected call item: {item.getLabel()}'
+                         )
         '''
         self.list_control.addItem(item)
         if position is None:
@@ -365,8 +390,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
 
             self.addItems(['Reboot Kodi', 'Restart Kodi'])
         """
-        self._logger.debug_verbose('SelectionDialog.addItems unexpected call item length: {:d}'
-                         .format(len(items)))
+        self._logger.debug_verbose(f'SelectionDialog.addItems unexpected call item length: {len(items)}')
         '''
         # self.list_control.addItems(items)
 
@@ -419,13 +443,10 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
 
         # self.debug_list_items('SelectionDialog.getCurrentListPosition # selected: {:d}'
         #                      .format(number_selected))
-        self._logger.debug_verbose('SelectionDialog.getCurrentListPosition selected position: {:d}'
-                         .format(self.selection_index))
-        # return selected_position
+        self._logger.debug_verbose(f'SelectionDialog.getCurrentListPosition selected position: {self.selection_index}')
         return self.selection_index
 
-    def setCurrentListPosition(self, position):
-        # type: (int) -> None
+    def setCurrentListPosition(self, position: int) -> None:
         """
         Set the current position in the WindowList.
 
@@ -435,8 +456,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
 
             self.setCurrentListPosition(5)
         """
-        self.debug_list_items('SelectionDialog.setCurrentListPosition unexpected call: {:d}'
-                              .format(position))
+        self.debug_list_items(f'SelectionDialog.setCurrentListPosition unexpected call: {position}')
         '''
         self.list_control.selectItem(position)
         self.getListItem(position).select(True)
@@ -450,8 +470,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         self.debug_list_items('setCurrentListPosition')
         '''
 
-    def getListItem(self, position):
-        # type: (int) -> xbmcgui.ListItem
+    def getListItem(self, position: int) -> ListItem:
         """
         Returns a given ListItem in this WindowList.
 
@@ -467,8 +486,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         # return self.list_control.getListItem(position)
         return None
 
-    def getListSize(self):
-        # type: () -> int
+    def getListSize(self) -> int:
         """
         Returns the number of items in this WindowList.
 
@@ -481,8 +499,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         # return len(self.list_items)
         return 0
 
-    def clearList(self):
-        # type: () -> None
+    def clearList(self) -> None:
         """
         Clear the WindowList.
 
@@ -495,7 +512,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         self._logger.debug_verbose('SelectionDialog.clearList')
         self.debug_list_items('clearList')
 
-    def debug_list_items(self, text):
+    def debug_list_items(self, text: str) -> None:
         pass
         # self._logger.debug_verbose('{} len list_items: {:d}'
         #                 .format(text, self.list_control.size()))

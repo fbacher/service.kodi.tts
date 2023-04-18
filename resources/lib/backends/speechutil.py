@@ -21,16 +21,19 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class SpeechUtilComTTSBackend(SimpleTTSBackendBase):
-    provider = 'speechutil'
+    backend_id = 'speechutil'
     displayName = 'speechutil.com'
     ttsURL = 'http://speechutil.com/convert/wav?text={0}'
     headers = { 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.116 Safari/537.36' }
     canStreamWav = True
+    _class_name: str = None
+    _logger: BasicLogger = None
 
-
-    def __init__(self):
-        super().__init__()
-        self._logger = module_logger.getChild(self.__class__.__name__)  # type: BasicLogger
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        type(self)._class_name = self.__class__.__name__
+        if type(self)._logger is None:
+            type(self)._logger = module_logger.getChild(type(self)._class_name)
 
     def init(self):
         self.process = None

@@ -30,6 +30,7 @@ def getTmpfs():
 def sleep(ms):
     xbmc.sleep(ms)
 
+
 def playSound(name, return_duration=False):
     wavPath = os.path.join(Constants.ADDON_DIRECTORY, 'resources',
                            'wavs', '{0}.wav'.format(name))

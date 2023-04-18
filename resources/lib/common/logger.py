@@ -411,7 +411,7 @@ class BasicLogger(Logger):
                 else:
                     frames_to_ignore = 0
 
-                stack = sys._current_frames(frames_to_ignore).get(th.ident, None)
+                stack = sys._current_frames()
                 if stack is not None:
                     traceback.print_stack(stack, file=sio)
 

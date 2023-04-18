@@ -16,7 +16,7 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class OSXSayTTSBackend_Internal(ThreadedTTSBackend):
-    provider = 'OSXSay'
+    backend_id = 'OSXSay'
     displayName = 'OSX Say (OSX Internal)'
     canStreamWav = True
     volumeConstraints = (0,100,100,True)
@@ -25,7 +25,7 @@ class OSXSayTTSBackend_Internal(ThreadedTTSBackend):
     volumeExternalEndpoints = (0,100)
     volumeStep = 5
     volumeSuffix = '%'
-    voicesPath = os.path.join(Constants.PROFILE_PATH,'{0}.voices'.format(provider))
+    voicesPath = os.path.join(Constants.PROFILE_PATH,'{0}.voices'.format(backend_id))
     settings = {
                 'speed': 0,
                 'voice': '',
@@ -39,9 +39,15 @@ class OSXSayTTSBackend_Internal(ThreadedTTSBackend):
     #      except:
     #          pass
     #      return # OSXSayTTSBackend_SubProcess() #  TODO: does not exist!
+    _logger_name: str = None
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        clz = type(self)
+        clz._logger_name = self.__class__.__name__
+        if clz._logger is None:
+            clz._logger = module_logger.getChild(clz._logger_name)
+
         from . import cocoapy
         self.cocoapy = cocoapy
         self.pool = cocoapy.ObjCClass('NSAutoreleasePool').alloc().init()
@@ -113,14 +119,18 @@ class OSXSayTTSBackend_Internal(ThreadedTTSBackend):
 
 #OLD
 class OSXSayTTSBackend(ThreadedTTSBackend):
-    provider = 'OSXSay'
+    backend_id = 'OSXSay'
     displayName = 'OSX Say (OSX Internal)'
     canStreamWav = True
+    _logger_name: str = None
 
-    def __init__(self):
-        #util.LOG('OSXSay using subprocess method class')
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        clz = type(self)
+        clz._logger_name = self.__class__.__name__
+        if clz._logger is None:
+            clz._logger = module_logger.getChild(clz._logger_name)
         self.process = None
-        ThreadedTTSBackend.__init__(self)
 
     @staticmethod
     def isSupportedOnPlatform():

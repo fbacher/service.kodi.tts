@@ -30,7 +30,7 @@ class SettingsGUI(object):
     def launch():
 
         script_path = Constants.ADDON_PATH
-        Settings.begin_configuring_settings()
+        Settings.save_settings()
         gui = SettingsDialog('script-tts-settings-dialog.xml',
                              script_path,
                              'Default')
