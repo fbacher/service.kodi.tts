@@ -261,7 +261,7 @@ class TTSService(xbmc.Monitor):
             if text:
                 self.queueNotice(text, interrupt=False, preload_cache=True)
         elif command == Commands.SETTINGS_BACKEND_GUI:
-            if 0 == 1: # clz._is_configuring:
+            if clz._is_configuring:
                 clz._logger.debug("Ignoring Duplicate SETTINGS_BACKEND_GUI")
             else:
                 try:
@@ -505,8 +505,13 @@ class TTSService(xbmc.Monitor):
     def set_active_backend(self, backend: ITTSBackendBase) -> str:
         if isinstance(backend, str):
             module_logger._logger.debug(f'backend is string: {backend}')
+        else:
+            backend.init()
+            pass
         if self.active_backend:
             self.close_tts()
+
+        #  backend.init()
         self.active_backend = backend
         return backend.get_backend_id()
 
@@ -593,13 +598,13 @@ class TTSService(xbmc.Monitor):
     def insertPause(self, ms=500):
         self.tts.insertPause(ms=ms)
 
-    def volumeUp(self):
+    def volumeUp(self) -> None:
         msg = self.tts.volumeUp()
         if not msg:
             return
         self.sayText(msg, interrupt=True)
 
-    def volumeDown(self):
+    def volumeDown(self) -> None:
         msg = self.tts.volumeDown()
         if not msg:
             return
@@ -689,9 +694,10 @@ class TTSService(xbmc.Monitor):
         if secondary:
             self.secondaryText = secondary
             text += self.tts.pauseInsert + ' ' + secondary
-        self.sayText(text, interrupt=not newD)
-        if self.autoItemExtra:
-            self.waitingToReadItemExtra = time.time()
+        if len(text) != 0:  # For testing
+            self.sayText(text, interrupt=not newD)
+            if self.autoItemExtra:
+                self.waitingToReadItemExtra = time.time()
 
     def newSecondaryText(self, text):
         self.secondaryText = text

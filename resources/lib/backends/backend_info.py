@@ -21,7 +21,7 @@ class BackendInfo(IBackendInfo):
     backendsByPriority: List[ITTSBackendBase] = []
     backendsById: Dict[str, ITTSBackendBase] = {}
     backendByClassName: Dict[str, Type[ITTSBackendBase]] = {}
-
+    backendIds: List[str] = []
     _logger: BasicLogger
     _initialized: bool = False
 
@@ -167,11 +167,18 @@ class BackendInfo(IBackendInfo):
         return None
 
     @classmethod
+    def getBackendIds(cls) -> List[str]:
+        return cls.backendIds
+
+    @classmethod
     def setBackendByPriorities(cls, backendsByPriority: List[ITTSBackendBase],
                                backendsById: Dict[str, ITTSBackendBase]) -> None:
         if len(cls.backendsByPriority) == 0:
             cls.backendsByPriority = backendsByPriority
             cls.backendsById = backendsById
+            for backendId in backendsById.keys():
+                cls.backendIds.append(backendId)
+
             for backend in backendsByPriority:
                 backend: Type[ITTSBackendBase]
                 backend_class_name: str = backend.backend_id

@@ -1,3 +1,4 @@
+# coding=utf-8
 from common.__init__ import *
 from backends.i_tts_backend_base import ITTSBackendBase
 from backends.i_backend import IBackend
@@ -32,10 +33,10 @@ class TTSBackendBridge(ITTSBackendBase):
     def scale_db_to_percent(self, value, lower_bound=0, upper_bound=100):
         raise Exception('Not Implemented')
 
-    def volumeUp(self):
+    def volumeUp(self) -> None:
         raise Exception('Not Implemented')
 
-    def volumeDown(self):
+    def volumeDown(self) -> None:
         raise Exception('Not Implemented')
 
     def flagAsDead(self, reason=''):
@@ -60,19 +61,19 @@ class TTSBackendBridge(ITTSBackendBase):
         raise Exception('Not Implemented')
 
     @classmethod
-    def isSettingSupported(cls, setting):
+    def isSettingSupported(cls, setting: str) -> bool:
         raise Exception('Not Implemented')
 
     @classmethod
-    def getSettingNames(cls):
+    def getSettingNames(cls) -> List[str]:
         raise Exception('Not Implemented')
 
     @classmethod
-    def get_setting_default(cls, setting):
+    def get_setting_default(cls, setting: str) -> Any | None:
         raise Exception('Not Implemented')
 
     @classmethod
-    def settingList(cls, setting, *args):
+    def settingList(cls, setting: str, *args):
         raise Exception('Not Implemented')
 
     @classmethod
@@ -80,15 +81,15 @@ class TTSBackendBridge(ITTSBackendBase):
         raise Exception('Not Implemented')
 
     @classmethod
-    def getLanguage(cls):
+    def getLanguage(cls) -> str:
         raise Exception('Not Implemented')
 
     @classmethod
-    def getGender(cls):
+    def getGender(cls) -> str:
         raise Exception('Not Implemented')
 
     @classmethod
-    def getVoice(cls):
+    def getVoice(cls) -> str:
         raise Exception('Not Implemented')
 
     @classmethod
@@ -96,38 +97,39 @@ class TTSBackendBridge(ITTSBackendBase):
         raise Exception('Not Implemented')
 
     @classmethod
-    def getPitch(cls):
+    def getPitch(cls) -> float:
         raise Exception('Not Implemented')
 
     @classmethod
-    def getVolume(cls):
+    def getVolume(cls) -> float:
         raise Exception('Not Implemented')
 
     @classmethod
-    def getSetting(cls, key, default=None):
+    def getSetting(cls, key: str, default: str | List[str] | List[bool] | list[
+                   float] | bool | int | float = None) -> Any | None:
         raise Exception('Not Implemented')
 
     @classmethod
     def setSetting(cls,
                    setting_id: str,
-                   value: Union[None, str, List, bool, int, float]
+                   value: str | List[str] | List[bool] | List[float] | List[int] | None
                    ) -> bool:
         raise Exception('Not Implemented')
 
     @classmethod
-    def get_backend_id(cls):
+    def get_backend_id(cls) -> str:
         raise Exception('Not Implemented')
 
-    def isSpeaking(self):
+    def isSpeaking(self) -> bool:
         raise Exception('Not Implemented')
 
     def getWavStream(self, text):
         raise Exception('Not Implemented')
 
-    def update(self):
+    def update(self) -> None:
         raise Exception('Not Implemented')
 
-    def stop(self):
+    def stop(self) -> None:
         raise Exception('Not Implemented')
 
     def close(self):
@@ -137,7 +139,7 @@ class TTSBackendBridge(ITTSBackendBase):
         raise Exception('Not Implemented')
 
     @classmethod
-    def is_available_and_usable(cls):
+    def is_available_and_usable(cls) -> bool:
         return cls._baseBackend.is_available_and_usable()
 
     @classmethod
@@ -145,5 +147,5 @@ class TTSBackendBridge(ITTSBackendBase):
         raise Exception('Not Implemented')
 
     @staticmethod
-    def available():
+    def available() -> None:
         raise Exception('Not Implemented')

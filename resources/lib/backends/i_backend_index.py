@@ -23,24 +23,24 @@ class IBackendIndex:
     ESpeakCtypesTTSBackend = 'ESpeakCtypesTTSBackend'
     LogOnlyTTSBackend = 'LogOnlyTTSBackend'
 
-    backendClassNames: List[str] = [SAPITTSBackend,
-                                    OSXSayTTSBackend,
+    backendClassNames: List[str] = [# SAPITTSBackend,
+                                    # OSXSayTTSBackend,
                                     ESpeakTTSBackend,
-                                    JAWSTTSBackend,
-                                    NVDATTSBackend,
+                                    # JAWSTTSBackend,
+                                    # NVDATTSBackend,
                                     FliteTTSBackend,
                                     Pico2WaveTTSBackend,
                                     FestivalTTSBackend,
-                                    CepstralTTSBackend,
+                                    # CepstralTTSBackend,
                                     #            CepstralTTSOEBackend,
-                                    SpeechDispatcherTTSBackend,
+                                    # SpeechDispatcherTTSBackend,
                                     #            VoiceOverBackend,
-                                    SpeechServerBackend,
-                                    ReciteTTSBackend,
+                                    # SpeechServerBackend,
+                                    # ReciteTTSBackend,
                                     GoogleTTSBackend,
                                     ResponsiveVoiceTTSBackend,
                                     #            SpeechUtilComTTSBackend,
-                                    ESpeakCtypesTTSBackend,
+                                    # ESpeakCtypesTTSBackend,
                                     LogOnlyTTSBackend
                                     ]
 

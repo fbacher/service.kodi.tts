@@ -1,6 +1,8 @@
 from common.__init__ import *
+from common.exceptions import NotReadyException
 from backends.i_backend_info import IBackendInfo
 from backends.i_tts_backend_base import ITTSBackendBase
+from backends.constraints import Constraints
 
 
 class BackendInfoBridge(IBackendInfo):
@@ -13,7 +15,13 @@ class BackendInfoBridge(IBackendInfo):
 
     @classmethod
     def getBackend(cls, backend_id: str = None) -> ITTSBackendBase:
+        if cls._backendInfoImpl is None:
+            raise NotReadyException()
         return cls._backendInfoImpl.getBackend(backend_id)
+
+    @classmethod
+    def getBackendIds(cls) -> List[str]:
+        return cls._backendInfoImpl.getBackendIds()
 
     @classmethod
     def getBackendFallback(cls) -> ITTSBackendBase | None:
@@ -39,6 +47,20 @@ class BackendInfoBridge(IBackendInfo):
         :return:
         """
         return cls.getBackend(backend_id).getSettingNames()
+
+    @classmethod
+    def getBackendConstraints(cls, backend_id: str, setting_id: str) -> Constraints:
+        return cls.getBackend(backend_id).getConstraints(setting_id)
+
+    @classmethod
+    def negotiate_engine_config(cls, backend_id: str, player_volume_adjustable: bool,
+                                player_speed_adjustable: bool,
+                                player_pitch_adjustable: bool) -> Tuple[bool, bool, bool]:
+
+        engine: BackendInfoBridge = cls.getBackend(backend_id)
+        return engine.negotiate_engine_config(player_volume_adjustable,
+                                              player_speed_adjustable,
+                                              player_pitch_adjustable)
 
     @classmethod
     def get_backend_setting_default(cls, backend_id: str, setting_id: str) -> Any:

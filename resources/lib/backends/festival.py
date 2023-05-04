@@ -5,6 +5,7 @@ from typing import Any, List, Union, Type
 
 from backends.audio import BasePlayerHandler, WavAudioPlayerHandler
 from backends.base import SimpleTTSBackendBase
+from common.typing import *
 from common.constants import Constants
 from common.logger import *
 from common.system_queries import SystemQueries
@@ -32,6 +33,7 @@ class FestivalTTSBackend(SimpleTTSBackendBase):
         Settings.VOICE: '',
         Settings.VOLUME: 0
     }
+    supported_settings: Dict[str, str | int | bool] = settings
     _logger: BasicLogger = None
     _class_name: str = None
 
@@ -58,9 +60,10 @@ class FestivalTTSBackend(SimpleTTSBackendBase):
         return installed
 
     def getMode(self):
-        player = type(self).getSetting(Settings.PLAYER)
+        clz = type(self)
+        self.setPlayer(clz.get_player_setting())
 
-        if type(self).getSetting(Settings.PIPE):
+        if clz.getSetting(Settings.PIPE):
             return SimpleTTSBackendBase.PIPE
         else:
             return SimpleTTSBackendBase.WAVOUT
@@ -85,6 +88,7 @@ class FestivalTTSBackend(SimpleTTSBackendBase):
     def generate_speech(self, text_to_voice: str, wave_file: str):
         # In addition to festival, see the text2wave command
 
+        clz = type(self)
         if not text_to_voice:
             return None
         text_to_voice = text_to_voice.strip()
@@ -115,7 +119,7 @@ class FestivalTTSBackend(SimpleTTSBackendBase):
         player_pitch = 100.0  # '{:.2f}'.format(100.0)  # Percent
         # not easy. One suggestion is to use lib LADSPA
 
-        self.setPlayer(type(self).getSetting(Settings.PLAYER))
+        self.setPlayer(clz.get_player_setting())
         self.player_handler.setVolume(player_volume)  # In db -12 .. 12
         self.player_handler.setSpeed(player_speed)
         self.player_handler.setPitch(player_pitch)
@@ -138,7 +142,7 @@ class FestivalTTSBackend(SimpleTTSBackendBase):
             return
 
     @classmethod
-    def settingList(cls, setting, *args):
+    def settingList(cls, setting, *args) -> Tuple[List[str], str]:
         if setting == Settings.LANGUAGE:
             return [], None
 
@@ -155,10 +159,10 @@ class FestivalTTSBackend(SimpleTTSBackendBase):
         elif setting == Settings.PLAYER:
             # Get list of player ids. Id is same as is stored in settings.xml
 
-            players = cls.get_players(include_builtin=False)
-            default_player = cls.get_setting_default(Settings.PLAYER)
+            player_ids: List[str] = cls.get_players(include_builtin=False)
+            default_player_id = cls.get_setting_default(Settings.PLAYER)
 
-            return players, default_player
+            return player_ids, default_player_id
 
         return None
 

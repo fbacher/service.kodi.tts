@@ -78,13 +78,13 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         # xbmc.executebuiltin('Skin.ToggleDebug')
 
         self._logger: BasicLogger = module_logger.getChild(self.__class__.__name__)
+        self.closing = False
         self._initialized: bool = False
         self.exit_dialog: bool = False
         super().__init__(*args)
         self.api_key = None
         self.engine: str = None
-        self.engine_instance = None
-        self.engine_class = None
+        self.engine_instance: ITTSBackendBase | None = None
         self.backend_changed: bool = False
         self.gender: str = None
         self.language: str = None
@@ -383,6 +383,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         self.set_cache_speech_field()
         self.settings_changed = False
         self.backend_changed = False
+        # TTSService.onSettingsChanged()
 
     def doModal(self) -> None:
         """
@@ -423,6 +424,9 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         :param action:
         :return:
         """
+        if self.closing:
+            return
+
         action_id = action.getId()
         if action_id == xbmcgui.ACTION_MOUSE_MOVE:
             return
@@ -463,6 +467,9 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             self.close()
 
     def onClick(self, controlId: int) -> None:
+        if self.closing:
+            return
+
         self._logger.debug_verbose(
                 'SettingsDialog.onClick id: {:d}'.format(controlId))
         focus_id = self.getFocusId()
@@ -504,11 +511,14 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
         elif controlId == 28:
             # OK button
+            self.closing = True
             self.save_settings()
+            self._logger.info(f'closing')
             self.close()
 
         elif controlId == 29:
             # Cancel button
+            self.closing = True
             self.discard_settings()
             self.close()
 
@@ -884,7 +894,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         selection_dialog = SelectionDialog('selection-dialog.xml',
                                            script_path, 'Default',
                                            title=Messages.get_msg(
-                                                   Messages.SELECT_VOICE_GENDER),
+                                                   Messages.SELECT_PLAYER),
                                            choices=choices,
                                            initial_choice=current_choice_index)
 
@@ -938,10 +948,10 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             self.engine_volume_group.setVisible(True)
 
     def get_volume_range(self):
-        constraints = self.getEngineClass().get_volume_constraints()
-        minimum = constraints[0]
-        default = constraints[1]
-        maximum = constraints[2]
+        constraints: Constraints = self.getEngineClass().get_volume_constraints()
+        minimum = constraints.minimum
+        default = constraints.default
+        maximum = constraints.maximum
         current_value = self.getSetting(Settings.VOLUME, default)
         if not isinstance(current_value, int):
             current_value = default
@@ -968,10 +978,10 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 self.engine_pitch_group.setVisible(True)
 
     def get_pitch_range(self):
-        pitch_constraints = self.getEngineClass().get_pitch_constraints()
-        minimum_pitch = pitch_constraints[0]
-        default_pitch = pitch_constraints[1]
-        maximum_pitch = pitch_constraints[2]
+        pitch_constraints: Constraints = self.getEngineClass().get_pitch_constraints()
+        minimum_pitch = pitch_constraints.minimum
+        default_pitch = pitch_constraints.default
+        maximum_pitch = pitch_constraints.maximum
         current_value = self.getSetting(Settings.PITCH, default_pitch)
         if current_value < minimum_pitch or current_value > maximum_pitch:
             current_value = default_pitch
@@ -994,10 +1004,10 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 self.engine_speed_group.setVisible(True)
 
     def get_speed_range(self):
-        constraints = self.getEngineClass().get_speed_constraints()
-        minimum = constraints[0]
-        default_speed = constraints[1]
-        maximum = constraints[2]
+        constraints: Constraints = self.getEngineClass().get_speed_constraints()
+        minimum = constraints.minimum
+        default_speed = constraints.default
+        maximum = constraints.maximum
         current_value = self.getSetting(Settings.SPEED, default_speed)
         if not isinstance(current_value, int):
             current_value = default_speed
@@ -1112,16 +1122,17 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         return self.pitch
 
     def get_player(self):
-        if self.settings_changed:
-            player_default = self.getSetting(Settings.PLAYER)
-            self.player = self.getSetting(Settings.PLAYER,
-                                          player_default)
+        player: str | None = self.get_player_setting()
+        if player is None:
+            engine: ITTSBackendBase = BackendInfoBridge.getBackend(self.engine)
+            player = engine.get_setting_default(Settings.PLAYER)
+        self.player = player
         return self.player
 
     def set_player(self, player_id):
         self.player = player_id
         self.setSetting(Settings.PLAYER, player_id)
-        self.getEngineInstance().setPlayer(preferred=player_id)
+        #  self.getEngineInstance().setPlayer(preferred=player_id)
 
     def get_speed(self):
         if self.settings_changed:
@@ -1159,12 +1170,11 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
     def set_engine_id(self, engine_id):
         if self.previous_engine != engine_id:
-            engine_instance: ITTSBackendBase = self.getEngineClass(engine_id=engine_id)
+            self.engine_instance: ITTSBackendBase = self.getEngineClass(engine_id=engine_id)
 
             # Throw away all changes and switch to the current
             # settings for a new backend.
 
-            self.engine_instance = None
             self.engine = engine_id
             if self.previous_engine is not None: # first time don't count
                 self.backend_changed = True
@@ -1175,10 +1185,9 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
     def getEngineClass(self, engine_id=None) -> ITTSBackendBase:
         if engine_id is None:
             engine_id = self.engine
-        if engine_id != self.engine:
-            if self.engine_class is None or self.engine_class.backend_id != engine_id:
-                self.engine_class = BackendInfo.getBackendByProvider(engine_id)
-        return self.engine_class
+        if self.engine_instance is None or self.engine_instance.backend_id != engine_id:
+            self.engine_instance = BackendInfo.getBackendByProvider(engine_id)
+        return self.engine_instance
 
     def getEngineInstance(self) -> ITTSBackendBase:
         if self.engine_instance is None or self.engine_instance.backend_id != \
@@ -1188,11 +1197,11 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         return self.engine_instance
 
     def getSetting(self, setting_id, default=None):
+        engine: ITTSBackendBase = self.getEngineClass(self.engine)
+
         if default is None:
-            default = self.getEngineClass().get_setting_default(setting_id)
-        value = self.getEngineClass().getSetting(setting_id, default)
-        if value is None:
-            value = default
+            default = engine.get_setting_default(setting_id)
+        value = engine.getSetting(setting_id, default)
         return value
 
     def setSetting(self, key: str, value: Any) -> None:
@@ -1201,8 +1210,17 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         if changed:
             self.settings_changed = True
 
+    def get_player_setting(self, default: str | None = None):
+        engine: ITTSBackendBase = self.getEngineClass(self.engine)
+
+        if default is None:
+            default = engine.get_setting_default(Settings.PLAYER)
+        value = engine.getSetting(Settings.PLAYER, default)
+        return value
+
     def save_settings(self):
         Settings.commit_settings()
+        self._logger.info(f'Settings saved/committed')
         #  TTSService.get_instance().checkBackend()
 
     def discard_settings(self):

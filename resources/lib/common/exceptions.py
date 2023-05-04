@@ -43,6 +43,11 @@ class DuplicateException(Exception):
     def __init__(self):
         super().__init__()
 
+
+class NotReadyException(Exception):
+    def __init__(self):
+        super().__init__()
+
 # Something went wrong trying to communicate. Could be network failure
 # or could be api failure, perhaps even failure in RandomTrailers
 

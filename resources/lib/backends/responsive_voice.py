@@ -4,21 +4,21 @@ import requests
 import io
 import os
 import re
-from typing import Any, List, Union, Type
 
 import xbmc
 
-from backends.audio import (BuiltInAudioPlayer, MP3AudioPlayerHandler, WavAudioPlayerHandler,
+from backends.audio import (MP3AudioPlayerHandler,
+                            WavAudioPlayerHandler,
                             BasePlayerHandler)
-from backends import base
 from common.constants import Constants
+from common.typing import *
 from common.logger import *
 from common.system_queries import SystemQueries
 from common.messages import Messages
 from common.setting_constants import Backends, Languages, Genders, Players
 from common.settings import Settings
 
-from backends.base import SimpleTTSBackendBase
+from backends.base import SimpleTTSBackendBase, Constraints
 from cache.voicecache import VoiceCache
 
 
@@ -31,26 +31,38 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
 
     backend_id = Backends.RESPONSIVE_VOICE_ID
     displayName = 'ResponsiveVoice'
-    player_handler_class: Type[BasePlayerHandler] = MP3AudioPlayerHandler
-    pitchConstraints = (0, 50, 99, True)
-    speedConstraints = (0, 50, 99, True)
-    volumeConstraints = (-12, 8, 12, True)
+    player_handler_class: Type[BasePlayerHandler] = WavAudioPlayerHandler
+
+    # _speedArgs = 'scaletempo=scale={0}:speed=none'
+    #     _speedMultiplier = 0.01  # The base scale is 0 - 100. Mplayer is 0.0 - 1.0
+    #     _volumeArgs = 'volume={0}'  # Volume in db -200db .. +40db Default 0
+
+    playerPitchConstrants: Constraints = Constraints(0, 0, 0, True)
+    playerSpeedConstraints: Constraints = Constraints(-30, 0, 30, True)
+    playerVolumeConstraints: Constraints = Constraints(-12, 0, 12, True)
+    pitchConstraints: Constraints = Constraints(0, 50, 99, False)
+    speedConstraints: Constraints = Constraints(0, 50, 99, False)
+    volumeConstraints: Constraints = Constraints(-12, 8, 12, False)
 
     RESPONSIVE_VOICE_URL = "http://responsivevoice.org/responsivevoice/getvoice.php"
     MAXIMUM_PHRASE_LENGTH = 200
 
-    settings = {
+    settings: Dict[str, str | int | bool] = {
         Settings.API_KEY: None,
         Settings.GENDER: 'female',
         Settings.LANGUAGE: 'en-US',
         Settings.VOICE: 'g1',
         Settings.PIPE: False,
         Settings.PITCH: 50,
-        Settings.PLAYER: Players.MPG123,
+        Settings.PLAYER: Players.MPLAYER,
         Settings.SPEED: 50,
         Settings.VOLUME: 8,
-        Settings.CACHE_SPEECH: True
+        Settings.CACHE_SPEECH: True,
+        Settings.PLAYER_SPEED: 50,
+        Settings.PLAYER_PITCH: 50,
+        Settings.PLAYER_VOLUME: 8
     }
+    supported_settings: Dict[str, str | int | bool] = settings
 
     # The Responsive Voice service was designed to provide text to speech in
     # a browser environment. Responsive Voice can perform the speech generation
@@ -74,11 +86,11 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
     # In most cases the only difference between several voices appears to
     # be the pitch or speed.
 
-    VOICE_1 = Messages.get_msg(Messages.VOICE_1)
-    VOICE_2 = Messages.get_msg(Messages.VOICE_2)
-    VOICE_3 = Messages.get_msg(Messages.VOICE_3)
+    VOICE_1: str = Messages.get_msg(Messages.VOICE_1)
+    VOICE_2: str = Messages.get_msg(Messages.VOICE_2)
+    VOICE_3: str = Messages.get_msg(Messages.VOICE_3)
 
-    voices_by_locale_map = {
+    voices_by_locale_map: Dict[str, Tuple[str, str, str]] = {
         Languages.LOCALE_AF: ((VOICE_1, "g1", Genders.MALE),
                               (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_AF_ZA: ((VOICE_1, "g1", Genders.MALE),
@@ -209,35 +221,43 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
         if type(self)._logger is None:
             type(self)._logger = module_logger.getChild(type(self)._class_name)
         self.process = None
-        self.update()
         self.stop_processing = False
 
+    def init(self) -> None:
+        if self.initialized:
+            return
+        super().init()
+        self.update()
+
     @staticmethod
-    def isSupportedOnPlatform():
+    def isSupportedOnPlatform() -> bool:
         return (SystemQueries.isLinux() or SystemQueries.isWindows()
                 or SystemQueries.isOSX())
 
     @staticmethod
-    def isInstalled():
-        installed = False
+    def isInstalled() -> bool:
+        installed: bool = False
         if ResponsiveVoiceTTSBackend.isSupportedOnPlatform():
             installed = True
         return installed
 
-    def getMode(self):
+    def getMode(self) -> int:
+        clz = type(self)
         # built-in player not supported
         # player = self.setting(Settings.PLAYER)
-        if type(self).getSetting(Settings.PIPE):
-            return base.SimpleTTSBackendBase.PIPE
+        if clz.getSetting(Settings.PIPE):
+            return SimpleTTSBackendBase.PIPE
         else:
-            return base.SimpleTTSBackendBase.WAVOUT
+            return SimpleTTSBackendBase.WAVOUT
 
-    def runCommand(self, text_to_voice, dummy):
+    def runCommand(self, text_to_voice: str, dummy):
         clz = type(self)
         # If caching disabled, then exists is always false. file_path
         # always contains path to cached file, or path where to download to
 
         self.stop_processing = False
+        file_path: Any
+        exists: bool
         file_path, exists = self.get_path_to_voice_file(text_to_voice,
                                                         use_cache=self.is_use_cache())
         self._logger.debug(f'file_path: {file_path} exists: {exists}')
@@ -280,7 +300,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
             # These will undoubtedly need a lot of tweaking before this is
             # 'good enough'
 
-            volume_db = type(self).get_volume_db()  # -12 .. 12
+            # volume_db: float = type(self).get_volume_db()  # -12 .. 12
 
             # Changing pitch without impacting tempo (speed) is
             # not easy. One suggestion is to use lib LADSPA
@@ -297,17 +317,17 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
             # entire range of values.
 
             player_pitch = int(clz.getSetting(Settings.PITCH)) + 1
-            player_pitch *= 2.0
-            player_speed = int(clz.getSetting(Settings.SPEED)) + 1
-            player_speed *= 2.0
-            self.setPlayer(type(self).getSetting(Settings.PLAYER))
-            self.player_handler.setVolume(float(volume_db))  # In db -12 .. 12
-            self.player_handler.setSpeed(player_speed)
-            self.player_handler.setPitch(player_pitch)
+            # player_pitch *= 2.0
 
+            self.setPlayer(clz.get_player_setting())
+            # Convert Native Responsive Voice speed to player's
+            clz.setPlayerSpeed(clz.getSpeed())
+            # scale responsive voice volume to player. Both logarithmic
+            # player -200 == engine -12 8 == 50 12 == 99
+            # normalize by adding RV.min  &RVPlayer.min
         return exists
 
-    def runCommandAndPipe(self, text_to_voice):
+    def runCommandAndPipe(self, text_to_voice: str):
         clz = type(self)
 
         # If caching disabled, then voice_file and mp3_voice are always None.
@@ -317,7 +337,14 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
 
         self.stop_processing = False
         mp3_pipe = None
+        voice_file: str | None
+        mp3_voice: bytes
         voice_file, mp3_voice = self.get_voice_from_cache(text_to_voice)
+        if len(voice_file) == 0:
+            voice_file = None
+        if len(mp3_voice) == 0:
+            mp3_voice = None
+
         if mp3_voice is None:
             voice_file, mp3_voice = self.download_speech(
                 text_to_voice, voice_file)
@@ -327,25 +354,16 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
         # the following a geared towards Mplayer. Assumption is that only adjust
         # volume in player, other settings in engine.
 
-        volume_db: float = type(self).get_volume_db()  # -12 .. 12
-        player_speed = 100.0  # Don't alter speed/temp (percent)
-        # Changing pitch without impacting tempo (speed) is
-        player_pitch:float = 100.0  # Percent
-        player_pitch = int(clz.getSetting(Settings.PITCH)) + 1
-        player_pitch *= 2.0
-        player_speed = int(clz.getSetting(Settings.SPEED)) + 1
-        player_speed *= 2.0
+        # volume_db: float = clz.get_volume_db()  # -12 .. 12
+        self.setPlayer(clz.get_player_setting())
 
-        self.setPlayer(type(self).getSetting(Settings.PLAYER))
-        self.player_handler.setVolume(volume_db)  # In db -12 .. 12
-        self.player_handler.setSpeed(player_speed)
-        self.player_handler.setPitch(player_pitch)
-
+        # Convert Native Responsive Voice speed to player's
+        clz.setPlayerSpeed(clz.getSpeed())
         return mp3_pipe
 
     def download_speech(self, text_to_voice: str,
-                        voice_file_path: str) -> (str, bytes):
-        # If voice file is None, then don't save voiced text to it,
+                        voice_file_path: str | None) -> (str | None, bytes):
+        # If voice_file_path is None, then don't save voiced text to it,
         # just return the voiced text as bytes
 
         clz = type(self)
@@ -355,21 +373,22 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
         #    return None, None
         clz._logger.debug_extra_verbose(f'Text len: {len(text_to_voice)} {text_to_voice}')
 
-        key = clz.getAPIKey()
-        lang = clz.getLanguage()
-        gender = clz.getGender()
-        pitch = clz.getPitch()    # hard coded value when caching
-        speed = clz.getSpeed()    # ""
+        save_to_file: bool = voice_file_path is not None
+        key:str  = clz.getAPIKey()
+        lang: str = clz.getLanguage()
+        gender: str = clz.getGender()
+        pitch: str = clz.getPitch_str()    # hard coded value when caching
+        speed: str = clz.getSpeed_str()    # ""
         volume = clz.getVolume()  # ""
-        service = clz.getVoice()
+        service: str = clz.getVoice()
         if clz._logger.isEnabledFor(DEBUG_VERBOSE):
             clz._logger.debug_verbose(
                 'text: {} lang: {} gender: {} pitch {} speed: {} volume: {} service: {}'
                 .format(text_to_voice, lang, gender, pitch, speed, volume, service))
-        api_volume = "1.0"  # volume
+        api_volume: str = "1.0"  # volume
         api_speed = speed
-        api_pitch = pitch
-        params = {
+        api_pitch: str = pitch
+        params: Dict[str, str] = {
             "key": key,
             # "t": text_to_voice,
             "tl": lang,
@@ -386,19 +405,21 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
             try:
                 # If we failed to get speech before, don't try again.
 
-                failing_voice_file = voice_file_path + '.txt'
-                if os.path.isfile(failing_voice_file):
-                    clz._logger.debug_extra_verbose(
-                        'Previous attempt to get speech failed. Skipping.')
-                    return None, None
+                failing_voice_file: str | None = None  # None when save_to_file False
+                if save_to_file:
+                    failing_voice_file = voice_file_path + '.txt'
+                    if os.path.isfile(failing_voice_file):
+                        clz._logger.debug_extra_verbose(
+                            'Previous attempt to get speech failed. Skipping.')
+                        return None, None
 
                 # The service will not voice text which is too long.
 
-                phrases = self.split_into_phrases(text_to_voice)
+                phrases: List[str] = self.split_into_phrases(text_to_voice)
                 if clz._logger.isEnabledFor(DEBUG_VERBOSE):
                     clz._logger.debug_verbose(f'phrases len: {len(phrases)}')
                 voiced_bytes: [bytes] = []
-                failed = False
+                failed: bool = False
                 phrase: str = ''
                 r = None
                 while len(phrases) > 0:
@@ -421,7 +442,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
                                 f' content len: {len(r.content)}'
                                 f' voiced_bytes len: {len(voiced_bytes)}')
 
-                if failed:
+                if failed and save_to_file:
                     if clz._logger.isEnabledFor(ERROR):
                         clz._logger.error(
                             'Failed to download voice for {} status: {:d} reason {}'
@@ -449,6 +470,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
                     if clz._logger.isEnabledFor(DEBUG_VERBOSE):
                         clz._logger.debug_verbose(f'voiced_bytes: {len(voiced_bytes)}')
 
+                    voiced_text: bytes
                     for voiced_text in voiced_bytes:
                         if voiced_text[0:len(magic)] == magic:
                             bad_file = True
@@ -465,7 +487,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
                             clz._logger.error('Response not valid sound file')
                         aggregate_voiced_bytes = b''
 
-                    if aggregate_voiced_bytes != b'' and voice_file_path is not None:
+                    if save_to_file and aggregate_voiced_bytes != b'':
                         try:
                             if os.path.isfile(voice_file_path):
                                 os.unlink(voice_file_path)
@@ -575,16 +597,15 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
             pass
 
     @classmethod
-    def isSettingSupported(cls, setting):
+    def isSettingSupported(cls, setting) -> bool:
         if setting in cls.settings.keys():
             return True
         return False
 
     @classmethod
-    def getSettingNames(cls):
-        settingNames = []
+    def getSettingNames(cls) -> List[str]:
+        settingNames: List[str] = []
         for settingName in cls.settings.keys():
-            # settingName = settingName + '.' + cls.backend_id
             settingNames.append(settingName)
 
         return settingNames
@@ -669,10 +690,11 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
         elif setting == Settings.PLAYER:
             # Get list of player ids. Id is same as is stored in settings.xml
 
-            players = cls.get_players(include_builtin=False)
-            default_player = cls.get_setting_default(Settings.PLAYER)
-
-            return players, default_player
+            default_player: str = cls.get_setting_default(Settings.PLAYER)
+            player_ids: List[str] = []
+            for player in cls.player_handler_class().getAvailablePlayers():
+                player_ids.append(player.ID)
+            return player_ids, default_player
 
     # Intercept simply for testing purposes: to disable bypass
     # of voicecache during config to avoid hammering remote
@@ -687,23 +709,16 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
         return changed
 
     @classmethod
-    def get_volume_db(cls):
-        # Range -12 .. +12, 0 default
-        # API 0.1 .. 1.0. 1.0 default
-        volume = cls.getSetting(Settings.VOLUME)
-        return '{:.2f}'.format(volume)
-
-    @classmethod
-    def getVolume(cls) -> str:
+    def getVolume(cls) -> float:
         # Range -12 .. +12, 8 default
         # API 0.1 .. 1.0. 1.0 default
+        volume: float
         if cls.is_use_cache():
-            volume = cls.volumeConstraints[1]
+            volume = cls.volumeConstraints.default
         else:
-            volume = cls.get_volume_db()
-            volume = (float(volume) + 12.0) / 24.0
+            volume = cls.getSetting(Settings.VOLUME)
 
-        return '{:.2f}'.format(volume)
+        return volume
 
     @classmethod
     def getVoice(cls) -> str:
@@ -722,26 +737,74 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
         return language
 
     @classmethod
-    def getPitch(cls) -> str:
+    def getPitch(cls) -> float:
         # Range 0 .. 99, 50 default
         # API 0.1 .. 1.0. 0.5 default
         if cls.is_use_cache():
-            pitch = float(cls.pitchConstraints[1]) / 100.0
+            pitch = float(cls.pitchConstraints.default) / 100.0
+        else:
+            pitch = int(cls.getSetting(Settings.PITCH)) + 1
+            pitch = float(pitch) / 100.0
+        return pitch
+
+    @classmethod
+    def getPitch_str(cls) -> str:
+        # Range 0 .. 99, 50 default
+        # API 0.1 .. 1.0. 0.5 default
+        # TODO: Solve this differently!!!!
+        if cls.is_use_cache():
+            pitch = float(cls.pitchConstraints.default) / 100.0
         else:
             pitch = int(cls.getSetting(Settings.PITCH)) + 1
             pitch = float(pitch) / 100.0
         return '{:.2f}'.format(pitch)
 
     @classmethod
-    def getSpeed(cls) -> str:
+    def getSpeed(cls) -> float:
+        # Range 0 .. 99, 50 default
+        # API 0.1 .. 1.0. 0.5 default
+        #
+        # Always use separate player
+        #if cls.is_use_cache():
+        #    speed = float(cls.speedConstraints.default) / 100.0
+        #else:
+        speed = int(cls.getSetting(Settings.SPEED)) + 1
+        speed = float(speed) / 100.0
+        return speed
+
+    @classmethod
+    def getSpeed_str(cls) -> str:
         # Range 0 .. 99, 50 default
         # API 0.1 .. 1.0. 0.5 default
         if cls.is_use_cache():
-            speed = float(cls.speedConstraints[1]) / 100.0
+            speed = float(cls.speedConstraints.default) / 100.0
         else:
             speed = int(cls.getSetting(Settings.SPEED)) + 1
             speed = float(speed) / 100.0
         return '{:.2f}'.format(speed)
+
+    @classmethod
+    def setPlayerSpeed(cls, speed: float) -> None:
+        # Native ResponsiveVoice speed is 1 .. 100, with default of 50,
+        # but this has been scaled to be a %, so we see 0.01 .. 1.00
+        # Therefore 0.5 is a speed of 1x
+        # Multiplying by 2 gives:
+        #   speed : 0.5 => player_speed of 1x
+        #   speed : 0.25 => player_speed of 1/2 x
+        #   speed : 0.1 => player_speed of 1/10 x
+        #   speed : .75 => player_seed of 1.5x
+        #
+        # Player_speed scale is 3 .. 30 where actual play speed is player_speed / 10
+
+        player_speed: float = float(speed * 2.0)
+        if player_speed < 0.30:
+            player_speed = 0.30  # 1/3 x
+        elif player_speed > 1.5:
+            player_speed  = player_speed * 1.5 # 2 * 1.5 = 3.0
+
+        int_player_speed: int = int(player_speed * 10)
+        Settings.setSetting(Settings.PLAYER_SPEED, int_player_speed,
+                            backend_id=cls.backend_id)
 
     @classmethod
     def getGender(cls) -> str:
@@ -761,5 +824,5 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackendBase):
     #    self.voice = voice
 
     @staticmethod
-    def available():
+    def available() -> bool:
         return MP3AudioPlayerHandler.canPlay()

@@ -10,7 +10,7 @@ class BaseSettingsConstants:
 
     @classmethod
     def get_label(cls, setting_id):
-        msg_handle = cls.settings_map.get(setting_id, None)
+        msg_handle = cls.settings_map.get(setting_id, setting_id)
         label = Messages.get_msg(msg_handle)
         return label
 
@@ -24,6 +24,7 @@ class Backends(BaseSettingsConstants):
     ESPEAK_ID = 'eSpeak'
     FESTIVAL_ID = 'Festival'
     FLITE_ID = 'Flite'
+    INTERNAL_ID = 'internal'
     PICO_TO_WAVE_ID ='pico2wave'
     RECITE_ID = 'recite'
     RESPONSIVE_VOICE_ID = 'ResponsiveVoice'

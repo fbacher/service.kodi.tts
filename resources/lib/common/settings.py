@@ -7,9 +7,11 @@ import copy
 import time
 from enum import Enum
 import xbmcaddon
+from xbmcaddon import Settings as KodiSettings
 
 from common.critical_settings import CriticalSettings
 from common.constants import Constants
+from common.exceptions import NotReadyException
 from kutils.kodiaddon import Addon
 from common.logger import *
 from common.settings_bridge import ISettings, SettingsBridge
@@ -82,7 +84,12 @@ class CurrentCachedSettings:
 
     @classmethod
     def get_setting(cls, setting_id: str, default_value: Any) -> Any:
-        value = cls._current_settings.get(setting_id, default_value)
+        '''
+        throws KeyError
+        '''
+        value = cls._current_settings[setting_id]
+        if value is None:
+            value = default_value
         cls._logger.debug(f'setting_id: {setting_id} value: {value}')
         return value
 
@@ -127,6 +134,7 @@ class Settings(ISettings):
     # TOP LEVEL SETTINGS
     _addon_singleton: Addon = None
     KODI_SETTINGS: xbmcaddon.Addon = None
+    kodi_settings: KodiSettings = None
 
     ADDONS_MD5: Final[str] = 'addons_MD5'
     API_KEY: Final[str] = 'api_key'
@@ -223,7 +231,6 @@ class Settings(ISettings):
         OUTPUT_VIA,
         OUTPUT_VISIBLE,
         OVERRIDE_POLL_INTERVAL,
-        PIPE,
         POLL_INTERVAL,
         READER_OFF,
         SETTINGS_BEING_CONFIGURED,
@@ -231,8 +238,6 @@ class Settings(ISettings):
         SETTINGS_LAST_CHANGED,
         SPEAK_LIST_COUNT,
         SPEAK_VIA_KODI,
-        SPEED_ENABLED,
-        SPEED_VISIBLE,
         TTSD_HOST,
         TTSD_PORT,
         USE_TEMPFS,
@@ -259,12 +264,12 @@ class Settings(ISettings):
     # 'top_level_settings'
 
     ALL_SETTINGS: List[str] = [
+        BACKEND,   # Leave this as the FIRST setting
         ADDONS_MD5,
         API_KEY,
         AUTO_ITEM_EXTRA,
         # int seconds Time to wait before saying something extra in seconds
         AUTO_ITEM_EXTRA_DELAY,
-        BACKEND,
         BACKGROUND_PROGRESS_INTERVAL,
         CACHE_PATH,
         CACHE_EXPIRATION_DAYS,
@@ -331,7 +336,7 @@ class Settings(ISettings):
     # working copy of settings. Changes must be validated before changes allowed
     # here
 
-    _current_backend: str # = BACKEND_DEFAULT
+    _current_backend: str  # = BACKEND_DEFAULT
     _logger = None
 
     @staticmethod
@@ -411,7 +416,8 @@ class Settings(ISettings):
         return changed_settings
 
     @classmethod
-    def type_and_validate_settings(cls, full_setting_id: str, value: Any | None) -> Tuple[bool, Type]:
+    def type_and_validate_settings(cls, full_setting_id: str, value: Any | None) -> Tuple[
+        bool, Type]:
         '''
 
         '''
@@ -474,7 +480,7 @@ class Settings(ISettings):
                     f'Probably not defined in resources/settings.xml')
         except Exception:
             cls._logger.exception(
-                f'TRACE: Bad setting_id: {setting_id}')
+                    f'TRACE: Bad setting_id: {setting_id}')
         if type_error:
             cls._logger.debug(f'TRACE: incorrect type for setting: {full_setting_id} '
                               f'Expected {expected_type} got {str(type(value))}')
@@ -483,7 +489,7 @@ class Settings(ISettings):
     @classmethod
     def load_settings(cls) -> None:
         '''
-        Load ALL of the settings for the given backend.
+        Load ALL of the settings for the current backend.
         Settings from multiple backends can be in the cache simultaneously
         Settings not supported by a backend are not read and not put into
         the cache. The settings.xml can have orphaned settings as long as
@@ -497,68 +503,81 @@ class Settings(ISettings):
         new_settings: Dict[str, Any] = {}
         cls.kodi_settings = xbmcaddon.Addon("service.kodi.tts").getSettings()
         # Get Lock
-        for key in cls.ALL_SETTINGS:
-            engine: ITTSBackendBase | None = None
+        backend_id: str = cls.load_setting(Settings.BACKEND)
+        if backend_id is None:
+            backend_id = Settings.BACKEND_DEFAULT
 
-            if key not in cls.TOP_LEVEL_SETTINGS:
-                backend_id, setting_id = cls.splitSettingId(key)
-                if backend_id is None or setting_id is None:
-                    continue
+        for setting_id in cls.ALL_SETTINGS:
+            key: str = setting_id
+            value: Any | None
+            if setting_id not in cls.TOP_LEVEL_SETTINGS:
+                value = cls.load_setting(setting_id, backend_id)
+            else:
+                value = cls.load_setting(setting_id)
+            if value is not None:
+                new_settings[key] = value
 
-                engine: ITTSBackendBase = BackendInfoBridge.getBackend(backend_id)
-                if engine is None:
-                    backend_id = cls._current_backend
-                    engine: ITTSBackendBase = BackendInfoBridge.getBackend(backend_id)
-
-                if not engine.isSettingSupported(setting_id):
-                    cls._logger.debug(
-                            f'Setting {setting_id} NOT supported for {backend_id}')
-                    continue
-            try:
-                match cls._settings_types[key]:
-                    case SettingType.BOOLEAN_TYPE:
-                        new_settings[key] = cls.kodi_settings.getBool(
-                                key)
-                    case SettingType.BOOLEAN_LIST_TYPE:
-                        new_settings[key] = cls.kodi_settings.getBoolList(
-                                key)
-                    case SettingType.FLOAT_TYPE:
-                        new_settings[key] = cls.kodi_settings.getNumber(
-                                key)
-                    case SettingType.FLOAT_LIST_TYPE:
-                        new_settings[key] = cls.kodi_settings.getNumberList(
-                                key)
-                    case SettingType.INTEGER_TYPE:
-                        new_settings[key] = cls.kodi_settings.getInt(
-                                key)
-                    case SettingType.INTEGER_LIST_TYPE:
-                        new_settings[key] = cls.kodi_settings.getIntList(
-                                key)
-                    case SettingType.STRING_TYPE:
-                        new_settings[key] = cls.kodi_settings.getString(
-                                key)
-                    case SettingType.STRING_LIST_TYPE:
-                        new_settings[key] = cls.kodi_settings.getStringList(
-                                key)
-                cls._logger.debug(
-                        f'found key: {key} value: {new_settings[key]}')
-            except TypeError:
-                cls._logger.exception(
-                        f'failed to find setting key: {key}. '
-                        f'Probably not defined in resources/settings.xml')
-                new_settings[key] = engine.get_setting_default(key)
-                continue
-
-        backend_id: str = new_settings.get(Settings.BACKEND, Settings.BACKEND_DEFAULT)
-        if backend_id is None or len(backend_id) == 0:
-            backend_id = cls.BACKEND_DEFAULT
-            new_settings[Settings.BACKEND] = backend_id
-            cls._current_backend = backend_id
+        cls._current_backend = backend_id
 
         # validate_settings new_settings
         CurrentCachedSettings.set_settings(new_settings)
         # release lock
         # Notify
+
+    @classmethod
+    def load_setting(cls, setting_id: str, backend_id: str = None) -> Any | None:
+        key: str = setting_id
+        engine: ITTSBackendBase | None = None
+        if backend_id is not None:
+            key = setting_id + '.' + backend_id
+            try:
+                engine = BackendInfoBridge.getBackend(backend_id)
+                if engine is None:
+                    backend_id = cls._current_backend
+                    engine = BackendInfoBridge.getBackend(backend_id)
+
+                if not engine.isSettingSupported(setting_id):
+                    cls._logger.debug(
+                            f'Setting {setting_id} NOT supported for {backend_id}')
+                    return None
+            except NotReadyException:
+                engine = None
+                cls._logger.debug(f'NotReady to validate engine setting. Omitting '
+                                  f'{setting_id} for now')
+        value: Any | None = None
+        try:
+            match cls._settings_types[setting_id]:
+                case SettingType.BOOLEAN_TYPE:
+                    value = cls.kodi_settings.getBool(key)
+                case SettingType.BOOLEAN_LIST_TYPE:
+                    value = cls.kodi_settings.getBoolList(key)
+                case SettingType.FLOAT_TYPE:
+                    value = cls.kodi_settings.getNumber(key)
+                case SettingType.FLOAT_LIST_TYPE:
+                    value = cls.kodi_settings.getNumberList(key)
+                case SettingType.INTEGER_TYPE:
+                    value = cls.kodi_settings.getInt(key)
+                case SettingType.INTEGER_LIST_TYPE:
+                    value = cls.kodi_settings.getIntList(key)
+                case SettingType.STRING_TYPE:
+                    value = cls.kodi_settings.getString(key)
+                case SettingType.STRING_LIST_TYPE:
+                    value = cls.kodi_settings.getStringList(key)
+            cls._logger.debug(
+                    f'found key: {key} value: {value}')
+        except KeyError:
+            cls._logger.exception(
+                    f'failed to find setting key: {key}. '
+                    f'Probably not defined in resources/settings.xml')
+        except TypeError:
+            cls._logger.exception(f'failed to get type of setting: {key} ')
+
+        if value is None:
+            if engine is None:
+                cls._logger.debug(f'Will get default value later key: {key}')
+            else:
+                value = engine.get_setting_default(setting_id)
+        return value
 
     @classmethod
     def get_backend_id(cls) -> str:
@@ -570,15 +589,14 @@ class Settings(ISettings):
         return backend
 
     @classmethod
-    def set_backend_id(cls, backend_id: str) -> bool:
+    def set_backend_id(cls, backend_id: str) -> None:
         cls._logger.debug(f'TRACE set backend_id: {backend_id}')
         if backend_id is None or len(backend_id) == 0:
             cls._logger.debug(f'invalid backend_id Not saving')
-            return False
-        
-        success: bool = Settings.set_setting_str(Settings.BACKEND, backend_id)
+            return
+
+        Settings.set_setting_str(Settings.BACKEND, backend_id)
         cls._current_backend = backend_id
-        return success
 
     @classmethod
     def get_addons_md5(cls) -> str:
@@ -603,13 +621,14 @@ class Settings(ISettings):
     @classmethod
     def set_api_key(cls, api_key: str) -> None:
         cls._logger.debug(f'setting api_key: {api_key}')
-        Settings.set_setting_str(Settings.API_KEY, api_key)
+        Settings.set_setting_str(Settings.API_KEY, api_key, backend_id=None)
         return
 
     @classmethod
     def get_auto_item_extra(cls, default_value: bool = None) -> bool:
         value: bool = Settings.get_setting_bool(
-                Settings.AUTO_ITEM_EXTRA, default_value)
+                Settings.AUTO_ITEM_EXTRA, backend_id=None,
+                default_value=default_value)
         cls._logger.debug(f'{Settings.AUTO_ITEM_EXTRA}: {value}')
         return value
 
@@ -648,7 +667,9 @@ class Settings(ISettings):
     @classmethod
     def get_speak_list_count(cls, default_value: bool = None) -> bool:
         value: bool = Settings.get_setting_bool(
-                Settings.SPEAK_LIST_COUNT, default_value)
+                Settings.SPEAK_LIST_COUNT, backend_id=None,
+                default_value=default_value)
+
         cls._logger.debug(f'{Settings.SPEAK_LIST_COUNT}: {value}')
         return value
 
@@ -657,6 +678,19 @@ class Settings(ISettings):
         cls._logger.debug(f'setting {Settings.SPEAK_LIST_COUNT}: {value}')
         Settings.set_setting_bool(Settings.SPEAK_LIST_COUNT, value)
         return
+
+    @classmethod
+    def get_player(cls, default_value: str | None, backend_id: str = None) -> str:
+        value: str = Settings.get_setting_str(Settings.PLAYER, backend_id=backend_id,
+                                              ignore_cache=False,
+                                              default_value=default_value)
+        cls._logger.debug(f'player.{backend_id} = {value}')
+        return value
+
+    @classmethod
+    def set_player(cls, value: str, backend_id: str = None) -> bool:
+        cls._logger.debug(f'setting {Settings.PLAYER}: {value}')
+        return Settings.set_setting_str(Settings.PLAYER, value, backend_id=backend_id)
 
     @classmethod
     def init(cls):
@@ -689,9 +723,9 @@ class Settings(ISettings):
             cls.PIPE                                  : SettingType.BOOLEAN_TYPE,
             cls.PITCH                                 : SettingType.INTEGER_TYPE,
             cls.PLAYER                                : SettingType.STRING_TYPE,
-            cls.PLAYER_VOLUME                         : SettingType.FLOAT_TYPE,
-            cls.PLAYER_PITCH                          : SettingType.FLOAT_TYPE,
-            cls.PLAYER_SPEED                          : SettingType.FLOAT_TYPE,
+            cls.PLAYER_VOLUME                         : SettingType.INTEGER_TYPE,
+            cls.PLAYER_PITCH                          : SettingType.INTEGER_TYPE,
+            cls.PLAYER_SPEED                          : SettingType.INTEGER_TYPE,
             cls.POLL_INTERVAL                         : SettingType.INTEGER_TYPE,
             cls.READER_OFF                            : SettingType.BOOLEAN_TYPE,
             cls.REMOTE_PITCH                          : SettingType.INTEGER_TYPE,
@@ -720,7 +754,7 @@ class Settings(ISettings):
             cls.VOICE_VISIBLE                         : SettingType.BOOLEAN_TYPE,
             cls.VOLUME                                : SettingType.INTEGER_TYPE,
             cls.VOLUME_VISIBLE                        : SettingType.STRING_TYPE
-            }
+        }
         cls.load_settings()
 
     @classmethod
@@ -767,39 +801,44 @@ class Settings(ISettings):
     @classmethod
     def getRealSetting(cls, setting_id: str, backend_id: str | None,
                        default_value: Any | None) -> Any | None:
-        cls._logger.debug(f'TRACE getRealSetting NOT from cache id: {setting_id} backend: {backend_id}')
+        cls._logger.debug(
+            f'TRACE getRealSetting NOT from cache id: {setting_id} backend: {backend_id}')
         if backend_id is None or len(backend_id) == 0:
             backend_id = cls._current_backend
             if backend_id is None or len(backend_id) == 0:
                 cls._logger.error("TRACE null or empty backend")
         real_key = cls.getExpandedSettingId(setting_id, backend_id)
-        match cls._settings_types[setting_id]:
-            case SettingType.BOOLEAN_TYPE:
-                return cls.kodi_settings.getBool(real_key)
-            case SettingType.BOOLEAN_LIST_TYPE:
-                return cls.kodi_settings.getBoolList(real_key)
-            case SettingType.FLOAT_TYPE:
-                return cls.kodi_settings.getNumber(real_key)
-            case SettingType.FLOAT_LIST_TYPE:
-                return cls.kodi_settings.getNumberList(real_key)
-            case SettingType.INTEGER_TYPE:
-                return cls.kodi_settings.getInt(real_key)
-            case SettingType.INTEGER_LIST_TYPE:
-                return cls.kodi_settings.getIntList(real_key)
-            case SettingType.STRING_TYPE:
-                return cls.kodi_settings.getString(real_key)
-            case SettingType.STRING_LIST_TYPE:
-                return cls.kodi_settings.getStringList(real_key)
+        try:
+            match cls._settings_types[setting_id]:
+                case SettingType.BOOLEAN_TYPE:
+                    return cls.kodi_settings.getBool(real_key)
+                case SettingType.BOOLEAN_LIST_TYPE:
+                    return cls.kodi_settings.getBoolList(real_key)
+                case SettingType.FLOAT_TYPE:
+                    return cls.kodi_settings.getNumber(real_key)
+                case SettingType.FLOAT_LIST_TYPE:
+                    return cls.kodi_settings.getNumberList(real_key)
+                case SettingType.INTEGER_TYPE:
+                    return cls.kodi_settings.getInt(real_key)
+                case SettingType.INTEGER_LIST_TYPE:
+                    return cls.kodi_settings.getIntList(real_key)
+                case SettingType.STRING_TYPE:
+                    return cls.kodi_settings.getString(real_key)
+                case SettingType.STRING_LIST_TYPE:
+                    return cls.kodi_settings.getStringList(real_key)
+        except TypeError:
+            cls._logger.debug(f'Setting {real_key} not found')
 
     @classmethod
     def commit_settings(cls):
         cls._logger.debug('TRACE commit_settings')
         cls.kodi_settings = xbmcaddon.Addon('service.kodi.tts').getSettings()
+        addon: xbmcaddon.Addon = xbmcaddon.Addon('service.kodi.tts')
 
         for full_setting_id, value in CurrentCachedSettings.get_settings().items():
             full_setting_id: str
             value: Any
-            value_type: SettingType = None
+            value_type: SettingType | None = None
             str_value: str = ''
             try:
                 str_value = str(value)
@@ -812,19 +851,19 @@ class Settings(ISettings):
                 if value == 'NO_VALUE':
                     cls._logger.debug(f'Expected setting not found {prefix}')
                     continue
-                tmp: Any = 'bogus'
-                cls.kodi_settings = xbmcaddon.Addon('service.kodi.tts').getSettings()
-                addon: xbmcaddon.Addon = xbmcaddon.Addon('service.kodi.tts')
+                # tmp: Any = 'bogus'
+                # cls.kodi_settings = xbmcaddon.Addon('service.kodi.tts').getSettings()
+                # addon: xbmcaddon.Addon = xbmcaddon.Addon('service.kodi.tts')
                 match value_type:
                     case SettingType.BOOLEAN_TYPE:
                         # cls.kodi_settings.setBool(full_setting_id, value)
                         addon.setSettingBool(full_setting_id, value)
-                        tmp: bool = cls.kodi_settings.getBool(full_setting_id)
+                        # tmp: bool = cls.kodi_settings.getBool(full_setting_id)
                     case SettingType.BOOLEAN_LIST_TYPE:
                         cls.kodi_settings.setBoolList(full_setting_id, value)
                         # addon.setSettingBool(full_setting_id, value)
                     case SettingType.FLOAT_TYPE:
-                        #cls.kodi_settings.setNumber(full_setting_id, value)
+                        # cls.kodi_settings.setNumber(full_setting_id, value)
                         addon.setSettingNumber(full_setting_id, value)
                         # tmp: float = cls.kodi_settings.getNumber(full_setting_id)
                     case SettingType.FLOAT_LIST_TYPE:
@@ -841,10 +880,11 @@ class Settings(ISettings):
                         # tmp: str = cls.kodi_settings.getString(full_setting_id)
                     case SettingType.STRING_LIST_TYPE:
                         cls.kodi_settings.setStringList(full_setting_id, value)
-                if tmp != value:
-                    saved_value: str = str(tmp)
-                    cls._logger.error(f'TRACE ERROR Saved value != Read value {full_setting_id}, '
-                                f'saved value: {saved_value}')
+                # if tmp != value:
+                #    saved_value: str = str(tmp)
+                #    cls._logger.error(
+                #        f'TRACE ERROR Saved value of {full_setting_id} != Read value {str_value}, '
+                #        f'saved value: {saved_value}')
             except Exception as e:
                 cls._logger.exception(f'Error saving setting: {full_setting_id} '
                                       f'value: {str_value} as '
@@ -859,13 +899,26 @@ class Settings(ISettings):
         if CurrentCachedSettings.is_empty():
             cls.load_settings()
 
-        value: Any = CurrentCachedSettings.get_setting(real_key, default_value)
+        value: Any = Settings._getSetting(setting_id, backend_id, default_value)
         cls._logger.debug(f'setting_id: {real_key} value: {value}')
         return value
 
     @classmethod
-    def setSetting(cls, setting_id: str, value: Any = bool,
-                   backend_id: str = None) -> bool:
+    def _getSetting(cls, setting_id: str, backend_id: str | None,
+                    default_value: Any | None = None) -> Any:
+        value: Any = None
+        full_setting_id = cls.getExpandedSettingId(setting_id, backend_id)
+        try:
+            value: Any = CurrentCachedSettings.get_setting(full_setting_id, default_value)
+        except KeyError:
+            value = Settings.getRealSetting(setting_id, backend_id, default_value)
+            CurrentCachedSettings.set_setting(full_setting_id, value)
+        cls._logger.debug(f'setting_id: {full_setting_id} value: {value}')
+        return value
+
+    @classmethod
+    def setSetting(cls, setting_id: str, value: Any,
+                   backend_id: str) -> bool:
 
         real_key = cls.getExpandedSettingId(setting_id, backend_id)
         success, found_type = cls.type_and_validate_settings(real_key, value)
@@ -885,7 +938,7 @@ class Settings(ISettings):
         if ignore_cache:
             return cls.kodi_settings.getString(real_key)
 
-        return CurrentCachedSettings.get_setting(real_key, default_value)
+        return Settings._getSetting(setting_id, backend_id, default_value)
 
     @classmethod
     def set_setting_str(cls, setting_id: str, value: str, backend_id: str = None) -> bool:
@@ -903,8 +956,7 @@ class Settings(ISettings):
 
         :return:
         """
-        real_key = cls.getExpandedSettingId(setting_id, backend_id)
-        return CurrentCachedSettings.get_setting(real_key, default_value)
+        return Settings._getSetting(setting_id, backend_id, default_value)
 
     @classmethod
     def set_setting_bool(cls, setting_id: str, value: bool,
@@ -925,8 +977,7 @@ class Settings(ISettings):
 
         :return:
         """
-        real_key = cls.getExpandedSettingId(setting_id, backend_id)
-        return CurrentCachedSettings.get_setting(real_key, default_value)
+        return Settings._getSetting(setting_id, backend_id, default_value)
 
     @classmethod
     def set_setting_float(cls, setting_id: str, value: float,

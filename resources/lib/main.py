@@ -9,7 +9,7 @@ from common.python_debugger import PythonDebugger
 
 
 
-REMOTE_DEBUG: bool = False
+REMOTE_DEBUG: bool = True
 
 # PATCH PATCH PATCH
 # Monkey-Patch a well known, embedded Python problem

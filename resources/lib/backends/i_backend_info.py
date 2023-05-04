@@ -26,6 +26,10 @@ class IBackendInfo:
         cls._backendInfoImpl = backend
 
     @classmethod
+    def getBackendIds(cls) -> List[str]:
+        pass
+
+    @classmethod
     def isSettingSupported(cls, backend_id: str, setting_id: str) -> bool:
         return cls.getBackend(backend_id).isSettingSupported(setting_id)
 
@@ -41,8 +45,3 @@ class IBackendInfo:
     @classmethod
     def get_setting_default(cls, backend_id: str, setting_id: str) -> Any:
         return cls.getBackend(backend_id).get_setting_default(setting_id)
-
-    @classmethod
-    def setBackendByPriorities(cls, backendsByPriority: List[ITTSBackendBase],
-                               backendsById: Dict[str, ITTSBackendBase]) -> None:
-        pass

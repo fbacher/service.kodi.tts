@@ -9,8 +9,8 @@ class ITTSBackendBase(IBackend):
     _baseBackend: IBackend = None
 
     canStreamWav: bool = False
-    _backend_id: Final[str] = 'ITTSBackendBase'
-    displayName: Final[str] = 'ITTSBackendBase'
+    _backend_id: str = 'ITTSBackendBase'
+    displayName: str = 'ITTSBackendBase'
     pauseInsert = '...'
     inWavStreamMode = False
     interval = 100
@@ -41,6 +41,12 @@ class ITTSBackendBase(IBackend):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         type(self)._class_name = self.__class__.__name__
+
+    def re_init(self):
+        raise Exception('Not Implemented')
+
+    def init(self):
+        raise Exception('Not Implemented')
 
     @classmethod
     @property
@@ -73,10 +79,10 @@ class ITTSBackendBase(IBackend):
     def scale_db_to_percent(self, value, lower_bound=0, upper_bound=100):
         raise Exception('Not Implemented')
 
-    def volumeUp(self):
+    def volumeUp(self) -> None:
         raise Exception('Not Implemented')
 
-    def volumeDown(self):
+    def volumeDown(self) -> None:
         raise Exception('Not Implemented')
 
     def flagAsDead(self, reason=''):
@@ -126,6 +132,10 @@ class ITTSBackendBase(IBackend):
         raise Exception('Not Implemented')
 
     @classmethod
+    def getBackendConstraints(cls, setting_id: str):
+        raise Exception('Not Implemented')
+
+    @classmethod
     def settingList(cls, setting, *args):
         raise Exception('Not Implemented')
 
@@ -172,7 +182,7 @@ class ITTSBackendBase(IBackend):
     def get_backend_id(cls) -> str:
         raise Exception('Not Implemented')
 
-    def isSpeaking(self):
+    def isSpeaking(self) -> bool:
         raise Exception('Not Implemented')
 
     def getWavStream(self, text):
@@ -181,10 +191,10 @@ class ITTSBackendBase(IBackend):
     def update(self):
         raise Exception('Not Implemented')
 
-    def stop(self):
+    def stop(self) -> None:
         raise Exception('Not Implemented')
 
-    def close(self):
+    def close(self) -> None:
         raise Exception('Not Implemented')
 
     def _update(self):
@@ -195,5 +205,5 @@ class ITTSBackendBase(IBackend):
         raise Exception('Not Implemented')
 
     @staticmethod
-    def available():
+    def available() -> bool:
         raise Exception('Not Implemented')

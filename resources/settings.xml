@@ -1778,6 +1778,12 @@ New Setting Format
                     <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
+                <setting help="" id="player_volume.eSpeak" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
                  <setting help="" id="gender.eSpeak" label="32178" type="string">
                     <level>0</level>
                     <constraints>
@@ -2134,6 +2140,12 @@ New Setting Format
                     <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
+                <setting help="" id="use_aoss.ResponsiveVoice" label="32017" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
                 <setting help="" id="pitch.ResponsiveVoice" label="32178" type="integer">
                     <level>0</level>
                     <default>5</default>
@@ -2148,6 +2160,12 @@ New Setting Format
                     <control type="edit" format="string">
                         <heading>32178</heading>
                     </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="speed_visible.ResponsiveVoice" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>true</default>
+                    <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
                 <setting help="" id="speed.ResponsiveVoice" label="32178" type="integer">
@@ -2422,6 +2440,24 @@ New Setting Format
                     <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
+                <setting help="" id="player_volume.ResponsiveVoice" label="32178" type="integer">
+                    <level>0</level>
+                    <default>2</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="player_pitch.ResponsiveVoice" label="32178" type="integer">
+                    <level>0</level>
+                    <default>2</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="player_speed.ResponsiveVoice" label="32178" type="integer">
+                    <level>0</level>
+                    <default>0</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
                 <setting help="" id="ttsd_port" label="32178" type="integer">
                     <level>0</level>
                     <default>2</default>
@@ -2526,12 +2562,6 @@ New Setting Format
                     <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
-                <setting help="" id="pipe" label="32013" parent="dummy"  type="boolean">
-                    <level>0</level>
-                    <default>false</default>
-                    <control type="toggle"/>
-                    <visible>false</visible>
-                </setting>
                 <setting help="" id="settings_being_configured" label="32013" parent="dummy"  type="boolean">
                     <level>0</level>
                     <default>false</default>
@@ -2550,7 +2580,7 @@ New Setting Format
                     <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
-                <setting help="" id="speed_enabled" label="32013" parent="dummy"  type="boolean">
+                <setting help="" id="speed_enabled.ResponsiveVoice" label="32013" parent="dummy"  type="boolean">
                     <level>0</level>
                     <default>false</default>
                     <control type="toggle"/>

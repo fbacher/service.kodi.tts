@@ -21,7 +21,7 @@ module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 class FliteTTSBackend(base.SimpleTTSBackendBase):
     backend_id = Backends.FLITE_ID
     displayName = 'Flite'
-    speedConstraints = (20, 100, 200, True)
+    #  speedConstraints = (20, 100, 200, True)
 
     settings = {
         Settings.PIPE: False,
@@ -57,7 +57,7 @@ class FliteTTSBackend(base.SimpleTTSBackendBase):
             installed = True
         return installed
 
-    def runCommand(self,text_to_voice,dummy):
+    def runCommand(self, text_to_voice: str, dummy) -> bool:
         wave_file, exists = self.get_path_to_voice_file(text_to_voice,
                                                         use_cache=False)
 
@@ -69,7 +69,7 @@ class FliteTTSBackend(base.SimpleTTSBackendBase):
                             universal_newlines=True)
         return True
 
-    def runCommandAndSpeak(self,text_to_voice):
+    def runCommandAndSpeak(self,text_to_voice: str) -> None:
 
         voice = type(self).getVoice()
         self.process = subprocess.Popen(['flite', '-voice', voice, '-t', text_to_voice],

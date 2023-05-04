@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from ctypes import cast
 import os
 import sys
 import subprocess
@@ -8,7 +9,9 @@ import hashlib
 import threading
 import shutil
 import errno
-from typing import Any, cast, List, Union, Type
+from common.typing import *
+from backends.backend_info_bridge import BackendInfoBridge
+from backends.constraints import Constraints
 
 from cache.voicecache import VoiceCache
 from common.constants import Constants
@@ -22,19 +25,19 @@ try:
 except:
     xbmc = None
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
-PLAYSFX_HAS_USECACHED = False
+module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
+PLAYSFX_HAS_USECACHED: bool = False
 
 try:
-    voidWav = os.path.join(Constants.ADDON_DIRECTORY, 'resources', 'wavs',
-                           'void.wav')
+    voidWav: str = os.path.join(Constants.ADDON_DIRECTORY, 'resources', 'wavs',
+                                'void.wav')
     xbmc.playSFX(voidWav, False)
     PLAYSFX_HAS_USECACHED = True
 except:
     pass
 
 
-def check_snd_bm2835():
+def check_snd_bm2835()-> bool:
     try:
         return 'snd_bcm2835' in subprocess.check_output(['lsmod'],
                                                         universal_newlines=True)
@@ -43,11 +46,12 @@ def check_snd_bm2835():
     return False
 
 
-def load_snd_bm2835():
+def load_snd_bm2835() -> None:
     try:
         if not xbmc or not xbmc.getCondVisibility('System.Platform.Linux.RaspberryPi'):
             return
-    except:  # Handles the case where there is an xbmc module installed system wide and we're not running xbmc
+    except:  # Handles the case where there is an xbmc module installed system wide and
+        # we're not running xbmc
         return
     if check_snd_bm2835():
         return
@@ -55,7 +59,7 @@ def load_snd_bm2835():
     # TODO: Maybe use util.raspberryPiDistro() to confirm distro
     if getpass.getuser() == 'root':
         module_logger.info(
-            'OpenElec on RPi detected - loading snd_bm2835 module...')
+                'OpenElec on RPi detected - loading snd_bm2835 module...')
         module_logger.info(os.system('modprobe snd-bcm2835')
                            and 'Load snd_bm2835: FAILED' or 'Load snd_bm2835: SUCCESS')
         # subprocess.call(['modprobe','snd-bm2835']) #doesn't work on OpenElec
@@ -67,7 +71,7 @@ def load_snd_bm2835():
                            and 'Load snd_bm2835: FAILED' or 'Load snd_bm2835: SUCCESS')
     else:
         module_logger.info(
-            'UNKNOWN Raspberry Pi - maybe loading snd_bm2835 module...')
+                'UNKNOWN Raspberry Pi - maybe loading snd_bm2835 module...')
         # Will just fail if sudo needs a password
         module_logger.info(os.system('sudo -n modprobe snd-bcm2835')
                            and 'Load snd_bm2835: FAILED' or 'Load snd_bm2835: SUCCESS')
@@ -81,40 +85,53 @@ class AudioPlayer:
     types = ('wav',)
     _logger: BasicLogger = None
 
-    def __init__(self):
-        cls = type(self)
-        if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__name__)
+    def __init__(self) -> None:
+        clz = type(self)
+        if clz._logger is None:
+            clz._logger = module_logger.getChild(clz.__name__)
 
-    def canSetSpeed(self): return False
+    def canSetSpeed(self) -> bool:
+        return False
 
-    def setSpeed(self, speed): pass
+    def setSpeed(self, speed: float) -> None:
+        pass
 
-    def canSetPitch(self): return False
+    def canSetPitch(self) -> bool:
+        return False
 
-    def setPitch(self, pitch): pass
+    def setPitch(self, pitch: float) -> None:
+        pass
 
-    def canSetVolume(self): return False
+    def canSetVolume(self) -> bool:
+        return False
 
-    def setVolume(self, volume): pass
+    def setVolume(self, volume: float) -> None:
+        pass
 
-    def canSetPipe(self): return False
+    def canSetPipe(self) -> bool:
+        return False
 
-    def pipe(self, source): pass
+    def pipe(self, source) -> None:
+        pass
 
-    def play(self, path): pass
+    def play(self, path: str) -> None:
+        pass
 
-    def isPlaying(self): return False
+    def isPlaying(self) -> bool:
+        return False
 
-    def stop(self): pass
+    def stop(self) -> None:
+        pass
 
-    def close(self): pass
+    def close(self) -> None:
+        pass
 
     @staticmethod
-    def available(ext=None): return False
+    def available(ext=None) -> bool:
+        return False
 
     @classmethod
-    def is_builtin(cls):
+    def is_builtin(cls) -> bool:
         #
         # Is this Audio Player built-into the voice engine (i.e. espeak).
         #
@@ -132,16 +149,17 @@ class PlaySFXAudioPlayer(AudioPlayer):
         if cls._logger is None:
             cls._logger = module_logger.getChild(cls.__name__)
 
-        self._isPlaying = False
-        self.event = threading.Event()
+        self._isPlaying: bool = False
+        self.event: threading.Event = threading.Event()
         self.event.clear()
 
-    def doPlaySFX(self, path):
+    def doPlaySFX(self, path) -> None:
         xbmc.playSFX(path, False)
 
-    def play(self, path):
+    def play(self, path: str) -> None:
+        clz = type(self)
         if not os.path.exists(path):
-            type(self)._logger.info('playSFXHandler.play() - Missing wav file')
+            clz._logger.info('playSFXHandler.play() - Missing wav file')
             return
         self._isPlaying = True
         self.doPlaySFX(path)
@@ -154,18 +172,18 @@ class PlaySFXAudioPlayer(AudioPlayer):
         self.event.wait(duration)
         self._isPlaying = False
 
-    def isPlaying(self):
+    def isPlaying(self) -> bool:
         return self._isPlaying
 
-    def stop(self):
+    def stop(self) -> None:
         self.event.set()
         xbmc.stopSFX()
 
-    def close(self):
+    def close(self) ->None:
         self.stop()
 
     @staticmethod
-    def available(ext=None):
+    def available(ext=None)  -> bool:
         return xbmc and hasattr(xbmc, 'stopSFX') and PLAYSFX_HAS_USECACHED
 
 
@@ -186,13 +204,13 @@ class WindowsAudioPlayer(AudioPlayer):
         from . import winplay
         self._player = winplay
         self.audio = None
-        self.event = threading.Event()
+        self.event: threading.Event = threading.Event()
         self.event.clear()
 
     def play(self, path):
         if not os.path.exists(path):
             type(self)._logger.info(
-                'WindowsAudioPlayer.play() - Missing wav file')
+                    'WindowsAudioPlayer.play() - Missing wav file')
             return
         self.audio = self._player.load(path)
         self.audio.play()
@@ -232,7 +250,7 @@ class SubprocessAudioPlayer(AudioPlayer):
     _availableArgs = None
     _playArgs = None
     _speedArgs = None
-    _speedMultiplier = 1
+    _speedMultiplier: int = 1
     _volumeArgs = None
     _volumeMultipler = 1
     _pipeArgs = None
@@ -241,24 +259,24 @@ class SubprocessAudioPlayer(AudioPlayer):
     def __init__(self):
         super().__init__()
         self._logger = module_logger.getChild(
-            self.__class__.__name__)  # type: module_logger
+                self.__class__.__name__)  # type: module_logger
         self._wavProcess = None
-        self.speed: float = 0
-        self.volume: float = None
+        self.speed: float = 0.0
+        self.volume: float | None = None
         self.active = True
 
-    def speedArg(self, speed: float):
+    def speedArg(self, speed: float) -> str:
         self._logger.debug(f'speedArg speed: {speed} multiplier: {self._speedMultiplier}')
-        return str(speed * self._speedMultiplier)
+        return f'{(speed * self._speedMultiplier):.2f}'
 
-    def baseArgs(self, path: str):
+    def baseArgs(self, path: str) -> List[str]:
         args = []
         args.extend(self._playArgs)
         args[args.index(None)] = path
         return args
 
-    def playArgs(self, path: str) -> str:
-        base_args = self.baseArgs(path)
+    def playArgs(self, path: str) -> List[str]:
+        base_args: List[str] = self.baseArgs(path)
         self._logger.debug_verbose('args: {}'.format(' '.join(base_args)))
         return base_args
 
@@ -290,6 +308,18 @@ class SubprocessAudioPlayer(AudioPlayer):
                 source.close()
 
         self._wavProcess = None
+
+    def getSpeed(self) -> float:
+        speed: float | None = \
+            Settings.getSetting(Settings.SPEED, Settings.get_backend_id())
+        self.setSpeed(speed)
+        return speed
+
+    def getVolumeDb(self) -> float:
+        volumeDb: float | None = \
+            Settings.getSetting(Settings.VOLUME, Settings.get_backend_id())
+        self.setVolume(volumeDb)
+        return volumeDb
 
     def setSpeed(self, speed: float):
         self._logger.debug(f'setSpeed: {speed}')
@@ -359,9 +389,9 @@ class AplayAudioPlayer(SubprocessAudioPlayer):
     def __init__(self):
         super().__init__()
         self._logger = module_logger.getChild(
-            self.__class__.__name__)  # type: module_logger
+                self.__class__.__name__)  # type: module_logger
 
-    def canSetPipe(self):  # Input and output supported
+    def canSetPipe(self) -> bool:  # Input and output supported
         return True
 
 
@@ -381,7 +411,7 @@ class PaplayAudioPlayer(SubprocessAudioPlayer):
     def __init__(self):
         super().__init__()
         self._logger = module_logger.getChild(
-            self.__class__.__name__)  # type: module_logger
+                self.__class__.__name__)  # type: module_logger
 
     def playArgs(self, path):
         args = self.baseArgs(path)
@@ -389,7 +419,7 @@ class PaplayAudioPlayer(SubprocessAudioPlayer):
             args.extend(self._volumeArgs)
             # Convert dB to paplay value
             args[args.index(None)] = str(
-                int(65536 * (10**(self.volume / 20.0))))
+                    int(65536 * (10 ** (self.volume / 20.0))))
             self._logger.debug_verbose('args: {}'.format(' '.join(args)))
         return args
 
@@ -411,24 +441,27 @@ class AfplayPlayer(SubprocessAudioPlayer):  # OSX
     def __init__(self):
         super().__init__()
         self._logger = module_logger.getChild(
-            self.__class__.__name__)  # type: module_logger
+                self.__class__.__name__)  # type: module_logger
 
-    def setVolume(self, volume):
-        self.volume = min(int(100 * (10**(volume / 20.0))),
+    def getVolume(self) -> float:
+        volume: float = super().getVolumeDb()
+        self.volume = min(int(100 * (10 ** (volume / 20.0))),
                           100)  # Convert dB to percent
 
-    def setSpeed(self, speed):
-        self.speed = speed * 0.01
+    def getSpeed(self) -> float:
+        speed: float = super().getSpeed() * 0.01
+        return speed
 
     def playArgs(self, path):
         args = self.baseArgs(path)
-        if self.volume:
-            args.extend(self._volumeArgs)
-            args[args.index(None)] = str(self.volume)
-        if self.speed:
-            args.extend(self._speedArgs)
-            args[args.index(None)] = str(self.speed)
-            self._logger.debug_verbose('args: {}'.format(' '.join(args)))
+        speed: float = self.getSpeed()
+        volume: float = self.getVolume()
+        args.extend(self._volumeArgs)
+        args[args.index(None)] = str(volume)
+
+        args.extend(self._speedArgs)
+        args[args.index(None)] = str(speed)
+        self._logger.debug_verbose('args: {}'.format(' '.join(args)))
         return args
 
     def canSetSpeed(self):
@@ -445,7 +478,7 @@ class SOXAudioPlayer(SubprocessAudioPlayer):
     _playArgs = ('play', '-q', None)
     _pipeArgs = ('play', '-q', '-')
     _speedArgs = ('tempo', '-s', None)
-    _speedMultiplier = 0.01
+    _speedMultiplier: Final[float] = 0.01
     _volumeArgs = ('vol', None, 'dB')
     kill = True
     types = ('wav', 'mp3')
@@ -453,7 +486,7 @@ class SOXAudioPlayer(SubprocessAudioPlayer):
     def __init__(self):
         super().__init__()
         self._logger = module_logger.getChild(
-            self.__class__.__name__)  # type: module_logger
+                self.__class__.__name__)  # type: module_logger
 
     def playArgs(self, path):
         args = self.baseArgs(path)
@@ -472,7 +505,7 @@ class SOXAudioPlayer(SubprocessAudioPlayer):
     def canSetPitch(self):  # Settings implies false, but need to test
         return True
 
-    def canSetPipe(self):
+    def canSetPipe(self) -> bool:
         return True
 
     @classmethod
@@ -499,56 +532,116 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer):
     _availableArgs = ('mplayer', '--help')
     _playArgs = ('mplayer', '-really-quiet', None)
     _pipeArgs = ('mplayer', '-', '-really-quiet', '-cache', '8192')
+    # Mplayer supports speeds > 0:
+    #  0.30 ~1/3 speed
+    #  0.5 1/2 speed
+    #  1   1 x speed
+    #  2   2 x speed ...
     _speedArgs = 'scaletempo=scale={0}:speed=none'
-    _speedMultiplier = 0.01  # The base scale is 0 - 100. Mplayer is 0.0 - 1.0
+
+    # Multiplier of 1.0 = 100% of speed (i.e. no change)
+    _speedMultiplier: Final[float] = 1.0  # The base range is 3 .. 30.
     _volumeArgs = 'volume={0}'  # Volume in db -200db .. +40db Default 0
     types = ('wav', 'mp3')
 
     def __init__(self):
         super().__init__()
-        self._logger = module_logger.getChild(
-            self.__class__.__name__)  # type: module_logger
+        self._logger: BasicLogger = module_logger.getChild(
+                self.__class__.__name__)
+        self.configVolume: bool = False
+        self.configSpeed: bool = False
+        self.configPitch: bool = False
+
+    def init(self):
+        backend_id: str = Settings.get_backend_id()
+        self.configVolume, self.configSpeed, self.configPitch = \
+            BackendInfoBridge.negotiate_engine_config(
+                                            backend_id, self.canSetVolume(),
+                                            self.canSetSpeed(), self.canSetPitch())
 
     def playArgs(self, path: str):
+        clz = type(self)
         args = self.baseArgs(path)
-        if self.speed or self.volume:
+        #
+        # None is returned if engine can not control speed, etc.
+        #
+        speed: float = self.getPlayerSpeed()
+        volume: float = self.getVolumeDb()
+        if not speed:
+            self.configSpeed = False
+        if not volume:
+            self.configVolume = False
+
+        if self.configSpeed or self.configVolume:
             args.append('-af')
             filters = []
-            if self.speed:
+            if self.configSpeed:
                 filters.append(self._speedArgs.format(
-                    self.speedArg(self.speed)))
-            if self.volume is not None:
-                filters.append(self._volumeArgs.format(self.volume))
+                        self.speedArg(speed)))
+            if self.configVolume:
+                filters.append(self._volumeArgs.format(volume))
             args.append(','.join(filters))
-            self._logger.debug_verbose('args: {}'.format(' '.join(args)))
+        self._logger.debug_verbose('args: {}'.format(' '.join(args)))
         return args
 
-    def get_pipe_args(self):
-        args = []
+    def get_pipe_args(self) -> List[str]:
+        clz = type(self)
+        args: List[str] = []
         args.extend(self._pipeArgs)
-        if self.speed or self.volume:
+        speed: float = self.getPlayerSpeed()
+        volume: float = self.getVolumeDb()
+        if not speed:
+            self.configSpeed = False
+        if not volume:
+            self.configVolume = False
+
+        if self.configSpeed or self.configVolume:
             args.append('-af')
             filters = []
-            if self.speed:
+            if self.configSpeed:
                 filters.append(self._speedArgs.format(
-                    self.speedArg(self.speed)))
-            if self.volume is not None:
-                filters.append(self._volumeArgs.format(self.volume))
+                        self.speedArg(speed)))
+            if self.configVolume:
+                filters.append(self._volumeArgs.format(volume))
             args.append(','.join(filters))
-            self._logger.debug_verbose('args: {}'.format(' '.join(args)))
+        self._logger.debug_verbose(f'args: {" ".join(args)}')
         return args
 
-    def canSetSpeed(self):
+    def canSetSpeed(self) -> bool:
         return True
 
-    def canSetVolume(self):
+    def canSetVolume(self) -> bool:
         return True
 
-    def canSetPitch(self):
+    def canSetPitch(self) -> bool:
         return True
 
-    def canSetPipe(self):
+    def canSetPipe(self) -> bool:
         return True
+
+    def getPlayerSpeed(self) -> float | None:
+        backend_id: str = Settings.get_backend_id()
+        engine_constraints: Constraints = BackendInfoBridge.getBackendConstraints(
+                                        backend_id, Settings.SPEED)
+        if engine_constraints is None:
+            return None
+
+        # Assume default speed is 1x
+
+        normal_speed: float = float(engine_constraints.default)
+
+        engine_speed: float = float (Settings.getSetting(Settings.SPEED,
+                                                  backend_id=backend_id))
+        #
+        # Mplayer wants speed as a float with 1.0 = 1x speed, 2.0 = 2x speed, 0.5=1/2 speed
+        # Limit range to 1/3 .. 3x speed
+
+        player_speed: float = engine_speed / normal_speed
+        if player_speed < 0.33:
+            player_speed = 0.33
+        if player_speed > 3.0:
+            player_speed = 3.0
+        return float(player_speed)
 
 
 class Mpg123AudioPlayer(SubprocessAudioPlayer):
@@ -559,36 +652,36 @@ class Mpg123AudioPlayer(SubprocessAudioPlayer):
     _pipeArgs = ('mpg123', '-q', '-')
     types = ('mp3',)
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
-        self._logger = module_logger.getChild(
-            self.__class__.__name__)  # type: module_logger
+        self._logger: BasicLogger = module_logger.getChild(
+                self.__class__.__name__)
 
-    def canSetSpeed(self):
+    def canSetSpeed(self) -> bool:
         return False
 
-    def canSetVolume(self):  # (1-100)
+    def canSetVolume(self) -> bool:  # (1-100)
         return False
 
-    def canSetPitch(self):  # Depends upon hardware used.
+    def canSetPitch(self) -> bool:  # Depends upon hardware used.
         return False
 
-    def canSetPipe(self):  # Can read to/from pipe
+    def canSetPipe(self) -> bool:  # Can read to/from pipe
         return True
 
 
 class Mpg321AudioPlayer(SubprocessAudioPlayer):
     ID = Players.MPG321
     # name = 'mpg321'
-    _availableArgs = ('mpg321', '--version')
-    _playArgs = ('mpg321', '-q', None)
-    _pipeArgs = ('mpg321', '-q', '-')
+    _availableArgs: Tuple[str, str] = ('mpg321', '--version')
+    _playArgs: Tuple[str, str, str] = ('mpg321', '-q', None)
+    _pipeArgs: Tuple[str, str, str] = ('mpg321', '-q', '-')
     types = ('mp3',)
 
     def __init__(self):
         super().__init__()
         self._logger = module_logger.getChild(
-            self.__class__.__name__)  # type: module_logger
+                self.__class__.__name__)  # type: module_logger
 
     def canSetVolume(self):
         return True
@@ -596,7 +689,7 @@ class Mpg321AudioPlayer(SubprocessAudioPlayer):
     def canSetPitch(self):
         return False
 
-    def canSetPipe(self):  # Can read/write to pipe
+    def canSetPipe(self) -> bool:  # Can read/write to pipe
         return True
 
 
@@ -612,7 +705,7 @@ class Mpg321OEPiAudioPlayer(SubprocessAudioPlayer):
     def __init__(self):
         super().__init__()
         self._logger = module_logger.getChild(
-            self.__class__.__name__)  # type: module_logger
+                self.__class__.__name__)  # type: module_logger
         self._wavProcess = None
         try:
             import OEPiExtras
@@ -628,7 +721,7 @@ class Mpg321OEPiAudioPlayer(SubprocessAudioPlayer):
     def canSetPitch(self):  # Settings implies false, but need to test
         return False
 
-    def canSetPipe(self):
+    def canSetPipe(self) -> bool:
         return True
 
     def pipe(self, source):  # Plays using ALSA
@@ -671,48 +764,112 @@ class PlayerHandlerType:
     ID: None
     _advanced = None
 
+    def __init__(self):
+        self.hasAdvancedPlayer: bool
+        self.outDir: str | None
+        self._logger: BasicLogger = module_logger.getChild(self.__class__.__name__)
+        self.availablePlayers: List[Type[AudioPlayer]] | None
+
+    @classmethod
+    def getAvailablePlayers(cls, include_builtin=True) -> List['PlayerHandlerType']:
+        raise Exception('Not Implemented')
+
+    def get_player(self, player_id) -> Union[Type[AudioPlayer], None]:
+        raise Exception('Not Implemented')
+
+    def setPlayer(self, preferred=None, advanced=None):
+        raise Exception('Not Implemented')
+
+    def getSpeed(self) -> float:
+        speed: float = Settings.getSetting(Settings.SPEED, Settings.get_backend_id())
+        return speed
+
+    def getVolumeDb(self) -> float:
+        volumeDb: float = Settings.getSetting(Settings.VOLUME, Settings.get_backend_id())
+        return volumeDb
+
+    def setSpeed(self, speed: float):
+        self._logger.debug(f'setSpeed: {speed}')
+        pass  # self.speed = speed
+
+    def setVolume(self, volume: float):
+        self._logger.debug(f'setVolume: {volume}')
+        pass  # self.volume = volume
+
+    def player(self) -> str | None:
+        raise Exception('Not Implemented')
+
+    def canSetPipe(self) -> bool:
+        raise Exception('Not Implemented')
+
+    def pipeAudio(self, source):
+        raise Exception('Not Implemented')
+
+    def getOutFile(self, text: str, sound_file_type: str | None = None,
+                   use_cache: bool = False) -> str:
+        raise Exception(
+                'Not Implemented')
+
+    def play(self):
+        raise Exception('Not Implemented')
+
+    def isPlaying(self):
+        raise Exception('Not Implemented')
+
+    def stop(self):
+        raise Exception('Not Implemented')
+
+    def close(self):
+        raise Exception('Not Implemented')
+
+    def setOutDir(self):
+        raise Exception('Not Implemented')
+
 
 class BasePlayerHandler(PlayerHandlerType):
+
     def __init__(self):
-        self.outDir = None
-        self._logger = module_logger.getChild(
-            self.__class__.__name__)  # type: module_logger
-        self.availablePlayers = None
+        super().__init__()
+        clz = type(self)
+        self.outDir: str | None = None
+        self._logger: BasicLogger = module_logger.getChild(self.__class__.__name__)
+        self.availablePlayers: List[Type[AudioPlayer]] | None  = None
 
     @classmethod
     def getAvailablePlayers(cls, include_builtin=True) -> List[Type[PlayerHandlerType]]:
         return []
 
-    @classmethod
-    def set_player(cls, player_id):
+    def player(self) -> str | None:
         return None
 
-    def setSpeed(self, speed): pass
+    def canSetPipe(self) -> bool:
+        return False
 
-    def setVolume(self, speed): pass
+    def pipeAudio(self, source):
+        pass
 
-    def player(self): return None
+    def getOutFile(self, text: str, sound_file_type: str | None = None,
+                   use_cache: bool = False) -> str:
+        raise Exception(
+                'Not Implemented')
 
-    def canSetPipe(self): return False
+    def play(self):
+        raise Exception('Not Implemented')
 
-    def pipeAudio(self, source): pass
+    def isPlaying(self):
+        raise Exception('Not Implemented')
 
-    def getOutFile(self, text, sound_file_type=None, use_cache=False): raise Exception(
-        'Not Implemented')
+    def stop(self):
+        raise Exception('Not Implemented')
 
-    def play(self): raise Exception('Not Implemented')
-
-    def isPlaying(self): raise Exception('Not Implemented')
-
-    def stop(self): raise Exception('Not Implemented')
-
-    def close(self): raise Exception('Not Implemented')
+    def close(self):
+        raise Exception('Not Implemented')
 
     def setOutDir(self):
         tmpfs = utils.getTmpfs()
         if Settings.getSetting(Settings.USE_TEMPFS, None, True) and tmpfs:
             self._logger.debug_extra_verbose(
-                'Using tmpfs at: {0}'.format(tmpfs))
+                    'Using tmpfs at: {0}'.format(tmpfs))
             self.outDir = os.path.join(tmpfs, 'kodi_speech')
         else:
             self.outDir = os.path.join(Constants.PROFILE_PATH, 'kodi_speech')
@@ -726,7 +883,7 @@ class BuiltInAudioPlayer(AudioPlayer):
     def __init__(self, *args, **kwargs):
         super().__init__()
         self._logger = module_logger.getChild(
-            self.__class__.__name__)  # type: module_logger
+                self.__class__.__name__)  # type: module_logger
 
         self.volume_configurable = True
         self.pipe_configurable = True
@@ -756,7 +913,7 @@ class BuiltInAudioPlayer(AudioPlayer):
     def set_pipe_configurable(self, configurable):
         self.pipe_configurable = configurable
 
-    def canSetPipe(self):
+    def canSetPipe(self) -> bool:
         return self.pipe_configurable
 
     @staticmethod
@@ -800,27 +957,28 @@ class WavAudioPlayerHandler(BasePlayerHandler):
         self._getAvailablePlayers(include_builtin=True)
         self.setPlayer(preferred, advanced)
 
-    def get_player(self, ID) -> Union[Type[AudioPlayer], None]:
+    def get_player(self, player_id) -> Union[Type[AudioPlayer], None]:
         for i in self.availablePlayers:
-            if i.ID == ID:
+            if i.ID == player_id:
                 return i
         return None
 
     def player(self) -> Union[Type[AudioPlayer], None]:
         return self._player and self._player.ID or None
 
-    def canSetPipe(self):
+    def canSetPipe(self) -> bool:
         return self._player.canSetPipe()
 
     def pipeAudio(self, source):
         return self._player.pipe(source)
 
-    def playerAvailable(self):
+    def playerAvailable(self) -> bool:
         return bool(self.availablePlayers)
 
     def _getAvailablePlayers(self, include_builtin=True):
-        self.availablePlayers = type(self).getAvailablePlayers(
-            include_builtin=include_builtin)
+        clz = type(self)
+        self.availablePlayers = clz.getAvailablePlayers(
+                include_builtin=include_builtin)
         for p in self.availablePlayers:
             if p._advanced:
                 break
@@ -863,13 +1021,13 @@ class WavAudioPlayerHandler(BasePlayerHandler):
         clz = type(self)
         if use_cache:
             self.outFile = self.outFileBase.format(hashlib.md5(
-                text.encode('UTF-8')).hexdigest())
+                    text.encode('UTF-8')).hexdigest())
             _, extension = os.path.splitext(self.outFile)
             success: bool
             msg: str
             correct_path: str
             success, msg, correct_path = VoiceCache.get_path_to_read_voice_file(
-                text, extension)
+                    text, extension)
             self.outFile = correct_path
 
         return self.outFile
@@ -878,13 +1036,13 @@ class WavAudioPlayerHandler(BasePlayerHandler):
         return self._player.canSetSpeed()
 
     def setSpeed(self, speed):
-        return self._player.setSpeed(speed)
+        pass  # return self._player.setSpeed(speed)
 
     def canSetVolume(self):
         return self._player.canSetVolume()
 
     def setVolume(self, volume):
-        return self._player.setVolume(volume)
+        pass  # return self._player.setVolume(volume)
 
     def play(self):
         return self._player.play(self.outFile)
@@ -893,7 +1051,7 @@ class WavAudioPlayerHandler(BasePlayerHandler):
         return self._player.canSetPitch()
 
     def setPitch(self, pitch):
-        return self._player.setPitch(pitch)
+        pass  # return self._player.setPitch(pitch)
 
     def isPlaying(self):
         return self._player.isPlaying()
@@ -915,8 +1073,7 @@ class WavAudioPlayerHandler(BasePlayerHandler):
 
     @classmethod
     def getAvailablePlayers(cls, include_builtin=True) -> List[Type[AudioPlayer]]:
-        players: List[Type[AudioPlayer]] = cast(List[Type[AudioPlayer]],
-                                                [])
+        players: List[Type[AudioPlayer]] = [] # cast(List[Type[AudioPlayer]], [])
         for p in cls.players:
             if p.available():
                 if not p.is_builtin() or include_builtin == p.is_builtin():
@@ -957,6 +1114,7 @@ class MP3AudioPlayerHandler(WavAudioPlayerHandler):
 
 
 class BuiltInAudioPlayerHandler(BasePlayerHandler):
+
     def __init__(self, base_handler: BasePlayerHandler = WavAudioPlayerHandler):
         super().__init__()
         self.base_handler = base_handler

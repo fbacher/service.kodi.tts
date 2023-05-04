@@ -60,9 +60,9 @@ class ConfigUtils:
         idx = xbmcgui.Dialog().select(T(32185), disp)
         if idx < 0:
             return
-        player = players[idx][0]
+        player: str = players[idx][0]
         cls._logger.info(f'Player for {backend_id} set to: {player}')
-        Settings.setSetting(f'{Settings.PLAYER}', player, backend_id)
+        Settings.set_player(player, backend_id)
 
     @classmethod
     def selectVoiceSetting(cls, backend_id, voice):
@@ -79,7 +79,7 @@ class ConfigUtils:
             return
         player = players[idx][0]
         cls._logger.info(f'Player for {backend_id} set to: {player}')
-        Settings.setSetting(f'{Settings.PLAYER}', backend_id, player)
+        Settings.set_player(player, backend_id)
 
     @classmethod
     def selectSetting(cls, backend_id, setting, *args):

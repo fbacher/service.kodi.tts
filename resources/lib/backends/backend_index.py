@@ -27,23 +27,23 @@ from .recite import ReciteTTSBackend
 class BackendIndex(IBackendIndex):
     # Instances of ITTSBackendBase
     backendsByPriority: List[ITTSBackendBase] = [# SAPITTSBackend(),
-                                                       OSXSayTTSBackend(),
+                                                       # OSXSayTTSBackend(),
                                                        ESpeakTTSBackend(),
-                                                       JAWSTTSBackend(),
-                                                       NVDATTSBackend(),
+                                                       # JAWSTTSBackend(),
+                                                       # NVDATTSBackend(),
                                                        FliteTTSBackend(),
                                                        Pico2WaveTTSBackend(),
                                                        FestivalTTSBackend(),
                                                        # CepstralTTSBackend(),
                                                        #            CepstralTTSOEBackend(),
-                                                       SpeechDispatcherTTSBackend(),
+                                                       # SpeechDispatcherTTSBackend(),
                                                        #            VoiceOverBackend(),
-                                                       SpeechServerBackend(),
-                                                       ReciteTTSBackend(),
+                                                       # SpeechServerBackend(),
+                                                       # ReciteTTSBackend(),
                                                        # GoogleTTSBackend(),
                                                        ResponsiveVoiceTTSBackend(),
                                                        #   SpeechUtilComTTSBackend(),
-                                                       ESpeakCtypesTTSBackend(),
+                                                       # ESpeakCtypesTTSBackend(),
                                                        LogOnlyTTSBackend()
                                                        ]
     backendsById: Dict[str, ITTSBackendBase] = {}
