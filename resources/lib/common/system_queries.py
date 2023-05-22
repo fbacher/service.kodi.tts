@@ -39,7 +39,7 @@ class SystemQueries:
 
     @classmethod
     def isRaspberryPi(cls):
-        return xbmc.getCondVisibility('System.Platform.Linux.RaspberryPi')
+        return xbmc.getCondVisibility('System.Platform.Linux')
 
 
     @classmethod

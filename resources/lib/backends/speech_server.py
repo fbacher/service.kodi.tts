@@ -1,16 +1,18 @@
 # -*- coding: utf-8 -*-
 
-import urllib.request, urllib.parse, urllib.error, urllib.request, urllib.error, urllib.parse
 import shutil
+import urllib.error
+import urllib.error
+import urllib.parse
+import urllib.parse
+import urllib.request
+import urllib.request
 
-
-from common.constants import Constants
+from backends.base import SimpleTTSBackendBase
+from backends.constraints import Constraints
 from common.logger import *
-from common.messages import Messages
 from common.settings import Settings
 from common.system_queries import SystemQueries
-from backends.base import SimpleTTSBackendBase
-
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -19,8 +21,10 @@ class SpeechServerBackend(SimpleTTSBackendBase):
     backend_id = 'ttsd'
     displayName = 'HTTP TTS Server (Requires Running Server)'
     canStreamWav = False
-    pitchConstraints = (-100, 0, 100, True)
-    speedConstraints = (-20, 0, 20, True)
+    pitchConstraints: Constraints = Constraints(-100, 0, 100, True, False, 1.0,
+                                                Settings.PITCH)
+    speedConstraints: Constraints = Constraints(-20, 0, 20, True, False, 1.0,
+                                                Settings.SPEED)
 
     settings = {'engine': None,
                 'host': '127.0.0.1',

@@ -58,7 +58,7 @@ class BackendInfoBridge(IBackendInfo):
                                 player_pitch_adjustable: bool) -> Tuple[bool, bool, bool]:
 
         engine: BackendInfoBridge = cls.getBackend(backend_id)
-        return engine.negotiate_engine_config(player_volume_adjustable,
+        return engine.negotiate_engine_config(backend_id, player_volume_adjustable,
                                               player_speed_adjustable,
                                               player_pitch_adjustable)
 

@@ -1,25 +1,27 @@
 # -*- coding: utf-8 -*-
-from backends.__init__ import *
-import time
-import threading
-import queue
 import os
+import queue
+import threading
+import time
 
+import xbmc
+
+from backends import audio
+from backends.__init__ import *
+from backends.audio import (AudioPlayer, BuiltInAudioPlayer, PlayerHandlerType,
+                            SoundCapabilities)
+from backends.audio.sound_capabilties import ServiceType
+from backends.constraints import Constraints
 from backends.i_tts_backend_base import ITTSBackendBase
 from backends.tts_backend_bridge import TTSBackendBridge
-from backends.constraints import Constraints
-from backends import audio
-from backends.audio import AudioPlayer, BuiltInAudioPlayer, PlayerHandlerType
 from cache.voicecache import VoiceCache
-from common.settings import Settings
-from common.setting_constants import Genders
+from common import utils
 from common.constants import Constants
 from common.logger import *
 from common.messages import Messages
 from common.monitor import my_monitor
-from common import utils
-
-import xbmc
+from common.setting_constants import Genders
+from common.settings import Settings
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -37,15 +39,27 @@ class TTSBackendBase(ITTSBackendBase):
     inWavStreamMode = False
     interval = 100
     broken = False
+
+    # Define TTS native scales for volume, speed, etc
+    #
     # Min, Default, Max, Integer_Only (no float)
-    speedConstraints: Constraints = Constraints(0, 0, 0, True)
-    pitchConstraints: Constraints = Constraints(0, 0, 0, True)
+    ttsPitchConstraints: Constraints = Constraints(0, 50, 99, True, False, 1.0,
+                                                   Settings.PITCH, 50, 1.0)
+    ttsVolumeConstraints: Constraints = Constraints(-12, 0, 12, True, True, 1.0,
+                                                    Settings.VOLUME, 0, 1.0)
+    ttsSpeedConstraints: Constraints = Constraints(25, 100, 400, False, False, 0.01,
+                                                   Settings.SPEED, 100, 0.25)
 
-    # Volume constraints imposed by the api being called
+    TTSConstraints: Dict[str, Constraints] = {
+        Settings.SPEED: ttsSpeedConstraints,
+        Settings.PITCH: ttsPitchConstraints,
+        Settings.VOLUME: ttsVolumeConstraints
+    }
 
-    volumeConstraints: Constraints = Constraints(-12, 0, 12, True)
-
-    # Volume scale as presented to the user
+    pitchConstraints: Constraints = ttsPitchConstraints
+    volumeConstraints: Constraints = ttsVolumeConstraints
+    speedConstraints: Constraints = ttsSpeedConstraints
+# Volume scale as presented to the user
 
     volumeExternalEndpoints = (-12, 12)
     volumeStep = 1
@@ -64,6 +78,9 @@ class TTSBackendBase(ITTSBackendBase):
     _class_name: str = None
     initialized_static: bool = False
     player_handler_class: audio.BasePlayerHandler = None
+    _supported_input_formats: List[str] = []
+    _supported_output_formats: List[str] = []
+    _provides_services: List[ServiceType] = [ServiceType.ENGINE]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -88,49 +105,15 @@ class TTSBackendBase(ITTSBackendBase):
     def init(self):
         pass
 
+    @classmethod
+    def get_sound_capabilities(cls) -> SoundCapabilities | None:
+        return SoundCapabilities.get_by_service_id(cls.backend_id)
+
     def get_player_handler(self) -> AudioPlayer:
         raise Exception('Not Implemented')
 
     def setWavStreamMode(self, enable=True):
         self.inWavStreamMode = enable
-
-    def scaleSpeed(self, value, limit):  # Target is between -20 and 20
-        return self.scaleValue(value, self.speedConstraints, limit)
-
-    def scalePitch(self, value, limit):  # Target is between -20 and 20
-        return self.scaleValue(value, self.pitchConstraints, limit)
-
-    def scaleVolume(self, value, limit):
-        return self.scaleValue(value, self.volumeConstraints, limit)
-
-    # speedConstraints = (80, 175, 450, True)
-
-    def scaleValue(self, value: float, constraints: Constraints, limit: float) -> float:
-        adj: float
-        scale: float
-        new: float
-        if value < 0:
-            adj = constraints.default - constraints.minimum
-            scale = (limit + value) / float(limit)
-            new = scale * adj
-            new += constraints.minimum
-        elif value > 0:
-            adj = constraints.maximum - constraints.default
-            scale = value / float(limit)
-            new = scale * adj
-            new += constraints.default
-        else:
-            new = constraints.default
-
-        if constraints.integer:
-            return int(new)
-        return new
-
-    def scale_db_to_percent(self, value, lower_bound=0, upper_bound=100):
-        scaled_value = int(round(100 * (10 ** (value / 20.0))))
-        scaled_value = max(scaled_value, lower_bound)
-        scaled_value = min(scaled_value, upper_bound)
-        return scaled_value
 
     def volumeUp(self) -> str:
         clz = type(self)
@@ -174,7 +157,7 @@ class TTSBackendBase(ITTSBackendBase):
         self.dead = True
         self.deadReason = reason or self.deadReason
 
-    def say(self, text, interrupt=False, preload_cache=False):
+    def say(self, text: str, interrupt: bool = False, preload_cache=False):
         """Method accepting text to be spoken
 
         Must be overridden by subclasses.
@@ -184,7 +167,7 @@ class TTSBackendBase(ITTSBackendBase):
         """
         raise Exception('Not Implemented')
 
-    def sayList(self, texts, interrupt=False):
+    def sayList(self, texts, interrupt: bool = False):
         """Accepts a list of text strings to be spoken
 
         May be overriden by subclasses. The default implementation calls say()
@@ -197,16 +180,14 @@ class TTSBackendBase(ITTSBackendBase):
             self.say(t)
 
     @classmethod
-    def get_pitch_constraints(cls) -> Constraints:
-        return cls.pitchConstraints
+    def get_constraints(cls, setting: str) -> Constraints | None:
+        """
 
-    @classmethod
-    def get_volume_constraints(cls) -> Constraints:
-        return cls.volumeConstraints
-
-    @classmethod
-    def get_speed_constraints(cls) -> Constraints:
-        return cls.speedConstraints
+        @param setting:
+        @return:
+        """
+        constraints: Constraints | None = cls.TTSConstraints.get(setting)
+        return constraints
 
     @classmethod
     def isSettingSupported(cls, setting):
@@ -268,23 +249,6 @@ class TTSBackendBase(ITTSBackendBase):
         """
         return cls.getSetting(setting, cls.get_setting_default(setting))
 
-        # cls._loadedSettings[setting] = cls.getSetting(
-        #     setting, cls.get_setting_default(setting))
-        # return cls._loadedSettings[setting]
-
-    #  @classmethod
-    #  def initSettings(cls, newSettings):
-    #      if cls.currentBackend != Settings.getSetting(Settings.BACKEND):
-    #          for currentSetting in TTSBackendBase.currentSettings:
-    #              Settings.setSetting(currentSetting, None)
-    #          TTSBackendBase.currentSettings.clear()
-    #
-    #          for currentSetting in newSettings:
-    #              currentValue = Settings.getSetting(
-    #                  currentSetting + '.' + cls.backend_id)
-    #              Settings.setSetting(currentSetting, currentValue)
-    #              TTSBackendBase.currentSettings.append(currentSetting)
-
     @classmethod
     def getLanguage(cls):
         default_locale = Constants.LOCALE.lower().replace('_', '-')
@@ -303,26 +267,23 @@ class TTSBackendBase(ITTSBackendBase):
         return voice
 
     @classmethod
-    def getSpeed(cls):
-        speed = cls.getSetting(Settings.SPEED, cls.speedConstraints.default)
-        speed = int(speed)
-        if speed not in range(cls.speedConstraints.minimum, cls.speedConstraints.maximum + 1):
+    def getSpeed(cls) -> float:
+        speed: float = cls.getSetting(Settings.SPEED, cls.speedConstraints.default)
+        if not cls.speedConstraints.in_range(speed):
             speed = cls.speedConstraints.default
         return speed
 
     @classmethod
-    def getPitch(cls):
-        pitch = cls.getSetting(Settings.PITCH, cls.pitchConstraints.default)
-        pitch = int(pitch)
-        if pitch not in range(cls.pitchConstraints.minimum, cls.pitchConstraints.maximum + 1):
+    def getPitch(cls) -> float:
+        pitch: float = cls.getSetting(Settings.PITCH, cls.pitchConstraints.default)
+        if not cls.pitchConstraints.in_range(pitch):
             pitch = cls.pitchConstraints.default
         return pitch
 
     @classmethod
-    def getVolume(cls) -> int:
-        volume = cls.getSetting(Settings.VOLUME, cls.volumeConstraints.default)
-        volume = int(volume)
-        if volume not in range(cls.volumeConstraints.minimum, cls.volumeConstraints.maximum + 1):
+    def getVolume(cls) -> float:
+        volume: float = cls.getSetting(Settings.VOLUME, cls.volumeConstraints.default)
+        if not cls.volumeConstraints.in_range(volume):
             volume = cls.volumeConstraints.default
         return volume
 
@@ -387,8 +348,8 @@ class TTSBackendBase(ITTSBackendBase):
         """
         if (not cls.isSettingSupported(setting_id)
                 and cls._logger.isEnabledFor(WARNING)):
-            cls._logger.warning('Setting: {}, not supported by voicing engine: {}'
-                                .format(setting_id, cls.get_backend_id()))
+            cls._logger.warning(f'Setting: {setting_id}, not supported by voicing '
+                                f'engine: {cls.get_backend_id()}')
         previous_value = Settings.getSetting(setting_id, cls.get_backend_id(),  None)
         changed = False
         if previous_value != value:
@@ -418,6 +379,10 @@ class TTSBackendBase(ITTSBackendBase):
 
     @classmethod
     def get_backend_id(cls) -> str:
+        """
+
+        @return:
+        """
         return cls.backend_id
 
     def insertPause(self, ms=500):
@@ -435,7 +400,7 @@ class TTSBackendBase(ITTSBackendBase):
         """
         return None
 
-    def getWavStream(self, text):
+    def getWavStream(self, text:str):
         """Returns an open file like object containing wav data
 
         Subclasses should override this to provide access to functions
@@ -490,10 +455,13 @@ class TTSBackendBase(ITTSBackendBase):
     def _close(self):
         self._closed = True
         self._stop()
-        self.close()
 
     @classmethod
     def is_available_and_usable(cls):
+        """
+
+        @return:
+        """
         return cls._available()
 
     @classmethod
@@ -540,6 +508,10 @@ class ThreadedTTSBackend(TTSBackendBase):
         self.rate = self.setting('speed')
 
     def init(self):
+        """
+
+        @return:
+        """
         super().init()
         if self.initialized:
             return
@@ -548,13 +520,15 @@ class ThreadedTTSBackend(TTSBackendBase):
         clz = type(self)
         self.thread = threading.Thread(
                 target=self._handleQueue, name=f'TTSThread: {clz.backend_id}')
+        xbmc.log(f'Starting thread TTSThread: {clz.backend_id}', xbmc.LOGINFO)
         self.thread.start()
 
     def _handleQueue(self):
         clz = type(self)
         if type(self)._logger.isEnabledFor(DEBUG):
             self._logger.debug(
-                'Threaded TTS Started: {0}'.format(clz.backend_id))
+                f'Threaded TTS Started: {clz.backend_id} thread_name: '
+                f'{threading.current_thread().name}')
 
         while self.active and not my_monitor.abortRequested():
             try:
@@ -585,14 +559,26 @@ class ThreadedTTSBackend(TTSBackendBase):
                 self._logger.debug_verbose('_emptyQueue is empty')
             return
 
-    def say(self, text, interrupt=False, preload_cache=False):
+    def say(self, text: str, interrupt: bool = False, preload_cache=False):
+        """
+
+        @param text:
+        @param interrupt:
+        @param preload_cache:
+        @return:
+        """
         if not self.active:
             return
         if interrupt:
             self._stop()
         self.queue.put_nowait(text)
 
-    def sayList(self, texts, interrupt=False):
+    def sayList(self, texts, interrupt: bool = False):
+        """
+
+        @param texts:
+        @param interrupt:
+        """
         if interrupt:
             self._stop()
         self.queue.put_nowait(texts.pop(0))
@@ -601,6 +587,10 @@ class ThreadedTTSBackend(TTSBackendBase):
             self.queue.put_nowait(t)
 
     def isSpeaking(self):
+        """
+
+        @return:
+        """
         return self.active and (self._threadedIsSpeaking or not self.queue.empty())
 
     def _stop(self):
@@ -616,9 +606,13 @@ class ThreadedTTSBackend(TTSBackendBase):
         super()._stop()
 
     def insertPause(self, ms=500):
+        """
+
+        @param ms:
+        """
         self.queue.put(ms)
 
-    def threadedSay(self, text):
+    def threadedSay(self, text:str):
         """Method accepting text to be spoken
 
         Subclasses must override this method and should speak the unicode text.
@@ -633,6 +627,9 @@ class ThreadedTTSBackend(TTSBackendBase):
 
 
 class SimpleTTSBackendBase(ThreadedTTSBackend):
+    """
+
+    """
     WAVOUT = 0
     ENGINESPEAK = 1
     PIPE = 2
@@ -657,7 +654,12 @@ class SimpleTTSBackendBase(ThreadedTTSBackend):
         self._simpleIsSpeaking = False
         self.mode = None
         self.player_handler_instance: PlayerHandlerType = None
+
     def init(self):
+        """
+
+        @return:
+        """
         clz = type(self)
         if self.initialized:
             return
@@ -686,10 +688,18 @@ class SimpleTTSBackendBase(ThreadedTTSBackend):
         return False
 
     def get_player_handler(self) -> PlayerHandlerType:
+        """
+
+        @return:
+        """
         clz = type(self)
         return self.player_handler_instance
 
     def setMode(self, mode: int) -> None:
+        """
+
+        @param mode:
+        """
         assert isinstance(mode, int), 'Bad mode'
         if mode == self.PIPE:
             if self.get_player_handler().canSetPipe():
@@ -707,16 +717,36 @@ class SimpleTTSBackendBase(ThreadedTTSBackend):
                 type(self)._logger.debug('Mode: ENGINESPEAK')
 
     def setPlayer(self, preferred=None, advanced=None):
+        """
+
+        @param preferred:
+        @param advanced:
+        @return:
+        """
         return self.get_player_handler().setPlayer(preferred=preferred, advanced=advanced)
 
     def setSpeed(self, speed: float):
+        """
+
+        @param speed:
+        """
         self.get_player_handler().setSpeed(speed)
 
     def getSpeed(self) -> int:
+        """
+
+        @return:
+        """
+        # Need to convert from Kodi TTS speed to this engine's speed
         speed: int = Settings.getSetting(Settings.SPEED, self.get_backend_id())
+
         return speed
 
     def getPitch(self) -> int:
+        """
+
+        @return:
+        """
         pitch: int = Settings.getSetting(Settings.PITCH, self.get_backend_id())
         return pitch
 
@@ -726,7 +756,7 @@ class SimpleTTSBackendBase(ThreadedTTSBackend):
         function attempts to convert the native engine volume to a common
         db scale.
 
-        Volume is best represented in decibles. Ideally we would have
+        Volume is best represented in decibels. Ideally we would have
         common volume settings across all engines and players, but
         since no one agrees on what value 0db or 10db is we will have to muddle
         on as best we can.
@@ -736,7 +766,7 @@ class SimpleTTSBackendBase(ThreadedTTSBackend):
         a common decible setting and the players will do the reverse conversion.
         It will require a lot of fiddling to get it reasonably useful.
 
-        :return: user set engine volume in decibles -12.0 .. +12.0
+        :return: user set engine volume in decibels -12.0 .. +12.0
         """
 
         volume = Settings.getSetting(Settings.VOLUME, self.get_backend_id())
@@ -751,7 +781,7 @@ class SimpleTTSBackendBase(ThreadedTTSBackend):
         """
         raise Exception('Not Implemented')
 
-    def runCommandAndSpeak(self, text):
+    def runCommandAndSpeak(self, text:str):
         """Convert text to speech and output directly
 
         If using ENGINESPEAK mode, subclasses must override this method
@@ -759,7 +789,7 @@ class SimpleTTSBackendBase(ThreadedTTSBackend):
         """
         raise Exception('Not Implemented')
 
-    def runCommandAndPipe(self, text):
+    def runCommandAndPipe(self, text:str):
         """Convert text to speech and pipe to audio player
 
         If using PIPE mode, subclasses must override this method
@@ -767,40 +797,38 @@ class SimpleTTSBackendBase(ThreadedTTSBackend):
         """
         raise Exception('Not Implemented')
 
-    def get_path_to_voice_file(self, text_to_voice, use_cache=False):
+    def get_path_to_voice_file(self, text_to_voice: str,
+                               use_cache: bool = False) -> Tuple[str, bool, bytes]:
+        """
+
+        @param text_to_voice:
+        @param use_cache:
+        @return:
+        """
+        clz = type(self)
+        player_handler: PlayerHandlerType = self.get_player_handler()
+        player_id: str = clz.getSetting(Settings.PLAYER)
+        player: AudioPlayer = player_handler.get_player(player_id)
+        sound_file_types: List[str] = player.sound_file_types
+        voice_file: str = ''
         exists = False
-        voice_file = self.get_player_handler().getOutFile(
-            text_to_voice, use_cache=use_cache)
-        if VoiceCache.is_cache_sound_files(type(self)):
-
-            # TODO: Remove HACK
-
-            _, extension = os.path.splitext(voice_file)
-            voice_file, exists = VoiceCache.get_sound_file_path(text_to_voice,
-                                                                extension)
-            self.get_player_handler().outFile = voice_file
-        return voice_file, exists
-
-    def get_voice_from_cache(self, text_to_voice, use_cache=False):
-        voiced_text: bytes = None
-        voice_file: str = None
-        if VoiceCache.is_cache_sound_files(type(self)):
-            voice_file = self.get_player_handler().getOutFile(text_to_voice,
-                                                        use_cache=use_cache)
-
-            # TODO: Remove HACK
-
-            _, extension = os.path.splitext(voice_file)
-            voice_file, voiced_text = VoiceCache.get_text_to_speech(text_to_voice,
-                                                                    extension)
-            self.get_player_handler().outFile = voice_file
+        voiced_text: bytes = b''
+        if use_cache:
+            paths: Tuple[str, bool, bytes] = VoiceCache.get_best_path(text_to_voice,
+                                                                      sound_file_types)
+            voice_file, exists, voiced_text = paths
         else:
-            voice_file = ''  # Can't return a tuple with Nine
-        if voiced_text is None:
-            voiced_text = b''
-        return voice_file, voiced_text # Can't return a tuple with None
+            voice_file = player.get_tmp_path(text_to_voice, sound_file_types[0])
+            exists = False
 
-    def getWavStream(self, text):
+        return voice_file, exists, voiced_text
+
+    def getWavStream(self, text:str):
+        """
+
+        @param text:
+        @return:
+        """
         fpath = os.path.join(utils.getTmpfs(), 'speech.wav')
         if type(self)._logger.isEnabledFor(DEBUG_VERBOSE):
             type(self)._logger.debug_verbose('tmpfile: ' + fpath)
@@ -809,6 +837,9 @@ class SimpleTTSBackendBase(ThreadedTTSBackend):
         return open(fpath, 'rb')
 
     def config_mode(self):
+        """
+
+        """
         clz = type(self)
         player_id: str = Settings.getSetting(Settings.PLAYER, self.backend_id)
         if player_id == BuiltInAudioPlayer.ID:
@@ -821,7 +852,12 @@ class SimpleTTSBackendBase(ThreadedTTSBackend):
 
         self.setMode(mode)
 
-    def threadedSay(self, text):
+    def threadedSay(self, text:str):
+        """
+
+        @param text:
+        @return:
+        """
         clz = type(self)
         if not text:
             return
@@ -829,7 +865,7 @@ class SimpleTTSBackendBase(ThreadedTTSBackend):
             self.setPlayer(clz.get_player_setting())
             self.config_mode()
             if self.mode == self.WAVOUT:
-                outFile = self.get_player_handler().getOutFile(text)
+                outFile:str = self.get_player_handler().get_sound_file(text)
                 if not self.runCommand(text, outFile):
                     return
                 player_handler: PlayerHandlerType = self.get_player_handler()
@@ -847,11 +883,20 @@ class SimpleTTSBackendBase(ThreadedTTSBackend):
             clz._logger.exception(e)
 
     def isSpeaking(self):
+        """
+
+        @return:
+        """
         return (self._simpleIsSpeaking or self.get_player_handler().isPlaying()
                 or ThreadedTTSBackend.isSpeaking(self))
 
     @classmethod
     def get_player_ids(cls, include_builtin: bool = True) -> List[str]:
+        """
+
+        @param include_builtin:
+        @return:
+        """
         player_ids: List[str] = []
         for player in cls.player_handler_class().getAvailablePlayers(include_builtin=include_builtin):
             player_ids.append(player.ID)
@@ -862,11 +907,14 @@ class SimpleTTSBackendBase(ThreadedTTSBackend):
         ThreadedTTSBackend._stop(self)
 
     def _close(self):
-        ThreadedTTSBackend._close(self)
+        #  super()._close()
         self.get_player_handler().close()
 
 
 class LogOnlyTTSBackend(TTSBackendBase):
+    """
+
+    """
     backend_id = 'log'
     displayName = 'Log'
     _logger: BasicLogger = None
@@ -881,19 +929,37 @@ class LogOnlyTTSBackend(TTSBackendBase):
 
     @staticmethod
     def isSupportedOnPlatform():
+        """
+
+        @return:
+        """
         return True
 
     @staticmethod
     def isInstalled():
+        """
+
+        @return:
+        """
         return LogOnlyTTSBackend.isSupportedOnPlatform()
 
-    def say(self, text, interrupt=False, preload_cache=False):
+    def say(self, text: str, interrupt: bool = False, preload_cache=False):
+        """
+
+        @param text:
+        @param interrupt:
+        @param preload_cache:
+        """
         if type(self)._logger.isEnabledFor(DEBUG):
             type(self)._logger.debug(
                 'say(Interrupt={1}): {0}'.format(repr(text), interrupt))
 
     @staticmethod
     def available():
+        """
+
+        @return:
+        """
         return True
 
 

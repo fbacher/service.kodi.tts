@@ -165,6 +165,7 @@ def runInThread(func, args=(), name='?'):
     import threading
     thread = threading.Thread(target=func, args=args,
                               name=f'TTSThread: {name}')
+    xbmc.log(f'util.runInThread starting thread {name}', xbmc.LOGINFO)
     thread.start()
 
 

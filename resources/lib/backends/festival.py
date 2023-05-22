@@ -5,6 +5,7 @@ from typing import Any, List, Union, Type
 
 from backends.audio import BasePlayerHandler, WavAudioPlayerHandler
 from backends.base import SimpleTTSBackendBase
+from backends.constraints import Constraints
 from common.typing import *
 from common.constants import Constants
 from common.logger import *
@@ -20,10 +21,11 @@ class FestivalTTSBackend(SimpleTTSBackendBase):
     backend_id = Backends.FESTIVAL_ID
     displayName = 'Festival'
     canStreamWav = SystemQueries.commandIsAvailable('mpg123')
-    speedConstraints = (-16, 0, 12, True)
-    pitchConstraints = (50, 105, 500, True)
-    volumeConstraints = (-12, 0, 12, True)
+    speedConstraints: Constraints = Constraints(-16, 0, 12, True, False, 1.0, Settings.SPEED)
+    pitchConstraints: Constraints = Constraints(50, 105, 500, True, False, 1.0, Settings.PITCH)
+    volumeConstraints: Constraints = Constraints(-12, 0, 12, True, True, 1.0, Settings.VOLUME)
     player_handler_class: Type[BasePlayerHandler] = WavAudioPlayerHandler
+    constraints: Dict[str, Constraints] = {}
 
     settings = {
         Settings.PIPE: False,
@@ -39,14 +41,23 @@ class FestivalTTSBackend(SimpleTTSBackendBase):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        type(self)._class_name = self.__class__.__name__
-        if type(self)._logger is None:
-            type(self)._logger = module_logger.getChild(type(self)._class_name)
+        clz = type(self)
+        clz._class_name = self.__class__.__name__
+        if clz._logger is None:
+            clz._logger = module_logger.getChild(clz._class_name)
         self.festivalProcess = None
+        clz.constraints[Settings.SPEED] = clz.speedConstraints
+        clz.constraints[Settings.PITCH] = clz.pitchConstraints
+        clz.constraints[Settings.VOLUME] = clz.volumeConstraints
 
     def init(self):
+        super().init()
         self.festivalProcess = None
         self.update()
+
+    @classmethod
+    def get_backend_id(cls) -> str:
+        return Backends.FESTIVAL_ID
 
     @staticmethod
     def isSupportedOnPlatform():
@@ -61,24 +72,20 @@ class FestivalTTSBackend(SimpleTTSBackendBase):
 
     def getMode(self):
         clz = type(self)
-        self.setPlayer(clz.get_player_setting())
-
+        default_player: str = clz.get_setting_default(Settings.PLAYER)
+        player: str = clz.get_player_setting(default_player)
         if clz.getSetting(Settings.PIPE):
             return SimpleTTSBackendBase.PIPE
         else:
             return SimpleTTSBackendBase.WAVOUT
 
     def runCommand(self, text_to_voice, dummy):
-
         wave_file, exists = self.get_path_to_voice_file(text_to_voice, use_cache=False)
-
         wave_pipe = None
         return self.generate_speech(text_to_voice, wave_file)
 
     def runCommandAndPipe(self, text_to_voice):
-
         wave_file, exists = self.get_path_to_voice_file(text_to_voice, use_cache=False)
-
         wave_pipe = None
         if self.generate_speech(text_to_voice, wave_file):
             wave_pipe = io.BytesIO(wave_file)
@@ -87,7 +94,6 @@ class FestivalTTSBackend(SimpleTTSBackendBase):
 
     def generate_speech(self, text_to_voice: str, wave_file: str):
         # In addition to festival, see the text2wave command
-
         clz = type(self)
         if not text_to_voice:
             return None
@@ -95,19 +101,19 @@ class FestivalTTSBackend(SimpleTTSBackendBase):
         if len(text_to_voice) == 0:
             return None
 
-        volume = type(self).getVolume()
+        volume = clz.getVolume()
         volume = 1 * (10 ** (volume / 20.0))  # convert from dB to percent/100
 
-        voice = type(self).getVoice()
+        voice = clz.getVoice()
         voice = voice and '(voice_{0})'.format(voice) or ''
 
-        speed = type(self).getSpeed()
+        speed = self.getSpeed()
         durationMultiplier = 1.8 - (((speed + 16) / 28.0) * 1.4)  #
         # Convert from (-16 to +12) value to (1.8 to 0.4)
         durMult = durationMultiplier and "(Parameter.set 'Duration_Stretch {0})".format(
             durationMultiplier) or ''
 
-        pitch = type(self).getPitch()
+        pitch = self.getPitch()
         pitch = pitch != 105 and "(require 'prosody-param)(set-pitch {0})".format(
             pitch) or ''
 
@@ -120,9 +126,6 @@ class FestivalTTSBackend(SimpleTTSBackendBase):
         # not easy. One suggestion is to use lib LADSPA
 
         self.setPlayer(clz.get_player_setting())
-        self.player_handler.setVolume(player_volume)  # In db -12 .. 12
-        self.player_handler.setSpeed(player_speed)
-        self.player_handler.setPitch(player_pitch)
 
         self.festivalProcess = subprocess.Popen(['festival', '--pipe'],
                                                 stdin=subprocess.PIPE,
@@ -174,3 +177,16 @@ class FestivalTTSBackend(SimpleTTSBackendBase):
         except (OSError, IOError):
             return False
         return True
+
+    @classmethod
+    def negotiate_engine_config(cls, backend_id: str, player_volume_adjustable: bool,
+                                player_speed_adjustable: bool,
+                                player_pitch_adjustable: bool) -> Tuple[bool, bool, bool]:
+        """
+        Player is informing engine what it is capable of controlling
+        Engine replies what it is allowing engine to control
+        """
+        # if using cache
+        # return True, True, True
+
+        return False, False, False

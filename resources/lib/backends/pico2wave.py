@@ -1,15 +1,16 @@
 # -*- coding: utf-8 -*-
-import os, subprocess
-from typing import Any, List, Union, Type
+import os
+import subprocess
 
 from backends.audio import BasePlayerHandler, WavAudioPlayerHandler
 from backends.base import SimpleTTSBackendBase
+from backends.constraints import Constraints
 from common.constants import Constants
 from common.logger import *
-from common.system_queries import SystemQueries
-from common.messages import Messages
-from common.setting_constants import Backends, Languages, Genders, Players
+from common.setting_constants import Backends
 from common.settings import Settings
+from common.system_queries import SystemQueries
+from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -17,26 +18,39 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 class Pico2WaveTTSBackend(SimpleTTSBackendBase):
     backend_id = Backends.PICO_TO_WAVE_ID
     displayName = 'pico2wave'
-    speedConstraints = (20,100,200,True)
+    speedConstraints: Constraints = Constraints(20, 100, 200, True, False, 1.0,
+                                                Settings.SPEED)
     player_handler_class: Type[BasePlayerHandler] = WavAudioPlayerHandler
-
+    constraints: Dict[str, Constraints] = {}
     settings = {Settings.LANGUAGE: '',
                 Settings.PLAYER: None,
                 Settings.SPEED: 0,
                 Settings.VOLUME: 0
                 }
-
+    supported_settings: Dict[str, str | int | bool] = settings
     _logger: BasicLogger = None
     _class_name: str = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        type(self)._class_name = self.__class__.__name__
-        if type(self)._logger is None:
-            type(self)._logger = module_logger.getChild(type(self)._class_name)
+        clz = type(self)
+        clz._class_name = self.__class__.__name__
+        if clz._logger is None:
+            clz._logger = module_logger.getChild(clz._class_name)
         self.language = None
         self.stop_processing = False
+        self.initialized = False
+        clz.constraints[Settings.SPEED] = clz.speedConstraints
+
+    def init(self):
+        super().init()
+        self.festivalProcess = None
         self.update()
+
+
+    @classmethod
+    def get_backend_id(cls) -> str:
+        return Backends.FESTIVAL_ID
 
     @classmethod
     def isSupportedOnPlatform(cls):
@@ -50,6 +64,7 @@ class Pico2WaveTTSBackend(SimpleTTSBackendBase):
         return installed
 
     def runCommand(self, text_to_voice, dummy):
+        clz = type(self)
         self.process = None
         self.stop_processing = False
 
@@ -61,7 +76,7 @@ class Pico2WaveTTSBackend(SimpleTTSBackendBase):
                          ' language: ' + self.language)
         args = ['pico2wave']
         if self.language:
-            args.extend(['-l', type(self).getLanguage()])
+            args.extend(['-l', clz.getLanguage()])
         args.extend(['-w', '{0}'.format(voice_file), '{0}'.format(text_to_voice)])
         try:
             if not self.stop_processing:
@@ -128,3 +143,16 @@ class Pico2WaveTTSBackend(SimpleTTSBackendBase):
         except (OSError, IOError):
             return False
         return True
+
+    @classmethod
+    def negotiate_engine_config(cls, backend_id: str, player_volume_adjustable: bool,
+                                player_speed_adjustable: bool,
+                                player_pitch_adjustable: bool) -> Tuple[bool, bool, bool]:
+        """
+        Player is informing engine what it is capable of controlling
+        Engine replies what it is allowing engine to control
+        """
+        # if using cache
+        # return True, True, True
+
+        return False, False, False

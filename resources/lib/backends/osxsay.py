@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
-import sys, subprocess, os
+import os
+import subprocess
+import sys
 
+from common import utils
 from common.constants import Constants
-from common.setting_constants import Languages, Players, Genders, Misc
 from common.logger import *
-from common.messages import Messages
 from common.settings import Settings
 from common.system_queries import SystemQueries
-from common import utils
-
 from .base import ThreadedTTSBackend
+from .constraints import Constraints
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -18,13 +18,15 @@ class OSXSayTTSBackend_Internal(ThreadedTTSBackend):
     backend_id = 'OSXSay'
     displayName = 'OSX Say (OSX Internal)'
     canStreamWav = True
-    volumeConstraints = (0, 100, 100, True)
-    speedConstraints = (80, 200, 450, True)
+    volumeConstraints: Constraints = Constraints(0, 100, 100, True, False, 1.0,
+                                                 Settings.VOLUME)
+    speedConstraints: Constraints = Constraints(80, 200, 450, True, False, 1.0,
+                                                Settings.SPEED, 0)
 
     volumeExternalEndpoints = (0, 100)
     volumeStep = 5
     volumeSuffix = '%'
-    voicesPath = os.path.join(Constants.PROFILE_PATH, '{0}.voices'.format(backend_id))
+    voicesPath = os.path.join(Constants.PROFILE_PATH, f'{backend_id}.voices')
     settings = {
         'speed' : 0,
         'voice' : '',

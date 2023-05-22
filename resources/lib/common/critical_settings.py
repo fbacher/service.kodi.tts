@@ -154,7 +154,7 @@ class CriticalSettings:
     def set_plugin_name(cls, plugin_name: str):
         """
         Debug-Log friendly name for addon. Since multiple plugins/scripts, etc.
-        can exist in a addon, there must be a configurable way to set it at startup.
+        can exist in an addon, there must be a configurable way to set it at startup.
         It is the responsibility of the app to do this at startup and preferably
         BEFORE import logger.
 

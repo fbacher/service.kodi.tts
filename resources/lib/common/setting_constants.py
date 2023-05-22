@@ -1,21 +1,22 @@
 # -*- coding: utf-8 -*-
 
-from common.messages import Messages
+from common.typing import *
+from common.messages import Messages, Message
 from common.settings import Settings
 
 
 class BaseSettingsConstants:
 
-    settings_map = {}
+    settings_map: Dict[int, Message] = {}
 
     @classmethod
-    def get_label(cls, setting_id):
+    def get_label(cls, setting_id: int) -> str:
         msg_handle = cls.settings_map.get(setting_id, setting_id)
         label = Messages.get_msg(msg_handle)
         return label
 
     @classmethod
-    def get_msg_handle(cls, setting_id):
+    def get_msg_handle(cls, setting_id: int) -> Message:
         return cls.settings_map.get(setting_id, None)
 
 
@@ -30,12 +31,13 @@ class Backends(BaseSettingsConstants):
     RESPONSIVE_VOICE_ID = 'ResponsiveVoice'
     SPEECH_DISPATCHER_ID = 'Speech-Dispatcher'
 
-    settings_map = {
+    settings_map: Dict[str, Message] = {
         AUTO_ID: Messages.AUTO,
         ESPEAK_ID: Messages.BACKEND_ESPEAK,
         FESTIVAL_ID: Messages.BACKEND_FESTIVAL,
         FLITE_ID: Messages.BACKEND_FLITE,
         RESPONSIVE_VOICE_ID: Messages.BACKEND_RESPONSIVE_VOICE,
+        SPEECH_DISPATCHER_ID: Messages.BACKEND_SPEECH_DISPATCHER
     }
 
 
@@ -209,6 +211,7 @@ class Genders(BaseSettingsConstants):
         FEMALE: Messages.GENDER_FEMALE,
         UNKNOWN: Messages.GENDER_UNKNOWN
     }
+
 
 class Misc(BaseSettingsConstants):
     PITCH = Settings.PITCH

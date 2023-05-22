@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
-import locale, os
-from typing import Any, List, Union, Type
+import locale
+import os
 
-from backends.audio import BasePlayerHandler, WavAudioPlayerHandler
-from backends.base import SimpleTTSBackendBase, ThreadedTTSBackend
-from backends import base
-from backends.audio import BuiltInAudioPlayer, BuiltInAudioPlayerHandler
+from backends.audio import SoundCapabilities
+from backends.audio.sound_capabilties import ServiceType
+from backends.base import ThreadedTTSBackend
+from backends.constraints import Constraints
 from backends.speechd import Speaker, SSIPCommunicationError
 from common.constants import Constants
-from common.setting_constants import Backends, Languages, Players, Genders, Misc
 from common.logger import *
 from common.messages import Messages
+from common.setting_constants import Backends
 from common.settings import Settings
 from common.system_queries import SystemQueries
-from common import utils
+from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -53,38 +53,79 @@ def getSpeechDSpeaker(test=False) -> Speaker:
 
 class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
     """Supports The speech-dispatcher on linux"""
-
+    ID = Backends.SPEECH_DISPATCHER_ID
     backend_id = Backends.SPEECH_DISPATCHER_ID
     displayName = 'Speech Dispatcher'
+
+    # pitchConstraints: Constraints = Constraints(0, 0, 100, True, 1.0, Settings.PITCH)
+    pitchConstraints: Constraints = Constraints(0, 50, 99, True, False, 1.0,
+                                                Settings.PITCH, None)
+    # volumeConstraints: Constraints = Constraints(-12, 8, 12, True, 1.0, Settings.VOLUME)
+
+    SpeechDispatcherVolumeConstraints: Constraints = Constraints(-100, 0, 75,
+                                                                 True, False,
+                                                                 1.0,
+                                                                 Settings.VOLUME,
+                                                                 10)
+    SpeechDispatcherSpeedConstraints: Constraints = Constraints(-100, 0, 100, True, False, 1.0,
+                                                                 Settings.SPEED, 0, 10)
+    # Pitch -- integer value within the range from -100 to 100, with 0
+    #    corresponding to the default pitch of the current speech synthesis
+    #    output module, lower values meaning lower pitch and higher values
+    #    meaning higher pitch.
+    SpeechDispatcherPitchConstraints: Constraints = Constraints(-100, 0, 100,
+                                                                True, False,
+                                                                1.0,
+                                                                Settings.PITCH,
+                                                                0, 10)
+    _supported_input_formats: List[str] = []
+    _supported_output_formats: List[str] = []
+    _provides_services: List[ServiceType] = [ServiceType.ENGINE]
+    _sound_capabilities = SoundCapabilities(ID, _provides_services,
+                                            _supported_input_formats,
+                                            _supported_output_formats)
+    NONE: str = 'none'
     _class_name: str = None
     _logger: BasicLogger = None
-    volumeExternalEndpoints = (0, 200)
-    volumeStep = 5
+    volumeExternalEndpoints = (SpeechDispatcherVolumeConstraints.minimum,
+                               SpeechDispatcherVolumeConstraints.maximum)
+    volumeStep = SpeechDispatcherVolumeConstraints.increment
     volumeSuffix = '%'
-    pitchConstraints = (0, 0, 100, True)
-    speedConstraints = (-100, 0, 100, True)
-    volumeConstraints = (-100, 0, 100, True)
 
     settings = {
-        'module': None,
-        'pitch' : 0,
-        'speed' : 0,
-        'voice' : None,
-        'volume': 100
+        Settings.MODULE: None  # More defined in init
     }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        type(self)._class_name = self.__class__.__name__
-        if type(self)._logger is None:
-            type(self)._logger = module_logger.getChild(type(self)._class_name)
+        clz = type(self)
+        clz._class_name = self.__class__.__name__
+        if clz._logger is None:
+            clz._logger = module_logger.getChild(clz._class_name)
 
-        self.speechdObject: Speaker = None
+        self.process = None
+        self.stop_processing = False
+        self.speechdObject: Speaker | None = None
         self.updateMessage: str | None = None
+        self.previous_module: str | None = None
+        self.previous_voice: str | None = None
+        clz.constraints[Settings.SPEED] = clz.SpeechDispatcherSpeedConstraints
+        clz.constraints[Settings.PITCH] = clz.SpeechDispatcherPitchConstraints
+        clz.constraints[Settings.VOLUME] = clz.SpeechDispatcherVolumeConstraints
+
+        clz.settings[Settings.GENDER] = 'female',
+        clz.settings[Settings.LANGUAGE] = 'en-US',
+        clz.settings[Settings.VOICE] = None,
+        clz.settings[Settings.PIPE] = False,
+        clz.settings[Settings.SPEED] = clz.SpeechDispatcherSpeedConstraints.default
+        clz.settings[Settings.PITCH] = clz.SpeechDispatcherPitchConstraints.default
+        clz.settings[Settings.VOLUME] = clz.SpeechDispatcherVolumeConstraints.default
 
     def init(self):
+        super().init()
         self.updateMessage = None
         self.connect()
+        self.update()
 
     @staticmethod
     def isSupportedOnPlatform():
@@ -104,8 +145,35 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
         self.update()
 
     def threadedSay(self, text, interrupt=False):
+        clz = type(self)
         if not self.speechdObject:
             return
+        module: str = None
+        voice: str = None
+        vol: int = -1234
+        rate: int = None
+        pitch: int = None
+
+        try:
+            module = self.setting('module')
+            if module and module != self.previous_module:
+                self.speechdObject.set_output_module(module)
+                self.previous_module = module
+            voice = self.setting(Settings.VOICE)
+            if voice and voice != self.previous_voice:
+                self.speechdObject.set_language(self.getVoiceLanguage(voice))
+                self.speechdObject.set_synthesis_voice(voice)
+                self.previous_voice = voice
+            rate = clz.getEngineSpeed()
+            self.speechdObject.set_rate(rate)
+            pitch = clz.getEnginePitch()
+            self.speechdObject.set_pitch(pitch)
+            vol: int = int(clz.getEngineVolume())
+            self.speechdObject.set_volume(vol)
+            clz._logger.debug_verbose(f'module: {module} voice: {voice} volume: {vol} '
+                                      f'speed: {rate} pitch: {pitch}')
+        except SSIPCommunicationError:
+            self._logger.exception('SpeechDispatcher', hide_tb=True)
         try:
             self.speechdObject.speak(text)
         except SSIPCommunicationError:
@@ -137,24 +205,77 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
         # backend to hang, not sure why... threading issue?
         self.updateMessage = ThreadedTTSBackend.volumeDown(self)
 
+    @classmethod
+    def getVolumeDb(cls) -> int:
+        # Standard Kodi range -12 .. +12, 8 default
+        volume: int
+        volume = cls.getSetting(Settings.VOLUME)
+        if not cls.volumeConstraints.in_range(volume):
+            volume = cls.volumeConstraints.default
+        return volume
+
+    @classmethod
+    def getEngineVolume(cls) -> int:
+        """
+        Get the configured volume in our standard  -12db .. +12db scale converted
+        to the native scale of the API. The maximum volume is equivalent
+        to 0db. Therefore, convert -12db .. 0db to scale of -100 .. 100
+        """
+        volumeDb: float = cls.getVolumeDb()  # -12 .. +12 db
+        volume: float = cls.volumeConstraints.translate_value(
+                cls.SpeechDispatcherVolumeConstraints, volumeDb)
+        return volume
+
+    @classmethod
+    def getEngineSpeed(cls) -> int:
+        """
+        """
+        speed: float = cls.getSpeed()
+        engineSpeed: int = cls.speedConstraints.translate_value(
+                cls.SpeechDispatcherSpeedConstraints,
+                speed)
+        return engineSpeed
+
+    @classmethod
+    def getEnginePitch(cls) -> int:
+        """
+        """
+        pitch: float = cls.getPitch()
+        enginePitch: int
+        enginePitch = cls.pitchConstraints.translate_value(
+            cls.SpeechDispatcherPitchConstraints,
+            pitch)
+        return enginePitch
+
+    @classmethod
+    def negotiate_engine_config(cls, backend_id: str, player_volume_adjustable: bool,
+                                player_speed_adjustable: bool,
+                                player_pitch_adjustable: bool) -> Tuple[bool, bool, bool]:
+        """
+        Player is informing engine what it is capable of controlling
+        Engine replies what it is allowing engine to control
+        """
+        return False, False, False
+
     def getUpdateMessage(self):
         msg = self.updateMessage
         self.updateMessage = None
         return msg
 
     def update(self):
+        clz = type(self)
         try:
             module = self.setting('module')
             if module:
                 self.speechdObject.set_output_module(module)
-            voice = self.setting('voice')
+            voice = self.setting(Settings.VOICE)
             if voice:
                 self.speechdObject.set_language(self.getVoiceLanguage(voice))
                 self.speechdObject.set_synthesis_voice(voice)
-            self.speechdObject.set_rate(self.setting('speed'))
-            self.speechdObject.set_pitch(self.setting('pitch'))
-            vol = self.setting('volume')
-            self.speechdObject.set_volume(vol - 100)  # Covert from % to (-100 to 100)
+            self.speechdObject.set_rate(clz.getEngineSpeed())
+            self.speechdObject.set_pitch(clz.getEnginePitch())
+            vol: int = int(clz.getEngineVolume())
+            self.speechdObject.set_volume(vol)
         except SSIPCommunicationError:
             self._logger.error('SpeechDispatcherTTSBackend.update()', hide_tb=True)
         msg = self.getUpdateMessage()
@@ -164,6 +285,9 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
     def getVoiceLanguage(self, voice):
         res = None
         voices = self.speechdObject.list_synthesis_voices()
+        # Returns a tuple of triplets (name, language, variant).
+        # 'name' is a string, 'language' is an ISO 639-1 Alpha-2/3 language code
+        # and 'variant' is a string.  Language and variant may be None.
         for v in voices:
             if voice == v[0]:
                 res = v[1]
@@ -171,16 +295,95 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
         return res
 
     @classmethod
-    def settingList(cls, setting, *args):
+    def getCurrentLanguage(cls) -> str:
         so = getSpeechDSpeaker()
-        if setting == 'voice':
-            module = cls.setting('module')
-            if module:
-                so.set_output_module(module)
-            voices = so.list_synthesis_voices()
-            return [(v[0], v[0]) for v in voices]
-        elif setting == 'module':
-            return [(m, m) for m in so.list_output_modules()]
+        lang = so.get_language()
+        return lang
+
+    @classmethod
+    def getLanguages(cls) -> Tuple[List[Tuple[str, str]], str]:
+        so = getSpeechDSpeaker()
+        module: str = cls.setting(Settings.MODULE)
+        if module:
+            so.set_output_module(module)
+        current_lang = cls.getCurrentLanguage()
+        default_lang: str = ''
+        voices: List[Tuple[str, str, str]] = so.list_synthesis_voices()
+        result: List[Tuple[str, str]] = []
+        for (voice, lang, variant) in voices:
+            voice: str
+            lang: str
+            variant: str
+            if lang is not None and len(lang) > 0:
+                if lang == current_lang:
+                    default_lang = current_lang
+                result.append((lang, lang))
+
+        final_result: Tuple[List[Tuple[str, str]], str] = (result, default_lang)
+        if len(final_result) > 0:
+            return final_result
+        else:
+            return None
+
+    @classmethod
+    def getVoices(cls, include_default: bool) -> Tuple[List[Tuple[str, str]], str] | List[
+        Tuple[str, str]]:
+        so = getSpeechDSpeaker()
+        module: str = cls.setting(Settings.MODULE)
+        if module:
+            so.set_output_module(module)
+        voices: List[Tuple[str, str, str]] = so.list_synthesis_voices()
+        current_lang = cls.getCurrentLanguage()
+        result: List[Tuple[str, str]] = []
+        for (voice, lang, variant) in voices:
+            voice: str
+            lang: str
+            variant: str
+            if lang[0:2] == current_lang[0:2]:
+                displayName: str = ''
+                if variant is not None and len(variant) > 0 and variant != cls.NONE:
+                    displayName = f'/{variant}'
+                if lang is not None and len(lang) > 0 and lang != cls.NONE:
+                    displayName = f'/{lang}{displayName}'
+                displayName = f'{voice}{displayName}'
+                result.append((displayName, displayName))
+        if not include_default:
+            return result
+
+        final_result: Tuple[List[Tuple[str, str]], str] = (result, result[0][1])
+        if len(final_result) > 0:
+            return final_result
+        else:
+            return None
+
+    @classmethod
+    def settingList(cls, setting, *args) -> Tuple[List[Tuple[str, str]], str] | List[
+        str] | List[int] | None:
+        so = getSpeechDSpeaker()
+        if setting == Settings.LANGUAGE:  # originally VOICE
+            voices: Tuple[List[Tuple[str, str]], str] = cls.getLanguages()
+            #  voice_name/language/variant , name/language/variant
+            return voices
+        elif setting == Settings.MODULE:
+            # Return names of all active output modules as a tuple of strings.
+            # Tuple[List[xbmcgui.ListItem], int]:
+            choices: Tuple[List[Tuple[str, str]], int]
+            module_list: List[Tuple[str, str]]
+            module_list = [(m, m) for m in so.list_output_modules()]
+            default_module_idx = 0
+            choices = module_list, default_module_idx
+            return choices
+        elif setting == Settings.VOICE:
+            voices: Tuple[List[Tuple[str, str]], str] = cls.getVoices(
+                include_default=False)
+
+            #  voice_name/language/variant , name/language/variant
+            return voices
+        elif setting == Settings.GENDER:  # Only supported with generic voice names
+            # See client 'set_synthesis_voice'
+            return [Messages.GENDER_UNKNOWN.get_msg_id()]
+        else:
+            return [('nuthin', 'much')], 'nuthin'
 
     def close(self):
         if self.speechdObject:

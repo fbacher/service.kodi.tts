@@ -90,7 +90,7 @@ class CurrentCachedSettings:
         value = cls._current_settings[setting_id]
         if value is None:
             value = default_value
-        cls._logger.debug(f'setting_id: {setting_id} value: {value}')
+        #  cls._logger.debug(f'setting_id: {setting_id} value: {value}')
         return value
 
     @classmethod
@@ -149,6 +149,7 @@ class Settings(ISettings):
     CACHE_PATH: Final[str] = 'cache_path'
     CACHE_EXPIRATION_DAYS: Final[str] = 'cache_expiration_days'
     CACHE_SPEECH: Final[str] = 'cache_speech'
+    CAPITAL_RECOGNITION: Final[str] = 'capital_recognition'
     # DEBUG_LOGGING: Final[str] = 'debug_logging'
     DEBUG_LOG_LEVEL: Final[str] = 'log_level'
     DISABLE_BROKEN_BACKENDS: Final[str] = 'disable_broken_backends'
@@ -159,6 +160,7 @@ class Settings(ISettings):
     GENDER_VISIBLE: Final[str] = 'gender_visible'
     GUI: Final[str] = 'gui'
     LANGUAGE: Final[str] = 'language'
+    MODULE: Final[str] = 'module'
     OUTPUT_VIA: Final[str] = 'output_via'
     OUTPUT_VISIBLE: Final[str] = 'output_visible'
     OVERRIDE_POLL_INTERVAL: Final[str] = 'override_poll_interval'
@@ -169,6 +171,7 @@ class Settings(ISettings):
     PLAYER_PITCH: Final[str] = 'player_pitch'
     PLAYER_SPEED: Final[str] = 'player_speed'
     POLL_INTERVAL: Final[str] = 'poll_interval'
+    PUNCTUATION: Final[str] = 'punctuation'
     READER_OFF: Final[str] = 'reader_off'
     REMOTE_PITCH: Final[str] = 'remote_pitch'
     REMOTE_SERVER: Final[str] = 'remote_server'
@@ -183,10 +186,11 @@ class Settings(ISettings):
     SPEAK_LIST_COUNT: Final[str] = 'speak_list_count'
     SPEAK_ON_SERVER: Final[str] = 'speak_on_server'
     SPEAK_VIA_KODI: Final[str] = 'speak_via_kodi'
-    SPEECH_DISPATCHER_MODULE: Final[str] = 'Speech-Dispatcher-module'
+    SPEECH_DISPATCHER: Final[str] = 'Speech-Dispatcher'
     SPEED: Final[str] = 'speed'
     SPEED_ENABLED: Final[str] = 'speed_enabled'
     SPEED_VISIBLE: Final[str] = 'speed_visible'
+    SPELLING: Final[str] = 'spelling'
     TTSD_HOST: Final[str] = 'ttsd_host'
     TTSD_PORT: Final[str] = 'ttsd_port'
     USE_AOSS: Final[str] = 'use_aoss'
@@ -227,7 +231,7 @@ class Settings(ISettings):
         GENDER,
         GENDER_VISIBLE,
         GUI,
-        SPEECH_DISPATCHER_MODULE,
+        SPEECH_DISPATCHER,
         OUTPUT_VIA,
         OUTPUT_VISIBLE,
         OVERRIDE_POLL_INTERVAL,
@@ -274,6 +278,7 @@ class Settings(ISettings):
         CACHE_PATH,
         CACHE_EXPIRATION_DAYS,
         CACHE_SPEECH,
+        CAPITAL_RECOGNITION,
         # DEBUG_LOGGING,
         DEBUG_LOG_LEVEL,
         DISABLE_BROKEN_BACKENDS,
@@ -282,7 +287,7 @@ class Settings(ISettings):
         GENDER_VISIBLE,
         GUI,
         LANGUAGE,
-        SPEECH_DISPATCHER_MODULE,
+        MODULE,
         OUTPUT_VIA,
         OUTPUT_VISIBLE,
         OVERRIDE_POLL_INTERVAL,
@@ -293,6 +298,7 @@ class Settings(ISettings):
         PLAYER_PITCH,
         PLAYER_SPEED,
         POLL_INTERVAL,
+        PUNCTUATION,
         READER_OFF,
         REMOTE_PITCH,
         REMOTE_SPEED,
@@ -300,6 +306,7 @@ class Settings(ISettings):
         SETTINGS_DIGEST,
         SETTINGS_BEING_CONFIGURED,
         SETTINGS_LAST_CHANGED,
+        SPEECH_DISPATCHER,
         SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA,
         SPEAK_BACKGROUND_PROGRESS,
         SPEAK_LIST_COUNT,
@@ -308,6 +315,7 @@ class Settings(ISettings):
         SPEED,
         SPEED_ENABLED,
         SPEED_VISIBLE,
+        SPELLING,
         TTSD_HOST,
         TTSD_PORT,
         USE_AOSS,
@@ -337,7 +345,7 @@ class Settings(ISettings):
     # here
 
     _current_backend: str  # = BACKEND_DEFAULT
-    _logger = None
+    _logger: BasicLogger = None
 
     @staticmethod
     def get_addon() -> Addon:
@@ -709,14 +717,16 @@ class Settings(ISettings):
             cls.CACHE_PATH                            : SettingType.STRING_TYPE,
             cls.CACHE_EXPIRATION_DAYS                 : SettingType.INTEGER_TYPE,
             cls.CACHE_SPEECH                          : SettingType.BOOLEAN_TYPE,
+            cls.CAPITAL_RECOGNITION                   : SettingType.STRING_TYPE,
             # cls.DEBUG_LOGGING: SettingType.BOOLEAN_TYPE,
             cls.DEBUG_LOG_LEVEL                       : SettingType.INTEGER_TYPE,
             cls.DISABLE_BROKEN_BACKENDS               : SettingType.BOOLEAN_TYPE,
             cls.EXTERNAL_COMMAND                      : SettingType.STRING_TYPE,
-            cls.GENDER                                : SettingType.STRING_TYPE,
+            cls.GENDER                                : SettingType.INTEGER_TYPE,
             cls.GENDER_VISIBLE                        : SettingType.BOOLEAN_TYPE,
             cls.GUI                                   : SettingType.BOOLEAN_TYPE,
             cls.LANGUAGE                              : SettingType.STRING_TYPE,
+            cls.MODULE                                : SettingType.STRING_TYPE,
             cls.OUTPUT_VIA                            : SettingType.STRING_TYPE,
             cls.OUTPUT_VISIBLE                        : SettingType.BOOLEAN_TYPE,
             cls.OVERRIDE_POLL_INTERVAL                : SettingType.BOOLEAN_TYPE,
@@ -741,7 +751,7 @@ class Settings(ISettings):
             cls.SPEAK_LIST_COUNT                      : SettingType.BOOLEAN_TYPE,
             cls.SPEAK_ON_SERVER                       : SettingType.BOOLEAN_TYPE,
             cls.SPEAK_VIA_KODI                        : SettingType.BOOLEAN_TYPE,
-            cls.SPEECH_DISPATCHER_MODULE              : SettingType.STRING_TYPE,
+            cls.SPEECH_DISPATCHER                     : SettingType.STRING_TYPE,
             cls.SPEED                                 : SettingType.INTEGER_TYPE,
             cls.SPEED_ENABLED                         : SettingType.BOOLEAN_TYPE,
             cls.SPEED_VISIBLE                         : SettingType.BOOLEAN_TYPE,
@@ -913,7 +923,7 @@ class Settings(ISettings):
         except KeyError:
             value = Settings.getRealSetting(setting_id, backend_id, default_value)
             CurrentCachedSettings.set_setting(full_setting_id, value)
-        cls._logger.debug(f'setting_id: {full_setting_id} value: {value}')
+        # cls._logger.debug(f'setting_id: {full_setting_id} value: {value}')
         return value
 
     @classmethod

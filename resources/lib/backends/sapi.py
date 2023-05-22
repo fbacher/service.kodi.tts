@@ -1,5 +1,11 @@
 # -*- coding: utf-8 -*-
-import os, sys, wave, array, io
+import array
+import io
+import os
+import sys
+import wave
+
+from backends.constraints import Constraints
 
 try:
     import importlib
@@ -11,10 +17,8 @@ except ImportError:
 
 from xml.sax import saxutils
 
-from common.typing import *
 from common.constants import Constants
 from common.logger import *
-from common.messages import Messages
 from common.settings import Settings
 from common.system_queries import SystemQueries
 from common import utils
@@ -81,9 +85,12 @@ class SAPI:
     SPEAK_PUNC = 64
     PARSE_SAPI = 128
 
-    speedConstraints = (-10, 0, 10, True)
-    pitchConstraints = (-10, 0, 10, True)
-    volumeConstraints = (0, 100, 100, True)
+    speedConstraints: Constraints = Constraints(-10, 0, 10, True, False, 1.0,
+                                                Settings.SPEED)
+    pitchConstraints: Constraints = Constraints(-10, 0, 10, True, False, 1.0,
+                                                Settings.PITCH)
+    volumeConstraints: Constraints = Constraints(0, 100, 100, True, False, 1.0,
+                                                 Settings.VOLUME)
 
     settings = {
         'pitch': 0,
@@ -338,9 +345,12 @@ class SAPITTSBackend(SimpleTTSBackendBase):
                 'volume': 100
                 }
     canStreamWav = True
-    speedConstraints = (-10, 0, 10, True)
-    pitchConstraints = (-10, 0, 10, True)
-    volumeConstraints = (0, 100, 100, True)
+    speedConstraints: Constraints = Constraints(-10, 0, 10, True, False, 1.0,
+                                                Settings.SPEED)
+    pitchConstraints: Constraints = Constraints(-10, 0, 10, True, False, 1.0,
+                                                Settings.PITCH)
+    volumeConstraints: Constraints = Constraints(0, 100, 100, True, False, 1.0,
+                                                 Settings.VOLUME)
     volumeExternalEndpoints = (0, 100)
     volumeStep = 5
     volumeSuffix = '%'

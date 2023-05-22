@@ -21,6 +21,9 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class SpeechUtilComTTSBackend(SimpleTTSBackendBase):
+    """
+
+    """
     backend_id = 'speechutil'
     displayName = 'speechutil.com'
     ttsURL = 'http://speechutil.com/convert/wav?text={0}'

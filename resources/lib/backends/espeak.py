@@ -7,7 +7,9 @@ import errno
 import os
 from typing import Any, List, Union, Type
 
-from backends.audio import AudioPlayer, BasePlayerHandler, WavAudioPlayerHandler
+from backends.audio import (AudioPlayer, BasePlayerHandler, SoundCapabilities,
+                            WavAudioPlayerHandler)
+from backends.audio.sound_capabilties import ServiceType
 from backends.base import Constraints, SimpleTTSBackendBase
 from backends import base
 from backends.audio import BuiltInAudioPlayer, BuiltInAudioPlayerHandler
@@ -25,16 +27,26 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class ESpeakTTSBackend(base.SimpleTTSBackendBase):
+    """
+
+    """
+    ID = Backends.ESPEAK_ID
     initialized: bool = False
     backend_id = Backends.ESPEAK_ID
     displayName = 'eSpeak'
-    speedConstraints = Constraints(80, 175, 450, True)
-    pitchConstraints = Constraints(0, 50, 99, True)
-    volumeNativeConstraints = Constraints(0, 100, 200, True)
-    volumeConstraints = Constraints(-12, 0, 12, True)
+    speedConstraints = Constraints(80, 175, 450, True, False, 1.0, Settings.SPEED)
+    pitchConstraints = Constraints(0, 50, 99, True, False, 1.0, Settings.PITCH)
+    volumeNativeConstraints = Constraints(0, 100, 200, True, False, 1.0, Settings.VOLUME)
+    volumeConstraints = Constraints(-12, 0, 12, False, True, 1.0, Settings.VOLUME)
+    constraints: Dict[str, Constraints] = {}
 
     player_handler_class: Type[BasePlayerHandler] = WavAudioPlayerHandler
-
+    _supported_input_formats: List[str] = []
+    _supported_output_formats: List[str] = [SoundCapabilities.WAVE]
+    _provides_services: List[ServiceType] = [ServiceType.ENGINE, ServiceType.PLAYER]
+    _sound_capabilities = SoundCapabilities(ID, _provides_services,
+                                            _supported_input_formats,
+                                            _supported_output_formats)
     # Supported settings and default values
 
     settings = {
@@ -62,8 +74,6 @@ class ESpeakTTSBackend(base.SimpleTTSBackendBase):
         clz.constraints[Settings.SPEED] = clz.speedConstraints
         clz.constraints[Settings.PITCH] = clz.pitchConstraints
         clz.constraints[Settings.VOLUME] = clz.volumeConstraints
-
-        # type(self).init_voices()
 
     def init(self):
         super().init()
@@ -300,7 +310,7 @@ class ESpeakTTSBackend(base.SimpleTTSBackendBase):
         clz = type(self)
         volumeDb: int = int(self.getVolume())
         volume: int = clz.volumeConstraints.translate_value(self.volumeNativeConstraints,
-                                                              volumeDb, True)
+                                                            volumeDb, True)
         return volume
 
     @staticmethod

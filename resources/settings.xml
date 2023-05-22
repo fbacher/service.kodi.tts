@@ -1650,14 +1650,10 @@ New Setting Format
                     </control>
                     <visible>false</visible>
                 </setting>
-                <setting help="" id="gender.Cepstral" label="32178" type="string">
+                <setting help="" id="gender.Cepstral" label="32178" type="integer">
                     <level>0</level>
-                    <constraints>
-                        <allowempty>true</allowempty>
-                    </constraints>
-                    <control type="edit" format="string">
-                        <heading>32178</heading>
-                    </control>
+                    <default>2</default>
+                    <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
                 <setting help="" id="language.Cepstral" label="32178" type="string">
@@ -1714,14 +1710,10 @@ New Setting Format
                     <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
-                 <setting help="" id="gender.eSpeak" label="32178" type="string">
+                 <setting help="" id="gender.eSpeak" label="32178" type="integer">
                     <level>0</level>
-                    <constraints>
-                        <allowempty>true</allowempty>
-                    </constraints>
-                    <control type="edit" format="string">
-                        <heading>32178</heading>
-                    </control>
+                    <default>2</default>
+                    <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
                 <setting help="" id="language.eSpeak" label="32178" type="string">
@@ -1784,14 +1776,10 @@ New Setting Format
                     <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
-                 <setting help="" id="gender.eSpeak" label="32178" type="string">
+                 <setting help="" id="gender.eSpeak" label="32178" type="integer">
                     <level>0</level>
-                    <constraints>
-                        <allowempty>true</allowempty>
-                    </constraints>
-                    <control type="edit" format="string">
-                        <heading>32178</heading>
-                    </control>
+                    <default>2</default>
+                    <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
                 <setting help="" id="language.Festival" label="32178" type="string">
@@ -1848,14 +1836,10 @@ New Setting Format
                     <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
-                 <setting help="" id="gender.Flite" label="32178" type="string">
+                 <setting help="" id="gender.Flite" label="32178" type="integer">
                     <level>0</level>
-                    <constraints>
-                        <allowempty>true</allowempty>
-                    </constraints>
-                    <control type="edit" format="string">
-                        <heading>32178</heading>
-                    </control>
+                    <default>2</default>
+                    <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
                 <setting help="" id="language.Flite" label="32178" type="string">
@@ -1912,14 +1896,10 @@ New Setting Format
                     <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
-                 <setting help="" id="gender.Google" label="32178" type="string">
+                 <setting help="" id="gender.Google" label="32178" type="integer">
                     <level>0</level>
-                    <constraints>
-                        <allowempty>true</allowempty>
-                    </constraints>
-                    <control type="edit" format="string">
-                        <heading>32178</heading>
-                    </control>
+                    <default>2</default>
+                    <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
                 <setting help="" id="language.Google" label="32178" type="string">
@@ -1976,14 +1956,10 @@ New Setting Format
                     <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
-                 <setting help="" id="gender.OSXSay" label="32178" type="string">
+                <setting help="" id="gender.OSXSay" label="32178" type="integer">
                     <level>0</level>
-                    <constraints>
-                        <allowempty>true</allowempty>
-                    </constraints>
-                    <control type="edit" format="string">
-                        <heading>32178</heading>
-                    </control>
+                    <default>2</default>
+                    <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
                 <setting help="" id="language.OSXSay" label="32178" type="string">
@@ -2040,14 +2016,10 @@ New Setting Format
                     <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
-                 <setting help="" id="gender.pico2wave" label="32178" type="string">
+                <setting help="" id="gender.pico2wave" label="32178" type="integer">
                     <level>0</level>
-                    <constraints>
-                        <allowempty>true</allowempty>
-                    </constraints>
-                    <control type="edit" format="string">
-                        <heading>32178</heading>
-                    </control>
+                    <default>2</default>
+                    <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
                 <setting help="" id="language.pico2wave" label="32178" type="string">
@@ -2114,14 +2086,10 @@ New Setting Format
                     </control>
                      <visible>false</visible>
                 </setting>
-                 <setting help="" id="gender.ResponsiveVoice" label="32178" type="string">
+                <setting help="" id="gender.ResponsiveVoice" label="32178" type="integer">
                     <level>0</level>
-                    <constraints>
-                        <allowempty>true</allowempty>
-                    </constraints>
-                    <control type="edit" format="string">
-                        <heading>32178</heading>
-                    </control>
+                    <default>2</default>
+                    <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
                 <setting help="" id="language.ResponsiveVoice" label="32178" type="string">
@@ -2202,14 +2170,10 @@ New Setting Format
                     <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
-                 <setting help="" id="gender.SAPI" label="32178" type="string">
+                <setting help="" id="gender.SAPI" label="32178" type="integer">
                     <level>0</level>
-                    <constraints>
-                        <allowempty>true</allowempty>
-                    </constraints>
-                    <control type="edit" format="string">
-                        <heading>32178</heading>
-                    </control>
+                    <default>2</default>
+                    <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
                 <setting help="" id="language.SAPI" label="32178" type="string">
@@ -2604,6 +2568,73 @@ New Setting Format
                     <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
+                    <setting help="" id="pitch.Speech-Dispatcher" label="32018" parent="dummy" type="integer">
+                        <level>0</level>
+                        <default>2</default>
+                        <control type="toggle"/>
+                        <visible>false</visible>
+                    </setting>
+                <setting help="" id="speed.Speech-Dispatcher" label="32178" type="integer">
+                    <level>0</level>
+                    <default>2</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="punctuation.Speech-Dispatcher" label="32178" type="integer">
+                    <level>0</level>
+                    <default>2</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="module.Speech-Dispatcher" label="32178" type="STRING">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="voice.Speech-Dispatcher" label="32178" type="STRING">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="gender.Speech-Dispatcher" label="32178" type="integer">
+                    <level>0</level>
+                    <default>2</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="capital-recognition.Speech-Dispatcher" label="32013" parent="dummy"  type="boolean">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="pipe.Speech-Dispatcher" label="32013" parent="dummy"  type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="spelling.Speech-Dispatcher" label="32013" parent="dummy"  type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+
             </group>
         </category>
     </section>

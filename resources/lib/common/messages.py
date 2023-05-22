@@ -13,15 +13,26 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 class Message:
 
-    def __init__(self, default_msg, msg_id):
-        self.default_msg = default_msg
-        self.msg_id = msg_id
+    msg_index: Dict[int, 'Message'] = {}
 
-    def get_default_msg(self):
+    def __init__(self, default_msg: str, msg_id:int) -> None:
+        clz = type(self)
+        self.default_msg: str = default_msg
+        self.msg_id: int = msg_id
+        clz.msg_index[msg_id] = self
+
+    def get_default_msg(self) -> str:
         return self.default_msg
 
-    def get_msg_id(self):
+    def get_msg_id(self) -> int:
         return self.msg_id
+
+    @classmethod
+    def get_ref_by_id(cls, msg_id: int) -> 'Message':
+        if not isinstance(msg_id, int):
+            return None
+
+        return cls.msg_index.get(msg_id)
 
 
 class Messages:
@@ -63,6 +74,8 @@ class Messages:
     DATABASE_SCAN_FINISHED = Message('Database scan finished.', 32101)
     SPEECH_ENGINE_FALLING_BACK_TO = Message('Notice... Speech engine falling back to {0}',
                                             32102)
+    SELECT_MODULE = Message('Select Module', 32322)
+
     Reason = Message('Reason', 32103)
     NEW_TTS_VERSION = Message('New T T S Version', 32104)
     WINDOW = Message('Window', 32105)
@@ -245,6 +258,7 @@ class Messages:
     BACKEND_FESTIVAL = Message('Festival', 32315)
     BACKEND_FLITE = Message('Flite', 32316)
     BACKEND_RESPONSIVE_VOICE = Message('ResponsiveVoice', 32317)
+    BACKEND_SPEECH_DISPATCHER = Message('Speech Dispatcher', 32318)
 
     # Generic VOICE Names
 
@@ -255,6 +269,11 @@ class Messages:
     # Miscellaneous Settings
 
     MISC_PITCH = Message('Pitch', 32005)
+    MISC_SPELLING = Message('Spelling', 32319)
+    MISC_PUNCTUATION = Message('Punctuation', 32320)
+    MISC_CAPITAL_RECOGNITION = Message('Capital Recognition', 32321)
+
+    # Last Msg 32322
 
     _instance = None
     _debug_dump = False
@@ -267,8 +286,7 @@ class Messages:
         self._logger = module_logger.getChild(self.__class__.__name__)
 
     @staticmethod
-    def get_msg(msg_ref):
-        # type: (Message) -> str
+    def get_msg(msg_ref: Message| int) -> str:
         """
 
         :param msg_ref:
@@ -276,10 +294,13 @@ class Messages:
         """
         if Messages._instance is None:
             Messages._instance = Messages()
+        if isinstance(msg_ref, int):
+            msg_ref = Message.get_ref_by_id(msg_ref)
+
         return Messages._instance.get_formatted_msg(msg_ref)
 
     @staticmethod
-    def get_formatted_msg(msg_ref: Message, *args: Optional[List[str]]) -> str:
+    def get_formatted_msg(msg_ref: Message | int, *args: Optional[List[str]]) -> str:
         """
 
         :param msg_ref:
@@ -289,18 +310,23 @@ class Messages:
         if Messages._instance is None:
             Messages._instance = Messages()
 
-        msg_id = msg_ref.get_msg_id()
-        unformatted_msg = 'Message not defined'
+        msg_id: int
+        unformatted_msg = ''
+        if isinstance(msg_ref, int):
+            msg_ref = Message.get_ref_by_id(msg_ref)
 
-        unformatted_msg = CriticalSettings.ADDON.getLocalizedString(msg_id)
-        if unformatted_msg == '':
-            unformatted_msg = str(msg_id)
-            if Messages._instance._logger.isEnabledFor(ERROR):
-                Messages._instance._logger.error(
-                    'Can not find message from strings for message id: {} msg_key: {}'
-                        .format(msg_ref.get_default_msg(),  msg_id))
-
-            if Messages._instance._logger.isEnabledFor(DEBUG):
-                unformatted_msg += '_default_message'
+        msg_id: int = 0
+        try:
+            if isinstance(msg_ref, Message):
+                msg_id = msg_ref.get_msg_id()
+                unformatted_msg = CriticalSettings.ADDON.getLocalizedString(msg_id)
+            if unformatted_msg == '':
+                unformatted_msg = f'Message not defined: {str(msg_id)}'
+                if Messages._instance._logger.isEnabledFor(ERROR):
+                    Messages._instance._logger.error(
+                        f'Can not find message from strings for message id: {str(msg_id)}')
+        except:
+            unformatted_msg = f"Invalid msg id: {str(msg_id)}"
+            module_logger.exception(unformatted_msg)
 
         return unformatted_msg.format(*args)

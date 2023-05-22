@@ -402,7 +402,7 @@ class BasicLogger(Logger):
 
             for th in threads_to_dump:
                 th: threading.Thread = threading.current_thread()
-                sio.write(f'\n# ThreadID: {th.name} Daemon: {th.isDaemon()}\n\n')
+                sio.write(f'\n# ThreadID: {th.name} Daemon: {th.daemon}\n\n')
 
                 # Remote the logger's frames from it's thread.
 
@@ -425,6 +425,17 @@ class BasicLogger(Logger):
             sio.close()
             del sio
             get_addon_logger().debug(msg=msg, **kwargs)
+
+    @classmethod
+    def showNotification(cls, message, time_ms=3000, icon_path=None,
+                         header=CriticalSettings.ADDON_ID):
+        try:
+            icon_path = icon_path or xbmcvfs.translatePath(
+                    xbmcaddon.Addon(CriticalSettings.ADDON_ID).getAddonInfo('icon'))
+            xbmc.executebuiltin('Notification({0},{1},{2},{3})'.format(
+                    header, message, time_ms, icon_path))
+        except RuntimeError:  # Happens when disabling the addon
+            pass
 
     @staticmethod
     def on_settings_changed() -> None:

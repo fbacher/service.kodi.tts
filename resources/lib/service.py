@@ -9,6 +9,7 @@ from time import sleep
 import xbmc
 
 from common.python_debugger import PythonDebugger
+from common.debug import Debug
 
 
 REMOTE_DEBUG: bool = False
@@ -106,6 +107,7 @@ class TTSClosedException(Exception):
 
 
 class Commands:
+    DUMP_THREADS: Final[str] = 'DUMP_THREADS'
     TOGGLE_ON_OFF: Final[str] = 'TOGGLE_ON_OFF'
     RESET: Final[str] = 'RESET'
     REPEAT: Final[str] = 'REPEAT'
@@ -249,7 +251,9 @@ class TTSService(xbmc.Monitor):
             text = args.get('text')
             if text:
                 self.queueNotice(text, args.get('interrupt'))
-        if command == Commands.PREPARE_TO_SAY:
+        elif command == Commands.DUMP_THREADS:
+            Debug.dump_all_threads();
+        elif command == Commands.PREPARE_TO_SAY:
             # Used to preload text cache when caller anticipates text will be
             # voiced
             if not data:

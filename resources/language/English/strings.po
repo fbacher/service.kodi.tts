@@ -1091,3 +1091,28 @@ msgstr ""
 msgctxt "#32317"
 msgid "ResponsiveVoice"
 msgstr ""
+
+# Voice engine manager Speech Dispatcher
+msgctxt "#32318"
+msgid "Speech-Dispatcher"
+msgstr ""
+
+# Spelling
+msgctxt "#32319"
+msgid "Spelling"
+msgstr ""
+
+# Punctuation
+msgctxt "#32320"
+msgid "Punctuation"
+msgstr ""
+
+# Capital Recognition
+msgctxt "#32321"
+msgid "Capital Recognition"
+msgstr ""
+
+# Select Module
+msgctxt "#32322"
+msgid "Select Module"
+msgstr ""

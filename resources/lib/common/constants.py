@@ -59,7 +59,6 @@ class Constants(object):
 
         :return:
         """
-        # Constants.addonName)
         Constants.KODI_ADDON = addon  # From kutils import addon, same as kodiaddon.Addon()
         Constants.ADDON = addon.addon
 

@@ -36,7 +36,7 @@ class BackendIndex(IBackendIndex):
                                                        FestivalTTSBackend(),
                                                        # CepstralTTSBackend(),
                                                        #            CepstralTTSOEBackend(),
-                                                       # SpeechDispatcherTTSBackend(),
+                                                       SpeechDispatcherTTSBackend(),
                                                        #            VoiceOverBackend(),
                                                        # SpeechServerBackend(),
                                                        # ReciteTTSBackend(),

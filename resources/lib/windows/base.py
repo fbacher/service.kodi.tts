@@ -20,6 +20,7 @@ def parseItemExtra(controlID,current=None):
 
 class WindowHandlerBase:
     ID = None
+
     def __init__(self,win_id=None,service=None):
         self.service = service
         self._reset(win_id)
@@ -43,6 +44,9 @@ class WindowHandlerBase:
 
 class WindowReaderBase(WindowHandlerBase):
     _slideoutGroupID = 9000
+
+    def __init__(self,win_id=None,service=None) -> None:
+        super().__init__(win_id, service)
 
     def getName(self): return guitables.getWindowName(self.winID)
 
@@ -97,6 +101,9 @@ class WindowReaderBase(WindowHandlerBase):
 class DefaultWindowReader(WindowReaderBase):
     ID = 'default'
 
+    def __init__(self,win_id=None,service=None) -> None:
+        super().__init__(win_id, service)
+
     def getHeading(self):
         return xbmc.getInfoLabel('Control.GetLabel(1)') or ''
 
@@ -138,6 +145,10 @@ class DefaultWindowReader(WindowReaderBase):
 
 class NullReader(WindowReaderBase):
     ID = 'null'
+
+    def __init__(self,win_id=None,service=None) -> None:
+        super().__init__(win_id, service)
+
     def getName(self): return None
 
     def getControlText(self,controlID): return ('','')

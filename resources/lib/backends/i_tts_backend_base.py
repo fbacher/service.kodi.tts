@@ -1,4 +1,4 @@
-
+from backends.constraints import Constraints
 from backends.i_backend import IBackend
 from common.__init__ import *
 
@@ -16,12 +16,12 @@ class ITTSBackendBase(IBackend):
     interval = 100
     broken = False
     # Min, Default, Max, Integer_Only (no float)
-    speedConstraints = (0, 0, 0, True)
-    pitchConstraints = (0, 0, 0, True)
+    # speedConstraints: Constraints = Constraints(0, 0, 0, True)
+    # pitchConstraints: Constraints = (0, 0, 0, True)
 
     # Volume constraints imposed by the api being called
 
-    volumeConstraints = (-12, 0, 12, True)
+    # volumeConstraints = (-12, 0, 12, True)
 
     # Volume scale as presented to the user
 
@@ -64,16 +64,20 @@ class ITTSBackendBase(IBackend):
     def setWavStreamMode(self, enable=True):
         raise Exception('Not Implemented')
 
-    def scaleSpeed(self, value, limit):  # Target is between -20 and 20
+    @classmethod
+    def scaleSpeed(cls, value, limit):  # Target is between -20 and 20
         raise Exception('Not Implemented')
 
-    def scalePitch(self, value, limit):  # Target is between -20 and 20
+    @classmethod
+    def scalePitch(cls, value, limit):  # Target is between -20 and 20
         raise Exception('Not Implemented')
 
-    def scaleVolume(self, value, limit):
+    @classmethod
+    def scaleVolume(cls, value, limit):
         raise Exception('Not Implemented')
 
-    def scaleValue(self, value, constraints, limit):
+    @classmethod
+    def scaleValue(cls, value, constraints, limit):
         raise Exception('Not Implemented')
 
     def scale_db_to_percent(self, value, lower_bound=0, upper_bound=100):
@@ -95,15 +99,19 @@ class ITTSBackendBase(IBackend):
         raise Exception('Not Implemented')
 
     @classmethod
-    def get_pitch_constraints(cls):
+    def get_constraints(cls, setting: str) -> Constraints | None:
         raise Exception('Not Implemented')
 
     @classmethod
-    def get_volume_constraints(cls):
+    def get_pitch_constraints(cls) -> Constraints:
         raise Exception('Not Implemented')
 
     @classmethod
-    def get_speed_constraints(cls):
+    def get_volume_constraints(cls) -> Constraints:
+        raise Exception('Not Implemented')
+
+    @classmethod
+    def get_speed_constraints(cls) -> Constraints:
         raise Exception('Not Implemented')
 
     @classmethod

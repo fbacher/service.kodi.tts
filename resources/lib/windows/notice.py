@@ -7,8 +7,16 @@ from .base import WindowHandlerBase
 from common.messages import Messages
 from utils import addoninfo
 
+
 class NoticeDialog(WindowHandlerBase):
     ID = 'info'
+
+    def __init__(self,win_id=None,service=None):
+        super().__init__(win_id, service)
+        self.notices = []
+        self._visible = True #Pretend info was show so we check stuff on startup
+        self.lastHeading = '' #401
+        self.lastMessage = '' #402
 
     def init(self):
         self.notices = []
