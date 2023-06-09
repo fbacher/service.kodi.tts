@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 
-import xbmc, xbmcaddon, xbmcgui
+import xbmcaddon
+import xbmcgui
 
 from backends.backend_info_bridge import BackendInfoBridge
 from common.constants import Constants
-from common.settings import Settings
 from common.logger import *
+from common.settings import Settings
+from common.settings_low_level import SettingsProperties
 
 T = xbmcaddon.Addon(Constants.ADDON_ID).getLocalizedString
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -45,7 +47,7 @@ class ConfigUtils:
             return
         cls._logger.debug_verbose('service.kodi.tts.util.selectBackend value: ' +
                     choices[idx] + ' idx: ' + str(idx))
-        Settings.setSetting(Settings.BACKEND, choices[idx], None)
+        Settings.setSetting(SettingsProperties.ENGINE, choices[idx], None)
 
     @classmethod
     def selectPlayer(cls, backend_id):
@@ -136,7 +138,7 @@ class ConfigUtils:
             voice = 'female'
         else:
             voice = 'male'
-        Settings.setSetting(Settings.GENDER, voice, backend_id)
+        Settings.setSetting(SettingsProperties.GENDER, voice, backend_id)
 
 
 ConfigUtils.init_class()

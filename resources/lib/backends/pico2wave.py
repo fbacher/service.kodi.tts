@@ -2,13 +2,14 @@
 import os
 import subprocess
 
-from backends.audio import BasePlayerHandler, WavAudioPlayerHandler
+#  from backends.audio.player_handler import BasePlayerHandler, WavAudioPlayerHandler
 from backends.base import SimpleTTSBackendBase
-from backends.constraints import Constraints
+from backends.settings.constraints import Constraints
 from common.constants import Constants
 from common.logger import *
 from common.setting_constants import Backends
 from common.settings import Settings
+from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
 from common.typing import *
 
@@ -19,13 +20,13 @@ class Pico2WaveTTSBackend(SimpleTTSBackendBase):
     backend_id = Backends.PICO_TO_WAVE_ID
     displayName = 'pico2wave'
     speedConstraints: Constraints = Constraints(20, 100, 200, True, False, 1.0,
-                                                Settings.SPEED)
-    player_handler_class: Type[BasePlayerHandler] = WavAudioPlayerHandler
+                                                SettingsProperties.SPEED)
+    #  player_handler_class: Type[BasePlayerHandler] = WavAudioPlayerHandler
     constraints: Dict[str, Constraints] = {}
-    settings = {Settings.LANGUAGE: '',
-                Settings.PLAYER: None,
-                Settings.SPEED: 0,
-                Settings.VOLUME: 0
+    settings = {SettingsProperties.LANGUAGE: '',
+                SettingsProperties.PLAYER: None,
+                SettingsProperties.SPEED: 0,
+                SettingsProperties.VOLUME: 0
                 }
     supported_settings: Dict[str, str | int | bool] = settings
     _logger: BasicLogger = None
@@ -40,7 +41,7 @@ class Pico2WaveTTSBackend(SimpleTTSBackendBase):
         self.language = None
         self.stop_processing = False
         self.initialized = False
-        clz.constraints[Settings.SPEED] = clz.speedConstraints
+        clz.constraints[SettingsProperties.SPEED] = clz.speedConstraints
 
     def init(self):
         super().init()
@@ -70,7 +71,7 @@ class Pico2WaveTTSBackend(SimpleTTSBackendBase):
 
         # If caching is enabled, voice_file will be in the cache.
 
-        voice_file = self.player_handler.getOutFile(text_to_voice, use_cache=False)
+        #  voice_file = self.player_handler.getOutFile(text_to_voice, use_cache=False)
 
         self._logger.debug_verbose('pico2wave.runCommand text: ' + text_to_voice +
                          ' language: ' + self.language)
@@ -125,11 +126,11 @@ class Pico2WaveTTSBackend(SimpleTTSBackendBase):
 
             return languages, default_language
 
-        elif setting == Settings.PLAYER:
+        elif setting == SettingsProperties.PLAYER:
             # Get list of player ids. Id is same as is stored in settings.xml
 
             players = cls.get_players(include_builtin=False)
-            default_player = cls.get_setting_default(Settings.PLAYER)
+            default_player = cls.get_setting_default(SettingsProperties.PLAYER)
 
             return players, default_player
 

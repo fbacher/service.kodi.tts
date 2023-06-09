@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-from .base import WindowReaderBase, parseItemExtra
 import xbmc
+
 from . import windowparser
+from .base import parseItemExtra, WindowReaderBase
 
 
 class WeatherReader(WindowReaderBase):

@@ -1,4 +1,4 @@
-from ctypes import windll, c_buffer
+from ctypes import c_buffer, windll
 
 ID_COUNTER = 0
 
@@ -7,7 +7,7 @@ def idCounter():
     ID_COUNTER += 1
     if ID_COUNTER > 65535: ID_COUNTER = 1
     return ID_COUNTER
-    
+
 class _mci:
     def __init__(self):
         self.w32mci = windll.winmm.mciSendStringA

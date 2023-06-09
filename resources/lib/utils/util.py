@@ -1,18 +1,19 @@
 # -*- coding: utf-8 -*-
 
+import locale
 import os
 import re
 import time
-import locale
 
 import xbmc
 import xbmcaddon
 import xbmcvfs
 
-from common.settings import Settings
+from backends.settings.setting_properties import SettingsProperties
+from common import utils
 from common.constants import Constants
 from common.logger import *
-from common import utils
+from common.settings import Settings
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -30,13 +31,13 @@ ENABLE_PATH = os.path.join(xbmcvfs.translatePath(
     'special://profile'), 'addon_data', ADDON_ID, 'ENABLED')
 
 POSSIBLE_SETTINGS = ['language',
-                     'voice',
+                     SettingsProperties.VOICE,
                      'output',
                      'player',
-                     'pitch',
+                     SettingsProperties.PITCH,
                      'gender',
-                     'speed',
-                     'volume',
+                     SettingsProperties.SPEED,
+                     SettingsProperties.VOLUME,
                      'pipe']
 
 language_code = None
@@ -182,36 +183,6 @@ def notifySayText(text, interrupt=False):
     command = BASE_COMMAND.format(text, repr(interrupt).lower())
     # print command
     xbmc.executebuiltin(command)
-
-
-################################################################
-# Deprecated in Gotham - now using NotifyAll
-LAST_COMMAND_DATA = ''
-
-
-def initCommands():
-    global LAST_COMMAND_DATA
-    LAST_COMMAND_DATA = ''
-    setSetting('EXTERNAL_COMMAND', '')
-
-
-def sendCommand(command):
-    commandData: str = f'{time.time()}:{command}'
-    setSetting('EXTERNAL_COMMAND', commandData)
-
-
-def getCommand():
-    global LAST_COMMAND_DATA
-    commandData = getSetting('EXTERNAL_COMMAND', '')
-    module_logger.debug_verbose('util.getCommand data: ' + commandData)
-    if commandData == LAST_COMMAND_DATA:
-        return None
-    LAST_COMMAND_DATA = commandData
-    return commandData.split(':', 1)[-1]
-
-
-# End deprecated
-################################################################
 
 
 def init():

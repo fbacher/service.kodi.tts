@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import xbmc
+
 from .base import WindowReaderBase
+
 
 class SubtitlesDialogReader(WindowReaderBase):
     ID = 'subtitlesdialog'

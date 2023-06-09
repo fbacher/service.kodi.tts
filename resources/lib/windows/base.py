@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
 
+import xbmc
+import xbmcgui
+
 from common.messages import Messages
-from . import guitables
-from . import windowparser
-from . import skintables
-
-import xbmc, xbmcgui
-
+from . import guitables, skintables, windowparser
 
 CURRENT_SKIN = skintables.CURRENT_SKIN
 

@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 import xbmc
+
+from common.messages import Messages
 from . import guitables
 from .base import WindowReaderBase
-from common.messages import Messages
 
 
 class PVRWindowReaderBase(WindowReaderBase):

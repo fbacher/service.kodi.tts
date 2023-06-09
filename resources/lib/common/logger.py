@@ -12,11 +12,12 @@ import sys
 import threading
 import traceback
 import warnings
-
 from io import StringIO
 from logging import *
 
-import xbmc, xbmcaddon, xbmcvfs
+import xbmc
+import xbmcaddon
+import xbmcvfs
 
 __all__ = ['BASIC_FORMAT', 'CRITICAL', 'DEBUG', 'DEBUG_VERBOSE',
            'DEBUG_EXTRA_VERBOSE', 'ERROR', 'DISABLED',

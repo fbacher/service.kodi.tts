@@ -10,7 +10,6 @@ import xpath
 from common.constants import Constants
 from common.logger import *
 
-
 if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
     module_logger = BasicLogger.get_module_logger(module_path=__file__)
 else:

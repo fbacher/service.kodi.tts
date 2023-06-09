@@ -12,7 +12,6 @@ import threading
 
 import xbmc
 import xbmcaddon
-from common.__init__ import *
 
 
 class PythonDebugger:
@@ -77,6 +76,7 @@ class PythonDebugger:
 
     @classmethod
     def _enable(cls) -> bool:
+        threading.current_thread().name = 'pydevd_startup'
         if cls.remote_debug:
             try:
                 import pydevd

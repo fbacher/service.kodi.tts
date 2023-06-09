@@ -2,16 +2,9 @@
 import subprocess
 import sys
 
-
-from common.constants import Constants
-from common.setting_constants import Languages, Players, Genders, Misc
-from common.logger import *
-from common.messages import Messages
-from common.settings import Settings
-from common.system_queries import SystemQueries
-from common import utils
-from common.system_queries import SystemQueries
 from backends.base import SimpleTTSBackendBase
+from common.logger import *
+from common.system_queries import SystemQueries
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import shutil
+import sys
 import urllib.error
 import urllib.error
 import urllib.parse
@@ -9,10 +10,12 @@ import urllib.request
 import urllib.request
 
 from backends.base import SimpleTTSBackendBase
-from backends.constraints import Constraints
+from backends.settings.constraints import Constraints
 from common.logger import *
 from common.settings import Settings
+from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
+from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -22,23 +25,23 @@ class SpeechServerBackend(SimpleTTSBackendBase):
     displayName = 'HTTP TTS Server (Requires Running Server)'
     canStreamWav = False
     pitchConstraints: Constraints = Constraints(-100, 0, 100, True, False, 1.0,
-                                                Settings.PITCH)
+                                                SettingsProperties.PITCH)
     speedConstraints: Constraints = Constraints(-20, 0, 20, True, False, 1.0,
-                                                Settings.SPEED)
+                                                SettingsProperties.SPEED)
 
     settings = {'engine': None,
                 'host': '127.0.0.1',
                 'perl_server': True,
                 'pipe': False,
                 'player': None,
-                'player_speed': 0,
-                'player_volume': 0,
+                SettingsProperties.PLAYER_SPEED: 0,
+                SettingsProperties.PLAYER_VOLUME: 0,
                 'port': 8256,
-                'remote_pitch': 0,
-                'remote_speed': 0,
-                'remote_volume': 0,
+                SettingsProperties.REMOTE_PITCH: 0,
+                SettingsProperties.REMOTE_SPEED: 0,
+                SettingsProperties.REMOTE_VOLUME: 0,
                 'speak_on_server': False,
-                'voice': None,
+                SettingsProperties.VOICE: None,
                 'voice.Flite': None,
                 'voice.eSpeak': None,
                 'voice.SAPI': None,
@@ -80,15 +83,15 @@ class SpeechServerBackend(SimpleTTSBackendBase):
 
     def updatePostdata(self,postdata):
         postdata['engine'] = self.engine
-        if self.voice: postdata['voice'] = self.voice
+        if self.voice: postdata[SettingsProperties.VOICE] = self.voice
         postdata['rate'] = self.remote_speed
-        postdata['pitch'] = self.remote_pitch
-        postdata['volume'] = self.remote_volume
+        postdata[SettingsProperties.PITCH] = self.remote_pitch
+        postdata[SettingsProperties.VOLUME] = self.remote_volume
 
     def runCommand(self,text,outFile):
         postdata = {'text': text} #TODO: This fixes encoding errors for non ascii characters, but I'm not sure if it will work properly for other languages
         if self.perlServer:
-            postdata['voice'] = self.voice
+            postdata[SettingsProperties.VOICE] = self.voice
             postdata['rate'] = self.remote_speed
             req = urllib.request.Request(self.httphost + 'speak.wav', urllib.parse.urlencode(postdata))
         else:
@@ -100,6 +103,8 @@ class SpeechServerBackend(SimpleTTSBackendBase):
                 if not res.info().get('Content-Type') == 'audio/x-wav': return False #If not a wav we will crash XBMC
                 shutil.copyfileobj(res,wav)
                 self.failFlag = False
+            except AbortException:
+                reraise(*sys.exc_info())
             except:
                 err = self._logger.error('SpeechServerBackend: wav.write',hide_tb=True)
                 if self.failFlag: self.flagAsDead(reason=err) #This is the second fail in a row, mark dead
@@ -114,6 +119,8 @@ class SpeechServerBackend(SimpleTTSBackendBase):
         try:
             urllib.request.urlopen(req)
             self.failFlag = False
+        except AbortException:
+            reraise(*sys.exc_info())
         except:
             err = self._logger.error('SpeechServerBackend: say',hide_tb=True)
             if self.failFlag: self.flagAsDead(reason=err) #This is the second fail in a row, mark dead
@@ -123,7 +130,7 @@ class SpeechServerBackend(SimpleTTSBackendBase):
     def runCommandAndPipe(self,text):
         postdata = {'text': text} #TODO: This fixes encoding errors for non ascii characters, but I'm not sure if it will work properly for other languages
         if self.perlServer:
-            postdata['voice'] = self.voice
+            postdata[SettingsProperties.VOICE] = self.voice
             postdata['rate'] = self.remote_speed
             req = urllib.request.Request(self.httphost + 'speak.wav', urllib.parse.urlencode(postdata))
         else:
@@ -134,6 +141,8 @@ class SpeechServerBackend(SimpleTTSBackendBase):
             if not res.info().get('Content-Type') == 'audio/x-wav': return None
             self.failFlag = False
             return res
+        except AbortException:
+            reraise(*sys.exc_info())
         except:
             err = self._logger.error('SpeechServerBackend: Failed to get wav from server',hide_tb=True)
             if self.failFlag: self.flagAsDead(reason=err) #This is the second fail in a row, mark dead
@@ -149,7 +158,7 @@ class SpeechServerBackend(SimpleTTSBackendBase):
         elif self.setting('pipe'):
             return self.PIPE
         else:
-            return self.WAVOUT
+            return self.FILEOUT
 
     def update(self):
         self.setPlayer(self.setting('player'))
@@ -171,23 +180,25 @@ class SpeechServerBackend(SimpleTTSBackendBase):
             self.flagAsDead(reason=version)
 
         if self.perlServer:
-            self.voice = self.setting('voice')
+            self.voice = self.setting(SettingsProperties.VOICE)
         else:
             self.engine = self.setting('engine')
             voice = self.setting('voice.{0}'.format(self.engine))
             if voice: voice = '{0}.{1}'.format(self.engine,voice)
             self.voice = voice
-        self.remote_pitch = self.setting('remote_pitch')
-        self.remote_speed = self.setting('remote_speed')
-        self.setSpeed(self.setting('player_speed'))
-        self.remote_volume = self.setting('remote_volume')
-        self.setVolume(self.setting('player_volume'))
+        self.remote_pitch = self.setting(SettingsProperties.REMOTE_PITCH)
+        self.remote_speed = self.setting(SettingsProperties.REMOTE_SPEED)
+        self.setSpeed(self.setting(SettingsProperties.PLAYER_SPEED))
+        self.remote_volume = self.setting(SettingsProperties.REMOTE_VOLUME)
+        self.setVolume(self.setting(SettingsProperties.PLAYER_VOLUME))
 
     def getVersion(self):
         req = urllib.request.Request(self.httphost + 'version')
         try:
             resp = urllib.request.urlopen(req)
             return resp.read()
+        except AbortException:
+            reraise(*sys.exc_info())
         except urllib.error.HTTPError as e:
             if e.code == 404: return 'perl.server'
             err = self._logger.error('Failed to get speech.server version',hide_tb=True)
@@ -200,6 +211,8 @@ class SpeechServerBackend(SimpleTTSBackendBase):
         req = urllib.request.Request(self.httphost + 'stop', '')
         try:
             urllib.request.urlopen(req)
+        except AbortException:
+            reraise(*sys.exc_info())
         except:
             self._logger.error('SpeechServerBackend: stop',hide_tb=True)
 
@@ -208,6 +221,8 @@ class SpeechServerBackend(SimpleTTSBackendBase):
         if not self.process: return
         try:
             self.process.terminate()
+        except AbortException:
+            reraise(*sys.exc_info())
         except:
             pass
 
@@ -215,6 +230,8 @@ class SpeechServerBackend(SimpleTTSBackendBase):
         if engine: engine = '?engine={0}'.format(engine)
         try:
             return urllib.request.urlopen(self.httphost + 'voices{0}'.format(engine)).read().splitlines()
+        except AbortException:
+            reraise(*sys.exc_info())
         except urllib.error.HTTPError:
             return None
         except:
@@ -228,6 +245,8 @@ class SpeechServerBackend(SimpleTTSBackendBase):
         if setting == 'engine':
             try:
                 engines = urllib.request.urlopen(self.httphost + 'engines/wav',data='').read().splitlines()
+            except AbortException:
+                reraise(*sys.exc_info())
             except urllib.error.HTTPError:
                 return None
             except:

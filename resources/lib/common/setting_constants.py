@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-
+from backends.settings.service_types import Services
+from backends.settings.setting_properties import SettingsProperties
+from common.messages import Message, Messages
 from common.typing import *
-from common.messages import Messages, Message
-from common.settings import Settings
 
 
 class BaseSettingsConstants:
@@ -21,16 +21,29 @@ class BaseSettingsConstants:
 
 
 class Backends(BaseSettingsConstants):
-    AUTO_ID = 'auto'
-    ESPEAK_ID = 'eSpeak'
-    FESTIVAL_ID = 'Festival'
-    FLITE_ID = 'Flite'
-    INTERNAL_ID = 'internal'
-    PICO_TO_WAVE_ID ='pico2wave'
-    RECITE_ID = 'recite'
-    RESPONSIVE_VOICE_ID = 'ResponsiveVoice'
-    SPEECH_DISPATCHER_ID = 'Speech-Dispatcher'
+    AUTO_ID: Final[str] = Services.AUTO_ENGINE_ID
+    ESPEAK_ID: Final[str] = Services.ESPEAK_ID
+    FESTIVAL_ID: Final[str] = Services.FESTIVAL_ID
+    FLITE_ID: Final[str] = Services.FLITE_ID
+    INTERNAL_ID: Final[str] = Services.INTERNAL_PLAYER_ID
+    LOG_ONLY_ID: Final[str] = Services.LOG_ONLY_ID
+    PICO_TO_WAVE_ID: Final[str] = Services.PICO_TO_WAVE_ID
+    RECITE_ID: Final[str] = Services.RECITE_ID
+    RESPONSIVE_VOICE_ID: Final[str] = Services.RESPONSIVE_VOICE_ID
+    SPEECH_DISPATCHER_ID: Final[str] = Services.SPEECH_DISPATCHER_ID
 
+    ALL_ENGINE_IDS: List[str] = [
+        AUTO_ID,
+        ESPEAK_ID,
+        FESTIVAL_ID,
+        FLITE_ID,
+        INTERNAL_ID,
+        LOG_ONLY_ID,
+        PICO_TO_WAVE_ID,
+        RECITE_ID,
+        RESPONSIVE_VOICE_ID,
+        SPEECH_DISPATCHER_ID
+    ]
     settings_map: Dict[str, Message] = {
         AUTO_ID: Messages.AUTO,
         ESPEAK_ID: Messages.BACKEND_ESPEAK,
@@ -40,69 +53,80 @@ class Backends(BaseSettingsConstants):
         SPEECH_DISPATCHER_ID: Messages.BACKEND_SPEECH_DISPATCHER
     }
 
+    # Separate cache for each engine. Short code that is a directory
+    # below the CACHE_PATH
+
+    ENGINE_CACHE_CODE: Dict[str, str] = {
+        ESPEAK_ID: 'espeak',
+        FESTIVAL_ID: 'fest',
+        FLITE_ID: 'flite',
+        RESPONSIVE_VOICE_ID: 'rv',
+        SPEECH_DISPATCHER_ID: 'speechDisp'
+    }
+
 
 class Languages(BaseSettingsConstants):
 
-    LOCALE_AF = 'af'
-    LOCALE_AF_ZA = 'af-ZA'
-    LOCALE_AR_SA = 'ar-SA'
-    LOCALE_BS = 'bs'
-    LOCALE_CA = 'ca'
-    LOCALE_CA_ES = 'ca-ES'
-    LOCALE_CS = 'cs'
-    LOCALE_CY = 'cy'
-    LOCALE_DA_DK = 'da-DK'
-    LOCALE_DE_DE = 'de-DE'
-    LOCALE_EL_GR = 'el-GR'
-    LOCALE_EN_AU = 'en-AU'
-    LOCALE_EN_GB = 'en-GB'
-    LOCALE_EN_IE = 'en-IE'
-    LOCALE_EN_IN = 'en-IN'
-    LOCALE_EN_US = 'en-US'
-    LOCALE_EN_ZA = 'en-ZA'
-    LOCALE_EO = 'eo'
-    LOCALE_ES_ES = 'es-ES'
-    LOCALE_ES = 'es'
-    LOCALE_ES_MX = 'es-MX'
-    LOCALE_ES_US = 'es-US'
-    LOCALE_FI_FI = 'fi-FI'
-    LOCALE_FR_BE = 'fr-BE'
-    LOCALE_FR_FR = 'fr-FR'
-    LOCALE_FR_CA = 'fr-CA'
-    LOCALE_FR = 'fr'
-    LOCALE_HI = 'hi'
-    LOCALE_HI_IN = 'hi-IN'
-    LOCALE_HR_HR = 'hr-HR'
-    LOCALE_HU_HU = 'hu-HU'
-    LOCALE_HY_AM = 'hy-AM'
-    LOCALE_ID_ID = 'id-ID'
-    LOCALE_IS_IS = 'is-IS'
-    LOCALE_IT_IT = 'it-IT'
-    LOCALE_JA_JP = 'ja-JP'
-    LOCALE_KO_KR = 'ko-KR'
-    LOCALE_LA = 'la'
-    LOCALE_LV_LV = 'lv-LV'
-    LOCALE_NB_NO = 'nb-NO'
-    LOCALE_NL_BE = 'nl-BE'
-    LOCALE_NL_NL = 'nl-NL'
-    LOCALE_NO_NO = 'no-NO'
-    LOCALE_PL_PL = 'pl-PL'
-    LOCALE_PT_BR = 'pt-BR'
-    LOCALE_PT_PT = 'pt-PT'
-    LOCALE_RO_RO = 'ro-RO'
-    LOCALE_RU_RU = 'ru-RU'
-    LOCALE_SK_SK = 'sk-SK'
-    LOCALE_SQ_AL = 'sq-AL'
-    LOCAL_SR_ME = 'sr-ME'
-    LOCALE_SR_RS = 'sr-RS'
-    LOCALE_SW_KE = 'sw-KE'
-    LOCALE_TA = 'ta'
-    LOCALE_TH_TH = 'th-TH'
-    LOCALE_TR_TR = 'tr-TR'
-    LOCALE_VI_VN = 'vi-VN'
-    LOCALE_ZH_CN = 'zh-CN'
-    LOCALE_ZH_HK = 'zh-HK'
-    LOCALE_ZH_TW = 'zh-TW'
+    LOCALE_AF: Final[str] = 'af'
+    LOCALE_AF_ZA: Final[str] = 'af-ZA'
+    LOCALE_AR_SA: Final[str] = 'ar-SA'
+    LOCALE_BS: Final[str] = 'bs'
+    LOCALE_CA: Final[str] = 'ca'
+    LOCALE_CA_ES: Final[str] = 'ca-ES'
+    LOCALE_CS: Final[str] = 'cs'
+    LOCALE_CY: Final[str] = 'cy'
+    LOCALE_DA_DK: Final[str] = 'da-DK'
+    LOCALE_DE_DE: Final[str] = 'de-DE'
+    LOCALE_EL_GR: Final[str] = 'el-GR'
+    LOCALE_EN_AU: Final[str] = 'en-AU'
+    LOCALE_EN_GB: Final[str] = 'en-GB'
+    LOCALE_EN_IE: Final[str] = 'en-IE'
+    LOCALE_EN_IN: Final[str] = 'en-IN'
+    LOCALE_EN_US: Final[str] = 'en-US'
+    LOCALE_EN_ZA: Final[str] = 'en-ZA'
+    LOCALE_EO: Final[str] = 'eo'
+    LOCALE_ES_ES: Final[str] = 'es-ES'
+    LOCALE_ES: Final[str] = 'es'
+    LOCALE_ES_MX: Final[str] = 'es-MX'
+    LOCALE_ES_US: Final[str] = 'es-US'
+    LOCALE_FI_FI: Final[str] = 'fi-FI'
+    LOCALE_FR_BE: Final[str] = 'fr-BE'
+    LOCALE_FR_FR: Final[str] = 'fr-FR'
+    LOCALE_FR_CA: Final[str] = 'fr-CA'
+    LOCALE_FR: Final[str] = 'fr'
+    LOCALE_HI: Final[str] = 'hi'
+    LOCALE_HI_IN: Final[str] = 'hi-IN'
+    LOCALE_HR_HR: Final[str] = 'hr-HR'
+    LOCALE_HU_HU: Final[str] = 'hu-HU'
+    LOCALE_HY_AM: Final[str] = 'hy-AM'
+    LOCALE_ID_ID: Final[str] = 'id-ID'
+    LOCALE_IS_IS: Final[str] = 'is-IS'
+    LOCALE_IT_IT: Final[str] = 'it-IT'
+    LOCALE_JA_JP: Final[str] = 'ja-JP'
+    LOCALE_KO_KR: Final[str] = 'ko-KR'
+    LOCALE_LA: Final[str] = 'la'
+    LOCALE_LV_LV: Final[str] = 'lv-LV'
+    LOCALE_NB_NO: Final[str] = 'nb-NO'
+    LOCALE_NL_BE: Final[str] = 'nl-BE'
+    LOCALE_NL_NL: Final[str] = 'nl-NL'
+    LOCALE_NO_NO: Final[str] = 'no-NO'
+    LOCALE_PL_PL: Final[str] = 'pl-PL'
+    LOCALE_PT_BR: Final[str] = 'pt-BR'
+    LOCALE_PT_PT: Final[str] = 'pt-PT'
+    LOCALE_RO_RO: Final[str] = 'ro-RO'
+    LOCALE_RU_RU: Final[str] = 'ru-RU'
+    LOCALE_SK_SK: Final[str] = 'sk-SK'
+    LOCALE_SQ_AL: Final[str] = 'sq-AL'
+    LOCAL_SR_ME: Final[str] = 'sr-ME'
+    LOCALE_SR_RS: Final[str] = 'sr-RS'
+    LOCALE_SW_KE: Final[str] = 'sw-KE'
+    LOCALE_TA: Final[str] = 'ta'
+    LOCALE_TH_TH: Final[str] = 'th-TH'
+    LOCALE_TR_TR: Final[str] = 'tr-TR'
+    LOCALE_VI_VN: Final[str] = 'vi-VN'
+    LOCALE_ZH_CN: Final[str] = 'zh-CN'
+    LOCALE_ZH_HK: Final[str] = 'zh-HK'
+    LOCALE_ZH_TW: Final[str] = 'zh-TW'
 
     settings_map = {
         LOCALE_AF: Messages.LOCALE_AF,
@@ -168,22 +192,34 @@ class Languages(BaseSettingsConstants):
     }
 
 
+# Most settings are stored using TTS-defined values. Each user
+# of the settings use a validator & constraints to translate to and
+# from TTS values. This is done to make it easier to share values
+# between engines, players, etc.
+
 class Players(BaseSettingsConstants):
-    NONE = 'Unknown Player'
-    SFX = 'PlaySFX'
-    WINDOWS = 'Windows'
-    APLAY = 'aplay'
-    PAPLAY = 'paplay'
-    AFPLAY = 'afplay'
-    SOX = 'sox'
-    MPLAYER = 'mplayer'
-    MPG321 = 'mpg321'
-    MPG123 = 'mpg123'
-    MPG321_OE_PI = 'mpg321_OE_Pi'
+    TTS: Final[str] = 'tts'
+    NONE: Final[str] = 'Unknown Player'
+    SFX: Final[str] = 'PlaySFX'
+    WINDOWS: Final[str] = 'Windows'
+    APLAY: Final[str] = 'aplay'
+    PAPLAY: Final[str] = 'paplay'
+    AFPLAY: Final[str] = 'afplay'
+    SOX: Final[str] = 'sox'
+    MPLAYER: Final[str] = 'mplayer'
+    MPG321: Final[str] = 'mpg321'
+    MPG123: Final[str] = 'mpg123'
+    MPG321_OE_PI: Final[str] = 'mpg321_OE_Pi'
 
-    # Built-in players
+    # Engine's built-in player
 
-    INTERNAL = 'internal'
+    INTERNAL: Final[str] = 'internal'
+
+    # HANDLERS
+
+    WavAudioPlayerHandler = 'wave_handler'
+    MP3AudioPlayerHandler = 'mp3_handler'
+    BuiltInAudioPlayerHandler = 'internal_handler'
 
     settings_map = {
         NONE: Messages.PLAYER_NONE,
@@ -197,14 +233,41 @@ class Players(BaseSettingsConstants):
         MPG321: Messages.PLAYER_MPG321,
         MPG123: Messages.PLAYER_MPG123,
         MPG321_OE_PI: Messages.PLAYER_MPG321_OE_PI,
+        INTERNAL: Messages.PLAYER_INTERNAL
+    }
+
+
+class Converters(BaseSettingsConstants):
+    NONE: Final[str] = 'Unknown Player'
+    WINDOWS: Final[str] = 'Windows'
+    SOX: Final[str] = 'sox'
+    MPLAYER: Final[str] = 'mplayer'
+    MPG123: Final[str] = 'mpg123'  # Can convert from mpg to wave, not too useful
+    MPG321_OE_PI: Final[str] = 'mpg321_OE_Pi'
+    MPG321: Final[str] = 'mpg321'  # near clone of mpg123, can convert mpg to wave
+
+    # Built-in players
+
+    INTERNAL: Final[str] = 'internal'
+
+    # TODO: Review to see if messages need to be unique to the converter job
+
+    settings_map = {
+        NONE: Messages.PLAYER_NONE,
+        WINDOWS: Messages.PLAYER_WINDOWS,
+        SOX: Messages.PLAYER_SOX,
+        MPLAYER: Messages.PLAYER_MPLAYER,
+        MPG321: Messages.PLAYER_MPG321,
+        MPG123: Messages.PLAYER_MPG123,
+        MPG321_OE_PI: Messages.PLAYER_MPG321_OE_PI,
         INTERNAL: Messages.PLAYER_INTERNAL,
     }
 
 
 class Genders(BaseSettingsConstants):
-    MALE = 'male'
-    FEMALE = 'female'
-    UNKNOWN = 'unknown'
+    MALE: Final[int] = 0
+    FEMALE: Final[int] = 1
+    UNKNOWN: Final[int] = 2
 
     settings_map = {
         MALE: Messages.GENDER_MALE,
@@ -214,7 +277,7 @@ class Genders(BaseSettingsConstants):
 
 
 class Misc(BaseSettingsConstants):
-    PITCH = Settings.PITCH
+    PITCH: Final[str] = SettingsProperties.PITCH
 
     settings_map = {
         PITCH: Messages.MISC_PITCH

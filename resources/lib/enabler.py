@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 import os
 import sys
+
 import xbmc
 # import xbmcaddon
-import xbmcaddon
 import xbmcvfs
 
 # from common.constants import Constants

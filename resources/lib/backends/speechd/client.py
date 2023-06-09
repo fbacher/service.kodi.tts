@@ -24,7 +24,10 @@ A more convenient interface is provided by the 'Speaker' class.
 
 #TODO: Blocking variants for speak, char, key, sound_icon.
 
-import socket, sys, os, subprocess, time, tempfile
+import os
+import socket
+import subprocess
+import sys
 
 try:
     import threading

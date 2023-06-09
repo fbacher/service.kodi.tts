@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-import os, hashlib, json
+import hashlib
+import json
+import os
+
 import xbmc
 
 from common.constants import Constants

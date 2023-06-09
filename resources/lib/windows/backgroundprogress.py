@@ -1,14 +1,17 @@
 # -*- coding: utf-8 -*-
 
 import time
-import xbmc, xbmcgui
-from windows.base import WindowReaderBase, WindowHandlerBase
+
+import xbmc
+import xbmcgui
+
+from backends.settings.setting_properties import SettingsProperties
+from common import utils
 from common.constants import Constants
 from common.logger import *
 from common.messages import Messages
 from common.settings import Settings
-from common import utils
-
+from windows.base import WindowHandlerBase, WindowReaderBase
 
 if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
     module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -124,10 +127,10 @@ class BackgroundProgress(WindowHandlerBase):
 
     def updateFromSettings(self):
         self.last = 0
-        self.interval = Settings.getSetting(Settings.BACKGROUND_PROGRESS_INTERVAL,
+        self.interval = Settings.getSetting(SettingsProperties.BACKGROUND_PROGRESS_INTERVAL,
                                             None, 5)
         self.playDuringMedia = Settings.getSetting(
-            Settings.SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA, None, False)
+            SettingsProperties.SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA, None, False)
 
     def _visible(self):
         return WindowHandlerBase.visible(self)
@@ -135,7 +138,7 @@ class BackgroundProgress(WindowHandlerBase):
     def visible(self):
         visible = self._visible()
         if visible:
-            if not Settings.getSetting(Settings.SPEAK_BACKGROUND_PROGRESS, None,
+            if not Settings.getSetting(SettingsProperties.SPEAK_BACKGROUND_PROGRESS, None,
                                        False):
                 return False
         else:

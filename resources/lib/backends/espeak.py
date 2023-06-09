@@ -1,62 +1,62 @@
 # -*- coding: utf-8 -*-
 
-import subprocess
 import ctypes
 import ctypes.util
-import errno
 import os
-from typing import Any, List, Union, Type
+import subprocess
+import sys
 
-from backends.audio import (AudioPlayer, BasePlayerHandler, SoundCapabilities,
-                            WavAudioPlayerHandler)
-from backends.audio.sound_capabilties import ServiceType
-from backends.base import Constraints, SimpleTTSBackendBase
 from backends import base
-from backends.audio import BuiltInAudioPlayer, BuiltInAudioPlayerHandler
-from common.typing import *
-from common.constants import Constants
-from common.setting_constants import Backends, Languages, Players, Genders, Misc
-from common.logger import *
-from common.messages import Messages
-from common.settings import Settings
-from common.system_queries import SystemQueries
+from backends.audio.builtin_audio_player import BuiltInAudioPlayer
+# from backends.audio.player_handler import BasePlayerHandler, WavAudioPlayerHandler
+from backends.audio.sound_capabilties import ServiceType, SoundCapabilities
+from backends.base import Constraints, SimpleTTSBackendBase
+from backends.settings.service_types import Services
 from common import utils
-
+from common.constants import Constants
+from common.logger import *
+from common.base_services import BaseServices
+from common.setting_constants import Backends, Genders, Players
+from common.settings import Settings
+from common.settings_low_level import SettingsProperties
+from common.system_queries import SystemQueries
+from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
-class ESpeakTTSBackend(base.SimpleTTSBackendBase):
+class ESpeakTTSBackend(base.SimpleTTSBackendBase, BaseServices):
     """
 
     """
     ID = Backends.ESPEAK_ID
+    service_ID: str = Services.ESPEAK_ID
     initialized: bool = False
     backend_id = Backends.ESPEAK_ID
     displayName = 'eSpeak'
-    speedConstraints = Constraints(80, 175, 450, True, False, 1.0, Settings.SPEED)
-    pitchConstraints = Constraints(0, 50, 99, True, False, 1.0, Settings.PITCH)
-    volumeNativeConstraints = Constraints(0, 100, 200, True, False, 1.0, Settings.VOLUME)
-    volumeConstraints = Constraints(-12, 0, 12, False, True, 1.0, Settings.VOLUME)
+    speedConstraints = Constraints(80, 175, 450, True, False, 1.0, SettingsProperties.SPEED)
+    pitchConstraints = Constraints(0, 50, 99, True, False, 1.0, SettingsProperties.PITCH)
+    volumeNativeConstraints = Constraints(0, 100, 200, True, False, 1.0, SettingsProperties.VOLUME)
+    volumeConstraints = Constraints(-12, 0, 12, False, True, 1.0, SettingsProperties.VOLUME)
     constraints: Dict[str, Constraints] = {}
 
-    player_handler_class: Type[BasePlayerHandler] = WavAudioPlayerHandler
+    #  player_handler_class: Type[BasePlayerHandler] = WavAudioPlayerHandler
     _supported_input_formats: List[str] = []
     _supported_output_formats: List[str] = [SoundCapabilities.WAVE]
     _provides_services: List[ServiceType] = [ServiceType.ENGINE, ServiceType.PLAYER]
-    _sound_capabilities = SoundCapabilities(ID, _provides_services,
+    sound_capabilities = SoundCapabilities(service_ID, _provides_services,
                                             _supported_input_formats,
                                             _supported_output_formats)
     # Supported settings and default values
 
     settings = {
         # 'output_via_espeak': False,
-        Settings.PLAYER: Players.INTERNAL,
-        Settings.PITCH: 0,
-        Settings.PIPE: False,
-        Settings.SPEED: 0,
-        Settings.VOICE: '',
-        Settings.VOLUME: 0
+        SettingsProperties.PLAYER: Players.INTERNAL,
+        SettingsProperties.PITCH: 0,
+        SettingsProperties.PIPE: False,
+        SettingsProperties.SPEED: 0,
+        SettingsProperties.VOICE: '',
+        SettingsProperties.VOLUME: 0
     }
     supported_settings: Dict[str, str | int | bool] = settings
 
@@ -70,10 +70,11 @@ class ESpeakTTSBackend(base.SimpleTTSBackendBase):
         clz._class_name = self.__class__.__name__
         if clz._logger is None:
             clz._logger = module_logger.getChild(type(self)._class_name)
+            clz.register(self)
 
-        clz.constraints[Settings.SPEED] = clz.speedConstraints
-        clz.constraints[Settings.PITCH] = clz.pitchConstraints
-        clz.constraints[Settings.VOLUME] = clz.volumeConstraints
+        clz.constraints[SettingsProperties.SPEED] = clz.speedConstraints
+        clz.constraints[SettingsProperties.PITCH] = clz.pitchConstraints
+        clz.constraints[SettingsProperties.VOLUME] = clz.volumeConstraints
 
     def init(self):
         super().init()
@@ -165,14 +166,14 @@ class ESpeakTTSBackend(base.SimpleTTSBackendBase):
 
     def getMode(self):
         clz = type(self)
-        default_player: str = clz.get_setting_default(Settings.PLAYER)
+        default_player: str = clz.get_setting_default(SettingsProperties.PLAYER)
         player: str = clz.get_player_setting(default_player)
         if player == BuiltInAudioPlayer.ID:
             return SimpleTTSBackendBase.ENGINESPEAK
-        elif type(self).getSetting(Settings.PIPE):
+        elif type(self).getSetting(SettingsProperties.PIPE):
             return SimpleTTSBackendBase.PIPE
         else:
-            return SimpleTTSBackendBase.WAVOUT
+            return SimpleTTSBackendBase.FILEOUT
 
     def runCommand(self, text, outFile):
         clz = type(self)
@@ -213,12 +214,14 @@ class ESpeakTTSBackend(base.SimpleTTSBackendBase):
             return
         try:
             self.process.terminate()
+        except AbortException:
+            reraise(*sys.exc_info())
         except:
             clz._logger.exception("")
 
     @classmethod
     def settingList(cls, setting, *args):
-        if setting == Settings.LANGUAGE:
+        if setting == SettingsProperties.LANGUAGE:
             # Returns list of languages and index to closest match to current
             # locale
 
@@ -258,7 +261,7 @@ class ESpeakTTSBackend(base.SimpleTTSBackendBase):
 
             return languages, default_setting
 
-        if setting == Settings.VOICE:
+        if setting == SettingsProperties.VOICE:
             cls.init_voices()
             current_lang = cls.getLanguage()
             current_lang = current_lang[0:2]
@@ -276,7 +279,7 @@ class ESpeakTTSBackend(base.SimpleTTSBackendBase):
 
             return voices
 
-        elif setting == Settings.GENDER:
+        elif setting == SettingsProperties.GENDER:
             cls.init_voices()
             current_lang = cls.getLanguage()
             voice_list = cls.voice_map.get(current_lang, [])
@@ -292,9 +295,9 @@ class ESpeakTTSBackend(base.SimpleTTSBackendBase):
 
             return genders
 
-        elif setting == Settings.PLAYER:
+        elif setting == SettingsProperties.PLAYER:
             # Get list of player ids. Id is same as is stored in settings.xml
-            default_player: str = cls.get_setting_default(Settings.PLAYER)
+            default_player: str = cls.get_setting_default(SettingsProperties.PLAYER)
             player_ids: List[str] = cls.get_player_ids(include_builtin=True)
             return player_ids, default_player
 
@@ -303,7 +306,7 @@ class ESpeakTTSBackend(base.SimpleTTSBackendBase):
     @classmethod
     def get_voice_id_for_name(cls, name):
         if len(cls.voice_map) == 0:
-            cls.settingList(Settings.VOICE)
+            cls.settingList(SettingsProperties.VOICE)
         return cls.voice_map[name]
 
     def getEngineVolume(self) -> int:
@@ -318,6 +321,8 @@ class ESpeakTTSBackend(base.SimpleTTSBackendBase):
         try:
             subprocess.run(['espeak', '--version'], stdout=(open(os.path.devnull, 'w')),
                            universal_newlines=True, stderr=subprocess.STDOUT)
+        except AbortException:
+            reraise(*sys.exc_info())
         except:
             return False
         return True
@@ -351,10 +356,10 @@ class espeak_VOICE(ctypes.Structure):
 
 
 ######### BROKEN ctypes method ############
-class ESpeakCtypesTTSBackend(base.TTSBackendBase):
+class ESpeakCtypesTTSBackend(base.BaseEngineService):
     backend_id = 'eSpeak-ctypes'
     displayName = 'eSpeak (ctypes)'
-    settings = {Settings.VOICE: ''}
+    settings = {SettingsProperties.VOICE: ''}
     broken = True
     _eSpeak = None
 
@@ -395,7 +400,7 @@ class ESpeakCtypesTTSBackend(base.TTSBackendBase):
         self.eSpeak.espeak_Synth(sb_text, size, 0, 0, 0, 0x1000, None, None)
 
     def update(self):
-        self.voice = type(self).getSetting(Settings.VOICE)
+        self.voice = type(self).getSetting(SettingsProperties.VOICE)
 
     def stop(self):
         if not self.eSpeak:
@@ -417,7 +422,7 @@ class ESpeakCtypesTTSBackend(base.TTSBackendBase):
     @classmethod
     def settingList(cls, setting, *args):
         return None
-        if setting == Settings.VOICE:
+        if setting == SettingsProperties.VOICE:
             if not ESpeakCtypesTTSBackend._eSpeak:
                 return None
             voices = ESpeakCtypesTTSBackend._eSpeak.espeak_ListVoices(None)

@@ -1,14 +1,25 @@
 # -*- coding: utf-8 -*-
 
-import urllib.request, urllib.parse, urllib.error, urllib.request, urllib.error, urllib.parse,\
-    shutil, os, subprocess, textwrap
+import os
+import shutil
+import subprocess
+import sys
+import textwrap
+import urllib.error
+import urllib.error
+import urllib.parse
+import urllib.parse
+import urllib.request
+import urllib.request
 
 import xbmc
 
-from backends import base, audio
+from backends import audio, base
+from backends.settings.setting_properties import SettingsProperties
+from common import utils
 from common.logger import *
 from common.system_queries import SystemQueries
-from common import utils
+from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -59,7 +70,7 @@ class GoogleTTSBackend(base.SimpleTTSBackendBase):
                 'language': 'en',
                 'pipe': False,
                 'player': 'mpg123',
-                'volume': 0
+                SettingsProperties.VOLUME: 0
                 }
 
     def init(self):
@@ -104,6 +115,8 @@ class GoogleTTSBackend(base.SimpleTTSBackendBase):
         req = urllib.request.Request(url, headers=headers)
         try:
             resp = urllib.request.urlopen(req)
+        except AbortException:
+            reraise(*sys.exc_info())
         except:
             # OldLogger.ERROR('Failed to open Google TTS URL',hide_tb=True)
             return False
@@ -124,6 +137,8 @@ class GoogleTTSBackend(base.SimpleTTSBackendBase):
             resp = urllib.request.urlopen(req)
             BasicLogger.debug_verbose('url: ' + req.get_full_url())
             BasicLogger.debug_verbose('headers: ' + str(req.header_items()))
+        except AbortException:
+            reraise(*sys.exc_info())
         except:
             # OldLogger.ERROR('Failed to open Google TTS URL',hide_tb=True)
             return None
@@ -145,19 +160,21 @@ class GoogleTTSBackend(base.SimpleTTSBackendBase):
     def update(self):
         self.language = self.setting('language')
         self.setPlayer(self.setting('player'))
-        self.setVolume(self.setting('volume'))
+        self.setVolume(self.setting(SettingsProperties.VOLUME))
         self.setMode(self.getMode())
 
     def getMode(self):
         if self.setting('pipe'):
             return base.SimpleTTSBackendBase.PIPE
         else:
-            return base.SimpleTTSBackendBase.WAVOUT
+            return base.SimpleTTSBackendBase.FILEOUT
 
     def stop(self):
         if not self.process: return
         try:
             self.process.terminate()
+        except AbortException:
+            reraise(*sys.exc_info())
         except:
             pass
 

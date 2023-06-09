@@ -1,12 +1,9 @@
 
-from itertools import *
 import math
 import operator
 import re
 import xml.dom
-import weakref
-
-import sys
+from itertools import *
 
 from xpath.exceptions import *
 

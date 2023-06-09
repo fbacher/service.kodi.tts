@@ -1,9 +1,7 @@
+import re
+
 from . import expr as X
 from .yappsrt import *
-
-
-from string import *
-import re
 
 
 class XPathScanner(Scanner):

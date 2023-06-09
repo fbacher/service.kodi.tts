@@ -1,7 +1,7 @@
 # coding=utf-8
-from common.__init__ import *
-from backends.i_tts_backend_base import ITTSBackendBase
 from backends.i_backend import IBackend
+from backends.i_tts_backend_base import ITTSBackendBase
+from common.__init__ import *
 
 
 class TTSBackendBridge(ITTSBackendBase):

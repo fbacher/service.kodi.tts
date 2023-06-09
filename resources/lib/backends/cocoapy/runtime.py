@@ -29,11 +29,6 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-import sys
-import platform
-import struct
-
-from ctypes import *
 from ctypes import util
 
 from .cocoatypes import *

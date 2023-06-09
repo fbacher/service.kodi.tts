@@ -1,8 +1,9 @@
-from common.__init__ import *
-from common.exceptions import NotReadyException
 from backends.i_backend_info import IBackendInfo
 from backends.i_tts_backend_base import ITTSBackendBase
-from backends.constraints import Constraints
+from backends.settings.constraints import Constraints
+from common.__init__ import *
+from common.exceptions import NotReadyException
+from common.base_services import BaseServices
 
 
 class BackendInfoBridge(IBackendInfo):
@@ -14,10 +15,8 @@ class BackendInfoBridge(IBackendInfo):
         type(self)._class_name = self.__class__.__name__
 
     @classmethod
-    def getBackend(cls, backend_id: str = None) -> ITTSBackendBase:
-        if cls._backendInfoImpl is None:
-            raise NotReadyException()
-        return cls._backendInfoImpl.getBackend(backend_id)
+    def getBackend(cls, backend_id: str = None) -> BaseServices:
+        return BaseServices.getService(backend_id)
 
     @classmethod
     def getBackendIds(cls) -> List[str]:
@@ -39,6 +38,7 @@ class BackendInfoBridge(IBackendInfo):
     def isBackendSettingSupported(cls, backend_id: str, setting_id: str) -> bool:
         return cls.getBackend(backend_id).isSettingSupported(setting_id)
 
+    '''
     @classmethod
     def getBackendSettingNames(cls, backend_id: str) -> List[str]:
         """
@@ -47,6 +47,7 @@ class BackendInfoBridge(IBackendInfo):
         :return:
         """
         return cls.getBackend(backend_id).getSettingNames()
+    '''
 
     @classmethod
     def getBackendConstraints(cls, backend_id: str, setting_id: str) -> Constraints:

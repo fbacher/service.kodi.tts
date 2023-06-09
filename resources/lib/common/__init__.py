@@ -1,7 +1,8 @@
 # coding=utf-8
 
-from common.typing import *
 from common.exceptions import AbortException, reraise
+from common.typing import *
+
 DownloadInfo = Dict[str, Any]
 
 __all__ = ["Dict", "List", "Union", "Set", "Any", "Optional", "DownloadInfo",

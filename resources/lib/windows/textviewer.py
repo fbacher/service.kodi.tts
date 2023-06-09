@@ -2,10 +2,11 @@
 import hashlib
 import re
 import time
+
 import xbmc
 
-from .base import WindowReaderBase
 from common.typing import *
+from .base import WindowReaderBase
 
 
 class TextViewerReader(WindowReaderBase):

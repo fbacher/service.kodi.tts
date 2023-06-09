@@ -1,8 +1,8 @@
-from common import *
 from backends.i_tts_backend_base import ITTSBackendBase
+from common import *
 
 
-class IBackendIndex:
+class IEngineIndex:
     SAPITTSBackend = 'SAPITTSBackend'
     OSXSayTTSBackend = 'OSXSayTTSBackend'
     ESpeakTTSBackend = 'ESpeakTTSBackend'

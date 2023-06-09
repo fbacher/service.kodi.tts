@@ -193,7 +193,7 @@ New Setting Format
                     </control>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">Flite</condition>
+                            <condition operator="is" setting="engine">Flite</condition>
                         </dependency>
                     </dependencies>
                 </setting>
@@ -202,7 +202,7 @@ New Setting Format
                     <default>false</default>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">Flite</condition>
+                            <condition operator="is" setting="engine">Flite</condition>
                         </dependency>
                     </dependencies>
                     <control type="toggle"/>
@@ -221,7 +221,7 @@ New Setting Format
                             <condition operator="is" setting="output_via_flite.Flite">false</condition>
                         </dependency>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">Flite</condition>
+                            <condition operator="is" setting="engine">Flite</condition>
                         </dependency>
                     </dependencies>
                 </setting>
@@ -242,7 +242,7 @@ New Setting Format
                         <dependency type="visible">
                             <and>
                                 <condition operator="is" setting="output_via_flite.Flite">false</condition>
-                                <condition operator="is" setting="backend">Flite</condition>
+                                <condition operator="is" setting="engine">Flite</condition>
                             </and>
                         </dependency>
                     </dependencies>
@@ -259,7 +259,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">Flite</condition>
+                            <condition operator="is" setting="engine">Flite</condition>
                         </dependency>
                         <dependency type="enable">
                             <or>
@@ -271,7 +271,7 @@ New Setting Format
                         <dependency type="visible">
                             <and>
                                 <condition operator="is" setting="output_via_flite.Flite">false</condition>
-                                <condition operator="is" setting="backend">Flite</condition>
+                                <condition operator="is" setting="engine">Flite</condition>
                             </and>
                         </dependency>
                     </dependencies>
@@ -294,7 +294,7 @@ New Setting Format
                     </control>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">eSpeak-ctypes</condition>
+                            <condition operator="is" setting="engine">eSpeak-ctypes</condition>
                         </dependency>
                     </dependencies>
                 </setting>
@@ -309,7 +309,7 @@ New Setting Format
                     </control>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">eSpeak</condition>
+                            <condition operator="is" setting="engine">eSpeak</condition>
                         </dependency>
                     </dependencies>
                 </setting>
@@ -322,7 +322,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">eSpeak</condition>
+                            <condition operator="is" setting="engine">eSpeak</condition>
                         </dependency>
                     </dependencies>
                     <control format="integer" type="slider">
@@ -338,7 +338,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">eSpeak</condition>
+                            <condition operator="is" setting="engine">eSpeak</condition>
                         </dependency>
                     </dependencies>
                     <control format="integer" type="slider">
@@ -350,7 +350,7 @@ New Setting Format
                     <default>false</default>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">eSpeak</condition>
+                            <condition operator="is" setting="engine">eSpeak</condition>
                         </dependency>
                     </dependencies>
                     <control type="toggle"/>
@@ -369,7 +369,7 @@ New Setting Format
                             <condition operator="is" setting="output_via_espeak.eSpeak">false</condition>
                         </dependency>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">eSpeak</condition>
+                            <condition operator="is" setting="engine">eSpeak</condition>
                         </dependency>
                     </dependencies>
                 </setting>
@@ -381,7 +381,7 @@ New Setting Format
                             <condition operator="is" setting="output_via_espeak.eSpeak">false</condition>
                         </dependency>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">eSpeak</condition>
+                            <condition operator="is" setting="engine">eSpeak</condition>
                         </dependency>
                     </dependencies>
                     <control type="toggle"/>
@@ -395,7 +395,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">eSpeak</condition>
+                            <condition operator="is" setting="engine">eSpeak</condition>
                         </dependency>
                     </dependencies>
                     <control format="integer" type="slider">
@@ -415,7 +415,7 @@ New Setting Format
                     </control>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">SAPI</condition>
+                            <condition operator="is" setting="engine">SAPI</condition>
                         </dependency>
                     </dependencies>
                 </setting>
@@ -428,7 +428,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">SAPI</condition>
+                            <condition operator="is" setting="engine">SAPI</condition>
                         </dependency>
                     </dependencies>
                     <control format="integer" type="slider">
@@ -444,7 +444,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">SAPI</condition>
+                            <condition operator="is" setting="engine">SAPI</condition>
                         </dependency>
                     </dependencies>
                     <control format="integer" type="slider">
@@ -460,7 +460,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">SAPI</condition>
+                            <condition operator="is" setting="engine">SAPI</condition>
                         </dependency>
                     </dependencies>
                     <control format="percentage" type="slider">
@@ -472,7 +472,7 @@ New Setting Format
                     <default>false</default>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">SAPI</condition>
+                            <condition operator="is" setting="engine">SAPI</condition>
                         </dependency>
                     </dependencies>
                     <control type="toggle"/>
@@ -490,7 +490,7 @@ New Setting Format
                     </control>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">pico2wave</condition>
+                            <condition operator="is" setting="engine">pico2wave</condition>
                         </dependency>
                     </dependencies>
                 </setting>
@@ -505,7 +505,7 @@ New Setting Format
                     </control>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">pico2wave</condition>
+                            <condition operator="is" setting="engine">pico2wave</condition>
                         </dependency>
                     </dependencies>
                 </setting>
@@ -524,7 +524,7 @@ New Setting Format
                             </or>
                         </dependency>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">pico2wave</condition>
+                            <condition operator="is" setting="engine">pico2wave</condition>
                         </dependency>
                     </dependencies>
                     <control format="integer" type="slider">
@@ -547,7 +547,7 @@ New Setting Format
                             </or>
                         </dependency>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">pico2wave</condition>
+                            <condition operator="is" setting="engine">pico2wave</condition>
                         </dependency>
                     </dependencies>
                     <control format="integer" type="slider">
@@ -567,7 +567,7 @@ New Setting Format
                     </control>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">Cepstral</condition>
+                            <condition operator="is" setting="engine">Cepstral</condition>
                         </dependency>
                     </dependencies>
                     <control format="action" type="button"/>
@@ -577,7 +577,7 @@ New Setting Format
                     <default>false</default>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">Cepstral</condition>
+                            <condition operator="is" setting="engine">Cepstral</condition>
                         </dependency>
                     </dependencies>
                     <control type="toggle"/>
@@ -591,7 +591,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">Cepstral</condition>
+                            <condition operator="is" setting="engine">Cepstral</condition>
                         </dependency>
                     </dependencies>
                     <control format="integer" type="slider">
@@ -607,7 +607,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">Cepstral</condition>
+                            <condition operator="is" setting="engine">Cepstral</condition>
                         </dependency>
                     </dependencies>
                     <control format="integer" type="slider">
@@ -623,7 +623,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">Cepstral</condition>
+                            <condition operator="is" setting="engine">Cepstral</condition>
                         </dependency>
                     </dependencies>
                     <control format="integer" type="slider">
@@ -644,7 +644,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">OSXSay</condition>
+                            <condition operator="is" setting="engine">OSXSay</condition>
                         </dependency>
                     </dependencies>
                     <control format="action" type="button"/>
@@ -658,7 +658,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">OSXSay"</condition>
+                            <condition operator="is" setting="engine">OSXSay"</condition>
                         </dependency>
                     </dependencies>
                     <control format="integer" type="slider">
@@ -674,7 +674,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">OSXSay"</condition>
+                            <condition operator="is" setting="engine">OSXSay"</condition>
                         </dependency>
                     </dependencies>
                     <control format="percentage" type="slider">
@@ -694,7 +694,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">Festival</condition>
+                            <condition operator="is" setting="engine">Festival</condition>
                         </dependency>
                     </dependencies>
                     <control format="action" type="button"/>
@@ -710,7 +710,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">Festival</condition>
+                            <condition operator="is" setting="engine">Festival</condition>
                         </dependency>
                     </dependencies>
                     <control format="action" type="button"/>
@@ -724,7 +724,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">Festival</condition>
+                            <condition operator="is" setting="engine">Festival</condition>
                         </dependency>
                     </dependencies>
                     <control format="integer" type="slider">
@@ -740,7 +740,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">Festival</condition>
+                            <condition operator="is" setting="engine">Festival</condition>
                         </dependency>
                     </dependencies>
                     <control format="integer" type="slider">
@@ -756,7 +756,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">Festival</condition>
+                            <condition operator="is" setting="engine">Festival</condition>
                         </dependency>
                     </dependencies>
                     <control format="integer" type="slider">
@@ -776,7 +776,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">Google</condition>
+                            <condition operator="is" setting="engine">Google</condition>
                         </dependency>
                     </dependencies>
                     <control format="action" type="button"/>
@@ -792,7 +792,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">Google</condition>
+                            <condition operator="is" setting="engine">Google</condition>
                         </dependency>
                     </dependencies>
                     <control format="action" type="button"/>
@@ -802,7 +802,7 @@ New Setting Format
                     <default>false</default>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">Google</condition>
+                            <condition operator="is" setting="engine">Google</condition>
                         </dependency>
                     </dependencies>
                     <control type="toggle"/>
@@ -823,7 +823,7 @@ New Setting Format
                             </or>
                         </dependency>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">Google</condition>
+                            <condition operator="is" setting="engine">Google</condition>
                         </dependency>
                     </dependencies>
                     <control format="integer" type="slider">
@@ -843,7 +843,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">ResponsiveVoice</condition>
+                            <condition operator="is" setting="engine">ResponsiveVoice</condition>
                         </dependency>
                     </dependencies>
                     <control format="action" type="button"/>
@@ -860,7 +860,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">ResponsiveVoice</condition>
+                            <condition operator="is" setting="engine">ResponsiveVoice</condition>
                         </dependency>
                     </dependencies>
                     <control type="list" format="string">
@@ -910,7 +910,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">ResponsiveVoice</condition>
+                            <condition operator="is" setting="engine">ResponsiveVoice</condition>
                         </dependency>
                     </dependencies>
                     <control format="action" type="button"/>
@@ -920,7 +920,7 @@ New Setting Format
                     <default>false</default>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">ResponsiveVoice</condition>
+                            <condition operator="is" setting="engine">ResponsiveVoice</condition>
                         </dependency>
                     </dependencies>
                     <control type="toggle"/>
@@ -941,7 +941,7 @@ New Setting Format
                             </or>
                         </dependency>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">ResponsiveVoice</condition>
+                            <condition operator="is" setting="engine">ResponsiveVoice</condition>
                         </dependency>
                     </dependencies>
                     <control format="integer" type="slider">
@@ -969,7 +969,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">Speech-Dispatcher</condition>
+                            <condition operator="is" setting="engine">Speech-Dispatcher</condition>
                         </dependency>
                     </dependencies>
                     <control format="action" type="button"/>
@@ -985,7 +985,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">Speech-Dispatcher</condition>
+                            <condition operator="is" setting="engine">Speech-Dispatcher</condition>
                         </dependency>
                     </dependencies>
                     <control format="action" type="button"/>
@@ -999,7 +999,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">Speech-Dispatcher</condition>
+                            <condition operator="is" setting="engine">Speech-Dispatcher</condition>
                         </dependency>
                     </dependencies>
                     <control format="integer" type="slider">
@@ -1015,7 +1015,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">Speech-Dispatcher</condition>
+                            <condition operator="is" setting="engine">Speech-Dispatcher</condition>
                         </dependency>
                     </dependencies>
                     <control format="integer" type="slider">
@@ -1031,7 +1031,7 @@ New Setting Format
                     </constraints>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">Speech-Dispatcher</condition>
+                            <condition operator="is" setting="engine">Speech-Dispatcher</condition>
                         </dependency>
                     </dependencies>
                     <control format="percentage" type="slider">
@@ -1048,7 +1048,7 @@ New Setting Format
                     <default>true</default>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">ttsd</condition>
+                            <condition operator="is" setting="engine">ttsd</condition>
                         </dependency>
                     </dependencies>
                     <control type="toggle"/>
@@ -1072,7 +1072,7 @@ New Setting Format
                             <condition operator="is" setting="perl_server.ttsd">false</condition>
                         </dependency>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">ttsd</condition>
+                            <condition operator="is" setting="engine">ttsd</condition>
                         </dependency>
                     </dependencies>
                     <control type="toggle"/>
@@ -1091,7 +1091,7 @@ New Setting Format
                             <condition operator="is" setting="perl_server.ttsd">false</condition>
                         </dependency>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">ttsd</condition>
+                            <condition operator="is" setting="engine">ttsd</condition>
                         </dependency>
                     </dependencies>
                     <control format="action" type="button"/>
@@ -1108,7 +1108,7 @@ New Setting Format
                     <dependencies>
                         <dependency type="visible">
                             <and>
-                                <condition operator="is" setting="backend">ttsd</condition>
+                                <condition operator="is" setting="engine">ttsd</condition>
                                 <condition operator="is" setting="perl_server.ttsd">false</condition>
                                 <condition operator="is" setting="engine.ttsd">Flite</condition>
                             </and>
@@ -1125,7 +1125,7 @@ New Setting Format
                     <dependencies>
                         <dependency type="visible">
                             <and>
-                                <condition operator="is" setting="backend">ttsd</condition>
+                                <condition operator="is" setting="engine">ttsd</condition>
                                 <condition name="InfoBool" on="property">eq(-4,false)</condition>
                                 <condition name="InfoBool" on="property">eq(-2,eSpeak)</condition>
                             </and>
@@ -1145,7 +1145,7 @@ New Setting Format
                     <dependencies>
                         <dependency type="visible">
                             <and>
-                                <condition operator="is" setting="backend">ttsd</condition>
+                                <condition operator="is" setting="engine">ttsd</condition>
                                 <condition operator="is" setting="perl_server.ttsd">false</condition>
                                 <condition operator="is" setting="engine.ttsd">SAPI</condition>
                             </and>
@@ -1165,7 +1165,7 @@ New Setting Format
                     <dependencies>
                         <dependency type="visible">
                             <and>
-                                <condition operator="is" setting="backend">ttsd</condition>
+                                <condition operator="is" setting="engine">ttsd</condition>
                                 <condition operator="is" setting="perl_server.ttsd">false</condition>
                                 <condition operator="is" setting="engine.ttsd">Cepstral</condition>
                             </and>
@@ -1185,7 +1185,7 @@ New Setting Format
                     <dependencies>
                         <dependency type="visible">
                             <and>
-                                <condition operator="is" setting="backend">ttsd</condition>
+                                <condition operator="is" setting="engine">ttsd</condition>
                                 <condition operator="is" setting="perl_server.ttsd">false</condition>
                                 <condition operator="is" setting="engine.ttsd">OSXSay</condition>
                             </and>
@@ -1205,7 +1205,7 @@ New Setting Format
                     <dependencies>
                         <dependency type="visible">
                             <and>
-                                <condition operator="is" setting="backend">ttsd</condition>
+                                <condition operator="is" setting="engine">ttsd</condition>
                                 <condition operator="is" setting="perl_server.ttsd">false</condition>
                                 <condition operator="is" setting="engine.ttsd">Festival</condition>
                             </and>
@@ -1225,7 +1225,7 @@ New Setting Format
                     <dependencies>
                         <dependency type="visible">
                             <and>
-                                <condition operator="is" setting="backend">ttsd</condition>
+                                <condition operator="is" setting="engine">ttsd</condition>
                                 <condition operator="is" setting="perl_server.ttsd">true</condition>
                             </and>
                         </dependency>
@@ -1249,7 +1249,7 @@ New Setting Format
                             </or>
                         </dependency>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">ttsd</condition>
+                            <condition operator="is" setting="engine">ttsd</condition>
                         </dependency>
                     </dependencies>
                     <control format="integer" type="slider">
@@ -1272,7 +1272,7 @@ New Setting Format
                             </or>
                         </dependency>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">ttsd</condition>
+                            <condition operator="is" setting="engine">ttsd</condition>
                         </dependency>
                     </dependencies>
                     <control format="integer" type="slider">
@@ -1291,7 +1291,7 @@ New Setting Format
                             <condition operator="is" setting="perl_server.ttsd">false</condition>
                         </dependency>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">ttsd</condition>
+                            <condition operator="is" setting="engine">ttsd</condition>
                         </dependency>
                     </dependencies>
                     <control format="integer" type="slider">
@@ -1318,7 +1318,7 @@ New Setting Format
                             <condition operator="is" setting="speak_on_server.ttsd">false</condition>
                         </dependency>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">ttsd</condition>
+                            <condition operator="is" setting="engine">ttsd</condition>
                         </dependency>
                     </dependencies>
                     <control format="action" type="button"/>
@@ -1331,7 +1331,7 @@ New Setting Format
                             <condition operator="is" setting="speak_on_server.ttsd">false</condition>
                         </dependency>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">ttsd</condition>
+                            <condition operator="is" setting="engine">ttsd</condition>
                         </dependency>
                     </dependencies>
                     <control type="toggle"/>
@@ -1352,7 +1352,7 @@ New Setting Format
                             </or>
                         </dependency>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">ttsd</condition>
+                            <condition operator="is" setting="engine">ttsd</condition>
                         </dependency>
                     </dependencies>
                     <control format="integer" type="slider">
@@ -1376,7 +1376,7 @@ New Setting Format
                             </or>
                         </dependency>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">ttsd</condition>
+                            <condition operator="is" setting="engine">ttsd</condition>
                         </dependency>
                     </dependencies>
                     <control format="integer" type="slider">
@@ -1392,7 +1392,7 @@ New Setting Format
                     <default>127.0.0.1</default>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">ttsd</condition>
+                            <condition operator="is" setting="engine">ttsd</condition>
                         </dependency>
                     </dependencies>
                     <control format="ip" type="edit">
@@ -1404,7 +1404,7 @@ New Setting Format
                     <default>8256</default>
                     <dependencies>
                         <dependency type="visible">
-                            <condition operator="is" setting="backend">ttsd</condition>
+                            <condition operator="is" setting="engine">ttsd</condition>
                         </dependency>
                     </dependencies>
                     <control format="integer" type="edit">
@@ -1417,7 +1417,7 @@ New Setting Format
         <!-- Options -->
         <category help="" id="options" label="32029">
             <group id="1">
-                <setting help="" id="reader_off" label="32032" type="boolean">
+                <setting help="" id="reader_on" label="32032" type="boolean">
                     <level>0</level>
                     <default>false</default>
                     <control type="toggle"/>
@@ -1538,7 +1538,7 @@ New Setting Format
                     <default>true</default>
                     <control type="toggle"/>
                 </setting>
-                <setting help="" id="disable_broken_backends" label="32045" type="boolean">
+                <setting help="" id="disable_broken_services" label="32045" type="boolean">
                     <level>0</level>
                     <default>true</default>
                     <control type="toggle"/>
@@ -1608,6 +1608,19 @@ New Setting Format
                         <heading>32210</heading>
                     </control>
                 </setting>
+                <!--
+                <setting help="" id="converter" label="32207" parent="cache_voice_files" type="path">
+                    <level>0</level>
+                    <default>mplayer</default>
+                    <dependencies>
+                        <dependency type="enable">
+                            <condition operator="is" setting="cache_voice_files">true</condition>
+                        </dependency>
+                    </dependencies>
+                    <control format="path" type="button">
+                        <heading>32208</heading>
+                    </control>
+                </setting> -->
             </group>
             <group id="1">
                 <setting help="" id="version" label="32178" type="string">

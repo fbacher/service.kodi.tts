@@ -1,8 +1,9 @@
-import requests
-import subprocess
-import platform
-import tempfile
 import os
+import platform
+import subprocess
+import tempfile
+
+import requests
 
 if platform.system() == "Windows":
     try:

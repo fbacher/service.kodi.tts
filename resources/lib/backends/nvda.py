@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
-import os, ctypes
-from .base import TTSBackendBase
-from common.constants import Constants
+import ctypes
+import os
+import sys
+
 from common.configuration_utils import ConfigUtils
+from common.constants import Constants
 from common.logger import *
+from common.typing import *
+from .base import BaseEngineService
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -30,7 +34,7 @@ except ImportError:
     windll =None
 
 
-class NVDATTSBackend(TTSBackendBase):
+class NVDATTSBackend(BaseEngineService):
     backend_id = 'nvda'
     displayName = 'NVDA'
     _logger: BasicLogger = None
@@ -53,12 +57,16 @@ class NVDATTSBackend(TTSBackendBase):
             ctypes.windll.kernel32.FreeLibrary(dll._handle)
             del dll
             return res
+        except AbortException:
+            reraise(*sys.exc_info())
         except:
             return False
 
     def init(self):
         try:
             self.dll = ctypes.windll.LoadLibrary(getDLLPath())
+        except AbortException:
+            reraise(*sys.exc_info())
         except:
             self.dll = None
 

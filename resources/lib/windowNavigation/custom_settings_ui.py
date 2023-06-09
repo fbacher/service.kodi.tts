@@ -3,11 +3,11 @@ Created on Jul 7, 2020
 
 @author: fbacher
 '''
+import threading
 
-from windowNavigation.settings_dialog import SettingsDialog
-from common.settings import Settings
 from common.constants import Constants
-from common.logger import (Logger, BasicLogger)
+from common.logger import (BasicLogger)
+from windowNavigation.settings_dialog import SettingsDialog
 
 if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
     module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -28,7 +28,7 @@ class SettingsGUI(object):
 
     @staticmethod
     def launch():
-
+        threading.current_thread.name = 'SettingsGUI'
         script_path = Constants.ADDON_PATH
         # Settings.save_settings()
         gui = SettingsDialog('script-tts-settings-dialog.xml',

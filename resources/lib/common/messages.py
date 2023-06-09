@@ -4,9 +4,9 @@ Created on Feb 28, 2019
 
 @author: fbacher
 """
-from common.typing import *
 from common.critical_settings import CriticalSettings
 from common.logger import *
+from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 

@@ -37,7 +37,7 @@ def getControlText(winID,controlID):
 
 def getSkinTable():
     global CURRENT_SKIN
-    import os, xbmc
+    import os
     skinPath = xbmcvfs.translatePath('special://skin')
     skinName = os.path.basename(skinPath.rstrip('\/')).split('skin.',1)[-1]
     CURRENT_SKIN = skinName

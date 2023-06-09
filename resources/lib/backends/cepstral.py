@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 
-import os, subprocess
+import os
+import subprocess
+import sys
 
 from backends import base
-from common.constants import Constants
-from common.system_queries import SystemQueries
+from backends.settings.setting_properties import SettingsProperties
+from common.typing import *
 from common.logger import *
+from common.system_queries import SystemQueries
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -15,6 +18,8 @@ def getStartupInfo():
         startupinfo = subprocess.STARTUPINFO()
         try:
             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW #Suppress terminal window
+        except AbortException:
+            reraise(*sys.exc_info())
         except:
             startupinfo.dwFlags |= 1
         return startupinfo
@@ -31,11 +36,11 @@ class CepstralTTSOEBackend(base.SimpleTTSBackendBase):
     volumeConstraints = (12, 0, 12, True)
 
     settings = {
-        'pitch',
-        'speed',
+        SettingsProperties.PITCH,
+        SettingsProperties.SPEED,
         'use_aoss',
-        'voice',
-        'volume'}
+        SettingsProperties.VOICE,
+        SettingsProperties.VOLUME}
 
     _class_name: str = None
 
@@ -79,11 +84,15 @@ class CepstralTTSOEBackend(base.SimpleTTSBackendBase):
         if self.process:
             try:
                 self.process.terminate()
+            except AbortException:
+                reraise(*sys.exc_info())
             except:
                 pass
         if self.aplayProcess:
             try:
                 self.aplayProcess.terminate()
+            except AbortException:
+                reraise(*sys.exc_info())
             except:
                 pass
 
@@ -109,11 +118,11 @@ class CepstralTTSBackend(base.SimpleTTSBackendBase):
     backend_id = 'Cepstral'
     displayName = 'Cepstral'
     canStreamWav = False
-    settings = {    'voice':'',
+    settings = {    SettingsProperties.VOICE:'',
                     'use_aoss':False,
-                    'speed':170,
-                    'volume':0,
-                    'pitch':0
+                    SettingsProperties.SPEED:170,
+                    SettingsProperties.VOLUME:0,
+                    SettingsProperties.PITCH:0
 
     }
     _logger: BasicLogger = None
@@ -158,6 +167,8 @@ class CepstralTTSBackend(base.SimpleTTSBackendBase):
         if self.process:
             try:
                 self.process.terminate()
+            except AbortException:
+                reraise(*sys.exc_info())
             except:
                 pass
 
@@ -165,15 +176,15 @@ class CepstralTTSBackend(base.SimpleTTSBackendBase):
         self.process.stdin.write(text + '\n\n')
 
     def update(self):
-        self.voice = self.setting('voice')
-        self.rate = self.setting('speed')
+        self.voice = self.setting(SettingsProperties.VOICE)
+        self.rate = self.setting(SettingsProperties.SPEED)
         self.useAOSS = self.setting('use_aoss')
         if self.useAOSS and not SystemQueries.commandIsAvailable('aoss'):
             self._logger.info('Cepstral: Use aoss is enabled, but aoss is not found. Disabling.')
             self.useAOSS = False
-        volume = self.setting('volume')
+        volume = self.setting(SettingsProperties.VOLUME)
         self.volume = int(round(100 * (10**(volume/20.0)))) #convert from dB to percent
-        pitch = self.setting('pitch')
+        pitch = self.setting(SettingsProperties.PITCH)
         self.pitch = 0.4 + ((pitch+6)/20.0) * 2 #Convert from (-6 to +14) value to (0.4 to 2.4)
 
     def stop(self):
@@ -204,7 +215,7 @@ class CepstralTTSBackend(base.SimpleTTSBackendBase):
 
     @classmethod
     def settingList(cls,setting,*args):
-        if setting == 'voice':
+        if setting == SettingsProperties.VOICE:
             return cls.voices()
         return None
 

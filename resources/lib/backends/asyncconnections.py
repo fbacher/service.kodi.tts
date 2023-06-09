@@ -1,10 +1,13 @@
-import socket, urllib.request, urllib.error, urllib.parse, http.client, select, time
+import http.client
+import select
+import socket
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
 
 from common.logger import *
-from common.constants import Constants
-from common.settings import Settings
-from common.monitor import my_monitor
-
+from common.monitor import Monitor
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -64,7 +67,7 @@ class _AsyncHTTPResponse(http.client.HTTPResponse):
                     break
                 ## <--- Right here, check to see whether thread has requested to stop
                 ##      Also check to see whether timeout has elapsed
-                if my_monitor.abortRequested() and self._logger.isEnabledFor(DEBUG):
+                if Monitor.wait_for_abort(0.10) and self._logger.isEnabledFor(DEBUG):
                     self._logger.debug(' -- XBMC requested abort during wait for server response: raising exception -- ')
                     raise AbortRequestedException('httplib.HTTPResponse._read_status')
                 elif STOP_REQUESTED and self._logger.isEnabledFor(DEBUG):
@@ -77,7 +80,6 @@ class _AsyncHTTPResponse(http.client.HTTPResponse):
                         resetStopRequest()
                         raise StopRequestedException('httplib.HTTPResponse._read_status')
 
-                time.sleep(0.1)
             return http.client.HTTPResponse._read_status(self)
         finally:
             setStoppable(False)
@@ -111,7 +113,7 @@ Handler = _Handler
 #    return handler
 
 def checkStop():
-    if my_monitor.abortRequested() and module_logger.isEnabledFor(DEBUG):
+    if Monitor.is_abort_requested() and module_logger.isEnabledFor(DEBUG):
         module_logger.debug(' -- XBMC requested abort during wait for connection to server: raising exception -- ')
         raise AbortRequestedException('socket[asyncconnections].create_connection')
     elif STOP_REQUESTED and module_logger.isEnabledFor(DEBUG):

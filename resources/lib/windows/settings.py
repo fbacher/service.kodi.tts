@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import xbmc
 
-from .base import WindowReaderBase
 from common.messages import Messages
+from .base import WindowReaderBase
 
 
 class SettingsReader(WindowReaderBase):

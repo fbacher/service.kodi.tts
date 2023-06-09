@@ -6,13 +6,14 @@ Created on Feb 10, 2019
 @author: Frank Feuerbacher
 """
 
-from common.typing import *
-
 import locale
 import os
 
 import xbmcvfs
+
+from common.typing import *
 from kutils.kodiaddon import Addon
+
 addonName = 'service.kodi.tts'
 addon = Addon(addonName)
 from kutils import addon

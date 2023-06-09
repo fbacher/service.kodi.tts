@@ -8,21 +8,18 @@ Created on Feb 19, 2019
 import datetime
 import faulthandler
 import io
-from io import StringIO
-
-import xbmcvfs
-
-import simplejson as json
 import sys
 import threading
 import traceback
-
-from sys import getsizeof, stderr
-from itertools import chain
 from collections import deque
+from io import StringIO
+from itertools import chain
+from sys import getsizeof
+
+import simplejson as json
+import xbmcvfs
 
 from common.critical_settings import CriticalSettings
-from .__init__ import *
 
 try:
     from reprlib import repr
@@ -72,12 +69,17 @@ class Debug:
         :param delay:
         :return:
         """
-        if delay is None or delay == 0:
-            cls._dump_all_threads()
-        else:
-            dump_threads = threading.Timer(delay, cls._dump_all_threads)
-            dump_threads.name = 'dump_threads'
-            dump_threads.start()
+        try:
+            if delay is None or delay == 0:
+                cls._dump_all_threads()
+            else:
+                dump_threads = threading.Timer(delay, cls._dump_all_threads)
+                dump_threads.name = 'dump_threads'
+                dump_threads.start()
+        except AbortException:
+            reraise(*sys.exc_info())
+        except Exception as e:
+            cls._logger.exception('')
 
     @classmethod
     def _dump_all_threads(cls) -> None:
@@ -86,40 +88,46 @@ class Debug:
 
         :return:
         """
-        addon_prefix = f'{Constants.ADDON_ID}/'
-        xbmc.log('dump_all_threads', xbmc.LOGDEBUG)
-        sio = StringIO()
-        sio.write('\n*** STACKTRACE - START ***\n\n')
-        code = []
-        #  Monitor.dump_wait_counts()
-        #  for threadId, stack in sys._current_frames().items():
-        for th in threading.enumerate():
-            sio.write(f'\n# ThreadID: {th.name} Daemon: {th.isDaemon()}\n\n')
-            stack = sys._current_frames().get(th.ident, None)
-            if stack is not None:
-                traceback.print_stack(stack, file=sio)
-
-        string_buffer: str = sio.getvalue() + '\n*** STACKTRACE - END ***\n'
-        sio.close()
-        msg = Debug._currentAddonName + ' : dump_all_threads'
-        xbmc.log(msg, xbmc.LOGDEBUG)
-        xbmc.log(string_buffer, xbmc.LOGDEBUG)
-
         try:
-            dump_path = f'{xbmcvfs.translatePath("special://temp")}' \
-                        f'{CriticalSettings.get_plugin_name()}_thread_dump.txt'
+            addon_prefix = f'{Constants.ADDON_ID}/'
+            xbmc.log('dump_all_threads', xbmc.LOGDEBUG)
+            sio = StringIO()
+            sio.write('\n*** STACKTRACE - START ***\n\n')
+            code = []
+            #  Monitor.dump_wait_counts()
+            #  for threadId, stack in sys._current_frames().items():
+            for th in threading.enumerate():
+                sio.write(f'\n# ThreadID: {th.name} Daemon: {th.isDaemon()}\n\n')
+                stack = sys._current_frames().get(th.ident, None)
+                if stack is not None:
+                    traceback.print_stack(stack, file=sio)
 
-            with io.open(dump_path.encode('utf-8'), mode='at', buffering=1,
-                         newline=None) as dump_file:
+            string_buffer: str = sio.getvalue() + '\n*** STACKTRACE - END ***\n'
+            sio.close()
+            msg = Debug._currentAddonName + ' : dump_all_threads'
+            xbmc.log(msg, xbmc.LOGDEBUG)
+            xbmc.log(string_buffer, xbmc.LOGDEBUG)
 
-                dump_file.write(f'\n{datetime.datetime.now()}'
-                                f'   *** STACKTRACE - START ***\n\n')
-                faulthandler.dump_traceback(file=dump_file, all_threads=True)
-                dump_file.write(f'\n{datetime.datetime.now()}'
-                                f'   *** STACKTRACE - END ***\n\n')
+            try:
+                dump_path = f'{xbmcvfs.translatePath("special://temp")}' \
+                            f'{CriticalSettings.get_plugin_name()}_thread_dump.txt'
 
+                with io.open(dump_path.encode('utf-8'), mode='at', buffering=1,
+                             newline=None) as dump_file:
+
+                    dump_file.write(f'\n{datetime.datetime.now()}'
+                                    f'   *** STACKTRACE - START ***\n\n')
+                    faulthandler.dump_traceback(file=dump_file, all_threads=True)
+                    dump_file.write(f'\n{datetime.datetime.now()}'
+                                    f'   *** STACKTRACE - END ***\n\n')
+            except AbortException:
+                reraise(*sys.exc_info())
+            except Exception as e:
+                cls._logger.exception(msg='')
+        except AbortException:
+            reraise(*sys.exc_info())
         except Exception as e:
-            cls._logger.exception(msg='')
+            cls._logger.exception('')
 
 
     @classmethod

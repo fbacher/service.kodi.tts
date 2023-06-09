@@ -1,9 +1,11 @@
 import sys
-from xpath.exceptions import *
+
 import xpath.exceptions
 import xpath.expr
 import xpath.parser
 import xpath.yappsrt
+from xpath.exceptions import *
+
 xpath = sys.modules[__name__]
 
 __all__ = ['find', 'findnode', 'findvalue', 'XPathContext', 'XPath']

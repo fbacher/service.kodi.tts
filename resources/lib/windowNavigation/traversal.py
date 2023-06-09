@@ -1,10 +1,9 @@
 
-import xbmc, xbmcgui
+import xbmcgui
 
-from common.constants import Constants
-from common.logger import (Logger, BasicLogger)
 import windows.guitables as guitables
-
+from common.constants import Constants
+from common.logger import (BasicLogger)
 
 if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
     module_logger = BasicLogger.get_module_logger(

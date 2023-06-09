@@ -13,6 +13,9 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 class SystemQueries:
     _logger = None
+    is_windows: bool | None = None
+    is_android: bool | None = None
+    is_osx: bool | None = None
 
     def __init__(self):
         SystemQueries._logger = module_logger.getChild(
@@ -20,16 +23,21 @@ class SystemQueries:
 
     @classmethod
     def isWindows(cls):
-        return xbmc.getCondVisibility('System.Platform.Windows')
+        if cls.is_windows is None:
+            cls.is_windows = xbmc.getCondVisibility('System.Platform.Windows')
+        return cls.is_windows
 
     @classmethod
     def isOSX(cls):
-        return xbmc.getCondVisibility('System.Platform.OSX')
-
+        if cls.is_osx is None:
+            cls.is_osx = xbmc.getCondVisibility('System.Platform.OSX')
+        return cls.is_osx
 
     @classmethod
     def isAndroid(cls):
-        return xbmc.getCondVisibility('System.Platform.Android')
+        if cls.is_android is None:
+            cls.is_android = xbmc.getCondVisibility('System.Platform.Android')
+        return cls.is_android
 
 
     @classmethod

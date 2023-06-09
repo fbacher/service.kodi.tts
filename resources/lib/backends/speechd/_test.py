@@ -15,14 +15,14 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import unittest
 import time
+import unittest
 
-from .client import PunctuationMode, CallbackType, SSIPClient, Scope, Speaker
+from .client import CallbackType, PunctuationMode, SSIPClient
 
 
 class _SSIPClientTest(unittest.TestCase):
-        
+
     def setUp(self):
         self._client = SSIPClient('test')
         self._client.set_language('en')
@@ -75,7 +75,7 @@ class AutomaticTest(_SSIPClientTest):
                 "code of this test method if you want to investigate "
                 "further.")
 
-    
+
 
 class VoiceTest(_SSIPClientTest):
     """This set of tests requires a user to listen to it.
@@ -84,7 +84,7 @@ class VoiceTest(_SSIPClientTest):
     automatically.
 
     """
-    
+
     def test_escapes(self):
         c = self._client
         c.speak("Testing data escapes:")
@@ -92,7 +92,7 @@ class VoiceTest(_SSIPClientTest):
         c.speak(".")
         c.speak("Marker at the end.\r\n.\r\n")
         c.speak(".\r\nMarker at the beginning.")
-    
+
     def test_voice_properties(self):
         c = self._client
         c.speak("Testing voice properties:")
@@ -118,7 +118,7 @@ class VoiceTest(_SSIPClientTest):
         c.char("a")
         c.key("shift_b")
         c.sound_icon("empty")
-        
+
     def test_lists(self):
          c = self._client
          for module in  c.list_output_modules():
@@ -129,7 +129,7 @@ class VoiceTest(_SSIPClientTest):
                  print(" -", module, name, lang, dialect)
                  c.set_synthesis_voice(name)
                  c.speak(module +" using voice "+ name)
-        
+
 
 if __name__ == '__main__':
     unittest.main()

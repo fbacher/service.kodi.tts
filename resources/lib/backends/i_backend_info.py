@@ -1,5 +1,5 @@
-from common.__init__ import *
 from backends.i_tts_backend_base import ITTSBackendBase
+from common.__init__ import *
 
 
 class IBackendInfo:

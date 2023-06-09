@@ -3,9 +3,9 @@
 # -*- coding: utf-8 -*-
 import xbmcgui
 
-from .base import WindowHandlerBase
 from common.messages import Messages
 from utils import addoninfo
+from .base import WindowHandlerBase
 
 
 class NoticeDialog(WindowHandlerBase):

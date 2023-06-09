@@ -1,18 +1,14 @@
 # -*- coding: utf-8 -*-
 
-import sys
-import os
-
-from backends.i_tts_backend_base import ITTSBackendBase
-from backends.i_backend_index import IBackendIndex
+from backends.backend_info_bridge import BackendInfoBridge
+from backends.i_backend_index import IEngineIndex
 from backends.i_backend_info import IBackendInfo
+from backends.i_tts_backend_base import ITTSBackendBase
 from common import *
 from common.constants import Constants
-from common.system_queries import SystemQueries
-from common.settings_bridge import SettingsBridge
 from common.logger import *
-
-from backends.backend_info_bridge import BackendInfoBridge
+from common.settings_bridge import SettingsBridge
+from common.system_queries import SystemQueries
 
 
 class BackendInfo(IBackendInfo):
@@ -37,7 +33,7 @@ class BackendInfo(IBackendInfo):
     def removeBackendsByProvider(cls, to_remove):
         rem = []
         for b in cls.backendsByPriority:
-            if b.get_backend_id() in to_remove:
+            if b.backend_id in to_remove:
                 rem.append(b)
         for r in rem:
             cls.backendsByPriority.remove(r)
@@ -73,13 +69,13 @@ class BackendInfo(IBackendInfo):
     @classmethod
     def getBackendFallback(cls) -> ITTSBackendBase | None:
         if SystemQueries.isATV2():
-            return cls.getBackendByClassName(IBackendIndex.FliteTTSBackend)
+            return cls.getBackendByClassName(IEngineIndex.FliteTTSBackend)
         elif SystemQueries.isWindows():
-            return cls.getBackendByClassName(IBackendIndex.SAPITTSBackend)
+            return cls.getBackendByClassName(IEngineIndex.SAPITTSBackend)
         elif SystemQueries.isOSX():
-            return  cls.getBackendByClassName(IBackendIndex.OSXSayTTSBackend)
+            return  cls.getBackendByClassName(IEngineIndex.OSXSayTTSBackend)
         elif SystemQueries.isOpenElec():
-            return  cls.getBackendByClassName(IBackendIndex.ESpeakTTSBackend)
+            return  cls.getBackendByClassName(IEngineIndex.ESpeakTTSBackend)
         for b in cls.backendsByPriority:
             if b._available():
                 return b
@@ -149,7 +145,7 @@ class BackendInfo(IBackendInfo):
         if provider_id == 'auto':
             return None
         for b in cls.backendsByPriority:
-            if b.get_backend_id() == provider_id and b._available():
+            if b.backend_id == provider_id and b._available():
                 return b
         return None
 

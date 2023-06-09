@@ -1,5 +1,5 @@
-from backends.constraints import Constraints
 from backends.i_backend import IBackend
+from backends.settings.constraints import Constraints
 from common.__init__ import *
 
 

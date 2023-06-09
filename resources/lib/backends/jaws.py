@@ -2,16 +2,9 @@
 
 import sys
 
-from backends.base import SimpleTTSBackendBase
-
-from common.constants import Constants
 from common.logger import *
 from common.system_queries import SystemQueries
-from common.messages import Messages
-from common.setting_constants import Languages, Genders, Players
-from common.settings import Settings
 from .base import ThreadedTTSBackend
-
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 

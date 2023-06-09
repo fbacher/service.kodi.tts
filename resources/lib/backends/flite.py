@@ -1,18 +1,16 @@
 # -*- coding: utf-8 -*-
-import os, subprocess
+import os
+import subprocess
+import sys
+
 import xbmc
 
-from typing import Any, List, Union, Type
-
-from backends.audio import BasePlayerHandler, WavAudioPlayerHandler
-from backends.base import SimpleTTSBackendBase
 from backends import base
-from backends.audio import BuiltInAudioPlayer, BuiltInAudioPlayerHandler
-from common.constants import Constants
-from common.setting_constants import Backends, Languages, Players, Genders, Misc
 from common.logger import *
-from common.messages import Messages
+from common.setting_constants import Backends, Players
+from common.typing import *
 from common.settings import Settings
+from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
 
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
@@ -24,11 +22,11 @@ class FliteTTSBackend(base.SimpleTTSBackendBase):
     #  speedConstraints = (20, 100, 200, True)
 
     settings = {
-        Settings.PIPE: False,
-                Settings.PLAYER: Players.INTERNAL,
-                Settings.SPEED: 100,
-                Settings.VOICE: 'kal16',
-        Settings.VOLUME: 0
+        SettingsProperties.PIPE: False,
+                SettingsProperties.PLAYER: Players.INTERNAL,
+                SettingsProperties.SPEED: 100,
+                SettingsProperties.VOICE: 'kal16',
+        SettingsProperties.VOLUME: 0
     }
     onATV2 = SystemQueries.isATV2()
 
@@ -83,12 +81,14 @@ class FliteTTSBackend(base.SimpleTTSBackendBase):
         if not self.onATV2 and self.setting('output_via_flite'):
             return base.SimpleTTSBackendBase.ENGINESPEAK
         else:
-            return base.SimpleTTSBackendBase.WAVOUT
+            return base.SimpleTTSBackendBase.FILEOUT
 
     def stop(self):
         if not self.process: return
         try:
             self.process.terminate()
+        except AbortException:
+            reraise(*sys.exc_info())
         except:
             pass
 
@@ -97,15 +97,15 @@ class FliteTTSBackend(base.SimpleTTSBackendBase):
         if cls.onATV2:
             return None
 
-        elif setting == Settings.PLAYER:
+        elif setting == SettingsProperties.PLAYER:
             # Get list of player ids. Id is same as is stored in settings.xml
 
             players = cls.get_players(include_builtin=False)
-            default_player = cls.get_setting_default(Settings.PLAYER)
+            default_player = cls.get_setting_default(SettingsProperties.PLAYER)
 
             return players, default_player
 
-        elif setting == 'voice':
+        elif setting == SettingsProperties.VOICE:
             return [(v,v) for v in subprocess.check_output(['flite','-lv'],
                                                            universal_newlines=True).split(': ',1)[-1].strip().split(' ')]
 
@@ -118,7 +118,7 @@ class FliteTTSBackend(base.SimpleTTSBackendBase):
             return SystemQueries.isATV2() and SystemQueries.commandIsAvailable('flite')
         return True
 
-#class FliteTTSBackend(TTSBackendBase):
+#class FliteTTSBackend(BaseEngineService):
 #    backend_id = 'Flite':q:q
 #    def __init__(self):
 #        import ctypes
@@ -143,7 +143,7 @@ class FliteTTSBackend(base.SimpleTTSBackendBase):
 #            return False
 #        return True
 
-#class FliteTTSBackend(TTSBackendBase):
+#class FliteTTSBackend(BaseEngineService):
 #    backend_id = 'Flite'
 #
 #    def say(self,text,interrupt=False):

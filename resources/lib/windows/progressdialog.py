@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
-import xbmc, time
-from .base import WindowReaderBase
+import time
+import xbmc
+
 from . import guitables
+from .base import WindowReaderBase
+
 
 class ProgressDialogReader(WindowReaderBase):
     ID = 'progressdialog'

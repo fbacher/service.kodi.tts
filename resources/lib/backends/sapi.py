@@ -5,7 +5,9 @@ import os
 import sys
 import wave
 
-from backends.constraints import Constraints
+from backends.settings.constraints import Constraints
+from common.settings_low_level import SettingsProperties
+from common.typing import *
 
 try:
     import importlib
@@ -69,6 +71,8 @@ def lookupGenericComError(com_error):
         for l1, l2, l3 in zip(lines[0::3], lines[1::3], lines[2::3]):
             if errno in l2:
                 return l1, l3
+    except AbortException:
+        reraise(*sys.exc_info())
     except:
         pass
     return None
@@ -86,17 +90,17 @@ class SAPI:
     PARSE_SAPI = 128
 
     speedConstraints: Constraints = Constraints(-10, 0, 10, True, False, 1.0,
-                                                Settings.SPEED)
+                                                SettingsProperties.SPEED)
     pitchConstraints: Constraints = Constraints(-10, 0, 10, True, False, 1.0,
-                                                Settings.PITCH)
+                                                SettingsProperties.PITCH)
     volumeConstraints: Constraints = Constraints(0, 100, 100, True, False, 1.0,
-                                                 Settings.VOLUME)
+                                                 SettingsProperties.VOLUME)
 
     settings = {
-        'pitch': 0,
-        'speed': 0,
-        'voice': None,
-        'volume': 0
+        SettingsProperties.PITCH: 0,
+        SettingsProperties.SPEED: 0,
+        SettingsProperties.VOICE: None,
+        SettingsProperties.VOLUME: 0
     }
     _logger: BasicLogger = None
     _class_name: str = None
@@ -120,11 +124,15 @@ class SAPI:
         self.interrupt = False
         try:
             self.reset()
+        except AbortException:
+            reraise(*sys.exc_info())
         except:
             self._logger.exception('SAPI: Initialization failed: retrying...')
             utils.sleep(1000)  # May not be necessary, but here it is
             try:
                 self.reset()
+            except AbortException:
+                reraise(*sys.exc_info())
             except:
                 self._logger.exception('SAPI: Initialization failed: Giving up.')
                 return
@@ -189,6 +197,8 @@ class SAPI:
             shutil.rmtree(gen, ignore_errors=True)
             if not os.path.exists(gen):
                 os.makedirs(gen)
+        except AbortException:
+            reraise(*sys.exc_info())
         except:
             cls._logger.exception('SAPI: Failed to empty comtypes gen dir')
         finally:
@@ -218,6 +228,8 @@ class SAPI:
                 else:
                     self._logger.debug(
                         'Failed to lookup SAPI/COM error: {0}'.format(com_error))
+        except AbortException:
+            reraise(*sys.exc_info())
         except:
             cls._logger.exception('Error looking up SAPI error: {0}'.format(com_error))
         cls._logger.debug(
@@ -246,6 +258,8 @@ class SAPI:
                 return None
             try:
                 return func(self, *args, **kwargs)
+            except AbortException:
+                reraise(*sys.exc_info())
             except self.COMError as e:
                 self.logSAPIError(e, func.__name__)
             except:
@@ -258,6 +272,8 @@ class SAPI:
                 self.valid = True
                 cls._logger.debug('SAPI: Resetting succeeded.')
                 return func(self, *args, **kwargs)
+            except AbortException:
+                reraise(*sys.exc_info())
             except self.COMError as e:
                 self.valid = False
                 self.logSAPIError(e, func.__name__)
@@ -338,19 +354,19 @@ SAPI.class_init()
 class SAPITTSBackend(SimpleTTSBackendBase):
     backend_id = 'SAPI'
     displayName = 'SAPI (Windows Internal)'
-    settings = {'speak_via_kodi': True,
-                'voice': '',
-                'speed': 0,
-                'pitch': 0,
-                'volume': 100
+    settings = {SettingsProperties.SPEAK_VIA_KODI: True,
+                SettingsProperties.VOICE: '',
+                SettingsProperties.SPEED: 0,
+                SettingsProperties.PITCH: 0,
+                SettingsProperties.VOLUME: 100
                 }
     canStreamWav = True
     speedConstraints: Constraints = Constraints(-10, 0, 10, True, False, 1.0,
-                                                Settings.SPEED)
+                                                SettingsProperties.SPEED)
     pitchConstraints: Constraints = Constraints(-10, 0, 10, True, False, 1.0,
-                                                Settings.PITCH)
+                                                SettingsProperties.PITCH)
     volumeConstraints: Constraints = Constraints(0, 100, 100, True, False, 1.0,
-                                                 Settings.VOLUME)
+                                                 SettingsProperties.VOLUME)
     volumeExternalEndpoints = (0, 100)
     volumeStep = 5
     volumeSuffix = '%'
@@ -476,17 +492,17 @@ class SAPITTSBackend(SimpleTTSBackendBase):
         cls = type(self)
 
         self.setMode(self.getMode())
-        self.ssml = self.baseSSML.format(text='{text}', volume=self.setting('volume'),
-                                         speed=self.setting('speed'),
-                                         pitch=self.setting('pitch'))
-        voice_name = self.setting('voice')
+        self.ssml = self.baseSSML.format(text='{text}', volume=self.setting(SettingsProperties.VOLUME),
+                                         speed=self.setting(SettingsProperties.SPEED),
+                                         pitch=self.setting(SettingsProperties.PITCH))
+        voice_name = self.setting(SettingsProperties.VOICE)
         self.sapi.set_SpVoice_Voice(voice_name)
 
     def getMode(self):
         cls = type(self)
 
-        if self.setting('speak_via_kodi'):
-            return SimpleTTSBackendBase.WAVOUT
+        if self.setting(SettingsProperties.SPEAK_VIA_KODI):
+            return SimpleTTSBackendBase.FILEOUT
         else:
             if self.sapi:
                 self.sapi.set_SpVoice_AudioOutputStream(None)
@@ -496,7 +512,7 @@ class SAPITTSBackend(SimpleTTSBackendBase):
     def settingList(cls, setting, *args):
 
         sapi = SAPI()
-        if setting == 'voice':
+        if setting == SettingsProperties.VOICE:
             voices = []
             v = sapi.SpVoice_GetVoices()
             if not v:

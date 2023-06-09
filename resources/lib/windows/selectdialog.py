@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 import xbmc
 
-from .base import WindowReaderBase, CURRENT_SKIN
-
 from common.messages import Messages
+from .base import CURRENT_SKIN, WindowReaderBase
 
 
 class SelectDialogReader(WindowReaderBase):

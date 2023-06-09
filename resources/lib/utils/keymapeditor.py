@@ -3,15 +3,15 @@ import os
 from threading import Timer
 
 import xbmc
-import xbmcgui
 import xbmcaddon
+import xbmcgui
 import xbmcvfs
 
+from common import utils
 from common.constants import Constants
 from common.logger import *
 from common.messages import Messages
 from common.system_queries import SystemQueries
-from common import utils
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 

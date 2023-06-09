@@ -1,39 +1,50 @@
 # -*- coding: utf-8 -*-
 import io
-import os, subprocess
-from typing import Any, List, Union, Type
+import os
+import subprocess
 
-from backends.audio import BasePlayerHandler, WavAudioPlayerHandler
+#  from backends.audio.player_handler import BasePlayerHandler, WavAudioPlayerHandler
+import sys
+
+from backends.audio.sound_capabilties import SoundCapabilities
 from backends.base import SimpleTTSBackendBase
-from backends.constraints import Constraints
-from common.typing import *
-from common.constants import Constants
+from backends.settings.constraints import Constraints
+from backends.settings.service_types import Services, ServiceType
 from common.logger import *
-from common.system_queries import SystemQueries
-from common.messages import Messages
-from common.setting_constants import Backends, Languages, Genders, Players
+from common.base_services import BaseServices
+from common.setting_constants import Backends, Players
 from common.settings import Settings
+from common.settings_low_level import SettingsProperties
+from common.system_queries import SystemQueries
+from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
-class FestivalTTSBackend(SimpleTTSBackendBase):
+class FestivalTTSBackend(SimpleTTSBackendBase, BaseServices):
     backend_id = Backends.FESTIVAL_ID
+    service_ID: str = Services.FESTIVAL_ID
     displayName = 'Festival'
     canStreamWav = SystemQueries.commandIsAvailable('mpg123')
-    speedConstraints: Constraints = Constraints(-16, 0, 12, True, False, 1.0, Settings.SPEED)
-    pitchConstraints: Constraints = Constraints(50, 105, 500, True, False, 1.0, Settings.PITCH)
-    volumeConstraints: Constraints = Constraints(-12, 0, 12, True, True, 1.0, Settings.VOLUME)
-    player_handler_class: Type[BasePlayerHandler] = WavAudioPlayerHandler
+    speedConstraints: Constraints = Constraints(-16, 0, 12, True, False, 1.0, SettingsProperties.SPEED)
+    pitchConstraints: Constraints = Constraints(50, 105, 500, True, False, 1.0, SettingsProperties.PITCH)
+    volumeConstraints: Constraints = Constraints(-12, 0, 12, True, True, 1.0, SettingsProperties.VOLUME)
+    #  player_handler_class: Type[BasePlayerHandler] = WavAudioPlayerHandler
     constraints: Dict[str, Constraints] = {}
 
+    _supported_input_formats: List[str] = []
+    _supported_output_formats: List[str] = [SoundCapabilities.WAVE]
+    _provides_services: List[ServiceType] = [ServiceType.ENGINE, ServiceType.PLAYER]
+    sound_capabilities = SoundCapabilities(service_ID, _provides_services,
+                                            _supported_input_formats,
+                                            _supported_output_formats)
     settings = {
-        Settings.PIPE: False,
-        Settings.PITCH: 105,
-        Settings.PLAYER: Players.MPLAYER,
-        Settings.SPEED: 0,    # Undoubtedly settable, also supported by some players
-        Settings.VOICE: '',
-        Settings.VOLUME: 0
+        SettingsProperties.PIPE: False,
+        SettingsProperties.PITCH: 105,
+        SettingsProperties.PLAYER: Players.MPLAYER,
+        SettingsProperties.SPEED: 0,    # Undoubtedly settable, also supported by some players
+        SettingsProperties.VOICE: '',
+        SettingsProperties.VOLUME: 0
     }
     supported_settings: Dict[str, str | int | bool] = settings
     _logger: BasicLogger = None
@@ -45,10 +56,11 @@ class FestivalTTSBackend(SimpleTTSBackendBase):
         clz._class_name = self.__class__.__name__
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz._class_name)
+            clz.register(self)
         self.festivalProcess = None
-        clz.constraints[Settings.SPEED] = clz.speedConstraints
-        clz.constraints[Settings.PITCH] = clz.pitchConstraints
-        clz.constraints[Settings.VOLUME] = clz.volumeConstraints
+        clz.constraints[SettingsProperties.SPEED] = clz.speedConstraints
+        clz.constraints[SettingsProperties.PITCH] = clz.pitchConstraints
+        clz.constraints[SettingsProperties.VOLUME] = clz.volumeConstraints
 
     def init(self):
         super().init()
@@ -72,12 +84,12 @@ class FestivalTTSBackend(SimpleTTSBackendBase):
 
     def getMode(self):
         clz = type(self)
-        default_player: str = clz.get_setting_default(Settings.PLAYER)
+        default_player: str = clz.get_setting_default(SettingsProperties.PLAYER)
         player: str = clz.get_player_setting(default_player)
-        if clz.getSetting(Settings.PIPE):
+        if clz.getSetting(SettingsProperties.PIPE):
             return SimpleTTSBackendBase.PIPE
         else:
-            return SimpleTTSBackendBase.WAVOUT
+            return SimpleTTSBackendBase.FILEOUT
 
     def runCommand(self, text_to_voice, dummy):
         wave_file, exists = self.get_path_to_voice_file(text_to_voice, use_cache=False)
@@ -141,15 +153,17 @@ class FestivalTTSBackend(SimpleTTSBackendBase):
     def stop(self):
         try:
             self.festivalProcess.terminate()
+        except AbortException:
+            reraise(*sys.exc_info())
         except:
             return
 
     @classmethod
     def settingList(cls, setting, *args) -> Tuple[List[str], str]:
-        if setting == Settings.LANGUAGE:
+        if setting == SettingsProperties.LANGUAGE:
             return [], None
 
-        elif setting == Settings.VOICE:
+        elif setting == SettingsProperties.VOICE:
             p = subprocess.Popen(['festival', '-i'], stdin=subprocess.PIPE,
                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                  universal_newlines=True)
@@ -159,11 +173,11 @@ class FestivalTTSBackend(SimpleTTSBackendBase):
             if voices:
                 return [(v, v) for v in voices]  # name, id
 
-        elif setting == Settings.PLAYER:
+        elif setting == SettingsProperties.PLAYER:
             # Get list of player ids. Id is same as is stored in settings.xml
 
             player_ids: List[str] = cls.get_players(include_builtin=False)
-            default_player_id = cls.get_setting_default(Settings.PLAYER)
+            default_player_id = cls.get_setting_default(SettingsProperties.PLAYER)
 
             return player_ids, default_player_id
 

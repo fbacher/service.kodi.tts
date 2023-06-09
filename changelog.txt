@@ -512,7 +512,7 @@ Re-implement pico2wav using WaveFileTTSBackendBase
 ** 0.0.20 and before **
 
 Fix for Flite hanging XBMC on shutdown F6 key now opens the addon settings when the keymap is installed The backend currentSpeed() now returns 0 if none is set
-Backend select dialog now handled manually Added displayName to backends - used for selection dialog Backend selection now saved with provider name Added currentSpeed() to TTSBackendBase, works like currentVoice() Added XBMCAudioTTSBackendBase backend base Added ESpeak_XA_TTSBackend which uses subprocess and XBMC audio and implements currentSpeed() Added a fix for OK speaking as Oklahoma Settings now only shows 'Voices' option for the currently displayed speech engine
+Backend select dialog now handled manually Added displayName to backends - used for selection dialog Backend selection now saved with provider name Added currentSpeed() to BaseEngineService, works like currentVoice() Added XBMCAudioTTSBackendBase backend base Added ESpeak_XA_TTSBackend which uses subprocess and XBMC audio and implements currentSpeed() Added a fix for OK speaking as Oklahoma Settings now only shows 'Voices' option for the currently displayed speech engine
 Merge branch 'master' of https://github.com/ruuk/service.xbmc.tts
 Handle stopSFX in flite for ATV2
 Forgot to remove UTF8 decoding from SpeechDispatcherBackend.

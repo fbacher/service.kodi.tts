@@ -1,6 +1,6 @@
+import platform
+import struct
 from ctypes import *
-
-import sys, platform, struct
 
 __LP64__ = (8*struct.calcsize("P") == 64)
 __i386__ = (platform.machine() == 'i386')
@@ -36,7 +36,7 @@ else:
 
 NSIntegerEncoding = encoding_for_ctype(NSInteger)
 NSUIntegerEncoding = encoding_for_ctype(NSUInteger)
-CGFloatEncoding = encoding_for_ctype(CGFloat)    
+CGFloatEncoding = encoding_for_ctype(CGFloat)
 
 # Special case so that NSImage.initWithCGImage_size_() will work.
 CGImageEncoding = b'{CGImage=}'

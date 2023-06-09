@@ -2,9 +2,6 @@
 import xbmc
 
 from common.messages import Messages
-from common.constants import Constants
-from common.settings import Settings
-from common.logger import *
 
 '''
 Table data format:

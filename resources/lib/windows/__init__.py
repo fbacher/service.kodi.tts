@@ -1,28 +1,25 @@
 # -*- coding: utf-8 -*-
 import xbmc
 
-from .base import DefaultWindowReader, NullReader, KeymapKeyInputReader
-from .progressdialog import ProgressDialogReader
-from .virtualkeyboard import VirtualKeyboardReader
-from .virtualkeyboard import PVRSGuideSearchDialogReader
-from .pvrguideinfo import PVRGuideInfoReader
-from .textviewer import TextViewerReader
+from .base import DefaultWindowReader, KeymapKeyInputReader, NullReader
 from .busydialog import BusyDialogReader
 from .contextmenu import ContextMenuReader
-from .pvr import PVRWindowReader
-from .pvr import PVRGuideWindowReader
-from .pvr import PVRChannelsWindowReader
-from .pvr import PVRRecordingsWindowReader
-from .pvr import PVRTimersWindowReader
-from .pvr import PVRSearchWindowReader
 from .libraryviews import VideoLibraryWindowReader
-from .weather import WeatherReader
 from .playerstatus import PlayerStatusReader
-from .settings import SettingsReader
+from .progressdialog import ProgressDialogReader
+from .pvr import (PVRChannelsWindowReader, PVRGuideWindowReader,
+                  PVRRecordingsWindowReader,
+                  PVRSearchWindowReader, PVRTimersWindowReader, PVRWindowReader)
+from .pvrguideinfo import PVRGuideInfoReader
 from .selectdialog import SelectDialogReader
-from .yesnodialog import YesNoDialogReader
-from .videoinfodialog import VideoInfoDialogReader
+from .settings import SettingsReader
 from .subtitlesdialog import SubtitlesDialogReader
+from .textviewer import TextViewerReader
+from .videoinfodialog import VideoInfoDialogReader
+from .virtualkeyboard import PVRSGuideSearchDialogReader, VirtualKeyboardReader
+from .weather import WeatherReader
+from .yesnodialog import YesNoDialogReader
+
 READERS = (
     KeymapKeyInputReader,
     DefaultWindowReader,

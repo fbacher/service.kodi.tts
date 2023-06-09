@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import xbmc
+
 from . import base
+
 
 class VideoInfoDialogReader(base.DefaultWindowReader):
     ID = 'videoinfodialog'
@@ -55,4 +57,3 @@ class VideoInfoDialogReader(base.DefaultWindowReader):
         post = base.DefaultWindowReader.getControlPostfix(self, self.service.controlID)
         if self.service.controlID == 50:
             return 'Cast: {0}'.format(post)
-

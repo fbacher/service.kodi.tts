@@ -1,6 +1,7 @@
 
-from common.__init__ import *
 import xbmc
+
+from common.__init__ import *
 
 
 class IBackend:

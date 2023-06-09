@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 import xbmc
-from . import base
+
 from common.messages import Messages
+from . import base
+
 
 class VideoLibraryWindowReader(base.DefaultWindowReader):
     ID = 'videolibrary'

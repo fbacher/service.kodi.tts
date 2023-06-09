@@ -1,21 +1,22 @@
 # -*- coding: utf-8 -*-
 
-import urllib.request, urllib.parse, urllib.error, urllib.request, urllib.error, urllib.parse, shutil, os
-
+import os
+import shutil
+import sys
 import textwrap
+import urllib.error
+import urllib.error
+import urllib.parse
+import urllib.parse
+import urllib.request
+import urllib.request
 
-
-from common.constants import Constants
-from common.setting_constants import Languages, Players, Genders, Misc
-from common.logger import *
-from common.messages import Messages
-from common.settings import Settings
-from common.system_queries import SystemQueries
-from common import utils
-from backends import asyncconnections
+from backends import asyncconnections, audio
+# from backends.audio.player_handler import WavAudioPlayerHandler
 from backends.base import SimpleTTSBackendBase
-from backends import audio
-
+from common import utils
+from common.logger import *
+from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -45,9 +46,9 @@ class SpeechUtilComTTSBackend(SimpleTTSBackendBase):
         if not text: return
         sections = textwrap.wrap(text,100)
         for text in sections:
-            outFile = self.player_handler.getOutFile(text, use_cache=False)
+            #  outFile = self.player_handler.getOutFile(text, use_cache=False)
             if not self.runCommand(text,outFile): return
-            self.player_handler.play()
+            # self.player_handler.play()
 
     def runCommand(self,text,outFile):
         h = asyncconnections.Handler()
@@ -56,6 +57,8 @@ class SpeechUtilComTTSBackend(SimpleTTSBackendBase):
         req = urllib.request.Request(url, headers=self.headers)
         try:
             resp = o.open(req)
+        except AbortException:
+            reraise(*sys.exc_info())
         except (asyncconnections.StopRequestedException, asyncconnections.AbortRequestedException):
             return False
         except:
@@ -76,4 +79,5 @@ class SpeechUtilComTTSBackend(SimpleTTSBackendBase):
 
     @staticmethod
     def available():
-        return audio.WavAudioPlayerHandler.canPlay()
+        # return WavAudioPlayerHandler.canPlay()
+        pass

@@ -1,12 +1,11 @@
 
+import faulthandler
 import io
 import signal
-import faulthandler
 from time import sleep
 
-from common.python_debugger import PythonDebugger
 from common.critical_settings import *
-
+from common.python_debugger import PythonDebugger
 
 REMOTE_DEBUG: bool = False
 

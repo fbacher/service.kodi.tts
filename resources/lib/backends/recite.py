@@ -1,21 +1,14 @@
 # -*- coding: utf-8 -*-
-from . import base
-import subprocess
 import os
-from typing import Any, List, Union, Type
+import subprocess
+import sys
 
-from backends.audio import BasePlayerHandler, WavAudioPlayerHandler
-from backends.base import SimpleTTSBackendBase
 from backends import base
-from backends.audio import BuiltInAudioPlayer, BuiltInAudioPlayerHandler
-from common.constants import Constants
-from common.setting_constants import Backends, Languages, Players, Genders, Misc
-from common.logger import *
-from common.messages import Messages
-from common.settings import Settings
-from common.system_queries import SystemQueries
 from common import utils
-
+from common.logger import *
+from common.setting_constants import Backends
+from common.system_queries import SystemQueries
+from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -58,6 +51,8 @@ class ReciteTTSBackend(base.SimpleTTSBackendBase):
         if not self.process: return
         try:
             self.process.terminate()
+        except AbortException:
+            reraise(*sys.exc_info())
         except:
             pass
 
@@ -66,6 +61,8 @@ class ReciteTTSBackend(base.SimpleTTSBackendBase):
         try:
             subprocess.call(['recite','-VERSion'], stdout=(open(os.path.devnull, 'w')),
                             stderr=subprocess.STDOUT, universal_newlines=True)
+        except AbortException:
+            reraise(*sys.exc_info())
         except:
             return False
         return True
