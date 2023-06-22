@@ -6,7 +6,10 @@ import sys
 from backends.audio.sound_capabilties import ServiceType, SoundCapabilities
 from backends.base import ThreadedTTSBackend
 from backends.settings.constraints import Constraints
+from backends.settings.i_validators import IValidator
 from backends.settings.service_types import Services
+from backends.settings.settings_map import SettingsMap
+from backends.settings.validators import ConstraintsValidator
 from backends.speechd import Speaker, SSIPCommunicationError
 from common.constants import Constants
 from common.logger import *
@@ -63,6 +66,7 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend, BaseServices):
     ID = Backends.SPEECH_DISPATCHER_ID
     backend_id = Backends.SPEECH_DISPATCHER_ID
     service_ID: str = Services.SPEECH_DISPATCHER_ID
+    service_TYPE: str = ServiceType.ENGINE
     displayName = 'Speech Dispatcher'
 
     # pitchConstraints: Constraints = Constraints(0, 0, 100, True, 1.0, SettingsProperties.PITCH)
@@ -88,10 +92,10 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend, BaseServices):
                                                                 0, 10)
     _supported_input_formats: List[str] = []
     _supported_output_formats: List[str] = []
-    _provides_services: List[ServiceType] = [ServiceType.ENGINE]
-    sound_capabilities = SoundCapabilities(service_ID, _provides_services,
-                                            _supported_input_formats,
-                                            _supported_output_formats)
+    _provides_services: List[ServiceType] = [ServiceType.ENGINE, ServiceType.PLAYER]
+    SoundCapabilities.add_service(service_ID, _provides_services,
+                                  _supported_input_formats,
+                                  _supported_output_formats)
     NONE: str = 'none'
     _class_name: str = None
     _logger: BasicLogger = None
@@ -118,9 +122,6 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend, BaseServices):
         self.updateMessage: str | None = None
         self.previous_module: str | None = None
         self.previous_voice: str | None = None
-        clz.constraints[SettingsProperties.SPEED] = clz.SpeechDispatcherSpeedConstraints
-        clz.constraints[SettingsProperties.PITCH] = clz.SpeechDispatcherPitchConstraints
-        clz.constraints[SettingsProperties.VOLUME] = clz.SpeechDispatcherVolumeConstraints
 
         clz.settings[SettingsProperties.GENDER] = 'female',
         clz.settings[SettingsProperties.LANGUAGE] = 'en-US',
@@ -215,24 +216,27 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend, BaseServices):
         self.updateMessage = ThreadedTTSBackend.volumeDown(self)
 
     @classmethod
-    def getVolumeDb(cls) -> int:
-        # Standard Kodi range -12 .. +12, 8 default
-        volume: int
-        volume = cls.getSetting(SettingsProperties.VOLUME)
-        if not cls.volumeConstraints.in_range(volume):
-            volume = cls.volumeConstraints.default
+    def getVolumeDb(cls) -> float | None:
+        volume_validator: ConstraintsValidator | IValidator
+        volume_validator = SettingsMap.get_validator(cls.service_ID,
+                                                     property_id=SettingsProperties.VOLUME)
+        volume = volume_validator.getValue()
+
         return volume
 
     @classmethod
-    def getEngineVolume(cls) -> int:
+    def getEngineVolume(cls) -> float:
         """
         Get the configured volume in our standard  -12db .. +12db scale converted
-        to the native scale of the API. The maximum volume is equivalent
-        to 0db. Therefore, convert -12db .. 0db to scale of -100 .. 100
+        to the native scale of the API (0.1 .. 1.0). The maximum volume (1.0) is equivalent
+        to 0db. Since we have to use a different player AND since it almost guaranteed
+        that the voiced text is cached, just set volume to fixed 1.0 and let player
+        handle volume).
         """
-        volumeDb: float = cls.getVolumeDb()  # -12 .. +12 db
-        volume: float = cls.volumeConstraints.translate_value(
-                cls.SpeechDispatcherVolumeConstraints, volumeDb)
+        volume_validator: ConstraintsValidator
+        volume_validator = cls.get_validator(cls.service_ID,
+                                             property_id=SettingsProperties.VOLUME)
+        volume: float = volume_validator.getValue()
         return volume
 
     @classmethod

@@ -1,12 +1,14 @@
 from backends.players.iplayer import IPlayer
-from backends.players.player_index import PlayerIndex
 from backends.settings.i_validators import IValidator
-from backends.settings.service_types import Services
+from backends.settings.service_types import Services, ServiceType
 from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
                                           IntValidator, StringValidator)
+from common.logger import BasicLogger
 from common.typing import *
+
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class IServices:
@@ -14,25 +16,30 @@ class IServices:
 
     """
     service_ID: str = None
+    service_TYPE: ServiceType = None
     #  sound_capabilities: SoundCapabilities = None
 
 
 class BaseServices(IServices):
     """
-    P I G S
     """
 
     # Two level index. First index by the service_ID, then by service_Type which then
     service_index: Dict[str, Type['BaseServices']] = {}
     service_settings_index: Dict[str, Type['BaseServices']] = {}
     #  sound_capabilities: SoundCapabilities = None
+    _logger: BasicLogger = None
+
+    def __init__(self, *args, **kwargs):
+        clz = type(self)
+        BaseServices._logger = module_logger.getChild(clz.__name__)
 
     @classmethod
     def register(cls, service: Type['BaseServices']) -> None:
         BaseServices.service_index[service.service_ID] = service
+        BaseServices._logger.debug(f'Registering {repr(service)}')
 
-    @classmethod
-    def register_settings(cls, service: Type['BaseServices']) -> None:
+    def register_settings(self, service: Type['BaseServices']) -> None:
         BaseServices.service_settings_index[service.service_ID] = service
 
     #  @classmethod
@@ -203,6 +210,7 @@ class BaseServices(IServices):
         if isinstance(service_or_id, str):
             service_id = service_or_id
         else:
+            service_or_id: IServices
             service_id = service_or_id.service_ID
         return SettingsMap.is_valid_property(service_id, property_id)
 
@@ -253,13 +261,3 @@ class BaseServices(IServices):
         if validator is None:
             return None
         return validator.getValue()
-
-    @classmethod
-    def get_player(cls, service_or_id: str) \
-            -> IPlayer:
-        service_id: str
-        if isinstance(service_or_id, BaseServices):
-            service_id = service_or_id.service_ID
-        else:
-            service_id = service_or_id
-        return PlayerIndex.get_player(service_id)

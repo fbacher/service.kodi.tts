@@ -13,7 +13,7 @@ from common.typing import *
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
-class ReciteTTSBackend(base.SimpleTTSBackendBase):
+class ReciteTTSBackend(base.SimpleTTSBackend):
     """
      reciteme.com/
     """

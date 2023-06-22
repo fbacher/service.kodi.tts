@@ -7,6 +7,7 @@ from backends.settings.service_types import Services, ServiceType
 from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import ConstraintsValidator
+from common.debug import Debug
 from common.logger import BasicLogger
 from common.base_services import BaseServices
 from common.setting_constants import Players
@@ -14,6 +15,7 @@ from common.settings import Settings
 from common.typing import *
 
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
+
 
 class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
     """
@@ -23,13 +25,16 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
     """
     ID = Players.MPLAYER
     service_ID: str = Services.MPLAYER_ID
+    service_TYPE: str = ServiceType.PLAYER
+
     _supported_input_formats: List[str] = [SoundCapabilities.WAVE, SoundCapabilities.MP3]
     _supported_output_formats: List[str] = [SoundCapabilities.WAVE, SoundCapabilities.MP3]
     _provides_services: List[ServiceType] = [ServiceType.PLAYER,
                                              ServiceType.CONVERTER]
-    sound_capabilities = SoundCapabilities(service_ID, _provides_services,
-                                           _supported_input_formats,
-                                           _supported_output_formats)
+    SoundCapabilities.add_service(service_ID, _provides_services,
+                                  _supported_input_formats,
+                                  _supported_output_formats)
+
     _availableArgs = ('mplayer', '--help')
     _playArgs = ('mplayer', '-really-quiet', None)
     _pipeArgs = ('mplayer', '-', '-really-quiet', '-cache', '8192')
@@ -89,6 +94,7 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
                 filters.append(self._volumeArgs.format(volume))
             args.append(','.join(filters))
         self._logger.debug_verbose(f'args: {" ".join(args)}')
+        #  Debug.dump_all_threads(0.0)
         return args
 
     # def play(self, path: str):
@@ -117,6 +123,7 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
                 filters.append(self._volumeArgs.format(volume))
             args.append(','.join(filters))
         self._logger.debug_verbose(f'args: {" ".join(args)}')
+        # Debug.dump_all_threads(0.0)
         return args
 
     def canSetSpeed(self) -> bool:

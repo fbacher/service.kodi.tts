@@ -4,7 +4,6 @@
     Helper to exchange audio related information between players, engines
     and anything else that can produce, consume or transform audio.
 '''
-from backends.settings.constraints import Constraints
 from backends.settings.service_types import ServiceType
 from common.logger import BasicLogger
 from common.typing import *
@@ -27,127 +26,120 @@ class SoundCapabilities:
     # perform some manipulation of the audio and pass it on to it's consumer
     # _all_service_capabilites keeps a map of the capabilities of all services
 
-    _all_service_capabilities: Dict[str, 'SoundCapabilities'] = {}
+    _capabilities_by_service: Dict[str, Tuple[List[str], List[str]]] = {}
+    _services_by_service_type: Dict[ServiceType, List[str]] = {}
 
-    def __init__(self, service_id: str, service_types: List[ServiceType],
+    def __init__(self):
+        cls = type(self)
+        cls._class_name = self.__class__.__name__
+        if cls._logger is None:
+            cls._logger = module_logger.getChild(cls._class_name)
+
+    @classmethod
+    def add_service(cls, service_id: str, service_types: List[ServiceType],
                  supported_input_formats: List[str],
-                 supported_output_formats: List[str],
-                 available: bool = True) -> None:
+                 supported_output_formats: List[str]) -> None:
         """
         :param service_types: services which this provides
         :param service_id: Uniquely identifies the engine, player or converter that
                 these capabilities belong to
         :param supported_input_formats:
         :param supported_output_formats:
-        :param available: when false, the service is unavailable, typically due
-        to O/S incompatibility
         """
-        self.service_types = service_types
-        clz = type(self)
-        clz._class_name = self.__class__.__name__
-        if clz._logger is None:
-            clz._logger = module_logger.getChild(clz._class_name)
 
-        # supported formats such as: mp3, wav, etc.
+        # service_type can be 'engine' or 'player' or 'converter' Frequently
+        # a player can also be a converter.
+        # So, mplayer can be a player or converter service type
+        for service_type in service_types:
+            services_in_type: List[str]
+            services_in_type = cls._services_by_service_type.get(service_type)
+            if services_in_type is None:
+                services_in_type = []
+                cls._services_by_service_type[service_type] = services_in_type
+            services_in_type.append(service_id)
 
-        self.service_id = service_id
-        self.supported_input_formats: List[str] = supported_input_formats
-        self.supported_output_formats: List[str] = supported_output_formats
-        self.supported_conversions: Dict[str, List[str]] = {}
-        self.services_provided: Set[ServiceType] = set(service_types)
-        self.available: bool = available
-        self.can_change_speed: bool = False
-        self.can_preserve_pitch: bool = False
-        self.can_change_pitch: bool = False
-        self.can_change_volume: bool = False
-        self.volume_constraints: Constraints = None
-        self.speed_constraints: Constraints = None
-        self.pitch_constraints: Constraints = None
-        self.can_receive_pipe: bool = False
-        self.can_send_pipe: bool = False
-
-        # Can this service persist across multiple voicings?
-        # (typically to improve performance)
-
-        self.can_act_as_server: bool = False
-        self.can_recieve_sound_bytes: bool = False
-        self.can_send_sound_bytes: bool = False
-        self.can_receive_sound_file: bool = False
-        self.can_send_sound_file: bool = False
-        self.backup_engine_desired: bool = False
-
-        SoundCapabilities._all_service_capabilities[service_id] = self
-
-    def supportedOutputFormats(self) -> List[str]:
-        return self.supported_output_formats
-
-    def supportedInputFormats(self) -> List[str]:
-        return self.supported_input_formats
-
-    def is_supports_input_format(self, audio_format: str) -> bool:
-        return audio_format in self.supported_input_formats
-
-    def is_supports_output_format(self, audio_format: str) -> bool:
-        return audio_format in self.supported_output_formats
-
-    def can_convert_format(self, from_format: str, to_format: str) -> bool:
-        converts_to: List[str] | None = self.supported_conversions.get(from_format, None)
-        return to_format in converts_to
+        if cls._capabilities_by_service.get(service_id) is None:
+            cls._capabilities_by_service[service_id] = \
+                (supported_input_formats, supported_output_formats)
 
     @classmethod
-    def get_by_service_id(cls, service_id: str):
-        return SoundCapabilities._all_service_capabilities.get(service_id, None)
+    def get_output_formats(cls, service_id: str) -> List[str]:
+        output_formats: List[str]
+        _, output_formats = cls._capabilities_by_service[service_id]
+        return output_formats
 
-    def get_candidate_consumers(self, service_type: ServiceType,
-                                consumer_formats: List[str] | str,
-                                producer_formats: List[str] | str) -> List[
-        ForwardRef('SoundCapabilities')]:
+    @classmethod
+    def get_input_formats(cls, service_id: str) -> List[str]:
+        input_formats: List[str]
+        input_formats, _ = cls._capabilities_by_service[service_id]
+        return input_formats
+
+    @classmethod
+    def get_capable_services(cls, service_type: ServiceType,
+                             consumer_formats: List[str] | str,
+                             producer_formats: List[str] | str) -> List[str]:
         """
         Returns services which meet the given criteria.
 
         :param service_type: ex: engine, player, converter, etc.
                None means the service type will be ignored
-        :param consumer_formats: audio formats that this service can consume
-               An empty list means that the input audio format will be ignored
-        :param producer_formats: audio formats that this service can produce
+        :param consumer_formats: audio formats that this service must consume from
+               the previous service
                An empty list means that the output audio format will be ignored
+        :param producer_formats: preferred/required formats that the current service
+               should produce. An empty list means that there are no restrictions
         :return:
 
         Note that the producer_formats field will usually be empty.
 
         The order is determined by 1) the order of preferred producer formats by
-        this service and 2) the order of preferred consumer formats by the consumers.
+        this service and 2) the order of desired formats produced by this stage.
         """
-        clz = type(self)
-        candidate_consumers: List[ForwardRef('SoundCapabilities')] = []
-        if service_type is None:
-            service_type = ServiceType.ALL
-        if consumer_formats is None:
-            consumer_formats = []
-        if not isinstance(consumer_formats, List):
-            tmp: str = consumer_formats
-            consumer_formats: List[str] = [tmp]
-        if producer_formats is None:
-            producer_formats = []
-        if not isinstance(producer_formats, List):
-            tmp: str = producer_formats
-            producer_formats = [tmp]
 
-        producer_formats.extend(self.supported_output_formats)
-        produces: Dict[str, None] = {}
+        """
+        A chain of tools is required to voice text:
+        examples: engine -> wav -> player
+                  engine -> wav -> converter -> .mp3 -> cache -> player
+                  cache -> mp3 -> player
+                    
+        The job of this module is to determine the candidate tools for the next stage
+        in a sequence. For example, if we are at the engine stage that produces wave
+        and we next need to play the sound, then we need a player that can play wave,
+        or a converter to mp3 then a player.
+        
+        The major determinant is whether caching is used or not. If caching is used, 
+        then mp3 is required (much smaller files). Otherwise, may as well do everything
+        in wave since it requires less cpu.
+        """
+        services_of_this_type: List[str] = cls._services_by_service_type.get(service_type)
+        if services_of_this_type is None:
+            services_of_this_type = []
+        # Now, narrow down this list to the ones that can fulfill consumer/producer
+        # requirements
 
-        # Turn into an ordered set
-        for producer_format in producer_formats:
-            produces[producer_format] = None
+        eligible_services: List[str] = []
+        for service_id in services_of_this_type:
+            input_formats: List[str]
+            output_formats: List[str]
 
-        for producer_format in produces.keys():
-            producer_format: str
-            for service_capabilities in SoundCapabilities._all_service_capabilities.values():
-                service_capabilities: 'SoundCapabilities'
-                if (((service_type == ServiceType.ALL)
-                     or (service_type in service_capabilities.services_provided))
-                        and service_capabilities.is_supports_input_format(producer_format)
-                        and service_capabilities.available):
-                    candidate_consumers.append(service_capabilities)
+            input_formats, output_formats = cls._capabilities_by_service[service_id]
+            supports_consumer: bool = False
+            if len(consumer_formats) == 0:
+                supports_consumer = True
+            else:
+                for format in consumer_formats:
+                    if format in input_formats:
+                        supports_consumer = True
+                        break
 
-        return candidate_consumers
+            supports_producer: bool = False
+            if len(producer_formats) == 0:
+                supports_producer = True
+            else:
+                for format in producer_formats:
+                    if format in output_formats:
+                        supports_producer = True
+            if supports_consumer and supports_producer:
+                eligible_services.append(service_id)
+
+        return eligible_services

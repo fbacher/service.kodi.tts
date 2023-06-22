@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from common.critical_settings import *
 
+
 BASE_COMMAND = 'XBMC.NotifyAll(service.kodi.tts,SAY,"{{\\"text\\":\\"{0}\\",\\"interrupt\\":{1}}}")'
 
 #def safeEncode(text):

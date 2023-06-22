@@ -11,16 +11,18 @@ module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 
 class Mpg321AudioPlayer(SubprocessAudioPlayer):
     ID = Players.MPG321
+    service_ID = ID
     # name = 'mpg321'
     _availableArgs: Tuple[str, str] = ('mpg321', '--version')
     _playArgs: Tuple[str, str, str] = ('mpg321', '-q', None)
     _pipeArgs: Tuple[str, str, str] = ('mpg321', '-q', '-')
+
     _supported_input_formats: List[str] = [SoundCapabilities.MP3]
     _supported_output_formats: List[str] = []
     _provides_services: List[ServiceType] = [ServiceType.PLAYER]
-    sound_capabilities = SoundCapabilities(ID, _provides_services,
-                                           _supported_input_formats,
-                                           _supported_output_formats)
+    SoundCapabilities.add_service(service_ID, _provides_services,
+                                  _supported_input_formats,
+                                  _supported_output_formats)
     def __init__(self):
         super().__init__()
         self._logger = module_logger.getChild(

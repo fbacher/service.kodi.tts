@@ -1,5 +1,5 @@
 from backends.audio.sound_capabilties import SoundCapabilities
-from backends.players.base_player_settings import BasePlayerSettings
+from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
@@ -9,7 +9,7 @@ from common.settings_low_level import SettingsProperties
 from common.typing import *
 
 
-class Mplayer(BasePlayerSettings):
+class MPlayerSettings:
     ID = Players.MPLAYER
     service_ID: str = Services.MPLAYER_ID
     displayName = 'MPlayer'
@@ -33,12 +33,12 @@ class Mplayer(BasePlayerSettings):
 
     settings: Dict[str, Validator] = {}
 
-    _supported_input_formats: List[str] = []
-    _supported_output_formats: List[str] = [SoundCapabilities.WAVE]
-    _provides_services: List[ServiceType] = [ServiceType.ENGINE]
-    sound_capabilities = SoundCapabilities(service_ID, _provides_services,
-                                           _supported_input_formats,
-                                           _supported_output_formats)
+    _supported_input_formats: List[str] = [SoundCapabilities.WAVE, SoundCapabilities.MP3]
+    _supported_output_formats: List[str] = []
+    _provides_services: List[ServiceType] = [ServiceType.PLAYER]
+    SoundCapabilities.add_service(service_ID, _provides_services,
+                                  _supported_input_formats,
+                                  _supported_output_formats)
 
     # Every setting from settings.xml must be listed here
     # SettingName, default value
@@ -52,8 +52,6 @@ class Mplayer(BasePlayerSettings):
             clz.initialized = True
             return
         clz.init()
-        # Must have cls.sound_capabilities defined
-        clz.register(clz)
 
     @classmethod
     def init(cls):
@@ -70,28 +68,32 @@ class Mplayer(BasePlayerSettings):
         #                                           SettingsProperties.SPEED, 100, 0.25)
 
         speed_constraints_validator = ConstraintsValidator(SettingsProperties.SPEED,
-                                                           cls.backend_id,
-                                                           cls.ttsSpeedConstraints)
+                                                           cls.service_ID,
+                                                           BaseServiceSettings.ttsSpeedConstraints)
 
+
+        speed_constraints_val = ConstraintsValidator(SettingsProperties.SPEED,
+                                                     cls.service_ID,
+                                                     BaseServiceSettings.ttsSpeedConstraints)
         # MPlayer uses a decibel volume scale with range -200db .. +40db.
         # TTS uses a decibel scale with range -12db .. +12db. Just convert the
         # values with no change. Do this by simply using the TTS volume constraints
 
         volume_constraints_validator: ConstraintsValidator
         volume_constraints_validator = ConstraintsValidator(SettingsProperties.VOLUME,
-                                                            cls.backend_id,
-                                                            cls.ttsVolumeConstraints)
+                                                            cls.service_ID,
+                                                            BaseServiceSettings.ttsVolumeConstraints)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOLUME,
                                    volume_constraints_validator)
 
         cache_validator: BoolValidator
-        cache_validator = BoolValidator(SettingsProperties.CACHE_SPEECH, cls.backend_id,
+        cache_validator = BoolValidator(SettingsProperties.CACHE_SPEECH, cls.service_ID,
                                         default=True)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.CACHE_SPEECH,
                                    cache_validator)
 
         pipe_validator: BoolValidator
-        pipe_validator = BoolValidator(SettingsProperties.PIPE, cls.backend_id,
+        pipe_validator = BoolValidator(SettingsProperties.PIPE, cls.service_ID,
                                        default=False)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PIPE,
                                    pipe_validator)

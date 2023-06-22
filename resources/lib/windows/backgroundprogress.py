@@ -128,9 +128,9 @@ class BackgroundProgress(WindowHandlerBase):
     def updateFromSettings(self):
         self.last = 0
         self.interval = Settings.getSetting(SettingsProperties.BACKGROUND_PROGRESS_INTERVAL,
-                                            None, 5)
+                                            SettingsProperties.TTS_SERVICE, 5)
         self.playDuringMedia = Settings.getSetting(
-            SettingsProperties.SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA, None, False)
+            SettingsProperties.SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA, SettingsProperties.TTS_SERVICE, False)
 
     def _visible(self):
         return WindowHandlerBase.visible(self)
@@ -138,7 +138,7 @@ class BackgroundProgress(WindowHandlerBase):
     def visible(self):
         visible = self._visible()
         if visible:
-            if not Settings.getSetting(SettingsProperties.SPEAK_BACKGROUND_PROGRESS, None,
+            if not Settings.getSetting(SettingsProperties.SPEAK_BACKGROUND_PROGRESS, SettingsProperties.TTS_SERVICE,
                                        False):
                 return False
         else:

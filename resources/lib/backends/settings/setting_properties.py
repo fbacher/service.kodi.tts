@@ -22,7 +22,8 @@ class SettingType(Enum):
 
 
 class SettingsProperties:  # (ISettings):
-    # TOP LEVEL SETTINGS
+    # Must list these engines in preference order. Or at least the first few
+    # should be in this order.
     AUTO_ID: Final[str] = Services.AUTO_ENGINE_ID
     ESPEAK_ID: Final[str] = Services.ESPEAK_ID
     FESTIVAL_ID: Final[str] = Services.FESTIVAL_ID
@@ -41,7 +42,7 @@ class SettingsProperties:  # (ISettings):
 
     AUTO_ITEM_EXTRA_DELAY: Final[str] = 'auto_item_extra_delay'
     ENGINE: Final[str] = 'engine'
-    ENGINE_DEFAULT: Final[str] = ESPEAK_ID
+    ENGINE_DEFAULT: Final[str] = AUTO_ID
     BACKGROUND_PROGRESS_INTERVAL: Final[str] = 'background_progress_interval'
     CACHE_PATH: Final[str] = 'cache_path'
     CACHE_EXPIRATION_DAYS: Final[str] = 'cache_expiration_days'
@@ -50,6 +51,7 @@ class SettingsProperties:  # (ISettings):
     CONVERTER: Final[str] = 'converter'
     # DEBUG_LOGGING: Final[str] = 'debug_logging'
     DEBUG_LOG_LEVEL: Final[str] = 'log_level'
+    DELAY_VOICING: Final[str] = 'delay_voicing'
     DISABLE_BROKEN_SERVICES: Final[str] = 'disable_broken_services'
     # TODO: Change settings like output_via_espeak to be output <string value>
     # ENGINE_SPEAKS: Final[str] = 'engine_speak'  # Voicing engine also speaks
@@ -115,17 +117,16 @@ class SettingsProperties:  # (ISettings):
     VOLUME_DEFAULT = None
 
     TOP_LEVEL_SETTINGS: List[str] = [
-        AUTO_ITEM_EXTRA,
-        AUTO_ITEM_EXTRA_DELAY,
+        # AUTO_ITEM_EXTRA,
+        # AUTO_ITEM_EXTRA_DELAY,
         ENGINE,
-        BACKGROUND_PROGRESS_INTERVAL,
-        DISABLE_BROKEN_SERVICES,
-        SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA,
-        SPEAK_BACKGROUND_PROGRESS,
-        CACHE_PATH,   # Move to engine specific
+        # BACKGROUND_PROGRESS_INTERVAL,
+        # DISABLE_BROKEN_SERVICES,
+        # SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA,
+        # SPEAK_BACKGROUND_PROGRESS,
+        # CACHE_PATH,   # Move to engine specific
         CACHE_EXPIRATION_DAYS,  # Move to engine specific
-        CONVERTER,
-        ADDONS_MD5,
+        # ADDONS_MD5,
         # DEBUG_LOGGING,  # Boolean needed to toggle visibility
         DEBUG_LOG_LEVEL,  # Merge into Logging, get rid of verbose_logging, etc
         GENDER_VISIBLE,
@@ -133,9 +134,9 @@ class SettingsProperties:  # (ISettings):
         SPEECH_DISPATCHER,
         OUTPUT_VIA,
         OUTPUT_VISIBLE,
-        OVERRIDE_POLL_INTERVAL,
-        POLL_INTERVAL,
-        READER_ON,
+        # OVERRIDE_POLL_INTERVAL,
+        # POLL_INTERVAL,
+        # READER_ON,
         SETTINGS_BEING_CONFIGURED,
         SETTINGS_DIGEST,
         # SETTINGS_LAST_CHANGED,
@@ -144,7 +145,7 @@ class SettingsProperties:  # (ISettings):
         TTSD_HOST,
         TTSD_PORT,
         TTS_SERVICE,
-        USE_TEMPFS,
+        # USE_TEMPFS,
         VERSION,
         VOICE_VISIBLE,
         VOLUME_VISIBLE
@@ -182,6 +183,7 @@ class SettingsProperties:  # (ISettings):
         CONVERTER,
         # DEBUG_LOGGING,
         DEBUG_LOG_LEVEL,
+        DELAY_VOICING,
         DISABLE_BROKEN_SERVICES,
         GENDER,
         GENDER_VISIBLE,
@@ -237,7 +239,7 @@ class SettingsProperties:  # (ISettings):
             cls.API_KEY                               : SettingType.STRING_TYPE,
             cls.AUTO_ITEM_EXTRA                       : SettingType.BOOLEAN_TYPE,
             cls.AUTO_ITEM_EXTRA_DELAY                 : SettingType.INTEGER_TYPE,
-            cls.ENGINE                               : SettingType.STRING_TYPE,
+            cls.ENGINE                                : SettingType.STRING_TYPE,
             cls.BACKGROUND_PROGRESS_INTERVAL          : SettingType.INTEGER_TYPE,
             cls.CACHE_PATH                            : SettingType.STRING_TYPE,
             cls.CACHE_EXPIRATION_DAYS                 : SettingType.INTEGER_TYPE,

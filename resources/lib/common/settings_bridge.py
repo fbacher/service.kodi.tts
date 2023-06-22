@@ -5,7 +5,7 @@ class ISettings:
     BACKEND_DEFAULT: Final[str] = 'auto'
 
     @classmethod
-    def get_backend_id(cls) -> str | None:
+    def get_engine_id(cls) -> str | None:
         return None
 
     @classmethod
@@ -29,8 +29,8 @@ class SettingsBridge(ISettings):
         cls._settings_ref = settings_ref
 
     @classmethod
-    def get_backend_id(cls) -> str:
-        return cls._settings_ref.get_backend_id()
+    def get_engine_id(cls) -> str:
+        return cls._settings_ref.get_engine_id()
 
     @classmethod
     def getSetting(cls, setting_id: str, backend_id: str | None,

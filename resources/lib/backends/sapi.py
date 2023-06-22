@@ -6,6 +6,7 @@ import sys
 import wave
 
 from backends.settings.constraints import Constraints
+from common.setting_constants import Mode
 from common.settings_low_level import SettingsProperties
 from common.typing import *
 
@@ -24,7 +25,7 @@ from common.logger import *
 from common.settings import Settings
 from common.system_queries import SystemQueries
 from common import utils
-from backends.base import SimpleTTSBackendBase
+from backends.base import SimpleTTSBackend
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -351,7 +352,7 @@ class SAPI:
 SAPI.class_init()
 
 
-class SAPITTSBackend(SimpleTTSBackendBase):
+class SAPITTSBackend(SimpleTTSBackend):
     backend_id = 'SAPI'
     displayName = 'SAPI (Windows Internal)'
     settings = {SettingsProperties.SPEAK_VIA_KODI: True,
@@ -502,11 +503,11 @@ class SAPITTSBackend(SimpleTTSBackendBase):
         cls = type(self)
 
         if self.setting(SettingsProperties.SPEAK_VIA_KODI):
-            return SimpleTTSBackendBase.FILEOUT
+            return Mode.FILEOUT
         else:
             if self.sapi:
                 self.sapi.set_SpVoice_AudioOutputStream(None)
-            return SimpleTTSBackendBase.ENGINESPEAK
+            return Mode.ENGINESPEAK
 
     @classmethod
     def settingList(cls, setting, *args):

@@ -4,6 +4,8 @@ Created on Feb 28, 2019
 
 @author: fbacher
 """
+from enum import Enum
+
 from common.critical_settings import CriticalSettings
 from common.logger import *
 from common.typing import *
@@ -297,6 +299,9 @@ class Messages:
         if isinstance(msg_ref, int):
             msg_ref = Message.get_ref_by_id(msg_ref)
 
+        if isinstance(msg_ref, Enum):
+            msg_ref = msg_ref.name
+
         return Messages._instance.get_formatted_msg(msg_ref)
 
     @staticmethod
@@ -314,6 +319,9 @@ class Messages:
         unformatted_msg = ''
         if isinstance(msg_ref, int):
             msg_ref = Message.get_ref_by_id(msg_ref)
+
+        if isinstance(msg_ref, Enum):
+            msg_ref = msg_ref.name
 
         msg_id: int = 0
         try:

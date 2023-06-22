@@ -41,6 +41,8 @@ class Monitor(MinimalMonitor):
     startup_complete_event: threading.Event = None
     _monitor_changes_in_settings_thread: threading.Thread = None
     _logger: BasicLogger = None
+    _notification_listeners: Dict[Callable[[None], None], str] = None
+    _notification_listener_lock: threading.RLock = None
     _screen_saver_listeners: Dict[Callable[[None], None], str] = None
     _screen_saver_listener_lock: threading.RLock = None
     _settings_changed_listeners: Dict[Callable[[None], None], str] = None
@@ -73,6 +75,8 @@ class Monitor(MinimalMonitor):
             cls._abort_listeners = {}
             cls._abort_listener_lock = threading.RLock()
             cls._abort_listeners_informed = False
+            cls._notification_listeners = {}
+            cls._notification_listener_lock = threading.RLock()
 
             #
             # These events are prioritized:
@@ -100,6 +104,8 @@ class Monitor(MinimalMonitor):
 
         :return:
         """
+        pass
+        '''
         try:
             # Add one minute delay
             change_file = xbmcvfs.translatePath(
@@ -230,6 +236,7 @@ class Monitor(MinimalMonitor):
 
                     # Here we go again
         """
+        '''
 
     @classmethod
     def get_listener_name(cls,
@@ -477,6 +484,21 @@ class Monitor(MinimalMonitor):
 
         # return super().onScreensaverDeactivated()
 
+    @classmethod
+    def register_notification_listener(cls,
+                                       listener: Callable[[None], None],
+                                       name: str = None) -> None:
+        """
+
+        :param listener:
+        :param name:
+        :return:
+        """
+        with cls._notification_listener_lock:
+            if not (listener in cls._notification_listeners):
+                listener_name = cls.get_listener_name(listener, name)
+                cls._notification_listeners[listener] = listener_name
+
     def onNotification(self, sender: str, method: str, data: str) -> None:
         """
         onNotification method.
@@ -489,9 +511,32 @@ class Monitor(MinimalMonitor):
 
         Will be called when Kodi receives or sends a notification
         """
-        # if type(self)._logger.isEnabledFor(BasicLogger.DEBUG):
-        #    type(self)._logger.debug('sender:', sender, 'method:', method)
-        pass
+        clz = type(self)
+        clz._logger.debug(f'sender: {sender} method: {method}')
+        clz._inform_notification_listeners(sender, method, data)
+
+
+    @classmethod
+    def _inform_notification_listeners(cls,
+                                       sender: str, method: str, data: str) -> None:
+        """
+
+        :param activated:
+        :return:
+        """
+        with cls._notification_listener_lock:
+            listeners_copy = copy.copy(cls._notification_listeners)
+            if cls.is_abort_requested():
+                cls._notification_listeners.clear()
+
+        if cls._logger.isEnabledFor(DEBUG_VERBOSE):
+            cls._logger.debug_verbose(f'Notification received sender: {sender}'
+                                      f' method: {method} data: {data}')
+        for listener, listener_name in listeners_copy.items():
+            thread = threading.Thread(
+                    target=listener, name=listener_name,
+                    args=(sender, method, data))
+            thread.start()
 
     def waitForAbort(self, timeout: float = None) -> bool:
         # Provides signature of super class (xbmc.Monitor)
@@ -569,7 +614,7 @@ class Monitor(MinimalMonitor):
 
         New function added.
         """
-        return cls._abort_received.isSet()
+        return cls._abort_received.is_set()
 
     @classmethod
     def set_startup_complete(cls) -> None:

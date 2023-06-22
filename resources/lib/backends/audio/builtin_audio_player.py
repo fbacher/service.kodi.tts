@@ -11,16 +11,16 @@ module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 
 class BuiltInAudioPlayer(AudioPlayer):
     ID = Players.INTERNAL
+    service_ID = ID
     sound_file_base = '{speech_file_name}{sound_file_type}'
     sound_dir: str = None
 
-    _supported_input_formats: List[str] = ['.mp3', '.wav']
+    _supported_input_formats: List[str] = [SoundCapabilities.MP3, SoundCapabilities.WAVE]
     _supported_output_formats: List[str] = []
     _provides_services: List[ServiceType] = [ServiceType.PLAYER]
-    sound_capabilities = SoundCapabilities(ID, _provides_services,
-                                           _supported_input_formats,
-                                           _supported_output_formats)
-
+    SoundCapabilities.add_service(service_ID, _provides_services,
+                                  _supported_input_formats,
+                                  _supported_output_formats)
     _logger: BasicLogger = None
 
     def __init__(self, *args, **kwargs):

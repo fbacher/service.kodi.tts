@@ -5,8 +5,10 @@ from backends.i_backend_index import IEngineIndex
 from backends.i_backend_info import IBackendInfo
 from backends.i_tts_backend_base import ITTSBackendBase
 from common import *
+from common.base_services import BaseServices
 from common.constants import Constants
 from common.logger import *
+from common.setting_constants import Backends
 from common.settings_bridge import SettingsBridge
 from common.system_queries import SystemQueries
 
@@ -46,24 +48,25 @@ class BackendInfo(IBackendInfo):
         for backend in backends:
             if backend_id == backend.backend_id:
                 return True
-        return True
+        return False
 
     @classmethod
     def getAvailableBackends(cls, can_stream_wav: bool = False) -> List[ITTSBackendBase]:
         available: List[ITTSBackendBase] = []
         cls._logger.debug_verbose(
             f'backends.__init__.getAvailableBackends can_stream_wav: {str(can_stream_wav)}')
-        for b in cls.backendsByPriority:
-            b: ITTSBackendBase
+        for engine_id in Backends.ALL_ENGINE_IDS:
+            engine: ITTSBackendBase
+            engine = BaseServices.getService(engine_id)
+            try:
+                if engine is None or not engine.is_available_and_usable():
+                    continue
+            except AttributeError:
+                continue
+
             if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                cls._logger.debug_verbose(f'backend: {b.__class__.__name__}')
-            if not b._available():
-                continue
-            if not b.isSupportedOnPlatform():
-                continue
-            if can_stream_wav and not b.canStreamWav:
-                continue
-            available.append(b)
+                cls._logger.debug_verbose(f'Available engine: {engine.__class__.__name__}')
+            available.append(engine)
         return available
 
     @classmethod
@@ -122,7 +125,7 @@ class BackendInfo(IBackendInfo):
         if cls._logger.isEnabledFor(DEBUG_VERBOSE):
             cls._logger.debug_verbose(f'getBackend backend_id: {backend_id}')
 
-        backend_id = SettingsBridge.get_backend_id() or backend_id
+        backend_id = SettingsBridge.get_engine_id() or backend_id
         b = cls.getBackendByProvider(backend_id)
         if not b or not b._available():
             for b in cls.backendsByPriority:

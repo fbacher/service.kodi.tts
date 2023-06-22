@@ -14,6 +14,7 @@ from common import utils
 from common.constants import Constants
 from common.logger import *
 from common.settings import Settings
+from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -162,12 +163,20 @@ def setSetting(key, value, backend_id: str = None):
     Settings.setSetting(key, value, backend_id)
 
 
-def runInThread(func, args=(), name='?'):
+def runInThread(func: Callable, args=(), name='?'):
     import threading
-    thread = threading.Thread(target=func, args=args,
-                              name=f'TTSThread: {name}')
+    thread = threading.Thread(target=thread_wrapper, name=f'TTSThread: {name}',
+                              args=args, kwargs={'target':func})
     xbmc.log(f'util.runInThread starting thread {name}', xbmc.LOGINFO)
     thread.start()
+
+
+def thread_wrapper(*args, **kwargs):
+    try:
+        target: Callable = kwargs.get('target')
+        target()
+    except Exception as e:
+        module_logger.exception('')
 
 
 BASE_COMMAND = 'XBMC.NotifyAll(service.kodi.tts,SAY,"{{\\"text\\":\\"{0}\\",\\"interrupt\\":{1}}}")'
@@ -178,9 +187,10 @@ BASE_COMMAND = 'XBMC.NotifyAll(service.kodi.tts,SAY,"{{\\"text\\":\\"{0}\\",\\"i
 # def safeDecode(enc_text):
 #    return binascii.unhexlify(enc_text)
 
-
 def notifySayText(text, interrupt=False):
     command = BASE_COMMAND.format(text, repr(interrupt).lower())
+    command = f'XBMC.NotifyAll(service.kodi.tts,SAY,' \
+              f'"{{\\"text\\":\\"{text}\\",\\"interrupt\\":{interrupt}}}")'.lower()
     # print command
     xbmc.executebuiltin(command)
 

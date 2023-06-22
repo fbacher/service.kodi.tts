@@ -6,8 +6,10 @@ import sys
 import xbmc
 
 from backends import base
+from backends.base import SimpleTTSBackend
+from backends.engines.FliteSettings import FliteSettings
 from common.logger import *
-from common.setting_constants import Backends, Players
+from common.setting_constants import Backends, Mode, Players
 from common.typing import *
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
@@ -16,7 +18,7 @@ from common.system_queries import SystemQueries
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 
 
-class FliteTTSBackend(base.SimpleTTSBackendBase):
+class FliteTTSBackend(FliteSettings, SimpleTTSBackend):
     backend_id = Backends.FLITE_ID
     displayName = 'Flite'
     #  speedConstraints = (20, 100, 200, True)
@@ -32,12 +34,17 @@ class FliteTTSBackend(base.SimpleTTSBackendBase):
 
     _logger: BasicLogger = None
     _class_name: str = None
+    _initialized: bool = False
 
     def __init__(self, *args, **kwargs):
+        clz = type(self)
         super().__init__(*args, **kwargs)
-        type(self)._class_name = self.__class__.__name__
+        clz._class_name = self.__class__.__name__
         if type(self)._logger is None:
-            type(self)._logger = module_logger.getChild(type(self)._class_name)
+            type(self)._logger = module_logger.getChild(clz._class_name)
+        if not clz._initialized:
+            clz._initialized = True
+            self.register(self)
         self.process = None
 
     def init(self):
@@ -79,9 +86,9 @@ class FliteTTSBackend(base.SimpleTTSBackendBase):
 
     def getMode(self):
         if not self.onATV2 and self.setting('output_via_flite'):
-            return base.SimpleTTSBackendBase.ENGINESPEAK
+            return Mode.ENGINESPEAK
         else:
-            return base.SimpleTTSBackendBase.FILEOUT
+            return Mode.FILEOUT
 
     def stop(self):
         if not self.process: return

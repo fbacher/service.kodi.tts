@@ -44,6 +44,8 @@ class WorkerThread:
     def __init__(self, thread_name: str, task: callable, **kwargs):
         clz = type(self)
         self.queue: TTSQueue = TTSQueue()
+        self.queueFullCount: int = 0
+        self.queueCount: int = 0
         self.started: bool = False
         self.idle_count: int = 0
         self.task: callable = task
@@ -62,8 +64,9 @@ class WorkerThread:
                 self.thread.start()
                 self.thread_started = True
             self.queue.put_nowait(tts_data)
+            self.queueCount += 1
         except FullQueue as e:
-            pass
+            self.queueFullCount += 1
         except Exception as e:
             clz._logger.exception('')
 
@@ -95,7 +98,7 @@ class WorkerThread:
                             clz._logger.exception('')
                         player.play(voice_file)
                 except AbortException as e:
-                    reraise(*sys.exc_info())
+                    return  #  Exit thread
                 except Exception as e:
                     clz._logger.exception('')
 

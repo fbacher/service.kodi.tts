@@ -139,8 +139,8 @@ class BaseCache(BaseServices):
         """
         clz = type(self)
         player_id: str = clz.getSetting(SettingsProperties.PLAYER)
-        player: Type[IPlayer] = PlayerIndex.get_player(player_id)
-        sound_file_types: List[str] = SoundCapabilities.get_by_service_id(player_id)
+        player: IPlayer = PlayerIndex.get_player(player_id)
+        sound_file_types: List[str] = SoundCapabilities.get_input_formats(player_id)
         voice_file: str = ''
         exists: bool = False
         file_type: str = ''
@@ -171,7 +171,7 @@ class BaseCache(BaseServices):
 
         return VoiceCache.create_sound_file(voice_file_path, sound_file_type)
 
-    def runCommandAndPipe(self, text_to_voice: str):
+    def runCommandAndPipe(self, use_cache: bool, text_to_voice: str):
         clz = type(self)
 
         # If caching disabled, then voice_file and byte_stream are always None.
@@ -185,7 +185,7 @@ class BaseCache(BaseServices):
         exists: bool
         byte_stream: io.BinaryIO = None
         voice_file, exists = self.get_path_to_voice_file(text_to_voice,
-                                                         clz.is_use_cache())
+                                                         use_cache)
         if not voice_file or len(voice_file) == 0:
             voice_file = None
         """
@@ -299,23 +299,19 @@ class BaseCache(BaseServices):
         gender = 'female'
         return gender
 
-    @classmethod
-    def is_use_cache(cls) -> bool:
-        return cls.getSetting(SettingsProperties.CACHE_SPEECH)
-
 
 class CacheWriter(BaseCache):
 
     service_ID: str = Services.CACHE_WRITER_ID
+    service_TYPE: str = ServiceType.CACHE_WRITER
     _logger: BasicLogger = None
 
+    # Find what engines can produce WAVE files.
     _supported_input_formats: List[str] = []
     _supported_output_formats: List[str] = [SoundCapabilities.WAVE]
-    _provides_services: List[ServiceType] = [ServiceType.ENGINE]
-    sound_capabilities = SoundCapabilities(service_ID, _provides_services,
-                                            _supported_input_formats,
-                                            _supported_output_formats)
-
+    capable_services = SoundCapabilities.get_capable_services(ServiceType.ENGINE,
+                                                                _supported_input_formats,
+                                                                _supported_output_formats)
     def __init__(self):
         super().__init__()
         clz = type(self)
@@ -337,17 +333,9 @@ class CacheReader(BaseCache):
     """
       Locates any voice file for the given text
       """
-
+    backend_id: str = Services.CACHE_READER_ID
     service_ID: str = Services.CACHE_READER_ID
-    displayName = 'Cache Reader'
-
-    _supported_input_formats: List[str] = []
-    _supported_output_formats: List[str] = [SoundCapabilities.WAVE]
-    _provides_services: List[ServiceType] = [ServiceType.ENGINE]
-
-    sound_capabilities = SoundCapabilities(service_ID, _provides_services,
-                                            _supported_input_formats,
-                                            _supported_output_formats)
+    service_TYPE: str = ServiceType.CACHE_READER
 
     def __init__(self):
         super().__init__()

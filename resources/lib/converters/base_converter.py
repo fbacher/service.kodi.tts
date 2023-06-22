@@ -60,66 +60,11 @@ class AudioConverter(IConverter):
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz.__name__)
 
-        clz.set_sound_dir()
-
-    @classmethod
-    def set_sound_dir(cls):
-        tmpfs = utils.getTmpfs()
-        if Settings.getSetting(SettingsProperties.USE_TEMPFS, None, True) and tmpfs:
-            cls._logger.debug_extra_verbose(f'Using tmpfs at: {tmpfs}')
-            cls.sound_dir = os.path.join(tmpfs, 'kodi_speech')
-        else:
-            cls.sound_dir = os.path.join(Constants.PROFILE_PATH, 'kodi_speech')
-        if not os.path.exists(cls.sound_dir):
-            os.makedirs(cls.sound_dir)
-
-    @classmethod
-    def get_tmp_path(cls, speech_file_name: str, sound_file_type: str) -> str:
-        filename: str = cls.sound_file_base.format(speech_file_name, sound_file_type)
-        sound_file_path: str = os.path.join(cls.sound_dir, filename)
-        return sound_file_path
-
-    def canSetSpeed(self) -> bool:
-        """
-
-        @return:
-        """
-        return False
-
-    def setSpeed(self, speed: float) -> None:
-        """
-
-        @param speed:
-        """
-        pass
-
-    def canSetPitch(self) -> bool:
-        """
-
-        @return:
-        """
-        return False
-
-    def setPitch(self, pitch: float) -> None:
-        pass
-
-    def canSetVolume(self) -> bool:
-        return False
-
-    def setVolume(self, volume: float) -> None:
-        pass
-
     def canSetPipe(self) -> bool:
         return False
 
     def pipe(self, source) -> None:
         pass
-
-    def play(self, path: str) -> None:
-        pass
-
-    def isPlaying(self) -> bool:
-        return False
 
     def stop(self) -> None:
         pass
@@ -209,7 +154,7 @@ WindowsAudioConverter.init_class()
 '''
 
 
-class SubprocessAudioConverter(AudioConverter):
+class BaseAudioConverter(AudioConverter):
     _logger: BasicLogger = None
     _availableArgs = None
     _playArgs = None
@@ -225,35 +170,13 @@ class SubprocessAudioConverter(AudioConverter):
         clz = type(self)
         clz._logger = module_logger.getChild(
                 self.__class__.__name__)
-        self._wavProcess = None
+        self._convert_process = None
         self.speed: float = 0.0
         self.volume: float | None = None
         self.active = True
 
-    def speedArg(self, speed: float) -> str:
-        self._logger.debug(f'speedArg speed: {speed} multiplier: {self._speedMultiplier}')
-        return f'{(speed * self._speedMultiplier):.2f}'
-
-    def baseArgs(self, path: str) -> List[str]:
-        args = []
-        args.extend(self._playArgs)
-        args[args.index(None)] = path
-        return args
-
-    def playArgs(self, path: str) -> List[str]:
-        clz = type(self)
-        base_args: List[str] = self.baseArgs(path)
-        clz._logger.debug_verbose(f'args: {" ".join(base_args)}')
-        return base_args
-
-    def get_pipe_args(self):
-        clz = type(self)
-        base_args = self._pipeArgs
-        clz._logger.debug(f'playArgs: {self.playArgs("xxx")} pipeArgs: {self._pipeArgs}')
-        return base_args
-
     def canSetPipe(self) -> bool:
-        return bool(self._pipeArgs)
+        return False
 
     def pipe(self, source):
         clz = type(self)
@@ -262,9 +185,9 @@ class SubprocessAudioConverter(AudioConverter):
 
         with subprocess.Popen(pipe_args, stdin=subprocess.PIPE,
                               stdout=subprocess.DEVNULL,
-                              stderr=subprocess.STDOUT) as self._wavProcess:
+                              stderr=subprocess.STDOUT) as self._convert_process:
             try:
-                shutil.copyfileobj(source, self._wavProcess.stdin)
+                shutil.copyfileobj(source, self._convert_process.stdin)
             except IOError as e:
                 if e.errno != errno.EPIPE:
                     self._logger.error('Error piping audio', hide_tb=True)
@@ -274,65 +197,35 @@ class SubprocessAudioConverter(AudioConverter):
             finally:
                 source.close()
 
-        self._wavProcess = None
+        self._convert_process = None
 
-    def getSpeed(self) -> float:
-        speed: float | None = \
-            Settings.getSetting(SettingsProperties.SPEED, Settings.get_engine_id())
-        self.setSpeed(speed)
-        return speed
-
-    def getVolumeDb(self) -> float:
-        volumeDb: float | None = \
-            Settings.getSetting(SettingsProperties.VOLUME, Settings.get_engine_id())
-        self.setVolume(volumeDb)
-        return volumeDb
-
-    def setSpeed(self, speed: float):
-        clz = type(self)
-        clz._logger.debug(f'setSpeed: {speed}')
-        self.speed = speed
-
-    def setVolume(self, volume: float):
-        self._logger.debug(f'setVolume: {volume}')
-        self.volume = volume
-
-    def play(self, path: str):
-        clz = type(self)
-        args = self.playArgs(path)
-        clz._logger.debug_verbose(f'args: {" ".join(args)}')
-        with subprocess.Popen(args, stdout=(open(os.path.devnull, 'w')),
-                              stderr=subprocess.STDOUT) as self._wavProcess:
-            pass
-
-        self._wavProcess = None
-
-    def isPlaying(self) -> bool:
-        return self._wavProcess and self._wavProcess.poll() is None
+    def convert(self, convert_from: str, convert_to: str,
+            input_path: str, output_path: str) -> bool:
+        pass
 
     def stop(self):
-        if not self._wavProcess or self._wavProcess.poll():
+        if not self._convert_process or self._convert_process.poll():
             return
         try:
             if self.kill:
-                self._wavProcess.kill()
+                self._convert_process.kill()
             else:
-                self._wavProcess.terminate()
+                self._convert_process.terminate()
         except:
             pass
         finally:
-            self._wavProcess = None
+            self._convert_process = None
 
     def close(self):
         self.active = False
-        if not self._wavProcess or self._wavProcess.poll():
+        if not self._convert_process or self._convert_process.poll():
             return
         try:
-            self._wavProcess.kill()
+            self._convert_process.kill()
         except:
             pass
         finally:
-            self._wavProcess = None
+            self._convert_process = None
 
     @classmethod
     def available(cls, ext=None) -> bool:
@@ -343,8 +236,8 @@ class SubprocessAudioConverter(AudioConverter):
             return False
         return True
 
-
-class SOXAudioConverter(SubprocessAudioConverter):
+'''
+class SOXAudioConverter(BaseAudioConverter):
     ID = Converters.SOX
     # name = 'SOX'
     _availableArgs = ('sox', '--version')
@@ -423,11 +316,21 @@ class SOXAudioConverter(SubprocessAudioConverter):
         ConverterIndex.register(SOXAudioConverter.ID, SOXAudioConverter)
 
 
-class MPlayerAudioConverter(SubprocessAudioConverter, BaseServices):
+class MPlayerAudioConverter(BaseAudioConverter, BaseServices):
     """
      name = 'MPlayer'
      MPlayer supports -idle and -slave which keeps player from exiting
      after files played. When in slave mode, commands are read from stdin.
+
+     To convert from wave to mpg3:
+                    if transcoder == WaveToMpg3Encoder.MPLAYER:
+                        try:
+                            subprocess.run(['mplayer', '-i', '/tmp/tst.wav', '-f', 'mp3',
+                                            f'{voice_file_path}'], shell=False, text=True, check=True)
+                        except subprocess.CalledProcessError:
+                            clz._logger.exception('')
+                            reason = 'mplayer failed'
+                            failed = True
     """
     ID = Converters.MPLAYER
     service_ID: str = Services.MPLAYER_ID
@@ -549,7 +452,7 @@ class MPlayerAudioConverter(SubprocessAudioConverter, BaseServices):
         ConverterIndex.register(MPlayerAudioConverter.ID, MPlayerAudioConverter)
 
 
-class Mpg123AudioConverter(SubprocessAudioConverter, BaseServices):
+class Mpg123AudioConverter(BaseAudioConverter, BaseServices):
     ID = Converters.MPG123
     service_ID = Services.MPG123_ID
     # name = 'mpg123'
@@ -589,7 +492,7 @@ class Mpg123AudioConverter(SubprocessAudioConverter, BaseServices):
         ConverterIndex.register(Mpg123AudioConverter.ID, Mpg123AudioConverter)
 
 
-class Mpg321AudioConverter(SubprocessAudioConverter):
+class Mpg321AudioConverter(BaseAudioConverter):
     ID = Converters.MPG321
     # name = 'mpg321'
     _availableArgs: Tuple[str, str] = ('mpg321', '--version')
@@ -621,7 +524,7 @@ class Mpg321AudioConverter(SubprocessAudioConverter):
         ConverterIndex.register(Mpg321AudioConverter.ID, Mpg321AudioConverter)
 
 
-class Mpg321OEPiAudioConverter(SubprocessAudioConverter):
+class Mpg321OEPiAudioConverter(BaseAudioConverter):
     #
     #  Plays using ALSA
     #
@@ -640,7 +543,7 @@ class Mpg321OEPiAudioConverter(SubprocessAudioConverter):
         super().__init__()
         self._logger = module_logger.getChild(
                 self.__class__.__name__)  # type: module_logger
-        self._wavProcess = None
+        self._convert_process = None
         try:
             import OEPiExtras
             OEPiExtras.init()
@@ -659,7 +562,7 @@ class Mpg321OEPiAudioConverter(SubprocessAudioConverter):
         return True
 
     def pipe(self, source):  # Plays using ALSA
-        self._wavProcess = subprocess.Popen('mpg321 - --wav - | aplay',
+        self._convert_process = subprocess.Popen('mpg321 - --wav - | aplay',
                                             stdin=subprocess.PIPE,
                                             stdout=(
                                                 open(os.path.devnull, 'w')),
@@ -667,19 +570,19 @@ class Mpg321OEPiAudioConverter(SubprocessAudioConverter):
                                             env=self.env, shell=True,
                                             universal_newlines=True)
         try:
-            shutil.copyfileobj(source, self._wavProcess.stdin)
+            shutil.copyfileobj(source, self._convert_process.stdin)
         except IOError as e:
             if e.errno != errno.EPIPE:
                 module_logger.error('Error piping audio', hide_tb=True)
         except:
             module_logger.error('Error piping audio', hide_tb=True)
         source.close()
-        self._wavProcess.stdin.close()
-        while self._wavProcess.poll() is None and self.active:
+        self._convert_process.stdin.close()
+        while self._convert_process.poll() is None and self.active:
             utils.sleep(10)
 
     def play(self, path):  # Plays using ALSA
-        self._wavProcess = subprocess.Popen(f'mpg321 --wav - "{path}" | aplay',
+        self._convert_process = subprocess.Popen(f'mpg321 --wav - "{path}" | aplay',
                                             stdout=(
                                                 open(os.path.devnull, 'w')),
                                             stderr=subprocess.STDOUT, env=self.env,
@@ -1020,3 +923,22 @@ class MP3AudioConverterHandler(WavAudioConverterHandler):
             cls.sound_dir = os.path.join(Constants.PROFILE_PATH, 'kodi_speech')
         if not os.path.exists(cls.sound_dir):
             os.makedirs(cls.sound_dir)
+'''
+
+
+'''
+
+class FfmpegAudioConverter(BaseAudioConverter, BaseServices):
+    """
+            if transcoder == WaveToMpg3Encoder.FFMPEG:
+                        try:
+                            subprocess.run(['ffmpeg', '-loglevel', 'error', '-i',
+                                            '/tmp/tst.wav', '-acodec', 'libmp3lame',
+                                            f'{voice_file_path}'], shell=False,
+                                           text=True, check=True)
+                        except subprocess.CalledProcessError:
+                            clz._logger.exception('')
+                            reason = 'ffmpeg failed'
+                            failed = True
+    """
+    '''

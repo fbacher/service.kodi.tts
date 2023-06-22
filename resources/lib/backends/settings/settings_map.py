@@ -1,7 +1,11 @@
 # coding=utf-8
-from backends.settings.i_validators import IValidator
-from backends.settings.service_types import Services
+from backends.settings.i_validators import (IBoolValidator, IIntValidator,
+                                            IStrEnumValidator, IValidator,
+                                            IStringValidator)
+from common.logger import BasicLogger
 from common.typing import *
+
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class SettingsMap:
@@ -34,11 +38,14 @@ class SettingsMap:
     service_to_settings_map: Dict[str, Dict[str, IValidator]] = {}
 
     _initialized: bool = False
+    _logger: BasicLogger = None
 
     def __init__(self):
         clz = type(self)
-        if not clz._initialized:
-            clz._initialized = True
+        if clz._initialized:
+            return
+        clz._initialized = True
+        clz._logger = module_logger.getChild(clz.__name__)
 
     @classmethod
     def define_setting(cls, service_id: str, property_id: str, validator: IValidator):
@@ -53,13 +60,19 @@ class SettingsMap:
             property_id = ''
         assert isinstance(service_id, str), 'Service_id must be a str'
         assert isinstance(property_id, str), 'property_id must be a str'
+        cls._logger.info(f'service: {service_id}.{property_id} '
+                         f'cls: {cls.__name__}')
         settings_for_service: Dict[str, IValidator]
         settings_for_service = cls.service_to_settings_map.get(service_id)
         if settings_for_service is None:
             settings_for_service = {}
             cls.service_to_settings_map[service_id] = settings_for_service
-        if property_id not in settings_for_service:
-            settings_for_service[property_id] = validator
+        #
+        # Allow to override any previous entry since doing otherwise would complicate
+        # initialization order since it is normal to initialize your ancestor
+        # prior to yourself
+
+        settings_for_service[property_id] = validator
 
     @classmethod
     def is_valid_property(cls, service_id: str, property_id: str) -> bool:
@@ -78,7 +91,8 @@ class SettingsMap:
 
     @classmethod
     def get_validator(cls, service_id: str,
-                      property_id: str) -> IValidator | None:
+                      property_id: str) -> IBoolValidator | IStringValidator | \
+                                           IIntValidator | IStrEnumValidator | None:
         if property_id is None:
             property_id = ''
         assert isinstance(service_id, str), 'Service_id must be a str'
@@ -101,6 +115,21 @@ class SettingsMap:
         if validator is None:
             return None
         return validator.default_value
+
+    @classmethod
+    def get_allowed_values(cls, service_id: str,
+                          property_id: str) -> List[str] | None:
+        if property_id is None:
+            property_id = ''
+        assert isinstance(service_id, str), 'Service_id must be a str'
+        assert isinstance(property_id, str), 'property_id must be a str'
+        validator: IValidator = cls.get_validator(service_id, property_id)
+        if validator is None:
+            return None
+        if not isinstance(validator, IStringValidator):
+            return None
+        validator: IStringValidator
+        return validator.allowed_values
 
     @classmethod
     def get_value(cls, service_id: str, property_id: str) \

@@ -22,15 +22,15 @@ class Mpg321OEPiAudioPlayer(SubprocessAudioPlayer):
     #  Plays using ALSA
     #
     ID = Players.MPG321_OE_PI
+    service_ID = ID
     # name = 'mpg321 OE Pi'
 
     _supported_input_formats: List[str] = [SoundCapabilities.MP3]
     _supported_output_formats: List[str] = []
     _provides_services: List[ServiceType] = [ServiceType.PLAYER]
-    sound_capabilities = SoundCapabilities(ID, _provides_services,
-                                           _supported_input_formats,
-                                           _supported_output_formats)
-
+    SoundCapabilities.add_service(service_ID, _provides_services,
+                                  _supported_input_formats,
+                                  _supported_output_formats)
     def __init__(self):
         super().__init__()
         self._logger = module_logger.getChild(

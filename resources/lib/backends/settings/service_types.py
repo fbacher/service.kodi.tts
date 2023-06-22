@@ -9,6 +9,7 @@ class Services:
     CACHE_WRITER_ID: Final[str] = 'cache_writer'
     CACHE_READER_ID: Final[str] = 'cache_reader'
     INTERNAL_PLAYER_ID: Final[str] = 'internal'
+    EXPERIMENTAL_ENGINE_ID: Final[str] = 'experimental'
     RESPONSIVE_VOICE_ID: Final[str] = 'ResponsiveVoice'
     FESTIVAL_ID: Final[str] = 'Festival'
     FLITE_ID: Final[str] = 'Flite'
@@ -21,7 +22,10 @@ class Services:
     PICO_TO_WAVE_ID: Final[str] = 'pico2wave'
     RECITE_ID: Final[str] = 'Recite'
     SERVICE_ID: Final[str] = 'id'   # Specifies the service's id (FLite is the current
-    # engine's id.
+    LAME_ID: Final[str] = 'lame'
+    DEFAULT_ENGINE_ID: Final[str] = ESPEAK_ID
+
+# engine's id.
 
     WavAudioPlayerHandler = 'wave_handler'
     MP3AudioPlayerHandler = 'mp3_handler'
@@ -47,3 +51,5 @@ class ServiceType(Enum):
     PIPE_ADAPTER = 6
     # Plays Audio
     PLAYER = 7
+    ENGINE_SETTINGS = 8
+    INTERNAL_PLAYER = 9

@@ -18,6 +18,7 @@ from backends import audio, base
 from backends.settings.setting_properties import SettingsProperties
 from common import utils
 from common.logger import *
+from common.setting_constants import Mode
 from common.system_queries import SystemQueries
 from common.typing import *
 
@@ -59,7 +60,7 @@ LANGUAGES = [    ('af', 'Afrikaans'),
 ]
 
 
-class GoogleTTSBackend(base.SimpleTTSBackendBase):
+class GoogleTTSBackend(base.SimpleTTSBackend):
     backend_id = 'Google'
     displayName = 'Google'
     # ttsURL = 'http://translate.google.com/translate_tts?client=t&tl={0}&q={1}'
@@ -165,9 +166,9 @@ class GoogleTTSBackend(base.SimpleTTSBackendBase):
 
     def getMode(self):
         if self.setting('pipe'):
-            return base.SimpleTTSBackendBase.PIPE
+            return Mode.PIPE
         else:
-            return base.SimpleTTSBackendBase.FILEOUT
+            return Mode.FILEOUT
 
     def stop(self):
         if not self.process: return

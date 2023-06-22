@@ -19,6 +19,7 @@ module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 
 class PlaySFXAudioPlayer(AudioPlayer):
     ID = Players.SFX
+    service_ID = ID
     # name = 'XBMC PlaySFX'
     _logger: BasicLogger = None
     sound_file_base = '{speech_file_name}{sound_file_type}'
@@ -26,9 +27,9 @@ class PlaySFXAudioPlayer(AudioPlayer):
     _supported_input_formats: List[str] = [SoundCapabilities.WAVE]
     _supported_output_formats: List[str] = []
     _provides_services: List[ServiceType] = [ServiceType.PLAYER]
-    sound_capabilities = SoundCapabilities(ID, _provides_services,
-                                           _supported_input_formats,
-                                           _supported_output_formats)
+    SoundCapabilities.add_service(service_ID, _provides_services,
+                                  _supported_input_formats,
+                                  _supported_output_formats)
 
     def __init__(self):
         super().__init__()

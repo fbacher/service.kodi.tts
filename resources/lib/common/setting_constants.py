@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+from enum import Enum
+
+from strenum import StrEnum
+
 from backends.settings.service_types import Services
 from backends.settings.setting_properties import SettingsProperties
 from common.messages import Message, Messages
@@ -22,6 +26,7 @@ class BaseSettingsConstants:
 
 class Backends(BaseSettingsConstants):
     AUTO_ID: Final[str] = Services.AUTO_ENGINE_ID
+    DEFAULT_ENGINE_ID: Final[str] = Services.DEFAULT_ENGINE_ID
     ESPEAK_ID: Final[str] = Services.ESPEAK_ID
     FESTIVAL_ID: Final[str] = Services.FESTIVAL_ID
     FLITE_ID: Final[str] = Services.FLITE_ID
@@ -31,10 +36,12 @@ class Backends(BaseSettingsConstants):
     RECITE_ID: Final[str] = Services.RECITE_ID
     RESPONSIVE_VOICE_ID: Final[str] = Services.RESPONSIVE_VOICE_ID
     SPEECH_DISPATCHER_ID: Final[str] = Services.SPEECH_DISPATCHER_ID
+    EXPERIMENTAL_ENGINE_ID: Final[str] = Services.EXPERIMENTAL_ENGINE_ID
 
     ALL_ENGINE_IDS: List[str] = [
         AUTO_ID,
         ESPEAK_ID,
+        EXPERIMENTAL_ENGINE_ID,
         FESTIVAL_ID,
         FLITE_ID,
         INTERNAL_ID,
@@ -61,7 +68,8 @@ class Backends(BaseSettingsConstants):
         FESTIVAL_ID: 'fest',
         FLITE_ID: 'flite',
         RESPONSIVE_VOICE_ID: 'rv',
-        SPEECH_DISPATCHER_ID: 'speechDisp'
+        SPEECH_DISPATCHER_ID: 'speechDisp',
+        EXPERIMENTAL_ENGINE_ID: 'ex'
     }
 
 
@@ -245,6 +253,8 @@ class Converters(BaseSettingsConstants):
     MPG123: Final[str] = 'mpg123'  # Can convert from mpg to wave, not too useful
     MPG321_OE_PI: Final[str] = 'mpg321_OE_Pi'
     MPG321: Final[str] = 'mpg321'  # near clone of mpg123, can convert mpg to wave
+    LAME: Final[str] = 'lame' # can be accessed directly via lame command (linux)
+                              # or via ffmpeg
 
     # Built-in players
 
@@ -264,15 +274,17 @@ class Converters(BaseSettingsConstants):
     }
 
 
-class Genders(BaseSettingsConstants):
-    MALE: Final[int] = 0
-    FEMALE: Final[int] = 1
-    UNKNOWN: Final[int] = 2
+class Genders(StrEnum):
+    MALE = 'male'
+    FEMALE = 'female'
+    UNKNOWN = 'unknown'
 
+
+class GenderSettingsMap(BaseSettingsConstants):
     settings_map = {
-        MALE: Messages.GENDER_MALE,
-        FEMALE: Messages.GENDER_FEMALE,
-        UNKNOWN: Messages.GENDER_UNKNOWN
+        Genders.MALE: Messages.GENDER_MALE,
+        Genders.FEMALE: Messages.GENDER_FEMALE,
+        Genders.UNKNOWN: Messages.GENDER_UNKNOWN
     }
 
 
@@ -282,3 +294,9 @@ class Misc(BaseSettingsConstants):
     settings_map = {
         PITCH: Messages.MISC_PITCH
     }
+
+
+class Mode(Enum):
+    FILEOUT = 0
+    ENGINESPEAK = 1
+    PIPE = 2

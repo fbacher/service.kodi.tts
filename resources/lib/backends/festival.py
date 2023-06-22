@@ -7,7 +7,8 @@ import subprocess
 import sys
 
 from backends.audio.sound_capabilties import SoundCapabilities
-from backends.base import SimpleTTSBackendBase
+from backends.base import SimpleTTSBackend
+from backends.engines.festival_settings import FestivalSettings
 from backends.settings.constraints import Constraints
 from backends.settings.service_types import Services, ServiceType
 from common.logger import *
@@ -21,7 +22,7 @@ from common.typing import *
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
-class FestivalTTSBackend(SimpleTTSBackendBase, BaseServices):
+class FestivalTTSBackend(FestivalSettings, SimpleTTSBackend):
     backend_id = Backends.FESTIVAL_ID
     service_ID: str = Services.FESTIVAL_ID
     displayName = 'Festival'
@@ -34,10 +35,11 @@ class FestivalTTSBackend(SimpleTTSBackendBase, BaseServices):
 
     _supported_input_formats: List[str] = []
     _supported_output_formats: List[str] = [SoundCapabilities.WAVE]
-    _provides_services: List[ServiceType] = [ServiceType.ENGINE, ServiceType.PLAYER]
-    sound_capabilities = SoundCapabilities(service_ID, _provides_services,
-                                            _supported_input_formats,
-                                            _supported_output_formats)
+    _provides_services: List[ServiceType] = [ServiceType.ENGINE, ServiceType.INTERNAL_PLAYER]
+    SoundCapabilities.add_service(service_ID, _provides_services,
+                                  _supported_input_formats,
+                                  _supported_output_formats)
+
     settings = {
         SettingsProperties.PIPE: False,
         SettingsProperties.PITCH: 105,
@@ -56,7 +58,7 @@ class FestivalTTSBackend(SimpleTTSBackendBase, BaseServices):
         clz._class_name = self.__class__.__name__
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz._class_name)
-            clz.register(self)
+            self.register(self)
         self.festivalProcess = None
         clz.constraints[SettingsProperties.SPEED] = clz.speedConstraints
         clz.constraints[SettingsProperties.PITCH] = clz.pitchConstraints
@@ -87,9 +89,9 @@ class FestivalTTSBackend(SimpleTTSBackendBase, BaseServices):
         default_player: str = clz.get_setting_default(SettingsProperties.PLAYER)
         player: str = clz.get_player_setting(default_player)
         if clz.getSetting(SettingsProperties.PIPE):
-            return SimpleTTSBackendBase.PIPE
+            return SimpleTTSBackend.PIPE
         else:
-            return SimpleTTSBackendBase.FILEOUT
+            return SimpleTTSBackend.FILEOUT
 
     def runCommand(self, text_to_voice, dummy):
         wave_file, exists = self.get_path_to_voice_file(text_to_voice, use_cache=False)

@@ -7,70 +7,70 @@ class IPlayer:
 
     @classmethod
     def set_sound_dir(cls):
-        raise NotImplemented
+        raise NotImplementedError
 
     @classmethod
     def get_tmp_path(cls, speech_file_name: str, sound_file_type: str) -> str:
-        raise NotImplemented
+        raise NotImplementedError
 
     def do(self, **kwargs):
-        raise NotImplemented
+        raise NotImplementedError
 
     def canSetSpeed(self) -> bool:
-        raise NotImplemented
+        raise NotImplementedError
 
     def setSpeed(self, speed: float) -> None:
         """
 
         @param speed:
         """
-        raise NotImplemented
+        raise NotImplementedError
 
     def canSetPitch(self) -> bool:
         """
 
         @return:
         """
-        raise NotImplemented
+        raise NotImplementedError
 
     def setPitch(self, pitch: float) -> None:
-        raise NotImplemented
+        raise NotImplementedError
 
     def canSetVolume(self) -> bool:
-        raise NotImplemented
+        raise NotImplementedError
 
     def setVolume(self, volume: float) -> None:
-        raise NotImplemented
+        raise NotImplementedError
 
     def canSetPipe(self) -> bool:
-        raise NotImplemented
+        raise NotImplementedError
 
     def pipe(self, source) -> None:
-        raise NotImplemented
+        raise NotImplementedError
 
     def play(self, path: str) -> None:
-        raise NotImplemented
+        raise NotImplementedError
 
     def isPlaying(self) -> bool:
-        raise NotImplemented
+        raise NotImplementedError
 
     def stop(self) -> None:
-        raise NotImplemented
+        raise NotImplementedError
 
     def close(self) -> None:
-        raise NotImplemented
+        raise NotImplementedError
 
     @staticmethod
     def available(ext=None) -> bool:
-        raise NotImplemented
+        raise NotImplementedError
 
     @classmethod
     def is_builtin(cls) -> bool:
         #
         # Is this Audio Player built-into the voice engine (i.e. espeak).
         #
-        raise NotImplemented
+        raise NotImplementedError
 
     @staticmethod
     def register() -> None:
-        raise NotImplemented
+        raise NotImplementedError

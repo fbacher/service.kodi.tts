@@ -3,8 +3,9 @@ import os
 import subprocess
 
 #  from backends.audio.player_handler import BasePlayerHandler, WavAudioPlayerHandler
-from backends.base import SimpleTTSBackendBase
+from backends.base import SimpleTTSBackend
 from backends.settings.constraints import Constraints
+from backends.settings.Pico2WaveSettings import Pico2WaveSettings
 from common.constants import Constants
 from common.logger import *
 from common.setting_constants import Backends
@@ -16,7 +17,7 @@ from common.typing import *
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
-class Pico2WaveTTSBackend(SimpleTTSBackendBase):
+class Pico2WaveTTSBackend(Pico2WaveSettings, SimpleTTSBackend):
     backend_id = Backends.PICO_TO_WAVE_ID
     displayName = 'pico2wave'
     speedConstraints: Constraints = Constraints(20, 100, 200, True, False, 1.0,
@@ -31,6 +32,7 @@ class Pico2WaveTTSBackend(SimpleTTSBackendBase):
     supported_settings: Dict[str, str | int | bool] = settings
     _logger: BasicLogger = None
     _class_name: str = None
+    _initialized: bool = False
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -38,9 +40,12 @@ class Pico2WaveTTSBackend(SimpleTTSBackendBase):
         clz._class_name = self.__class__.__name__
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz._class_name)
+        if not clz._initialized:
+            clz._initialized = True
+            self.register(self)
         self.language = None
         self.stop_processing = False
-        self.initialized = False
+        self.initialized = False  # For reinitialization, super classes use
         clz.constraints[SettingsProperties.SPEED] = clz.speedConstraints
 
     def init(self):
@@ -71,8 +76,8 @@ class Pico2WaveTTSBackend(SimpleTTSBackendBase):
 
         # If caching is enabled, voice_file will be in the cache.
 
-        #  voice_file = self.player_handler.getOutFile(text_to_voice, use_cache=False)
-
+        voice_file, exists = self.get_path_to_voice_file(text_to_voice,
+                                                        use_cache=self.is_use_cache())
         self._logger.debug_verbose('pico2wave.runCommand text: ' + text_to_voice +
                          ' language: ' + self.language)
         args = ['pico2wave']

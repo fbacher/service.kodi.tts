@@ -13,7 +13,7 @@ import urllib.request
 
 from backends import asyncconnections, audio
 # from backends.audio.player_handler import WavAudioPlayerHandler
-from backends.base import SimpleTTSBackendBase
+from backends.base import SimpleTTSBackend
 from common import utils
 from common.logger import *
 from common.typing import *
@@ -21,7 +21,7 @@ from common.typing import *
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
-class SpeechUtilComTTSBackend(SimpleTTSBackendBase):
+class SpeechUtilComTTSBackend(SimpleTTSBackend):
     """
 
     """

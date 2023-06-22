@@ -10,13 +10,16 @@ from backends import base
 from backends.audio.builtin_audio_player import BuiltInAudioPlayer
 # from backends.audio.player_handler import BasePlayerHandler, WavAudioPlayerHandler
 from backends.audio.sound_capabilties import ServiceType, SoundCapabilities
-from backends.base import Constraints, SimpleTTSBackendBase
+from backends.base import Constraints, SimpleTTSBackend
+from backends.espeak_settings import ESpeakSettings
+from backends.i_tts_backend_base import ITTSBackendBase
 from backends.settings.service_types import Services
+from backends.settings.validators import ConstraintsValidator
 from common import utils
 from common.constants import Constants
 from common.logger import *
 from common.base_services import BaseServices
-from common.setting_constants import Backends, Genders, Players
+from common.setting_constants import Backends, Genders, Mode, Players
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
@@ -25,7 +28,7 @@ from common.typing import *
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
-class ESpeakTTSBackend(base.SimpleTTSBackendBase, BaseServices):
+class ESpeakTTSBackend(ESpeakSettings, SimpleTTSBackend):
     """
 
     """
@@ -34,35 +37,11 @@ class ESpeakTTSBackend(base.SimpleTTSBackendBase, BaseServices):
     initialized: bool = False
     backend_id = Backends.ESPEAK_ID
     displayName = 'eSpeak'
-    speedConstraints = Constraints(80, 175, 450, True, False, 1.0, SettingsProperties.SPEED)
-    pitchConstraints = Constraints(0, 50, 99, True, False, 1.0, SettingsProperties.PITCH)
-    volumeNativeConstraints = Constraints(0, 100, 200, True, False, 1.0, SettingsProperties.VOLUME)
-    volumeConstraints = Constraints(-12, 0, 12, False, True, 1.0, SettingsProperties.VOLUME)
-    constraints: Dict[str, Constraints] = {}
-
-    #  player_handler_class: Type[BasePlayerHandler] = WavAudioPlayerHandler
-    _supported_input_formats: List[str] = []
-    _supported_output_formats: List[str] = [SoundCapabilities.WAVE]
-    _provides_services: List[ServiceType] = [ServiceType.ENGINE, ServiceType.PLAYER]
-    sound_capabilities = SoundCapabilities(service_ID, _provides_services,
-                                            _supported_input_formats,
-                                            _supported_output_formats)
-    # Supported settings and default values
-
-    settings = {
-        # 'output_via_espeak': False,
-        SettingsProperties.PLAYER: Players.INTERNAL,
-        SettingsProperties.PITCH: 0,
-        SettingsProperties.PIPE: False,
-        SettingsProperties.SPEED: 0,
-        SettingsProperties.VOICE: '',
-        SettingsProperties.VOLUME: 0
-    }
-    supported_settings: Dict[str, str | int | bool] = settings
 
     voice_map = dict()
     _logger: BasicLogger = None
     _class_name: str = None
+    _initialized: bool = False
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -70,11 +49,9 @@ class ESpeakTTSBackend(base.SimpleTTSBackendBase, BaseServices):
         clz._class_name = self.__class__.__name__
         if clz._logger is None:
             clz._logger = module_logger.getChild(type(self)._class_name)
-            clz.register(self)
-
-        clz.constraints[SettingsProperties.SPEED] = clz.speedConstraints
-        clz.constraints[SettingsProperties.PITCH] = clz.pitchConstraints
-        clz.constraints[SettingsProperties.VOLUME] = clz.volumeConstraints
+        if not clz._initialized:
+            clz._initialized = True
+            BaseServices.register(self)
 
     def init(self):
         super().init()
@@ -82,6 +59,13 @@ class ESpeakTTSBackend(base.SimpleTTSBackendBase, BaseServices):
         self.initialized = False
         self.process: subprocess.Popen = None
         self.update()
+
+    '''
+    @classmethod
+    def register_me(cls, what: Type[ITTSBackendBase]) -> None:
+        cls._logger.debug(f'Registering {repr(what)}')
+        BaseServices.register(service=what)
+    '''
 
     @classmethod
     def get_backend_id(cls) -> str:
@@ -137,12 +121,17 @@ class ESpeakTTSBackend(base.SimpleTTSBackendBase, BaseServices):
     def isInstalled():
         return ESpeakTTSBackend.isSupportedOnPlatform()
 
+    def getVoice(self) -> str:
+        clz = type(self)
+        voice = clz.getSetting(SettingsProperties.VOICE, '')
+        return voice
+
     def addCommonArgs(self, args, text):
         clz = type(self)
         voice_id = self.getVoice()
         speed = self.getSpeed()
         mode = self.getMode()
-        if mode == SimpleTTSBackendBase.ENGINESPEAK:
+        if mode == Mode.ENGINESPEAK:
             # Scale 0 - 200 Default 100
             volume = self.scale_db_to_percent(
                 self.getVolume(), upper_bound=200)
@@ -169,11 +158,11 @@ class ESpeakTTSBackend(base.SimpleTTSBackendBase, BaseServices):
         default_player: str = clz.get_setting_default(SettingsProperties.PLAYER)
         player: str = clz.get_player_setting(default_player)
         if player == BuiltInAudioPlayer.ID:
-            return SimpleTTSBackendBase.ENGINESPEAK
+            return Mode.ENGINESPEAK
         elif type(self).getSetting(SettingsProperties.PIPE):
-            return SimpleTTSBackendBase.PIPE
+            return Mode.PIPE
         else:
-            return SimpleTTSBackendBase.FILEOUT
+            return Mode.FILEOUT
 
     def runCommand(self, text, outFile):
         clz = type(self)
@@ -182,7 +171,8 @@ class ESpeakTTSBackend(base.SimpleTTSBackendBase, BaseServices):
         args = ['espeak', '-w', outFile]
         self.addCommonArgs(args, text)
         try:
-            completed: subprocess.CompletedProcess = subprocess.run(args, check=True)
+            completed: subprocess.CompletedProcess = subprocess.run(args, check=True,
+                                                                    shell=False)
             clz._logger.debug(f'args: {completed.args}')
         except subprocess.CalledProcessError as e:
             if type(self)._logger.isEnabledFor(DEBUG):
@@ -304,6 +294,13 @@ class ESpeakTTSBackend(base.SimpleTTSBackendBase, BaseServices):
         return None
 
     @classmethod
+    def get_default_language(cls) -> str:
+        languages: List[str]
+        default_lang: str
+        languages, default_lang = cls.settingList(SettingsProperties.LANGUAGE)
+        return default_lang
+
+    @classmethod
     def get_voice_id_for_name(cls, name):
         if len(cls.voice_map) == 0:
             cls.settingList(SettingsProperties.VOICE)
@@ -311,9 +308,10 @@ class ESpeakTTSBackend(base.SimpleTTSBackendBase, BaseServices):
 
     def getEngineVolume(self) -> int:
         clz = type(self)
-        volumeDb: int = int(self.getVolume())
-        volume: int = clz.volumeConstraints.translate_value(self.volumeNativeConstraints,
-                                                            volumeDb, True)
+        volume_validator: ConstraintsValidator
+        volume_validator = clz.get_validator(clz.service_ID,
+                                             property_id=SettingsProperties.VOLUME)
+        volume: float = volume_validator.getValue()
         return volume
 
     @staticmethod

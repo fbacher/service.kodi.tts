@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from common.critical_settings import *
+from common.logger import BasicLogger
 from common.minimal_monitor import MinimalMonitor
 from common.python_debugger import PythonDebugger
 
@@ -30,11 +31,9 @@ if REMOTE_DEBUG:
 
 import sys
 import xbmcvfs
-from backends.engines.bootstrap_engines import BootstrapEngines
-BootstrapEngines.init()
-from common.configuration_utils import ConfigUtils
 # import faulthandler
 
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 try:
     pass
@@ -45,29 +44,6 @@ except Exception as e:
     pass
 
 
-def main():
-    if os.path.exists(os.path.join(xbmcvfs.translatePath('special://profile'),
-                                   'addon_data', 'service.kodi.tts', 'DISABLED')):
-        xbmc.log('service.kodi.tts: DISABLED - NOT STARTING')
-        return
-
-    arg = None
-    if len(sys.argv) > 1:
-        arg = sys.argv[1] or False
-    extra = sys.argv[2:]
-
-    if arg and arg.startswith('keymap.'):
-        command = arg[7:]
-        from utils import keymapeditor
-        keymapeditor.processCommand(command)
-    elif arg == 'settings_dialog':
-        ConfigUtils.selectSetting(*extra)
-    elif arg is None:
-        from service import startService
-        xbmc.log('main.py service.kodi.tts service thread starting', xbmc.LOGDEBUG)
-        startService()
-
-'''
 class MainThreadLoop:
     """
         Kodi's Monitor class has some quirks in it that strongly favors creating
@@ -88,22 +64,24 @@ class MainThreadLoop:
         :return:
         """
         try:
-            # Cheat and start the back_end_bridge here, although this method
-            # should just be a loop.
+            if os.path.exists(os.path.join(xbmcvfs.translatePath('special://profile'),
+                                           'addon_data', 'service.kodi.tts', 'DISABLED')):
+                xbmc.log('service.kodi.tts: DISABLED - NOT STARTING')
+                return
 
             worker_thread_initialized = False
-            bridge_initialized = False
 
             # For the first 10 seconds use a short timeout so that initialization
             # stuff is handled quickly. Then revert to less frequent checks
 
             initial_timeout = 0.05
-            switch_timeouts_count = 10 * 20
+            switch_timeouts_count = 10 * 20 # 10 seconds
 
             # Don't start backend for about one second after start if
             # debugging is enabled in order for it to start.
 
             if REMOTE_DEBUG:
+                # Wait two seconds for debugger to do its thing
                 start_backend_count_down = 2.0 / initial_timeout
             else:
                 start_backend_count_down = 0.0
@@ -126,7 +104,7 @@ class MainThreadLoop:
                 else:
                     if not worker_thread_initialized:
                         worker_thread_initialized = True
-                        cls.start_backend_worker_thread()
+                        cls.start_main_thread()
 
             MinimalMonitor.throw_exception_if_abort_requested(timeout=timeout)
 
@@ -136,19 +114,39 @@ class MainThreadLoop:
             # xbmc.log('xbmc.log Exception: ' + str(e), xbmc.LOGERROR)
             module_logger.exception(e)
 
-
     @classmethod
-    def start_backend_worker_thread(cls) -> None:
+    def start_main_thread(cls) -> None:
         try:
-            import backend_service_worker
             thread = threading.Thread(
-                    target=backend_service_worker.startup_non_main_thread,
-                    name='back_end_service.startup_non_main_thread',
+                    target=MainThreadLoop.main,
+                    name='tts_service',
                     daemon=False)
             thread.start()
         except Exception as e:
             xbmc.log('Exception: ' + str(e), xbmc.LOGERROR)
             # module_logger# .exception('')
+
+    @staticmethod
+    def main():
+        from startup.bootstrap_engines import BootstrapEngines
+        BootstrapEngines.init()
+        from common.configuration_utils import ConfigUtils
+        arg = None
+        if len(sys.argv) > 1:
+            arg = sys.argv[1] or False
+        extra = sys.argv[2:]
+
+        if arg and arg.startswith('keymap.'):
+            command = arg[7:]
+            from utils import keymapeditor
+            keymapeditor.processCommand(command)
+        elif arg == 'settings_dialog':
+            ConfigUtils.selectSetting(*extra)
+        elif arg is None:
+            from service import startService
+            xbmc.log('main.py service.kodi.tts service thread starting', xbmc.LOGDEBUG)
+            startService()
+
 
 
 def bootstrap_plugin() -> None:
@@ -161,9 +159,10 @@ def bootstrap_plugin() -> None:
     """
 
     try:
-        # xbmc.log('Starting event processing loop', xbmc.LOGDEBUG)
+        xbmc.log('Starting event processing loop', xbmc.LOGDEBUG)
 
-        MainThreadLoop.event_processing_loop()
+        MainThreadLoop.main()
+        # MainThreadLoop.event_processing_loop()
     except AbortException as e:
         pass
     except Exception as e:
@@ -171,7 +170,7 @@ def bootstrap_plugin() -> None:
         # module_logger.exception('')
     finally:
         exit_plugin()
-'''
+
 
 def exit_plugin():
     if PythonDebugger.is_enabled():
@@ -181,6 +180,6 @@ def exit_plugin():
 
 if __name__ == '__main__':
     import threading
-    threading.current_thread().name = "main.py"
-    main()
+    threading.current_thread().name = "tts_main"
+    bootstrap_plugin()
     exit_plugin()

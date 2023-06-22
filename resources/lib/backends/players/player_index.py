@@ -6,7 +6,6 @@ avoids nasty dependency issues during startup.
 from backends.players.iplayer import IPlayer
 from common.setting_constants import Players
 from common.typing import *
-from backends.audio.bootstrap_players import BootstrapPlayers
 
 
 class PlayerIndex:
@@ -35,9 +34,9 @@ class PlayerIndex:
         return
 
     @staticmethod
-    def get_player(player_id: str) -> Type[IPlayer]:
+    def get_player(player_id: str) -> IPlayer:
         player: IPlayer | None = PlayerIndex._player_lookup.get(player_id)
         if player is None:
-            BootstrapPlayers.load_player(player_id)
+            # BootstrapPlayers.load_player(player_id)
             player = PlayerIndex._player_lookup.get(player_id)
         return player

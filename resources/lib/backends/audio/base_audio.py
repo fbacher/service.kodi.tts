@@ -10,6 +10,8 @@ from common import utils
 from common.constants import Constants
 from common.logger import BasicLogger
 from common.base_services import BaseServices
+from common.minimal_monitor import MinimalMonitor
+from common.monitor import Monitor
 from common.setting_constants import Players
 from common.settings import Settings
 
@@ -38,7 +40,8 @@ class AudioPlayer(IPlayer, BaseServices):
     @classmethod
     def set_sound_dir(cls):
         tmpfs = utils.getTmpfs()
-        if Settings.getSetting(SettingsProperties.USE_TEMPFS, None, True) and tmpfs:
+        if Settings.getSetting(SettingsProperties.USE_TEMPFS,
+                               SettingsProperties.TTS_SERVICE, True) and tmpfs:
             cls._logger.debug_extra_verbose(f'Using tmpfs at: {tmpfs}')
             cls.sound_dir = os.path.join(tmpfs, 'kodi_speech')
         else:
@@ -131,10 +134,11 @@ class SubprocessAudioPlayer(AudioPlayer):
         clz = type(self)
         clz._logger = module_logger.getChild(
                 self.__class__.__name__)
-        self._wavProcess = None
+        self._player_busy: bool = False
         self.speed: float = 0.0
         self.volume: float | None = None
         self.active = True
+        self._player_process = None
 
     def speedArg(self, speed: float) -> str:
         self._logger.debug(f'speedArg speed: {speed} multiplier: {self._speedMultiplier}')
@@ -162,16 +166,19 @@ class SubprocessAudioPlayer(AudioPlayer):
         return bool(self._pipeArgs)
 
     def pipe(self, source):
+        Monitor.throw_exception_if_abort_requested()
+
         clz = type(self)
         pipe_args = self.get_pipe_args()
         clz._logger.debug_verbose(f'pipeArgs: {" ".join(pipe_args)}')
-
+        self._player_busy = True
         with subprocess.Popen(pipe_args, stdin=subprocess.PIPE,
                               stdout=subprocess.DEVNULL,
-                              stderr=subprocess.STDOUT) as self._wavProcess:
+                              stderr=subprocess.STDOUT) as self._player_process:
             try:
-                shutil.copyfileobj(source, self._wavProcess.stdin)
+                shutil.copyfileobj(source, self._player_process.stdin)
             except AbortException:
+                self._player_process.kill()
                 reraise(*sys.exc_info())
             except IOError as e:
                 if e.errno != errno.EPIPE:
@@ -181,8 +188,7 @@ class SubprocessAudioPlayer(AudioPlayer):
 
             finally:
                 source.close()
-
-        self._wavProcess = None
+                self._player_busy = False
 
     def getSpeed(self) -> float:
         speed: float | None = \
@@ -207,44 +213,50 @@ class SubprocessAudioPlayer(AudioPlayer):
 
     def play(self, path: str):
         clz = type(self)
+        Monitor.throw_exception_if_abort_requested()
         args = self.playArgs(path)
         clz._logger.debug_verbose(f'args: {" ".join(args)}')
-        with subprocess.Popen(args, stdout=(open(os.path.devnull, 'w')),
-                              stderr=subprocess.STDOUT) as self._wavProcess:
-            pass
-
-        self._wavProcess = None
+        try:
+            self._player_busy = True
+            subprocess.run(args, shell=False, text=True, check=True)
+        except subprocess.CalledProcessError:
+            clz._logger.exception('')
+            reason = 'mplayer failed'
+            failed = True
+        finally:
+            self._player_busy = False
 
     def isPlaying(self) -> bool:
-        return self._wavProcess and self._wavProcess.poll() is None
+        return self._player_busy
 
     def stop(self):
-        if not self._wavProcess or self._wavProcess.poll():
+        if not self.isPlaying():
             return
         try:
             if self.kill:
-                self._wavProcess.kill()
+                self._player_process.kill()
             else:
-                self._wavProcess.terminate()
+                self._player_process.terminate()
         except AbortException:
+            self._player_process.kill()
             reraise(*sys.exc_info())
         except:
             pass
         finally:
-            self._wavProcess = None
+            self._player_busy = None
 
     def close(self):
         self.active = False
-        if not self._wavProcess or self._wavProcess.poll():
+        if not self._player_process or self._player_process.poll():
             return
         try:
-            self._wavProcess.kill()
+            self._player_process.kill()
         except AbortException:
             reraise(*sys.exc_info())
         except:
             pass
         finally:
-            self._wavProcess = None
+            self._player_process = None
 
     @classmethod
     def available(cls, ext=None) -> bool:

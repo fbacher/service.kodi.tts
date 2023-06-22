@@ -2,14 +2,15 @@
 import subprocess
 import sys
 
-from backends.base import SimpleTTSBackendBase
+from backends.base import SimpleTTSBackend
 from common.logger import *
+from common.setting_constants import Mode
 from common.system_queries import SystemQueries
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
-class VoiceOverBackend(SimpleTTSBackendBase):
+class VoiceOverBackend(SimpleTTSBackend):
     backend_id = 'voiceover'
     displayName = 'VoiceOver'
     _class_name: str = None
@@ -19,7 +20,7 @@ class VoiceOverBackend(SimpleTTSBackendBase):
         type(self)._class_name = self.__class__.__name__
 
     def init(self):
-        self.setMode(SimpleTTSBackendBase.ENGINESPEAK)
+        self.setMode(Mode.ENGINESPEAK)
 
     def runCommandAndSpeak(self,text):
         subprocess.call(['osascript', '-e',

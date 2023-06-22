@@ -50,8 +50,9 @@ class ITTSBackendBase(IBackend):
 
     @classmethod
     @property
-    def backend_id(cls) -> str:
-        return cls._backend_id
+    def backend_id(self) -> str:
+        clz = type(self)
+        return clz._backend_id
 
     @classmethod
     def getBackend(cls, backend_id: str) -> IBackend:

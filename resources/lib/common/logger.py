@@ -173,7 +173,8 @@ class BasicLogger(Logger):
                 extra['notify'] = notify
             #  extra['start_file'] = start_file,
             extra['ignore_frames'] = ignore_frames
-            kwargs['extra'] = extra
+            if extra is not None:
+                kwargs['extra'] = extra
             kwargs['stacklevel'] = ignore_frames  # - 1
 
             # Call super._log directly to avoid having to compensate for
@@ -348,6 +349,8 @@ class BasicLogger(Logger):
         kwargs.setdefault('ignore_frames', 0)
         ignore_frames = kwargs['ignore_frames'] + 1
         kwargs['ignore_frames'] = ignore_frames
+        if msg is None:
+            msg = ''
         self.error(msg, *args, exc_info=exc_info, **kwargs)
 
     def critical(self, msg: str, *args: Any, **kwargs: Any):
@@ -402,26 +405,24 @@ class BasicLogger(Logger):
                 threads_to_dump = [current_thread]
 
             for th in threads_to_dump:
-                th: threading.Thread = threading.current_thread()
+                th: threading.Thread
                 sio.write(f'\n# ThreadID: {th.name} Daemon: {th.daemon}\n\n')
 
-                # Remote the logger's frames from it's thread.
+                # Remove the logger's frames from it's thread.
+                frames: List[inspect.FrameInfo] = inspect.stack(context=1)
 
                 if th == current_thread:
                     frames_to_ignore = ignore_frames
                 else:
                     frames_to_ignore = 0
 
-                stack = sys._current_frames()
-                if stack is not None:
-                    traceback.print_stack(stack, file=sio)
+                for frame in frames[ignore_frames::]:
+                    frame: inspect.FrameInfo
+                    sio.write(f'File: "{frame.filename}" line {frame.lineno}. '
+                              f'in {frame.function}\n')
+                    sio.write(f'  {frame.code_context}\n')
 
-            # TODO:
-            #   ignore_frames not actually used at this time.
-            #   When this stack dump is changed to be processed in the
-            #   normal way, then this will be changed.
-
-            kwargs: Any = {'ignore_frames': 1}
+            kwargs: Any = {}
             msg: str = sio.getvalue()
             sio.close()
             del sio
@@ -873,7 +874,7 @@ class Trace(logging.Filter):
         """
         try:
             passed_traces = record.__dict__.get('trace', [])
-            if len(passed_traces) == 0:
+            if passed_traces is None or len(passed_traces) == 0:
                 return 1
 
             cls = type(self)

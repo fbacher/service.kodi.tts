@@ -6,6 +6,7 @@ import sys
 
 from backends import base
 from backends.settings.setting_properties import SettingsProperties
+from common.setting_constants import Mode
 from common.typing import *
 from common.logger import *
 from common.system_queries import SystemQueries
@@ -27,7 +28,7 @@ def getStartupInfo():
     return None
 
 
-class CepstralTTSOEBackend(base.SimpleTTSBackendBase):
+class CepstralTTSOEBackend(base.SimpleTTSBackend):
     backend_id = 'Cepstral_OE'
     displayName = 'Cepstral OpenElec'
     canStreamWav = True
@@ -53,7 +54,7 @@ class CepstralTTSOEBackend(base.SimpleTTSBackendBase):
 
         self.process = None
         self.aplayProcess = None
-        self.setMode(base.SimpleTTSBackendBase.ENGINESPEAK)
+        self.setMode(Mode.ENGINESPEAK)
         self.restartProcess()
 
     def runCommand(self,text,outFile):
@@ -114,7 +115,7 @@ class CepstralTTSOEBackend(base.SimpleTTSBackendBase):
         return True
 
 
-class CepstralTTSBackend(base.SimpleTTSBackendBase):
+class CepstralTTSBackend(base.SimpleTTSBackend):
     backend_id = 'Cepstral'
     displayName = 'Cepstral'
     canStreamWav = False
@@ -134,7 +135,7 @@ class CepstralTTSBackend(base.SimpleTTSBackendBase):
         if type(self)._logger is None:
             type(self)._logger = module_logger.getChild(type(self)._class_name)
 
-        self.setMode(base.SimpleTTSBackendBase.ENGINESPEAK)
+        self.setMode(Mode.ENGINESPEAK)
         self.startupinfo = getStartupInfo()
         self.update()
         self.process = None

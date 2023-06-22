@@ -11,17 +11,19 @@ import xbmc
 from typing.io import IO
 
 from backends.audio.sound_capabilties import ServiceType, SoundCapabilities
-from backends.base import SimpleTTSBackendBase
+from backends.base import SimpleTTSBackend
 from backends.engines.responsive_voice_settings import ResponsiveVoiceSettings
 from backends.settings.i_validators import IValidator
+from backends.settings.service_types import Services
 from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import ConstraintsValidator
 from cache.voicecache import VoiceCache
+from common.base_services import BaseServices
 from common.constants import Constants
 from common.logger import *
 from common.messages import Messages
-from common.setting_constants import Genders, Languages
+from common.setting_constants import Backends, Genders, Languages, Mode
 from common.settings import Settings
 from common.system_queries import SystemQueries
 from common.typing import *
@@ -30,7 +32,12 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 PUNCTUATION_PATTERN = re.compile(r'([.,:])', re.DOTALL)
 
 
-class ResponsiveVoiceTTSBackend(ResponsiveVoiceSettings, SimpleTTSBackendBase):
+class ResponsiveVoiceTTSBackend(ResponsiveVoiceSettings, SimpleTTSBackend):
+
+    ID: str = Backends.RESPONSIVE_VOICE_ID
+    backend_id: str = Backends.RESPONSIVE_VOICE_ID
+    service_ID: str = Services.RESPONSIVE_VOICE_ID
+    service_TYPE: str = ServiceType.ENGINE
 
     # The Responsive Voice service was designed to provide text to speech in
     # a browser environment. Responsive Voice can perform the speech generation
@@ -193,7 +200,7 @@ class ResponsiveVoiceTTSBackend(ResponsiveVoiceSettings, SimpleTTSBackendBase):
 
         self.process = None
         self.stop_processing = False
-        # self.register(self)
+        BaseServices().register(self)
 
     def init(self) -> None:
         clz = type(self)
@@ -214,15 +221,16 @@ class ResponsiveVoiceTTSBackend(ResponsiveVoiceSettings, SimpleTTSBackendBase):
             installed = True
         return installed
 
-    def getMode(self) -> int:
+    def getMode(self) -> Mode:
         clz = type(self)
         # built-in player not supported
         default_player: str = clz.get_setting_default(SettingsProperties.PLAYER)
         player: str = clz.get_player_setting(default_player)
         if clz.getSetting(SettingsProperties.PIPE):
-            return SimpleTTSBackendBase.PIPE
+            return Mode.PIPE
         else:
-            return SimpleTTSBackendBase.FILEOUT
+            return Mode.FILEOUT
+
 
     def runCommand(self, text_to_voice: str, dummy) -> bool:
         clz = type(self)
@@ -605,7 +613,7 @@ class ResponsiveVoiceTTSBackend(ResponsiveVoiceSettings, SimpleTTSBackendBase):
                 languages.append(entry)
                 idx += 1
 
-            # Now, convert index to default_setting
+            # Now, convert index to index of default_setting
 
             default_setting = ''
             if longest_match > 0:
@@ -644,9 +652,14 @@ class ResponsiveVoiceTTSBackend(ResponsiveVoiceSettings, SimpleTTSBackendBase):
 
             default_player: str = cls.get_setting_default(SettingsProperties.PLAYER)
             player_ids: List[str] = []
-            # for player in cls.player_handler_class().getAvailablePlayers():
-            #     player_ids.append(player.ID)
             return player_ids, default_player
+
+    @classmethod
+    def get_default_language(cls) -> str:
+        languages: List[str]
+        default_lang: str
+        languages, default_lang = cls.settingList(SettingsProperties.LANGUAGE)
+        return default_lang
 
     # Intercept simply for testing purposes: to disable bypass
     # of voicecache during config to avoid hammering remote
@@ -676,7 +689,7 @@ class ResponsiveVoiceTTSBackend(ResponsiveVoiceSettings, SimpleTTSBackendBase):
     @classmethod
     def getVolumeDb(cls) -> float | None:
         volume_validator: ConstraintsValidator | IValidator
-        volume_validator = SettingsMap.get_validator(service_id=cls.service_ID,
+        volume_validator = SettingsMap.get_validator(cls.service_ID,
                                              property_id=SettingsProperties.VOLUME)
         volume = volume_validator.getValue()
 
@@ -692,7 +705,7 @@ class ResponsiveVoiceTTSBackend(ResponsiveVoiceSettings, SimpleTTSBackendBase):
         handle volume).
         """
         volume_validator: ConstraintsValidator
-        volume_validator = cls.get_validator(service_id=cls.service_ID,
+        volume_validator = cls.get_validator(cls.service_ID,
                                          property_id=SettingsProperties.VOLUME)
         volume: float = volume_validator.getValue()
         return volume
@@ -700,7 +713,7 @@ class ResponsiveVoiceTTSBackend(ResponsiveVoiceSettings, SimpleTTSBackendBase):
     @classmethod
     def getEngineVolume_str(cls) -> str:
         volume_validator: ConstraintsValidator
-        volume_validator = cls.get_validator(service_id=cls.service_ID,
+        volume_validator = cls.get_validator(cls.service_ID,
                                          property_id=SettingsProperties.VOLUME)
         volume: str = volume_validator.getUIValue()
         return volume
@@ -718,7 +731,7 @@ class ResponsiveVoiceTTSBackend(ResponsiveVoiceSettings, SimpleTTSBackendBase):
     @classmethod
     def getLanguage(cls) -> str:
         language_validator: ConstraintsValidator
-        language_validator = cls.get_validator(service_id=cls.service_ID,
+        language_validator = cls.get_validator(cls.service_ID,
                                          property_id=SettingsProperties.LANGUAGE)
         language: str = language_validator.getValue()
         language = 'en-US'
@@ -729,7 +742,7 @@ class ResponsiveVoiceTTSBackend(ResponsiveVoiceSettings, SimpleTTSBackendBase):
         # Range 0 .. 99, 50 default
         # API 0.1 .. 1.0. 0.5 default
         pitch_validator: ConstraintsValidator
-        pitch_validator = cls.get_validator(service_id=cls.service_ID,
+        pitch_validator = cls.get_validator(cls.service_ID,
                                             property_id=SettingsProperties.PITCH)
         if cls.is_use_cache():
             pitch = pitch_validator.default_value
@@ -760,7 +773,7 @@ class ResponsiveVoiceTTSBackend(ResponsiveVoiceSettings, SimpleTTSBackendBase):
         # by 100.
         #
         speed_validator: ConstraintsValidator
-        speed_validator = cls.get_validator(service_id=cls.service_ID,
+        speed_validator = cls.get_validator(cls.service_ID,
                                             property_id=SettingsProperties.SPEED)
         speed: float = speed_validator.getValue()
         # speed = float(speed_i) / 100.0
@@ -778,10 +791,6 @@ class ResponsiveVoiceTTSBackend(ResponsiveVoiceSettings, SimpleTTSBackendBase):
         return gender
 
     @classmethod
-    def is_use_cache(cls) -> bool:
-        return cls.getSetting(SettingsProperties.CACHE_SPEECH)
-
-    @classmethod
     def getAPIKey(cls) -> str:
         return cls.getSetting(SettingsProperties.API_KEY)
 
@@ -791,13 +800,13 @@ class ResponsiveVoiceTTSBackend(ResponsiveVoiceSettings, SimpleTTSBackendBase):
 
     @staticmethod
     def available() -> bool:
-        engine_sound_capabilities = SoundCapabilities.get_by_service_id(
+        engine_output_formats: List[str]
+        engine_output_formats = SoundCapabilities.get_output_formats(
                 ResponsiveVoiceTTSBackend.service_ID)
-        candidates: List[SoundCapabilities]
-        candidates = engine_sound_capabilities.get_candidate_consumers(
+        candidates: List[str]
+        candidates = SoundCapabilities.get_capable_services(
                 service_type=ServiceType.PLAYER,
                 consumer_formats=[SoundCapabilities.MP3],
                 producer_formats=[])
-        for candidate in candidates:
-            if candidate.is_supports_input_format(SoundCapabilities.MP3):
-                return True
+        if len(candidates) > 0:
+            return True

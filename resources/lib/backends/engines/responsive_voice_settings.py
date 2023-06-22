@@ -1,21 +1,28 @@
 from backends.audio.sound_capabilties import SoundCapabilities
-from backends.engines.base_engine_settings import BaseEngineServiceSettings
+from backends.engines.base_engine_settings import (BaseEngineSettings)
+from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.constraints import Constraints
 from backends.settings.i_validators import ValueType
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
                                           EnumValidator, StringValidator)
+from common.logger import BasicLogger
 from common.setting_constants import Backends, Genders, Players
 from common.settings_low_level import SettingsProperties
 from common.typing import *
 
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
-class ResponsiveVoiceSettings(BaseEngineServiceSettings):
+
+class ResponsiveVoiceSettings(BaseServiceSettings):
     # Only returns .mp3 files
     ID: str = Backends.RESPONSIVE_VOICE_ID
-    backend_id = Backends.RESPONSIVE_VOICE_ID
+    backend_id: str = Backends.RESPONSIVE_VOICE_ID
     service_ID: str = Services.RESPONSIVE_VOICE_ID
+    service_TYPE: str = ServiceType.ENGINE_SETTINGS
+
+    logger: BasicLogger = None
     displayName = 'ResponsiveVoice'
     # player_handler_class: Type[BasePlayerHandler] = WavAudioPlayerHandler
 
@@ -37,8 +44,8 @@ class ResponsiveVoiceSettings(BaseEngineServiceSettings):
     (or just don't use the validator and such and hard code it inline).
 
     
-        volume = cls.volumeConstraints.translate_value(
-                                        cls.volumeConversionConstraints, volumeDb)
+        volume = self.volumeConstraints.translate_value(
+                                        self.volumeConversionConstraints, volumeDb)
     
     """
 
@@ -47,6 +54,7 @@ class ResponsiveVoiceSettings(BaseEngineServiceSettings):
         def __init__(self, setting_id: str, service_id: str,
                      constraints: Constraints) -> None:
             super().__init__(setting_id, service_id, constraints)
+            clz = type(self)
 
         def setValue(self, value: int | float | str,
                      value_type: ValueType = ValueType.VALUE) -> None:
@@ -73,48 +81,43 @@ class ResponsiveVoiceSettings(BaseEngineServiceSettings):
 
     api_key_validator = StringValidator(SettingsProperties.API_KEY, backend_id,
                                         allowed_values=[], min_length=0, max_length=1024)
-    gender_validator = EnumValidator(SettingsProperties.GENDER, backend_id,
-                                     min_value=Genders.FEMALE, max_value=Genders.UNKNOWN,
-                                     default_value=Genders.UNKNOWN,
-                                     scale_internal_to_external=1)
-    gender_validator.setUIValue(Genders.FEMALE)
 
     _supported_input_formats: List[str] = []
     _supported_output_formats: List[str] = [SoundCapabilities.WAVE]
     _provides_services: List[ServiceType] = [ServiceType.ENGINE]
-    sound_capabilities = SoundCapabilities(service_ID, _provides_services,
-                                           _supported_input_formats,
-                                           _supported_output_formats)
+    SoundCapabilities.add_service(service_ID, _provides_services,
+                                  _supported_input_formats,
+                                  _supported_output_formats)
+    _logger: BasicLogger = None
 
     # Every setting from settings.xml must be listed here
     # SettingName, default value
 
-    initialized: bool = False
-
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
         clz = type(self)
-        if clz.initialized:
-            clz.initialized = True
+        super().__init__(*args, **kwargs)
+        BaseEngineSettings(clz.service_ID)
+        self.initialized: bool = False
+        if self.initialized:
             return
-        clz.init_settings()
-        # Must have cls.sound_capabilities defined
-        self.register(self)
+        self.initialized = True
+        if clz._logger is None:
+            clz._logger = module_logger.getChild(clz.__name__)
+        self.init_settings()
 
-    @classmethod
-    def init_settings(cls):
+    def init_settings(self):
         #
         # Need to define Conversion Constraints between the TTS 'standard'
         # constraints/settings to the engine's constraints/settings
 
-        speed_constraints_validator = ConstraintsValidator(SettingsProperties.SPEED,
-                                                           cls.backend_id,
-                                                           cls.ttsSpeedConstraints)
+        speed_constraints_val = ConstraintsValidator(SettingsProperties.SPEED,
+                                                     self.backend_id,
+                                                     BaseServiceSettings.ttsSpeedConstraints)
 
         pitch_constraints: Constraints = Constraints(0, 50, 99, True, False, 1.0,
-                                                    SettingsProperties.PITCH)
+                                                     SettingsProperties.PITCH)
         pitch_constraints_validator = ConstraintsValidator(SettingsProperties.PITCH,
-                                                           cls.backend_id,
+                                                           self.backend_id,
                                                            pitch_constraints)
 
         volumeConversionConstraints: Constraints = Constraints(minimum=0.1, default=1.0,
@@ -122,35 +125,35 @@ class ResponsiveVoiceSettings(BaseEngineServiceSettings):
                                                                decibels=False, scale=1.0,
                                                                property_name=SettingsProperties.VOLUME,
                                                                midpoint=1, increment=0.1)
-        volume_constraints_validator = cls.VolumeConstraintsValidator(
-            SettingsProperties.VOLUME,
-            cls.backend_id,
-            volumeConversionConstraints)
+        volume_constraints_validator = self.VolumeConstraintsValidator(
+                SettingsProperties.VOLUME, self.backend_id, volumeConversionConstraints)
 
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOLUME,
+        SettingsMap.define_setting(self.service_ID, SettingsProperties.VOLUME,
                                    volume_constraints_validator)
 
-        api_key_validator = StringValidator(SettingsProperties.API_KEY, cls.backend_id,
+        audio_validator: StringValidator
+        audio_converter_validator = StringValidator(SettingsProperties.CONVERTER,
+                                                    self.backend_id,
+                                                    allowed_values=[Services.LAME_ID])
+
+        SettingsMap.define_setting(self.service_ID, SettingsProperties.CONVERTER,
+                                   audio_converter_validator)
+
+        api_key_validator = StringValidator(SettingsProperties.API_KEY, self.backend_id,
                                             allowed_values=[], min_length=0,
                                             max_length=1024)
-        gender_validator = EnumValidator(SettingsProperties.GENDER, cls.backend_id,
-                                         min_value=Genders.FEMALE,
-                                         max_value=Genders.UNKNOWN,
-                                         default_value=Genders.UNKNOWN,
-                                         scale_internal_to_external=1)
-        gender_validator.setUIValue(Genders.FEMALE)
         language_validator: StringValidator
-        language_validator = StringValidator(SettingsProperties.LANGUAGE, cls.backend_id,
+        language_validator = StringValidator(SettingsProperties.LANGUAGE, self.backend_id,
                                              allowed_values=[], min_length=2,
                                              max_length=5)
         voice_validator: StringValidator
-        voice_validator = StringValidator(SettingsProperties.VOICE, cls.backend_id,
+        voice_validator = StringValidator(SettingsProperties.VOICE, self.backend_id,
                                           allowed_values=[], min_length=1, max_length=10)
         pipe_validator: BoolValidator
-        pipe_validator = BoolValidator(SettingsProperties.PIPE, cls.backend_id,
+        pipe_validator = BoolValidator(SettingsProperties.PIPE, self.backend_id,
                                        default=False)
         cache_validator: BoolValidator
-        cache_validator = BoolValidator(SettingsProperties.CACHE_SPEECH, cls.backend_id,
+        cache_validator = BoolValidator(SettingsProperties.CACHE_SPEECH, self.backend_id,
                                         default=True)
 
         #  TODO:  Need to eliminate un-available players
@@ -159,30 +162,28 @@ class ResponsiveVoiceSettings(BaseEngineServiceSettings):
         valid_players: List[str] = [Players.SFX, Players.WINDOWS, Players.APLAY,
                                     Players.PAPLAY, Players.AFPLAY, Players.SOX,
                                     Players.MPLAYER, Players.MPG321, Players.MPG123,
-                                    Players.MPG321_OE_PI, Players.INTERNAL]
+                                    Players.MPG321_OE_PI]
         player_validator: StringValidator
-        player_validator = StringValidator(SettingsProperties.PLAYER, cls.backend_id,
+        player_validator = StringValidator(SettingsProperties.PLAYER, self.backend_id,
                                            allowed_values=valid_players,
                                            default_value=Players.MPLAYER)
 
-        SettingsMap.define_setting(service_id=cls.service_ID,
+        SettingsMap.define_setting(service_id=self.service_ID,
                                    property_id=SettingsProperties.API_KEY,
                                    validator=api_key_validator)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.GENDER,
-                                   gender_validator)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.LANGUAGE,
+        SettingsMap.define_setting(self.service_ID, SettingsProperties.LANGUAGE,
                                    language_validator)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOICE,
+        SettingsMap.define_setting(self.service_ID, SettingsProperties.VOICE,
                                    voice_validator)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PIPE,
+        SettingsMap.define_setting(self.service_ID, SettingsProperties.PIPE,
                                    pipe_validator)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.SPEED,
-                                   speed_constraints_validator)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PITCH,
+        SettingsMap.define_setting(self.service_ID, SettingsProperties.SPEED,
+                                   speed_constraints_val)
+        SettingsMap.define_setting(self.service_ID, SettingsProperties.PITCH,
                                    pitch_constraints_validator)
-        # SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOLUME,
+        # SettingsMap.define_setting(self.service_ID, SettingsProperties.VOLUME,
         #                           volume_constraints_validator)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER,
+        SettingsMap.define_setting(self.service_ID, SettingsProperties.PLAYER,
                                    player_validator)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.CACHE_SPEECH,
+        SettingsMap.define_setting(self.service_ID, SettingsProperties.CACHE_SPEECH,
                                    cache_validator)

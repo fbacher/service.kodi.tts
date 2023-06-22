@@ -9,7 +9,7 @@ import urllib.parse
 import urllib.request
 import urllib.request
 
-from backends.base import SimpleTTSBackendBase
+from backends.base import SimpleTTSBackend
 from backends.settings.constraints import Constraints
 from common.logger import *
 from common.settings import Settings
@@ -20,7 +20,7 @@ from common.typing import *
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
-class SpeechServerBackend(SimpleTTSBackendBase):
+class SpeechServerBackend(SimpleTTSBackend):
     backend_id = 'ttsd'
     displayName = 'HTTP TTS Server (Requires Running Server)'
     canStreamWav = False

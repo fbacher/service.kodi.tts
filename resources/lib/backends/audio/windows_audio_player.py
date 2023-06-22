@@ -16,6 +16,7 @@ module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 
 class WindowsAudioPlayer(AudioPlayer):
     ID = Players.WINDOWS
+    service_ID = ID
     # name = 'Windows Internal'
     sound_file_base = '{speech_file_name}{sound_file_type}'
     sound_dir: str = None
@@ -24,11 +25,9 @@ class WindowsAudioPlayer(AudioPlayer):
     _supported_output_formats: List[str] = [SoundCapabilities.WAVE, SoundCapabilities.MP3]
     _provides_services: List[ServiceType] = [ServiceType.PLAYER]
     _available = SystemQueries.is_windows
-    sound_capabilities = SoundCapabilities(ID, _provides_services,
-                                           _supported_input_formats,
-                                           _supported_output_formats,
-                                           _available)
-
+    SoundCapabilities.add_service(service_ID, _provides_services,
+                                  _supported_input_formats,
+                                  _supported_output_formats)
     @classmethod
     def init_class(cls):
         if cls._logger is None:

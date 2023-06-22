@@ -5,6 +5,8 @@ Basically a request comes in to voice some text
 
  say "" ->
 """
+import sys
+
 from backends.audio.sound_capabilties import SoundCapabilities
 from backends.audio.worker_thread import TTSQueue, TTSQueueData, WorkerThread
 from backends.backend_info_bridge import BackendInfoBridge
@@ -19,6 +21,7 @@ from common.base_services import BaseServices
 from common.logger import BasicLogger
 from common.minimal_monitor import MinimalMonitor
 from common.monitor import Monitor
+from common.setting_constants import Mode, Players
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
 from common.typing import *
@@ -42,7 +45,8 @@ class Driver(BaseServices):
             self.worker_thread: WorkerThread = WorkerThread('worker', task=None)
             self.cache_reader = CacheReader()
 
-    def say(self, text: str) -> None:
+    def say(self, text: str, interrupt: bool = False,
+            preload_cache: bool = False) -> None:
         """
         Initiates multi-step process to voice some text
          1) Determine engine used
@@ -64,32 +68,114 @@ class Driver(BaseServices):
         """
         # Initiates typically multi-step process to voice some text
 
-        MinimalMonitor.throw_exception_if_abort_requested(0.0)
-        result: Result = None
-        engine_id: str = Settings.get_engine_id()
-        active_engine: BaseEngineService
-        active_engine = BaseServices.getService(engine_id)
-        player_id: str = Settings.get_setting_str(SettingsProperties.PLAYER, engine_id)
-        # Ensure player has been initialized
+        clz = type(self)
+        Monitor.throw_exception_if_abort_requested(0.05)
+        try:
+            result: Result = None
+            mode: Mode
+            engine_id: str = Settings.get_engine_id()
+            active_engine: BaseEngineService
+            if engine_id is None:
+                clz._logger.debug(f'engine_id is not set')
+                return
+            active_engine = BaseServices.getService(engine_id)
+            if active_engine is None:
+                clz._logger.debug(f'invalid active_engine engine_id: {engine_id}')
+                return
+            if interrupt:
+                active_engine._stop()
 
-        converter_id: str = self.getConverter_for(engine_id)
-        if converter_id is None:
-            if player_id is None or len(player_id) == 0:
-                player_id = None
+            player_id: str = Settings.get_player_id(engine_id)
+
+            # self.tts.say(self.cleanText(text), interrupt, preload_cache)
+
+            # active_engine.say(text, interrupt, preload_cache)
+            # return
+
+            if player_id == Players.INTERNAL:
+                mode = Mode.ENGINESPEAK
+            elif Settings.uses_pipe(engine_id):
+                mode = Mode.PIPE
             else:
-                # Forces initialization and populates capabilities, settings, etc.
+                mode = Mode.FILEOUT
+            # Ensure player has been initialized
 
-                player: IPlayer = PlayerIndex.get_player(player_id)
-                player_sound_capabilities: SoundCapabilities
-                player_sound_capabilities = SoundCapabilities.get_by_service_id(player_id)
-                if not SoundCapabilities.MP3 in player_sound_capabilities.supported_input_formats:
-                    player_sound_capabilities = None
-        if Settings.is_use_cache(engine_id):
-            if not self.say_cached_file(active_engine, player_id, text):
-                result = self.generate_voice(active_engine, text)
+            converter_id: str = self.getConverter_for(engine_id)
+            if converter_id is None:
+                if player_id is None or len(player_id) == 0:
+                    player_id = None
+                else:
+                    # Forces initialization and populates capabilities, settings, etc.
 
-        if Settings.getSetting(SettingsProperties.CACHE_SPEECH, engine_id):
-            self.handle_caching(text, engine_id, player_id, converter_id)
+                    player: IPlayer = PlayerIndex.get_player(player_id)
+                    player_input_formats: List[str]
+                    player_input_formats = SoundCapabilities.get_input_formats(player_id)
+                    if not SoundCapabilities.MP3 in player_input_formats:
+                        pass
+
+            if active_engine.is_use_cache():
+                if not self.say_cached_file(active_engine, player_id, text):
+                    self.generate_voice(active_engine, text)
+                # else:
+                #    self.handle_caching(text, engine_id, player_id, converter_id)
+        except AbortException:
+            reraise(*sys.exc_info())
+        except Exception as e:
+            clz._logger.exception('')
+
+    def stop(self):
+        clz = type(self)
+        try:
+            engine_id: str = Settings.get_engine_id()
+            active_engine = BaseServices.getService(engine_id)
+            active_engine.stop()
+        except AbortException:
+            reraise(*sys.exc_info())
+        except Exception as e:
+            clz._logger.exception('')
+
+    def close(self):
+        clz = type(self)
+        try:
+            engine_id: str = Settings.get_engine_id()
+            active_engine = BaseServices.getService(engine_id)
+            active_engine.close()
+        except AbortException:
+            reraise(*sys.exc_info())
+        except Exception as e:
+            clz._logger.exception('')
+
+    def isSpeaking(self) -> bool:
+        clz = type(self)
+        try:
+            engine_id: str = Settings.get_engine_id()
+            active_engine = BaseServices.getService(engine_id)
+            return active_engine.isSpeaking()
+        except AbortException:
+            reraise(*sys.exc_info())
+        except Exception as e:
+            clz._logger.exception('')
+        return False
+
+        # tts.dead
+        # tts.deadReason
+
+    def sayList(self, texts, interrupt: bool = False):
+        """Accepts a list of text strings to be spoke
+
+        May be overriden by subclasses. The default i
+        for each item in texts, calling insertPause()
+        If interrupt is True, the subclass should int
+        """
+        clz = type(self)
+        try:
+            self.say(texts.pop(0), interrupt=interrupt)
+            for t in texts:
+                self.say(t, pause_ms=500)
+        except AbortException:
+            reraise(*sys.exc_info())
+        except Exception as e:
+            clz._logger.exception('')
 
     def say_cached_file(self, active_engine: BaseEngineService, player_id: str,
                         text: str) -> bool:
@@ -101,62 +187,87 @@ class Driver(BaseServices):
         :param player_id:
         :return:
         """
-        MinimalMonitor.throw_exception_if_abort_requested(timeout=0.0)
-        cached_file: str
-        exists: bool
-        cached_file, exists = active_engine.get_path_to_voice_file(text,
-                                                                   use_cache=True)
-        if exists:
-            return self.say_file(active_engine, player_id, cached_file)
+        Monitor.throw_exception_if_abort_requested(timeout=0.05)
+        clz = type(self)
+        cached_file: str = ''
+        exists: bool = False
+        try:
+            cached_file, exists = active_engine.get_path_to_voice_file(text,
+                                                                       use_cache=True)
+            if exists:
+                return self.say_file(active_engine, player_id, cached_file)
+            return False
+        except AbortException:
+            reraise(*sys.exc_info())
+        except Exception as e:
+            clz._logger.exception('')
         return False
 
-    def generate_voice(self, active_engine: BaseEngineService, text: str) -> Result:
-        MinimalMonitor.throw_exception_if_abort_requested(timeout=0.01)
+    def generate_voice(self, active_engine: BaseEngineService, text: str) -> None:
+        Monitor.throw_exception_if_abort_requested(timeout=0.01)
+        clz = type(self)
+        try:
+            player_id: str = SettingsMap.get_value(active_engine.service_ID,
+                                                   SettingsProperties.PLAYER)
 
-        player_id: str = SettingsMap.get_value(active_engine.service_ID,
-                                               SettingsProperties.PLAYER)
+            # Forces initialization and populates capabilities, settings, etc.
 
-        # Forces initialization and populates capabilities, settings, etc.
-
-        player: IPlayer = PlayerIndex.get_player(player_id)
-        if player_id == Services.INTERNAL_PLAYER_ID:
-            pass
-        else:
-            active_engine.say(text, interrupt =False, preload_cache=False)
+            player: IPlayer = PlayerIndex.get_player(player_id)
+            if player_id == Services.INTERNAL_PLAYER_ID:
+                pass
+            else:
+                active_engine.say(text, interrupt=False, preload_cache=False)
+        except AbortException:
+            reraise(*sys.exc_info())
+        except Exception as e:
+            clz._logger.exception('')
 
     def say_file(self, active_engine: BaseEngineService, player_id: str,
                  voice_file) -> bool:
-        # negotiate player/converter, etc.
-        tts_data: TTSQueueData = TTSQueueData(None, state='play_file',
-                                              player_id=player_id,
-                                              voice_file=voice_file,
-                                              engine_id=active_engine.service_ID)
+        clz = type(self)
+        try:
+            # negotiate player/converter, etc.
+            tts_data: TTSQueueData = TTSQueueData(None, state='play_file',
+                                                  player_id=player_id,
+                                                  voice_file=voice_file,
+                                                  engine_id=active_engine.service_ID)
 
-        self.worker_thread.add_to_queue(tts_data)
-
-        return True
+            self.worker_thread.add_to_queue(tts_data)
+            return True
+        except AbortException:
+            reraise(*sys.exc_info())
+        except Exception as e:
+            clz._logger.exception('')
+        return False
 
     def getConverter_for(self, engine_id: str) -> str | None:
-        MinimalMonitor.throw_exception_if_abort_requested(0)
-        converter_id: str = Settings.get_setting_str(SettingsProperties.CONVERTER, engine_id)
-        if converter_id is None or len(converter_id) == 0:
-            engine_sound_capabilities = SoundCapabilities.get_by_service_id(engine_id)
-            if engine_sound_capabilities.is_supports_output_format(SoundCapabilities.MP3):
+        clz = type(self)
+        Monitor.throw_exception_if_abort_requested(0.05)
+        try:
+            converter_id: str = Settings.get_setting_str(SettingsProperties.CONVERTER,
+                                                         engine_id, ignore_cache=False,
+                                                         default_value=None)
+            engine_produces_audio_types: List[str]
+            engine_produces_audio_types = SoundCapabilities.get_output_formats(engine_id)
+            if SoundCapabilities.MP3 in engine_produces_audio_types:
                 # No converter needed, need to check player
-               return None
+                return None
 
-            engine_produces_audio_types: List[str] = \
-                engine_sound_capabilities.supportedOutputFormats()
-            candidate_converters: List[SoundCapabilities] = \
-                engine_sound_capabilities.get_candidate_consumers(ServiceType.CONVERTER,
-                                                                  SoundCapabilities.MP3,
-                                                                  engine_produces_audio_types)
+            eligible_converters: List[str]
+            eligible_converters = SoundCapabilities.get_capable_services(ServiceType.CONVERTER,
+                                                      [SoundCapabilities.WAVE],
+                                                      engine_produces_audio_types)
             converter_id = None
-            if len(candidate_converters) > 0:
-                converter_id = candidate_converters[0].service_id
-        else:
-            converter = self.getService(converter_id)
-        return converter_id
+            if len(eligible_converters) > 0:
+               converter_id = eligible_converters[0]
+            else:
+                converter = self.getService(converter_id)
+            return converter_id
+        except AbortException:
+            reraise(*sys.exc_info())
+        except Exception as e:
+            clz._logger.exception('')
+        return None
 
     def prefetch(self, text: str, background: bool) -> None:
         pass
@@ -166,7 +277,7 @@ class Driver(BaseServices):
         Gets a setting from addon's settings.xml
 
         A convenience method equivalent to Settings.getSetting(key + '.'. + cls.backend_id,
-        default, useFullSettingName).
+        default, useFullSettingName).False
 
         :param key:
         :param default:
@@ -178,21 +289,22 @@ class Driver(BaseServices):
 
     def handle_caching(self, text: str, engine_id: str, player_id: str, converter_id: str):
         clz = type(self)
-        MinimalMonitor.throw_exception_if_abort_requested(0.0)
+        Monitor.throw_exception_if_abort_requested(0.01)
         try:
             if converter_id is not None and len(converter_id) > 0:
-                converter_sound_capabilities: SoundCapabilities = None
-                converter_sound_capabilities = SoundCapabilities.get_by_service_id(converter_id)
-                converter_output_formats: List[str] = \
-                    converter_sound_capabilities.supported_output_formats
-            player_sound_capabilities: SoundCapabilities = None
-            player_sound_capabilities = SoundCapabilities.get_by_service_id(player_id)
-            player_sound_formats: List[str] = player_sound_capabilities.supported_input_formats
+                converter_output_formats: List[str]
+                converter_output_formats = SoundCapabilities.get_output_formats(converter_id)
+            player_input_formats: List[str]
+            player_input_formats = SoundCapabilities.get_input_formats(player_id)
 
             file_type: str = ''
             path, exists, file_type = self.cache_reader.getVoicedText(text, cache_identifier='',
-                                                                sound_file_types=player_sound_formats)
+                                                                sound_file_types=player_input_formats)
             if exists:
-                pass
+                player: IPlayer = PlayerIndex.get_player(player_id)
+                player.init(engine_id)
+                player.play(path)
+        except AbortException:
+            reraise(*sys.exc_info())
         except Exception as e:
             clz._logger.exception('')

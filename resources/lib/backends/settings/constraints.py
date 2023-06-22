@@ -129,15 +129,16 @@ class Constraints:
         """
         return self._increment
 
-    def currentValue(self) -> float:
+    def currentValue(self, service_id: str) -> float:
         """
         @return: Returns the current, scaled value of the Setting with this
         constraint's property name. Default values are used, as needed.
         """
         if self.property_name:
             raw_value: float = float(
-                    SettingsBridge.getSetting(self.property_name, backend_id=None,
-                                              default_value=self.default))
+                    SettingsBridge.getSetting(self.property_name,
+                                              backend_id=service_id,
+                                              default_value=self._default))
             return raw_value * self.scale
         return None
 

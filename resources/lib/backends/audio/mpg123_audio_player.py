@@ -17,12 +17,14 @@ class Mpg123AudioPlayer(SubprocessAudioPlayer, BaseServices):
     _availableArgs = ('mpg123', '--version')
     _playArgs = ('mpg123', '-q', None)
     _pipeArgs = ('mpg123', '-q', '-')
+
     _supported_input_formats: List[str] = [SoundCapabilities.MP3]
     _supported_output_formats: List[str] = []
     _provides_services: List[ServiceType] = [ServiceType.PLAYER]
-    sound_capabilities = SoundCapabilities(service_ID, _provides_services,
-                                           _supported_input_formats,
-                                           _supported_output_formats)
+    SoundCapabilities.add_service(service_ID, _provides_services,
+                                  _supported_input_formats,
+                                  _supported_output_formats)
+
     _logger: BasicLogger = None
 
     def __init__(self) -> None:

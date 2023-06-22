@@ -34,7 +34,7 @@ class CriticalSettings:
 
     DEFAULT_DEBUG_LEVEL = WARNING
 
-    POLL_MONITOR_WAIT_FOR_ABORT: bool = False  # If False, wait on abort_event
+    POLL_MONITOR_WAIT_FOR_ABORT: bool = True  # False  # If False, wait on abort_event
     SHORT_POLL_DELAY: float = 0.2  # Seconds
     LONG_POLL_DELAY: float = 0.4  # Seconds
 

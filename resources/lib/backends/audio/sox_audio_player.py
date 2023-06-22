@@ -16,6 +16,7 @@ module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 
 class SOXAudioPlayer(SubprocessAudioPlayer):
     ID = Players.SOX
+    service_ID = ID
     # name = 'SOX'
     _availableArgs = ('sox', '--version')
     _playArgs = ('play', '-q', None)
@@ -27,10 +28,9 @@ class SOXAudioPlayer(SubprocessAudioPlayer):
     _supported_input_formats: List[str] = [SoundCapabilities.WAVE, SoundCapabilities.MP3]
     _supported_output_formats: List[str] = [SoundCapabilities.WAVE, SoundCapabilities.MP3]
     _provides_services: List[ServiceType] = [ServiceType.PLAYER]
-    sound_capabilities = SoundCapabilities(ID, _provides_services,
-                                           _supported_input_formats,
-                                           _supported_output_formats)
-
+    SoundCapabilities.add_service(service_ID, _provides_services,
+                                  _supported_input_formats,
+                                  _supported_output_formats)
     def __init__(self):
         super().__init__()
         self._logger = module_logger.getChild(

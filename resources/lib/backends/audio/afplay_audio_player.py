@@ -10,6 +10,7 @@ module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 
 class AfplayPlayer(SubprocessAudioPlayer):  # OSX
     ID = Players.AFPLAY
+    service_ID = ID
     # name = 'afplay'
     _availableArgs = ('afplay', '-h')
     _playArgs = ('afplay', None)
@@ -20,10 +21,9 @@ class AfplayPlayer(SubprocessAudioPlayer):  # OSX
     _supported_input_formats: List[str] = [SoundCapabilities.WAVE, SoundCapabilities.MP3]
     _supported_output_formats: List[str] = []
     _provides_services: List[ServiceType] = [ServiceType.PLAYER]
-    sound_capabilities = SoundCapabilities(ID, _provides_services,
-                                           _supported_input_formats,
-                                           _supported_output_formats)
-
+    SoundCapabilities.add_service(service_ID, _provides_services,
+                                  _supported_input_formats,
+                                  _supported_output_formats)
     def __init__(self):
         super().__init__()
         self._logger = module_logger.getChild(
