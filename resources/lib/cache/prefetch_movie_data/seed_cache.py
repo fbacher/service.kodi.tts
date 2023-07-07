@@ -50,7 +50,7 @@ class SeedCache:
                     '''
                     title: str = movie.get_title()
                     cls.write_cache_txt(title, engine_id, engine_output_formats)
-                    cls.write_cache_txt(str(movie.get_year), engine_id, engine_output_formats)
+                    cls.write_cache_txt(str(movie.get_year()), engine_id, engine_output_formats)
                     cls.write_cache_txt(movie.get_plot(), engine_id, engine_output_formats)
                     genres: str = movie.get_detail_genres()
                     writers: str = movie.get_detail_writers()

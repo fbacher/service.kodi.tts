@@ -7,6 +7,7 @@ Created on Feb 19, 2019
 """
 import datetime
 import faulthandler
+import inspect
 import io
 import sys
 import threading
@@ -97,10 +98,18 @@ class Debug:
             #  Monitor.dump_wait_counts()
             #  for threadId, stack in sys._current_frames().items():
             for th in threading.enumerate():
-                sio.write(f'\n# ThreadID: {th.name} Daemon: {th.isDaemon()}\n\n')
-                stack = sys._current_frames().get(th.ident, None)
-                if stack is not None:
-                    traceback.print_stack(stack, file=sio)
+                sio.write(f'\n# ThreadID: {th.name} Daemon: {th.daemon}\n\n')
+
+                # Remove the logger's frames from it's thread.
+                frames: List[inspect.FrameInfo] = inspect.stack(context=1)
+                th: threading.Thread
+                sio.write(f'\n# ThreadID: {th.name} Daemon: {th.daemon}\n\n')
+
+                for frame in frames:
+                    frame: inspect.FrameInfo
+                    sio.write(f'File: "{frame.filename}" line {frame.lineno}. '
+                              f'in {frame.function}\n')
+                    sio.write(f'  {frame.code_context}\n')
 
             string_buffer: str = sio.getvalue() + '\n*** STACKTRACE - END ***\n'
             sio.close()

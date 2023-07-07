@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 import sys
-from contextlib import AbstractContextManager, contextmanager
+from contextlib import AbstractContextManager
 import copy
 import threading
 import time
 
-from common.python_debugger import PythonDebugger
 from common.typing import *
 
 import xbmcaddon
@@ -160,7 +159,7 @@ class SettingsWrapper:
 
     def __init__(self):
         clz = type(self)
-        clz._logger = module_logger.getChild(clz.__name__)
+        #  clz._logger = module_logger.getChild(clz.__name__)
 
     def getBool(self, id: str) -> bool:
         """
@@ -565,7 +564,7 @@ class SettingsLowLevel:
         """
         try:
             CurrentCachedSettings.backup()
-            cls._logger.debug('Backed up settings')
+            #  cls._logger.debug('Backed up settings')
         except Exception:
             cls._logger.exception("")
 
@@ -584,7 +583,7 @@ class SettingsLowLevel:
         :param settings_to_check:
         :return:
         """
-        SettingsLowLevel._logger.debug('entered')
+        # SettingsLowLevel._logger.debug('entered')
         changed_settings = []
         for setting_id in settings_to_check:
             previous_value = PreviousCachedSettings.get_setting(setting_id, None)
@@ -777,8 +776,7 @@ class SettingsLowLevel:
                     value = cls.settings_wrapper.getString(key)
                 case SettingType.STRING_LIST_TYPE:
                     value = cls.settings_wrapper.getStringList(key)
-            cls._logger.debug(
-                    f'found key: {key} value: {value}')
+            # cls._logger.debug(f'found key: {key} value: {value}')
         except KeyError:
             cls._logger.exception(
                     f'failed to find setting key: {key}. '
@@ -808,7 +806,7 @@ class SettingsLowLevel:
 
     @classmethod
     def configuring_settings(cls):
-        cls._logger.debug('configuring_settings hardcoded to false')
+        #  cls._logger.debug('configuring_settings hardcoded to false')
         return False
 
     @classmethod
@@ -880,7 +878,7 @@ class SettingsLowLevel:
 
     @classmethod
     def commit_settings(cls):
-        cls._logger.debug('TRACE commit_settings')
+        #  cls._logger.debug('TRACE commit_settings')
         addon: xbmcaddon.Addon = xbmcaddon.Addon('service.kodi.tts')
 
         for full_setting_id, value in CurrentCachedSettings.get_settings().items():
@@ -923,50 +921,6 @@ class SettingsLowLevel:
                                       f'value: {str_value} as '
                                       f'{value_type.name}')
 
-
-    @classmethod
-    def commit_settings2(cls):
-        cls._logger.debug('TRACE commit_settings2')
-        with SettingsContext() as ks:
-            for full_setting_id, value in CurrentCachedSettings.get_settings().items():
-                full_setting_id: str
-                value: Any
-                value_type: SettingType | None = None
-                str_value: str = ''
-                try:
-                    str_value = str(value)
-                    if full_setting_id == SettingsProperties.ENGINE:
-                        cls._logger.debug(f'TRACE Commiting ENGINE value: {str_value}')
-
-                    cls._logger.debug(f'id: {full_setting_id} value: {str_value}')
-                    prefix: str = cls.getSettingIdPrefix(full_setting_id)
-                    value_type = SettingsProperties.SettingTypes.get(prefix, None)
-                    if value == 'NO_VALUE':
-                        cls._logger.debug(f'Expected setting not found {prefix}')
-                        continue
-                    match value_type:
-                        case SettingType.BOOLEAN_TYPE:
-                            cls.settings_wrapper.setBool(full_setting_id, value)
-                        case SettingType.BOOLEAN_LIST_TYPE:
-                            cls.settings_wrapper.setBoolList(full_setting_id, value)
-                        case SettingType.FLOAT_TYPE:
-                            cls.settings_wrapper.setNumber(full_setting_id, value)
-                        case SettingType.FLOAT_LIST_TYPE:
-                            cls.settings_wrapper.setNumberList(full_setting_id, value)
-                        case SettingType.INTEGER_TYPE:
-                            cls.settings_wrapper.setInt(full_setting_id, value)
-                        case SettingType.INTEGER_LIST_TYPE:
-                            cls.settings_wrapper.setIntList(full_setting_id, value)
-                        case SettingType.STRING_TYPE:
-                            cls.settings_wrapper.setString(full_setting_id, value)
-                        case SettingType.STRING_LIST_TYPE:
-                            cls.settings_wrapper.setStringList(full_setting_id, value)
-                except Exception as e:
-                    cls._logger.exception('')
-                    cls._logger.exception(f'Error saving setting: {full_setting_id} '
-                                          f'value: {str_value} as '
-                                          f'{value_type.name}')
-
     @classmethod
     def get_engine_id(cls, default: str = None,
                       bootstrap: bool = False) -> str:
@@ -978,14 +932,14 @@ class SettingsLowLevel:
             ignore_cache = True
         engine_id: str = cls.get_setting_str(SettingsProperties.ENGINE, engine_id=None,
                                              ignore_cache=ignore_cache,
-                                             default_value=default)
-        cls._logger.debug(f'TRACE get_engine_id: {engine_id}')
+                                             default=default)
+        #  cls._logger.debug(f'TRACE get_engine_id: {engine_id}')
         cls._current_engine = engine_id
         return engine_id
 
     @classmethod
     def set_backend_id(cls, backend_id: str) -> None:
-        cls._logger.debug(f'TRACE set backend_id: {backend_id}')
+        #  cls._logger.debug(f'TRACE set backend_id: {backend_id}')
         if backend_id is None or len(backend_id) == 0:
             cls._logger.debug(f'invalid backend_id Not saving')
             return
@@ -1049,7 +1003,7 @@ class SettingsLowLevel:
     @classmethod
     def get_setting_str(cls, setting_id: str, engine_id: str = None,
                         ignore_cache: bool = False,
-                        default_value: str = None) -> str:
+                        default: str = None) -> str:
         force_load: bool = False
         if ignore_cache and setting_id == SettingsProperties.ENGINE:
             cls._logger.debug(f'TRACE get_setting_str IGNORING CACHE id: {setting_id}')
@@ -1060,13 +1014,13 @@ class SettingsLowLevel:
                 return value
             except Exception as e:
                 cls._logger.exception('')
-                return default_value
-        return cls._getSetting(setting_id, engine_id, default_value)
+                return default
+        return cls._getSetting(setting_id, engine_id, default)
 
     @classmethod
     def get_setting_bool(cls, setting_id: str, engine_id: str = None,
                          ignore_cache: bool = False,
-                         default_value: bool = None) -> bool:
+                         default: bool = None) -> bool:
         """
 
         :return:
@@ -1079,7 +1033,7 @@ class SettingsLowLevel:
                 return cls.settings_wrapper.getBool(real_key)
             except Exception as e:
                 cls._logger.exception('')
-        return cls._getSetting(setting_id, engine_id, default_value)
+        return cls._getSetting(setting_id, engine_id, default)
 
     @classmethod
     def set_setting_bool(cls, setting_id: str, value: bool, backend_id: str = None) -> bool:

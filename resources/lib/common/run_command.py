@@ -1,7 +1,10 @@
 # coding=utf-8
+import os
 import subprocess
 import threading
 from subprocess import Popen
+
+import xbmc
 
 from cache.prefetch_movie_data.seed_cache import SeedCache
 from common.critical_settings import CriticalSettings
@@ -10,6 +13,7 @@ from common.monitor import Monitor
 from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
+
 
 class RunCommand:
     logger: BasicLogger = None

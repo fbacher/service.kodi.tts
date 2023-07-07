@@ -51,16 +51,6 @@ class FliteTTSBackend(FliteSettings, SimpleTTSBackend):
         self.process = None
         self.update()
 
-    @staticmethod
-    def isSupportedOnPlatform():
-        return SystemQueries.isLinux()
-
-    @staticmethod
-    def isInstalled():
-        installed = False
-        if FliteTTSBackend.isSupportedOnPlatform():
-            installed = True
-        return installed
 
     def runCommand(self, text_to_voice: str, dummy) -> bool:
         wave_file, exists = self.get_path_to_voice_file(text_to_voice,
@@ -116,14 +106,6 @@ class FliteTTSBackend(FliteSettings, SimpleTTSBackend):
             return [(v,v) for v in subprocess.check_output(['flite','-lv'],
                                                            universal_newlines=True).split(': ',1)[-1].strip().split(' ')]
 
-    @staticmethod
-    def available():
-        try:
-            subprocess.call(['flite', '--help'], stdout=(open(os.path.devnull, 'w')),
-                            universal_newlines=True, stderr=subprocess.STDOUT)
-        except (OSError, IOError):
-            return SystemQueries.isATV2() and SystemQueries.commandIsAvailable('flite')
-        return True
 
 #class FliteTTSBackend(BaseEngineService):
 #    backend_id = 'Flite':q:q

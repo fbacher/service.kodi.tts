@@ -119,7 +119,7 @@ class GoogleTTSBackend(base.SimpleTTSBackend):
         except AbortException:
             reraise(*sys.exc_info())
         except:
-            # OldLogger.ERROR('Failed to open Google TTS URL',hide_tb=True)
+            # OldLogger.ERROR('Failed to open Google TTS URL')
             return False
 
         with open(outFile,'wb') as out:
@@ -141,7 +141,7 @@ class GoogleTTSBackend(base.SimpleTTSBackend):
         except AbortException:
             reraise(*sys.exc_info())
         except:
-            # OldLogger.ERROR('Failed to open Google TTS URL',hide_tb=True)
+            # OldLogger.ERROR('Failed to open Google TTS URL')
             return None
         return resp
 

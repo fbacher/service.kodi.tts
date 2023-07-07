@@ -3,9 +3,10 @@ import sys
 from backends.players.iplayer import IPlayer
 from backends.players.player_index import PlayerIndex
 from backends.settings.setting_properties import SettingsProperties
-from common.base_services import BaseServices
+from common.base_services import BaseServices, IServices
 from common.logger import BasicLogger
 from common.monitor import Monitor
+from common.phrases import Phrase, PhraseList
 from common.typing import *
 from threading import Thread, ThreadError
 from queue import Queue
@@ -34,7 +35,7 @@ class TTSQueueData:
 
 
 class TTSQueue(Queue):
-    def __init__(self, maxsize: int = 3):
+    def __init__(self, maxsize: int = 50):
         super().__init__(maxsize)
 
 
@@ -57,6 +58,9 @@ class WorkerThread:
             clz._logger = module_logger.getChild(self.__class__.__name__)
         pass
 
+    def interrupt(self):
+        self.empty_queue()
+
     def add_to_queue(self, tts_data: TTSQueueData) -> None:
         clz = type(self)
         try:
@@ -70,6 +74,19 @@ class WorkerThread:
         except Exception as e:
             clz._logger.exception('')
 
+    def empty_queue(self) -> None:
+        clz = type(self)
+        try:
+            while self.queue.not_empty:
+                data = self.queue.get_nowait()
+                self.queue.task_done()
+        except EmptyQueue as e:
+            pass
+        except AbortException:
+            reraise(*sys.exc_info())
+        except Exception:
+            clz._logger.exception('')
+
     def process_queue(self):
         clz = type(self)
         data: TTSQueueData = None
@@ -80,6 +97,7 @@ class WorkerThread:
                     data = self.queue.get_nowait()
                     self.queue.task_done()
                     delay = 0.05
+                    self.idle_count = 0
                 except EmptyQueue as e:
                     self.idle_count += 1
                     if self.idle_count > (5.0 / 0.05):
@@ -90,21 +108,29 @@ class WorkerThread:
                     if kwargs['state'] == 'play_file':
                         player_id: str = kwargs.get('player_id')
                         player: IPlayer = PlayerIndex.get_player(player_id)
-                        voice_file: str = kwargs.get('voice_file')
+                        phrase: Phrase = kwargs.get('phrase')
                         engine_id: str = kwargs.get('engine_id')
                         try:
                             player.init(engine_id)
                         except Exception as e:
                             clz._logger.exception('')
-                        player.play(voice_file)
+                        player.play(phrase)
+                        continue
+                    if kwargs['state'] == 'seed_cache':
+                        engine_id: str = kwargs.get('engine_id')
+                        phrases: PhraseList = kwargs.get('phrases')
+                        try:
+                            engine: IServices = BaseServices.getService(engine_id)
+                            engine.seed_text_cache(phrases)
+                        except Exception as e:
+                            clz._logger.exception('')
                 except AbortException as e:
                     return  #  Exit thread
                 except Exception as e:
                     clz._logger.exception('')
 
-
         except AbortException as e:
-            reraise(*sys.exc_info())
+            pass # Let thread exit
         except Exception as e:
             clz._logger.exception('')
         finally:

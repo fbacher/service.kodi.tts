@@ -1,4 +1,9 @@
+from common.phrases import Phrase
+
+
 class IPlayer:
+    ID: str = None
+
     def __init__(self) -> None:
         pass
 
@@ -48,11 +53,14 @@ class IPlayer:
     def pipe(self, source) -> None:
         raise NotImplementedError
 
-    def play(self, path: str) -> None:
+    def play(self, phrase: Phrase) -> None:
         raise NotImplementedError
 
     def isPlaying(self) -> bool:
         raise NotImplementedError
+
+    def notify(self, msg: str, now: bool = False) -> None:
+        raise NotImplementedError()
 
     def stop(self) -> None:
         raise NotImplementedError

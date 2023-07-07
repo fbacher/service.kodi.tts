@@ -1,8 +1,6 @@
 import enum
 
-from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.constraints import Constraints
-from backends.settings.i_validators import IGenderValidator, IStrEnumValidator
 from backends.settings.service_types import Services
 from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import SettingsMap
@@ -11,7 +9,6 @@ from backends.settings.validators import (GenderValidator, Validator, BoolValida
                                           StringValidator)
 from common.logger import BasicLogger
 from common.setting_constants import Backends, Genders
-from common.settings_low_level import SettingsLowLevel
 from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -21,11 +18,11 @@ class BaseEngineSettings:
     backend_id = 'auto'
     service_ID: str = Services.TTS_SERVICE
     displayName: str = 'Auto'
-    pauseInsert = '...'
     canStreamWav = False
     inWavStreamMode = False
     interval = 100
     broken = False
+    initialized: Dict[str, bool] = {}
 
     settings: Dict[str, Validator] = {}
     constraints: Dict[str, Constraints] = {}
@@ -39,23 +36,22 @@ class BaseEngineSettings:
     def __init__(self, service_ID, *args, **kwargs):
         clz = type(self)
         super().__init__()
-        BaseServiceSettings()
-        self.initialized: bool = False
         self.service_ID = service_ID
 
-        if self.initialized:
+        if BaseEngineSettings.initialized.setdefault(service_ID, False):
             return
-        self.initialized = True
+        BaseEngineSettings.initialized[service_ID] = True
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz.__name__)
-        self.init_settings()
+        BaseEngineSettings.init_settings(service_ID)
 
-    def init_settings(self):
-        gender_validator = GenderValidator(SettingsProperties.GENDER, self.service_ID,
-                                         min_value=Genders.FEMALE, max_value=Genders.UNKNOWN,
-                                         default_value=Genders.UNKNOWN)
+    @classmethod
+    def init_settings(cls, service_id):
+        gender_validator = GenderValidator(SettingsProperties.GENDER, service_id,
+                                           min_value=Genders.FEMALE, max_value=Genders.UNKNOWN,
+                                           default=Genders.UNKNOWN)
         gender_validator.setValue(Genders.FEMALE)
-        SettingsMap.define_setting(self.service_ID, SettingsProperties.GENDER,
+        SettingsMap.define_setting(service_id, SettingsProperties.GENDER,
                                    gender_validator)
 
         engine_id_validator = StringValidator(SettingsProperties.ENGINE,
@@ -63,15 +59,15 @@ class BaseEngineSettings:
                                               allowed_values=Backends.ALL_ENGINE_IDS,
                                               min_length=1,  # Size way to big
                                               max_length=32,
-                                              default_value=Backends.ESPEAK_ID)
+                                              default=Backends.ESPEAK_ID)
         SettingsMap.define_setting(Services.TTS_SERVICE, SettingsProperties.ENGINE,
                                    engine_id_validator)
 
         cache_validator: BoolValidator
-        cache_validator = BoolValidator(SettingsProperties.CACHE_SPEECH, self.service_ID,
+        cache_validator = BoolValidator(SettingsProperties.CACHE_SPEECH, service_id,
                                         default=False)
 
-        SettingsMap.define_setting(self.service_ID, SettingsProperties.CACHE_SPEECH,
+        SettingsMap.define_setting(service_id, SettingsProperties.CACHE_SPEECH,
                                    cache_validator)
 
         override_poll_interval_val: BoolValidator
@@ -85,7 +81,7 @@ class BaseEngineSettings:
         poll_interval_val: IntValidator
         poll_interval_val = IntValidator(SettingsProperties.POLL_INTERVAL,
                                          Services.TTS_SERVICE,
-                                         min_value=0, max_value=1000, default_value=100,
+                                         min_value=0, max_value=1000, default=100,
                                          step=1, scale_internal_to_external=1)
         SettingsMap.define_setting(Services.TTS_SERVICE,
                                    SettingsProperties.POLL_INTERVAL,
@@ -94,7 +90,7 @@ class BaseEngineSettings:
         debug_log_level_val: IntValidator
         debug_log_level_val = IntValidator(SettingsProperties.DEBUG_LOG_LEVEL,
                                            Services.TTS_SERVICE,
-                                           min_value=0, max_value=5, default_value=4,
+                                           min_value=0, max_value=5, default=4,
                                            # INFO
                                            step=1, scale_internal_to_external=1)
         SettingsMap.define_setting(Services.TTS_SERVICE,
@@ -114,7 +110,7 @@ class BaseEngineSettings:
                                       allowed_values=[],
                                       min_length=5,
                                       max_length=20,
-                                      default_value=None)
+                                      default=None)
         SettingsMap.define_setting(Services.TTS_SERVICE,
                                    SettingsProperties.VERSION,
                                    version_val)

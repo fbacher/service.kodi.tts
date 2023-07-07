@@ -17,6 +17,7 @@ class SpeechDispatcherSettings:
     backend_id = Backends.SPEECH_DISPATCHER_ID
     service_ID: str = Services.SPEECH_DISPATCHER_ID
     displayName = 'Speech Dispatcher'
+    _logger: BasicLogger = None
 
     class VolumeConstraintsValidator(ConstraintsValidator):
 
@@ -71,3 +72,13 @@ class SpeechDispatcherSettings:
 
         SettingsMap.define_setting(self.service_ID, SettingsProperties.VOLUME,
                                    volume_constraints_validator)
+
+    @classmethod
+    def available(cls) -> bool:
+        pass
+        # Need access to Engine
+        # return bool(getSpeechDSpeaker(test=True))
+
+    @classmethod
+    def isInstalled(cls) -> bool:
+        return True

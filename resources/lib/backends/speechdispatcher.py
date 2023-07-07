@@ -56,8 +56,7 @@ def getSpeechDSpeaker(test=False) -> Speaker:
             reraise(*sys.exc_info())
         except:
             if not test:
-                module_logger.error('Speech-Dispatcher: failed to create Speaker',
-                                    hide_tb=True)
+                module_logger.error('Speech-Dispatcher: failed to create Speaker')
     return None
 
 
@@ -183,7 +182,7 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend, BaseServices):
             clz._logger.debug_verbose(f'module: {module} voice: {voice} volume: {vol} '
                                       f'speed: {rate} pitch: {pitch}')
         except SSIPCommunicationError:
-            self._logger.exception('SpeechDispatcher', hide_tb=True)
+            self._logger.exception('SpeechDispatcher')
         try:
             self.speechdObject.speak(text)
         except SSIPCommunicationError:
@@ -290,7 +289,7 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend, BaseServices):
             vol: int = int(clz.getEngineVolume())
             self.speechdObject.set_volume(vol)
         except SSIPCommunicationError:
-            self._logger.error('SpeechDispatcherTTSBackend.update()', hide_tb=True)
+            self._logger.error('SpeechDispatcherTTSBackend.update()')
         msg = self.getUpdateMessage()
         if msg:
             self.say(msg, interrupt=True)
@@ -403,7 +402,3 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend, BaseServices):
             self.speechdObject.close()
         del self.speechdObject
         self.speechdObject = None
-
-    @staticmethod
-    def available():
-        return bool(getSpeechDSpeaker(test=True))

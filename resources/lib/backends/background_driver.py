@@ -95,7 +95,7 @@ class BackgroundDriver(BaseServices):
         return voiced_file
 
     def generate_voice(self, text: str) -> Path:
-        Monitor.throw_exception_if_abort_requested(timeout=0.01)
+        Monitor.exception_on_abort(timeout=0.01)
         player_id: str = SettingsMap.get_value(self.engine_id,
                                                SettingsProperties.PLAYER)
 

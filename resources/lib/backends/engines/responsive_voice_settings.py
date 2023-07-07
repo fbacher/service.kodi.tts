@@ -4,12 +4,13 @@ from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.constraints import Constraints
 from backends.settings.i_validators import ValueType
 from backends.settings.service_types import Services, ServiceType
-from backends.settings.settings_map import SettingsMap
+from backends.settings.settings_map import Reason, SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
                                           EnumValidator, StringValidator)
 from common.logger import BasicLogger
 from common.setting_constants import Backends, Genders, Players
 from common.settings_low_level import SettingsProperties
+from common.system_queries import SystemQueries
 from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -104,6 +105,8 @@ class ResponsiveVoiceSettings(BaseServiceSettings):
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz.__name__)
         self.init_settings()
+        installed: bool = clz.isInstalled()
+        SettingsMap.set_is_available(clz.service_ID, Reason.AVAILABLE)
 
     def init_settings(self):
         #
@@ -166,7 +169,7 @@ class ResponsiveVoiceSettings(BaseServiceSettings):
         player_validator: StringValidator
         player_validator = StringValidator(SettingsProperties.PLAYER, self.backend_id,
                                            allowed_values=valid_players,
-                                           default_value=Players.MPLAYER)
+                                           default=Players.MPLAYER)
 
         SettingsMap.define_setting(service_id=self.service_ID,
                                    property_id=SettingsProperties.API_KEY,
@@ -187,3 +190,19 @@ class ResponsiveVoiceSettings(BaseServiceSettings):
                                    player_validator)
         SettingsMap.define_setting(self.service_ID, SettingsProperties.CACHE_SPEECH,
                                    cache_validator)
+
+    @classmethod
+    def isSupportedOnPlatform(cls) -> bool:
+        return (SystemQueries.isLinux() or SystemQueries.isWindows()
+                or SystemQueries.isOSX())
+
+    @classmethod
+    def isInstalled(cls) -> bool:
+        installed: bool = False
+        if cls.isSupportedOnPlatform():
+            installed = True
+        return installed
+
+    @classmethod
+    def isSettingSupported(cls, setting) -> bool:
+        return SettingsMap.is_valid_property(cls.service_ID, setting)

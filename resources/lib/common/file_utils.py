@@ -95,7 +95,7 @@ class Delay:
                                               self._call_scale_factor)
                                    * self._scale_factor)
 
-        MinimalMonitor.throw_exception_if_abort_requested(_delay)
+        MinimalMonitor.exception_on_abort(_delay)
         return _delay
 
 
@@ -117,11 +117,24 @@ class FindTextToVoice:
 
     def find_thread(self) -> None:
         path: Path
-
-        for path in self.finder:
-            voice_path: Path = path.with_suffix('.mp3')
-            if not voice_path.exists():
-                self.unvoiced_files.put(str(path))
+        try:
+            for path in self.finder:
+                voice_path: Path = path.with_suffix('.mp3')
+                if not voice_path.exists():
+                    while Monitor.exception_on_abort(timeout=1.0):
+                        try:
+                            self.unvoiced_files.put_nowait(str(path))
+                            break
+                        except AbortException:
+                            reraise(*sys.exc_info())
+                        except queue.Full:
+                            pass
+                        except Exception:
+                            module_logger.exception('')
+        except AbortException:
+            pass # End Thread
+        except Exception:
+            module_logger.exception('')
 
 
 class FindFiles(Iterable[Path]):
@@ -180,7 +193,7 @@ class FindFiles(Iterable[Path]):
                         self._file_queue.put(path, block=False)
                         inserted = True
                     except queue.Full:
-                        Monitor.throw_exception_if_abort_requested(timeout=0.25)
+                        Monitor.exception_on_abort(timeout=0.25)
                 if self._die:
                     break
         except AbortException:
@@ -205,7 +218,7 @@ class FindFiles(Iterable[Path]):
         while next_path is None:
 
             try:
-                Monitor.throw_exception_if_abort_requested(timeout=0.1)
+                Monitor.exception_on_abort(timeout=0.1)
                 next_path: Path = self._file_queue.get(timeout=0.01)
                 self._file_queue.task_done()
             except queue.Empty:

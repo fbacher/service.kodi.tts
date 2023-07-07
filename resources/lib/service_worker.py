@@ -5,8 +5,12 @@ import sys
 
 import xbmc
 
+from cache.prefetch_movie_data.seed_cache import SeedCache
 from common.critical_settings import CriticalSettings
+from common.exceptions import ExpiredException
 from common.logger import *
+from common.phrases import Phrase, PhraseList
+from utils.util import runInThread
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -44,7 +48,6 @@ from common.messages import Messages
 from common.constants import Constants
 from common import utils
 import enabler
-from utils import util
 
 
 __version__ = Constants.VERSION
@@ -103,7 +106,7 @@ class Commands:
     SETTINGS_SETTING_SLIDER: Final[str] = 'SETTINGS.SETTING_SLIDER'
 
 
-class TTSService(xbmc.Monitor):
+class TTSService:
     instance_count: int = 0
     instance: ForwardRef('TTSService') = None
     _is_configuring: bool = False
@@ -114,7 +117,7 @@ class TTSService(xbmc.Monitor):
     readerOn: bool = True
     stop: bool = False
     disable: bool = False
-    noticeQueue: queue.Queue = queue.Queue(20)
+    noticeQueue: queue.Queue[PhraseList] = queue.Queue(20)
     noticeQueueCount: int = 0
     noticeQueueFullCount: int = 0
     active_backend: ITTSBackendBase | None = None
@@ -181,8 +184,6 @@ class TTSService(xbmc.Monitor):
         #                                            'tts_service changed')
         # Monitor.register_abort_listener(TTSService.onAbortRequested,
         #                                            'tts_service aborting')
-        # Monitor.register_notification_listener(TTSService.onNotification,
-        #                                        'tts_service_notification')
 
         # module_logger.info(f'SERVICE STARTED :: Interval: {cls.tts.interval}')
         # cls._logger.info(f'TTSService.init instance_count: {cls.instance_count}')
@@ -196,12 +197,12 @@ class TTSService(xbmc.Monitor):
     def get_instance() -> 'TTSService':
         return TTSService.instance
 
-    def onAbortRequested(self):
-        clz = type(self)
-        clz.stop = True
+    @classmethod
+    def onAbortRequested(cls):
+        cls.stop = True
         try:
             xbmc.log('Received AbortRequested', xbmc.LOGINFO)
-            clz.close_tts()
+            cls.close_tts()
         except TTSClosedException:
             pass
 
@@ -225,21 +226,6 @@ class TTSService(xbmc.Monitor):
             return cls.active_backend._closed
         else:
             return True
-
-    def onSettingsChanged(self):
-        clz = type(self)
-        clz._logger.debug(f'onSettingsChanged')
-        # Settings.commit_settings()
-        # try:
-        #    self.tts._update()
-        # except TTSClosedException:
-        #    return
-        # self.checkBackend()
-        # self.reloadSettings()
-        # self.updateInterval()
-        # Deprecated for the addon starting with Gotham - now using NotifyAll
-        # (Still used for SHUTDOWN until I figure out the issue when using
-        # NotifyAll with that)
 
     @classmethod
     def processCommand(cls, command, data=None):
@@ -274,12 +260,23 @@ class TTSService(xbmc.Monitor):
         elif command == Commands.SAY:
             if not data:
                 return
-            args = json.loads(data)
+
+            # It is important to create PhraseList before
+            # creating it's phrases, otherwise serial #s will be
+            # incorrect
+
+            phrases: PhraseList = PhraseList()
+            args: Dict[str, List[Phrase]] = json.loads(data, object_hook=Phrase.from_json)
             if not args:
                 return
-            text = args.get('text')
-            if text:
-                cls.queueNotice(text, args.get('interrupt'))
+            try:
+                phrase: Phrase
+                for phrase in args.get('phrases'):
+                    phrases.append(phrase)
+                cls.queueNotice(phrases)
+            except ExpiredException:
+                cls._logger.debug(f'incoming phrases expired on arrival')
+                pass
         elif command == Commands.DUMP_THREADS:
             Debug.dump_all_threads()
         elif command == Commands.PREPARE_TO_SAY:
@@ -290,9 +287,14 @@ class TTSService(xbmc.Monitor):
             args = json.loads(data)
             if not args:
                 return
-            text = args.get('text')
-            if text:
-                cls.queueNotice(text, interrupt=False, preload_cache=True)
+            if not args.get('text'):
+                return
+            try:
+                phrases: PhraseList = PhraseList.create(args.get('text'), interrupt=False,
+                                                        preload_cache=True)
+                cls.queueNotice(phrases)
+            except ExpiredException:
+                cls._logger.debug(f'incoming text expired on arrival')
         elif command == Commands.SETTINGS_BACKEND_GUI:
             if cls._is_configuring:
                 cls._logger.debug("Ignoring Duplicate SETTINGS_BACKEND_GUI")
@@ -389,25 +391,38 @@ class TTSService(xbmc.Monitor):
                                 Messages.get_msg(Messages.DATABASE_SCAN_STARTED)))
     '''
 
-    def onNotification(self, sender, method, data):
-        clz = type(self)
-        clz._logger.debug('onNotification: sender: {} method: {}'
-                          .format(sender, method))
-        if not sender == Constants.ADDON_ID:
-            return
-        # Remove the "Other." prefix
-        clz.processCommand(method.split('.', 1)[-1], data)
-
-    #        module_logger.info('NOTIFY: {0} :: {1} :: {2}'.format(sender,method,data))
-    #        #xbmc :: VideoLibrary.OnUpdate :: {"item":{"id":1418,"type":"episode"}}
+    @classmethod
+    def onNotification(cls, **kwargs):
+        kwargs.setdefault('sender', 'invalid')
+        kwargs.setdefault('method', 'invalid')
+        kwargs.setdefault('data', 'invalid')
+        sender: str = kwargs['sender']
+        method: str = kwargs['method']
+        data: str = kwargs['data']
+        try:
+            if not sender == Constants.ADDON_ID:
+                return
+            # Remove the "Other." prefix
+            cls.processCommand(method.split('.', 1)[-1], data)
+        except AbortException:
+            pass  # run in separate thread that is going to exit
+        except Exception as e:
+            cls._logger.exception('')
 
     @classmethod
-    def queueNotice(cls, text, interrupt=False, preload_cache=False):
-        cls.noticeQueueCount += 1
+    def queueNotice(cls, phrases: PhraseList):
         try:
-            cls.noticeQueue.put((text, interrupt, preload_cache))
-        except queue.Full:
-            cls.noticeQueueFullCount += 1
+            if phrases[0].get_interrupt():
+                cls._logger.debug(f'INTERRUPT: clearNoticeQueue')
+                cls.clearNoticeQueue()
+            while not Monitor.exception_on_abort(timeout=0.1):
+                try:
+                    cls.noticeQueue.put_nowait(phrases)
+                    break
+                except queue.Full:
+                    cls._logger.debug(f'queueNotice full')
+        except ExpiredException:
+            cls._logger.debug('Expired msg from queue')
 
     @classmethod
     def clearNoticeQueue(cls):
@@ -423,9 +438,16 @@ class TTSService(xbmc.Monitor):
         if cls.noticeQueue.empty():
             return False
         while not cls.noticeQueue.empty():
-            text, interrupt, preload_cache = cls.noticeQueue.get()
-            cls.sayText(text, interrupt, preload_cache)
-            cls.noticeQueue.task_done()
+            try:
+                phrases: PhraseList
+                phrases = cls.noticeQueue.get()
+                if phrases.is_expired():
+                    continue
+                cls.sayText(phrases)
+            except ExpiredException:
+                cls._logger.debug(f'Expired just befor sayText')
+            finally:
+                cls.noticeQueue.task_done()
         return True
 
     @classmethod
@@ -472,12 +494,18 @@ class TTSService(xbmc.Monitor):
         backend: Type[ITTSBackendBase | None] = BackendInfoBridge.getBackendFallback()
         module_logger.info(f'Backend falling back to: {backend.backend_id}')
         cls.initTTS(backend.backend_id)
-        cls.sayText(Messages.get_msg(Messages.SPEECH_ENGINE_FALLING_BACK_TO)
-                    .format(backend.displayName), interrupt=True)
-        if reason:
-            cls.sayText('{0}: {1}'.format(
-                    Messages.get_msg(Messages.Reason), reason), interrupt=False)
-
+        try:
+            phrases: PhraseList = PhraseList()
+            phrase: Phrase
+            phrase = Phrase(text=Messages.get_msg(Messages.SPEECH_ENGINE_FALLING_BACK_TO)
+                            .format(backend.displayName), interrupt=True)
+            phrases.append(phrase)
+            if reason:
+                phrase = Phrase(f'{Messages.get_msg(Messages.Reason)}: {reason}',
+                                interrupt=False)
+            cls.sayText(phrases)
+        except ExpiredException:
+            cls._logger.debug(f'Expired just before SayText in FallbackTTS')
     @classmethod
     def firstRun(cls):
         from utils import keymapeditor
@@ -490,23 +518,30 @@ class TTSService(xbmc.Monitor):
         cls._logger.debug(f'starting TTSService.start. '
                           f'instance_count: {cls.instance_count}')
         cls.initTTS()
+        seed_cache: bool = True
+        engine_id: str = cls.get_active_backend().backend_id
+        Monitor.register_notification_listener(cls.onNotification, 'service.notify')
+        Monitor.register_abort_listener(cls.onAbortRequested)
+        if seed_cache and Settings.is_use_cache(engine_id):
+            call: callable = SeedCache.discover_movie_info
+            runInThread(call, args=[engine_id],
+                        name='seed_cache', delay=360)
+            #  SeedCache.discover_movie_info(engine_id)
+            pass
 
         cls._logger.debug(f'TTSService initialized. Now waiting for events')
         try:
-            #  while (not MinimalMonitor.real_waitForAbort(timeout=0.1)) and (not cls.stop):
-            while (not TTSService.instance.waitForAbort(timeout=0.1)) and (not cls.stop):
+            while (not Monitor.exception_on_abort(timeout=0.1)) and (not cls.stop):
                 # Interface reader mode
                 while cls.readerOn and (
-                        not TTSService.instance.waitForAbort(timeout=cls.interval_ms())) and (
+                        not Monitor.exception_on_abort(timeout=cls.interval_ms())) and (
                         not cls.stop):
-                    # not MinimalMonitor.real_waitForAbort(timeout=cls.interval_ms())) and (
-                    # not cls.stop):
                     try:
                         cls.checkForText()
                     except AbortException:
                         reraise(*sys.exc_info())
                     except RuntimeError:
-                        module_logger.error('start()', hide_tb=True)
+                        module_logger.error('start()')
                     except SystemExit:
                         module_logger.info('SystemExit: Quitting')
                         break
@@ -517,18 +552,19 @@ class TTSService(xbmc.Monitor):
                         cls.initState()  # To help keep errors from repeating on the loop
 
                 # Idle mode
-                while (not cls.readerOn) and (not TTSService.instance.waitForAbort(0.1)) and (
+                while (not cls.readerOn) and\
+                        (not Monitor.exception_on_abort(timeout=cls.interval_ms())) and (
                         not cls.stop):
                     try:
-                        text, interrupt = cls.noticeQueue.get_nowait()
-                        cls.sayText(text, interrupt)
+                        phrases: PhraseList = cls.noticeQueue.get_nowait()
+                        cls.sayText(phrases)
                         cls.noticeQueue.task_done()
                     except AbortException:
                         reraise(*sys.exc_info())
                     except queue.Empty:
                         pass
                     except RuntimeError:
-                        module_logger.error('start()', hide_tb=True)
+                        module_logger.error('start()')
                     except SystemExit:
                         module_logger.info('SystemExit: Quitting')
                         break
@@ -643,10 +679,12 @@ class TTSService(xbmc.Monitor):
             monitored = cls.windowReader.getMonitoredText(
                     cls.tts.isSpeaking())
         if monitored:
-            if isinstance(monitored, str):
-                cls.sayText(monitored, interrupt=True)
-            else:
-                cls.sayTexts(monitored, interrupt=True)
+            try:
+                phrases: PhraseList = PhraseList.create(monitored, interrupt=True)
+                cls.sayText(phrases)
+            except ExpiredException:
+                cls._logger.debug(f'Expired before sayText')
+
 
     @classmethod
     def checkAutoRead(cls):
@@ -669,22 +707,35 @@ class TTSService(xbmc.Monitor):
     @classmethod
     def sayExtra(cls):
         texts = cls.windowReader.getWindowExtraTexts()
-        cls.sayTexts(texts)
+        try:
+            phrases: PhraseList = PhraseList.create(texts, interrupt=False)
+            cls.sayText(phrases)
+        except ExpiredException:
+            cls._logger.debug(f'Expired at sayText')
 
     @classmethod
     def sayItemExtra(cls, interrupt=True):
         texts = cls.windowReader.getItemExtraTexts(cls.controlID)
-        cls.sayTexts(texts, interrupt=interrupt)
+        try:
+            phrases: PhraseList = PhraseList.create(texts, interrupt=interrupt)
+            cls.sayText(phrases)
+        except ExpiredException:
+            cls._logger.debug(f'Expired at sayText')
 
     @classmethod
-    def sayText(cls, text, interrupt=False, preload_cache=False):
+    def sayText(cls, phrases: PhraseList, preload_cache=False):
         if cls.tts.dead:
             return cls.fallbackTTS(cls.tts.deadReason)
-        module_logger.debug_verbose(f'Adding Text sayText {repr(text)}')
-        # cls.tts.say(cls.cleanText(text), interrupt, preload_cache)
-        cls.driver.say(cls.cleanText(text), interrupt=interrupt,
-                       preload_cache=preload_cache)
+        try:
+            module_logger.debug_verbose(f'sayText {repr(phrases[0].get_text())}'
+                                        f' interrupt: {str(phrases[0].get_interrupt())} '
+                                        f'preload: {str(preload_cache)}')
+            phrases.set_all_preload_cache(preload_cache)
+            cls.driver.say(phrases)
+        except ExpiredException:
+            cls._logger.debug(f'Before driver.say')
 
+    '''
     @classmethod
     def sayTexts(cls, texts, interrupt=True):
         if not texts:
@@ -693,28 +744,46 @@ class TTSService(xbmc.Monitor):
             return cls.fallbackTTS(cls.tts.deadReason)
         module_logger.debug_verbose(repr(texts))
         cls.tts.sayList(cls.cleanText(texts), interrupt=interrupt)
-
+    '''
+    '''
     @classmethod
     def insertPause(cls, ms=500):
         cls.tts.insertPause(ms=ms)
+        pass
+    '''
 
     @classmethod
     def volumeUp(cls) -> None:
         msg = cls.tts.volumeUp()
         if not msg:
             return
-        cls.sayText(msg, interrupt=True)
+        try:
+            phrases: PhraseList = PhraseList()
+            phrase: Phrase = Phrase.create(text=msg, interrupt=True)
+            phrases.append(phrase)
+            cls.sayText(phrases)
+        except ExpiredException:
+            cls._logger.debug(f'Expired at VolumeUp')
 
     @classmethod
     def volumeDown(cls) -> None:
         msg = cls.tts.volumeDown()
         if not msg:
             return
-        cls.sayText(msg, interrupt=True)
+        try:
+            phrases: PhraseList = PhraseList()
+            phrase: Phrase = Phrase(text=msg, interrupt=True)
+            phrases.append(phrase)
+            cls.sayText(phrases)
+        except ExpiredException:
+            cls._logger.debug(f'Expired at VolumeDown')
 
     @classmethod
     def stopSpeech(cls):
         cls.tts._stop()
+        PhraseList.set_current_expired()
+        # BaseServices.notify_active_engine('bozo')
+        # BaseServices.notify_active_player('gonzo')
 
     @classmethod
     def updateWindowReader(cls):
@@ -727,7 +796,7 @@ class TTSService(xbmc.Monitor):
         try:
             cls.windowReader = readerClass(cls.winID, cls)
         except Exception as e:
-            type(cls)._logger.exception('')
+            cls._logger.exception('')
 
     @classmethod
     def window(cls):
@@ -750,25 +819,33 @@ class TTSService(xbmc.Monitor):
 
         name = cls.windowReader.getName()
         TTSService.msg_timestamp = datetime.datetime.now()
-        if name:
-            cls.sayText(f'{Messages.get_msg(Messages.WINDOW)}: {name}',
-                        interrupt=not newN)
+        try:
+            phrases: PhraseList = PhraseList()
+            phrase: Phrase
+            if name:
+                phrase = Phrase(f'{Messages.get_msg(Messages.WINDOW)}: {name}',
+                                 post_pause_ms=Phrase.PAUSE_NORMAL, interrupt=not newN)
+            else:
+                phrase = Phrase(text=' ', post_pause_ms=Phrase.PAUSE_NORMAL,
+                                interrupt=not newN,)
+            phrases.append(phrase)
+            heading = cls.windowReader.getHeading()
+            if heading:
+                phrase = Phrase(heading, post_pause_ms=Phrase.PAUSE_NORMAL)
+                phrases.append(phrase)
 
-            cls.insertPause()
-        else:
-            cls.sayText(' ', interrupt=not newN)
-
-        heading = cls.windowReader.getHeading()
-        if heading:
-            cls.sayText(heading)
-            cls.insertPause()
-
-        texts = cls.windowReader.getWindowTexts()
-        if texts:
-            cls.insertPause()
-            for t in texts:
-                cls.sayText(t)
-                cls.insertPause()
+            texts = cls.windowReader.getWindowTexts()
+            if texts:
+                set_pre_pause: bool = True
+                for t in texts:
+                    phrase = Phrase(t, post_pause_ms=Phrase.PAUSE_NORMAL)
+                    if set_pre_pause:
+                        phrase.set_pre_pause(Phrase.PAUSE_NORMAL)
+                        set_pre_pause = False
+                    phrases.append(phrase)
+            cls.sayText(phrases)
+        except ExpiredException:
+            cls._logger.debug(f'Expired about to say window texts')
         return True
 
     @classmethod
@@ -791,8 +868,15 @@ class TTSService(xbmc.Monitor):
         description = cls.windowReader.getControlDescription(
                 cls.controlID) or ''
         if description or post:
-            cls.sayText(description + post, interrupt=not newW)
-            cls.tts.insertPause()
+            try:
+                phrases: PhraseList = PhraseList()
+                phrase: Phrase
+                phrase = Phrase(text=f'{description}{post}',post_pause_ms=Phrase.PAUSE_NORMAL,
+                                interrupt=not newW)
+                phrases.append(phrase)
+                cls.sayText(phrases)
+            except ExpiredException:
+                cls._logger.debug(f'Expired')
             return True
         return newW
 
@@ -800,31 +884,40 @@ class TTSService(xbmc.Monitor):
     def newText(cls, compare, text, newD, secondary=None):
         cls.textCompare = compare
         label2 = xbmc.getInfoLabel(
-                'Container({0}).ListItem.Label2'.format(cls.controlID))
+                f'Container({cls.controlID}).ListItem.Label2')
         seasEp = xbmc.getInfoLabel(
-                'Container({0}).ListItem.Property(SeasonEpisode)'.format(
-                        cls.controlID)) or ''
+                f'Container({cls.controlID}).ListItem.Property(SeasonEpisode)') or ''
         if label2 and seasEp:
-            text = '{0}: {1}: {2} '.format(
-                    label2, text, cls.formatSeasonEp(seasEp))
+            text = f'{label2}: {text}: {cls.formatSeasonEp}'
         if secondary:
             cls.secondaryText = secondary
-            text += cls.tts.pauseInsert + ' ' + secondary
+            text = f'{text}{Constants.PAUSE_INSERT} {secondary}'
         if len(text) != 0:  # For testing
-            cls.sayText(text, interrupt=not newD)
+            try:
+                phrases: PhraseList = PhraseList()
+                phrase: Phrase = Phrase(text=text, interrupt=not newD)
+                phrases.append(phrase)
+                cls.sayText(phrases)
+            except ExpiredException:
+                cls._logger.debug(f'Expired in newText')
             if cls.autoItemExtra:
                 cls.waitingToReadItemExtra = time.time()
 
     @classmethod
     def newSecondaryText(cls, text):
         cls.secondaryText = text
-        if not text:
+        if not text or cls.tts.isSpeaking():
             return
         if text.endswith('%'):
             # Get just the percent part, so we don't keep saying downloading
             text = text.rsplit(' ', 1)[-1]
-        if not cls.tts.isSpeaking():
-            cls.sayText(text, interrupt=True)
+        try:
+            phrases: PhraseList = PhraseList()
+            phrase: Phrase = Phrase(text=text, interrupt=True)
+            phrases.append(phrase)
+            cls.sayText(phrases)
+        except ExpiredException:
+            cls._logger.debug(f'Expired in newSecondaryText')
 
     @classmethod
     def formatSeasonEp(cls, seasEp):

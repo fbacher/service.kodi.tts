@@ -12,9 +12,9 @@
     <import addon="script.module.six" version="1.15.0+matrix.1"/>
   </requires>
   <extension point="xbmc.service" library="resources/lib/service.py" start="login"/>
-  <extension point="xbmc.python.script" library="resources/lib/main.py" start="login">
+  <!-- <extension point="xbmc.python.script" library="resources/lib/main.py" start="login">
   <provides>video</provides>
-  </extension>
+  </extension> -->
 
   <extension point="xbmc.python.pluginsource" library="resources/lib/plugin.py">
       <provides>executable</provides>

@@ -33,6 +33,7 @@ class SettingsProperties:  # (ISettings):
     RECITE_ID: Final[str] = Services.RECITE_ID
     RESPONSIVE_VOICE_ID: Final[str] = Services.RESPONSIVE_VOICE_ID
     SPEECH_DISPATCHER_ID: Final[str] = Services.SPEECH_DISPATCHER_ID
+    EXPERIMENTAL_ENGINE_ID: Final[str] = Services.EXPERIMENTAL_ENGINE_ID
 
     ADDONS_MD5: Final[str] = 'addons_MD5'
     API_KEY: Final[str] = 'api_key'
@@ -249,7 +250,7 @@ class SettingsProperties:  # (ISettings):
             # cls.DEBUG_LOGGING: SettingType.BOOLEAN_TYPE,
             cls.DEBUG_LOG_LEVEL                       : SettingType.INTEGER_TYPE,
             cls.DISABLE_BROKEN_SERVICES               : SettingType.BOOLEAN_TYPE,
-            cls.GENDER                                : SettingType.INTEGER_TYPE,
+            cls.GENDER                                : SettingType.STRING_TYPE,
             cls.GENDER_VISIBLE                        : SettingType.BOOLEAN_TYPE,
             cls.GUI                                   : SettingType.BOOLEAN_TYPE,
             cls.LANGUAGE                              : SettingType.STRING_TYPE,

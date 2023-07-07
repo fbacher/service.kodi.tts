@@ -1,7 +1,9 @@
 import sys
 
+from backends.settings.settings_map import Reason, SettingsMap
 from common.logger import BasicLogger
 from common.setting_constants import Players
+from common.system_queries import SystemQueries
 from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -52,7 +54,7 @@ class BootstrapPlayers:
             elif player_id == Players.SFX:
                 from backends.audio.sfx_audio_player import PlaySFXAudioPlayer
                 PlaySFXAudioPlayer()
-            elif player_id == Players.WINDOWS:
+            elif player_id == Players.WINDOWS and SystemQueries.isWindows():
                 from backends.audio.windows_audio_player import WindowsAudioPlayer
                 WindowsAudioPlayer()
             elif player_id == Players.APLAY:
@@ -93,6 +95,8 @@ class BootstrapPlayers:
             reraise(*sys.exc_info())
         except Exception as e:
             cls._logger.exception('')
+            SettingsMap.set_is_available(player_id, Reason.BROKEN)
+
 
     '''
     @classmethod

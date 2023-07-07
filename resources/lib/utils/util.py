@@ -13,6 +13,7 @@ from backends.settings.setting_properties import SettingsProperties
 from common import utils
 from common.constants import Constants
 from common.logger import *
+from common.monitor import Monitor
 from common.settings import Settings
 from common.typing import *
 
@@ -45,10 +46,6 @@ language_code = None
 
 def sleep(ms):
     return utils.sleep(ms)
-
-
-def abortRequested():
-    return xbmc.Monitor().abortRequested()
 
 
 def info(key):
@@ -163,18 +160,24 @@ def setSetting(key, value, backend_id: str = None):
     Settings.setSetting(key, value, backend_id)
 
 
-def runInThread(func: Callable, args=(), name='?'):
+def runInThread(func: Callable, args: List[Any] = [], name: str = '?',
+                delay: float = 0.0, **kwargs) -> None:
     import threading
     thread = threading.Thread(target=thread_wrapper, name=f'TTSThread: {name}',
-                              args=args, kwargs={'target':func})
+                              args=args, kwargs={'target':func,
+                                                 'delay':delay, **kwargs})
     xbmc.log(f'util.runInThread starting thread {name}', xbmc.LOGINFO)
     thread.start()
 
 
 def thread_wrapper(*args, **kwargs):
     try:
-        target: Callable = kwargs.get('target')
-        target()
+        target: Callable = kwargs.pop('target')
+        delay: float = kwargs.pop('delay')
+        if delay is not None and isinstance(delay, float):
+            Monitor.wait_for_abort(delay)
+
+        target(*args, **kwargs)
     except Exception as e:
         module_logger.exception('')
 

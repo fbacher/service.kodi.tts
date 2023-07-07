@@ -6,6 +6,8 @@ from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
                                           IntValidator, StringValidator)
 from common.logger import BasicLogger
+from common.phrases import PhraseList
+from common.settings import Settings
 from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -18,6 +20,20 @@ class IServices:
     service_ID: str = None
     service_TYPE: ServiceType = None
     #  sound_capabilities: SoundCapabilities = None
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    # Few engines implement
+
+    def seed_text_cache(self, phrases: PhraseList) -> None:
+        raise NotImplementedError()
+
+    def getVolumeDb(self) -> float:
+        raise NotImplementedError()
+
+    def getVolume(self) -> float:
+        raise NotImplementedError()
 
 
 class BaseServices(IServices):
@@ -32,6 +48,7 @@ class BaseServices(IServices):
 
     def __init__(self, *args, **kwargs):
         clz = type(self)
+        super(BaseServices, self).__init__(*args, **kwargs)
         BaseServices._logger = module_logger.getChild(clz.__name__)
 
     @classmethod
@@ -52,6 +69,10 @@ class BaseServices(IServices):
     def getService(cls, service_name: str) -> ForwardRef('BaseServices'):
         service: BaseServices | None = BaseServices.service_index.get(service_name, None)
         return service
+
+    @classmethod
+    def get_available_service_ids(cls, service_type: ServiceType) -> List[Tuple[str, str]]:
+        return SettingsMap.get_available_service_ids(service_type)
 
     @classmethod
     def getValidator(cls, service_id: str, setting_id: str) -> ConstraintsValidator:
@@ -250,14 +271,23 @@ class BaseServices(IServices):
         return SettingsMap.get_default_value(service_id, property_id)
 
     @classmethod
-    def get_player_id(cls, service_or_id: str, property_id: str) \
-            -> int | bool | float | str | None:
-        service_id: str
-        if isinstance(service_or_id, BaseServices):
-            service_id = service_or_id.service_ID
-        else:
-            service_id = service_or_id
-        validator: IValidator = cls.get_validator(service_id, property_id)
-        if validator is None:
-            return None
-        return validator.getValue()
+    def get_active_engine_id(cls) -> str:
+        return Settings.get_engine_id()
+
+    @classmethod
+    def notify_active_engine(cls, msg: str, now: bool = False) -> None:
+        engine_id = cls.get_active_engine_id()
+        engine = cls.getService(engine_id)
+        engine.notify(msg, now)
+
+    @classmethod
+    def get_active_player_id(cls) -> str:
+        engine_id: str = cls.get_active_engine_id()
+        player_id: str = Settings.get_player_id(engine_id)
+        return player_id
+
+    @classmethod
+    def notify_active_player(cls, msg: str, now: bool = False) -> None:
+        player_id: str = cls.get_active_player_id()
+        player: IPlayer = cls.getService(player_id)
+        player.notify(msg, now)

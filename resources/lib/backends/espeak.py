@@ -113,14 +113,6 @@ class ESpeakTTSBackend(ESpeakSettings, SimpleTTSBackend):
             entries.append((voice_name, voice_id, gender))
             cls.initialized_static = True
 
-    @staticmethod
-    def isSupportedOnPlatform():
-        return SystemQueries.isLinux() or SystemQueries.isWindows()
-
-    @staticmethod
-    def isInstalled():
-        return ESpeakTTSBackend.isSupportedOnPlatform()
-
     def getVoice(self) -> str:
         clz = type(self)
         voice = clz.getSetting(SettingsProperties.VOICE, '')
@@ -313,17 +305,6 @@ class ESpeakTTSBackend(ESpeakSettings, SimpleTTSBackend):
                                              property_id=SettingsProperties.VOLUME)
         volume: float = volume_validator.getValue()
         return volume
-
-    @staticmethod
-    def available():
-        try:
-            subprocess.run(['espeak', '--version'], stdout=(open(os.path.devnull, 'w')),
-                           universal_newlines=True, stderr=subprocess.STDOUT)
-        except AbortException:
-            reraise(*sys.exc_info())
-        except:
-            return False
-        return True
 
     @classmethod
     def negotiate_engine_config(cls, backend_id: str, player_volume_adjustable: bool,

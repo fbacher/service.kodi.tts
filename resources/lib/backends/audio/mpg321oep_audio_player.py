@@ -67,9 +67,9 @@ class Mpg321OEPiAudioPlayer(SubprocessAudioPlayer):
             reraise(*sys.exc_info())
         except IOError as e:
             if e.errno != errno.EPIPE:
-                module_logger.error('Error piping audio', hide_tb=True)
+                module_logger.error('Error piping audio')
         except:
-            module_logger.error('Error piping audio', hide_tb=True)
+            module_logger.error('Error piping audio')
         source.close()
         self._wavProcess.stdin.close()
         while self._wavProcess.poll() is None and self.active:

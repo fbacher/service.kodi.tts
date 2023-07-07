@@ -106,7 +106,7 @@ class SpeechServerBackend(SimpleTTSBackend):
             except AbortException:
                 reraise(*sys.exc_info())
             except:
-                err = self._logger.error('SpeechServerBackend: wav.write',hide_tb=True)
+                err = self._logger.error('SpeechServerBackend: wav.write')
                 if self.failFlag: self.flagAsDead(reason=err) #This is the second fail in a row, mark dead
                 self.failFlag = True
                 return False
@@ -122,7 +122,7 @@ class SpeechServerBackend(SimpleTTSBackend):
         except AbortException:
             reraise(*sys.exc_info())
         except:
-            err = self._logger.error('SpeechServerBackend: say',hide_tb=True)
+            err = self._logger.error('SpeechServerBackend: say')
             if self.failFlag: self.flagAsDead(reason=err) #This is the second fail in a row, mark dead
             self.failFlag = True
             return False
@@ -144,7 +144,7 @@ class SpeechServerBackend(SimpleTTSBackend):
         except AbortException:
             reraise(*sys.exc_info())
         except:
-            err = self._logger.error('SpeechServerBackend: Failed to get wav from server',hide_tb=True)
+            err = self._logger.error('SpeechServerBackend: Failed to get wav from server')
             if self.failFlag: self.flagAsDead(reason=err) #This is the second fail in a row, mark dead
             self.failFlag = True
             return False
@@ -201,10 +201,10 @@ class SpeechServerBackend(SimpleTTSBackend):
             reraise(*sys.exc_info())
         except urllib.error.HTTPError as e:
             if e.code == 404: return 'perl.server'
-            err = self._logger.error('Failed to get speech.server version',hide_tb=True)
+            err = self._logger.error('Failed to get speech.server version')
             return err
         except:
-            err = self._logger.error('Failed to get speech.server version',hide_tb=True)
+            err = self._logger.error('Failed to get speech.server version')
             return err
 
     def serverStop(self):
@@ -214,7 +214,7 @@ class SpeechServerBackend(SimpleTTSBackend):
         except AbortException:
             reraise(*sys.exc_info())
         except:
-            self._logger.error('SpeechServerBackend: stop',hide_tb=True)
+            self._logger.error('SpeechServerBackend: stop')
 
     def stop(self):
         if self.serverMode: self.serverStop()
@@ -235,7 +235,7 @@ class SpeechServerBackend(SimpleTTSBackend):
         except urllib.error.HTTPError:
             return None
         except:
-            self._logger.error('SpeechServerBackend: voices',hide_tb=True)
+            self._logger.error('SpeechServerBackend: voices')
             self.failFlag = True
             return None
 
@@ -250,7 +250,7 @@ class SpeechServerBackend(SimpleTTSBackend):
             except urllib.error.HTTPError:
                 return None
             except:
-                self._logger.error('SpeechServerBackend: engines',hide_tb=True)
+                self._logger.error('SpeechServerBackend: engines')
                 self.failFlag = True
                 return None
 

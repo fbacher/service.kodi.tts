@@ -10,6 +10,7 @@ import requests
 import xbmc
 from typing.io import IO
 
+from common.typing import *
 from backends.audio.sound_capabilties import ServiceType, SoundCapabilities
 from backends.base import SimpleTTSBackend
 from backends.engines.responsive_voice_settings import ResponsiveVoiceSettings
@@ -26,13 +27,12 @@ from common.messages import Messages
 from common.setting_constants import Backends, Genders, Languages, Mode
 from common.settings import Settings
 from common.system_queries import SystemQueries
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 PUNCTUATION_PATTERN = re.compile(r'([.,:])', re.DOTALL)
 
 
-class ResponsiveVoiceTTSBackend(ResponsiveVoiceSettings, SimpleTTSBackend):
+class ResponsiveVoiceTTSBackend(SimpleTTSBackend):
 
     ID: str = Backends.RESPONSIVE_VOICE_ID
     backend_id: str = Backends.RESPONSIVE_VOICE_ID
@@ -242,7 +242,7 @@ class ResponsiveVoiceTTSBackend(ResponsiveVoiceSettings, SimpleTTSBackend):
         exists: bool
         voiced_text: bytes
         file_path, exists = self.get_path_to_voice_file(text_to_voice,
-                                                        use_cache=self.is_use_cache())
+                                                        use_cache=Settings.is_use_cache())
         self._logger.debug(f'file_path: {file_path} exists: {exists}')
         if self.stop_processing:
             if clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
@@ -267,7 +267,7 @@ class ResponsiveVoiceTTSBackend(ResponsiveVoiceSettings, SimpleTTSBackend):
         exists: bool
         byte_stream: io.BinaryIO
         voice_file, exists = self.get_path_to_voice_file(text_to_voice,
-                                                        clz.is_use_cache())
+                                                        Settings.is_use_cache())
         if not voice_file or len(voice_file) == 0:
             voice_file = None
 
@@ -681,7 +681,7 @@ class ResponsiveVoiceTTSBackend(ResponsiveVoiceSettings, SimpleTTSBackend):
         Player is informing engine what it is capable of controlling
         Engine replies what it is allowing engine to control
         """
-        if cls.is_use_cache():
+        if Settings.is_use_cache():
             return True, True, True
 
         return False, False, False
@@ -744,7 +744,7 @@ class ResponsiveVoiceTTSBackend(ResponsiveVoiceSettings, SimpleTTSBackend):
         pitch_validator: ConstraintsValidator
         pitch_validator = cls.get_validator(cls.service_ID,
                                             property_id=SettingsProperties.PITCH)
-        if cls.is_use_cache():
+        if Settings.is_use_cache():
             pitch = pitch_validator.default_value
         else:
             pitch: float = pitch_validator.getValue()

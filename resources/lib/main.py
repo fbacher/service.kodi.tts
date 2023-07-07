@@ -44,7 +44,7 @@ except Exception as e:
     pass
 
 
-class MainThreadLoop:
+class MainThreadLoop(xbmc.Monitor):
     """
         Kodi's Monitor class has some quirks in it that strongly favors creating
         it from the main thread as well as calling xbmc.sleep/xbmc.wait_for_abort.
@@ -106,13 +106,29 @@ class MainThreadLoop:
                         worker_thread_initialized = True
                         cls.start_main_thread()
 
-            MinimalMonitor.throw_exception_if_abort_requested(timeout=timeout)
+            MinimalMonitor.exception_on_abort(timeout=timeout)
 
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
             # xbmc.log('xbmc.log Exception: ' + str(e), xbmc.LOGERROR)
             module_logger.exception(e)
+
+    def onNotification(self, sender: str, method: str, data: str) -> None:
+        """
+        onNotification method.
+
+        :param sender: Sender of the notification
+        :param method: Name of the notification
+        :param data: JSON-encoded data of the notification
+
+        :return:
+
+        Will be called when Kodi receives or sends a notification
+        """
+        clz = type(self)
+        xbmc.log(f'main.py: sender: {sender} method: {method}', xbmc.LOGDEBUG)
+        # clz._inform_notification_listeners(sender, method, data)
 
     @classmethod
     def start_main_thread(cls) -> None:
@@ -128,8 +144,8 @@ class MainThreadLoop:
 
     @staticmethod
     def main():
-        from startup.bootstrap_engines import BootstrapEngines
-        BootstrapEngines.init()
+        # from startup.bootstrap_engines import BootstrapEngines
+        # BootstrapEngines.init()
         from common.configuration_utils import ConfigUtils
         arg = None
         if len(sys.argv) > 1:
@@ -142,11 +158,7 @@ class MainThreadLoop:
             keymapeditor.processCommand(command)
         elif arg == 'settings_dialog':
             ConfigUtils.selectSetting(*extra)
-        elif arg is None:
-            from service import startService
-            xbmc.log('main.py service.kodi.tts service thread starting', xbmc.LOGDEBUG)
-            startService()
-
+        xbmc.sleep(30*60*1000)
 
 
 def bootstrap_plugin() -> None:

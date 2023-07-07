@@ -18,10 +18,14 @@ class IValidator:
     def __init__(self, setting_id: str, engine_id: str) -> None:
         pass
 
-    def validate(self) -> Tuple[bool, Any]:
+    def validate(self, value: int | None) -> bool:
         raise Exception('Not Implemented')
 
     def preValidate(self, value: Any) -> Tuple[bool, Any]:
+        raise Exception('Not Implemented')
+
+    @property
+    def default_value(self) -> bool | int | float | str:
         raise Exception('Not Implemented')
 
     def getValue(self) -> bool | int | float| str:
@@ -32,8 +36,8 @@ class IValidator:
 
     # Causes Trouble
     # @property
-    # def default_value(self):
-    #     raise NotImplementedError
+    # def default(self):
+    #     raise NotImplementedError()
 
 
 class IIntValidator(IValidator):
@@ -43,35 +47,48 @@ class IIntValidator(IValidator):
                  step: int, scale_internal_to_external: int = 1) -> None:
        pass
 
-    def getValue(self, default_value: int | None = None) -> bool | int | float| str:
-        raise NotImplementedError
+    @property
+    def default_value(self) -> int | float:
+        raise Exception('Not Implemented')
+
+    def getValue(self, default_value: int | None = None) -> int | float:
+        raise NotImplementedError()
 
     def setValue(self, value: int | float) -> None:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def setUIValue(self, ui_value:int) -> None:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def getUIValue(self) -> int:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def getInternalValue(self) -> int:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def setInternalValue(self, value: int) -> None:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def getLabel(self) -> str:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def getUnits(self) -> str:
-        raise NotImplementedError
+        raise NotImplementedError()
 
-    def validate(self) -> bool:
-        raise NotImplementedError
+    def validate(self, value: int | None) -> bool:
+        raise NotImplementedError()
 
     def preValidate(self, ui_value: int) -> bool:
-        raise NotImplementedError
+        raise NotImplementedError()
+
+    def get_min_value(self) -> int:
+        raise NotImplementedError()
+
+    def get_max_value(self) -> int:
+        raise NotImplementedError()
+
+    def get_default_value(self) -> int:
+        raise NotImplementedError()
 
 
 class IStringValidator(IValidator):
@@ -81,36 +98,42 @@ class IStringValidator(IValidator):
                  max_length: int = 4096, default_value: str = None) -> None:
         pass
 
-    def getValue(self, default_value : str | None = None) -> str:
-        raise NotImplementedError
+    @property
+    def default_value(self) -> str:
+        raise Exception('Not Implemented')
 
+    def getValue(self, default_value : str | None = None) -> str:
+        raise NotImplementedError()
 
     def setValue(self, value: str) -> None:
-        raise NotImplementedError
+        raise NotImplementedError()
+
+    def get_allowed_values(self) -> List[str] | None:
+        raise NotImplementedError()
 
     def setUIValue(self, ui_value:str) -> None:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def getUIValue(self) -> str:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def getInternalValue(self) -> str:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def setInternalValue(self, value: str) -> None:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def getLabel(self) -> str:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def getUnits(self) -> str:
-        raise NotImplementedError
+        raise NotImplementedError()
 
-    def validate(self) -> Tuple[bool, str]:
-        raise NotImplementedError
+    def validate(self, value: str | None) -> Tuple[bool, str]:
+        raise NotImplementedError()
 
     def preValidate(self, ui_value: str) -> Tuple[bool, str]:
-        raise NotImplementedError
+        raise NotImplementedError()
 
 
 class IEnumValidator(IValidator):
@@ -120,29 +143,33 @@ class IEnumValidator(IValidator):
                  default_value: enum.Enum = None) -> None:
         pass
 
+    @property
+    def default_value(self) -> enum.Enum:
+        raise Exception('Not Implemented')
+
     def getValue(self) -> enum.Enum:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def setValue(self, value: enum.Enum) -> None:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def setUIValue(self, ui_value: int) -> None:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def getUIValue(self) -> int:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def getInternalValue(self) -> int | str:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def setInternalValue(self, internalValue: int | str) -> None:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def validate(self) -> Tuple[bool, Any]:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def preValidate(self, ui_value: enum.Enum) -> Tuple[bool, enum.Enum]:
-        raise NotImplementedError
+        raise NotImplementedError()
 
 
 class IStrEnumValidator(IValidator):
@@ -152,29 +179,33 @@ class IStrEnumValidator(IValidator):
                  default_value: StrEnum = None) -> None:
         pass
 
+    @property
+    def default_value(self) -> StrEnum:
+        raise Exception('Not Implemented')
+
     def getValue(self) -> StrEnum:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def setValue(self, value: StrEnum) -> None:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def setUIValue(self, ui_value: str) -> None:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def getUIValue(self) -> str:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def getInternalValue(self) -> StrEnum:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def setInternalValue(self, internalValue: StrEnum) -> None:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def validate(self) -> Tuple[bool, StrEnum]:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def preValidate(self, ui_value: StrEnum) -> Tuple[bool, StrEnum]:
-        raise NotImplementedError
+        raise NotImplementedError()
 
 
 class IConstraintsValidator:
@@ -182,27 +213,39 @@ class IConstraintsValidator:
                  constraints: IConstraints) -> None:
         pass
 
+    @property
+    def default_value(self) -> int | float | str:
+        raise Exception('Not Implemented')
+
     def setUIValue(self, ui_value: int) -> None:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def getUIValue(self) -> str:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def getValue(self) -> int | float | str:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def setValue(self, value: int | float | str) -> None:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def validate(self) -> Tuple[bool, int]:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def preValidate(self, ui_value: int) -> Tuple[bool, int]:
-        raise NotImplementedError
+        raise NotImplementedError()
 
-    @property
-    def default_value(self):
-        raise NotImplementedError
+    def get_min_value(self) -> int:
+        raise NotImplementedError()
+
+    def get_max_value(self) -> int:
+        raise NotImplementedError()
+
+    def get_default_value(self) -> int:
+        raise NotImplementedError()
+
+    def get_constraints(self) -> IConstraints:
+        return self.constraints
 
 
 class IBoolValidator:
@@ -210,29 +253,33 @@ class IBoolValidator:
                  default: bool) -> None:
         pass
 
+    @property
+    def default_value(self) -> bool:
+        raise Exception('Not Implemented')
+
     def getValue(self) -> bool:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def setValue(self, value: bool) -> None:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def setUIValue(self, ui_value: bool) -> None:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def getUIValue(self) -> str:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def getInternalValue(self) -> bool:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def setInternalValue(self, internalValue: bool) -> None:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def validate(self) -> Tuple[bool, bool]:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def preValidate(self, ui_value: bool) -> Tuple[bool, bool]:
-        raise NotImplementedError
+        raise NotImplementedError()
 
 
 class IGenderValidator(IValidator):
@@ -243,26 +290,30 @@ class IGenderValidator(IValidator):
         super().__init__(setting_id, service_id)
         pass
 
+    @property
+    def default_value(self) -> Genders:
+        raise Exception('Not Implemented')
+
     def getValue(self) -> Genders:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def setValue(self, value: Genders) -> None:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def setUIValue(self, ui_value: str) -> None:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def getUIValue(self) -> str:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def getInternalValue(self) -> Genders:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def setInternalValue(self, internalValue: int | str) -> None:
-        raise NotImplementedError
+        raise NotImplementedError()
 
-    def validate(self) -> Tuple[bool, Any]:
-        raise NotImplementedError
+    def validate(self, value: Genders | None) -> Tuple[bool, Any]:
+        raise NotImplementedError()
 
     def preValidate(self, ui_value: enum.Enum) -> Tuple[bool, enum.Enum]:
-        raise NotImplementedError
+        raise NotImplementedError()

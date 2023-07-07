@@ -4,6 +4,7 @@ import re
 import time
 import xbmc
 
+from common.constants import Constants
 from common.messages import Messages
 from .base import WindowReaderBase
 
@@ -105,10 +106,10 @@ class PVRSGuideSearchDialogReader(VirtualKeyboardReader):
         else:
             text = xbmc.getInfoLabel('System.CurrentControl')
             text = text.replace('( )',
-                                '{0} {1}'.format(self.service.tts.pauseInsert,
+                                '{0} {1}'.format(Constants.PAUSE_INSERT,
                                                  Messages.get_msg(Messages.NO))).replace('(*)',
                                                  '{0} {1}'.format(
-                                                                  self.service.tts.pauseInsert,
+                                                         Constants.PAUSE_INSERT,
                                                                    Messages.get_msg(Messages.YES)))  # For boolean settings
         return (text,text)
 

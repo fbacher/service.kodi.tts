@@ -19,7 +19,7 @@ addon = Addon(addonName)
 from kutils import addon
 
 
-class Constants(object):
+class Constants:
     """
         Constants common to all plugins
     """
@@ -51,10 +51,10 @@ class Constants(object):
     IGNORE_CACHE_EXPIRATION_DATE: bool = True
 
     LOCALE = ''
+    PAUSE_INSERT = '...'
 
     @staticmethod
-    def static_init():
-        # type: () -> None
+    def static_init() -> None:
         """
             Assign calculated values
 
@@ -112,3 +112,7 @@ class DebugLevel(object):
     DEBUG_EXTRA_VERBOSE = '06_Debug_Extra_Verbose'
     DEBUG_VERBOSE = '07_Debug_Verbose'
     DEBUG = '08_Debug'
+
+
+class Notify:
+    STOP: str = 'stop'

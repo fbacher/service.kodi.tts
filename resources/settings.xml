@@ -1750,9 +1750,9 @@ New Setting Format
                     </control>
                     <visible>false</visible>
                 </setting>
-                <setting help="" id="gender.Cepstral" label="32178" type="integer">
+                <setting help="" id="gender.Cepstral" label="32178" type="string">
                     <level>0</level>
-                    <default>2</default>
+                    <default>female</default>
                     <control type="edit" format="integer">
                         <heading>32005</heading>
                     </control>
@@ -1816,9 +1816,9 @@ New Setting Format
                     </control>
                     <visible>false</visible>
                 </setting>
-                <setting help="" id="gender.eSpeak" label="32178" type="integer">
+                <setting help="" id="gender.eSpeak" label="32178" type="string">
                     <level>0</level>
-                    <default>2</default>
+                    <default>female</default>
                     <control type="edit" format="integer">
                         <heading>32005</heading>
                     </control>
@@ -1893,9 +1893,9 @@ New Setting Format
                     <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
-                <setting help="" id="gender.eSpeak" label="32178" type="integer">
+                <setting help="" id="gender.eSpeak" label="32178" type="string">
                     <level>0</level>
-                    <default>2</default>
+                    <default>female</default>
                     <control type="edit" format="integer">
                         <heading>32005</heading>
                     </control>
@@ -1963,7 +1963,7 @@ New Setting Format
                 </setting>
                 <setting help="" id="gender.Flite" label="32178" type="string">
                     <level>0</level>
-                    <default>2</default>
+                    <default>female</default>
                     <control type="edit" format="string">
                         <heading>32005</heading>
                     </control>
@@ -2029,9 +2029,9 @@ New Setting Format
                     </control>
                     <visible>false</visible>
                 </setting>
-                <setting help="" id="gender.Google" label="32178" type="integer">
+                <setting help="" id="gender.Google" label="32178" type="string">
                     <level>0</level>
-                    <default>2</default>
+                    <default>female</default>
                     <control type="edit" format="integer">
                         <heading>32005</heading>
                     </control>
@@ -2097,9 +2097,9 @@ New Setting Format
                     </control>
                     <visible>false</visible>
                 </setting>
-                <setting help="" id="gender.OSXSay" label="32178" type="integer">
+                <setting help="" id="gender.OSXSay" label="32178" type="string">
                     <level>0</level>
-                    <default>2</default>
+                    <default>female</default>
                     <control type="edit" format="integer">
                         <heading>32005</heading>
                     </control>
@@ -2165,9 +2165,9 @@ New Setting Format
                     </control>
                     <visible>false</visible>
                 </setting>
-                <setting help="" id="gender.pico2wave" label="32178" type="integer">
+                <setting help="" id="gender.pico2wave" label="32178" type="string">
                     <level>0</level>
-                    <default>2</default>
+                    <default>female</default>
                     <control type="edit" format="integer">
                         <heading>32005</heading>
                     </control>
@@ -2243,9 +2243,9 @@ New Setting Format
                     </control>
                     <visible>false</visible>
                 </setting>
-                <setting help="" id="gender.ResponsiveVoice" label="32178" type="integer">
+                <setting help="" id="gender.ResponsiveVoice" label="32178" type="string">
                     <level>0</level>
-                    <default>2</default>
+                    <default>female</default>
                     <control type="edit" format="integer">
                         <heading>32005</heading>
                     </control>
@@ -2418,9 +2418,9 @@ New Setting Format
                     <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
-                <setting help="" id="gender.SAPI" label="32178" type="integer">
+                <setting help="" id="gender.SAPI" label="32178" type="string">
                     <level>0</level>
-                    <default>2</default>
+                    <default>female</default>
                     <control type="edit" format="integer">
                         <heading>32005</heading>
                     </control>
@@ -2487,9 +2487,9 @@ New Setting Format
                     <visible>false</visible>
                 </setting>
                 <setting help="" id="gender.Speech-Dispatcher" label="32178"
-                         type="integer">
+                         type="string">
                     <level>0</level>
-                    <default>5</default>
+                    <default>female</default>
                     <control type="edit" format="integer">
                         <heading>32005</heading>
                     </control>
@@ -2848,9 +2848,9 @@ New Setting Format
                     <visible>false</visible>
                 </setting>
                 <setting help="" id="gender.Speech-Dispatcher" label="32178"
-                         type="integer">
+                         type="string">
                     <level>0</level>
-                    <default>2</default>
+                    <default>female</default>
                     <control type="edit" format="integer">
                         <heading>32005</heading>
                     </control>
@@ -2889,9 +2889,9 @@ New Setting Format
                     </control>
                     <visible>false</visible>
                 </setting>
-                <setting help="" id="gender.experimental" label="32178" type="integer">
+                <setting help="" id="gender.experimental" label="32178" type="string">
                     <level>0</level>
-                    <default>1</default>
+                    <default>female</default>
                     <control type="edit" format="integer">
                         <heading>32005</heading>
                     </control>

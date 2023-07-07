@@ -78,7 +78,7 @@ class ProgressNotice(xbmcgui.Window):
             self.progress = new_prog
             self.currentProgress = '{0}%'.format(self.progress)
         except:
-            self._logger.error('BG Progress',hide_tb=True)
+            self._logger.error('BG Progress')
 
     def finish(self):
         if self.finished: return

@@ -349,6 +349,7 @@ class BasicLogger(Logger):
         kwargs.setdefault('ignore_frames', 0)
         ignore_frames = kwargs['ignore_frames'] + 1
         kwargs['ignore_frames'] = ignore_frames
+        kwargs['stack_info'] = True
         if msg is None:
             msg = ''
         self.error(msg, *args, exc_info=exc_info, **kwargs)

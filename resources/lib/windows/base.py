@@ -3,6 +3,7 @@
 import xbmc
 import xbmcgui
 
+from common.constants import Constants
 from common.messages import Messages
 from . import guitables, skintables, windowparser
 
@@ -84,9 +85,9 @@ class WindowReaderBase(WindowHandlerBase):
     def getSettingControlText(self,controlID):
         text = xbmc.getInfoLabel('System.CurrentControl')
         if text.endswith(')'): #Skip this most of the time
-            text = text.replace('( )','{0} {1}'.format(self.service.tts.pauseInsert,
+            text = text.replace('( )','{0} {1}'.format(Constants.PAUSE_INSERT,
                                                        Messages.get_msg(Messages.NO))
-                                .replace('(*)','{0} {1}'.format(self.service.tts.pauseInsert,
+                                .replace('(*)','{0} {1}'.format(Constants.PAUSE_INSERT,
                                                                 Messages.get_msg(Messages.YES)))) #For boolean settings
         return text
 

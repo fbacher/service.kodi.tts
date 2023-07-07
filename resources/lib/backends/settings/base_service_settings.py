@@ -2,9 +2,11 @@
 from backends.settings.constraints import Constraints
 from backends.settings.service_types import Services
 from backends.settings.settings_map import SettingsMap
-from backends.settings.validators import (BoolValidator, IntValidator, StringValidator)
+from backends.settings.validators import (BoolValidator, ConstraintsValidator,
+                                          IntValidator, StringValidator)
 from common.logger import BasicLogger
 from common.setting_constants import Backends
+from common.settings import Settings
 from common.settings_low_level import SettingsProperties
 from common.typing import *
 
@@ -20,9 +22,11 @@ class BaseServiceSettings:
     interval = 100
     broken = False
     _logger: BasicLogger = None
+    initialized: bool = False
 
 
-    # Define TTS native scales for volume, speed, etc
+
+# Define TTS native scales for volume, speed, etc
     #
     # Min, Default, Max, Integer_Only (no float)
     ttsPitchConstraints: Constraints = Constraints(0, 50, 99, True, False, 1.0,
@@ -51,20 +55,29 @@ class BaseServiceSettings:
 
         # BaseServices()
         clz = type(self)
-        self.initialized: bool = False
 
-        if self.initialized:
+        # Only initialized TTS_Service items
+
+        if BaseServiceSettings.initialized:
             return
-        self.initialized = True
+        BaseServiceSettings.initialized = True
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz.__name__)
-        self.init_settings()
+        # Explicitly init this class. Self would initialize the self class
+        BaseServiceSettings.init_settings()
 
-    def init_settings(self):
+    @classmethod
+    def init_settings(cls):
+        volume_constraints_validator: ConstraintsValidator
+        volume_constraints_validator = ConstraintsValidator(SettingsProperties.VOLUME,
+                                                            cls.service_ID,
+                                                            cls.ttsVolumeConstraints)
+        SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOLUME,
+                                   volume_constraints_validator)
         pipe_validator: BoolValidator
-        pipe_validator = BoolValidator(SettingsProperties.PIPE, self.service_ID,
+        pipe_validator = BoolValidator(SettingsProperties.PIPE, cls.service_ID,
                                        default=False)
-        SettingsMap.define_setting(self.service_ID, SettingsProperties.PIPE,
+        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PIPE,
                                    pipe_validator)
 
         engine_id_validator = StringValidator(SettingsProperties.ENGINE,
@@ -72,13 +85,13 @@ class BaseServiceSettings:
                                               allowed_values=Backends.ALL_ENGINE_IDS,
                                               min_length=1,  # Size way too big
                                               max_length=32,
-                                              default_value=Backends.DEFAULT_ENGINE_ID)
+                                              default=Backends.DEFAULT_ENGINE_ID)
         SettingsMap.define_setting(SettingsProperties.ENGINE, '',
                                    engine_id_validator)
 
         addon_md5_validator = StringValidator(SettingsProperties.ADDONS_MD5, Services.TTS_SERVICE,
                                               allowed_values=[], min_length=32,
-                                              max_length=32, default_value='')
+                                              max_length=32, default='')
         SettingsMap.define_setting(Services.TTS_SERVICE,
                                    SettingsProperties.ADDONS_MD5,
                                    addon_md5_validator)
@@ -92,7 +105,7 @@ class BaseServiceSettings:
         auto_item_extra_delay_validator: IntValidator
         auto_item_extra_delay_validator = IntValidator(
                 SettingsProperties.AUTO_ITEM_EXTRA_DELAY, Services.TTS_SERVICE,
-                min_value=0, max_value=3, default_value=0,
+                min_value=0, max_value=3, default=0,
                 step=1, scale_internal_to_external=1)
         SettingsMap.define_setting(Services.TTS_SERVICE,
                                    SettingsProperties.AUTO_ITEM_EXTRA_DELAY,
@@ -100,7 +113,7 @@ class BaseServiceSettings:
         background_progress_validator: IntValidator
         background_progress_validator = IntValidator(
                 SettingsProperties.BACKGROUND_PROGRESS_INTERVAL, Services.TTS_SERVICE,
-                min_value=0, max_value=60, default_value=5,
+                min_value=0, max_value=60, default=5,
                 step=1, scale_internal_to_external=1)
         SettingsMap.define_setting(Services.TTS_SERVICE,
                                    SettingsProperties.BACKGROUND_PROGRESS_INTERVAL,
@@ -132,7 +145,7 @@ class BaseServiceSettings:
                                          allowed_values=[],
                                          min_length=1,
                                          max_length=1024,
-                                         default_value=SettingsProperties.CACHE_PATH_DEFAULT)
+                                         default=SettingsProperties.CACHE_PATH_DEFAULT)
         SettingsMap.define_setting(Services.TTS_SERVICE,
                                    SettingsProperties.CACHE_PATH,
                                    cache_path_val)
@@ -141,7 +154,7 @@ class BaseServiceSettings:
         cache_expiration_val = IntValidator(SettingsProperties.CACHE_EXPIRATION_DAYS,
                                             Services.TTS_SERVICE,
                                             min_value=0, max_value=3654,
-                                            default_value=365,
+                                            default=365,
                                             step=1, scale_internal_to_external=1)
         SettingsMap.define_setting(Services.TTS_SERVICE,
                                    SettingsProperties.CACHE_EXPIRATION_DAYS,
@@ -157,7 +170,7 @@ class BaseServiceSettings:
         poll_interval_val: IntValidator
         poll_interval_val = IntValidator(SettingsProperties.POLL_INTERVAL,
                                          Services.TTS_SERVICE,
-                                         min_value=0, max_value=1000, default_value=100,
+                                         min_value=0, max_value=1000, default=100,
                                          step=1, scale_internal_to_external=1)
         SettingsMap.define_setting(Services.TTS_SERVICE,
                                    SettingsProperties.POLL_INTERVAL,
@@ -166,7 +179,7 @@ class BaseServiceSettings:
         debug_log_level_val: IntValidator
         debug_log_level_val = IntValidator(SettingsProperties.DEBUG_LOG_LEVEL,
                                            Services.TTS_SERVICE,
-                                           min_value=0, max_value=5, default_value=4,
+                                           min_value=0, max_value=5, default=4,
                                            # INFO
                                            step=1, scale_internal_to_external=1)
         SettingsMap.define_setting(Services.TTS_SERVICE,
@@ -194,7 +207,7 @@ class BaseServiceSettings:
                                       allowed_values=[],
                                       min_length=5,
                                       max_length=20,
-                                      default_value=None)
+                                      default=None)
         SettingsMap.define_setting(Services.TTS_SERVICE,
                                    SettingsProperties.VERSION,
                                    version_val)
@@ -207,5 +220,48 @@ class BaseServiceSettings:
                                    SettingsProperties.USE_TEMPFS,
                                    use_tempfs_val)
 
-    # def register(self, what: Type[ITTSBackendBase]) -> None:
-    #     BaseServices.register(what)
+        # def register(self, what: Type[ITTSBackendBase]) -> None:
+        #     BaseServices.register(what)
+
+        @staticmethod
+        def isSupportedOnPlatform():
+            """
+            This O/S supports this engine/backend
+
+            :return:
+            """
+            return False
+
+        @staticmethod
+        def isInstalled():
+            """
+            This eGngine/backend is installed and configured on the O/S.
+
+            :return:
+            """
+            return False
+
+        @classmethod
+        def is_available_and_usable(cls):
+            """
+
+            @return:
+            """
+            return cls._available()
+
+        @classmethod
+        def _available(cls):
+            if cls.broken and Settings.getSetting(SettingsProperties.DISABLE_BROKEN_SERVICES,
+                                                  SettingsProperties.TTS_SERVICE, True):
+                return False
+            return cls.available()
+
+        @staticmethod
+        def available():
+            """Static method representing the speech engines availability
+
+            Subclasses should override this and return True if the speech engine is
+            capable of speaking text in the current environment.
+            Default implementation returns False.
+            """
+            return False

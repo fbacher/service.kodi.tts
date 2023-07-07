@@ -1,15 +1,16 @@
 # -*- coding: utf-8 -*-
 #
-
+import os
 import sys
 
 import xbmc
-import xbmcaddon
+import xbmcvfs
 
 from common.critical_settings import CriticalSettings
+from common.minimal_monitor import MinimalMonitor
 from common.python_debugger import PythonDebugger
 
-REMOTE_DEBUG: bool = False
+REMOTE_DEBUG: bool = True
 
 addon_id: str = CriticalSettings.ADDON_ID
 
@@ -30,7 +31,10 @@ if REMOTE_DEBUG:
     xbmc.log(f'PYTHONPATH: {sys.path}', xbmc.LOGINFO)
     # if not PythonDebugger.is_enabled():
     PythonDebugger.enable(addon_id)
-    xbmc.sleep(5000)
+    xbmc.sleep(500)
+    if MinimalMonitor.abort_requested():
+        PythonDebugger.disable()
+        sys.exit()
 
 import datetime
 import faulthandler
@@ -51,10 +55,6 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 from common.typing import *
 
 
-from backends.settings.base_service_settings import BaseServiceSettings
-from common.minimal_monitor import MinimalMonitor
-
-from utils import addoninfo
 from backends import audio
 from common.settings import Settings
 from backends.backend_info import BackendInfo
@@ -85,6 +85,7 @@ def resetAddon():
     xbmc.executebuiltin(
             'RunScript(special://home/addons/service.kodi.tts/resources/lib/tools'
             '/enabler.py,RESET)')
+
 
 def preInstalledFirstRun():
     if not SystemQueries.isPreInstalled():  # Do as little as possible if there is no
@@ -128,29 +129,118 @@ def startService():
         return
     xbmc.log('starting service.startservice thread', xbmc.LOGDEBUG)
 
-    # BaseServiceSettings()
     from startup.bootstrap_engines import BootstrapEngines
     try:
-        BootstrapEngines.init()
-        BackendInfo.init()
-        addoninfo.initAddonsData()
         from backends.audio.bootstrap_players import BootstrapPlayers
 
         from service_worker import TTSService
         TTSService().start()
         xbmc.log('started service.startService thread', xbmc.LOGDEBUG)
     except AbortException:
-        reraise(*sys.exc_info())
+        pass  # About to exit thread
     except Exception as e:
-        xbmc.log(f'Exception {e.msg}. Exiting')
+        xbmc.log(f'Exception {repr(e)}. Exiting')
+        module_logger.exception('')
+    # while True:
+    #     if xbmc.abortRequested(100):
+    #         break
+    #  xbmc.log(f'AbortRequested. Exiting startService', xbmc.LOGDEBUG)
+
+
+class MainThreadLoop(xbmc.Monitor):
+    """
+        Kodi's Monitor class has some quirks in it that strongly favors creating
+        it from the main thread as well as calling xbmc.sleep/xbmc.wait_for_abort.
+        The main issue is that a Monitor event can not be received until
+        xbmc.sleep/xbmc.wait_for_abort is called FROM THE SAME THREAD THAT THE
+        MONITOR WAS INSTANTIATED FROM. Further, it may be the case that
+        other plugins may be blocked as well. For this reason, the main thread
+        should not be blocked for too long.
+    """
+
+    profiler = None
+
+    @classmethod
+    def event_processing_loop(cls) -> None:
+        """
+
+        :return:
+        """
+        try:
+            if os.path.exists(os.path.join(xbmcvfs.translatePath('special://profile'),
+                                           'addon_data', 'service.kodi.tts', 'DISABLED')):
+                xbmc.log('service.kodi.tts: DISABLED - NOT STARTING')
+                return
+
+            worker_thread_initialized = False
+
+            # For the first 10 seconds use a short timeout so that initialization
+            # stuff is handled quickly. Then revert to less frequent checks
+
+            initial_timeout = CriticalSettings.SHORT_POLL_DELAY
+            switch_timeouts_count = initial_timeout / 10.0 # 10 seconds
+
+            # Don't start backend for about one second after start if
+            # debugging is enabled in order for it to start.
+
+            if REMOTE_DEBUG:
+                # Wait one second for debugger to do its thing
+                start_backend_count_down = 1.0 / initial_timeout
+            else:
+                start_backend_count_down = 0.0
+
+            i = 0
+            timeout = initial_timeout
+
+            # Using real_waitForAbort to
+            # cause Monitor to query Kodi for Abort on the main thread.
+            # If this is not done, then Kodi will get constipated
+            # sending/receiving events to plugins.
+
+            while not MinimalMonitor.real_waitForAbort(timeout=timeout):
+                i += 1
+                if i == switch_timeouts_count:
+                    timeout = CriticalSettings.LONG_POLL_DELAY
+
+                if start_backend_count_down > 0:
+                    start_backend_count_down -= 1.0
+                else:
+                    if not worker_thread_initialized:
+                        worker_thread_initialized = True
+                        cls.start_worker_thread()
+
+            MinimalMonitor.exception_on_abort(timeout=timeout)
+
+        except AbortException:
+            reraise(*sys.exc_info())
+        except Exception as e:
+            # xbmc.log('xbmc.log Exception: ' + str(e), xbmc.LOGERROR)
+            module_logger.exception(e)
+
+    @classmethod
+    def start_worker_thread(cls) -> None:
+        try:
+            thread = threading.Thread(
+                    target=startService,
+                    name='tts_service',
+                    daemon=False)
+            thread.start()
+        except Exception as e:
+            xbmc.log('Exception: ' + str(e), xbmc.LOGERROR)
+            module_logger.exception('')
+
 
 if __name__ == '__main__':
     import threading
-    threading.current_thread().name = "service.py"
     module_logger.debug('starting service.py service.kodi.tts service thread')
     # sys.exit()
     #
     try:
-       startService()
+        MainThreadLoop().event_processing_loop()
+        PythonDebugger.disable()
+    except AbortException:
+        PythonDebugger.disable()
     except Exception as e:
        module_logger.exception('')
+       PythonDebugger.disable()
+    sys.exit()

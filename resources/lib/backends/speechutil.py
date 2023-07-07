@@ -62,7 +62,7 @@ class SpeechUtilComTTSBackend(SimpleTTSBackend):
         except (asyncconnections.StopRequestedException, asyncconnections.AbortRequestedException):
             return False
         except:
-            self._logger.error('Failed to open speechutil.com TTS URL',hide_tb=True)
+            self._logger.error('Failed to open speechutil.com TTS URL')
             return False
 
         with open(outFile,'wb') as out:

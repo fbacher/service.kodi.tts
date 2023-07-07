@@ -7,7 +7,11 @@ from xbmcgui import (ControlButton, ControlEdit, ControlGroup, ControlLabel,
 
 from backends.backend_info import BackendInfo
 from backends.base import *
+from backends.settings.i_constraints import IConstraints
+from backends.settings.i_validators import (IConstraintsValidator, IIntValidator,
+                                            IValidator)
 from backends.settings.settings_map import SettingsMap
+from backends.settings.validators import IntValidator
 from common.constants import Constants
 from common.logger import *
 from common.messages import Messages
@@ -204,7 +208,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 self.engine_engine_button = self.getControlButton(
                         clz.SELECT_ENGINE_BUTTON)
                 self.engine_engine_button.setLabel(
-                        Messages.get_msg(Messages.DEFAULT_TTS_ENGINE))
+                        Messages.get_msg(Messages.ENGINE))
 
                 self.engine_engine_value = self.getControlLabel(
                         clz.SELECT_ENGINE_VALUE_LABEL)
@@ -262,7 +266,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
                 self.engine_player_button = self.getControlLabel(
                         clz.SELECT_PLAYER_BUTTON)
-                if BaseServices.is_valid_property(self.engine_id, SettingsProperties.PLAYER):
+                if SettingsMap.is_valid_property(self.engine_id, SettingsProperties.PLAYER):
                     self.engine_player_button.setLabel(
                             Messages.get_msg(Messages.SELECT_PLAYER))
                     self.engine_player_value = self.getControlButton(
@@ -394,9 +398,9 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             self.set_language_field()
             self.set_voice_field()
             self.set_gender_field()
-            if BaseServices.is_valid_property(self.engine_id, SettingsProperties.PLAYER):
+            if SettingsMap.is_valid_property(self.engine_id, SettingsProperties.PLAYER):
                 self.set_player_field()
-            elif BaseServices.is_valid_property(self.engine_id, SettingsProperties.MODULE):
+            elif SettingsMap.is_valid_property(self.engine_id, SettingsProperties.MODULE):
                 self.set_module_field()
             self.set_pitch_range()
             self.set_speed_range()
@@ -619,13 +623,13 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             current_value = self.getSetting(
                     SettingsProperties.ENGINE, SettingsProperties.ENGINE_DEFAULT)
             current_choice_index: int = 0
-            for b in BackendInfo.getAvailableBackends():
+            for id, name in BaseServices.get_available_service_ids(ServiceType.ENGINE):
                 self._logger.debug(
-                        f'Available Backend: {SettingsProperties.ENGINE} {b.displayName}')
-                list_item = xbmcgui.ListItem(b.displayName)
-                list_item.setLabel2(b.backend_id)
+                        f'Available Backend: {SettingsProperties.ENGINE} {name}')
+                list_item = xbmcgui.ListItem(name)
+                list_item.setLabel2(id)
                 choices.append(list_item)
-                if b.backend_id == current_value:
+                if id == current_value:
                     current_choice_index = len(choices) - 1
 
             return choices, current_choice_index
@@ -945,7 +949,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             candidates = SoundCapabilities.get_capable_services(ServiceType.PLAYER,
                                                                 engine_output_formats,
                                                                 [])
-            if not BaseServices.is_valid_property(self.engine_id, SettingsProperties.PLAYER):
+            if not SettingsMap.is_valid_property(self.engine_id, SettingsProperties.PLAYER):
                 return [], -1
 
             supported_players: List[str]
@@ -1118,6 +1122,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             volume = self.engine_volume_slider.getInt()
             constraints: Constraints = self.getEngineClass().get_constraints(SettingsProperties.VOLUME)
             constraints.setSetting(volume, self.engine_id)
+
         except Exception as e:
             self._logger.exception('')
 
@@ -1138,22 +1143,22 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         maximum_volume: int = 0
         current_volume: int = 0
         try:
-            volume_constraints: Constraints = self.getEngineClass().get_constraints(
-                    SettingsProperties.VOLUME)
+            volume_val: IConstraintsValidator
+            volume_val = SettingsMap.get_validator(self.engine_id,
+                                                  SettingsProperties.VOLUME)
+            if volume_val is None:
+                raise NotImplementedError
+            volume_constraints: Constraints = volume_val.get_constraints()
             if volume_constraints is None:
                 raise NotImplementedError
             minimum_volume = int(volume_constraints.minimum)
             default_volume = int(volume_constraints.default)
             maximum_volume = int(volume_constraints.maximum)
-            current_volume = self.getSetting(SettingsProperties.VOLUME, default_volume)
-            if not volume_constraints.in_range(current_volume):
-                current_volume = default_volume
-            current_volume = int(current_volume)
+            current_volume = Settings.get_volume(self.engine_id)
         except NotImplementedError:
             pass
         except Exception as e:
             self._logger.exception('')
-
         return minimum_volume, maximum_volume, current_volume
 
     def select_pitch(self):
@@ -1182,17 +1187,16 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
     def get_pitch_range(self) -> Tuple[int, int, int]:
         try:
-            pitch_constraints: Constraints = self.getEngineClass().get_constraints(
-                    SettingsProperties.PITCH)
-            if pitch_constraints is None:
+            pitch_val: IConstraintsValidator
+            pitch_val = SettingsMap.get_validator(self.engine_id,
+                                                  SettingsProperties.PITCH)
+            if pitch_val is None:
                 raise NotImplementedError
-            minimum_pitch: int = int(pitch_constraints.minimum)
-            default_pitch: int = int(pitch_constraints.default)
-            maximum_pitch: int = int(pitch_constraints.maximum)
-            current_value = self.getSetting(SettingsProperties.PITCH, default_pitch)
-            if not pitch_constraints.in_range(current_value):
-                current_value = default_pitch
-            current_value = int(current_value)
+            constraints: Constraints = pitch_val.get_constraints()
+            minimum_pitch: int = int(constraints.minimum)
+            default_pitch: int = int(constraints.default)
+            maximum_pitch: int = int(constraints.maximum)
+            current_value = Settings.get_pitch(self.engine_id)
         except NotImplementedError:
             return 0, 0, 0
 
@@ -1208,7 +1212,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
     def set_speed_range(self):
         try:
-            if not SettingsMap.is_valid_property(self.engine_id, SettingsProperties.SPEED):
+            if SettingsMap.is_valid_property(self.engine_id, SettingsProperties.SPEED):
                 lower, upper, current, increment = self.get_speed_range()
                 scale: float = 1.0
                 if increment > 0.0:
@@ -1225,15 +1229,16 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
     def get_speed_range(self) -> Tuple[float, float, float, float]:
         try:
-            constraints: Constraints = self.getEngineClass().get_constraints(SettingsProperties.SPEED)
-            if constraints is None:
+            speed_val: IConstraintsValidator
+            speed_val = SettingsMap.get_validator(self.engine_id,
+                                                  SettingsProperties.SPEED)
+            if speed_val is None:
                 raise NotImplementedError
-            minimum: float = constraints.minimum
-            default_speed: float = constraints.default
-            maximum: float = constraints.maximum
-            current_value: float = self.getSetting(SettingsProperties.SPEED, default_speed)
-            if not constraints.in_range(current_value):
-                current_value = default_speed
+            constraints: Constraints = speed_val.get_constraints()
+            minimum: int = int(constraints.minimum)
+            default: int = int(constraints.default)
+            maximum: int = int(constraints.maximum)
+            current_value = Settings.get_speed(self.engine_id)
 
             return minimum, maximum, current_value, constraints.increment
         except NotImplementedError:
@@ -1331,8 +1336,11 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             self.engine_id = Settings.getSetting(SettingsProperties.ENGINE, None,
                                                  SettingsProperties.ENGINE_DEFAULT)
 
-        if (self.engine_id == SettingsProperties.ENGINE_DEFAULT
-                or not BackendInfo.isValidBackend(self.engine_id)):
+        valid_engine: bool = False
+
+        if self.engine_id != SettingsProperties.ENGINE_DEFAULT:
+            valid_engine, _ = SettingsMap.is_available(self.engine_id)
+        if not valid_engine:
             self.engine_id = BackendInfo.getAvailableBackends()[0].backend_id
             self.set_engine_id(self.engine_id)
         if init:

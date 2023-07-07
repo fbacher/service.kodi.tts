@@ -53,21 +53,9 @@ class Pico2WaveTTSBackend(Pico2WaveSettings, SimpleTTSBackend):
         self.festivalProcess = None
         self.update()
 
-
     @classmethod
     def get_backend_id(cls) -> str:
         return Backends.FESTIVAL_ID
-
-    @classmethod
-    def isSupportedOnPlatform(cls):
-        return SystemQueries.isLinux() or SystemQueries.isAndroid()
-
-    @classmethod
-    def isInstalled(cls):
-        installed = False
-        if cls.isSupportedOnPlatform():
-            installed = cls.available()
-        return installed
 
     def runCommand(self, text_to_voice, dummy):
         clz = type(self)
@@ -77,7 +65,7 @@ class Pico2WaveTTSBackend(Pico2WaveSettings, SimpleTTSBackend):
         # If caching is enabled, voice_file will be in the cache.
 
         voice_file, exists = self.get_path_to_voice_file(text_to_voice,
-                                                        use_cache=self.is_use_cache())
+                                                        use_cache=Settings.is_use_cache())
         self._logger.debug_verbose('pico2wave.runCommand text: ' + text_to_voice +
                          ' language: ' + self.language)
         args = ['pico2wave']
@@ -140,15 +128,6 @@ class Pico2WaveTTSBackend(Pico2WaveSettings, SimpleTTSBackend):
             return players, default_player
 
         return None
-
-    @classmethod
-    def available(cls):
-        try:
-            subprocess.call(['pico2wave', '--help'],  universal_newlines=True,
-                            stdout=(open(os.path.devnull, 'w')), stderr=subprocess.STDOUT)
-        except (OSError, IOError):
-            return False
-        return True
 
     @classmethod
     def negotiate_engine_config(cls, backend_id: str, player_volume_adjustable: bool,

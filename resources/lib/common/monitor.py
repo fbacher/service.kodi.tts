@@ -38,6 +38,27 @@ class Monitor(MinimalMonitor):
         MinimalMonitor exists simply to not drag in logging dependencies
         at startup.
     """
+
+    class NotificationMonitor(xbmc.Monitor):
+        def onNotification(self, sender: str, method: str, data: str) -> None:
+            """
+            onNotification method.
+
+            :param sender: Sender of the notification
+            :param method: Name of the notification
+            :param data: JSON-encoded data of the notification
+
+            :return:
+
+            Will be called when Kodi receives or sends a notification
+            """
+            if sender not in ('xbmc', Constants.ADDON_ID):
+                return
+            if not data:
+                data = ''
+            Monitor._inform_notification_listeners(sender, method, data)
+
+    _NotificationMonitor = NotificationMonitor()
     startup_complete_event: threading.Event = None
     _monitor_changes_in_settings_thread: threading.Thread = None
     _logger: BasicLogger = None
@@ -237,6 +258,28 @@ class Monitor(MinimalMonitor):
                     # Here we go again
         """
         '''
+
+    @classmethod
+    def runInThread(cls, func: Callable, args: List[Any] = [], name: str = '?',
+                    delay: float = 0.0, **kwargs) -> None:
+        import threading
+        thread = threading.Thread(target=cls.thread_wrapper, name=f'TTSThread: {name}',
+                                  args=args, kwargs={'target':func,
+                                                     'delay':delay, **kwargs})
+        xbmc.log(f'util.runInThread starting thread {name}', xbmc.LOGINFO)
+        thread.start()
+
+    @classmethod
+    def thread_wrapper(cls, *args, **kwargs):
+        try:
+            target: Callable = kwargs.get('target')
+            delay: float = kwargs.get('delay')
+            if delay is not None and isinstance(delay, float):
+                Monitor.wait_for_abort(delay)
+
+            target(*args, **kwargs)
+        except Exception as e:
+            cls._logger.exception('')
 
     @classmethod
     def get_listener_name(cls,
@@ -486,7 +529,7 @@ class Monitor(MinimalMonitor):
 
     @classmethod
     def register_notification_listener(cls,
-                                       listener: Callable[[None], None],
+                                       listener: Callable[[str, str, str], None],
                                        name: str = None) -> None:
         """
 
@@ -499,44 +542,30 @@ class Monitor(MinimalMonitor):
                 listener_name = cls.get_listener_name(listener, name)
                 cls._notification_listeners[listener] = listener_name
 
-    def onNotification(self, sender: str, method: str, data: str) -> None:
-        """
-        onNotification method.
-
-        :param sender: Sender of the notification
-        :param method: Name of the notification
-        :param data: JSON-encoded data of the notification
-
-        :return:
-
-        Will be called when Kodi receives or sends a notification
-        """
-        clz = type(self)
-        clz._logger.debug(f'sender: {sender} method: {method}')
-        clz._inform_notification_listeners(sender, method, data)
-
-
     @classmethod
     def _inform_notification_listeners(cls,
-                                       sender: str, method: str, data: str) -> None:
+                                       sender: str, method: str, data: str = None) -> None:
         """
 
         :param activated:
         :return:
         """
+
         with cls._notification_listener_lock:
             listeners_copy = copy.copy(cls._notification_listeners)
             if cls.is_abort_requested():
                 cls._notification_listeners.clear()
 
-        if cls._logger.isEnabledFor(DEBUG_VERBOSE):
+        if cls._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
             cls._logger.debug_verbose(f'Notification received sender: {sender}'
                                       f' method: {method} data: {data}')
         for listener, listener_name in listeners_copy.items():
-            thread = threading.Thread(
-                    target=listener, name=listener_name,
-                    args=(sender, method, data))
-            thread.start()
+            try:
+                cls.runInThread(listener, [], name=listener_name,
+                            **{'sender': sender, 'method': method, 'data': data})
+            except Exception as e:
+                cls._logger.exception('')
+
 
     def waitForAbort(self, timeout: float = None) -> bool:
         # Provides signature of super class (xbmc.Monitor)
@@ -552,7 +581,8 @@ class Monitor(MinimalMonitor):
             timeout = None
 
         clz.track_wait_call_counts()
-        abort = clz._abort_received.wait(timeout=timeout)
+        abort = self.real_waitForAbort(timeout=timeout)
+        # abort = clz._abort_received.wait(timeout=timeout)
         clz.track_wait_return_counts()
 
         return abort
@@ -592,18 +622,6 @@ class Monitor(MinimalMonitor):
         cls.track_wait_return_counts()
 
         return abort
-
-    @classmethod
-    def abort_requested(cls) -> None:
-        cls._xbmc_monitor.abortRequested()
-        cls.set_abort_received()
-
-    def abortRequested(self) -> None:
-        """
-
-        :return:
-        """
-        Monitor.abort_requested()
 
     @classmethod
     def is_abort_requested(cls) -> bool:
@@ -646,7 +664,8 @@ class Monitor(MinimalMonitor):
         approximate_wait_time = 0.0
         while not is_set:
             is_set = cls.startup_complete_event.wait(timeout=None)
-            Monitor.throw_exception_if_abort_requested(timeout=0.2)
+            Monitor.real_waitForAbort(timeout=0.2)
+            # Monitor.exception_on_abort(timeout=0.2)
             approximate_wait_time += 0.2
             if timeout is not None and approximate_wait_time >= timeout:
                 break
@@ -703,7 +722,6 @@ class Monitor(MinimalMonitor):
 
         from common.debug import Debug
         Debug.dump_all_threads()
-
 
 # Initialize class:
 #

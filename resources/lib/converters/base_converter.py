@@ -190,9 +190,9 @@ class BaseAudioConverter(AudioConverter):
                 shutil.copyfileobj(source, self._convert_process.stdin)
             except IOError as e:
                 if e.errno != errno.EPIPE:
-                    self._logger.error('Error piping audio', hide_tb=True)
+                    self._logger.error('Error piping audio')
             except:
-                self._logger.error('Error piping audio', hide_tb=True)
+                self._logger.error('Error piping audio')
 
             finally:
                 source.close()
@@ -573,9 +573,9 @@ class Mpg321OEPiAudioConverter(BaseAudioConverter):
             shutil.copyfileobj(source, self._convert_process.stdin)
         except IOError as e:
             if e.errno != errno.EPIPE:
-                module_logger.error('Error piping audio', hide_tb=True)
+                module_logger.error('Error piping audio')
         except:
-            module_logger.error('Error piping audio', hide_tb=True)
+            module_logger.error('Error piping audio')
         source.close()
         self._convert_process.stdin.close()
         while self._convert_process.poll() is None and self.active:

@@ -22,7 +22,7 @@ from common.typing import *
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
-class FestivalTTSBackend(FestivalSettings, SimpleTTSBackend):
+class FestivalTTSBackend(SimpleTTSBackend):
     backend_id = Backends.FESTIVAL_ID
     service_ID: str = Services.FESTIVAL_ID
     displayName = 'Festival'
@@ -72,17 +72,6 @@ class FestivalTTSBackend(FestivalSettings, SimpleTTSBackend):
     @classmethod
     def get_backend_id(cls) -> str:
         return Backends.FESTIVAL_ID
-
-    @staticmethod
-    def isSupportedOnPlatform():
-        return SystemQueries.isLinux()
-
-    @staticmethod
-    def isInstalled():
-        installed = False
-        if FestivalTTSBackend.isSupportedOnPlatform():
-            installed = True
-        return installed
 
     def getMode(self):
         clz = type(self)
@@ -184,15 +173,6 @@ class FestivalTTSBackend(FestivalSettings, SimpleTTSBackend):
             return player_ids, default_player_id
 
         return None
-
-    @staticmethod
-    def available():
-        try:
-            subprocess.call(['festival', '--help'], stdout=(open(os.path.devnull, 'w')),
-                            stderr=subprocess.STDOUT, universal_newlines=True)
-        except (OSError, IOError):
-            return False
-        return True
 
     @classmethod
     def negotiate_engine_config(cls, backend_id: str, player_volume_adjustable: bool,

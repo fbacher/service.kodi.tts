@@ -53,3 +53,4 @@ class ServiceType(Enum):
     PLAYER = 7
     ENGINE_SETTINGS = 8
     INTERNAL_PLAYER = 9
+    LAST_SERVICE_TYPE = 9

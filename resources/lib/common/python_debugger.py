@@ -37,7 +37,16 @@ class PythonDebugger:
             if cls.REMOTE_DEBUG and not cls.remote_debug:
                 cls.pydevd_addon_path = xbmcaddon.Addon(
                     'script.module.pydevd').getAddonInfo('path')
+                addons_path = os.path.join(cls.pydevd_addon_path, 'lib')
+                sys.path.append(addons_path)
                 cls.remote_debug = True
+                import pydevd
+                xbmc.log(f'pydevd import: {pydevd.__file__}', xbmc.LOGDEBUG)
+                # del pydevd
+                # sys.modules.pop('pydevd')
+                # addons_path = os.path.join(cls.pydevd_addon_path, 'lib')
+                # import pydevd
+                # xbmc.log(f'pydevd import: {pydevd.__file__}', xbmc.LOGDEBUG)
         except Exception as e:
             xbmc.log(cls.plugin_name +
                      ' Debugger disabled, script.module.pydevd NOT installed',

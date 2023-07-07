@@ -14,6 +14,7 @@ from typing.io import IO
 from backends.audio.sound_capabilties import ServiceType, SoundCapabilities
 from backends.base import SimpleTTSBackend
 from backends.engines.experimental_engine_settings import ExperimentalSettings
+from backends.players.iplayer import IPlayer
 from backends.settings.i_validators import IValidator
 from backends.settings.service_types import Services
 from backends.settings.setting_properties import SettingsProperties
@@ -22,10 +23,13 @@ from backends.settings.validators import ConstraintsValidator
 from cache.voicecache import VoiceCache
 from common.base_services import BaseServices
 from common.constants import Constants
+from common.exceptions import ExpiredException
 from common.logger import *
 from common.messages import Messages
+from common.phrases import Phrase, PhraseList
 from common.setting_constants import Backends, Genders, Languages, Mode
 from common.settings import Settings
+from common.simple_run_command import SimpleRunCommand
 from common.system_queries import SystemQueries
 from common.typing import *
 
@@ -58,6 +62,8 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
 
         self.process = None
         self.stop_processing = False
+        self.simple_cmd: SimpleRunCommand = None
+        self.stop_urgent: bool = False
         BaseServices().register(self)
 
     def init(self) -> None:
@@ -67,58 +73,47 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
         super().init()
         self.update()
 
-    @staticmethod
-    def isSupportedOnPlatform() -> bool:
-        return (SystemQueries.isLinux() or SystemQueries.isWindows()
-                or SystemQueries.isOSX())
-
-    @staticmethod
-    def isInstalled() -> bool:
-        installed: bool = False
-        if ExperimentalTTSBackend.isSupportedOnPlatform():
-            installed = True
-        return installed
-
-    def getMode(self) -> int:
+    def getMode(self) -> Mode:
         clz = type(self)
-        # built-in player not supported
-        default_player: str = clz.get_setting_default(SettingsProperties.PLAYER)
-        player: str = clz.get_player_setting(default_player)
+        player: IPlayer = self.get_player()
         if clz.getSetting(SettingsProperties.PIPE):
             return Mode.PIPE
         else:
             return Mode.FILEOUT
 
-    def runCommand(self, text_to_voice: str, dummy) -> bool:
+    def runCommand(self, phrase: Phrase) -> bool:
         clz = type(self)
         # If caching disabled, then exists is always false. file_path
         # always contains path to cached file, or path where to download to
-
-        self.stop_processing = False
-        file_path: str | None
-        exists: bool
-        voiced_text: bytes
-        file_path, exists = self.get_path_to_voice_file(text_to_voice,
-                                                        use_cache=self.is_use_cache())
-        self._logger.debug(f'file_path: {file_path} exists: {exists}')
-        if not file_path or len(file_path) == 0:
-            file_path = None
-
-        if not exists:
-            file_path, exists = self.generate_speech(
-                    text_to_voice, file_path)
-
         if self.stop_processing:
             if clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
                 clz._logger.debug_extra_verbose('stop_processing')
             return False
 
-        if exists:
-            self.setPlayer(clz.get_player_setting())
+        exists: bool
+        voiced_text: bytes
+        try:
+            if phrase.get_cache_path() is None:
+                VoiceCache.get_path_to_voice_file(phrase,
+                                                  use_cache=Settings.is_use_cache())
+            voice_file: pathlib.Path = phrase.get_cache_path()
+            exists: bool = phrase.is_exists()
+            self._logger.debug(f'PHRASE: {phrase.get_text()} file_path: {voice_file}'
+                               f' exists: {exists}')
 
+            if self.stop_processing:
+                if clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
+                    clz._logger.debug_extra_verbose('stop_processing')
+                return False
+
+            if not exists:
+                self.generate_speech(phrase)
+        except ExpiredException:
+            clz._logger.debug(f'EXPIRED at engine')
+            return False
         return exists
 
-    def runCommandAndPipe(self, text_to_voice: str):
+    def runCommandAndPipe(self, phrase: Phrase):
         clz = type(self)
 
         # If caching disabled, then voice_file and byte_stream are always None.
@@ -126,34 +121,87 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
         # or path where to download to. byte_stream is None if cached file
         # does not exist, otherwise it is the contents of the cached file
 
-        self.stop_processing = False
+        if self.stop_processing:
+            if clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
+                clz._logger.debug_extra_verbose('stop_processing')
+            return False
+
         audio_pipe = None
         voice_file: str | None
         exists: bool
-        byte_stream: io.BinaryIO
-        voice_file, exists = self.get_path_to_voice_file(text_to_voice,
-                                                         clz.is_use_cache())
-        if not voice_file or len(voice_file) == 0:
-            voice_file = None
-
-        if not exists:
-            voice_file, _ = self.generate_speech(
-                    text_to_voice, voice_file)
+        byte_stream: io.BinaryIO = None
+        rc: int = -2
         try:
-            byte_stream = io.open(voice_file, 'rb')
-        except Exception:
-            clz._logger.exception('')
-            byte_stream = None
+            if not phrase.is_exists():
+                rc = self.generate_speech(phrase)
 
-        # the following a geared towards Mplayer. Assumption is that only adjust
-        # volume in player, other settings in engine.
+            if self.stop_processing:
+                if clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
+                    clz._logger.debug_extra_verbose('stop_processing')
+                return False
 
-        # volume_db: float = clz.get_volume_db()  # -12 .. 12
-        self.setPlayer(clz.get_player_setting())
+            try:
+                byte_stream = io.open(phrase.get_cache_path(), 'rb')
+            except Exception:
+                rc = 1
+                clz._logger.exception('')
+                byte_stream = None
+        except ExpiredException:
+            clz._logger.debug('EXPIRED in engine')
+
         return byte_stream
 
-    def generate_speech(self, text_to_voice: str,
-                        voice_file_path: str | None) -> (str | None, bool):
+    def seed_text_cache(self, phrases: PhraseList) -> None:
+        # If voice_file_path is None, then don't save voiced text to it,
+        # just return the voiced text as bytes
+        clz = type(self)
+        try:
+            # We don't care whether it is too late to say this text.
+
+            phrases = phrases.clone(check_expired=False)
+            for phrase in phrases:
+                if Settings.is_use_cache():
+                    VoiceCache.get_path_to_voice_file(phrase, use_cache=True)
+                    if not phrase.is_exists():
+                        text_to_voice: str = phrase.get_text()
+                        voice_file_path: pathlib.Path = phrase.get_cache_path()
+                        clz._logger.debug_extra_verbose(f'PHRASE Text {text_to_voice}')
+                        rc: int = 0
+                        # This engine only writes to file it creates
+                        # rc, _ = VoiceCache.create_sound_file(voice_file_path,
+                        #                                     create_dir_only=True)
+                        # if rc != 0:
+                        #     if clz._logger.isEnabledFor(ERROR):
+                        #         clz._logger.error(f'Failed to create cache file {voice_file_path}')
+                        #     return rc
+                        try:
+                            # Should only get here if voiced file (.wav, .mp3, etc.) was NOT
+                            # found. We might see a pre-existing .txt file which means that
+                            # the download failed. To prevent multiple downloads, wait a day
+                            # before retrying the download.
+
+                            voice_text_file: pathlib.Path | None = None  # None when save_to_file False
+                            voice_text_file = voice_file_path.with_suffix('.txt')
+
+                            try:
+                                if os.path.isfile(voice_text_file):
+                                    os.unlink(voice_text_file)
+
+                                with open(voice_text_file, 'wt') as f:
+                                    f.write(text_to_voice)
+                            except Exception as e:
+                                if clz._logger.isEnabledFor(ERROR):
+                                    clz._logger.error(
+                                            f'Failed to save voiced text file: '
+                                            f'{voice_text_file} Exception: {str(e)}')
+                        except Exception as e:
+                            if clz._logger.isEnabledFor(ERROR):
+                                clz._logger.error(
+                                        'Failed to download voice: {}'.format(str(e)))
+        except Exception as e:
+            clz._logger.exception('')
+
+    def generate_speech(self, phrase: Phrase) -> int:
         # If voice_file_path is None, then don't save voiced text to it,
         # just return the voiced text as bytes
 
@@ -162,7 +210,13 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
         #    clz._logger.error('Text longer than 250. len:', len(text_to_voice),
         #                             text_to_voice)
         #    return None, None
-        clz._logger.debug_extra_verbose(f'Text len: {len(text_to_voice)} {text_to_voice}')
+        voice_file_path: pathlib.Path = None
+        try:
+            text_to_voice: str = phrase.get_text()
+            voice_file_path = phrase.get_cache_path()
+            clz._logger.debug_extra_verbose(f'PHRASE Text {text_to_voice}')
+        except ExpiredException:
+            return 10
 
         failed: bool = False
         save_copy_of_text: bool = True
@@ -195,15 +249,15 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
         }
         '''
         rc: int = 0
-        cache_file: IO[io.BufferedWriter] = None
+        voiced_buffer: IO[io.BufferedWriter] = None
         if save_to_file:
             # This engine only writes to file it creates
-            rc, cache_file = VoiceCache.create_sound_file(voice_file_path,
-                                                          create_dir_only=True)
-            if rc != 0 or cache_file is None:
+            rc, _ = VoiceCache.create_sound_file(voice_file_path,
+                                                 create_dir_only=True)
+            if rc != 0:
                 if clz._logger.isEnabledFor(ERROR):
-                    clz._logger.error(f'Failed to create cache file {cache_file}')
-                return None, False
+                    clz._logger.error(f'Failed to create cache file {voice_file_path}')
+                return rc
 
         aggregate_voiced_bytes: bytes = b''
         if not self.stop_processing:
@@ -213,9 +267,9 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
                 # the download failed. To prevent multiple downloads, wait a day
                 # before retrying the download.
 
-                failing_voice_text_file: str | None = None  # None when save_to_file False
+                failing_voice_text_file: pathlib.Path | None = None  # None when save_to_file False
                 if save_to_file:
-                    failing_voice_text_file = voice_file_path + '.txt'
+                    failing_voice_text_file = voice_file_path / '.txt'
                     if os.path.isfile(failing_voice_text_file):
                         expiration_time: float = time() - timedelta(hours=24).total_seconds()
                         if (os.stat(failing_voice_text_file).st_mtime <
@@ -224,7 +278,8 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
                         else:
                             clz._logger.debug_extra_verbose(
                                     'Previous attempt to get speech failed. Skipping.')
-                            return None, False
+                            rc = 2
+                            return rc
 
                     if save_copy_of_text:
                         path: str
@@ -244,8 +299,10 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
                                         f'{copy_text_file_path} Exception: {str(e)}')
                 if Settings.get_setting_bool(SettingsProperties.DELAY_VOICING,
                                              clz.service_ID, ignore_cache=False,
-                                             default_value=True):  # do conversion off line or background
-                    return voice_file_path, not failed
+                                             default=True):
+                    clz._logger.debug(f'Generation of voice files disabled by settings')
+                    rc = 3
+                    return rc
                 text_file: str
                 output_dir: pathlib.Path
                 output: pathlib.Path
@@ -254,13 +311,22 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
                 model = 'tts_models/en/ljspeech/tacotron2-DDC_ph'
                 vocoder = 'vocoder_models/en/ljspeech/univnet'
                 try:
-                    subprocess.run(['tts', '--text', f'{text_to_voice}', '--model_name', model, '--vocoder_name',
-                                    vocoder, '--out_path', '/tmp/tst.wav'], shell=False,
-                                   check=True)
+                    self.simple_cmd = SimpleRunCommand(['tts', '--text', f'{text_to_voice}',
+                                                   '--model_name', model,
+                                                   '--vocoder_name', vocoder,
+                                                   '--out_path', '/tmp/tst.wav'])
+                    if self.stop_processing:
+                        rc = 5
+                        return rc
+                    self.simple_cmd.run_cmd()
+                    self.simple_cmd = None
+                    phrase.set_exists(True)
                 except subprocess.CalledProcessError as e:
                     clz._logger.exception('')
                     reason = 'tts failed'
                     failed = True
+                except ExpiredException:
+                    clz._logger.debug(f'EXPIRED generating voice')
 
                 transcoder: WaveToMpg3Encoder = WaveToMpg3Encoder.LAME
 
@@ -322,42 +388,47 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
         if clz._logger.isEnabledFor(DEBUG_VERBOSE):
             clz._logger.debug_verbose(f'aggregate_voiced_bytes:'
                                       f' {len(aggregate_voiced_bytes)}')
-        return voice_file_path, not failed
+        rc = 0
+        return rc
 
-    @classmethod
-    def create_cmdline(cls, text_to_voice: str, output_path: str,
-                       sound_file_name: str) -> int:
+    def create_cmdline(self, phrase: Phrase) -> int:
+        clz = type(self)
         text_file: str
         output_dir: pathlib.Path
-        output: pathlib.Path
+        output_path: pathlib.Path = None
         rc: int = 0
 
-        model = 'tts_models/en/ljspeech/tacotron2-DDC_ph'
-        vocoder = 'vocoder_models/en/ljspeech/univnet'
-        output_dir = pathlib.Path(output_path)
-        output_dir.mkdir(parents=True, exist_ok=True)
-        sound_file_path =  pathlib.Path(output_dir, '/', sound_file_name)
         try:
-            subprocess.run(['tts', f'{text_to_voice}', '--model_name', model, '--vocoder_name',
+            model = 'tts_models/en/ljspeech/tacotron2-DDC_ph'
+            vocoder = 'vocoder_models/en/ljspeech/univnet'
+            output_path = phrase.get_cache_path()
+            output_dir = output_path.parent
+            output_dir.mkdir(parents=True, exist_ok=True)
+            subprocess.run(['tts', f'{phrase.get_text()}', '--model_name', model, '--vocoder_name',
                             vocoder, '--out_path', '/tmp/tst.wav'], shell=True, text=True,
                            check=True)
         except subprocess.CalledProcessError:
-            cls._logger.exception('')
+            clz._logger.exception('')
             rc = 1
-        try:
-            subprocess.run(['mplayer', '-benchmark', '-vo', 'null', '-vc', 'null',
-                            '-ao', f'pcm:fast:file={sound_file_path}', '/tmp/tst.wav'],
-                           shell=False, text=True, check=True)
-        except subprocess.CalledProcessError:
-            cls._logger.exception('')
-            rc = 2
-
+        except ExpiredException:
+            rc = 10
+        if rc == 0:
+            try:
+                subprocess.run(['mplayer', '-benchmark', '-vo', 'null', '-vc', 'null',
+                                '-ao', f'pcm:fast:file={output_path}', '/tmp/tst.wav'],
+                               shell=False, text=True, check=True)
+            except subprocess.CalledProcessError:
+                clz._logger.exception('')
+                rc = 2
         return rc
-
 
     def update(self):
         self.process = None
         self.stop_processing = False
+
+    def notify(self, msg: str, now: bool = False):
+        self.stop_urgent = now
+        self.stop()
 
     def close(self):
         # self._close()
@@ -372,31 +443,26 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
         clz = type(self)
         if clz._logger.isEnabledFor(DEBUG_VERBOSE):
             clz._logger.debug_verbose('stop')
+        super().stop()
         self.stop_processing = True
-        if not self.process:
-            return
         try:
-            if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                clz._logger.debug_verbose('terminate')
-            self.process.terminate()  # Could use self.process.kill()
+            if self.process is not None:
+                if clz._logger.isEnabledFor(DEBUG_VERBOSE):
+                    clz._logger.debug_verbose('terminate')
+                if self.stop_urgent:
+                    self.process.kill()
+                else:
+                    self.process.terminate()
+            if self.simple_cmd is not None:
+                if self.stop_urgent:
+                    self.simple_cmd.process.kill()
+                else:
+                    self.simple_cmd.process.terminate()
+
         except AbortException:
             reraise(*sys.exc_info())
         except:
             pass
-
-    @classmethod
-    def isSettingSupported(cls, setting) -> bool:
-        return SettingsMap.is_valid_property(cls.service_ID, setting)
-
-    '''
-    @classmethod
-    def getSettingNames(cls) -> List[str]:
-        settingNames: List[str] = []
-        for settingName in cls.settings.keys():
-            settingNames.append(settingName)
-    
-        return settingNames
-    '''
 
     @classmethod
     def settingList(cls, setting, *args) \
@@ -436,12 +502,13 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
     # vender service.
     #
     # TODO: Remove on ship
-
+    '''
     @classmethod
     def setSetting(cls, key, value):
         changed = super().setSetting(key, value)
         VoiceCache.for_debug_setting_changed()
         return changed
+    '''
 
     @classmethod
     def negotiate_engine_config(cls, engine_id: str, player_volume_adjustable: bool,
@@ -451,7 +518,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
         Player is informing engine what it is capable of controlling
         Engine replies what it is allowing engine to control
         """
-        if cls.is_use_cache():
+        if Settings.is_use_cache():
             return True, True, True
 
         return False, False, False
@@ -461,24 +528,19 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
         volume_validator: ConstraintsValidator | IValidator
         volume_validator = SettingsMap.get_validator(cls.service_ID,
                                                      property_id=SettingsProperties.VOLUME)
-        volume = volume_validator.getValue()
-
-        return None  # Find out if used
+        # volume is hardcoded to a fixed value
+        volume: float = volume_validator.getValue()
+        return volume  # Find out if used
 
     @classmethod
     def getEngineVolume(cls) -> float:
         """
-        Get the configured volume in our standard  -12db .. +12db scale converted
-        to the native scale of the API (0.1 .. 1.0). The maximum volume (1.0) is equivalent
-        to 0db. Since we have to use a different player AND since it almost guaranteed
-        that the voiced text is cached, just set volume to fixed 1.0 and let player
-        handle volume).
+        Get the configured volume in TTS standard  -12db .. +12db scale converted
+        to the native volume of this engine, which happens to be the same as TTS.
+        However the value is fixed. All adjustment is done by player
         """
-        volume_validator: ConstraintsValidator
-        volume_validator = cls.get_validator(cls.service_ID,
-                                             property_id=SettingsProperties.VOLUME)
-        volume: float = volume_validator.getValue()
-        return volume
+
+        return cls.getVolumeDb()
 
     @classmethod
     def getEngineVolume_str(cls) -> str:
@@ -514,7 +576,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
         pitch_validator: ConstraintsValidator
         pitch_validator = cls.get_validator(cls.service_ID,
                                             property_id=SettingsProperties.PITCH)
-        if cls.is_use_cache():
+        if Settings.is_use_cache():
             pitch = pitch_validator.default_value
         else:
             pitch: float = pitch_validator.getValue()
@@ -542,12 +604,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
         # This speed is represented as a setting as in integer by multiplying
         # by 100.
         #
-        speed_validator: ConstraintsValidator
-        speed_validator = cls.get_validator(cls.service_ID,
-                                            property_id=SettingsProperties.SPEED)
-        speed: float = speed_validator.getValue()
-        # speed = float(speed_i) / 100.0
-        return speed
+        return 0.75
 
     @classmethod
     def getApiSpeed(cls) -> str:
@@ -562,21 +619,8 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
 
     @classmethod
     def getAPIKey(cls) -> str:
-        return cls.getSetting(SettingsProperties.API_KEY)
+        return ''
 
     # All voices are empty strings
     # def setVoice(self, voice):
     #    self.voice = voice
-
-    @staticmethod
-    def available() -> bool:
-        engine_output_formats: List[str]
-        engine_output_formats = SoundCapabilities.get_output_formats(
-                ExperimentalTTSBackend.service_ID)
-        candidates: List[str]
-        candidates = SoundCapabilities.get_capable_services(
-                service_type=ServiceType.PLAYER,
-                consumer_formats=[SoundCapabilities.MP3],
-                producer_formats=[])
-        if len(candidates) > 0:
-            return True

@@ -20,10 +20,12 @@ from backends.tts_backend_bridge import TTSBackendBridge
 from cache.voicecache import VoiceCache
 from common import utils
 from common.constants import Constants
+from common.exceptions import ExpiredException
 from common.logger import *
 from common.messages import Messages
 from common.minimal_monitor import MinimalMonitor
 from common.monitor import Monitor
+from common.phrases import Phrase, PhraseList
 from common.setting_constants import Genders, Mode, Players
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
@@ -31,7 +33,7 @@ from common.settings_low_level import SettingsProperties
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
-class BaseEngineService(ITTSBackendBase, BaseServices):
+class BaseEngineService(BaseServices):
     """The base class for all speech engine backends
 
     Subclasses must at least implement the say() method, and can use whatever
@@ -47,31 +49,32 @@ class BaseEngineService(ITTSBackendBase, BaseServices):
     volumeStep = 1
     volumeSuffix = 'dB'
     speedInt = True
-    # _loadedSettings = {}
     _logger = module_logger.getChild('BaseEngineService')  # type: BasicLogger
-    dead = False  # Backend should flag this true if it's no longer usable
-    deadReason = ''  # Backend should set this reason when marking itself dead
-    _closed = False
-    currentBackend = None
-    #  currentSettings = []
+    _current_engine: ITTSBackendBase = None
 
     _class_name: str = None
     initialized_static: bool = False
-    # player_handler_class: PlayerHandlerType = None
     _supported_input_formats: List[str] = []
     _supported_output_formats: List[str] = []
     _provides_services: List[ServiceType] = [ServiceType.ENGINE]
+    _engine_id: str = None
+    _baseEngine: 'BaseEngineService' = None
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super(BaseEngineService, self).__init__(*args, **kwargs)
 
         type(self)._class_name = self.__class__.__name__
         if type(self)._logger is None:
             type(self)._logger = module_logger.getChild(type(self)._class_name)
         self.initialized = False
+        self.dead = False  # Backend should flag this true if it's no longer usable
+        self.deadReason = ''  # Backend should set this reason when marking itself dead
+        self._closed = False
         self.voice: str | None = None
         self.volume: float = 0.0
         self.rate: float = 0.0
+        self.player: IPlayer | None = None
+        self.stop_msg: str | None = None
         BaseServices.register(self)
 
     def __enter__(self):
@@ -87,7 +90,17 @@ class BaseEngineService(ITTSBackendBase, BaseServices):
     def init(self):
         pass
 
-    def say(self, text: str, interrupt: bool = False, preload_cache=False):
+    def get_player(self) -> IPlayer:
+        # Gets the player instance for the given engine. If settings are changed
+        # then the new player will be instantiated.
+
+        clz = type(self)
+        current_player_id: str = Settings.get_player_id(clz._engine_id)
+        if self.player is None or current_player_id != self.player.ID:
+            self.player = BaseServices.getService(current_player_id)
+        return self.player
+
+    def say(self, phrase: PhraseList):
         """Method accepting text to be spoken
 
         Must be overridden by subclasses.
@@ -96,59 +109,6 @@ class BaseEngineService(ITTSBackendBase, BaseServices):
 
         """
         raise Exception('Not Implemented')
-
-    def sayList(self, texts, interrupt: bool = False):
-        """Accepts a list of text strings to be spoken
-
-        May be overriden by subclasses. The default implementation calls say()
-        for each item in texts, calling insertPause() between each.
-        If interrupt is True, the subclass should interrupt all previous speech.
-        """
-        self.say(texts.pop(0), interrupt=interrupt)
-        for t in texts:
-            self.insertPause()
-            self.say(t)
-
-    def get_path_to_voice_file(self, text_to_voice: str,
-                               use_cache: bool = False) -> Tuple[str, bool]:
-        """
-        If results of the speech engine are cached, then this function
-        returns the path to retrieve or store the voiced file in/from the
-        cache.
-        When caching is not used, then the temporary file path for the
-        engine output is returned.
-
-        SoundCapabilities are used by consumers/producers of voiced files to
-        trade what sound file formats each endpoint is capable of producing
-        or consuming, as well as the order of preference.
-
-        @param text_to_voice:
-        @param use_cache:
-        @return: path, exists: Path is the path to the voiced text. exists
-        is True when the voiced text is already in the cache at the path location
-        """
-        clz = type(self)
-        voice_file: str = ''
-        exists: bool = False
-        try:
-            engine_id: str = self.backend_id
-            player: IPlayer
-            player_id: str = Settings.get_player_id(engine_id=engine_id)
-            player = PlayerIndex.get_player(player_id)
-            input_formats: List[str] = SoundCapabilities.get_input_formats(player_id)
-            file_type: str = ''
-            if use_cache:
-                paths: Tuple[str, bool, str] = VoiceCache.get_best_path(text_to_voice,
-                                                                        input_formats)
-                voice_file, exists, file_type = paths
-            else:
-                voice_file = player.get_tmp_path(text_to_voice, input_formats[0])
-                exists = False
-        except AbortException:
-            reraise(*sys.exc_info())
-        except Exception as e:
-            clz._logger.exception('')
-        return voice_file, exists
 
     def getConverter_for(self, engine_id: str) -> str | None:
         """
@@ -161,10 +121,10 @@ class BaseEngineService(ITTSBackendBase, BaseServices):
         :param engine_id:
         :return:
         """
-        Monitor.throw_exception_if_abort_requested(0.05)
+        Monitor.exception_on_abort(0.05)
         converter_id: str = Settings.get_setting_str(SettingsProperties.CONVERTER,
                                                      engine_id, ignore_cache=False,
-                                                     default_value=None)
+                                                     default=None)
         if converter_id is None or len(converter_id) == 0:
             engine_output_formats: List[str] = SoundCapabilities.get_output_formats(engine_id)
             if SoundCapabilities.MP3 in engine_output_formats:
@@ -181,7 +141,6 @@ class BaseEngineService(ITTSBackendBase, BaseServices):
                 converter_id = candidate_converters[0]
 
         return converter_id
-
 
     '''
     @classmethod
@@ -239,7 +198,6 @@ class BaseEngineService(ITTSBackendBase, BaseServices):
         self.dead = True
         self.deadReason = reason or self.deadReason
 
-
     @classmethod
     def get_constraints(cls, setting: str) -> Constraints | None:
         """
@@ -263,7 +221,6 @@ class BaseEngineService(ITTSBackendBase, BaseServices):
         """
         settingNames: List[str] = []
         for settingName in cls.settings.keys():
-            # settingName = settingName + '.' + cls.backend_id
             settingNames.append(settingName)
 
         return settingNames
@@ -273,12 +230,12 @@ class BaseEngineService(ITTSBackendBase, BaseServices):
             int | float | bool | str | float | List[int] | List[str] | List[bool] \
             | List[float] | None:
         default = None
-        if setting in cls.settings.keys():
-            setting: str
-            default = cls.settings.get(setting, None)
-            if isinstance(default, Constraints):
-                constraints: Constraints = default
-                default = constraints.default
+        #if setting in cls.settings.keys():
+        #    setting: str
+        #    default = cls.settings.get(setting, None)
+        if isinstance(default, Constraints):
+            constraints: Constraints = default
+            default = constraints.default
         return default
 
     @classmethod
@@ -354,14 +311,6 @@ class BaseEngineService(ITTSBackendBase, BaseServices):
         return volume
 
     @classmethod
-    def is_use_cache(cls) -> bool:
-        cache_validator: BoolValidator
-        cache_validator = cls.get_validator(cls.service_ID,
-                                            property_id=SettingsProperties.CACHE_SPEECH)
-        use_cache: bool = cache_validator.getValue()
-        return use_cache
-
-    @classmethod
     def setPlayerSpeed(cls, speed: float) -> None:
         # Native ResponsiveVoice speed is 1 .. 100, with default of 50,
         # but this has been scaled to be a %, so we see 0.01 .. 1.00
@@ -382,14 +331,14 @@ class BaseEngineService(ITTSBackendBase, BaseServices):
 
         int_player_speed: int = int(player_speed * 10)
         Settings.setSetting(SettingsProperties.PLAYER_SPEED, int_player_speed,
-                            cls.backend_id)
+                            cls._engine_id)
 
     @classmethod
     def getSetting(cls, key, default=None):
         """
         Gets a setting from addon's settings.xml
 
-        A convenience method equivalent to Settings.getSetting(key + '.'. + cls.backend_id,
+        A convenience method equivalent to Settings.getSetting(key + '.'. + cls._engine_id,
         default, useFullSettingName).
 
         :param key:
@@ -399,7 +348,7 @@ class BaseEngineService(ITTSBackendBase, BaseServices):
         if default is None:
             default = cls.get_setting_default(key)
 
-        return Settings.getSetting(key, cls.backend_id, default)
+        return Settings.getSetting(key, cls._engine_id, default)
 
     '''
     @classmethod
@@ -410,7 +359,7 @@ class BaseEngineService(ITTSBackendBase, BaseServices):
         """
         Saves a setting to addon's settings.xml
 
-        A convenience method for Settings.setSetting(key + '.' + cls.backend_id, value)
+        A convenience method for Settings.setSetting(key + '.' + cls._engine_id, value)
 
         :param constraints:
         :param setting_id:
@@ -430,28 +379,20 @@ class BaseEngineService(ITTSBackendBase, BaseServices):
         changed = False
         if previous_value != value:
             changed = True
-        Settings.setSetting(setting_id, value, cls.backend_id)
+        Settings.setSetting(setting_id, value, cls._engine_id)
         return changed
         '''
 
     @classmethod
-    def get_player_setting(cls, default:str | None = None) -> str | None:
-        if default is None:
-            default = cls.get_setting_default(SettingsProperties.PLAYER)
-
-        player_setting: str = Settings.get_player_id(cls.backend_id)
-        return player_setting
-
-    @classmethod
     def set_player_setting(cls, value: str) -> bool:
-        backend_id: str = cls.get_backend_id()
+        engine_id: str = cls.get_backend_id()
         if (not cls.isSettingSupported(SettingsProperties.PLAYER)
                 and cls._logger.isEnabledFor(WARNING)):
             cls._logger.warning(f'{SettingsProperties.PLAYER}, not supported by voicing engine: '
-                                f'{backend_id}')
-        previous_value = Settings.get_player_id(default_value=None, backend_id=backend_id)
+                                f'{engine_id}')
+        previous_value = Settings.get_player_id(engine_id=engine_id)
         changed = previous_value != value
-        Settings.set_player(value, backend_id)
+        Settings.set_player(value, engine_id)
         return changed
 
     @classmethod
@@ -460,14 +401,15 @@ class BaseEngineService(ITTSBackendBase, BaseServices):
 
         @return:
         """
-        return cls.backend_id
+        return cls._engine_id
 
-    def insertPause(self, ms=500):
+    @classmethod
+    def insertPause(cls, ms=500):
         """Insert a pause of ms milliseconds
 
         May be overridden by sublcasses. Default implementation sleeps for ms.
         """
-        xbmc.sleep(ms)
+        Monitor.exception_on_abort(ms/1000.0)
 
     def isSpeaking(self):
         """Returns True if speech engine is currently speaking, False if not
@@ -487,6 +429,20 @@ class BaseEngineService(ITTSBackendBase, BaseServices):
         return None
     '''
 
+    def notify_engine(self, msg: str, now: bool = False) -> None:
+        clz = type(self)
+        if clz._current_engine is not None:
+            clz._current_engine.notify(msg, now)
+        else:
+            clz._logger.debug(f'_current_engine not set')
+        self.notify_player(msg, now)
+
+    @classmethod
+    def notify_player(self, msg: str, now: bool = False) -> None:
+        clz = type(self)
+        player: IPlayer = self.get_player()
+        player.notify(msg, now)
+
     def update(self):
         """Called when the user has changed a setting for this backend
 
@@ -494,7 +450,7 @@ class BaseEngineService(ITTSBackendBase, BaseServices):
         """
         pass
 
-    def stop(self):
+    def stop(self, msg: str = None):
         """Stop all speech, implicitly called when close() is called
 
         Subclasses should override this to respond to requests to stop speech.
@@ -528,10 +484,10 @@ class BaseEngineService(ITTSBackendBase, BaseServices):
         #        changed = True
         return changed
 
-    def _stop(self):
+    def _stop(self, msg: str = None):
         self.stop()
 
-    def _close(self):
+    def _close(self, msg: str = None):
         self._closed = True
         self._stop()
 
@@ -552,13 +508,17 @@ class BaseEngineService(ITTSBackendBase, BaseServices):
 
     @staticmethod
     def available():
-        """Static method representing the the speech engines availability
+        """Static method representing the speech engines availability
 
         Subclasses should override this and return True if the speech engine is
         capable of speaking text in the current environment.
         Default implementation returns False.
         """
         return False
+
+    @classmethod
+    def getSettingConstraints(cls, VOLUME):
+        pass
 
 
 class ThreadedTTSBackend(BaseEngineService):
@@ -567,21 +527,22 @@ class ThreadedTTSBackend(BaseEngineService):
     Handles all the threading mechanics internally.
     Subclasses must at least implement the threadedSay() method, and can use
     whatever means are available to speak text.
-    The say() and sayList() and insertPause() methods are not meant to be overridden.
+    The say() method is not meant to be overridden.
     """
     _class_name: str = None
-    _queue_high_water_mark: int = 0
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         clz = type(self)
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz._class_name)
-        self.active = True
-        self._threadedIsSpeaking = False
-        self.queue = queue.Queue(20)
+        self.active: bool = True
+        self.engine_id: str = None
+        self._queue_high_water_mark: int = 0
+        self.queue = queue.Queue(50)
         self.queueCount: int = 0
         self.queueFullCount: int = 0
+        self._threadedIsSpeaking = False
         self.thread: threading.Thread | None = None
         self.process = None
         self.initialized: bool = False
@@ -599,104 +560,103 @@ class ThreadedTTSBackend(BaseEngineService):
         self.initialized = True
         clz = type(self)
         self.thread = threading.Thread(
-                target=self._handleQueue, name=f'TTSThread: {clz.backend_id}')
-        xbmc.log(f'Starting thread TTSThread: {clz.backend_id}', xbmc.LOGINFO)
+                target=self._handleQueue, name=f'TTSThread: {clz._engine_id}')
+        xbmc.log(f'Starting thread TTSThread: {clz._engine_id}', xbmc.LOGINFO)
         self.thread.start()
 
     def _handleQueue(self):
         clz = type(self)
         if type(self)._logger.isEnabledFor(DEBUG):
             self._logger.debug(
-                f'Threaded TTS Started: {clz.backend_id} thread_name: '
+                f'Threaded TTS Started: {clz._engine_id} thread_name: '
                 f'{threading.current_thread().name}')
 
         while self.active and not Monitor.wait_for_abort(timeout=3.5):
             try:
-                text = self.queue.get(timeout=0.1)
-                self.queue.task_done()
-                if isinstance(text, int):
-                    Monitor.wait_for_abort(text / 1000.0)
-                else:
-                    self._threadedIsSpeaking = True
-                    self.threadedSay(text)
-                    self._threadedIsSpeaking = False
+                phrase: Phrase = self.queue.get(timeout=0.1)
+                self.queue.task_done()     #  TODO: Change this to use phrase delays
+                self._threadedIsSpeaking = True
+                self.threadedSay(phrase)
+                self._threadedIsSpeaking = False
             except queue.Empty:
                 # self._logger.debug_verbose('queue empty')
                 pass
+            except ExpiredException:
+                clz._logger.debug(f'Expired')
         if type(self)._logger.isEnabledFor(DEBUG):
             self._logger.debug(
-                'Threaded TTS Finished: {0}'.format(clz.backend_id))
+                'Threaded TTS Finished: {0}'.format(clz._engine_id))
 
     def _emptyQueue(self):
+        clz = type(self)
+        clz._logger.debug(f'emptyQueue')
         try:
-            if type(self)._logger.isEnabledFor(DEBUG_VERBOSE):
-                self._logger.debug_verbose('_emptyQueue')
             while True:
                 self.queue.get_nowait()
                 self.queue.task_done()
         except queue.Empty:
-            if type(self)._logger.isEnabledFor(DEBUG_VERBOSE):
-                self._logger.debug_verbose('_emptyQueue is empty')
             return
 
-    def say(self, text: str, interrupt: bool = False, preload_cache=False):
+    def say(self, phrases: PhraseList):
         """
 
-        @param text:
-        @param interrupt:
-        @param preload_cache:
+        @param phrases:
         @return:
         """
         clz = type(self)
-        if not self.active:
+        if not self.active or self.stop_msg is not None:
+            self.stop_msg = None
             return
-        if interrupt:
-            self._stop()
+        try:
+            clz._logger.debug(f'base.say phrase: {phrases[0].get_text()}')
+            interrupt: bool = phrases[0].get_interrupt()
+            if interrupt:
+                clz._logger.debug(f'INTERRUPT: base engine {phrases[0].get_text()}')
+                self._stop(msg='from engine.say')
+        except ExpiredException:
+            clz._logger.debug('EXPIRED')
         # If voice file caching is used, check to see if voiced file already
         # exists, or what path to use if it doesn't exist.
 
-        if Settings.is_use_cache(self.backend_id):
-            cache_path: Path
-            exists: bool
-            cache_path, exists = self.get_path_to_voice_file(text, use_cache=True)
-            if exists:
-                #  TODO: Add ability to deal with converter
-                #  Bypass engine and go straight to playing
-                player_id: str = Settings.get_player_id(self.backend_id)
-                self.say_file(cache_path, player_id)
-                return
+        use_cache: bool = Settings.is_use_cache(self.engine_id)
+        try:
+            phrase: Phrase
+            for phrase in phrases:
+                if self.stop_msg is not None:
+                    self.stop_msg = None
+                    break
+                cache_path: Path
+                # if phrase.get_cache_path() is None:
+                #     VoiceCache.get_path_to_voice_file(phrase, use_cache=True)
+                if phrase.is_exists():
+                    #  TODO: Add ability to deal with converter
+                    #  Bypass engine and go straight to playing
+                    player_id: str = Settings.get_player_id(self.engine_id)
+                    self.say_file(phrase, player_id)
+                    continue
 
-        self.queue.put_nowait(text)
-        self.queueCount += 1
-        if self.queue.full():
-            self.queueFullCount += 1
+                self.queue.put_nowait(phrase)
+                self.queueCount += 1
+                if self.queue.full():
+                    self.queueFullCount += 1
 
-        queue_size = self.queue.qsize()
-        if queue_size > ThreadedTTSBackend._queue_high_water_mark:
-            clz._logger.debug(f'queue_size now: {queue_size}')
-            ThreadedTTSBackend._queue_high_water_mark = queue_size
+                queue_size = self.queue.qsize()
+                if queue_size > self._queue_high_water_mark:
+                    clz._logger.debug(f'queue_size now: {queue_size}')
+                    self._queue_high_water_mark = queue_size
+        except ExpiredException:
+            clz._logger.debug('EXPIRED')
 
-    def sayList(self, texts, interrupt: bool = False):
-        """
-
-        @param texts:
-        @param interrupt:
-        """
-        if interrupt:
-            self._stop()
-        self.queue.put_nowait(texts.pop(0))
-        for t in texts:
-            self.insertPause()
-            self.queue.put_nowait(t)
-
-    def say_file(self, cache_path: str, player_id: str) -> None:
+    def say_file(self, phrase: Phrase, player_id: str) -> None:
         clz = type(self)
         try:
             player: IPlayer = PlayerIndex.get_player(player_id)
-            player.init(self.backend_id)
-            player.play(cache_path)
+            player.init(self.engine_id)
+            player.play(phrase)
         except AbortException as e:
             reraise(*sys.exc_info())
+        except ExpiredException:
+            clz._logger.debug('EXPIRED')
         except Exception as e:
             clz._logger.exception('')
         return
@@ -707,9 +667,17 @@ class ThreadedTTSBackend(BaseEngineService):
 
         @return:
         """
-        return self.active and (self._threadedIsSpeaking or not self.queue.empty())
+        clz = type(self)
 
-    def _stop(self):
+        try:
+            speaking: bool = self.active and (self._threadedIsSpeaking or not self.queue.empty())
+        except AttributeError as e:
+            clz._logger.exception('')
+            speaking = False
+        return speaking
+
+    def _stop(self, msg: str = None):
+        self.stop_msg = msg
         if self.process is not None:
             try:
                 self.process.terminate()
@@ -719,8 +687,9 @@ class ThreadedTTSBackend(BaseEngineService):
                 self.process = None
 
         self._emptyQueue()
-        super()._stop()
+        super()._stop(msg)
 
+    '''
     def insertPause(self, ms=500):
         """
 
@@ -730,8 +699,9 @@ class ThreadedTTSBackend(BaseEngineService):
             self.queueFullCount += 1
         self.queue.put(ms)
         self.queueCount += 1
+    '''
 
-    def threadedSay(self, text:str):
+    def threadedSay(self, phrase: Phrase):
         """Method accepting text to be spoken
 
         Subclasses must override this method and should speak the unicode text.
@@ -756,6 +726,7 @@ class SimpleTTSBackend(ThreadedTTSBackend):
     save a sound file to outFile and/or the runCommandAndSpeak() method which
     must play the speech directly.
     """
+    _simpleIsSpeaking = False
 
     _logger: BasicLogger = None
     _class_name: str = None
@@ -766,7 +737,7 @@ class SimpleTTSBackend(ThreadedTTSBackend):
         clz._class_name = self.__class__.__name__
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz._class_name)
-        self._simpleIsSpeaking = False
+        clz._simpleIsSpeaking = False
         self.mode = None
         BaseServices.register(self)
 
@@ -780,25 +751,6 @@ class SimpleTTSBackend(ThreadedTTSBackend):
             return
 
         super().init()
-        player_id: str = clz.get_player_setting()
-
-    @staticmethod
-    def isSupportedOnPlatform():
-        """
-        This O/S supports this engine/backend
-
-        :return:
-        """
-        return False
-
-    @staticmethod
-    def isInstalled():
-        """
-        This eGngine/backend is installed and configured on the O/S.
-
-        :return:
-        """
-        return False
 
     #  def get_player_handler(self) -> PlayerHandlerType:
     #    """
@@ -828,15 +780,6 @@ class SimpleTTSBackend(ThreadedTTSBackend):
             audio.load_snd_bm2835()
             if type(self)._logger.isEnabledFor(DEBUG):
                 type(self)._logger.debug('Mode: ENGINESPEAK')
-
-    def setPlayer(self, preferred=None, advanced=None):
-        """
-
-        @param preferred:
-        @param advanced:
-        @return:
-        """
-        return  # self.get_player_handler().setPlayer(preferred=preferred, advanced=advanced)
 
     def setSpeed(self, speed: float):
         """
@@ -885,7 +828,7 @@ class SimpleTTSBackend(ThreadedTTSBackend):
         volume = Settings.getSetting(SettingsProperties.VOLUME, self.get_backend_id())
         return volume
 
-    def runCommand(self, text: str, outFile: str):
+    def runCommand(self, phrase: Phrase):
         """Convert text to speech and output to a .wav file
 
         If using FILEOUT mode, subclasses must override this method
@@ -894,7 +837,7 @@ class SimpleTTSBackend(ThreadedTTSBackend):
         """
         raise Exception('Not Implemented')
 
-    def runCommandAndSpeak(self, text:str):
+    def runCommandAndSpeak(self, phrase: Phrase):
         """Convert text to speech and output directly
 
         If using ENGINESPEAK mode, subclasses must override this method
@@ -902,7 +845,7 @@ class SimpleTTSBackend(ThreadedTTSBackend):
         """
         raise Exception('Not Implemented')
 
-    def runCommandAndPipe(self, text:str):
+    def runCommandAndPipe(self, phrase: Phrase):
         """Convert text to speech and pipe to audio player
 
         If using PIPE mode, subclasses must override this method
@@ -931,57 +874,59 @@ class SimpleTTSBackend(ThreadedTTSBackend):
         """
         clz = type(self)
 
-        player_id: str = Settings.get_player_id(self.backend_id)
+        player_id: str = Settings.get_player_id(self.engine_id)
 
         if player_id == Players.INTERNAL:
             mode = Mode.ENGINESPEAK
-        elif Settings.uses_pipe(self.backend_id):
+        elif Settings.uses_pipe(self.engine_id):
             mode = Mode.PIPE
         else:
             mode = Mode.FILEOUT
 
         self.setMode(mode)
 
-    def threadedSay(self, text:str):
+    def threadedSay(self, phrase: Phrase):
         """
 
-        @param text:
+        @param phrase:
         @return:
         """
         clz = type(self)
-        if not text:
+        if not phrase:
             return
+
         try:
-            self.setPlayer(clz.get_player_setting())
+            player: IPlayer = self.get_player()
             self.config_mode()
+            text: str = phrase.get_text()
+        #  TODO: Deal with phrase.delay. Pre and Post
             if self.mode == Mode.FILEOUT:
                 outFile: str
                 exists: bool
-                use_cache: bool = Settings.is_use_cache(clz.backend_id)
-                outFile, exists = self.get_path_to_voice_file(text,
-                                                              use_cache=use_cache)
-                # outFile:str = self.get_player_handler().get_sound_file(text)
-                if not self.runCommand(text, outFile):
+                use_cache: bool = Settings.is_use_cache(clz._engine_id)
+                VoiceCache.get_path_to_voice_file(phrase, use_cache=use_cache)
+                voice_file: Path = phrase.get_cache_path()
+                if not self.runCommand(phrase):
                     return
 
-                player_id: str = Settings.get_player_id(self.backend_id)
-                player: IPlayer = PlayerIndex.get_player(player_id)
                 try:
-                    player.init(clz.backend_id)
+                    player.init(clz._engine_id)
                 except Exception as e:
                     clz._logger.exception('')
-                player.play(outFile)
+                player.play(phrase)
                 # player_handler: PlayerHandlerType = self.get_player_handler()
                 # player_handler.play()
             elif self.mode == Mode.PIPE:
-                source = self.runCommandAndPipe(text)
+                source = self.runCommandAndPipe(phrase)
                 if not source:
                     return
                 # self.get_player_handler().pipeAudio(source)
             else:
-                self._simpleIsSpeaking = True
-                self.runCommandAndSpeak(text)
-                self._simpleIsSpeaking = False
+                clz._simpleIsSpeaking = True
+                self.runCommandAndSpeak(phrase)
+                clz._simpleIsSpeaking = False
+        except ExpiredException:
+            clz._logger.debug('EXPIRED')
         except Exception as e:
             clz._logger.exception('')
 
@@ -990,7 +935,8 @@ class SimpleTTSBackend(ThreadedTTSBackend):
 
         @return:
         """
-        return (self._simpleIsSpeaking # or self.get_player_handler().isPlaying()
+        clz = type(self)
+        return (clz._simpleIsSpeaking # or self.get_player_handler().isPlaying()
                 or ThreadedTTSBackend.isSpeaking(self))
 
     @classmethod
@@ -1005,11 +951,11 @@ class SimpleTTSBackend(ThreadedTTSBackend):
         #     player_ids.append(player.ID)
         return player_ids
 
-    def _stop(self):
+    def _stop(self, msg: str = None):
         # self.get_player_handler().stop()
-        ThreadedTTSBackend._stop(self)
+        ThreadedTTSBackend._stop(self, msg)
 
-    def _close(self):
+    def _close(self, msg: str = None):
         #  super()._close()
         # self.get_player_handler().close()
         pass
@@ -1048,18 +994,6 @@ class LogOnlyTTSBackend(BaseEngineService):
         """
         return LogOnlyTTSBackend.isSupportedOnPlatform()
 
-    def say(self, text: str, interrupt: bool = False, preload_cache=False):
-        """
-
-        @param text:
-        @param interrupt:
-        @param preload_cache:
-        """
-        Monitor.throw_exception_if_abort_requested(0.05)
-        if type(self)._logger.isEnabledFor(DEBUG):
-            type(self)._logger.debug(
-                f'say(Interrupt={interrupt}): {text}')
-
     @staticmethod
     def available():
         """
@@ -1067,6 +1001,13 @@ class LogOnlyTTSBackend(BaseEngineService):
         @return:
         """
         return True
+
+    def say(self, phrase: Phrase):
+        """
+
+        @param phrase:
+        """
+        pass
 
 
 TTSBackendBridge.setBaseBackend(BaseEngineService)

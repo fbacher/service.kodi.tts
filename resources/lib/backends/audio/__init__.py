@@ -37,7 +37,7 @@ def check_snd_bm2835() -> bool:
         except AbortException:
             reraise(*sys.exc_info())
         except:
-            module_logger.error('check_snd_bm2835(): lsmod filed', hide_tb=True)
+            module_logger.error('check_snd_bm2835(): lsmod filed')
             bcm_2385_avail = False
     return bcm_2385_avail
 

@@ -11,6 +11,7 @@ from backends.settings.service_types import Services
 from cache.voicecache import VoiceCache
 from common.logger import *
 from common.base_services import BaseServices
+from common.phrases import Phrase
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
 from common.typing import *
@@ -120,12 +121,12 @@ class BaseCache(BaseServices):
     def isInstalled() -> bool:
         return True
 
-    def getVoicedText(self, text_to_voice: str, cache_identifier: str,
+    def getVoicedText(self, phrase: Phrase, cache_identifier: str,
                       sound_file_types: List[str]) -> Tuple[str, bool, str]:
         path_to_voiced_file: str
         exists: bool
         file_type: str
-        path, exists, file_type = VoiceCache.get_best_path(text_to_voice,
+        path, exists, file_type = VoiceCache.get_best_path(phrase,
                                                                         sound_file_types)
         return  path, exists, file_type
 

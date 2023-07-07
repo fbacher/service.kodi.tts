@@ -2,7 +2,6 @@ from backends.i_backend_info import IBackendInfo
 from backends.i_tts_backend_base import ITTSBackendBase
 from backends.settings.constraints import Constraints
 from common.__init__ import *
-from common.exceptions import NotReadyException
 from common.base_services import BaseServices
 
 
@@ -15,7 +14,7 @@ class BackendInfoBridge(IBackendInfo):
         type(self)._class_name = self.__class__.__name__
 
     @classmethod
-    def getBackend(cls, backend_id: str = None) -> BaseServices:
+    def getBackend(cls, backend_id: str = None) -> ITTSBackendBase:
         return BaseServices.getService(backend_id)
 
     @classmethod

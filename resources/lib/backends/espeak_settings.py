@@ -1,3 +1,7 @@
+import os
+import subprocess
+import sys
+
 from backends.audio.sound_capabilties import SoundCapabilities
 from backends.engines.base_engine_settings import (BaseEngineSettings)
 from backends.i_tts_backend_base import ITTSBackendBase
@@ -6,18 +10,19 @@ from backends.settings.constraints import Constraints
 from backends.settings.i_validators import ValueType
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.setting_properties import SettingsProperties
-from backends.settings.settings_map import SettingsMap
+from backends.settings.settings_map import Reason, SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
                                           EnumValidator, StringValidator)
 from common.base_services import BaseServices
 from common.logger import BasicLogger
 from common.setting_constants import Backends, Genders, Players
+from common.system_queries import SystemQueries
 from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
-class ESpeakSettings:
+class ESpeakSettings(BaseServiceSettings):
     # Only returns .mp3 files
     ID: str = Backends.ESPEAK_ID
     backend_id = Backends.ESPEAK_ID
@@ -94,6 +99,7 @@ class ESpeakSettings:
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz.__name__)
         ESpeakSettings.init_settings()
+        SettingsMap.set_is_available(clz.service_ID, Reason.AVAILABLE)
 
     @classmethod
     def init_settings(cls):
@@ -139,7 +145,7 @@ class ESpeakSettings:
         voice_validator: StringValidator
         voice_validator = StringValidator(SettingsProperties.VOICE, cls.backend_id,
                                           allowed_values=[], min_length=1, max_length=10,
-                                          default_value='')
+                                          default='')
         pipe_validator: BoolValidator
         pipe_validator = BoolValidator(SettingsProperties.PIPE, cls.backend_id,
                                        default=False)
@@ -156,7 +162,7 @@ class ESpeakSettings:
         player_validator: StringValidator
         player_validator = StringValidator(SettingsProperties.PLAYER, cls.backend_id,
                                            allowed_values=valid_players,
-                                           default_value=Players.MPLAYER)
+                                           default=Players.MPLAYER)
 
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.LANGUAGE,
                                    language_validator)
@@ -173,4 +179,31 @@ class ESpeakSettings:
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER,
                                    player_validator)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.CACHE_SPEECH,
-                                   cache_validator)
+                                       cache_validator)
+
+    @classmethod
+    def isSupportedOnPlatform(cls) -> bool:
+        return (SystemQueries.isLinux() or SystemQueries.isWindows()
+                or SystemQueries.isOSX())
+
+    @classmethod
+    def isInstalled(cls) -> bool:
+        installed: bool = False
+        if cls.isSupportedOnPlatform():
+            installed = True
+        return installed
+
+    @classmethod
+    def isSettingSupported(cls, setting) -> bool:
+        return SettingsMap.is_valid_property(cls.service_ID, setting)
+
+    @classmethod
+    def available(cls):
+        try:
+            subprocess.run(['espeak', '--version'], stdout=(open(os.path.devnull, 'w')),
+                           universal_newlines=True, stderr=subprocess.STDOUT)
+        except AbortException:
+            reraise(*sys.exc_info())
+        except:
+            return False
+        return True

@@ -1,6 +1,7 @@
 from backends.i_backend import IBackend
 from backends.settings.constraints import Constraints
 from common.__init__ import *
+from common.phrases import Phrase, PhraseList
 
 
 class ITTSBackendBase(IBackend):
@@ -11,7 +12,6 @@ class ITTSBackendBase(IBackend):
     canStreamWav: bool = False
     _backend_id: str = 'ITTSBackendBase'
     displayName: str = 'ITTSBackendBase'
-    pauseInsert = '...'
     inWavStreamMode = False
     interval = 100
     broken = False
@@ -39,7 +39,7 @@ class ITTSBackendBase(IBackend):
     _class_name: str = None
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super(ITTSBackendBase, self).__init__(*args, **kwargs)
         type(self)._class_name = self.__class__.__name__
 
     def re_init(self):
@@ -53,10 +53,6 @@ class ITTSBackendBase(IBackend):
     def backend_id(self) -> str:
         clz = type(self)
         return clz._backend_id
-
-    @classmethod
-    def getBackend(cls, backend_id: str) -> IBackend:
-        return cls._baseBackend.getBackend(backend_id)
 
     @classmethod
     def setBaseBackend(cls, backend: IBackend) -> None:
@@ -93,10 +89,7 @@ class ITTSBackendBase(IBackend):
     def flagAsDead(self, reason=''):
          raise Exception('Not Implemented')
 
-    def say(self, text, interrupt=False, preload_cache=False):
-        raise Exception('Not Implemented')
-
-    def sayList(self, texts, interrupt=False):
+    def say(self, phrases: PhraseList):
         raise Exception('Not Implemented')
 
     @classmethod
@@ -195,6 +188,9 @@ class ITTSBackendBase(IBackend):
         raise Exception('Not Implemented')
 
     def getWavStream(self, text):
+        raise Exception('Not Implemented')
+
+    def notify(self, msg) -> None:
         raise Exception('Not Implemented')
 
     def update(self):

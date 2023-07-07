@@ -13,7 +13,6 @@ from common.typing import *
 class BasePlayerServiceSettings(BaseServiceSettings):
     service_ID: str = Services.NONE_ID
     displayName: str = 'NoPlayer'
-    pauseInsert = '...'
     canStreamWav = False
     inWavStreamMode = False
     interval = 100
@@ -108,7 +107,7 @@ class BasePlayerServiceSettings(BaseServiceSettings):
         player_validator: StringValidator
         player_validator = StringValidator(SettingsProperties.PLAYER, cls.backend_id,
                                            allowed_values=valid_players,
-                                           default_value=Players.MPLAYER)
+                                           default=Players.MPLAYER)
 
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PIPE,
                                    pipe_validator)

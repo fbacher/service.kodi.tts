@@ -35,6 +35,7 @@ class MinimalMonitor(xbmc.Monitor):
     _abort_received: threading.Event = None
     _abort_callback: Callable[[], None]  = None
 
+
     """
     xbmc wants to be called.
     """
@@ -97,8 +98,9 @@ class MinimalMonitor(xbmc.Monitor):
 
     @classmethod
     def abort_requested(cls) -> None:
-        cls._xbmc_monitor.abortRequested()
-        cls.set_abort_received()
+        abort: bool = cls._xbmc_monitor.abortRequested()
+        if abort:
+            cls.set_abort_received()
 
     @classmethod
     def set_abort_received(cls):
@@ -108,7 +110,7 @@ class MinimalMonitor(xbmc.Monitor):
                 MinimalMonitor._abort_callback()
 
     @classmethod
-    def throw_exception_if_abort_requested(cls, timeout: float = 0) -> None:
+    def exception_on_abort(cls, timeout: float = 0) -> None:
         """
          Throws an AbortException if Abort has been set within the specified
           time period.

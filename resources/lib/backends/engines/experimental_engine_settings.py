@@ -1,15 +1,18 @@
+import sys
+
 from backends.audio.sound_capabilties import SoundCapabilities
 from backends.engines.base_engine_settings import (BaseEngineSettings)
 from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.constraints import Constraints
 from backends.settings.i_validators import ValueType
 from backends.settings.service_types import Services, ServiceType
-from backends.settings.settings_map import SettingsMap
+from backends.settings.settings_map import Reason, SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
                                           EnumValidator, StringValidator)
-from common.logger import BasicLogger
+from common.logger import BasicLogger, DEBUG_VERBOSE
 from common.setting_constants import Backends, Genders, Players
 from common.settings_low_level import SettingsProperties
+from common.system_queries import SystemQueries
 from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -56,19 +59,20 @@ class ExperimentalSettings(BaseServiceSettings):
         def setValue(self, value: int | float | str,
                      value_type: ValueType = ValueType.VALUE) -> None:
             """
-            Keep value fixed at 1
+            Keep value fixed at 10 db
             :param value:
             :param value_type:
             """
             constraints: Constraints = self.constraints
-            constraints.setSetting(1, self.service_id)
+            constraints.setSetting(10.0, self.service_id)
 
-        def getValue(self, value_type: ValueType = ValueType.VALUE) -> int | float | str:
+        def getValue(self, value_type: ValueType = ValueType.VALUE) -> int:
             """
-            Keep value fixed at 1
+            Keep value fixed at 10
+            kodi volume
             :return:
             """
-            return 1
+            return 10
 
         def setUIValue(self, ui_value: str) -> None:
             pass
@@ -100,6 +104,8 @@ class ExperimentalSettings(BaseServiceSettings):
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz.__name__)
         ExperimentalSettings.init_settings()
+        installed: bool = clz.isInstalled()
+        SettingsMap.set_is_available(clz.service_ID, Reason.AVAILABLE)
 
     @classmethod
     def init_settings(cls):
@@ -107,9 +113,11 @@ class ExperimentalSettings(BaseServiceSettings):
         # Need to define Conversion Constraints between the TTS 'standard'
         # constraints/settings to the engine's constraints/settings
 
+        speedConstraints: Constraints = Constraints(25, 100, 400, False, False, 0.01,
+                                               SettingsProperties.SPEED, 125, 0.25)
         speed_constraints_validator = ConstraintsValidator(SettingsProperties.SPEED,
                                                            cls.engine_id,
-                                                           BaseServiceSettings.ttsSpeedConstraints)
+                                                           speedConstraints)
 
         pitch_constraints: Constraints = Constraints(0, 50, 99, True, False, 1.0,
                                                     SettingsProperties.PITCH)
@@ -117,15 +125,10 @@ class ExperimentalSettings(BaseServiceSettings):
                                                            cls.engine_id,
                                                            pitch_constraints)
 
-        volumeConversionConstraints: Constraints = Constraints(minimum=0.1, default=1.0,
-                                                               maximum=2.0, integer=False,
-                                                               decibels=False, scale=1.0,
-                                                               property_name=SettingsProperties.VOLUME,
-                                                               midpoint=1, increment=0.1)
         volume_constraints_validator = cls.VolumeConstraintsValidator(
             SettingsProperties.VOLUME,
             cls.engine_id,
-            volumeConversionConstraints)
+            cls.ttsVolumeConstraints)
 
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOLUME,
                                    volume_constraints_validator)
@@ -157,7 +160,7 @@ class ExperimentalSettings(BaseServiceSettings):
         player_validator: StringValidator
         player_validator = StringValidator(SettingsProperties.PLAYER, cls.engine_id,
                                            allowed_values=valid_players,
-                                           default_value=Players.MPLAYER)
+                                           default=Players.MPLAYER)
 
         SettingsMap.define_setting(service_id=cls.service_ID,
                                    property_id=SettingsProperties.API_KEY,
@@ -178,3 +181,42 @@ class ExperimentalSettings(BaseServiceSettings):
                                    player_validator)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.CACHE_SPEECH,
                                    cache_validator)
+
+    @classmethod
+    def isSupportedOnPlatform(cls) -> bool:
+        return (SystemQueries.isLinux() or SystemQueries.isWindows()
+                or SystemQueries.isOSX())
+
+    @classmethod
+    def isInstalled(cls) -> bool:
+        installed: bool = False
+        if cls.isSupportedOnPlatform():
+            installed = True
+        return installed
+
+    @classmethod
+    def isSettingSupported(cls, setting) -> bool:
+        return SettingsMap.is_valid_property(cls.service_ID, setting)
+
+    '''
+    @classmethod
+    def getSettingNames(cls) -> List[str]:
+        settingNames: List[str] = []
+        for settingName in cls.settings.keys():
+            settingNames.append(settingName)
+    
+        return settingNames
+    '''
+
+    @classmethod
+    def available(cls) -> bool:
+        engine_output_formats: List[str]
+        engine_output_formats = SoundCapabilities.get_output_formats(
+                cls.service_ID)
+        candidates: List[str]
+        candidates = SoundCapabilities.get_capable_services(
+                service_type=ServiceType.PLAYER,
+                consumer_formats=[SoundCapabilities.MP3],
+                producer_formats=[])
+        if len(candidates) > 0:
+            return True
