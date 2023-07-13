@@ -45,6 +45,8 @@ class BaseServiceSettings:
         SettingsProperties.PITCH : ttsPitchConstraints,
         SettingsProperties.VOLUME: ttsVolumeConstraints
     }
+    global_settings_initialized: bool = False
+
     # _supported_input_formats: List[str] = []
     # _supported_output_formats: List[str] = []
     # _provides_services: List[ServiceType] = [ServiceType.ENGINE]
@@ -65,6 +67,24 @@ class BaseServiceSettings:
             clz._logger = module_logger.getChild(clz.__name__)
         # Explicitly init this class. Self would initialize the self class
         BaseServiceSettings.init_settings()
+        if not clz.global_settings_initialized:
+            BaseServiceSettings.init_global_settings()
+            clz.global_settings_initialized = True
+
+    @classmethod
+    def init_global_settings(cls):
+        #
+        # To the user, all settings are in TTS space. For Volume, it uses a
+        # -12 .. +12 dB scale. The engine modifies it's own volume constraints
+        # to adjust the TTS volume into the equivalent engine volume
+
+        volume_constraints_validator: ConstraintsValidator
+        volume_constraints_validator = ConstraintsValidator(SettingsProperties.VOLUME,
+                                                            Services.TTS_SERVICE,
+                                                            BaseServiceSettings.ttsVolumeConstraints)
+        SettingsMap.define_setting(BaseServiceSettings.service_ID,
+                                   SettingsProperties.VOLUME,
+                                   volume_constraints_validator)
 
     @classmethod
     def init_settings(cls):

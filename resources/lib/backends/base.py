@@ -622,9 +622,6 @@ class ThreadedTTSBackend(BaseEngineService):
         try:
             phrase: Phrase
             for phrase in phrases:
-                if self.stop_msg is not None:
-                    self.stop_msg = None
-                    break
                 cache_path: Path
                 # if phrase.get_cache_path() is None:
                 #     VoiceCache.get_path_to_voice_file(phrase, use_cache=True)

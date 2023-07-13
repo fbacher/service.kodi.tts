@@ -276,18 +276,21 @@ class BaseServices(IServices):
 
     @classmethod
     def notify_active_engine(cls, msg: str, now: bool = False) -> None:
-        engine_id = cls.get_active_engine_id()
-        engine = cls.getService(engine_id)
-        engine.notify(msg, now)
+        # engine_id = cls.get_active_engine_id()
+        # engine = cls.getService(engine_id)
+        # engine.notify(msg, now)
+        pass
 
     @classmethod
     def get_active_player_id(cls) -> str:
-        engine_id: str = cls.get_active_engine_id()
-        player_id: str = Settings.get_player_id(engine_id)
-        return player_id
+        # engine_id: str = cls.get_active_engine_id()
+        # player_id: str = Settings.get_player_id(engine_id)
+        # return player_id
+        pass
 
     @classmethod
     def notify_active_player(cls, msg: str, now: bool = False) -> None:
-        player_id: str = cls.get_active_player_id()
-        player: IPlayer = cls.getService(player_id)
-        player.notify(msg, now)
+        # player_id: str = cls.get_active_player_id()
+        # player: IPlayer = cls.getService(player_id)
+        # player.notify(msg, now)
+        pass

@@ -18,7 +18,7 @@ from common.system_queries import SystemQueries
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 
 
-class FliteTTSBackend(FliteSettings, SimpleTTSBackend):
+class FliteTTSBackend(SimpleTTSBackend):
     backend_id = Backends.FLITE_ID
     displayName = 'Flite'
     #  speedConstraints = (20, 100, 200, True)

@@ -60,7 +60,7 @@ def getSpeechDSpeaker(test=False) -> Speaker:
     return None
 
 
-class SpeechDispatcherTTSBackend(ThreadedTTSBackend, BaseServices):
+class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
     """Supports The speech-dispatcher on linux"""
     ID = Backends.SPEECH_DISPATCHER_ID
     backend_id = Backends.SPEECH_DISPATCHER_ID

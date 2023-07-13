@@ -89,8 +89,8 @@ class Driver(BaseServices):
                 if phrases[0].get_interrupt():  # Interrupt should only be on first phrase
                     clz._logger.debug(f'INTERRUPT Driver.Say {phrases[0].get_text()}')
                     self.worker_thread.interrupt()
-                    active_engine.notify(Notify.STOP)
-                    BaseServices.notify_active_player(Notify.STOP)
+                    # active_engine.notify(Notify.STOP)
+                    # BaseServices.notify_active_player(Notify.STOP)
             except ExpiredException:
                 clz._logger.debug('Expired at Interrupt')
 
@@ -165,7 +165,7 @@ class Driver(BaseServices):
             engine_id: str = Settings.get_engine_id()
             active_engine = BaseServices.getService(engine_id)
             active_engine.stop()
-            BaseServices.notify_active_player('stop')
+            # BaseServices.notify_active_player('stop')
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:

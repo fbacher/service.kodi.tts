@@ -56,6 +56,9 @@ class BootstrapEngines:
             cls.load_base()
             cls.determine_available_engines()
             cls.load_current_backend()
+            # Load all settings for current backend
+            # Can be called multiple times
+            Settings.load_settings()
             util.runInThread(cls.load_other_engines, name='load_other_engines')
 
     @classmethod
@@ -229,6 +232,9 @@ class BootstrapEngines:
             engine_id: str
             if BaseServices.getService(engine_id) is None:
                 cls.load_engine(engine_id)
+                
+        # Include settings for other engines
+        Settings.load_settings()
 
 
 BootstrapEngines.init()

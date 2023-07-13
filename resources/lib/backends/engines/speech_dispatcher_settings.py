@@ -1,7 +1,7 @@
 from backends.engines.base_engine_settings import BaseEngineSettings
 from backends.settings.constraints import Constraints
 from backends.settings.i_validators import ValueType
-from backends.settings.service_types import Services
+from backends.settings.service_types import Services, ServiceType
 from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import ConstraintsValidator
@@ -62,6 +62,9 @@ class SpeechDispatcherSettings:
         self.init_settings()
 
     def init_settings(self):
+        clz = type(self)
+        SettingsMap.define_service(ServiceType.ENGINE, clz.service_ID,
+                                   clz.displayName)
         volumeConversionConstraints: Constraints = Constraints(minimum=0.1, default=1.0,
                                                                maximum=2.0, integer=False,
                                                                decibels=False, scale=1.0,

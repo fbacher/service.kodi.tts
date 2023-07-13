@@ -53,7 +53,8 @@ class FestivalSettings(BaseServiceSettings):
         #
         # Need to define Conversion Constraints between the TTS 'standard'
         # constraints/settings to the engine's constraints/settings
-        pass
+        SettingsMap.define_service(ServiceType.ENGINE, cls.service_ID,
+                                   cls.displayName)
 
     @classmethod
     def isSettingSupported(cls, setting) -> bool:

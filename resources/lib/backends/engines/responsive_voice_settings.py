@@ -19,7 +19,7 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 class ResponsiveVoiceSettings(BaseServiceSettings):
     # Only returns .mp3 files
     ID: str = Backends.RESPONSIVE_VOICE_ID
-    backend_id: str = Backends.RESPONSIVE_VOICE_ID
+    engine_id: str = Backends.RESPONSIVE_VOICE_ID
     service_ID: str = Services.RESPONSIVE_VOICE_ID
     service_TYPE: str = ServiceType.ENGINE_SETTINGS
 
@@ -80,9 +80,6 @@ class ResponsiveVoiceSettings(BaseServiceSettings):
         def getUIValue(self) -> str:
             return f'{self.getValue()}'
 
-    api_key_validator = StringValidator(SettingsProperties.API_KEY, backend_id,
-                                        allowed_values=[], min_length=0, max_length=1024)
-
     _supported_input_formats: List[str] = []
     _supported_output_formats: List[str] = [SoundCapabilities.WAVE]
     _provides_services: List[ServiceType] = [ServiceType.ENGINE]
@@ -109,54 +106,66 @@ class ResponsiveVoiceSettings(BaseServiceSettings):
         SettingsMap.set_is_available(clz.service_ID, Reason.AVAILABLE)
 
     def init_settings(self):
+        SettingsMap.define_service(ServiceType.ENGINE, self.service_ID,
+                                   self.displayName)
         #
         # Need to define Conversion Constraints between the TTS 'standard'
         # constraints/settings to the engine's constraints/settings
 
         speed_constraints_val = ConstraintsValidator(SettingsProperties.SPEED,
-                                                     self.backend_id,
+                                                     self.engine_id,
                                                      BaseServiceSettings.ttsSpeedConstraints)
 
         pitch_constraints: Constraints = Constraints(0, 50, 99, True, False, 1.0,
                                                      SettingsProperties.PITCH)
         pitch_constraints_validator = ConstraintsValidator(SettingsProperties.PITCH,
-                                                           self.backend_id,
+                                                           self.engine_id,
                                                            pitch_constraints)
 
-        volumeConversionConstraints: Constraints = Constraints(minimum=0.1, default=1.0,
-                                                               maximum=2.0, integer=False,
-                                                               decibels=False, scale=1.0,
-                                                               property_name=SettingsProperties.VOLUME,
-                                                               midpoint=1, increment=0.1)
+        volumeConversionConstraints: Constraints
+        volumeConversionConstraints = Constraints(minimum=0.1, default=1.0,
+                                                   maximum=2.0, integer=False,
+                                                   decibels=False, scale=1.0,
+                                                   property_name=SettingsProperties.VOLUME,
+                                                   midpoint=0.8, increment=0.1)
+        engine_id_constraints_validator = self.VolumeConstraintsValidator(
+                SettingsProperties.VOLUME, self.engine_id, volumeConversionConstraints)
+
+        SettingsMap.define_setting(self.service_ID, SettingsProperties.VOLUME,
+                                   engine_id_constraints_validator)
+        '''
         volume_constraints_validator = self.VolumeConstraintsValidator(
-                SettingsProperties.VOLUME, self.backend_id, volumeConversionConstraints)
+                SettingsProperties.VOLUME,
+                self.engine_id,
+                self.ttsVolumeConstraints)
 
         SettingsMap.define_setting(self.service_ID, SettingsProperties.VOLUME,
                                    volume_constraints_validator)
+        '''
 
         audio_validator: StringValidator
         audio_converter_validator = StringValidator(SettingsProperties.CONVERTER,
-                                                    self.backend_id,
+                                                    self.engine_id,
                                                     allowed_values=[Services.LAME_ID])
 
         SettingsMap.define_setting(self.service_ID, SettingsProperties.CONVERTER,
                                    audio_converter_validator)
 
-        api_key_validator = StringValidator(SettingsProperties.API_KEY, self.backend_id,
+        api_key_validator = StringValidator(SettingsProperties.API_KEY, self.engine_id,
                                             allowed_values=[], min_length=0,
                                             max_length=1024)
         language_validator: StringValidator
-        language_validator = StringValidator(SettingsProperties.LANGUAGE, self.backend_id,
+        language_validator = StringValidator(SettingsProperties.LANGUAGE, self.engine_id,
                                              allowed_values=[], min_length=2,
                                              max_length=5)
         voice_validator: StringValidator
-        voice_validator = StringValidator(SettingsProperties.VOICE, self.backend_id,
+        voice_validator = StringValidator(SettingsProperties.VOICE, self.engine_id,
                                           allowed_values=[], min_length=1, max_length=10)
         pipe_validator: BoolValidator
-        pipe_validator = BoolValidator(SettingsProperties.PIPE, self.backend_id,
+        pipe_validator = BoolValidator(SettingsProperties.PIPE, self.engine_id,
                                        default=False)
         cache_validator: BoolValidator
-        cache_validator = BoolValidator(SettingsProperties.CACHE_SPEECH, self.backend_id,
+        cache_validator = BoolValidator(SettingsProperties.CACHE_SPEECH, self.engine_id,
                                         default=True)
 
         #  TODO:  Need to eliminate un-available players
@@ -167,7 +176,7 @@ class ResponsiveVoiceSettings(BaseServiceSettings):
                                     Players.MPLAYER, Players.MPG321, Players.MPG123,
                                     Players.MPG321_OE_PI]
         player_validator: StringValidator
-        player_validator = StringValidator(SettingsProperties.PLAYER, self.backend_id,
+        player_validator = StringValidator(SettingsProperties.PLAYER, self.engine_id,
                                            allowed_values=valid_players,
                                            default=Players.MPLAYER)
 
@@ -184,8 +193,6 @@ class ResponsiveVoiceSettings(BaseServiceSettings):
                                    speed_constraints_val)
         SettingsMap.define_setting(self.service_ID, SettingsProperties.PITCH,
                                    pitch_constraints_validator)
-        # SettingsMap.define_setting(self.service_ID, SettingsProperties.VOLUME,
-        #                           volume_constraints_validator)
         SettingsMap.define_setting(self.service_ID, SettingsProperties.PLAYER,
                                    player_validator)
         SettingsMap.define_setting(self.service_ID, SettingsProperties.CACHE_SPEECH,

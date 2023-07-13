@@ -41,9 +41,9 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
                                   _supported_input_formats,
                                   _supported_output_formats)
 
-    _availableArgs = ('mplayer', '--help')
-    _playArgs = ('mplayer', '-really-quiet', None)
-    _pipeArgs = ('mplayer', '-', '-really-quiet', '-cache', '8192')
+    _availableArgs = ('/usr/bin/mplayer', '--help')
+    _playArgs = ('/usr/bin/mplayer', '-really-quiet', None)
+    _pipeArgs = ('/usr/bin/mplayer', '-', '-really-quiet', '-cache', '8192')
     # Mplayer supports speeds > 0:
     #  0.30 ~1/3 speed
     #  0.5 1/2 speed
@@ -53,7 +53,7 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
 
     # Multiplier of 1.0 = 100% of speed (i.e. no change)
     _speedMultiplier: Final[float] = 1.0  # The base range is 3 .. 30.
-    _volumeArgs = 'volume={0}'  # Volume in db -200db .. +40db Default 0
+    _volumeArgs = 'volume={0:.2f}'  # Volume in db -200db .. +40db Default 0
     _logger: BasicLogger = None
 
     def __init__(self):
@@ -84,12 +84,12 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
             :returns: the engine's volume using TTS scale
         """
         clz = type(self)
-        engine_volume: float = self.getVolumeDb()
         engine_id: str = Settings.get_engine_id()
         engine_constraints: Constraints
         engine_volume_val: ConstraintsValidator | IIntValidator
         engine_volume_val = SettingsMap.get_validator(engine_id,
                                                       SettingsProperties.VOLUME)
+        engine_volume: int = engine_volume_val.getValue()
         engine_constraints = engine_volume_val.constraints
         player_volume_val: IValidator | ConstraintsValidator
         player_volume_val = SettingsMap.get_validator(clz.service_ID,

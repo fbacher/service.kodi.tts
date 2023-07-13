@@ -706,18 +706,18 @@ class SettingsLowLevel:
                 return
             new_settings: Dict[str, Any] = {}
             # Get Lock
-            backend_id: str = cls.load_setting(SettingsProperties.ENGINE)
+            engine_id: str = cls.load_setting(SettingsProperties.ENGINE)
             force_load: bool = False
             for setting_id in SettingsProperties.ALL_SETTINGS:
-                key: str = setting_id
                 value: Any | None
-                service_id: str = backend_id
+                service_id: str = engine_id
+                key: str = cls.getExpandedSettingId(setting_id, engine_id)
                 if setting_id not in SettingsProperties.TOP_LEVEL_SETTINGS:
                     if SettingsMap.is_valid_property(service_id, setting_id):
-                        value = cls.load_setting(setting_id, backend_id)
+                        value = cls.load_setting(setting_id, engine_id)
                     elif force_load:
                         cls._logger.debug(f'FORCED load of property: {setting_id}')
-                        value = cls.load_setting(setting_id, backend_id)
+                        value = cls.load_setting(setting_id, engine_id)
                     else:
                         cls._logger.debug(f'Skipping load of property: {setting_id} '
                                           f'for service_id: {service_id}')
@@ -735,7 +735,7 @@ class SettingsLowLevel:
                 if value is not None:
                     new_settings[key] = value
 
-            cls._current_engine = backend_id
+            cls._current_engine = engine_id
 
             # validate_settings new_settings
             CurrentCachedSettings.set_settings(new_settings)
@@ -747,7 +747,6 @@ class SettingsLowLevel:
     @classmethod
     def load_setting(cls, setting_id: str,
                      engine_id: str = None) -> Any | None:
-        key: str = setting_id
         if engine_id is None:
             engine_id = Services.TTS_SERVICE
 
@@ -756,7 +755,7 @@ class SettingsLowLevel:
         if not force_load and not SettingsMap.is_valid_property(engine_id, setting_id):
             found = False
             cls._logger.debug(f'Setting {setting_id} NOT supported for {engine_id}')
-
+        key: str = cls.getExpandedSettingId(setting_id, engine_id)
         value: Any | None = None
         try:
             match SettingsProperties.SettingTypes[setting_id]:
@@ -819,6 +818,8 @@ class SettingsLowLevel:
         else:
             suffix: str = ''
             if setting_id not in SettingsProperties.TOP_LEVEL_SETTINGS:
+                if backend is None:
+                    backend = cls._current_engine
                 suffix = "." + backend
 
             real_key: str = setting_id + suffix
@@ -928,9 +929,13 @@ class SettingsLowLevel:
         :return:
         """
         ignore_cache = True
+        engine_id: str = None
         if bootstrap:
             ignore_cache = True
-        engine_id: str = cls.get_setting_str(SettingsProperties.ENGINE, engine_id=None,
+        elif cls._current_engine is not None:
+            engine_id = cls._current_engine
+        if engine_id is None:
+            engine_id = cls.get_setting_str(SettingsProperties.ENGINE, engine_id=None,
                                              ignore_cache=ignore_cache,
                                              default=default)
         #  cls._logger.debug(f'TRACE get_engine_id: {engine_id}')
@@ -968,8 +973,8 @@ class SettingsLowLevel:
     @classmethod
     def getSetting(cls, setting_id: str, backend_id: str | None,
                    default_value: Any | None = None) -> Any:
-        if backend_id is None:
-            backend_id = cls._current_engine
+        if setting_id == SettingsProperties.ENGINE:
+            return cls.get_engine_id()
         real_key = cls.getExpandedSettingId(setting_id, backend_id)
         cls.check_reload()
 

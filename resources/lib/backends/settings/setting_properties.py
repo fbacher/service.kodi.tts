@@ -121,10 +121,10 @@ class SettingsProperties:  # (ISettings):
         # AUTO_ITEM_EXTRA,
         # AUTO_ITEM_EXTRA_DELAY,
         ENGINE,
-        # BACKGROUND_PROGRESS_INTERVAL,
-        # DISABLE_BROKEN_SERVICES,
-        # SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA,
-        # SPEAK_BACKGROUND_PROGRESS,
+        BACKGROUND_PROGRESS_INTERVAL,
+        DISABLE_BROKEN_SERVICES,
+        SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA,
+        SPEAK_BACKGROUND_PROGRESS,
         # CACHE_PATH,   # Move to engine specific
         CACHE_EXPIRATION_DAYS,  # Move to engine specific
         # ADDONS_MD5,

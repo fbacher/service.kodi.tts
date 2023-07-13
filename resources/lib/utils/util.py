@@ -12,6 +12,7 @@ import xbmcvfs
 from backends.settings.setting_properties import SettingsProperties
 from common import utils
 from common.constants import Constants
+from common.garbage_collector import GarbageCollector
 from common.logger import *
 from common.monitor import Monitor
 from common.settings import Settings
@@ -168,6 +169,7 @@ def runInThread(func: Callable, args: List[Any] = [], name: str = '?',
                                                  'delay':delay, **kwargs})
     xbmc.log(f'util.runInThread starting thread {name}', xbmc.LOGINFO)
     thread.start()
+    GarbageCollector.add_thread(thread)
 
 
 def thread_wrapper(*args, **kwargs):

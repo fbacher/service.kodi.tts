@@ -7,7 +7,11 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from backends.players.iplayer import IPlayer
+from backends.settings.i_constraints import IConstraints
+from backends.settings.i_validators import IConstraintsValidator, IIntValidator
+from backends.settings.service_types import Services
 from backends.settings.setting_properties import SettingsProperties
+from backends.settings.settings_map import SettingsMap
 from common import utils
 from common.constants import Constants
 from common.exceptions import ExpiredException
@@ -156,7 +160,6 @@ class SubprocessAudioPlayer(AudioPlayer):
         self.failed: bool | None = None
         self.rc: int | None = None
 
-
     def speedArg(self, speed: float) -> str:
         #  self._logger.debug(f'speedArg speed: {speed} multiplier: {self._speedMultiplier}')
         return f'{(speed * self._speedMultiplier):.2f}'
@@ -172,7 +175,7 @@ class SubprocessAudioPlayer(AudioPlayer):
         # Can raise ExpiredException
         clz = type(self)
         base_args: List[str] = self.baseArgs(phrase)
-        clz._logger.debug_verbose(f'args: {" ".join(base_args)}')
+        clz._logger.debug_verbose(f'args: {"|".join(base_args)}')
         return base_args
 
     def get_pipe_args(self):
@@ -216,10 +219,33 @@ class SubprocessAudioPlayer(AudioPlayer):
         return speed
 
     def getVolumeDb(self) -> float:
-        engine: BaseServices = BaseServices.getService(Settings.get_engine_id())
-        volumeDb: float | None = engine.getVolumeDb()
-        self.setVolume(volumeDb)
-        return volumeDb
+        #  All volumes are relative to the TTS volume -12db .. +12db.
+        # the service_id is Services.TTS_Service_id.
+        # But.. We only need to adjust the volume that the engine produced to play
+        # at the volume specified by the user setting in TTS_Service by first
+        # converting engine's volume to be on the same scale as the player, then
+        # adjusting the volume to be equivalent to the setting.
+        clz = type(self)
+        final_volume: int = Settings.get_volume()
+        engine_volume_val: IConstraintsValidator = SettingsMap.get_validator(
+                Settings.get_engine_id(),
+                SettingsProperties.VOLUME)
+        engine_id: str = Settings.get_engine_id()
+        engine: BaseServices = BaseServices.getService(engine_id)
+        engine_vol_constraints: IConstraints = engine_volume_val.get_constraints()
+        volume_produced_by_engine: int = engine.getVolumeDb()
+        player_id: str = Settings.get_player_id()
+        player_volume_val: IConstraintsValidator
+        player_volume_val = SettingsMap.get_validator(clz.service_ID,
+                                                      SettingsProperties.VOLUME)
+        player_volume: int = player_volume_val.getValue()
+        player_vol_constraints: IConstraints = player_volume_val.get_constraints()
+
+        adjusted_player_volume =  \
+            engine_vol_constraints.translate_value(player_vol_constraints, player_volume)
+
+        # self.setVolume(volumeDb)
+        return adjusted_player_volume
 
     def setSpeed(self, speed: float):
         clz = type(self)
@@ -338,13 +364,13 @@ class SubprocessAudioPlayer(AudioPlayer):
             self._player_busy = False
             self._player_process = None
         clz._logger.debug(f'Player busy: {self._player_busy}')
-        if self._simple_player_process is not None:
+        if self._simple_player_process is not None and \
+                self._simple_player_process.process is not None:
             self.rc = self._simple_player_process.process.returncode
             self._player_busy = False
             self._simple_player_busy = False
             self._simple_player_process = None
             clz._logger.debug(f'SimplePlayer busy: {self._simple_player_busy}')
-
 
     @classmethod
     def available(cls, ext=None) -> bool:

@@ -2,7 +2,7 @@
 
 #  TODO: change to regex
 
-import re
+import regex
 from collections import UserList
 from pathlib import Path
 
@@ -34,19 +34,22 @@ class Phrase:
     PAUSE_SHORT: int = 0
     PAUSE_LONG: int = 0
 
-    _formatTagRE = re.compile(r'\[/?(?:CR|B|I|UPPERCASE|LOWERCASE)](?i)')
-    _colorTagRE = re.compile(r'\[/?COLOR[^]\[]*?](?i)')
-    _okTagRE = re.compile(r'(^|\W|\s)OK($|\s|\W)')  # Prevents saying Oklahoma
+    _formatTagRE: Final[regex.Pattern] = regex.compile(r'\[/?(?:CR|B|I|UPPERCASE|LOWERCASE)](?i)')
+    _colorTagRE: Final[regex.Pattern] = regex.compile(r'\[/?COLOR[^]\[]*?](?i)')
+    _okTagRE: Final[regex.Pattern] = regex.compile(r'(^|\W|\s)OK($|\s|\W)')  # Prevents saying Oklahoma
+    _hyphen_prefix: Final[regex.Pattern] = regex.compile(r'(:?(-\[)([^[]*)(\]))')
+
     _logger: BasicLogger = None
 
     def __init__(self, text: str = '', interrupt: bool = False, pre_pause_ms: int = None,
                  post_pause_ms: int = None,
                  cache_path: Path = None, exists: bool = False,
-                 preload_cache: bool = False):
+                 preload_cache: bool = False,
+                 check_expired: bool = False):
         clz = type(self)
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz.__class__.__name__)
-        self.text: str = clz.cleanPhraseext(text)
+        self.text: str = clz.clean_phrase_text(text)
         self.cache_path: Path = cache_path
         self.exists: bool = exists
         self.interrupt: bool = interrupt
@@ -62,7 +65,7 @@ class Phrase:
         # PhraseList can disable expiration checking when you explicitly
         # make an unchecked clone. Useful for seeding a cache for the future
 
-        self.check_expired: bool = True
+        self.check_expired: bool = check_expired
 
 
     @classmethod
@@ -71,7 +74,7 @@ class Phrase:
                      post_pause_ms: int = None,
                      cache_path: Path = None, exists: bool = False,
                      preload_cache: bool = False) -> ForwardRef('Phrase'):
-        text: str = cls.cleanPhraseext(text)
+        text: str = cls.clean_phrase_text(text)
         if len(text) == 0:
             return None
         return Phrase(text=text, interrupt=interrupt, pre_pause_ms=pre_pause_ms,
@@ -153,7 +156,7 @@ class Phrase:
         self.post_pause_ms = post_pause_ms
 
     def is_preload_cache(self) -> bool:
-        return self.is_preload_cache()
+        return self.preload_cache
 
     def set_preload_cache(self, preload_cache: bool):
         self.preload_cache = preload_cache
@@ -162,7 +165,7 @@ class Phrase:
         return self.serial_number
 
     @classmethod
-    def cleanPhraseext(cls, text):
+    def clean_phrase_text(cls, text: str):
         text = cls._formatTagRE.sub('', text)
         text = cls._colorTagRE.sub('', text)
         # Some speech engines say OK as Oklahoma
@@ -170,7 +173,7 @@ class Phrase:
 
         # getLabel() on lists wrapped in [] and some speech engines have
         # problems with text starting with -
-        text = text.strip('-[]')
+        text = regex.sub(cls._hyphen_prefix, '\g<2>', text)
         text = text.replace('XBMC', 'Kodi')
         if text == '..':
             text = Messages.get_msg(Messages.PARENT_DIRECTORY)
@@ -221,6 +224,7 @@ class PhraseList(UserList[Phrase]):
     global_serial_number: int = 1
     expired_serial_number: int = 0
     _logger: BasicLogger = None
+
     def __init__(self, check_expired: bool = True) -> None:
         super().__init__()
         clz = type(self)
@@ -247,7 +251,7 @@ class PhraseList(UserList[Phrase]):
             if isinstance(text, int):
                 pre_pause = text
                 continue
-            text: str = Phrase.cleanPhraseext(text)
+            text: str = Phrase.clean_phrase_text(text)
 
             # Drop any empty text
 

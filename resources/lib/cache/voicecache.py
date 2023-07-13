@@ -4,6 +4,7 @@ import datetime
 import hashlib
 import io
 import os
+import pathlib
 import sys
 import time
 from pathlib import Path
@@ -37,13 +38,16 @@ class VoiceCache:
     """
     _logger: BasicLogger = None
     ignore_cache_count: int = 0
-    cache_directory: str
     sound_file_base = '{filename}{suffix}'
 
     def __init__(self):
         clz = type(self)
         VoiceCache._logger = module_logger.getChild(
             self.__class__.__name__)
+
+    @classmethod
+    def get_cache_directory(cls) -> pathlib.Path:
+        cache_directory: str = None
         try:
             cache_path: str = Settings.get_cache_base()
             engine_id: str = Settings.get_engine_id()
@@ -51,11 +55,12 @@ class VoiceCache:
             assert engine_dir is not None, \
                 f'Can not find voice-cache dir for engine: {engine_id}'
 
-            clz.cache_directory = xbmcvfs.translatePath(f'{cache_path}/{engine_dir}')
+            cache_directory = xbmcvfs.translatePath(f'{cache_path}/{engine_dir}')
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            clz._logger.exception('')
+            cls._logger.exception('')
+        return pathlib.Path(cache_directory)
 
     @classmethod
     def get_path_to_voice_file(cls, phrase: Phrase,
@@ -121,8 +126,8 @@ class VoiceCache:
         best_exists: bool = False
         try:
             engine_id: str = Settings.get_engine_id()
-            backend_class: ITTSBackendBase = BaseServices.getService(engine_id)
-            if not cls.is_cache_sound_files(backend_class):
+            engine = BaseServices.getService(engine_id)
+            if not cls.is_cache_sound_files(engine):
                 return '', False, ''
 
             results: Dict[str, Tuple[str, bool]]
@@ -297,7 +302,7 @@ class VoiceCache:
             filename: str = VoiceCache.get_hash(text_to_voice)
             filename = cls.sound_file_base.format(filename=filename, suffix=suffix)
             subdir: str = filename[0:2]
-            path = Path(cls.cache_directory, subdir, filename)
+            path = Path(cls.get_cache_directory(), subdir, filename)
             if path.is_dir():
                 msg = f'Ignoring cached voice file: {path}. It is a directory.'
                 path_found = False

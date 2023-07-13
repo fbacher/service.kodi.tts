@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 import sys
 
+from google.protobuf.service import Service
+
 from backends.settings.i_validators import (IBoolValidator, IGenderValidator,
                                             IIntValidator,
                                             IStrEnumValidator, IValidator,
                                             ValueType)
+from backends.settings.service_types import Services
 from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import BoolValidator
@@ -97,15 +100,17 @@ class Settings(SettingsLowLevel):
     @classmethod
     def get_engine_id(cls, bootstrap: bool = False) -> str | None:
         if bootstrap:
-            return SettingsLowLevel.get_engine_id(bootstrap)
+            return SettingsLowLevel.get_engine_id(default=None, bootstrap=bootstrap)
 
-        engine_id_validator = SettingsMap.get_validator(SettingsProperties.ENGINE,
-                                                        None)
-        engine_id: str = None
-        if engine_id_validator is None:
-            engine_id = SettingsLowLevel.getSetting(SettingsProperties.ENGINE, None)
-        else:
-            engine_id: str = engine_id_validator.getValue()
+        engine_id: str = SettingsLowLevel.getSetting(SettingsProperties.ENGINE, None)
+        if engine_id is None:
+            engine_id = SettingsLowLevel.get_engine_id(default=None, bootstrap=bootstrap)
+        if engine_id is None:  # Not set, use default
+            # Validator only helps with default and possible values
+            engine_id_validator = SettingsMap.get_validator(SettingsProperties.ENGINE,
+                                                            None)
+            if engine_id_validator is not None:
+                engine_id: str = engine_id_validator.getValue()
         return engine_id
 
     @classmethod
@@ -167,16 +172,18 @@ class Settings(SettingsLowLevel):
         return
 
     @classmethod
-    def get_volume(cls, engine_id: str = None) -> int:
+    def get_volume(cls) -> int:
         volume_val: IValidator = SettingsMap.get_validator(
-                engine_id, SettingsProperties.VOLUME)
+                Services.TTS_SERVICE, SettingsProperties.VOLUME)
         volume: int = volume_val.getValue()
         return volume
 
     @classmethod
     def set_volume(cls, volume: int, engine_id: str = None) -> None:
+        if engine_id is None:
+            engine_id = cls._current_engine
         volume_val: IValidator = SettingsMap.get_validator(
-                engine_id, SettingsProperties.VOLUME)
+                Services.TTS_SERVICE, SettingsProperties.VOLUME)
         volume_val.setValue(volume)
         return
 
@@ -343,9 +350,9 @@ class Settings(SettingsLowLevel):
         player_validator: IValidator
         player_validator = SettingsMap.get_validator(engine_id,
                                                      property_id=SettingsProperties.PLAYER)
-        player: str = player_validator.getValue()
+        player_id: str = player_validator.getValue()
         # cls._logger.debug(f'player.{engine_id} = {player}')
-        return player
+        return player_id
 
     @classmethod
     def set_player(cls, value: str, engine_id: str = None) -> bool:

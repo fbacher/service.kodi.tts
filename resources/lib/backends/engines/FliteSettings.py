@@ -44,7 +44,8 @@ class FliteSettings:
 
     @classmethod
     def init_settings(cls):
-        pass
+        SettingsMap.define_service(ServiceType.ENGINE, cls.service_ID,
+                                   cls.displayName)
 
     @classmethod
     def isSupportedOnPlatform(cls) -> bool:

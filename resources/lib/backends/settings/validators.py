@@ -16,6 +16,12 @@ class Validator(IValidator):
     def __init__(self, setting_id: str, engine_id: str) -> None:
         self._default = None
         super().__init__(setting_id, engine_id)
+        self.depends_on_setting_id = None
+        self.depends_on_service_id = None
+
+    def depends_on(self, setting_id: str, service_id: str) -> None:
+        self.depends_on_setting_id = setting_id,
+        self.depends_on_service_id = service_id
 
 
 class IntValidator(Validator):

@@ -91,7 +91,8 @@ class SettingsMap:
 
     @classmethod
     def get_available_service_ids(cls, service_type) -> List[Tuple[str, str]]:
-        if not ServiceType.ALL <= service_type <= ServiceType.LAST_SERVICE_TYPE:
+        if not ServiceType.ALL.value <= service_type.value <= \
+               ServiceType.LAST_SERVICE_TYPE.value:
             cls._logger.debug(f'Invalid ServiceType: {service_type}')
             return None
 
@@ -99,7 +100,7 @@ class SettingsMap:
         available_service_ids: List[Tuple[str, str]] = []
         service_id: str
         display_name: str
-        for service_id, display_name in service_ids:
+        for service_id, display_name in service_ids.items():
             if cls.service_availability_map.get(service_id, Reason.UNKNOWN) == Reason.AVAILABLE:
                 available_service_ids.append((service_id, display_name))
         return available_service_ids
@@ -181,6 +182,7 @@ class SettingsMap:
         validator = cls.get_validator(service_id, property_id)
         constraints: IConstraints
         constraints = validator.constraints
+        return constraints
 
     @classmethod
     def get_default_value(cls, service_id: str,

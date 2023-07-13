@@ -17,7 +17,7 @@ from common.typing import *
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
-class Pico2WaveTTSBackend(Pico2WaveSettings, SimpleTTSBackend):
+class Pico2WaveTTSBackend(SimpleTTSBackend):
     backend_id = Backends.PICO_TO_WAVE_ID
     displayName = 'pico2wave'
     speedConstraints: Constraints = Constraints(20, 100, 200, True, False, 1.0,

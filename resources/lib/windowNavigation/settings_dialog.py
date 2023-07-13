@@ -10,6 +10,7 @@ from backends.base import *
 from backends.settings.i_constraints import IConstraints
 from backends.settings.i_validators import (IConstraintsValidator, IIntValidator,
                                             IValidator)
+from backends.settings.service_types import Services
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import IntValidator
 from common.constants import Constants
@@ -1120,14 +1121,16 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
     def select_volume(self) -> None:
         try:
             volume = self.engine_volume_slider.getInt()
-            constraints: Constraints = self.getEngineClass().get_constraints(SettingsProperties.VOLUME)
-            constraints.setSetting(volume, self.engine_id)
-
+            Settings.set_volume(volume, Services.TTS_SERVICE)
         except Exception as e:
             self._logger.exception('')
 
     def set_volume_range(self):
         try:
+            lower: int
+            upper: int
+            current: int
+
             lower, upper, current = self.get_volume_range()
             if lower == upper:
                 self.engine_volume_group.setVisible(False)
@@ -1144,7 +1147,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         current_volume: int = 0
         try:
             volume_val: IConstraintsValidator
-            volume_val = SettingsMap.get_validator(self.engine_id,
+            volume_val = SettingsMap.get_validator(Services.TTS_SERVICE,
                                                   SettingsProperties.VOLUME)
             if volume_val is None:
                 raise NotImplementedError
@@ -1154,7 +1157,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             minimum_volume = int(volume_constraints.minimum)
             default_volume = int(volume_constraints.default)
             maximum_volume = int(volume_constraints.maximum)
-            current_volume = Settings.get_volume(self.engine_id)
+            current_volume = int(Settings.get_volume())
         except NotImplementedError:
             pass
         except Exception as e:
@@ -1429,7 +1432,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
     def get_volume(self) -> int:
         if self.settings_changed:
-            volume = Settings.get_volume(self.engine_id)
+            volume = Settings.get_volume(Services.TTS_SERVICE)
             self.volume = volume
         return self.volume
 

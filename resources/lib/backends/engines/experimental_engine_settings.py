@@ -17,6 +17,7 @@ from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
+
 class ExperimentalSettings(BaseServiceSettings):
     # Only returns .mp3 files
     ID: str = Backends.EXPERIMENTAL_ENGINE_ID
@@ -36,10 +37,11 @@ class ExperimentalSettings(BaseServiceSettings):
     So, if an engine does not produce volume that matches the db-scale based
     ttsVolumeConstraints, then the engine needs to create a customer converter. 
     
-    In the case of Responsive Voice, it's maximum volume (1.0) appears to be
-    equivalent to about 0db. Since we have to use a different player AND since
+    In the case of Experimental engine, it's volume (it might be configureable) 
+    appears to be equivalent to be about 8db (as compared to TTS). Since we
+    have to use a different player AND since
     it is almost guaranteed that the voiced text is cached, just set volume
-    to fixed 1.0 and let player handle volume.
+    to fixed 8db and let player handle make the necessary adjustments to the volume.
     
     In other words, create a custom validator which always returns a volume of 1
     (or just don't use the validator and such and hard code it inline).
@@ -50,8 +52,10 @@ class ExperimentalSettings(BaseServiceSettings):
     
     """
 
+
     class VolumeConstraintsValidator(ConstraintsValidator):
 
+        # This engine
         def __init__(self, setting_id: str, service_id: str,
                      constraints: Constraints) -> None:
             super().__init__(setting_id, service_id, constraints)
@@ -59,20 +63,20 @@ class ExperimentalSettings(BaseServiceSettings):
         def setValue(self, value: int | float | str,
                      value_type: ValueType = ValueType.VALUE) -> None:
             """
-            Keep value fixed at 10 db
+            Keep value fixed at 8 db
             :param value:
             :param value_type:
             """
             constraints: Constraints = self.constraints
-            constraints.setSetting(10.0, self.service_id)
+            constraints.setSetting(8, self.service_id)
 
         def getValue(self, value_type: ValueType = ValueType.VALUE) -> int:
             """
-            Keep value fixed at 10
+            Keep value fixed at 8
             kodi volume
             :return:
             """
-            return 10
+            return 8
 
         def setUIValue(self, ui_value: str) -> None:
             pass
@@ -80,8 +84,6 @@ class ExperimentalSettings(BaseServiceSettings):
         def getUIValue(self) -> str:
             return f'{self.getValue()}'
 
-    api_key_validator = StringValidator(SettingsProperties.API_KEY, engine_id,
-                                        allowed_values=[], min_length=0, max_length=1024)
     _supported_input_formats: List[str] = []
     _supported_output_formats: List[str] = [SoundCapabilities.WAVE]
     _provides_services: List[ServiceType] = [ServiceType.ENGINE]
@@ -109,6 +111,9 @@ class ExperimentalSettings(BaseServiceSettings):
 
     @classmethod
     def init_settings(cls):
+
+        SettingsMap.define_service(ServiceType.ENGINE, cls.engine_id,
+                           cls.displayName)
         #
         # Need to define Conversion Constraints between the TTS 'standard'
         # constraints/settings to the engine's constraints/settings
@@ -132,10 +137,6 @@ class ExperimentalSettings(BaseServiceSettings):
 
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOLUME,
                                    volume_constraints_validator)
-
-        api_key_validator = StringValidator(SettingsProperties.API_KEY, cls.engine_id,
-                                            allowed_values=[], min_length=0,
-                                            max_length=1024)
         language_validator: StringValidator
         language_validator = StringValidator(SettingsProperties.LANGUAGE, cls.engine_id,
                                              allowed_values=[], min_length=2,
@@ -162,9 +163,6 @@ class ExperimentalSettings(BaseServiceSettings):
                                            allowed_values=valid_players,
                                            default=Players.MPLAYER)
 
-        SettingsMap.define_setting(service_id=cls.service_ID,
-                                   property_id=SettingsProperties.API_KEY,
-                                   validator=api_key_validator)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.LANGUAGE,
                                    language_validator)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOICE,
@@ -175,8 +173,6 @@ class ExperimentalSettings(BaseServiceSettings):
                                    speed_constraints_validator)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PITCH,
                                    pitch_constraints_validator)
-        # SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOLUME,
-        #                           volume_constraints_validator)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER,
                                    player_validator)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.CACHE_SPEECH,

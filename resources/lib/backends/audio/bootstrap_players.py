@@ -3,6 +3,7 @@ import sys
 from backends.settings.settings_map import Reason, SettingsMap
 from common.logger import BasicLogger
 from common.setting_constants import Players
+from common.settings_low_level import SettingsLowLevel
 from common.system_queries import SystemQueries
 from common.typing import *
 
@@ -42,6 +43,8 @@ class BootstrapPlayers:
     def load_players(cls):
         for player_id in cls.player_ids:
             cls.load_player(player_id)
+        # Add all settings
+        SettingsLowLevel.load_settings()
 
     @classmethod
     def load_player(cls, player_id: str) -> None:

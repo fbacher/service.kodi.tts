@@ -8,6 +8,7 @@ Created on Feb 10, 2019
 
 import locale
 import os
+from enum import IntEnum
 
 import xbmcvfs
 
@@ -116,3 +117,16 @@ class DebugLevel(object):
 
 class Notify:
     STOP: str = 'stop'
+
+
+class ReturnCode(IntEnum):
+    OK = 0
+    MINOR = 2
+    MINOR_SAVE_FAIL = 3
+    STOP = 4
+    CALL_FAILED = 5
+    FILE = 6
+    DOWNLOAD = 7
+    EXPIRED = 10
+    ABORT = 11
+    NOT_SET = 99

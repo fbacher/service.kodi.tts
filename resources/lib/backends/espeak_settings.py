@@ -25,7 +25,7 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 class ESpeakSettings(BaseServiceSettings):
     # Only returns .mp3 files
     ID: str = Backends.ESPEAK_ID
-    backend_id = Backends.ESPEAK_ID
+    engine_id = Backends.ESPEAK_ID
     service_ID: str = Services.ESPEAK_ID
     displayName = 'eSpeak'
 
@@ -103,18 +103,20 @@ class ESpeakSettings(BaseServiceSettings):
 
     @classmethod
     def init_settings(cls):
+        SettingsMap.define_service(ServiceType.ENGINE, cls.service_ID,
+                                   cls.displayName)
         #
         # Need to define Conversion Constraints between the TTS 'standard'
         # constraints/settings to the engine's constraints/settings
 
         speed_constraints_validator = ConstraintsValidator(SettingsProperties.SPEED,
-                                                           cls.backend_id,
+                                                           cls.engine_id,
                                                            BaseServiceSettings.ttsSpeedConstraints)
 
         pitch_constraints: Constraints = Constraints(0, 50, 99, True, False, 1.0,
                                                      SettingsProperties.PITCH)
         pitch_constraints_validator = ConstraintsValidator(SettingsProperties.PITCH,
-                                                           cls.backend_id,
+                                                           cls.engine_id,
                                                            pitch_constraints)
 
         volumeConversionConstraints: Constraints = Constraints(minimum=1, default=100,
@@ -124,7 +126,7 @@ class ESpeakSettings(BaseServiceSettings):
                                                                midpoint=100, increment=5)
         volume_constraints_validator = ConstraintsValidator(
                 SettingsProperties.VOLUME,
-                cls.backend_id,
+                cls.engine_id,
                 volumeConversionConstraints)
 
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOLUME,
@@ -132,25 +134,25 @@ class ESpeakSettings(BaseServiceSettings):
 
         audio_validator: StringValidator
         audio_converter_validator = StringValidator(SettingsProperties.CONVERTER,
-                                                    cls.backend_id,
+                                                    cls.engine_id,
                                                     allowed_values=[Services.LAME_ID])
 
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.CONVERTER,
                                    audio_converter_validator)
 
         language_validator: StringValidator
-        language_validator = StringValidator(SettingsProperties.LANGUAGE, cls.backend_id,
+        language_validator = StringValidator(SettingsProperties.LANGUAGE, cls.engine_id,
                                              allowed_values=[], min_length=2,
                                              max_length=5)
         voice_validator: StringValidator
-        voice_validator = StringValidator(SettingsProperties.VOICE, cls.backend_id,
+        voice_validator = StringValidator(SettingsProperties.VOICE, cls.engine_id,
                                           allowed_values=[], min_length=1, max_length=10,
                                           default='')
         pipe_validator: BoolValidator
-        pipe_validator = BoolValidator(SettingsProperties.PIPE, cls.backend_id,
+        pipe_validator = BoolValidator(SettingsProperties.PIPE, cls.engine_id,
                                        default=False)
         cache_validator: BoolValidator
-        cache_validator = BoolValidator(SettingsProperties.CACHE_SPEECH, cls.backend_id,
+        cache_validator = BoolValidator(SettingsProperties.CACHE_SPEECH, cls.engine_id,
                                         default=False)
         #  TODO:  Need to eliminate un-available players
         #         Should do elimination in separate code
@@ -160,7 +162,7 @@ class ESpeakSettings(BaseServiceSettings):
                                     Players.MPLAYER, Players.MPG321, Players.MPG123,
                                     Players.MPG321_OE_PI, Players.INTERNAL]
         player_validator: StringValidator
-        player_validator = StringValidator(SettingsProperties.PLAYER, cls.backend_id,
+        player_validator = StringValidator(SettingsProperties.PLAYER, cls.engine_id,
                                            allowed_values=valid_players,
                                            default=Players.MPLAYER)
 

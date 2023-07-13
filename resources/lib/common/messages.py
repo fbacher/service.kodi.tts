@@ -261,6 +261,7 @@ class Messages:
     BACKEND_FLITE = Message('Flite', 32316)
     BACKEND_RESPONSIVE_VOICE = Message('ResponsiveVoice', 32317)
     BACKEND_SPEECH_DISPATCHER = Message('Speech Dispatcher', 32318)
+    BACKEND_EXPERIMENTAL = Message('Experimental Engine', 32323)
 
     # Generic VOICE Names
 
@@ -329,7 +330,10 @@ class Messages:
                 msg_id = msg_ref.get_msg_id()
                 unformatted_msg = CriticalSettings.ADDON.getLocalizedString(msg_id)
             if unformatted_msg == '':
-                unformatted_msg = f'Message not defined: {str(msg_id)}'
+                if msg_id != 0:
+                    unformatted_msg = f'Message not defined: {str(msg_id)}'
+                else:
+                    unformatted_msg = f'Message not defined: {msg_ref}'
                 if Messages._instance._logger.isEnabledFor(ERROR):
                     Messages._instance._logger.error(
                         f'Can not find message from strings for message id: {str(msg_id)}')

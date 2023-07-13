@@ -13,6 +13,7 @@ from backends.audio.sound_capabilties import ServiceType, SoundCapabilities
 from backends.base import Constraints, SimpleTTSBackend
 from backends.espeak_settings import ESpeakSettings
 from backends.i_tts_backend_base import ITTSBackendBase
+from backends.players.iplayer import IPlayer
 from backends.settings.service_types import Services
 from backends.settings.validators import ConstraintsValidator
 from common import utils
@@ -28,7 +29,7 @@ from common.typing import *
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
-class ESpeakTTSBackend(ESpeakSettings, SimpleTTSBackend):
+class ESpeakTTSBackend(SimpleTTSBackend):
     """
 
     """
@@ -147,9 +148,8 @@ class ESpeakTTSBackend(ESpeakSettings, SimpleTTSBackend):
 
     def getMode(self):
         clz = type(self)
-        default_player: str = clz.get_setting_default(SettingsProperties.PLAYER)
-        player: str = clz.get_player_setting(default_player)
-        if player == BuiltInAudioPlayer.ID:
+        player_id: str = Settings.get_player_id(clz.service_ID)
+        if player_id == BuiltInAudioPlayer.ID:
             return Mode.ENGINESPEAK
         elif type(self).getSetting(SettingsProperties.PIPE):
             return Mode.PIPE
