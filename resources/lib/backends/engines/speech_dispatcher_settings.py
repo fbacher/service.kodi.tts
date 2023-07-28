@@ -5,6 +5,7 @@ from backends.settings.service_types import Services, ServiceType
 from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import ConstraintsValidator
+from common.constants import Constants
 from common.logger import BasicLogger
 from common.setting_constants import Backends
 
@@ -26,8 +27,8 @@ class SpeechDispatcherSettings:
             super().__init__(setting_id, service_id, constraints)
             clz = type(self)
 
-        def setValue(self, value: int | float | str,
-                     value_type: ValueType = ValueType.VALUE) -> None:
+        def set_tts_value(self, value: int | float | str,
+                          value_type: ValueType = ValueType.VALUE) -> None:
             """
             Keep value fixed at 1
             :param value:
@@ -36,7 +37,7 @@ class SpeechDispatcherSettings:
             constraints: Constraints = self.constraints
             constraints.setSetting(1, self.service_id)
 
-        def getValue(self, value_type: ValueType = ValueType.VALUE) -> int | float | str:
+        def get_tts_value(self, value_type: ValueType = ValueType.VALUE) -> int | float | str:
             """
             Keep value fixed at 1
             :return:
@@ -47,7 +48,8 @@ class SpeechDispatcherSettings:
             pass
 
         def getUIValue(self) -> str:
-            return f'{self.getValue()}'
+            value, _, _, _ = self.get_tts_values()
+            return str(value)
 
     def __init__(self, *args, **kwargs):
         clz = type(self)
@@ -63,8 +65,9 @@ class SpeechDispatcherSettings:
 
     def init_settings(self):
         clz = type(self)
+        service_properties = {Constants.NAME: clz.displayName}
         SettingsMap.define_service(ServiceType.ENGINE, clz.service_ID,
-                                   clz.displayName)
+                                   service_properties)
         volumeConversionConstraints: Constraints = Constraints(minimum=0.1, default=1.0,
                                                                maximum=2.0, integer=False,
                                                                decibels=False, scale=1.0,

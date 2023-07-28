@@ -51,7 +51,10 @@ class Constants:
     DEFAULT_CACHE_DIRECTORY = None
     IGNORE_CACHE_EXPIRATION_DATE: bool = True
 
+    CACHE_SUFFIX: Final[str] = 'cache_suffix'
     LOCALE = ''
+    MAX_PHRASE_LENGTH: Final[str] = 'max_phrase_length'
+    NAME: Final[str] = 'name'
     PAUSE_INSERT = '...'
 
     @staticmethod
@@ -129,4 +132,5 @@ class ReturnCode(IntEnum):
     DOWNLOAD = 7
     EXPIRED = 10
     ABORT = 11
+    NO_PHRASES = 12
     NOT_SET = 99

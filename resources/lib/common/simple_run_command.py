@@ -7,12 +7,12 @@ from subprocess import Popen
 
 import xbmc
 
-from cache.prefetch_movie_data.seed_cache import SeedCache
 from common.critical_settings import CriticalSettings
 from common.garbage_collector import GarbageCollector
 from common.logger import *
 from common.monitor import Monitor
 from common.phrases import PhraseList
+from common.player_monitor import PlayerMonitor, PlayerState
 from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -30,9 +30,11 @@ class SimpleRunCommand:
     """
 
     """
+    player_state: str = PlayerState.PLAYING_STOPPED
     logger: BasicLogger = None
 
-    def __init__(self, args: List[str], phrase_serial: int = 0, name: str = '') -> None:
+    def __init__(self, args: List[str], phrase_serial: int = 0, name: str = '',
+                 stop_on_play: bool = False) -> None:
         """
 
         :param args: arguments to be passed to exec command
@@ -46,17 +48,24 @@ class SimpleRunCommand:
         self.thread_name = name
         self.rc = 0
         self.run_state: RunState = RunState.NOT_STARTED
-        self.cmd_finished = False
+        self.stop_on_play: bool = stop_on_play
+        self.cmd_finished: bool = False
         self.process: Popen = None
-        self.run_thread: Union[None, threading.Thread] = None
-        self.stdout_thread: Union[None, threading.Thread] = None
-        self.stderr_thread: Union[None, threading.Thread] = None
+        self.run_thread: threading.Thread | None = None
+        self.stdout_thread: threading.Thread | None = None
+        self.stderr_thread: threading.Thread | None = None
         self.stdout_lines: List[str] = []
         self.stderr_lines: List[str] = []
         Monitor.register_abort_listener(self.abort_listener, name=name)
 
+        if self.stop_on_play:
+            PlayerMonitor.register_player_status_listener(
+                    self.player_status_listener,
+                    f'{self.thread_name}_Play_Monitor')
+
     def terminate(self):
-        pass
+        if self.process is not None and self.run_state <= RunState.RUNNING:
+            self.process.terminate()
 
     def kill(self):
         pass
@@ -66,6 +75,14 @@ class SimpleRunCommand:
 
     def abort_listener(self) -> None:
         pass
+
+    def player_status_listener(self, player_state: PlayerState) -> None:
+        clz = type(self)
+        clz.player_state = player_state
+        if player_state == PlayerState.PLAYING and self.stop_on_play:
+            clz.logger.debug(f'PLAYING_STOPPED terminating command: '
+                              f'args: {self.args} ')
+            self.terminate()
 
     def run_cmd(self) -> int:
         """
@@ -78,7 +95,9 @@ class SimpleRunCommand:
         try:
             Monitor.exception_on_abort()
             if self.phrase_serial < PhraseList.expired_serial_number:
-                module_logger.debug(f'EXPIRED before start')
+                clz.logger.debug(f'EXPIRED before start {self.phrase_serial} '
+                                 f'{self.args[0]}',
+                                 trace=Trace.TRACE_AUDIO_START_STOP)
                 self.run_state = RunState.TERMINATED
                 self.rc = 11
                 return self.rc
@@ -111,7 +130,9 @@ class SimpleRunCommand:
                         # Yes, initiate terminate/kill of process
                         check_serial = False
                         countdown = True
-                        module_logger.debug(f'Expired, terminating')
+                        clz.logger.debug(f'Expired, terminating {self.phrase_serial} '
+                                         f'{self.args[0]}',
+                                         trace=Trace.TRACE_AUDIO_START_STOP)
                         self.process.terminate()
                         next_state = RunState.TERMINATED
                     if countdown and kill_countdown > 0:
@@ -119,6 +140,9 @@ class SimpleRunCommand:
                     elif kill_countdown == 0:
                         next_state = RunState.KILLED
                         module_logger.debug(f'terminate not work, KILLING')
+                        clz.logger.debug(f'Terminate not working, Killing {self.phrase_serial} '
+                                         f'{self.args[0]}',
+                                         trace=Trace.TRACE_AUDIO_START_STOP)
                         self.process.kill()
                         break
                 except subprocess.TimeoutExpired:
@@ -132,7 +156,9 @@ class SimpleRunCommand:
                     if rc is not None:
                         self.rc = rc
                         self.cmd_finished = True
-                        clz.logger.debug(f'Command {self.args[0]} finished rc: {rc}')
+                        clz.logger.debug(f'FINISHED COMMAND {self.phrase_serial} '
+                                         f'{self.args[0]} rc: {rc}',
+                                         trace=Trace.TRACE_AUDIO_START_STOP)
                         break  # Complete
                 except subprocess.TimeoutExpired:
                     # Only indicates the timeout is expired, not the run state
@@ -140,7 +166,9 @@ class SimpleRunCommand:
 
             if not self.cmd_finished:
                 # Shutdown in process
-                clz.logger.debug(f'Command {self.args[0]} start kill')
+                clz.logger.debug(f'SHUTDOWN, START KILL COMMAND {self.phrase_serial} '
+                                 f'{self.args[0]}',
+                                 trace=Trace.TRACE_SHUTDOWN)
                 self.process.kill()  # SIGKILL. Should cause stderr & stdout to exit
                 while not Monitor.wait_for_abort(timeout=0.1):
                     try:
@@ -148,7 +176,9 @@ class SimpleRunCommand:
                         if rc is not None:
                             self.rc = rc
                             self.cmd_finished = True
-                            clz.logger.debug(f'killed Command {self.args[0]} finished')
+                            clz.logger.debug(f'KILLED COMMAND {self.phrase_serial} '
+                                             f'{self.args[0]} rc: {rc}',
+                                             trace=Trace.TRACE_AUDIO_START_STOP)
                             break  # Complete
                     except subprocess.TimeoutExpired:
                         pass
@@ -169,6 +199,7 @@ class SimpleRunCommand:
             self.rc = 99  # Thread will exit very soon
         finally:
             Monitor.unregister_abort_listener(self.abort_listener)
+            PlayerMonitor.unregister_player_status_listener(self.player_status_listener)
         return self.rc
 
     def run_worker(self) -> None:

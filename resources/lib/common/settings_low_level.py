@@ -77,7 +77,7 @@ class CurrentCachedSettings:
         throws KeyError
         """
         value = cls._current_settings.get(setting_id)
-        if value is None:
+        if value is None or (isinstance(value, str) and value == ''):
             value = default_value
             if setting_id == 'converter':
                 cls._logger.dump_stack('Converter problem')

@@ -4,6 +4,8 @@ import enum
 from backends.settings.constraints import Constraints
 from backends.settings.i_constraints import IConstraints
 from backends.settings.i_validators import IGenderValidator, IStringValidator, IValidator
+from backends.settings.service_types import Services
+from backends.settings.settings_map import SettingsMap
 from common.logger import BasicLogger
 from common.setting_constants import Genders
 from common.settings_low_level import SettingsLowLevel
@@ -13,15 +15,27 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class Validator(IValidator):
-    def __init__(self, setting_id: str, engine_id: str) -> None:
+    def __init__(self, setting_id: str, service_id: str) -> None:
         self._default = None
-        super().__init__(setting_id, engine_id)
+        super().__init__(setting_id, service_id)
+        self.setting_id = setting_id
         self.depends_on_setting_id = None
         self.depends_on_service_id = None
 
     def depends_on(self, setting_id: str, service_id: str) -> None:
         self.depends_on_setting_id = setting_id,
         self.depends_on_service_id = service_id
+
+    def get_tts_validator(self) -> IValidator:
+        tts_val: IValidator = None
+        if self.service_id == Services.TTS_SERVICE:
+            return self
+        try:
+            tts_val = SettingsMap.get_validator(Services.TTS_SERVICE,
+                                                self.setting_id)
+        except Exception:
+            module_logger.exception('')
+        return tts_val
 
 
 class IntValidator(Validator):
@@ -39,21 +53,30 @@ class IntValidator(Validator):
         self.scale_internal_to_external: int = scale_internal_to_external
         return
 
-    def getValue(self, default: int | None = None) -> bool | int | float | str:
+    def get_tts_value(self, default: int | None = None,
+                      setting_service_id: str = None) -> bool | int | float | str:
         if default is None:
             default = self._default
+        if setting_service_id is None:
+            setting_service_id = SettingsLowLevel.get_engine_id()
         internal_value: int = SettingsLowLevel.get_setting_int(self.setting_id,
-                                                               self.service_id,
+                                                               setting_service_id,
                                                                default)
-        value: int = internal_value * self.scale_internal_to_external
-        value = min(value, self.max_value)
-        value = max(value, self.min_value)
-        return int(round(value))
+        tts_val: IValidator | IntValidator
+        tts_val = self.get_tts_validator()
 
-    def setValue(self, value: int | float) -> None:
-        value = min(value, self.max_value)
-        value = max(value, self.min_value)
-        internal_value: int = value * self.scale_internal_to_external
+        value: int = internal_value * tts_val.scale_internal_to_external
+        value = min(value, tts_val.max_value)
+        value = max(value, tts_val.min_value)
+        return int(int(round(value)))
+
+    def set_tts_value(self, value: int | float) -> None:
+        tts_val: IValidator | IntValidator
+        tts_val = self.get_tts_validator()
+
+        value = min(value, tts_val.max_value)
+        value = max(value, tts_val.min_value)
+        internal_value: int = value * tts_val.scale_internal_to_external
         SettingsLowLevel.set_setting_int(self.setting_id, internal_value, self.service_id)
         return
 
@@ -93,9 +116,6 @@ class IntValidator(Validator):
     def get_max_value(self) -> int:
         return self.max_value
 
-    def get_default_value(self) -> int:
-        return self._default
-
 
 class StringValidator(IStringValidator):
 
@@ -116,12 +136,15 @@ class StringValidator(IStringValidator):
         self._default: str = default
         return
 
-    def getValue(self, default : str | None = None) -> str:
+    def get_tts_value(self, default : str | None = None,
+                      setting_service_id: str = None) -> str:
         valid: bool = True
         if default is None:
             default = self._default
+        if setting_service_id is None:
+            setting_service_id = SettingsLowLevel.get_engine_id()
         internal_value: str = SettingsLowLevel.get_setting_str(self.setting_id,
-                                                               self.service_id,
+                                                               setting_service_id,
                                                                ignore_cache=False,
                                                                default=default)
         if internal_value is None:
@@ -145,7 +168,7 @@ class StringValidator(IStringValidator):
         value: str = internal_value
         return value
 
-    def setValue(self, value: str) -> None:
+    def set_tts_value(self, value: str) -> None:
         valid: bool = True
         internal_value: str = value
         if (self.allowed_values is not None) and (len(self.allowed_values) > 0):
@@ -220,14 +243,14 @@ class EnumValidator(Validator):
         self._default: enum.Enum = default
         return
 
-    def getValue(self) -> enum.Enum:
+    def get_tts_value(self) -> enum.Enum:
         str_value: str = SettingsLowLevel.get_setting_str(self.setting_id, self.service_id,
                                                           ignore_cache=False,
                                                           default=self._default.name)
         self.current_value = enum.Enum[str_value]
         return self.current_value
 
-    def setValue(self, value: enum.Enum) -> None:
+    def set_tts_value(self, value: enum.Enum) -> None:
         self.current_value = value
         SettingsLowLevel.set_setting_str(self.setting_id, self.current_value.name,
                                          self.service_id)
@@ -257,11 +280,12 @@ class EnumValidator(Validator):
 
 class ConstraintsValidator(Validator):
     def __init__(self, setting_id: str, service_id: str,
-                 constraints: IConstraints) -> None:
+                 constraints: Constraints | IConstraints) -> None:
         super().__init__(setting_id, service_id)
         self.setting_id: str = setting_id
         self.service_id: str = service_id
-        self.constraints: IConstraints = constraints
+        self.constraints: Constraints | IConstraints = constraints
+        self._tts_line_value: float | int = constraints.tts_line_value
 
     def setUIValue(self, ui_value: int) -> None:
         pass
@@ -269,14 +293,101 @@ class ConstraintsValidator(Validator):
     def getUIValue(self) -> str:
         pass
 
-    def getValue(self) -> int | float | str:
+    def get_tts_values(self, default_value: int | float | str = None,
+                      setting_service_id: str = None) \
+            -> Tuple[int | float | str, int | float | str , int | float | str, \
+                                                            int | float| str]:
+        """
+
+        :param default_value:
+        :param setting_service_id:
+        :return: current_value, min_value, default_value, max_value
+        """
+        clz = type(self)
+        if default_value is None:
+            default_value = self._default
+        if setting_service_id is None:
+            setting_service_id = SettingsLowLevel.get_engine_id()
+
+        tts_val: IValidator | ConstraintsValidator = self.get_tts_validator()
+        tts_constraints: IConstraints = tts_val.get_constraints()
+        current_value: int | float = tts_constraints.currentValue(setting_service_id)
+        is_valid, _ = self.validate(current_value)
+        if not is_valid:
+            module_logger.debug(f'Invalid value for {self.setting_id} service: '
+                                f'{Services.TTS_SERVICE} Replaced with closest valid value')
+
+        min_value: float | int | str
+        default_value: float | int | str
+        max_value: float | int | str
+        min_value = tts_constraints.minimum
+        default_value = tts_constraints.default
+        max_value = tts_constraints.maximum
+
+        if tts_constraints.integer:
+            current_value = int(round(current_value))
+            min_value = int(round(min_value))
+            default_value = int(round(default_value))
+            max_value = int(round(max_value))
+        else:
+            current_value = float(current_value)
+            min_value = float(min_value)
+            default_value = float(default_value)
+            max_value = float(max_value)
+
+        return current_value, min_value, default_value, max_value
+
+    def set_tts_value(self, value: int | float | str) -> None:
+        tts_val: IValidator | ConstraintsValidator = self.get_tts_validator()
+        tts_constraints: IConstraints = tts_val.get_constraints()
+        tts_constraints.setSetting(value, self.service_id)
+
+    def get_impl_value(self,
+                       setting_service_id: str | None = None) -> int | float | str:
+        """
+            Translates the 'TTS' value (used internally) to the implementation's
+            scale (player or engine).
+            :return:
+        """
         constraints: IConstraints = self.constraints
-        value: int | float = constraints.currentValue(self.service_id)
+        tts_val: IValidator | ConstraintsValidator = self.get_tts_validator()
+        tts_constraints: IConstraints = tts_val.get_constraints()
+
+        tts_value, _, _, _ = self.get_tts_values(default_value=None,
+            setting_service_id=setting_service_id)
+        value: int | float | str
+        # Translates from tts to self units
+        value = tts_constraints.translate_value(constraints, tts_value)
+        if tts_constraints.integer:
+            return int(round(value))
+        else:
+            value = float(value)
         return value
 
-    def setValue(self, value: int | float | str) -> None:
+    def set_impl_value(self, value: int | float | str) -> None:
         constraints: IConstraints = self.constraints
         constraints.setSetting(value, self.service_id)
+        tts_val: IValidator | ConstraintsValidator = self.get_tts_validator()
+        tts_constraints: IConstraints = tts_val.get_constraints()
+
+        tts_value: int | float = self.get_tts_value()
+        value: int | float | str
+        # Translates from self to tts units
+        value = constraints.translate_value(tts_constraints, tts_value)
+
+    @property
+    def tts_line_value(self) -> int | float:
+        value: int | float
+        value = self._tts_line_value
+        if self.constraints.integer:
+            value = int(round(value))
+        else:
+            value = float(value)
+        return value
+
+    @property
+    def integer(self) -> bool:
+        return self.constraints.integer
 
     def validate(self, value: int | float | None) -> Tuple[bool, int | float]:
         constraints: IConstraints = self.constraints
@@ -287,27 +398,52 @@ class ConstraintsValidator(Validator):
         if value is not None:
             value = value * constraints.scale
             in_range = constraints.in_range(value)
+        if constraints.integer:
+            value = int(round(value))
+        else:
+            value = float(value)
         return in_range, value
 
     def preValidate(self, ui_value: int) -> Tuple[bool, int]:
         pass
 
-    def get_constraints(self) -> IConstraints:
+    def get_constraints(self) -> IConstraints | Constraints:
         return self.constraints
 
     @property
     def default_value(self) -> int | str | float:
-        return self.constraints.default
+        value: float | int | str = self.constraints.default
+        if self.constraints.integer:
+            value = int(round(value))
+        elif not isinstance(value, str):
+            value = float(value)
+        return value
 
     def get_min_value(self) -> int | float:
-        return self.constraints.minimum
+        value: int | float = self.constraints.minimum
+        if self.constraints.integer:
+            value = int(round(value))
+        else:
+            value = float(value)
+        return value
 
     def get_max_value(self) -> int | float:
-        return self.constraints.maximum
+        value: int | float = self.constraints.maximum
+        if self.constraints.integer:
+            value = int(round(value))
+        else:
+            value = float(value)
+        return value
 
-    def get_default_value(self) -> int | float:
-        return self.constraints.default
-
+    '''
+    def get_default_value(self) -> int | float | str:
+        value: float | int = self.constraints.default
+        if self.constraints.integer:
+            value = int(round(value))
+        else:
+            value = float(value)
+        return value
+    '''
 
 
 class BoolValidator(Validator):
@@ -318,13 +454,13 @@ class BoolValidator(Validator):
         self.service_id: str = service_id
         self._default: bool = default
 
-    def getValue(self) -> bool:
+    def get_tts_value(self) -> bool:
         value = SettingsLowLevel.get_setting_bool(self.setting_id, self.service_id,
                                                   ignore_cache=False,
                                                   default=self._default)
         return value
 
-    def setValue(self, value: bool) -> None:
+    def set_tts_value(self, value: bool) -> None:
         SettingsLowLevel.set_setting_bool(self.setting_id, value, self.service_id)
 
     @property
@@ -363,7 +499,7 @@ class GenderValidator(IGenderValidator):
         self._default: Genders = default
         return
 
-    def getValue(self) -> Genders:
+    def get_tts_value(self) -> Genders:
         str_value: str = SettingsLowLevel.get_setting_str(self.setting_id, self.service_id,
                                                           ignore_cache=False,
                                                           default=self._default.value)
@@ -371,20 +507,20 @@ class GenderValidator(IGenderValidator):
         self.current_value = Genders(str_value.lower())
         return self.current_value
 
-    def setValue(self, value: Genders) -> None:
+    def set_tts_value(self, value: Genders) -> None:
         self.current_value = value
         SettingsLowLevel.set_setting_str(self.setting_id, self.current_value.name,
                                          self.service_id)
 
     def setUIValue(self, ui_value: str) -> None:
         # Use the enum's value: Genders.MALE.value() or 'male'
-        self.setValue(Genders(ui_value.lower()))
+        self.set_tts_value(Genders(ui_value.lower()))
 
     def getUIValue(self) -> str:
-        return self.getValue().name
+        return self.get_tts_value().name
 
     def getInternalValue(self) -> Genders:
-        return self.getValue()
+        return self.get_tts_value()
 
     def setInternalValue(self, internalValue: int | str) -> None:
         raise NotImplementedError

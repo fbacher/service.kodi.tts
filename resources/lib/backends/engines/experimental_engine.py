@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import io
 import os
-import re
+import regex
 import sys
 from datetime import timedelta
 from enum import Enum
@@ -11,9 +11,8 @@ import subprocess
 
 from typing.io import IO
 
-from backends.audio.sound_capabilties import ServiceType, SoundCapabilities
+from backends.audio.sound_capabilties import ServiceType
 from backends.base import SimpleTTSBackend
-from backends.engines.experimental_engine_settings import ExperimentalSettings
 from backends.players.iplayer import IPlayer
 from backends.settings.i_validators import IValidator
 from backends.settings.service_types import Services
@@ -21,22 +20,19 @@ from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import ConstraintsValidator
 from cache.voicecache import VoiceCache
-from common.base_services import BaseServices
-from common.constants import Constants, ReturnCode
+from common.constants import ReturnCode
 from common.exceptions import ExpiredException
 from common.logger import *
-from common.messages import Messages
 from common.monitor import Monitor
 from common.phrases import Phrase, PhraseList
-from common.setting_constants import Backends, Genders, Languages, Mode
+from common.setting_constants import Backends, Genders, Mode
 from common.settings import Settings
 from common.simple_run_command import SimpleRunCommand
-from common.system_queries import SystemQueries
 from common.typing import *
 from utils.util import runInThread
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
-PUNCTUATION_PATTERN = re.compile(r'([.,:])', re.DOTALL)
+PUNCTUATION_PATTERN = regex.compile(r'([.,:])', regex.DOTALL)
 
 
 class WaveToMpg3Encoder(Enum):
@@ -320,6 +316,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
 
     MAXIMUM_PHRASE_LENGTH: Final[int] = 200
     _logger: BasicLogger = None
+    _initialized: bool = False
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -331,7 +328,9 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
         self.stop_processing = False
         self.simple_cmd: SimpleRunCommand = None
         self.stop_urgent: bool = False
-        BaseServices().register(self)
+        if not clz._initialized:
+            clz.register(self)
+            clz._initialized = True
 
     def init(self) -> None:
         clz = type(self)
@@ -363,7 +362,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
             if phrase.get_cache_path() is None:
                 VoiceCache.get_path_to_voice_file(phrase,
                                                   use_cache=Settings.is_use_cache())
-            if not phrase.is_exists():
+            if not phrase.exists():
                 generator: SpeechGenerator = SpeechGenerator()
                 results: Results = generator.generate_speech(self, phrase)
                 if results.get_rc() == ReturnCode.OK:
@@ -371,7 +370,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
         except ExpiredException:
             clz._logger.debug(f'EXPIRED at engine')
             return False
-        return phrase.is_exists()
+        return phrase.exists()
 
     def runCommandAndPipe(self, phrase: Phrase):
         clz = type(self)
@@ -387,7 +386,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
         byte_stream: io.BinaryIO = None
         rc: int = -2
         try:
-            if not phrase.is_exists():
+            if not phrase.exists():
                 rc = self.generate_speech(phrase)
 
             if self.stop_processing:
@@ -422,7 +421,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
             for phrase in phrases:
                 if Settings.is_use_cache():
                     VoiceCache.get_path_to_voice_file(phrase, use_cache=True)
-                    if not phrase.is_exists():
+                    if not phrase.exists():
                         text_to_voice: str = phrase.get_text()
                         voice_file_path: pathlib.Path = phrase.get_cache_path()
                         clz._logger.debug_extra_verbose(f'PHRASE Text {text_to_voice}')
@@ -717,7 +716,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
         volume_validator = SettingsMap.get_validator(cls.service_ID,
                                                      property_id=SettingsProperties.VOLUME)
         # volume is hardcoded to a fixed value
-        volume: float = volume_validator.getValue()
+        volume, _, _, _ = volume_validator.get_tts_values()
         return volume  # Find out if used
 
     @classmethod
@@ -757,7 +756,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
         language_validator: ConstraintsValidator
         language_validator = cls.get_validator(cls.service_ID,
                                                property_id=SettingsProperties.LANGUAGE)
-        language: str = language_validator.getValue()
+        language: str = language_validator.get_tts_value()
         language = 'en-US'
         return language
 
@@ -771,7 +770,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
         if Settings.is_use_cache():
             pitch = pitch_validator.default_value
         else:
-            pitch: float = pitch_validator.getValue()
+            pitch, _, _, _ = pitch_validator.get_tts_values()
         return pitch
 
     @classmethod
@@ -793,7 +792,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
         # Kodi TTS uses a speed of +0.25 .. 1 .. +4.0
         # 0.25 is 1/4 speed and 4.0 is 4x speed
         #
-        # This speed is represented as a setting as in integer by multiplying
+        # This speed is represented as a setting as an integer by multiplying
         # by 100.
         #
         return 0.75

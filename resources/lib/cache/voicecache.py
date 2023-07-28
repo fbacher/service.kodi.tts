@@ -13,15 +13,14 @@ from typing import IO
 import xbmcvfs
 
 from backends.audio.sound_capabilties import SoundCapabilities
-from backends.backend_info_bridge import BackendInfoBridge
 from backends.i_tts_backend_base import ITTSBackendBase
 from backends.players.iplayer import IPlayer
 from backends.players.player_index import PlayerIndex
+from backends.settings.settings_map import SettingsMap
 from common.base_services import BaseServices
 from common.constants import Constants
 from common.logger import *
-from common.phrases import Phrase
-from common.setting_constants import Backends
+from common.phrases import Phrase, PhraseList
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
 from common.typing import *
@@ -39,6 +38,8 @@ class VoiceCache:
     _logger: BasicLogger = None
     ignore_cache_count: int = 0
     sound_file_base = '{filename}{suffix}'
+    referenced_cache_dirs: Dict[str, str] = {}  # Acts as a set with value == key
+    cache_change_listener: Callable = None
 
     def __init__(self):
         clz = type(self)
@@ -51,11 +52,13 @@ class VoiceCache:
         try:
             cache_path: str = Settings.get_cache_base()
             engine_id: str = Settings.get_engine_id()
-            engine_dir: str = Backends.ENGINE_CACHE_CODE.get(engine_id, None)
+            engine_dir: str = SettingsMap.get_service_property(engine_id,
+                                                               Constants.CACHE_SUFFIX)
             assert engine_dir is not None, \
                 f'Can not find voice-cache dir for engine: {engine_id}'
-
             cache_directory = xbmcvfs.translatePath(f'{cache_path}/{engine_dir}')
+
+
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
@@ -248,7 +251,6 @@ class VoiceCache:
         try:
             path: str | None
             exists: bool
-            text_to_voice: str = phrase.get_text()
             path_info: Dict[str, Tuple[str, bool]]
             path_info = cls.get_sound_file_paths(phrase, suffixes)
             for suffix in suffixes:
@@ -513,5 +515,103 @@ class VoiceCache:
         except Exception as e:
             cls._logger.exception('')
 
+    @classmethod
+    def seed_text_cache(cls, phrases: PhraseList) -> None:
+        # For engines that are expensive, it can be beneficial to cache the voice
+        # files. In addition, by saving text to the cache that is not yet
+        # voiced, then a background process can generate speech so the cache
+        # gets built more quickly
+
+        try:
+            phrases = phrases.clone(check_expired=False)
+            for phrase in phrases:
+                if Settings.is_use_cache():
+                    VoiceCache.get_path_to_voice_file(phrase, use_cache=True)
+                    if not phrase.exists():
+                        text: str = phrase.get_text()
+                        voice_file_path: pathlib.Path = phrase.get_cache_path()
+                        cls._logger.debug_extra_verbose(f'PHRASE Text {text}')
+                        rc: int = 0
+                        try:
+                            text_file: pathlib.Path | None
+                            text_file = voice_file_path.with_suffix('.txt')
+                            try:
+                                if os.path.isfile(text_file):
+                                    os.unlink(text_file)
+
+                                with open(text_file, 'wt') as f:
+                                    f.write(text)
+                            except Exception as e:
+                                if cls._logger.isEnabledFor(ERROR):
+                                    cls._logger.error(
+                                            f'Failed to save text file: '
+                                            f'{text_file} Exception: {str(e)}')
+                        except Exception as e:
+                            if cls._logger.isEnabledFor(ERROR):
+                                cls._logger.error(
+                                        'Failed to save text: {}'.format(str(e)))
+        except Exception as e:
+            cls._logger.exception('')
+
+        cls.text_referenced(phrase)
+
+    @classmethod
+    def text_referenced(cls, phrase: Phrase) -> None:
+        """
+         cache files are organized:
+          <cache_path>/<engine_code>/<first-two-chars-of-cache-file-name>/<cache_file_name>.<suffix>
+
+          Example: cache_path =  ~/.kodi/userdata/addon_data/service.kodi.tts/cache
+                   engine_code = goo (for google)
+                   first-two-chars-of-cache-file-name = d4
+                   hash of text  = cache_file_name = d4562ab3243c84746a670e47dbdc61a2
+                   suffix = .mp3 or .txt
+        """
+        try:
+            cache_path: str = Settings.get_cache_base()
+            engine_id: str = Settings.get_engine_id()
+            engine_code: str = SettingsMap.get_service_property(engine_id,
+                                                               Constants.CACHE_SUFFIX)
+            assert engine_code is not None, \
+                f'Can not find voice-cache dir for engine: {engine_id}'
+            cache_directory = xbmcvfs.translatePath(f'{cache_path}/{engine_code}')
+
+            cache_file_path = phrase.get_cache_path()
+            phrase_engine_code: str = str(cache_file_path.parent.name)
+            if phrase_engine_code == engine_code:
+                cache_dir: str = str(cache_file_path.parent.parent.name)
+                cls.referenced_cache_dirs[cache_dir] = cache_dir
+        except AbortException:
+            reraise(*sys.exc_info())
+        except Exception as e:
+            cls._logger.exception('')
+        return
+
+    @classmethod
+    def register_cache_change_listener(cls, cache_change_listener: Callable[[str], None]) -> None:
+        cls.cache_change_listener = cache_change_listener
+        if not cls.cache_changed():
+            # Re-register if not fired
+            cls.cache_change_listener = cache_change_listener
+
+    @classmethod
+    def cache_changed(cls) -> bool:
+        """
+
+        :return: True if the change_listener called, else False
+        """
+        if cls.cache_change_listener is None:
+            return False
+
+        try:
+            value: str = None
+            subdir: str = None
+            while value is None:
+                subdir, value = cls.referenced_cache_dirs.popitem()
+            cls.cache_change_listener(subdir)
+            return True
+        except KeyError:
+            pass
+        return False
 
 instance = VoiceCache()

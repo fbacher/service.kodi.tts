@@ -19,20 +19,51 @@ class IValidator:
         pass
 
     def validate(self, value: int | None) -> bool:
-        raise Exception('Not Implemented')
+        raise NotImplementedError()
 
     def preValidate(self, value: Any) -> Tuple[bool, Any]:
-        raise Exception('Not Implemented')
+        raise NotImplementedError()
 
     @property
     def default_value(self) -> bool | int | float | str:
-        raise Exception('Not Implemented')
+        raise NotImplementedError()
 
-    def getValue(self) -> bool | int | float| str:
-        raise Exception('Not Implemented')
+    def get_tts_values(self, default_value: int | float | str = None,
+                       setting_service_id: str = None) \
+                -> Tuple[int | float | str, int | float | str , int | float | str, \
+                         int | float| str]:
+        """
 
-    def setValue(self, value: bool | int | float | str) -> None:
-        raise Exception('Not Implemented')
+        :param default_value:
+        :param setting_service_id:
+        :return: current_value, min_value, default_value, max_value
+        """
+        raise NotImplementedError()
+
+
+    def get_tts_value(self, default_value: int | float | str = None,
+                       setting_service_id: str = None) -> int | float | str:
+        """
+
+        :param default_value:
+        :param setting_service_id:
+        :return: current_value
+        """
+        raise NotImplementedError()
+
+    def set_tts_value(self, value: bool | int | float | str) -> None:
+        raise NotImplementedError()
+
+    def get_constraints(self) -> 'IConstraints':
+        raise NotImplementedError()
+
+    @property
+    def tts_line_value(self) -> int | float:
+        raise NotImplementedError()
+
+    @property
+    def integer(self) -> bool:
+        raise NotImplementedError()
 
     # Causes Trouble
     # @property
@@ -49,12 +80,12 @@ class IIntValidator(IValidator):
 
     @property
     def default_value(self) -> int | float:
-        raise Exception('Not Implemented')
-
-    def getValue(self, default_value: int | None = None) -> int | float:
         raise NotImplementedError()
 
-    def setValue(self, value: int | float) -> None:
+    def get_tts_value(self, default_value: int | None = None) -> int | float:
+        raise NotImplementedError()
+
+    def set_tts_value(self, value: int | float) -> None:
         raise NotImplementedError()
 
     def setUIValue(self, ui_value:int) -> None:
@@ -87,9 +118,6 @@ class IIntValidator(IValidator):
     def get_max_value(self) -> int:
         raise NotImplementedError()
 
-    def get_default_value(self) -> int:
-        raise NotImplementedError()
-
 
 class IStringValidator(IValidator):
 
@@ -98,14 +126,15 @@ class IStringValidator(IValidator):
                  max_length: int = 4096, default_value: str = None) -> None:
         pass
 
-    @property
-    def default_value(self) -> str:
-        raise Exception('Not Implemented')
-
-    def getValue(self, default_value : str | None = None) -> str:
+    def get_tts_value(self, default : str | None = None,
+                      setting_service_id: str = None) -> str:
         raise NotImplementedError()
 
-    def setValue(self, value: str) -> None:
+    def set_tts_value(self, value: str) -> None:
+        raise NotImplementedError()
+
+    @property
+    def default_value(self) -> str:
         raise NotImplementedError()
 
     def get_allowed_values(self) -> List[str] | None:
@@ -145,12 +174,12 @@ class IEnumValidator(IValidator):
 
     @property
     def default_value(self) -> enum.Enum:
-        raise Exception('Not Implemented')
-
-    def getValue(self) -> enum.Enum:
         raise NotImplementedError()
 
-    def setValue(self, value: enum.Enum) -> None:
+    def get_tts_value(self) -> enum.Enum:
+        raise NotImplementedError()
+
+    def set_tts_value(self, value: enum.Enum) -> None:
         raise NotImplementedError()
 
     def setUIValue(self, ui_value: int) -> None:
@@ -181,12 +210,12 @@ class IStrEnumValidator(IValidator):
 
     @property
     def default_value(self) -> StrEnum:
-        raise Exception('Not Implemented')
-
-    def getValue(self) -> StrEnum:
         raise NotImplementedError()
 
-    def setValue(self, value: StrEnum) -> None:
+    def get_tts_value(self) -> StrEnum:
+        raise NotImplementedError()
+
+    def set_tts_value(self, value: StrEnum) -> None:
         raise NotImplementedError()
 
     def setUIValue(self, ui_value: str) -> None:
@@ -213,14 +242,48 @@ class IConstraintsValidator:
                  constraints: IConstraints) -> None:
         pass
 
-    @property
-    def default_value(self) -> int | float | str:
-        raise Exception('Not Implemented')
-
     def setUIValue(self, ui_value: int) -> None:
         raise NotImplementedError()
 
     def getUIValue(self) -> str:
+        raise NotImplementedError()
+
+    def get_tts_values(self, default_value: int | float | str = None,
+                       setting_service_id: str = None) \
+            -> Tuple[int | float | str, int | float | str , int | float | str, \
+                     int | float| str]:
+        """
+        :param default_value:
+        :param setting_service_id:
+        :return: current_value, min_value, default_value, max_value
+        """
+        raise NotImplementedError()
+
+    def set_tts_value(self, value: int | float | str) -> None:
+        raise NotImplementedError()
+
+    def get_impl_value(self,
+                       setting_service_id: str | None = None) -> int | float | str:
+        """
+            Translates the 'TTS' value (used internally) to the implementation's
+            scale (player or engine).
+            :return:
+        """
+        raise NotImplementedError()
+
+    def set_impl_value(self, value: int | float | str) -> None:
+        raise NotImplementedError()
+
+    @property
+    def tts_line_value(self) -> int | float:
+        raise NotImplementedError()
+
+    @property
+    def integer(self) -> bool:
+        raise NotImplementedError()
+
+    def validate(self, value: int | float | None) -> Tuple[bool, int | float]:
+        constraints: IConstraints = self.constraints
         raise NotImplementedError()
 
     def getValue(self) -> int | float | str:
@@ -229,23 +292,26 @@ class IConstraintsValidator:
     def setValue(self, value: int | float | str) -> None:
         raise NotImplementedError()
 
-    def validate(self) -> Tuple[bool, int]:
-        raise NotImplementedError()
-
     def preValidate(self, ui_value: int) -> Tuple[bool, int]:
         raise NotImplementedError()
 
-    def get_min_value(self) -> int:
+    def get_constraints(self) -> IConstraints | IConstraints:
         raise NotImplementedError()
 
-    def get_max_value(self) -> int:
+    @property
+    def default_value(self) -> int | str | float:
         raise NotImplementedError()
 
-    def get_default_value(self) -> int:
+    def get_min_value(self) -> int | float:
         raise NotImplementedError()
 
-    def get_constraints(self) -> IConstraints:
-        return self.constraints
+    def get_max_value(self) -> int | float:
+        raise NotImplementedError()
+
+    '''
+    def get_default_value(self) -> int | float | str:
+        raise NotImplementedError()
+    '''
 
 
 class IBoolValidator:
@@ -255,12 +321,12 @@ class IBoolValidator:
 
     @property
     def default_value(self) -> bool:
-        raise Exception('Not Implemented')
-
-    def getValue(self) -> bool:
         raise NotImplementedError()
 
-    def setValue(self, value: bool) -> None:
+    def get_tts_value(self) -> bool:
+        raise NotImplementedError()
+
+    def set_tts_value(self, value: bool) -> None:
         raise NotImplementedError()
 
     def setUIValue(self, ui_value: bool) -> None:
@@ -292,12 +358,12 @@ class IGenderValidator(IValidator):
 
     @property
     def default_value(self) -> Genders:
-        raise Exception('Not Implemented')
-
-    def getValue(self) -> Genders:
         raise NotImplementedError()
 
-    def setValue(self, value: Genders) -> None:
+    def get_tts_value(self) -> Genders:
+        raise NotImplementedError()
+
+    def set_tts_value(self, value: Genders) -> None:
         raise NotImplementedError()
 
     def setUIValue(self, ui_value: str) -> None:

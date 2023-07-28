@@ -47,7 +47,8 @@ class Constraints:
     def __init__(self, minimum: int = 0, default: int = 0, maximum: int = 0,
                  integer: bool = True, decibels: bool = False, scale: float = 1.0,
                  property_name: str = None,
-                 midpoint: int | None = None, increment: float = 0.0) -> None:
+                 midpoint: int | None = None, increment: float = 0.0,
+                 tts_line_value: float | int = 0) -> None:
         """
         @note: Read the class comments for more information
         @param minimum: Minimum internal value that this constrant can have
@@ -80,6 +81,7 @@ class Constraints:
         # if midpoint is None:
         #    midpoint = (maximum + minimum) / 2
         self._midpoint: Final[int | None]  = midpoint
+        self._tts_line_value: float | int = tts_line_value
 
     @property
     def minimum(self) -> float | int:
@@ -88,7 +90,7 @@ class Constraints:
         """
         value: float = self._minimum * self.scale
         if self.integer:
-            return int(value)
+            return int(round(value))
         return value
 
     @property
@@ -98,28 +100,31 @@ class Constraints:
         """
         value: float = self._default * self.scale
         if self.integer:
-            return int(value)
+            return int(round(value))
         return value
 
     @property
-    def maximum(self) -> float:
+    def maximum(self) -> float | int:
         """
         @return: External, maximum value of this constraint
         """
         value: float = self._maximum * self.scale
         if self.integer:
-            return int(value)
+            return int(round(value))
         return value
 
     @property
-    def midpoint(self) -> float:
+    def midpoint(self) -> float | int:
         """
         @return:
         """
         if self._midpoint is None:
             return None
 
-        return self._midpoint * self.scale
+        value = self._midpoint * self.scale
+        if self.integer:
+            return int(round(value))
+        return value
 
     @property
     def increment(self) -> float:
@@ -127,7 +132,13 @@ class Constraints:
         @return: Suggested increment between possible values in UI. Most useful
         for a slider, or similar
         """
+        if self.integer:
+            return int(round(self._increment))
         return self._increment
+
+    @property
+    def tts_line_value(self) -> float | int:
+        return self._tts_line_value
 
     def currentValue(self, service_id: str) -> float:
         """
@@ -139,7 +150,16 @@ class Constraints:
                     SettingsBridge.getSetting(self.property_name,
                                               backend_id=service_id,
                                               default_value=self._default))
-            return raw_value * self.scale
+            value = raw_value * self.scale
+            # if value is out of bounds, change to be either the
+            # minimum or maximum value of field, whichever is closest
+
+            corrected: bool
+            corrected_value: float
+            corrected, corrected_value = self.in_range(value)
+            if self.integer:
+                return int(round(corrected_value))
+            return corrected_value
         return None
 
     def setSetting(self, value: float, backend_id: str) -> None:
@@ -159,15 +179,16 @@ class Constraints:
     def is_int(self) -> bool:
         return self.integer
 
-    def in_range(self, value: float | int) -> bool:
+    def in_range(self, value: float | int) -> Tuple[bool, float | int]:
         """
         @param value: (External) Value to verify if is within range
         @return: True if given value is within minimum and maximum values
         """
-        value: int = int(value / self.scale)
-        min_value: int = self._minimum
-        max_value: int = self._maximum
-        return value in range(min_value, max_value)
+        corrected_value: float = value
+        corrected_value = max(value, self.minimum)
+        corrected_value = min(corrected_value, self.maximum)
+        changed: bool = corrected_value == value
+        return changed, corrected_value
 
     def translate(self, other: 'Constraints', integer: bool = True) -> 'Constraints':
         """
@@ -202,6 +223,8 @@ class Constraints:
         if self._decibels and other._decibels:
             value = max(value, other.minimum)
             value = min(value, other.maximum)
+            if other.integer:
+                return int(round(value))
             return value
 
         elif self._decibels:
@@ -218,6 +241,8 @@ class Constraints:
                 scaled_value = round(scaled_value)
             scaled_value = max(scaled_value, other.minimum)
             scaled_value = min(scaled_value, other.maximum)
+            if other.integer:
+                scaled_value = int(round(scaled_value))
             return scaled_value
 
         elif other._decibels:
@@ -233,6 +258,8 @@ class Constraints:
                 scaled_value = round(scaled_value)
             scaled_value = max(scaled_value, other.minimum)
             scaled_value = min(scaled_value, other.maximum)
+            if other.integer:
+                scaled_value = int(round(scaled_value))
             return scaled_value
 
         scaled_value = self.translate_linear_value(self.minimum, self.maximum,
@@ -242,6 +269,8 @@ class Constraints:
             scaled_value = round(scaled_value)
         scaled_value = max(scaled_value, other.minimum)
         scaled_value = min(scaled_value, other.maximum)
+        if other.integer:
+            scaled_value = int(round(scaled_value))
         return scaled_value
 
     def translate_linear_value(self, from_minimum: float,

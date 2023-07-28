@@ -5,6 +5,7 @@ from backends.audio.sound_capabilties import SoundCapabilities
 from backends.engines.base_engine_settings import BaseEngineSettings
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.settings_map import Reason, SettingsMap
+from common.constants import Constants
 from common.logger import BasicLogger
 from common.setting_constants import Backends
 from common.system_queries import SystemQueries
@@ -17,7 +18,9 @@ class FliteSettings:
     # Only returns .mp3 files
     ID: str = Backends.FLITE_ID
     backend_id = Backends.FLITE_ID
+    engine_id = Backends.FLITE_ID
     service_ID: str = Services.FLITE_ID
+    service_TYPE: str = ServiceType.ENGINE_SETTINGS
     displayName = 'flite'
 
     #  supported_settings: Dict[str, str | int | bool] = settings
@@ -44,8 +47,9 @@ class FliteSettings:
 
     @classmethod
     def init_settings(cls):
+        service_properties = {Constants.NAME: cls.displayName}
         SettingsMap.define_service(ServiceType.ENGINE, cls.service_ID,
-                                   cls.displayName)
+                                   service_properties)
 
     @classmethod
     def isSupportedOnPlatform(cls) -> bool:

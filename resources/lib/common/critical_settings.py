@@ -52,7 +52,7 @@ class CriticalSettings:
 
     TOP_PACKAGE_PATH: Final[str] = os.path.join(ADDON.getAddonInfo('path'),
                                                'resources', 'lib')
-    KODI_SETTINGS = xbmcaddon.Addon('service.kodi.tts').getSettings()
+    KODI_SETTINGS = ADDON.getSettings()
     addon = None
     _plugin_name: str = ""
     try:

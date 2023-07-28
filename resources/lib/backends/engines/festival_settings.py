@@ -7,6 +7,7 @@ from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.settings_map import Reason, SettingsMap
 from common.base_services import BaseServices
+from common.constants import Constants
 from common.logger import BasicLogger
 from common.setting_constants import Backends
 from common.system_queries import SystemQueries
@@ -53,8 +54,10 @@ class FestivalSettings(BaseServiceSettings):
         #
         # Need to define Conversion Constraints between the TTS 'standard'
         # constraints/settings to the engine's constraints/settings
+
+        service_properties = {Constants.NAME: cls.displayName}
         SettingsMap.define_service(ServiceType.ENGINE, cls.service_ID,
-                                   cls.displayName)
+                                   service_properties)
 
     @classmethod
     def isSettingSupported(cls, setting) -> bool:

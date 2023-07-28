@@ -20,6 +20,7 @@ from common.base_services import BaseServices
 from common.minimal_monitor import MinimalMonitor
 from common.monitor import Monitor
 from common.phrases import Phrase
+from common.player_monitor import PlayerMonitor, PlayerState
 from common.setting_constants import Players
 from common.settings import Settings
 from common.simple_run_command import RunState, SimpleRunCommand
@@ -160,6 +161,16 @@ class SubprocessAudioPlayer(AudioPlayer):
         self.failed: bool | None = None
         self.rc: int | None = None
 
+        PlayerMonitor.register_player_status_listener(
+                self.player_status_listener,
+                'Audio_Player_Monitor')
+
+    def player_status_listener(self, player_state: PlayerState) -> None:
+        clz = type(self)
+        clz.player_status = player_state
+        if player_state == PlayerState.PLAYING_STOPPED:
+            self.stop()
+
     def speedArg(self, speed: float) -> str:
         #  self._logger.debug(f'speedArg speed: {speed} multiplier: {self._speedMultiplier}')
         return f'{(speed * self._speedMultiplier):.2f}'
@@ -220,11 +231,11 @@ class SubprocessAudioPlayer(AudioPlayer):
 
     def getVolumeDb(self) -> float:
         #  All volumes are relative to the TTS volume -12db .. +12db.
-        # the service_id is Services.TTS_Service_id.
-        # But.. We only need to adjust the volume that the engine produced to play
-        # at the volume specified by the user setting in TTS_Service by first
-        # converting engine's volume to be on the same scale as the player, then
-        # adjusting the volume to be equivalent to the setting.
+        # the service_id is Services.TTS_Service_id.  We therefore
+        # don't care what changes the engine, etc. have made.
+        # We just trust that the volume in the source input matches
+        # the tts 'line-input' or '0' tts volume level. 
+        
         clz = type(self)
         final_volume: int = Settings.get_volume()
         engine_volume_val: IConstraintsValidator = SettingsMap.get_validator(
@@ -233,7 +244,6 @@ class SubprocessAudioPlayer(AudioPlayer):
         engine_id: str = Settings.get_engine_id()
         engine: BaseServices = BaseServices.getService(engine_id)
         engine_vol_constraints: IConstraints = engine_volume_val.get_constraints()
-        volume_produced_by_engine: int = engine.getVolumeDb()
         player_id: str = Settings.get_player_id()
         player_volume_val: IConstraintsValidator
         player_volume_val = SettingsMap.get_validator(clz.service_ID,
@@ -256,10 +266,9 @@ class SubprocessAudioPlayer(AudioPlayer):
 
     def play(self, phrase: Phrase):
         clz = type(self)
-        args: List[str]
-        phrase_serial_number: int = phrase.serial_number
+        args: List[str] = []
+        phrase_serial: int = phrase.serial_number
         try:
-            clz._logger.debug(f'PHRASE: {phrase.get_text()}')
             phrase.test_expired()  # Throws ExpiredException
             delay_ms = max(phrase.get_pre_pause(), self._post_play_pause_ms)
             self._post_play_pause_ms = phrase.get_post_pause()
@@ -283,12 +292,15 @@ class SubprocessAudioPlayer(AudioPlayer):
             clz._logger.exception('')
             return
         try:
+            stop_on_play: bool = not phrase.speak_while_playing
             self._simple_player_busy = True
             self._simple_player_process = SimpleRunCommand(args,
-                                                           phrase_serial=phrase_serial_number,
-                                                           name='mplayer')
+                                                           phrase_serial=phrase_serial,
+                                                           name='mplayer',
+                                                           stop_on_play=stop_on_play)
             self._simple_player_process.run_cmd()
-            clz._logger.debug_verbose(f'Running player to voice NOW args: {" ".join(args)}')
+            clz._logger.debug_verbose(
+                f'START Running player to voice NOW args: {" ".join(args)}')
         except subprocess.CalledProcessError:
             clz._logger.exception('')
             self.reason = 'mplayer failed'
@@ -304,7 +316,6 @@ class SubprocessAudioPlayer(AudioPlayer):
     def notify(self, msg: str, now: bool = False):
         self.stop_urgent = now
         self.stop()
-
 
     def stop(self, now: bool = False):
         clz = type(self)

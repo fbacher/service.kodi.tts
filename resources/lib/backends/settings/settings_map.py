@@ -53,10 +53,12 @@ class SettingsMap:
     service_to_settings_map: Dict[str, Dict[str, IValidator]] = {}
     service_availability_map: Dict[str, Reason] = {}
 
+    service_to_properties_map: Dict[str, Dict[str, Any]] = {}
+
     # Index to get all of the service_ids for a particular ServiceType.
     # Example: ServiceType.ENGINE, ServiceType.PLAYER, etc.
     #
-    service_type_to_services_map: Dict[ServiceType, Dict[str, str]] = {}
+    service_type_to_services_map: Dict[ServiceType, Dict[str, Dict[str, Any]]] = {}
 
     _initialized: bool = False
     _logger: BasicLogger = None
@@ -70,39 +72,57 @@ class SettingsMap:
 
     @classmethod
     def define_service(cls, service_type: ServiceType, service_id: str,
-                       display_name: str):
+                       service_properties: Dict[str, Any]):
         try:
-            service_ids: Dict[str, str] | None
-            service_ids = cls.service_type_to_services_map.get(service_type)
-            if service_ids is None:
-                service_ids = {}
-                cls.service_type_to_services_map[service_type] = service_ids
-            service_ids[service_id] = display_name
+            props_for_service: Dict[str, Dict[str, Any]] | None
+            props_for_service = cls.service_type_to_services_map.get(service_type)
+            if props_for_service is None:
+                props_for_service = {}
+                cls.service_type_to_services_map[service_type] = props_for_service
+            props_for_service[service_id] = service_properties
+            cls.service_to_properties_map[service_id] = service_properties
         except Exception as e:
             cls._logger.exception('')
 
     @classmethod
-    def get_service_ids(cls, service_type: ServiceType) -> Dict[str, str]:
-        service_ids: Dict[str, str]
-        service_ids = cls.service_type_to_services_map.get(service_type)
-        if service_ids is None:
-            service_ids = {}
-        return service_ids
+    def get_services_for_service_type(cls, service_type: ServiceType) \
+                                        -> List[Tuple[str, str]]:
+        services: List[Tuple[str, str]] = []
+        service_dict: Dict[str, Any] = cls.service_type_to_services_map.get(service_type,
+                                                                            {})
+        for service_id, name_dict in service_dict.items():
+            name: str = name_dict['name']
+            services.append((service_id, name))
+
+        return services
 
     @classmethod
-    def get_available_service_ids(cls, service_type) -> List[Tuple[str, str]]:
+    def get_service_properties(cls, service_id: str) -> Dict[str, Any]:
+        service_props: Dict[str, Any]
+        service_props = cls.service_to_properties_map.get(service_id)
+        if service_props is None:
+            service_props = {}
+        return service_props
+
+    @classmethod
+    def get_service_property(cls, service_id: str, property: str) -> Any:
+        properties: Dict[str, Any] = cls.get_service_properties(service_id)
+        return properties.get(property, None)
+
+    @classmethod
+    def get_available_service_ids(cls, service_type) -> List[Tuple[str, Dict[str, Any]]] | None:
         if not ServiceType.ALL.value <= service_type.value <= \
                ServiceType.LAST_SERVICE_TYPE.value:
             cls._logger.debug(f'Invalid ServiceType: {service_type}')
             return None
 
-        service_ids: Dict[str, str] = cls.get_service_ids(service_type)
-        available_service_ids: List[Tuple[str, str]] = []
+        service_ids: Dict[str, str] = cls.get_service_properties(service_type)
+        available_service_ids: List[Tuple[str, Dict[str, Any]]] = []
         service_id: str
-        display_name: str
-        for service_id, display_name in service_ids.items():
+        properties: Dict[str, Any]
+        for service_id, properties in service_ids.items():
             if cls.service_availability_map.get(service_id, Reason.UNKNOWN) == Reason.AVAILABLE:
-                available_service_ids.append((service_id, display_name))
+                available_service_ids.append((service_id, properties))
         return available_service_ids
 
     @classmethod
@@ -221,6 +241,8 @@ class SettingsMap:
         validator: IValidator = cls.get_validator(service_id, property_id)
         if validator is None:
             return None
-        return validator.getValue()
+        value = validator.get_tts_value()
+        return value
+
 
 SettingsMap()

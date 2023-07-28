@@ -50,7 +50,7 @@ class BaseEngineSettings:
         gender_validator = GenderValidator(SettingsProperties.GENDER, service_id,
                                            min_value=Genders.FEMALE, max_value=Genders.UNKNOWN,
                                            default=Genders.UNKNOWN)
-        gender_validator.setValue(Genders.FEMALE)
+        gender_validator.set_tts_value(Genders.FEMALE)
         SettingsMap.define_setting(service_id, SettingsProperties.GENDER,
                                    gender_validator)
 
@@ -62,13 +62,14 @@ class BaseEngineSettings:
                                               default=Backends.ESPEAK_ID)
         SettingsMap.define_setting(Services.TTS_SERVICE, SettingsProperties.ENGINE,
                                    engine_id_validator)
-
+        '''
         cache_validator: BoolValidator
         cache_validator = BoolValidator(SettingsProperties.CACHE_SPEECH, service_id,
                                         default=False)
 
         SettingsMap.define_setting(service_id, SettingsProperties.CACHE_SPEECH,
                                    cache_validator)
+        '''
 
         override_poll_interval_val: BoolValidator
         override_poll_interval_val = BoolValidator(

@@ -624,7 +624,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             current_value = self.getSetting(
                     SettingsProperties.ENGINE, SettingsProperties.ENGINE_DEFAULT)
             current_choice_index: int = 0
-            for id, name in BaseServices.get_available_service_ids(ServiceType.ENGINE):
+            for id, name in SettingsMap.get_services_for_service_type(ServiceType.ENGINE):
+                name: str
                 self._logger.debug(
                         f'Available Backend: {SettingsProperties.ENGINE} {name}')
                 list_item = xbmcgui.ListItem(name)
@@ -1121,7 +1122,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
     def select_volume(self) -> None:
         try:
             volume = self.engine_volume_slider.getInt()
-            Settings.set_volume(volume, Services.TTS_SERVICE)
+            Settings.set_volume(volume, self.engine_id)
         except Exception as e:
             self._logger.exception('')
 
@@ -1131,38 +1132,44 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             upper: int
             current: int
 
-            lower, upper, current = self.get_volume_range()
+            lower, upper, current, increment = self.get_volume_range()
             if lower == upper:
                 self.engine_volume_group.setVisible(False)
             else:
-                increment = int((upper - lower + 19) / 20)
                 self.engine_volume_slider.setInt(current, lower, increment, upper)
                 self.engine_volume_group.setVisible(True)
         except Exception as e:
             self._logger.exception('')
 
-    def get_volume_range(self) -> Tuple[int, int, int]:
+    def get_volume_range(self) -> \
+            Tuple[float | int, float | int, float | int, float | int]:
+        """
+         : return : minimum_volume, default_volume, maximum_volume,
+                    current_volume
+        """
         minimum_volume: int = 0
         maximum_volume: int = 0
         current_volume: int = 0
         try:
             volume_val: IConstraintsValidator
-            volume_val = SettingsMap.get_validator(Services.TTS_SERVICE,
+            volume_val = SettingsMap.get_validator(self.engine_id,
                                                   SettingsProperties.VOLUME)
             if volume_val is None:
                 raise NotImplementedError
-            volume_constraints: Constraints = volume_val.get_constraints()
-            if volume_constraints is None:
-                raise NotImplementedError
-            minimum_volume = int(volume_constraints.minimum)
-            default_volume = int(volume_constraints.default)
-            maximum_volume = int(volume_constraints.maximum)
-            current_volume = int(Settings.get_volume())
+            values = volume_val.get_tts_values()
+
+            current_volume = values[0]
+            minimum_volume = values[1]
+            default_volume = values[2]
+            maximum_volume = values[3]
+            tts_val: IConstraintsValidator = volume_val.get_tts_validator()
+            tts_constraints = tts_val.get_constraints()
         except NotImplementedError:
             pass
         except Exception as e:
             self._logger.exception('')
-        return minimum_volume, maximum_volume, current_volume
+        return (minimum_volume, maximum_volume,
+                current_volume, tts_constraints.increment)
 
     def select_pitch(self):
         try:
@@ -1177,33 +1184,37 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             if not SettingsMap.is_valid_property(self.engine_id, SettingsProperties.PITCH):
                 self.engine_pitch_group.setVisible(False)
             else:
-                lower, upper, current = self.get_pitch_range()
+                pitch_val: IConstraintsValidator
+                lower, upper, current, increment = self.get_pitch_range()
                 if lower == upper:
                     self.engine_pitch_group.setVisible(False)
                 else:
-                    increment = int(((upper - lower) + 19) / 20)
                     self.engine_pitch_slider.setInt(
                             current, lower, increment, upper)
                     self.engine_pitch_group.setVisible(True)
         except Exception as e:
             self._logger.exception('')
 
-    def get_pitch_range(self) -> Tuple[int, int, int]:
+    def get_pitch_range(self) -> Tuple[int, int, int, int]:
         try:
             pitch_val: IConstraintsValidator
             pitch_val = SettingsMap.get_validator(self.engine_id,
                                                   SettingsProperties.PITCH)
             if pitch_val is None:
                 raise NotImplementedError
+            current, min, default, max = pitch_val.get_tts_values()
+            minimum_pitch: int = min
+            default_pitch: int = default
+            maximum_pitch: int = max
+            current_value: int = current
+            pitch_val = SettingsMap.get_validator(self.engine_id,
+                                                  SettingsProperties.PITCH)
             constraints: Constraints = pitch_val.get_constraints()
-            minimum_pitch: int = int(constraints.minimum)
-            default_pitch: int = int(constraints.default)
-            maximum_pitch: int = int(constraints.maximum)
-            current_value = Settings.get_pitch(self.engine_id)
         except NotImplementedError:
-            return 0, 0, 0
+            return 0, 0, 0, 0
 
-        return minimum_pitch, maximum_pitch, current_value
+        return (minimum_pitch, maximum_pitch, current_value,
+                constraints.increment)
 
     def select_speed(self):
         try:
@@ -1217,33 +1228,33 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         try:
             if SettingsMap.is_valid_property(self.engine_id, SettingsProperties.SPEED):
                 lower, upper, current, increment = self.get_speed_range()
-                scale: float = 1.0
-                if increment > 0.0:
-                    scale = 1.0 / increment
-                if int(lower * scale) == int(upper * scale):
+                if lower == upper:
                     self.engine_speed_group.setVisible(False)
-                    return
-
-                self.engine_speed_slider.setFloat(
-                        current, lower, increment, upper)
-                self.engine_speed_group.setVisible(True)
+                else:
+                    self.engine_speed_slider.setFloat(
+                            current, lower, increment, upper)
+                    self.engine_speed_group.setVisible(True)
         except Exception as e:
             self._logger.exception('')
 
     def get_speed_range(self) -> Tuple[float, float, float, float]:
+        global NotImplementedError
         try:
             speed_val: IConstraintsValidator
             speed_val = SettingsMap.get_validator(self.engine_id,
                                                   SettingsProperties.SPEED)
             if speed_val is None:
-                raise NotImplementedError
-            constraints: Constraints = speed_val.get_constraints()
-            minimum: int = int(constraints.minimum)
-            default: int = int(constraints.default)
-            maximum: int = int(constraints.maximum)
-            current_value = Settings.get_speed(self.engine_id)
+                raise NotImplementedError()
 
-            return minimum, maximum, current_value, constraints.increment
+            if speed_val is None:
+                raise NotImplementedError()
+            current, minimum, default, maximum = speed_val.get_tts_values()
+            tts_val: IConstraintsValidator = speed_val.get_tts_validator()
+            tts_constraints: Constraints = tts_val.get_constraints()
+
+            return (minimum, maximum, current,
+                   tts_constraints.increment)
+
         except NotImplementedError:
             return 1, 1, 1, 1
 
@@ -1432,7 +1443,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
     def get_volume(self) -> int:
         if self.settings_changed:
-            volume = Settings.get_volume(Services.TTS_SERVICE)
+            volume = Settings.get_volume(self.engine_id)
             self.volume = volume
         return self.volume
 

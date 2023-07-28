@@ -5,7 +5,6 @@ from common import utils
 from common.messages import Messages
 from .base import WindowHandlerBase, WindowReaderBase
 
-
 class PlayerStatus(WindowHandlerBase):
     ID = 'playerstatus'
 

@@ -1120,3 +1120,7 @@ msgstr ""
 msgctxt "#32323"
 msgid "Experimental Engine"
 msgstr ""
+
+msgctxt "#32324"
+msgid "Google TTS"
+msgstr ""

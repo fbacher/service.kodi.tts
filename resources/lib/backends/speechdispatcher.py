@@ -219,7 +219,7 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
         volume_validator: ConstraintsValidator | IValidator
         volume_validator = SettingsMap.get_validator(cls.service_ID,
                                                      property_id=SettingsProperties.VOLUME)
-        volume = volume_validator.getValue()
+        volume = volume_validator.get_tts_value()
 
         return volume
 
@@ -235,7 +235,7 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
         volume_validator: ConstraintsValidator
         volume_validator = cls.get_validator(cls.service_ID,
                                              property_id=SettingsProperties.VOLUME)
-        volume: float = volume_validator.getValue()
+        volume, _, _, _ = volume_validator.get_tts_values()
         return volume
 
     @classmethod

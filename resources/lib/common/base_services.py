@@ -71,7 +71,7 @@ class BaseServices(IServices):
         return service
 
     @classmethod
-    def get_available_service_ids(cls, service_type: ServiceType) -> List[Tuple[str, str]]:
+    def get_available_service_ids(cls, service_type: ServiceType) -> List[Tuple[str, Dict[str, Any]]]:
         return SettingsMap.get_available_service_ids(service_type)
 
     @classmethod
@@ -90,118 +90,118 @@ class BaseServices(IServices):
         cache_path_validator: StringValidator | IValidator
         cache_path_validator = cls.getValidator(Services.TTS_SERVICE,
                                                 SettingsProperties.CACHE_PATH)
-        return cache_path_validator.getValue()
+        return cache_path_validator.get_tts_value()
 
     @classmethod
     def get_tts_version(cls) -> str:
         version_validator: StringValidator | IValidator
         version_validator = cls.getValidator(Services.TTS_SERVICE,
                                              SettingsProperties.VERSION)
-        return version_validator.getValue()
+        return version_validator.get_tts_value()
 
     @classmethod
     def get_addons_md5(cls) -> str:
         addons_md5_val: StringValidator | IValidator
         addons_md5_val = cls.getValidator(Services.TTS_SERVICE,
                                           SettingsProperties.ADDONS_MD5)
-        return addons_md5_val.getValue()
+        return addons_md5_val.get_tts_value()
 
     @classmethod
     def uses_cache(cls) -> bool:
         cache_validator: BoolValidator | IValidator
         cache_validator = cls.getValidator(Services.TTS_SERVICE,
                                            SettingsProperties.CACHE_SPEECH)
-        return cache_validator.getValue()
+        return cache_validator.get_tts_value()
 
     @classmethod
     def is_disable_broken_engines(cls) -> bool:
         disable_broken_engines_val: BoolValidator | IValidator
         disable_broken_engines_val = cls.getValidator(Services.TTS_SERVICE,
                                                       SettingsProperties.DISABLE_BROKEN_SERVICES)
-        return disable_broken_engines_val.getValue()
+        return disable_broken_engines_val.get_tts_value()
 
     @classmethod
     def is_speak_background_progress(cls) -> bool:
         speak_background_progress_validator: BoolValidator | IValidator
         speak_background_progress_validator = cls.getValidator(Services.TTS_SERVICE,
                                                                SettingsProperties.SPEAK_BACKGROUND_PROGRESS)
-        return speak_background_progress_validator.getValue()
+        return speak_background_progress_validator.get_tts_value()
 
     @classmethod
     def is_speak_background_progress_during_media(cls) -> bool:
         speak_background_progress_during_media_validator: BoolValidator | IValidator
         speak_background_progress_during_media_validator = cls.getValidator(Services.TTS_SERVICE,
                                            SettingsProperties.SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA)
-        return speak_background_progress_during_media_validator.getValue()
+        return speak_background_progress_during_media_validator.get_tts_value()
 
     @classmethod
     def uses_tempfs(cls) -> bool:
         cache_validator: BoolValidator | IValidator
         cache_validator = cls.getValidator(Services.TTS_SERVICE,
                                            SettingsProperties.USE_TEMPFS)
-        return cache_validator.getValue()
+        return cache_validator.get_tts_value()
 
     @classmethod
     def is_auto_item_extra(cls) -> bool:
         auto_item_extra_val: BoolValidator | IValidator
         auto_item_extra_val = cls.getValidator(Services.TTS_SERVICE,
                                            SettingsProperties.AUTO_ITEM_EXTRA)
-        return auto_item_extra_val.getValue()
+        return auto_item_extra_val.get_tts_value()
 
     @classmethod
     def is_speak_list_count(cls) -> bool:
         cache_validator: BoolValidator | IValidator
         cache_validator = cls.getValidator(Services.TTS_SERVICE,
                                            SettingsProperties.SPEAK_LIST_COUNT)
-        return cache_validator.getValue()
+        return cache_validator.get_tts_value()
 
     @classmethod
     def is_reader_on(cls) -> bool:
         cache_validator: BoolValidator | IValidator
         cache_validator = cls.getValidator(Services.TTS_SERVICE, SettingsProperties.READER_ON)
-        return cache_validator.getValue()
+        return cache_validator.get_tts_value()
 
     @classmethod
     def is_override_poll_interval(cls) -> bool:
         overide_poll_validator: BoolValidator | IValidator
         overide_poll_validator = cls.getValidator(Services.TTS_SERVICE,
                                            SettingsProperties.OVERRIDE_POLL_INTERVAL)
-        return overide_poll_validator.getValue()
+        return overide_poll_validator.get_tts_value()
 
     @classmethod
     def get_debug_log_level(cls) -> int:
         debug_log_level_validator: IntValidator | IValidator
         debug_log_level_validator = cls.getValidator(Services.TTS_SERVICE,
                                                      SettingsProperties.DEBUG_LOG_LEVEL)
-        return debug_log_level_validator.getValue()
+        return debug_log_level_validator.get_tts_value()
 
     @classmethod
     def get_poll_interval(cls) -> int:
         poll_interval_validator: IntValidator | IValidator
         poll_interval_validator = cls.getValidator(Services.TTS_SERVICE,
                                                    SettingsProperties.POLL_INTERVAL)
-        return poll_interval_validator.getValue()
+        return poll_interval_validator.get_tts_value()
 
     @classmethod
     def get_cache_expiration_days(cls) -> int:
         expiration_validator: IntValidator | IValidator
         expiration_validator = cls.getValidator(Services.TTS_SERVICE,
                                                 SettingsProperties.CACHE_EXPIRATION_DAYS)
-        return expiration_validator.getValue()
+        return expiration_validator.get_tts_value()
 
     @classmethod
     def get_background_progress_interval(cls) -> int:
         background_progress_interval_val: IntValidator | IValidator
         background_progress_interval_val = cls.getValidator(Services.TTS_SERVICE,
                                                 SettingsProperties.BACKGROUND_PROGRESS_INTERVAL)
-        return background_progress_interval_val.getValue()
+        return background_progress_interval_val.get_tts_value()
 
     @classmethod
     def get_auto_item_extra_delay(cls) -> int:
         extra_delay_val: IntValidator | IValidator
         extra_delay_val = cls.getValidator(Services.TTS_SERVICE,
                                            SettingsProperties.AUTO_ITEM_EXTRA_DELAY)
-        return extra_delay_val.getValue()
+        return extra_delay_val.get_tts_value()
 
     # @classmethod
     # def getSoundCapabilities(cls, service_name: str) -> SoundCapabilities:
@@ -217,7 +217,7 @@ class BaseServices(IServices):
     def uses_pipe(cls, service_id: str) -> bool:
         pipe_validator: BoolValidator | IValidator
         pipe_validator = cls.getValidator(service_id, SettingsProperties.PIPE)
-        return pipe_validator.getValue()
+        return pipe_validator.get_tts_value()
 
     """
     Adapter code for SettingsMap. Can't have SettingsMap and BaseServices
@@ -293,4 +293,14 @@ class BaseServices(IServices):
         # player_id: str = cls.get_active_player_id()
         # player: IPlayer = cls.getService(player_id)
         # player.notify(msg, now)
+        pass
+
+    @classmethod
+    def negotiate_engine_config(cls, engine_id: str, player_volume_adjustable: bool,
+                                player_speed_adjustable: bool,
+                                player_pitch_adjustable: bool) -> Tuple[bool, bool, bool]:
+        """
+        Player is informing engine what it is capable of controlling
+        Engine replies what it is allowing engine to control
+        """
         pass

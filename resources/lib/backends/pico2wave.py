@@ -6,6 +6,7 @@ import subprocess
 from backends.base import SimpleTTSBackend
 from backends.settings.constraints import Constraints
 from backends.settings.Pico2WaveSettings import Pico2WaveSettings
+from backends.settings.service_types import Services
 from common.constants import Constants
 from common.logger import *
 from common.setting_constants import Backends
@@ -18,7 +19,11 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class Pico2WaveTTSBackend(SimpleTTSBackend):
+    ID = Backends.ESPEAK_ID
+    service_ID: str = Services.PICO_TO_WAVE_ID
+    initialized: bool = False
     backend_id = Backends.PICO_TO_WAVE_ID
+    _engine_id = Backends.PICO_TO_WAVE_ID
     displayName = 'pico2wave'
     speedConstraints: Constraints = Constraints(20, 100, 200, True, False, 1.0,
                                                 SettingsProperties.SPEED)
@@ -140,4 +145,4 @@ class Pico2WaveTTSBackend(SimpleTTSBackend):
         # if using cache
         # return True, True, True
 
-        return False, False, False
+        return True, True, True

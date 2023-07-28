@@ -65,17 +65,26 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
             clz.register(self)
         super().__init__()
 
-        self.configVolume: bool = False
-        self.configSpeed: bool = False
-        self.configPitch: bool = False
+        self.engine_id: str = None
+        self.configVolume: bool = True
+        self.configSpeed: bool = True
+        self.configPitch: bool = True
 
-    def init(self, service_id: str):
-        # engine_id: str = Settings.get_engine_id()
-        self.configVolume, self.configSpeed, self.configPitch = \
-            BackendInfoBridge.negotiate_engine_config(
-                    service_id, self.canSetVolume(),
-                    self.canSetSpeed(), self.canSetPitch())
+    def init(self, engine_id: str):
+        self.engine_id = engine_id
+        engine: BaseServices = BaseServices.getService(engine_id)
 
+        can_set_volume: bool = self.canSetVolume()
+        can_set_speed: bool = self.canSetSpeed()
+        can_set_pitch: bool = self.canSetPitch()
+        # self.configVolume, self.configSpeed, self.configPitch =
+        vol, speed, pitch = \
+            engine.negotiate_engine_config(
+                    engine_id, can_set_volume, can_set_speed, can_set_pitch)
+        self.configVolume = vol
+        self.configSpeed = speed
+        self.configPitch = pitch
+    '''
     def scaleVolume(self) -> float:
         """
             Scales the volume produced by the engine using TTS scale.
@@ -89,7 +98,7 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
         engine_volume_val: ConstraintsValidator | IIntValidator
         engine_volume_val = SettingsMap.get_validator(engine_id,
                                                       SettingsProperties.VOLUME)
-        engine_volume: int = engine_volume_val.getValue()
+        engine_volume: int = engine_volume_val.get_tts_value()
         engine_constraints = engine_volume_val.constraints
         player_volume_val: IValidator | ConstraintsValidator
         player_volume_val = SettingsMap.get_validator(clz.service_ID,
@@ -98,9 +107,11 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
         player_volume: float = player_constraints.translate_value(engine_constraints,
                                                                   - engine_volume)
         return player_volume
+    '''
 
     def playArgs(self, phrase: Phrase):
         clz = type(self)
+        args: List[str] = []
         try:
             args = self.baseArgs(phrase)
         except ExpiredException:
@@ -108,11 +119,10 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
         #
         # None is returned if engine can not control speed, etc.
         #
-        speed: float = self.getPlayerSpeed()
+        speed: float = self.get_player_speed()
         # Get the volume produced by the engine using TTS scale
         volume: float
-        # volume = self.getVolumeDb()
-        volume = self.scaleVolume()
+        volume = self.get_player_volume()
         if speed is None:
             self.configSpeed = False
         if volume is None:
@@ -127,21 +137,16 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
             if self.configVolume:
                 filters.append(self._volumeArgs.format(volume))
             args.append(','.join(filters))
-        #  self._logger.debug_verbose(f'args: {" ".join(args)}')
+        self._logger.debug_verbose(f'args: {" ".join(args)}')
         #  Debug.dump_all_threads(0.0)
         return args
-
-    # def play(self, path: str):
-    #     clz = type(self)
-    #     args = self.playArgs(path)
-    #     clz._logger.debug_verbose(f'args: {" ".join(args)}')
 
     def get_pipe_args(self) -> List[str]:
         clz = type(self)
         args: List[str] = []
         args.extend(self._pipeArgs)
-        speed: float = self.getPlayerSpeed()
-        volume: float = self.getVolumeDb()
+        speed: float = self.get_player_speed()
+        volume: float = self.get_player_volume()
         if speed is None:
             self.configSpeed = False
         if volume is None:
@@ -176,35 +181,21 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
     def canSetPipe(self) -> bool:
         return True
 
-    def getPlayerSpeed(self) -> float | None:
+    def get_player_speed(self) -> int:
         clz = type(self)
-        # Get speed of cached voice
-        engine_id: str = Settings.get_engine_id()
-        engine: BaseServices = BaseServices.getService(Settings.get_engine_id())
-        cache_speed: float | None = engine.getSpeed()
-        engine_speed_validator: ConstraintsValidator | IValidator
-        engine_speed_validator = SettingsMap.get_validator(service_id=engine_id,
-                                                           property_id=SettingsProperties.SPEED)
-        if engine_speed_validator is None:
-            return None
-        engine_speed_constraints: Constraints = engine_speed_validator.constraints
-        engine_speed: float = engine_speed_validator.getValue()
+        speed_validator: ConstraintsValidator
+        speed_validator = clz.get_validator(clz.service_ID,
+                                            property_id=SettingsProperties.SPEED)
+        speed = speed_validator.get_impl_value(self.engine_id)
+        return speed
 
-        """
-            Scale the speed produced by the engine using TTS scale.
-            Any difference between the engine's speed and the configured TTS
-            speed will have to be compensated by the player.
-            :returns: the engine's speed using TTS scale
-        """
-        current_speed: float = cache_speed
-        desired_speed: float = engine_speed
-        player_speed_val: IValidator | ConstraintsValidator
-        player_speed_val = SettingsMap.get_validator(clz.service_ID,
-                                                      SettingsProperties.SPEED)
-        player_constraints: Constraints = player_speed_val.constraints
-        player_speed: float = player_constraints.translate_value(engine_speed_constraints,
-                                                                  cache_speed)
-        return 1.50
+    def get_player_volume(self) -> int:
+        clz = type(self)
+        volume_validator: ConstraintsValidator
+        volume_validator = clz.get_validator(clz.service_ID,
+                                            property_id=SettingsProperties.VOLUME)
+        volume = volume_validator.get_impl_value(self.engine_id)
+        return volume
 
     @classmethod
     def register(cls, what):

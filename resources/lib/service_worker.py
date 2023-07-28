@@ -6,10 +6,10 @@ import sys
 import xbmc
 
 from cache.prefetch_movie_data.seed_cache import SeedCache
-from common.critical_settings import CriticalSettings
 from common.exceptions import ExpiredException
 from common.logger import *
 from common.phrases import Phrase, PhraseList
+from common.player_monitor import PlayerMonitor, PlayerState
 from utils.util import runInThread
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -138,6 +138,8 @@ class TTSService:
     listIndex = None
     waitingToReadItemExtra = None
     driver: Driver = None
+    background_driver: BackgroundDriver = None
+    background_driver_instance: BackgroundDriver = None
 
     def __init__(self):
         clz = type(self)
@@ -484,7 +486,7 @@ class TTSService:
         backend_id = cls.set_active_backend(new_active_backend)
         cls.updateInterval()  # Poll interval
         cls._logger.info(f'New active backend: {backend_id}')
-        cls.set_background_driver()
+        cls.start_background_driver()
 
 
     @classmethod
@@ -522,12 +524,12 @@ class TTSService:
         engine_id: str = cls.get_active_backend().backend_id
         Monitor.register_notification_listener(cls.onNotification, 'service.notify')
         Monitor.register_abort_listener(cls.onAbortRequested)
-        if seed_cache and Settings.is_use_cache(engine_id):
-            call: callable = SeedCache.discover_movie_info
-            runInThread(call, args=[engine_id],
-                        name='seed_cache', delay=360)
-            #  SeedCache.discover_movie_info(engine_id)
-            pass
+        # if seed_cache and Settings.is_use_cache(engine_id):
+        #     call: callable = SeedCache.discover_movie_info
+        #     runInThread(call, args=[engine_id],
+        #                 name='seed_cache', delay=360)
+        #    #  SeedCache.discover_movie_info(engine_id)
+        #    pass
 
         cls._logger.debug(f'TTSService initialized. Now waiting for events')
         try:
@@ -634,10 +636,10 @@ class TTSService:
         return backend.backend_id
 
     @classmethod
-    def set_background_driver(cls) -> None:
-        cls.background_driver: BackgroundDriver
-        cls.background_driver = BackgroundDriver(cls.active_backend.backend_id)
-        cls.background_driver.start()
+    def start_background_driver(cls) -> None:
+        if cls.background_driver_instance is None:
+            cls.background_driver_instance = BackgroundDriver()
+            cls.background_driver = type(cls.background_driver_instance)
 
     @classmethod
     def checkBackend(cls) -> None:
@@ -724,10 +726,13 @@ class TTSService:
 
     @classmethod
     def sayText(cls, phrases: PhraseList, preload_cache=False):
+        if PlayerMonitor.player_status == PlayerState.PLAYING:
+            cls._logger.debug_verbose(f'Ignoring text, PLAYING')
+            return
         if cls.tts.dead:
             return cls.fallbackTTS(cls.tts.deadReason)
         try:
-            module_logger.debug_verbose(f'sayText {repr(phrases[0].get_text())}'
+            cls._logger.debug_verbose(f'sayText {repr(phrases[0].get_text())}'
                                         f' interrupt: {str(phrases[0].get_interrupt())} '
                                         f'preload: {str(preload_cache)}')
             phrases.set_all_preload_cache(preload_cache)

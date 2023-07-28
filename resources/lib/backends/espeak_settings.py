@@ -14,6 +14,7 @@ from backends.settings.settings_map import Reason, SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
                                           EnumValidator, StringValidator)
 from common.base_services import BaseServices
+from common.constants import Constants
 from common.logger import BasicLogger
 from common.setting_constants import Backends, Genders, Players
 from common.system_queries import SystemQueries
@@ -23,7 +24,7 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class ESpeakSettings(BaseServiceSettings):
-    # Only returns .mp3 files
+    # Only returns .wav files, or speech
     ID: str = Backends.ESPEAK_ID
     engine_id = Backends.ESPEAK_ID
     service_ID: str = Services.ESPEAK_ID
@@ -36,8 +37,8 @@ class ESpeakSettings(BaseServiceSettings):
             super().__init__(setting_id, service_id, constraints)
             clz = type(self)
 
-        def setValue(self, value: int | float | str,
-                     value_type: ValueType = ValueType.VALUE) -> None:
+        def set_tts_value(self, value: int | float | str,
+                          value_type: ValueType = ValueType.VALUE) -> None:
             """
             Keep value fixed at 1
             :param value:
@@ -46,10 +47,12 @@ class ESpeakSettings(BaseServiceSettings):
             constraints: Constraints = self.constraints
             constraints.setSetting(1, self.service_id)
 
-        def getValue(self, value_type: ValueType = ValueType.VALUE) -> int | float | str:
+        def get_tts_values(self) \
+                -> Tuple[int | float | str, int | float | str , int | float | str, \
+                         int | float| str]:
             """
             Keep value fixed at 1
-            :return:
+            :return: current_value, min_value, default_value, max_value
             """
             return 1
 
@@ -57,33 +60,18 @@ class ESpeakSettings(BaseServiceSettings):
             pass
 
         def getUIValue(self) -> str:
-            return f'{self.getValue()}'
+            current_value: int | float | str
+            current_value, _, _, _ = self.get_tts_values()
+            return f'{current_value}'
 
     # Every setting from settings.xml must be listed here
     # SettingName, default value
 
-    # speedConstraints = Constraints(80, 175, 450, True, False, 1.0, SettingsProperties.SPEED)
-    # pitchConstraints = Constraints(0, 50, 99, True, False, 1.0, SettingsProperties.PITCH)
-    # volumeNativeConstraints = Constraints(0, 100, 200, True, False, 1.0, SettingsProperties.VOLUME)
-    # volumeConstraints = Constraints(-12, 0, 12, False, True, 1.0, SettingsProperties.VOLUME)
-    # constraints: Dict[str, Constraints] = {}
-
-    '''
-    settings = {
-        # 'output_via_espeak': False,
-        SettingsProperties.PLAYER: Players.INTERNAL,
-        SettingsProperties.PITCH: 0,
-        SettingsProperties.PIPE: False,
-        SettingsProperties.SPEED: 0,
-        SettingsProperties.VOICE: '',
-        SettingsProperties.VOLUME: 0
-    }
-    '''
-    #  supported_settings: Dict[str, str | int | bool] = settings
     initialized: bool = False
     _supported_input_formats: List[str] = []
     _supported_output_formats: List[str] = [SoundCapabilities.WAVE]
-    _provides_services: List[ServiceType] = [ServiceType.ENGINE]
+    _provides_services: List[ServiceType] = [ServiceType.ENGINE,
+                                             ServiceType.INTERNAL_PLAYER]
     SoundCapabilities.add_service(service_ID, _provides_services,
                                   _supported_input_formats,
                                   _supported_output_formats)
@@ -103,27 +91,32 @@ class ESpeakSettings(BaseServiceSettings):
 
     @classmethod
     def init_settings(cls):
+        service_properties = {Constants.NAME: cls.displayName}
         SettingsMap.define_service(ServiceType.ENGINE, cls.service_ID,
-                                   cls.displayName)
+                                   service_properties)
         #
         # Need to define Conversion Constraints between the TTS 'standard'
         # constraints/settings to the engine's constraints/settings
 
-        speed_constraints_validator = ConstraintsValidator(SettingsProperties.SPEED,
-                                                           cls.engine_id,
-                                                           BaseServiceSettings.ttsSpeedConstraints)
 
-        pitch_constraints: Constraints = Constraints(0, 50, 99, True, False, 1.0,
-                                                     SettingsProperties.PITCH)
+        pitch_constraints: Constraints = Constraints(minimum=0, default=50,
+                                                   maximum=99, integer=True,
+                                                   decibels=False, scale=1.0,
+                                                   property_name=SettingsProperties.PITCH,
+                                                   midpoint=50, increment=1.0,
+                                                   tts_line_value=50)
+
         pitch_constraints_validator = ConstraintsValidator(SettingsProperties.PITCH,
                                                            cls.engine_id,
                                                            pitch_constraints)
 
-        volumeConversionConstraints: Constraints = Constraints(minimum=1, default=100,
-                                                               maximum=200, integer=True,
-                                                               decibels=False, scale=1.0,
-                                                               property_name=SettingsProperties.VOLUME,
-                                                               midpoint=100, increment=5)
+        volumeConversionConstraints: Constraints = Constraints(minimum=0, default=100, maximum=200,
+                                                     integer=True, decibels=False,
+                                                     scale=1.0,
+                                                     property_name=SettingsProperties.VOLUME,
+                                                     midpoint=100, increment=5,
+                                                               tts_line_value=100)
+
         volume_constraints_validator = ConstraintsValidator(
                 SettingsProperties.VOLUME,
                 cls.engine_id,
@@ -140,20 +133,10 @@ class ESpeakSettings(BaseServiceSettings):
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.CONVERTER,
                                    audio_converter_validator)
 
-        language_validator: StringValidator
-        language_validator = StringValidator(SettingsProperties.LANGUAGE, cls.engine_id,
-                                             allowed_values=[], min_length=2,
-                                             max_length=5)
-        voice_validator: StringValidator
-        voice_validator = StringValidator(SettingsProperties.VOICE, cls.engine_id,
-                                          allowed_values=[], min_length=1, max_length=10,
-                                          default='')
         pipe_validator: BoolValidator
         pipe_validator = BoolValidator(SettingsProperties.PIPE, cls.engine_id,
                                        default=False)
-        cache_validator: BoolValidator
-        cache_validator = BoolValidator(SettingsProperties.CACHE_SPEECH, cls.engine_id,
-                                        default=False)
+
         #  TODO:  Need to eliminate un-available players
         #         Should do elimination in separate code
 
@@ -166,22 +149,46 @@ class ESpeakSettings(BaseServiceSettings):
                                            allowed_values=valid_players,
                                            default=Players.MPLAYER)
 
+        language_validator: StringValidator
+        language_validator = StringValidator(SettingsProperties.LANGUAGE, cls.engine_id,
+                                             allowed_values=[], min_length=2,
+                                             max_length=5)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.LANGUAGE,
                                    language_validator)
+
+        voice_validator: StringValidator
+        voice_validator = StringValidator(SettingsProperties.VOICE, cls.engine_id,
+                                          allowed_values=[], min_length=1, max_length=10,
+                                          default=None)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOICE,
                                    voice_validator)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PIPE,
                                    pipe_validator)
+
+        # ttsPitchConstraints: Constraints = Constraints(0, 50, 99, True, False, 1.0,
+        #                                        SettingsProperties.PITCH, 50, 1.0)
+
+        speedConstraints: Constraints = Constraints(minimum=43, default=175,
+                                                 maximum=700, integer=True,
+                                                 decibels=False, scale=1.0,
+                                                 property_name=SettingsProperties.SPEED,
+                                                 midpoint=175, increment=45,
+                                                 tts_line_value=175)
+
+        #  Speed in words per minute. Default 175
+        speed_constraints_validator = ConstraintsValidator(SettingsProperties.SPEED,
+                                                           cls.engine_id,
+                                                           speedConstraints)
+
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.SPEED,
                                    speed_constraints_validator)
+
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PITCH,
                                    pitch_constraints_validator)
         # SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOLUME,
         #                           volume_constraints_validator)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER,
                                    player_validator)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.CACHE_SPEECH,
-                                       cache_validator)
 
     @classmethod
     def isSupportedOnPlatform(cls) -> bool:

@@ -40,6 +40,7 @@ class BootstrapEngines:
         # SpeechServerBackend(),
         # ReciteTTSBackend(),
         # GoogleTTSBackend(),
+        Backends.GOOGLE_ID,
         Backends.RESPONSIVE_VOICE_ID,
         Backends.EXPERIMENTAL_ENGINE_ID,
         #   SpeechUtilComTTSBackend(),
@@ -110,6 +111,20 @@ class BootstrapEngines:
         except Exception as e:
             cls._logger.exception('')
             SettingsMap.set_is_available(Backends.FLITE_ID, Reason.BROKEN)
+
+        try:
+            from backends.engines.google_settings import GoogleSettings
+            google_settings: GoogleSettings = GoogleSettings()
+            is_available: bool = google_settings.isInstalled()
+            if is_available:
+                SettingsMap.set_is_available(Backends.GOOGLE_ID, Reason.AVAILABLE)
+            else:
+                SettingsMap.set_is_available(Backends.GOOGLE_ID, Reason.NOT_AVAILABLE)
+        except AbortException:
+            reraise(*sys.exc_info())
+        except Exception as e:
+            cls._logger.exception('')
+            SettingsMap.set_is_available(Backends.GOOGLE_ID, Reason.BROKEN)
 
         try:
             from backends.settings.Pico2WaveSettings import Pico2WaveSettings
@@ -215,6 +230,9 @@ class BootstrapEngines:
             elif engine_id == Backends.SPEECH_DISPATCHER_ID:
                 from backends.speechdispatcher import SpeechDispatcherTTSBackend
                 engine_id = SpeechDispatcherTTSBackend().service_ID
+            elif engine_id == Backends.GOOGLE_ID:
+                from backends.google import GoogleTTSEngine
+                engine_id = GoogleTTSEngine().service_ID
             else:  # Catch all default
                 # engine_id = ESpeakSettings().service_ID
                 from backends.responsive_voice import ResponsiveVoiceTTSBackend
@@ -232,7 +250,7 @@ class BootstrapEngines:
             engine_id: str
             if BaseServices.getService(engine_id) is None:
                 cls.load_engine(engine_id)
-                
+
         # Include settings for other engines
         Settings.load_settings()
 

@@ -35,6 +35,7 @@ class Backends(BaseSettingsConstants):
     PICO_TO_WAVE_ID: Final[str] = Services.PICO_TO_WAVE_ID
     RECITE_ID: Final[str] = Services.RECITE_ID
     RESPONSIVE_VOICE_ID: Final[str] = Services.RESPONSIVE_VOICE_ID
+    GOOGLE_ID: Final[str] = Services.GOOGLE_ID
     SPEECH_DISPATCHER_ID: Final[str] = Services.SPEECH_DISPATCHER_ID
     EXPERIMENTAL_ENGINE_ID: Final[str] = Services.EXPERIMENTAL_ENGINE_ID
 
@@ -44,6 +45,7 @@ class Backends(BaseSettingsConstants):
         EXPERIMENTAL_ENGINE_ID,
         FESTIVAL_ID,
         FLITE_ID,
+        GOOGLE_ID,
         INTERNAL_ID,
         LOG_ONLY_ID,
         PICO_TO_WAVE_ID,
@@ -69,7 +71,8 @@ class Backends(BaseSettingsConstants):
         FLITE_ID: 'flite',
         RESPONSIVE_VOICE_ID: 'rv',
         SPEECH_DISPATCHER_ID: 'speechDisp',
-        EXPERIMENTAL_ENGINE_ID: 'ex'
+        EXPERIMENTAL_ENGINE_ID: 'ex',
+        GOOGLE_ID: 'goo'
     }
 
 

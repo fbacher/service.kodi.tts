@@ -81,14 +81,17 @@ class Results:
 class SpeechGenerator:
     RESPONSIVE_VOICE_URL: Final[
         str] = "http://responsivevoice.org/responsivevoice/getvoice.php"
-    MAXIMUM_PHRASE_LENGTH: Final[int] = 200
 
     _logger: BasicLogger = None
+    _initialized: bool = False
 
     def __init__(self) -> None:
         clz = type(self)
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz.__name__)
+        if not clz._initialized:
+            BaseServices().register(self)
+            clz._initialized = True
         self.download_results: Results = Results()
 
     def set_rc(self, rc: ReturnCode) -> None:
@@ -293,14 +296,16 @@ class SpeechGenerator:
                                     clz._logger.exception('Can not delete '
                                                           f' {str(phrase.get_cache_path())}')
 
+                                '''
                                 text_path: pathlib.Path = None
                                 try:
                                     text_path = phrase.get_cache_path().with_suffix(
-                                        '.mp3')
+                                        '.txt')
                                     text_path.unlink(True)
                                 except Exception as e:
                                     clz._logger.exception(f'Unable to delete '
                                                           f'{str(text_path)}')
+                                '''
                         if clz._logger.isEnabledFor(DEBUG_VERBOSE):
                             clz._logger.debug_extra_verbose(
                                     f'Request status: {r.status_code}'
@@ -625,7 +630,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackend):
             if phrase.get_cache_path() is None:
                 VoiceCache.get_path_to_voice_file(phrase,
                                                   use_cache=Settings.is_use_cache())
-            if not phrase.is_exists():
+            if not phrase.exists():
                 generator: SpeechGenerator = SpeechGenerator()
                 results: Results = generator.generate_speech(self, phrase)
                 if results.get_rc() == ReturnCode.OK:
@@ -633,7 +638,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackend):
         except ExpiredException:
             return False
 
-        return phrase.exists
+        return phrase.exists()
 
     def runCommandAndPipe(self, phrase: Phrase):
         clz = type(self)
@@ -650,7 +655,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackend):
         byte_stream: io.BinaryIO = None
         try:
             VoiceCache.get_path_to_voice_file(phrase, use_cache=Settings.is_use_cache())
-            if not phrase.exists:
+            if not phrase.exists():
                 generator: SpeechGenerator = SpeechGenerator()
                 results: Results = generator.generate_speech(self, phrase)
                 if results.get_rc() == ReturnCode.OK:
@@ -685,7 +690,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackend):
             for phrase in phrases:
                 if Settings.is_use_cache():
                     VoiceCache.get_path_to_voice_file(phrase, use_cache=True)
-                    if not phrase.is_exists():
+                    if not phrase.exists():
                         text_to_voice: str = phrase.get_text()
                         voice_file_path: pathlib.Path = phrase.get_cache_path()
                         clz._logger.debug_extra_verbose(f'PHRASE Text {text_to_voice}')
@@ -869,7 +874,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackend):
         volume_validator: ConstraintsValidator | IValidator
         volume_validator = SettingsMap.get_validator(cls.service_ID,
                                                      property_id=SettingsProperties.VOLUME)
-        volume = volume_validator.getValue()
+        volume, _, _, _ = volume_validator.get_tts_values()
 
         return None  # Find out if used
 
@@ -908,7 +913,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackend):
         language_validator: ConstraintsValidator
         language_validator = cls.get_validator(cls.service_ID,
                                                property_id=SettingsProperties.LANGUAGE)
-        language: str = language_validator.getValue()
+        language, _, _, _ = language_validator.get_tts_values()
         language = 'en-US'
         return language
 
@@ -922,7 +927,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackend):
         if Settings.is_use_cache():
             pitch = pitch_validator.default_value
         else:
-            pitch: float = pitch_validator.getValue()
+            pitch, _, _, _ = pitch_validator.get_tts_values()
         return pitch
 
     @classmethod
@@ -950,7 +955,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackend):
         speed_validator: ConstraintsValidator
         speed_validator = cls.get_validator(cls.service_ID,
                                             property_id=SettingsProperties.SPEED)
-        speed: float = speed_validator.getValue()
+        speed, _, _, _ = speed_validator.get_tts_value()
         # speed = float(speed_i) / 100.0
         return speed
 

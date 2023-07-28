@@ -7,6 +7,7 @@ from backends.settings.service_types import Services, ServiceType
 from backends.settings.settings_map import Reason, SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
                                           EnumValidator, StringValidator)
+from common.constants import Constants
 from common.logger import BasicLogger
 from common.setting_constants import Backends, Genders, Players
 from common.settings_low_level import SettingsProperties
@@ -25,7 +26,6 @@ class ResponsiveVoiceSettings(BaseServiceSettings):
 
     logger: BasicLogger = None
     displayName = 'ResponsiveVoice'
-    # player_handler_class: Type[BasePlayerHandler] = WavAudioPlayerHandler
 
     """
     In an attempt to bring some consistency between the various players, engines and 
@@ -57,8 +57,8 @@ class ResponsiveVoiceSettings(BaseServiceSettings):
             super().__init__(setting_id, service_id, constraints)
             clz = type(self)
 
-        def setValue(self, value: int | float | str,
-                     value_type: ValueType = ValueType.VALUE) -> None:
+        def set_tts_value(self, value: int | float | str,
+                          value_type: ValueType = ValueType.VALUE) -> None:
             """
             Keep value fixed at 1
             :param value:
@@ -67,7 +67,7 @@ class ResponsiveVoiceSettings(BaseServiceSettings):
             constraints: Constraints = self.constraints
             constraints.setSetting(1, self.service_id)
 
-        def getValue(self, value_type: ValueType = ValueType.VALUE) -> int | float | str:
+        def get_tts_value(self, value_type: ValueType = ValueType.VALUE) -> int | float | str:
             """
             Keep value fixed at 1
             :return:
@@ -78,7 +78,8 @@ class ResponsiveVoiceSettings(BaseServiceSettings):
             pass
 
         def getUIValue(self) -> str:
-            return f'{self.getValue()}'
+            value, _, _, _ = self.get_tts_values()
+            return str(value)
 
     _supported_input_formats: List[str] = []
     _supported_output_formats: List[str] = [SoundCapabilities.WAVE]
@@ -94,6 +95,7 @@ class ResponsiveVoiceSettings(BaseServiceSettings):
     def __init__(self, *args, **kwargs):
         clz = type(self)
         super().__init__(*args, **kwargs)
+
         BaseEngineSettings(clz.service_ID)
         self.initialized: bool = False
         if self.initialized:
@@ -106,8 +108,11 @@ class ResponsiveVoiceSettings(BaseServiceSettings):
         SettingsMap.set_is_available(clz.service_ID, Reason.AVAILABLE)
 
     def init_settings(self):
+        service_properties = {'name': self.displayName,
+                              Constants.MAX_PHRASE_LENGTH: 200,
+                              Constants.CACHE_SUFFIX: 'rv'}
         SettingsMap.define_service(ServiceType.ENGINE, self.service_ID,
-                                   self.displayName)
+                                   service_properties)
         #
         # Need to define Conversion Constraints between the TTS 'standard'
         # constraints/settings to the engine's constraints/settings

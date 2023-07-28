@@ -168,6 +168,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
 
         except Exception as e:
             clz._logger.exception("Failed to initialize")
+            self.close()
 
         clz._logger.debug_verbose('SelectionDialog.onInit exiting')
 

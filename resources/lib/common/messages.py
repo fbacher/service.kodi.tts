@@ -259,6 +259,7 @@ class Messages:
     BACKEND_ESPEAK = Message('eSpeak', 32314)
     BACKEND_FESTIVAL = Message('Festival', 32315)
     BACKEND_FLITE = Message('Flite', 32316)
+    GOOGLE = Message('Google TTS', 32324)
     BACKEND_RESPONSIVE_VOICE = Message('ResponsiveVoice', 32317)
     BACKEND_SPEECH_DISPATCHER = Message('Speech Dispatcher', 32318)
     BACKEND_EXPERIMENTAL = Message('Experimental Engine', 32323)

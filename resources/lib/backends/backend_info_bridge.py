@@ -3,7 +3,9 @@ from backends.i_tts_backend_base import ITTSBackendBase
 from backends.settings.constraints import Constraints
 from common.__init__ import *
 from common.base_services import BaseServices
+from common.logger import BasicLogger
 
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 class BackendInfoBridge(IBackendInfo):
     _backendInfoImpl: IBackendInfo = None
@@ -57,10 +59,13 @@ class BackendInfoBridge(IBackendInfo):
                                 player_speed_adjustable: bool,
                                 player_pitch_adjustable: bool) -> Tuple[bool, bool, bool]:
 
-        engine: BackendInfoBridge = cls.getBackend(backend_id)
-        return engine.negotiate_engine_config(backend_id, player_volume_adjustable,
-                                              player_speed_adjustable,
-                                              player_pitch_adjustable)
+        try:
+            engine: BackendInfoBridge = cls.getBackend(backend_id)
+            return engine.negotiate_engine_config(backend_id, player_volume_adjustable,
+                                                  player_speed_adjustable,
+                                                  player_pitch_adjustable)
+        except Exception:
+            module_logger.exception('')
 
     @classmethod
     def get_backend_setting_default(cls, backend_id: str, setting_id: str) -> Any:

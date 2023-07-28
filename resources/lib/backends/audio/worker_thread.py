@@ -4,7 +4,7 @@ from backends.players.iplayer import IPlayer
 from backends.players.player_index import PlayerIndex
 from backends.settings.setting_properties import SettingsProperties
 from common.base_services import BaseServices, IServices
-from common.logger import BasicLogger
+from common.logger import *
 from common.monitor import Monitor
 from common.phrases import Phrase, PhraseList
 from common.typing import *
@@ -58,8 +58,18 @@ class WorkerThread:
             clz._logger = module_logger.getChild(self.__class__.__name__)
         pass
 
+    '''
+        Handled by just expiring prior phrases. 
+        Interrupt should NOT impact phrases that are marked as not-expired,
+        nor should it discard phrases which can used to seed a phrase cache
+        for future voicing.
+        
     def interrupt(self):
+        clz = type(self)
+        clz._logger.debug(f'Purging queued messages due to interrupt',
+                          trace=Trace.TRACE_AUDIO_START_STOP)
         self.empty_queue()
+    '''
 
     def add_to_queue(self, tts_data: TTSQueueData) -> None:
         clz = type(self)
@@ -74,18 +84,32 @@ class WorkerThread:
         except Exception as e:
             clz._logger.exception('')
 
+    '''
     def empty_queue(self) -> None:
+        """
+        If this is needed, take care NOT to delete phrases which can be use
+        to seed a voice cache for future use
+        
+        :return: 
+        """
         clz = type(self)
         try:
             while self.queue.not_empty:
                 data = self.queue.get_nowait()
                 self.queue.task_done()
+                kwargs: Dict[str, Any] = data.get_kwargs()
+                phrase: Phrase = kwargs.get('phrase')
+                engine_id: str = kwargs.get('engine_id')
+                if phrase is not None:
+                    clz._logger.debug(f'Purged {phrase.debug_data()}_{engine_id}',
+                                      trace=Trace.TRACE_AUDIO_START_STOP)
         except EmptyQueue as e:
             pass
         except AbortException:
             reraise(*sys.exc_info())
         except Exception:
             clz._logger.exception('')
+        '''
 
     def process_queue(self):
         clz = type(self)
@@ -111,11 +135,19 @@ class WorkerThread:
                         phrase: Phrase = kwargs.get('phrase')
                         engine_id: str = kwargs.get('engine_id')
                         try:
+                            engine: IServices = BaseServices.getService(engine_id)
+                            engine.say_phrase(phrase)
+                        except Exception as e:
+                            clz._logger.exception('')
+                        continue
+                        '''
+                        try:
                             player.init(engine_id)
                         except Exception as e:
                             clz._logger.exception('')
                         player.play(phrase)
                         continue
+                        '''
                     if kwargs['state'] == 'seed_cache':
                         engine_id: str = kwargs.get('engine_id')
                         phrases: PhraseList = kwargs.get('phrases')

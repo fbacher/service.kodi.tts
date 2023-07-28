@@ -10,6 +10,7 @@ class Services:
     CACHE_READER_ID: Final[str] = 'cache_reader'
     INTERNAL_PLAYER_ID: Final[str] = 'internal'
     EXPERIMENTAL_ENGINE_ID: Final[str] = 'experimental'
+    GOOGLE_ID: Final[str] = 'google'
     RESPONSIVE_VOICE_ID: Final[str] = 'ResponsiveVoice'
     FESTIVAL_ID: Final[str] = 'Festival'
     FLITE_ID: Final[str] = 'Flite'

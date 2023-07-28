@@ -1,14 +1,17 @@
 # coding=utf-8
 import os
+import pathlib
 import sys
 
+import regex
+
 from backends.audio.sound_capabilties import SoundCapabilities
-from cache.prefetch_movie_data.movie_constants import MovieType
 from cache.prefetch_movie_data.parse_library import ParseLibrary
 from cache.voicecache import VoiceCache
 from common.logger import *
 from common.monitor import Monitor
-from common.phrases import Phrase
+from common.phrases import Phrase, PhraseList
+from common.settings import Settings
 from common.typing import *
 from cache.prefetch_movie_data.db_access import DBAccess
 
@@ -30,9 +33,15 @@ class SeedCache:
             results: List[List[Any]] = DBAccess.get_movie_details(query)
             movies: List[Dict[str, Any]] = results[0]
             engine_output_formats = SoundCapabilities.get_output_formats(engine_id)
+            number_of_movies = len(movies)
+            cls._logger.debug(f'Number of movies to discover: {number_of_movies:d}')
+            movie_counter: int = 0
             for raw_movie in movies:
                 try:
-                    Monitor.wait_for_abort(30.0)  # yield back 30 seconds between entries
+                    movie_counter += 1
+                    if (movie_counter % 100) == 0:
+                        cls._logger.debug(f'Movies processed: {movie_counter:d}')
+                    Monitor.wait_for_abort(60.0)  # yield back 60 seconds between entries
                     movie = ParseLibrary.parse_movie(is_sparse=False,
                                                      raw_movie=raw_movie)
                     '''
@@ -48,17 +57,18 @@ class SeedCache:
                         Last Played
                         Type movie
                     '''
+                    plot_found = cls.write_cache_txt(movie.get_plot(), engine_id, engine_output_formats)
+                    if plot_found:
+                        continue
                     title: str = movie.get_title()
                     cls.write_cache_txt(title, engine_id, engine_output_formats)
                     cls.write_cache_txt(str(movie.get_year()), engine_id, engine_output_formats)
-                    cls.write_cache_txt(movie.get_plot(), engine_id, engine_output_formats)
                     genres: str = movie.get_detail_genres()
                     writers: str = movie.get_detail_writers()
                     directors: str = movie.get_detail_directors()
                     cls.write_cache_txt(writers, engine_id, engine_output_formats)
                     cls.write_cache_txt(directors, engine_id, engine_output_formats)
                     cls.write_cache_txt(genres, engine_id, engine_output_formats)
-                    cls.write_cache_txt(movie.get_plot(), engine_id, engine_output_formats)
                     studios: str = movie.get_detail_studios()
                     rating: str = movie.get_detail_rating()
                     cls.write_cache_txt(rating, engine_id, engine_output_formats)
@@ -66,39 +76,22 @@ class SeedCache:
                     reraise(*sys.exc_info())
                 except Exception as e:
                     cls._logger.exception('')
+                cls._logger.debug(f'Done counting movies # {movie_counter:d}')
 
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
             cls._logger.exception('')
 
-
     @classmethod
     def write_cache_txt(cls, text_to_voice: str, engine_id: str,
-                        input_formats: List[str]):
-        phrase: Phrase = Phrase(text_to_voice)
+                        input_formats: List[str]) -> bool:
+        phrase: Phrase = Phrase(text_to_voice, check_expired=False)
+
         voice_file_path, exists, _ = VoiceCache.get_best_path(phrase, ['.mp3'])
         if exists:
-            return
+            return False
+        return True
 
-        # TODO: Need to split strings longer than engine can handle. See
-        #       ResponsiveVoice
-
-        VoiceCache.create_sound_file(phrase.get_cache_path(), create_dir_only=True)
-        path: str
-        file_type: str
-        text_file_path, file_type = os.path.splitext(voice_file_path)
-        text_file_path = f'{text_file_path}.txt'
-        try:
-            if os.path.isfile(text_file_path):
-                os.unlink(text_file_path)
-
-            with open(text_file_path, 'wt') as f:
-                f.write(text_to_voice)
-        except Exception as e:
-            if cls._logger.isEnabledFor(ERROR):
-                cls._logger.error(
-                        f'Failed to save voiced text file: '
-                        f'{text_file_path} Exception: {str(e)}')
 
 SeedCache.init()

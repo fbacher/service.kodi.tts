@@ -1,5 +1,7 @@
 from enum import Enum
 
+import xbmcvfs
+
 from backends.settings.service_types import Services
 from common.typing import *
 
@@ -105,7 +107,7 @@ class SettingsProperties:  # (ISettings):
     VOLUME_VISIBLE: Final[str] = 'volume_visible'
 
     API_KEY_DEFAULT: Final[str] = ''
-    CACHE_PATH_DEFAULT: Final[str] = 'special://userdata/addon_data/service.kodi.tts/cache'
+    CACHE_PATH_DEFAULT: Final[str] = xbmcvfs.translatePath('special://userdata/addon_data/service.kodi.tts/cache')
     CACHE_EXPIRATION_DEFAULT: Final[int] = 365
     CACHE_SPEECH_DEFAULT: Final[bool] = False
     ENGINE_SPEEK_DEFAULT = None

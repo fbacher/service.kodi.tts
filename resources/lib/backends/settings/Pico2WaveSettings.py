@@ -5,6 +5,7 @@ from backends.audio.sound_capabilties import SoundCapabilities
 from backends.engines.base_engine_settings import BaseEngineSettings
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.settings_map import Reason, SettingsMap
+from common.constants import Constants
 from common.logger import BasicLogger
 from common.setting_constants import Backends
 from common.system_queries import SystemQueries
@@ -44,8 +45,9 @@ class Pico2WaveSettings:
 
     @classmethod
     def init_settings(cls):
+        service_properties = {Constants.NAME: cls.displayName}
         SettingsMap.define_service(ServiceType.ENGINE, cls.service_ID,
-                                   cls.displayName)
+                                   service_properties)
 
     @classmethod
     def isSupportedOnPlatform(cls):

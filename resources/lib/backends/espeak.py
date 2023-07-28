@@ -5,6 +5,7 @@ import ctypes.util
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 from backends import base
 from backends.audio.builtin_audio_player import BuiltInAudioPlayer
@@ -14,12 +15,15 @@ from backends.base import Constraints, SimpleTTSBackend
 from backends.espeak_settings import ESpeakSettings
 from backends.i_tts_backend_base import ITTSBackendBase
 from backends.players.iplayer import IPlayer
+from backends.settings.i_validators import IValidator
 from backends.settings.service_types import Services
+from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import ConstraintsValidator
 from common import utils
 from common.constants import Constants
 from common.logger import *
 from common.base_services import BaseServices
+from common.phrases import Phrase
 from common.setting_constants import Backends, Genders, Mode, Players
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
@@ -35,11 +39,12 @@ class ESpeakTTSBackend(SimpleTTSBackend):
     """
     ID = Backends.ESPEAK_ID
     service_ID: str = Services.ESPEAK_ID
-    initialized: bool = False
-    backend_id = Backends.ESPEAK_ID
-    displayName = 'eSpeak'
+    service_TYPE: str = ServiceType.ENGINE_SETTINGS
+    backend_id: str = Backends.ESPEAK_ID
+    engine_id: str = Backends.ESPEAK_ID
+    displayName: str = 'eSpeak'
 
-    voice_map = dict()
+    voice_map: Dict[str, Tuple[str, str, Genders]] = None
     _logger: BasicLogger = None
     _class_name: str = None
     _initialized: bool = False
@@ -49,7 +54,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         clz = type(self)
         clz._class_name = self.__class__.__name__
         if clz._logger is None:
-            clz._logger = module_logger.getChild(type(self)._class_name)
+            clz._logger = module_logger.getChild(clz._class_name)
         if not clz._initialized:
             clz._initialized = True
             BaseServices.register(self)
@@ -57,7 +62,6 @@ class ESpeakTTSBackend(SimpleTTSBackend):
     def init(self):
         super().init()
         clz = type(self)
-        self.initialized = False
         self.process: subprocess.Popen = None
         self.update()
 
@@ -74,9 +78,10 @@ class ESpeakTTSBackend(SimpleTTSBackend):
 
     @classmethod
     def init_voices(cls):
-        if cls.initialized_static:
+        if cls.voice_map is not None:
             return
 
+        cls.voice_map = {}
         cmd_path = 'espeak'
         args = [cmd_path, '--voices']
         voices = []
@@ -107,31 +112,22 @@ class ESpeakTTSBackend(SimpleTTSBackend):
 
             voice_name = fields[3]
             voice_id = fields[4]
-            entries = cls.voice_map.get(lang, None)
+            entries: Tuple[str, str, Genders] | None = cls.voice_map.get(lang, None)
             if entries is None:
-                entries = []
+                entries = ()
                 cls.voice_map[lang] = entries
             entries.append((voice_name, voice_id, gender))
             cls.initialized_static = True
 
-    def getVoice(self) -> str:
+    def addCommonArgs(self, args, phrase: Phrase):
         clz = type(self)
-        voice = clz.getSetting(SettingsProperties.VOICE, '')
-        return voice
+        voice_id = Settings.get_voice(clz.service_ID)
+        if voice_id is None or voice_id in ('unknown', ''):
+            voice_id = None
 
-    def addCommonArgs(self, args, text):
-        clz = type(self)
-        voice_id = self.getVoice()
-        speed = self.getSpeed()
-        mode = self.getMode()
-        if mode == Mode.ENGINESPEAK:
-            # Scale 0 - 200 Default 100
-            volume = self.scale_db_to_percent(
-                self.getVolume(), upper_bound=200)
-        else:
-            volume = self.getEngineVolume()
-
-        pitch = self.getPitch()
+        speed = self.get_speed()
+        volume = self.getVolume()
+        pitch = self.get_pitch()
         if voice_id:
             args.extend(
                 ('-v', voice_id))
@@ -141,7 +137,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             args.extend(('-p', str(pitch)))
 
         args.extend(('-a', str(volume)))
-        args.append(text)
+        args.append(phrase.get_text())
 
     def update(self) -> None:
         self.setMode(self.getMode())
@@ -151,42 +147,43 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         player_id: str = Settings.get_player_id(clz.service_ID)
         if player_id == BuiltInAudioPlayer.ID:
             return Mode.ENGINESPEAK
-        elif type(self).getSetting(SettingsProperties.PIPE):
+        elif Settings.get_pipe(clz.service_ID):
             return Mode.PIPE
         else:
             return Mode.FILEOUT
 
-    def runCommand(self, text, outFile):
+    def runCommand(self, phrase: Phrase):
         clz = type(self)
+        outFile: Path = phrase.get_cache_path()
         if clz._logger.isEnabledFor(DEBUG_VERBOSE):
             clz._logger.debug_verbose(f'espeak.runCommand outFile: {outFile}')
         args = ['espeak', '-w', outFile]
-        self.addCommonArgs(args, text)
+        self.addCommonArgs(args, phrase)
         try:
             completed: subprocess.CompletedProcess = subprocess.run(args, check=True,
                                                                     shell=False)
             clz._logger.debug(f'args: {completed.args}')
         except subprocess.CalledProcessError as e:
-            if type(self)._logger.isEnabledFor(DEBUG):
-                type(self)._logger.debug('espeak.runCommand Exception: ' + str(e))
+            if clz._logger.isEnabledFor(DEBUG):
+                clz._logger.exception('')
         return True
 
-    def runCommandAndSpeak(self, text):
+    def runCommandAndSpeak(self, phrase: Phrase):
         clz = type(self)
         args = ['espeak']
-        self.addCommonArgs(args, text)
+        self.addCommonArgs(args, phrase)
         try:
             self.process = subprocess.Popen(args, universal_newlines=True)
             while self.process is not None and self.process.poll() is None and self.active:
                 utils.sleep(10)
             clz._logger.debug(f'args: {args}')
         except subprocess.SubprocessError as e:
-            if type(self)._logger.isEnabledFor(DEBUG):
-                type(self)._logger.debug('espeak.runCommand Exception: ' + str(e))
+            if clz._logger.isEnabledFor(DEBUG):
+                clz._logger.debug('espeak.runCommand Exception: ' + str(e))
 
-    def runCommandAndPipe(self, text):
+    def runCommandAndPipe(self, phrase: Phrase):
         args = ['espeak', '--stdout']
-        self.addCommonArgs(args, text)
+        self.addCommonArgs(args, phrase)
         self.process = subprocess.Popen(args, stdout=subprocess.PIPE)
         return self.process.stdout
 
@@ -263,7 +260,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
 
         elif setting == SettingsProperties.GENDER:
             cls.init_voices()
-            current_lang = cls.getLanguage()
+            current_lang = Settings.get_language(cls.service_ID)
             voice_list = cls.voice_map.get(current_lang, [])
             genders = []
             for voice_name, voice_id, gender_id in voice_list:
@@ -298,26 +295,59 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             cls.settingList(SettingsProperties.VOICE)
         return cls.voice_map[name]
 
-    def getEngineVolume(self) -> int:
+    def getVolume(self) -> int:
+        # All volumes in settings use a common TTS db scale.
+        # Conversions to/from the engine's or player's scale are done using
+        # Constraints
         clz = type(self)
-        volume_validator: ConstraintsValidator
-        volume_validator = clz.get_validator(clz.service_ID,
-                                             property_id=SettingsProperties.VOLUME)
-        volume: float = volume_validator.getValue()
+        if self.mode != Mode.ENGINESPEAK:
+            volume_val: IValidator = SettingsMap.get_validator(
+                clz.service_ID, SettingsProperties.VOLUME)
+            volume: int = volume_val.tts_line_value
+            return volume
+        else:
+            # volume = Settings.get_volume(clz.service_ID)
+            volume_val: IValidator = SettingsMap.get_validator(
+                        clz.service_ID, SettingsProperties.VOLUME)
+            # volume: int = volume_val.get_tts_value()
+            volume: int = volume_val.get_impl_value(clz.service_ID )
+
         return volume
 
-    @classmethod
-    def negotiate_engine_config(cls, backend_id: str, player_volume_adjustable: bool,
-                                player_speed_adjustable: bool,
-                                player_pitch_adjustable: bool) -> Tuple[bool, bool, bool]:
-        """
-        Player is informing engine what it is capable of controlling
-        Engine replies what it is allowing engine to control
-        """
-        # if using cache
-        # return True, True, True
+    def get_pitch(self) -> int:
+        # All pitches in settings use a common TTS scale.
+        # Conversions to/from the engine's or player's scale are done using
+        # Constraints
+        clz = type(self)
+        if self.mode != Mode.ENGINESPEAK:
+            pitch_val: IValidator = SettingsMap.get_validator(
+                clz.service_ID, SettingsProperties.PITCH)
+            pitch: int = pitch_val.tts_line_value
+            return pitch
+        else:
+            # volume = Settings.get_volume(clz.service_ID)
+            pitch_val: IValidator = SettingsMap.get_validator(
+                        clz.service_ID, SettingsProperties.PITCH)
+            # volume: int = volume_val.get_tts_value()
+            pitch: int = pitch_val.get_impl_value(clz.service_ID )
 
-        return False, False, False
+        return pitch
+
+    def get_speed(self) -> int:
+        # All settings use a common TTS scale.
+        # Conversions to/from the engine's or player's scale are done using
+        # Constraints
+        clz = type(self)
+        if self.mode != Mode.ENGINESPEAK:
+            speed_val: IValidator = SettingsMap.get_validator(
+                clz.service_ID, SettingsProperties.SPEED)
+            speed: int = speed_val.tts_line_value
+            return speed
+        else:
+            speed_val: IValidator = SettingsMap.get_validator(
+                        clz.service_ID, SettingsProperties.SPEED)
+            speed: int = speed_val.get_impl_value(clz.service_ID )
+        return speed
 
 
 class espeak_VOICE(ctypes.Structure):
@@ -334,6 +364,7 @@ class espeak_VOICE(ctypes.Structure):
     ]
 
 
+'''
 ######### BROKEN ctypes method ############
 class ESpeakCtypesTTSBackend(base.BaseEngineService):
     backend_id = 'eSpeak-ctypes'
@@ -358,6 +389,7 @@ class ESpeakCtypesTTSBackend(base.BaseEngineService):
     def init(self):
         super().init()
         self.update()
+        self.initialized = True
 
     @staticmethod
     def isSupportedOnPlatform():
@@ -379,7 +411,8 @@ class ESpeakCtypesTTSBackend(base.BaseEngineService):
         self.eSpeak.espeak_Synth(sb_text, size, 0, 0, 0, 0x1000, None, None)
 
     def update(self):
-        self.voice = type(self).getSetting(SettingsProperties.VOICE)
+        clz = type(self)
+        self.voice = clz.getSetting(SettingsProperties.VOICE)
 
     def stop(self):
         if not self.eSpeak:
@@ -415,3 +448,4 @@ class ESpeakCtypesTTSBackend(base.BaseEngineService):
                 index += 1
             return voiceList
         return None
+'''

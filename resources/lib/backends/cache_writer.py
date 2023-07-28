@@ -306,6 +306,7 @@ class CacheWriter(BaseCache):
     service_ID: str = Services.CACHE_WRITER_ID
     service_TYPE: str = ServiceType.CACHE_WRITER
     _logger: BasicLogger = None
+    _initialized: bool = False
 
     # Find what engines can produce WAVE files.
     _supported_input_formats: List[str] = []
@@ -318,7 +319,9 @@ class CacheWriter(BaseCache):
         clz = type(self)
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz._class_name)
+        if not clz._initialized:
             clz.register(self)
+            clz._initialized = True
 
     def saveVoicedBytes(self, path: str, cacheIdentifier: str,
                         voicedBytes: bytes) -> bool:
@@ -337,6 +340,7 @@ class CacheReader(BaseCache):
     backend_id: str = Services.CACHE_READER_ID
     service_ID: str = Services.CACHE_READER_ID
     service_TYPE: str = ServiceType.CACHE_READER
+    _initialized: bool = False
 
     def __init__(self):
         super().__init__()
@@ -344,7 +348,9 @@ class CacheReader(BaseCache):
         clz._class_name = self.__class__.__name__
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz._class_name)
+        if not clz._initialized:
             clz.register(self)
+            clz._initialized = True
 
     def findVoicedText(self, text_to_voice: str, cache_identifier: str,
                       forward: bool) -> Tuple[bool, str]:

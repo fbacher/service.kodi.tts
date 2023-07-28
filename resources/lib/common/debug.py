@@ -98,18 +98,40 @@ class Debug:
             #  Monitor.dump_wait_counts()
             #  for threadId, stack in sys._current_frames().items():
             for th in threading.enumerate():
+                frame = sys._current_frames().get(th.ident, None)
+                cls._logger.debug(f'isframe: {inspect.isframe(frame)}')
+                cls._logger.debug(f'istraceback: {inspect.istraceback(frame)}')
+                try:
+                    tracebackx  = inspect.getframeinfo(frame)
+                    cls._logger.debug(f'frameinfo: {tracebackx.filename}')
+                    traceback.print_tb(tracebackx, file=sio)
+
+                except Exception as e:
+                    cls._logger.exception('')
+                try:
+                    tb = traceback.extract_stack(f=frame)
+                    cls._logger.debug(f'extract_stack {traceback.print_tb(tb, file=sio)}')
+                except Exception as e:
+                    cls._logger.exception('') 
+                try:
+                    frameinfos: List[inspect.FrameInfo] = inspect.getouterframes(frame)
+                    cls._logger.debug(f'# frameinfos: {len(frameinfos)}')
+                except Exception as e:
+                    cls._logger.exception('')
+
                 sio.write(f'\n# ThreadID: {th.name} Daemon: {th.daemon}\n\n')
+                if frame:
+                    sio.write(f'{traceback.format_stack(frame)}')
+                else:
+                    sio.write(f'No traceback available for {th.name}')
 
                 # Remove the logger's frames from it's thread.
-                frames: List[inspect.FrameInfo] = inspect.stack(context=1)
-                th: threading.Thread
-                sio.write(f'\n# ThreadID: {th.name} Daemon: {th.daemon}\n\n')
-
-                for frame in frames:
-                    frame: inspect.FrameInfo
-                    sio.write(f'File: "{frame.filename}" line {frame.lineno}. '
-                              f'in {frame.function}\n')
-                    sio.write(f'  {frame.code_context}\n')
+                # frames: List[inspect.FrameInfo] = inspect.stack(context=1)
+                # for frame in frames:
+                #     frame: inspect.FrameInfo
+                #     sio.write(f'File: "{frame.filename}" line {frame.lineno}. '
+                #               f'in {frame.function}\n')
+                #     sio.write(f'  {frame.code_context}\n')
 
             string_buffer: str = sio.getvalue() + '\n*** STACKTRACE - END ***\n'
             sio.close()

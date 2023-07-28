@@ -63,7 +63,7 @@ class Settings(SettingsLowLevel):
     def get_addons_md5(cls) -> str:
         addon_md5_val: IValidator = SettingsMap.get_validator(
             SettingsProperties.TTS_SERVICE, SettingsProperties.ADDONS_MD5)
-        addon_md5: str = addon_md5_val.getValue()
+        addon_md5: str = addon_md5_val.get_tts_value()
         # cls._logger.debug(f'addons MD5: {SettingsProperties.ADDONS_MD5}')
         return addon_md5
 
@@ -71,7 +71,7 @@ class Settings(SettingsLowLevel):
     def set_addons_md5(cls, addon_md5: str) -> None:
         addon_md5_val: IValidator = SettingsMap.get_validator(
             SettingsProperties.TTS_SERVICE, SettingsProperties.ADDONS_MD5)
-        addon_md5_val.setValue(addon_md5)
+        addon_md5_val.set_tts_value(addon_md5)
         # cls._logger.debug(f'setting addons md5: {addon_md5}')
         return
 
@@ -83,7 +83,7 @@ class Settings(SettingsLowLevel):
         engine_api_key_validator: IValidator
         engine_api_key_validator = SettingsMap.get_validator(engine_id,
                                                              property_id=SettingsProperties.API_KEY)
-        api_key: str = engine_api_key_validator.getValue()
+        api_key: str = engine_api_key_validator.get_tts_value()
         return api_key
 
     @classmethod
@@ -94,7 +94,7 @@ class Settings(SettingsLowLevel):
         engine_api_key_validator: IValidator
         engine_api_key_validator = SettingsMap.get_validator(engine_id,
                                                              property_id=SettingsProperties.API_KEY)
-        engine_api_key_validator.setValue(api_key)
+        engine_api_key_validator.set_tts_value(api_key)
         return
 
     @classmethod
@@ -110,13 +110,13 @@ class Settings(SettingsLowLevel):
             engine_id_validator = SettingsMap.get_validator(SettingsProperties.ENGINE,
                                                             None)
             if engine_id_validator is not None:
-                engine_id: str = engine_id_validator.getValue()
+                engine_id: str = engine_id_validator.get_tts_value()
         return engine_id
 
     @classmethod
     def set_engine_id(cls, engine_id: str) -> None:
         engine_id_validator = SettingsMap.get_validator(SettingsProperties.ENGINE, '')
-        engine_id_validator.setValue(engine_id)
+        engine_id_validator.set_tts_value(engine_id)
         return
 
     @classmethod
@@ -127,7 +127,7 @@ class Settings(SettingsLowLevel):
         gender_validator: IGenderValidator
         gender_validator = SettingsMap.get_validator(engine_id,
                                                      property_id=SettingsProperties.GENDER)
-        gender: Genders = gender_validator.getValue()
+        gender: Genders = gender_validator.get_tts_value()
         return gender
 
     @classmethod
@@ -138,7 +138,7 @@ class Settings(SettingsLowLevel):
         engine_gender_validator: IValidator
         engine_gender_validator = SettingsMap.get_validator(engine_id,
                                                             property_id=SettingsProperties.GENDER)
-        engine_gender_validator.setValue(gender)
+        engine_gender_validator.set_tts_value(gender)
         return
 
     @classmethod
@@ -152,7 +152,7 @@ class Settings(SettingsLowLevel):
             engine_language_validator = SettingsMap.get_validator(engine_id,
                                                                   property_id=SettingsProperties.LANGUAGE)
             if engine_language_validator is not None:
-                language = engine_language_validator.getValue()
+                language = engine_language_validator.get_tts_value()
             else:
                 language = cls.get_setting_str(SettingsProperties.LANGUAGE, engine_id,
                                                default=None)
@@ -168,14 +168,16 @@ class Settings(SettingsLowLevel):
         engine_language_validator: IValidator
         engine_language_validator = SettingsMap.get_validator(engine_id,
                                                               property_id=SettingsProperties.LANGUAGE)
-        engine_language_validator.setValue(language)
+        engine_language_validator.set_tts_value(language)
         return
 
     @classmethod
-    def get_volume(cls) -> int:
+    def get_volume(cls, engine_id: str = None) -> int:
+        if engine_id is None:
+            engine_id = cls._current_engine
         volume_val: IValidator = SettingsMap.get_validator(
-                Services.TTS_SERVICE, SettingsProperties.VOLUME)
-        volume: int = volume_val.getValue()
+                engine_id, SettingsProperties.VOLUME)
+        volume, _, _, _ = volume_val.get_tts_values()
         return volume
 
     @classmethod
@@ -183,9 +185,18 @@ class Settings(SettingsLowLevel):
         if engine_id is None:
             engine_id = cls._current_engine
         volume_val: IValidator = SettingsMap.get_validator(
-                Services.TTS_SERVICE, SettingsProperties.VOLUME)
-        volume_val.setValue(volume)
+                engine_id, SettingsProperties.VOLUME)
+        volume_val.set_tts_value(volume)
         return
+
+    @classmethod
+    def get_voice(cls, engine_id: str | None) -> int:
+        if engine_id is None:
+            engine_id = cls._current_engine
+        voice_val: IValidator = SettingsMap.get_validator(
+                engine_id, SettingsProperties.VOICE)
+        voice: int = voice_val.get_tts_value()
+        return voice
 
     @classmethod
     def is_use_cache(cls, engine_id: str = None) -> bool | None:
@@ -197,9 +208,9 @@ class Settings(SettingsLowLevel):
             cache_validator = SettingsMap.get_validator(engine_id,
                                                         SettingsProperties.CACHE_SPEECH)
             if cache_validator is None:
-                raise NotImplementedError
+                return False
 
-            result: bool = cache_validator.getValue()
+            result: bool = cache_validator.get_tts_value()
         except NotImplementedError:
             reraise(*sys.exc_info())
         except Exception as e:
@@ -207,24 +218,28 @@ class Settings(SettingsLowLevel):
         return result
 
     @classmethod
-    def get_pitch(cls, engine_id: str = None) -> float:
+    def get_pitch(cls, engine_id: str = None) -> float | int:
         pitch_validator: IIntValidator
-        pitch_validator = SettingsMap.get_validator(service_id=engine_id,
-                                            property_id=SettingsProperties.PITCH)
+        pitch_validator = SettingsMap.get_validator(service_id=Services.TTS_SERVICE,
+                                              property_id=SettingsProperties.PITCH)
         if pitch_validator is None:
-            raise NotImplemented()
+            raise NotImplementedError()
 
         if cls.is_use_cache(engine_id):
             pitch = pitch_validator.default_value
         else:
-            pitch: float = pitch_validator.getValue()
+            pitch: float = pitch_validator.get_tts_value()
+        if pitch_validator.integer:
+            pitch = int(round(pitch))
+        else:
+            pitch = float(pitch)
         return pitch
 
     @classmethod
     def set_pitch(cls, pitch: float, engine_id: str = None) -> None:
-        val: IValidator = SettingsMap.get_validator(engine_id,
-                                                           SettingsProperties.PITCH)
-        val.setValue(pitch)
+        val: IValidator = SettingsMap.get_validator(Services.TTS_SERVICE,
+                                                    SettingsProperties.PITCH)
+        val.set_tts_value(pitch)
         return
 
     @classmethod
@@ -235,14 +250,14 @@ class Settings(SettingsLowLevel):
         if pipe_validator is None:
             raise NotImplemented()
 
-        pipe: bool = pipe_validator.getValue()
+        pipe: bool = pipe_validator.get_tts_value()
         return pipe
 
     @classmethod
     def set_pipe(cls, pipe: bool, engine_id: str = None) -> None:
         val: IValidator = SettingsMap.get_validator(engine_id,
                                                     SettingsProperties.PIPE)
-        val.setValue(pipe)
+        val.set_tts_value(pipe)
         return
 
     @classmethod
@@ -282,7 +297,7 @@ class Settings(SettingsLowLevel):
         reader_on_val: IValidator
         reader_on_val = SettingsMap.get_validator(SettingsProperties.TTS_SERVICE,
                 SettingsProperties.READER_ON)
-        value: bool = reader_on_val.getValue()
+        value: bool = reader_on_val.get_tts_value()
         # cls._logger.debug(f'{SettingsProperties.READER_ON}.'
         #                   f'{SettingsProperties.TTS_SERVICE}: {value}')
         return value
@@ -293,7 +308,7 @@ class Settings(SettingsLowLevel):
         reader_on_val = SettingsMap.get_validator(SettingsProperties.TTS_SERVICE,
                                                   SettingsProperties.READER_ON)
         # cls._logger.debug(f'{SettingsProperties.READER_ON}: {value}')
-        reader_on_val.setValue(value)
+        reader_on_val.set_tts_value(value)
         return
 
     @classmethod
@@ -315,11 +330,11 @@ class Settings(SettingsLowLevel):
         return
 
     @classmethod
-    def get_speed(cls, service_id: str, value_type: ValueType = ValueType.VALUE) -> float:
+    def get_speed(cls, service_id: str) -> float | int:
         engine_speed_validator: IValidator
         engine_speed_validator = SettingsMap.get_validator(service_id,
                                                            property_id=SettingsProperties.SPEED)
-        speed = engine_speed_validator.getValue()
+        speed, _, _, _ = engine_speed_validator.get_tts_values()
         return speed
 
     @classmethod
@@ -329,7 +344,7 @@ class Settings(SettingsLowLevel):
         speed_validator: IValidator
         speed_validator = SettingsMap.get_validator(service_id,
                                                     property_id=SettingsProperties.SPEED)
-        speed = speed_validator.setValue(value)
+        speed = speed_validator.set_tts_value(value)
         return
 
     @classmethod
@@ -339,7 +354,7 @@ class Settings(SettingsLowLevel):
         pipe_validator: IValidator
         pipe_validator = SettingsMap.get_validator(service_id,
                                                    property_id=SettingsProperties.PIPE)
-        use_pipe: bool = pipe_validator.getValue()
+        use_pipe: bool = pipe_validator.get_tts_value()
         # cls._logger.debug(f'uses_pipe.{service_id} = {use_pipe}')
         return use_pipe
 
@@ -350,7 +365,7 @@ class Settings(SettingsLowLevel):
         player_validator: IValidator
         player_validator = SettingsMap.get_validator(engine_id,
                                                      property_id=SettingsProperties.PLAYER)
-        player_id: str = player_validator.getValue()
+        player_id: str = player_validator.get_tts_value()
         # cls._logger.debug(f'player.{engine_id} = {player}')
         return player_id
 

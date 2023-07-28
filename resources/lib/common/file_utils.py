@@ -15,6 +15,7 @@ from common.logger import *
 from common.minimal_monitor import MinimalMonitor
 from common.monitor import Monitor
 from common.typing import *
+from utils.util import runInThread
 
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -101,7 +102,12 @@ class Delay:
 
 class FindTextToVoice:
 
-    def __init__(self, top: str) -> None:
+    _logger: BasicLogger = None
+
+    def __init__(self, top: Path) -> None:
+        clz = type(self)
+        if clz._logger is None:
+            clz._logger = module_logger.getChild(clz.__class__.__name__)
         self.unvoiced_files: queue.Queue = queue.Queue(maxsize=200)
         self.glob_pattern: str = '**/*.txt'
         self.finder: FindFiles = FindFiles(top, self.glob_pattern)
@@ -116,32 +122,33 @@ class FindTextToVoice:
         return self.unvoiced_files.get()
 
     def find_thread(self) -> None:
+        clz = type(self)
         path: Path
         try:
             for path in self.finder:
                 voice_path: Path = path.with_suffix('.mp3')
                 if not voice_path.exists():
-                    while Monitor.exception_on_abort(timeout=1.0):
-                        try:
-                            self.unvoiced_files.put_nowait(str(path))
-                            break
-                        except AbortException:
-                            reraise(*sys.exc_info())
-                        except queue.Full:
-                            pass
-                        except Exception:
-                            module_logger.exception('')
+                    Monitor.exception_on_abort(timeout=1.0)
+                    try:
+                        #  clz._logger.debug(f'found .txt without .mp3: {voice_path}')
+                        self.unvoiced_files.put_nowait(str(path))
+                    except AbortException:
+                        reraise(*sys.exc_info())
+                    except queue.Full:
+                        pass
+                    except Exception:
+                        module_logger.exception('')
         except AbortException:
             pass # End Thread
         except Exception:
-            module_logger.exception('')
+            clz._logger.exception('')
 
 
 class FindFiles(Iterable[Path]):
     _logger: BasicLogger = None
 
     def __init__(self,
-                 top: str,
+                 top: Path,
                  glob_pattern: str = '**/*'
                  ) -> None:
         """
@@ -157,11 +164,11 @@ class FindFiles(Iterable[Path]):
             clz._logger = module_logger.getChild(clz.__class__.__name__)
 
         self._die: bool = False
-        self._top: str = xbmcvfs.translatePath(top)
-        self._path: Path = Path(self._top)
+        self._top: Path = top
+        self._path: Path = self._top
         self._glob_pattern: str = glob_pattern
-        #  clz._logger.debug(f'top: {self._top} path: {self._path} pattern:
-        #  {self._glob_pattern}')
+        clz._logger.debug(f'top: {self._top} path: {self._path} pattern: '
+                          f'{self._glob_pattern}')
 
         self._queue_complete: bool = False
 
@@ -169,11 +176,8 @@ class FindFiles(Iterable[Path]):
         # it before it can be used.
 
         self._file_queue: Queue = Queue(20)
-        self._find_thread: threading.Thread = threading.Thread(
-                target=self._run,
-                name='find files')
-        self._find_thread.start()
-        self._find_thread.name = f'Find Files: {top}'
+        runInThread(self._run, name = f'Find Files: {top}',
+                    delay=0.0)
 
     def _run(self) -> None:
         clz = type(self)
@@ -181,13 +185,14 @@ class FindFiles(Iterable[Path]):
             # glob uses more resources than iglob since it must build entire
             # list before returning. iglob, returns one at a time.
 
-            self.name = f'Find Files'
             for path in self._path.glob(self._glob_pattern):
+                path: Path
                 #  clz._logger.debug(f'path: {path}')
                 inserted: bool = False
                 while not inserted:
                     try:
                         if self._die:
+                            clz._logger.debug(f'Die')
                             break
 
                         self._file_queue.put(path, block=False)
@@ -195,6 +200,7 @@ class FindFiles(Iterable[Path]):
                     except queue.Full:
                         Monitor.exception_on_abort(timeout=0.25)
                 if self._die:
+                    clz._logger.debug(f'Die')
                     break
         except AbortException:
             self._die = True   # Let thread die
@@ -206,6 +212,7 @@ class FindFiles(Iterable[Path]):
             self._queue_complete = True
             if not self._die:
                 self._file_queue.put(None)
+            clz._logger.debug(f'exiting die: {self._die}')
             del self._path
 
     def get_next(self) -> Path:
@@ -216,7 +223,6 @@ class FindFiles(Iterable[Path]):
 
         next_path: Path = None
         while next_path is None:
-
             try:
                 Monitor.exception_on_abort(timeout=0.1)
                 next_path: Path = self._file_queue.get(timeout=0.01)
@@ -225,7 +231,6 @@ class FindFiles(Iterable[Path]):
                 # Empty because we are done, or empty due to timeout
                 if self._queue_complete:
                     clz._logger.debug('Queue empty')
-                    self._find_thread = None
                     self._file_queue = None
                     break
                     '''
@@ -250,7 +255,7 @@ class FindFiles(Iterable[Path]):
 
     def kill(self):
         clz = type(self)
-        #  clz._logger.debug('In kill')
+        clz._logger.debug('In kill, die')
         self._die = True
 
     def __iter__(self) -> Iterator:
@@ -276,8 +281,8 @@ class FindFilesIterator(Iterator):
         clz = type(self)
         #  clz._logger.debug('In __next__')
         try:
-            path = self._files.get_next()
-            #  clz._logger.debug(f'__next__ path: {path}')
+            path: Path = self._files.get_next()
+            # clz._logger.debug(f'__next__ path: {path}')
         except AbortException:
             reraise(*sys.exc_info())
 
@@ -291,4 +296,6 @@ class FindFilesIterator(Iterator):
         return path
 
     def __del__(self):
+        clz = type(self)
+        clz._logger.debug(f'FindFilesIterator _files.kill')
         self._files.kill()
