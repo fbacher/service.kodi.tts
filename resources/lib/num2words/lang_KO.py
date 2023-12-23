@@ -60,16 +60,16 @@ class Num2Word_KO(Num2Word_Base):
         self.mid_numwords = [(1000, "천"), (100, "백")]
         self.low_numwords = ["십", "구", "팔", "칠", "육", "오", "사", "삼", "이",
                              "일", "영"]
-        self.ords = {"일": "한",
-                     "이": "두",
-                     "삼": "세",
-                     "사": "네",
-                     "오": "다섯",
-                     "육": "여섯",
-                     "칠": "일곱",
-                     "팔": "여덟",
-                     "구": "아홉",
-                     "십": "열",
+        self.ords = {"일" : "한",
+                     "이" : "두",
+                     "삼" : "세",
+                     "사" : "네",
+                     "오" : "다섯",
+                     "육" : "여섯",
+                     "칠" : "일곱",
+                     "팔" : "여덟",
+                     "구" : "아홉",
+                     "십" : "열",
                      "이십": "스물",
                      "삼십": "서른",
                      "사십": "마흔",
@@ -126,7 +126,7 @@ class Num2Word_KO(Num2Word_Base):
     def to_currency(self, val, currency="KRW", cents=False, separator="",
                     adjective=False):
         left, right, is_negative = parse_currency_parts(
-            val, is_int_with_cents=cents)
+                val, is_int_with_cents=cents)
 
         try:
             cr1, cr2 = self.CURRENCY_FORMS[currency]
@@ -134,8 +134,8 @@ class Num2Word_KO(Num2Word_Base):
                 raise ValueError('Decimals not supported for "%s"' % currency)
         except KeyError:
             raise NotImplementedError(
-                'Currency code "%s" not implemented for "%s"' %
-                (currency, self.__class__.__name__))
+                    'Currency code "%s" not implemented for "%s"' %
+                    (currency, self.__class__.__name__))
 
         minus_str = self.negword if is_negative else ""
         return '%s%s%s%s%s' % (

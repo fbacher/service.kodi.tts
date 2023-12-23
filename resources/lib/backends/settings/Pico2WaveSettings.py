@@ -63,7 +63,7 @@ class Pico2WaveSettings:
     @classmethod
     def available(cls):
         try:
-            subprocess.call(['pico2wave', '--help'],  universal_newlines=True,
+            subprocess.call(['pico2wave', '--help'], universal_newlines=True,
                             stdout=(open(os.path.devnull, 'w')), stderr=subprocess.STDOUT)
         except (OSError, IOError):
             return False

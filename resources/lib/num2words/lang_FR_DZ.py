@@ -28,6 +28,6 @@ class Num2Word_FR_DZ(Num2Word_FR):
     def to_currency(self, val, currency='DIN', cents=True, separator=' et',
                     adjective=False):
         result = super(Num2Word_FR, self).to_currency(
-            val, currency=currency, cents=cents, separator=separator,
-            adjective=adjective)
+                val, currency=currency, cents=cents, separator=separator,
+                adjective=adjective)
         return result

@@ -1,4 +1,5 @@
 from common.phrases import Phrase
+from common.typing import *
 
 
 class IPlayer:
@@ -50,19 +51,19 @@ class IPlayer:
     def canSetPipe(self) -> bool:
         raise NotImplementedError
 
-    def pipe(self, source) -> None:
+    def pipe(self, source: BinaryIO, phrase: Phrase) -> None:
         raise NotImplementedError
 
     def play(self, phrase: Phrase) -> None:
         raise NotImplementedError
 
+    def slave_play(self, phrase: Phrase) -> None:
+        raise NotImplementedError
+
     def isPlaying(self) -> bool:
         raise NotImplementedError
 
-    def notify(self, msg: str, now: bool = False) -> None:
-        raise NotImplementedError()
-
-    def stop(self) -> None:
+    def stop(self, now: bool = True) -> None:
         raise NotImplementedError
 
     def close(self) -> None:

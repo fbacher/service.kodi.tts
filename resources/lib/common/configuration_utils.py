@@ -46,7 +46,7 @@ class ConfigUtils:
         if idx < 0:
             return
         cls._logger.debug_verbose('service.kodi.tts.util.selectBackend value: ' +
-                    choices[idx] + ' idx: ' + str(idx))
+                                  choices[idx] + ' idx: ' + str(idx))
         Settings.setSetting(SettingsProperties.ENGINE, choices[idx], None)
 
     @classmethod

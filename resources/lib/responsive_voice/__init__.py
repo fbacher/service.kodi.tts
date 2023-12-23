@@ -116,14 +116,14 @@ class ResponsiveVoice:
             mp3_file += ".mp3"
 
         params = {
-            "key": self.key,
-            "t": sentence,
-            "tl": self.lang,
-            "pitch": pitch or self.pitch,
-            "rate": rate or self.rate,
-            "vol": vol or self.vol,
-            "sv": self.service,
-            "vn": self.voice_name,
+            "key"   : self.key,
+            "t"     : sentence,
+            "tl"    : self.lang,
+            "pitch" : pitch or self.pitch,
+            "rate"  : rate or self.rate,
+            "vol"   : vol or self.vol,
+            "sv"    : self.service,
+            "vn"    : self.voice_name,
             "gender": gender or self.gender
         }
 

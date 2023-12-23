@@ -6,9 +6,10 @@ from .lang_EU import Num2Word_EU
 
 
 class Num2Word_TE(Num2Word_EU):
+
     def set_high_numwords(self, high):
         for n, word in self.high_numwords:
-            self.cards[10**n] = word
+            self.cards[10 ** n] = word
 
     def setup(self):
         self.low_numwords = [
@@ -151,7 +152,7 @@ class Num2Word_TE(Num2Word_EU):
             if ltext[-1] in self.modifiers:
                 return ("%s %s" % (ltext[:-1], rtext), lnum + rnum)
             else:
-                return ("%s %s" % (ltext+"ల", rtext), lnum + rnum)
+                return ("%s %s" % (ltext + "ల", rtext), lnum + rnum)
         elif rnum > lnum:
             return ("%s %s" % (ltext, rtext), lnum * rnum)
         return ("%s %s" % (ltext, rtext), lnum + rnum)

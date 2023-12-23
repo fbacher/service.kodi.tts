@@ -44,7 +44,6 @@ EXPONENT_PREFIXES = [
     ZERO, "m", "b", "tr", "quadr", "quint", "sest", "sett", "ott", "nov", "dec"
 ]
 
-
 GENERIC_DOLLARS = ('dollaro', 'dollari')
 GENERIC_CENTS = ('centesimo', 'centesimi')
 CURRENCIES_UNA = ('GBP')
@@ -76,8 +75,8 @@ class Num2Word_IT(Num2Word_EU):
             prefix = self.to_cardinal(int(float_number))
         float_part = str(float_number).split('.')[1]
         postfix = " ".join(
-            # Drops the trailing zero and comma
-            [self.to_cardinal(int(c)) for c in float_part]
+                # Drops the trailing zero and comma
+                [self.to_cardinal(int(c)) for c in float_part]
         )
         return prefix + Num2Word_IT.FLOAT_INFIX_WORD + postfix
 
@@ -182,8 +181,8 @@ class Num2Word_IT(Num2Word_EU):
     def to_currency(self, val, currency='EUR', cents=True, separator=' e',
                     adjective=False):
         result = super(Num2Word_IT, self).to_currency(
-            val, currency=currency, cents=cents, separator=separator,
-            adjective=adjective)
+                val, currency=currency, cents=cents, separator=separator,
+                adjective=adjective)
         # Handle exception. In italian language is "un euro",
         # "un dollaro" etc. (not "uno euro", "uno dollaro").
         # There is an exception, some currencies need "una":
@@ -195,6 +194,7 @@ class Num2Word_IT(Num2Word_EU):
                 result = " ".join(list_result)
         result = result.replace("uno", "un")
         return result
+
 
 # Utils
 # =====
@@ -225,16 +225,16 @@ def accentuate(string):
     # half-sentence accents. However, it is the easiest method and speed is
     # not crucial (duh), so...
     return " ".join(
-        # Deletes half-sentence accents and accentuates the last "tre"
-        [w.replace("tré", "tre")[:-3] + "tré"
-         # We shouldn't accentuate a single "tre": is has to be a composite
-         # word.                ~~~~~~~~~~
-         if w[-3:] == "tre" and len(w) > 3
-         # Deletes half-sentence accents anyway
-         #     ~~~~~~~~~~~~~~~~~~~~~~
-         else w.replace("tré", "tre")
-         for w in string.split()
-         ])
+            # Deletes half-sentence accents and accentuates the last "tre"
+            [w.replace("tré", "tre")[:-3] + "tré"
+             # We shouldn't accentuate a single "tre": is has to be a composite
+             # word.                ~~~~~~~~~~
+             if w[-3:] == "tre" and len(w) > 3
+             # Deletes half-sentence accents anyway
+             #     ~~~~~~~~~~~~~~~~~~~~~~
+             else w.replace("tré", "tre")
+             for w in string.split()
+             ])
 
 
 def omitt_if_zero(number_to_string):

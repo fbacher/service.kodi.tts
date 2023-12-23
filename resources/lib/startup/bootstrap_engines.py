@@ -2,6 +2,7 @@
 # from backends.settings.service_types import Services
 import sys
 
+from backends.base import BaseEngineService
 from backends.settings.setting_properties import SettingsProperties
 # from backends.settings.settings_map import SettingsMap
 # from backends.settings.validators import StringValidator
@@ -10,14 +11,11 @@ from common import *
 from common.logger import BasicLogger
 from common.setting_constants import Backends
 from common.settings import Settings
-
-
-# from speechutil import SpeechUtilComTTSBackend
-
-
 # from voiceover import VoiceOverBackend #Can't test
 from common.settings_low_level import SettingsLowLevel
 from utils import util
+
+# from speechutil import SpeechUtilComTTSBackend
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -133,7 +131,8 @@ class BootstrapEngines:
             if is_available:
                 SettingsMap.set_is_available(Backends.PICO_TO_WAVE_ID, Reason.AVAILABLE)
             else:
-                SettingsMap.set_is_available(Backends.PICO_TO_WAVE_ID, Reason.NOT_AVAILABLE)
+                SettingsMap.set_is_available(Backends.PICO_TO_WAVE_ID,
+                                             Reason.NOT_AVAILABLE)
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
@@ -145,9 +144,11 @@ class BootstrapEngines:
             responsive_settings: ResponsiveVoiceSettings = ResponsiveVoiceSettings()
             is_available: bool = responsive_settings.isInstalled()
             if is_available:
-                SettingsMap.set_is_available(Backends.RESPONSIVE_VOICE_ID, Reason.AVAILABLE)
+                SettingsMap.set_is_available(Backends.RESPONSIVE_VOICE_ID,
+                                             Reason.AVAILABLE)
             else:
-                SettingsMap.set_is_available(Backends.RESPONSIVE_VOICE_ID, Reason.NOT_AVAILABLE)
+                SettingsMap.set_is_available(Backends.RESPONSIVE_VOICE_ID,
+                                             Reason.NOT_AVAILABLE)
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
@@ -159,9 +160,11 @@ class BootstrapEngines:
             experimental: ExperimentalSettings = ExperimentalSettings()
             is_available: bool = experimental.isInstalled()
             if is_available:
-                SettingsMap.set_is_available(Backends.EXPERIMENTAL_ENGINE_ID, Reason.AVAILABLE)
+                SettingsMap.set_is_available(Backends.EXPERIMENTAL_ENGINE_ID,
+                                             Reason.AVAILABLE)
             else:
-                SettingsMap.set_is_available(Backends.EXPERIMENTAL_ENGINE_ID, Reason.NOT_AVAILABLE)
+                SettingsMap.set_is_available(Backends.EXPERIMENTAL_ENGINE_ID,
+                                             Reason.NOT_AVAILABLE)
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
@@ -174,9 +177,11 @@ class BootstrapEngines:
             spd: SpeechDispatcherSettings = SpeechDispatcherSettings()
             is_available: bool = spd.isInstalled()
             if is_available:
-                SettingsMap.set_is_available(Backends.SPEECH_DISPATCHER_ID, Reason.AVAILABLE)
+                SettingsMap.set_is_available(Backends.SPEECH_DISPATCHER_ID,
+                                             Reason.AVAILABLE)
             else:
-                SettingsMap.set_is_available(Backends.SPEECH_DISPATCHER_ID, Reason.NOT_AVAILABLE)
+                SettingsMap.set_is_available(Backends.SPEECH_DISPATCHER_ID,
+                                             Reason.NOT_AVAILABLE)
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
@@ -207,36 +212,38 @@ class BootstrapEngines:
             if not SettingsMap.is_available(engine_id):
                 return
 
+            engine: BaseEngineService | None = None
             #  cls._logger.debug(f'Loading engine_id: {engine_id}')
             if engine_id in (Backends.AUTO_ID, Backends.ESPEAK_ID):
                 from backends.espeak import ESpeakTTSBackend
-                engine_id = ESpeakTTSBackend().service_ID
+                engine = ESpeakTTSBackend()
             elif engine_id == Backends.FESTIVAL_ID:
                 from backends.festival import FestivalTTSBackend
-                engine_id = FestivalTTSBackend().service_ID
+                engine = FestivalTTSBackend()
             elif engine_id == Backends.FLITE_ID:
                 from backends.flite import FliteTTSBackend
-                engine_id = FliteTTSBackend().service_ID
+                engine = FliteTTSBackend()
             elif engine_id == Backends.PICO_TO_WAVE_ID:
                 from backends.pico2wave import Pico2WaveTTSBackend
-                engine_id = Pico2WaveTTSBackend().service_ID
+                engine = Pico2WaveTTSBackend()
             # elif engine_id == Backends.RECITE_ID:
             elif engine_id == Backends.RESPONSIVE_VOICE_ID:
                 from backends.responsive_voice import ResponsiveVoiceTTSBackend
-                engine_id = ResponsiveVoiceTTSBackend().service_ID
+                engine = ResponsiveVoiceTTSBackend()
             elif engine_id == Backends.EXPERIMENTAL_ENGINE_ID:
                 from backends.engines.experimental_engine import ExperimentalTTSBackend
-                engine_id = ExperimentalTTSBackend().service_ID
+                engine = ExperimentalTTSBackend()
             elif engine_id == Backends.SPEECH_DISPATCHER_ID:
                 from backends.speechdispatcher import SpeechDispatcherTTSBackend
-                engine_id = SpeechDispatcherTTSBackend().service_ID
+                engine = SpeechDispatcherTTSBackend()
             elif engine_id == Backends.GOOGLE_ID:
                 from backends.google import GoogleTTSEngine
-                engine_id = GoogleTTSEngine().service_ID
+                engine = GoogleTTSEngine()
             else:  # Catch all default
                 # engine_id = ESpeakSettings().service_ID
                 from backends.responsive_voice import ResponsiveVoiceTTSBackend
-                engine_id = ResponsiveVoiceTTSBackend().service_ID
+                engine = ResponsiveVoiceTTSBackend()
+                # engine.destroy()
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
@@ -255,4 +262,4 @@ class BootstrapEngines:
         Settings.load_settings()
 
 
-BootstrapEngines.init()
+# BootstrapEngines.init()

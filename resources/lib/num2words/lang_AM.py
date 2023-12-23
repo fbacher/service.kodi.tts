@@ -50,25 +50,25 @@ class Num2Word_AM(lang_EU.Num2Word_EU):
                              'አሥራ ሁለት', 'አሥራ አንድ', 'አሥር', 'ዘጠኝ', 'ስምንት',
                              'ሰባት', 'ስድስት', 'አምስት', 'አራት', 'ሦስት', 'ሁለት',
                              'አንድ', 'ዜሮ']
-        self.ords = {'አንድ': 'አንደኛ',
-                     'ሁለት': 'ሁለተኛ',
-                     'ሦስት': 'ሦስተኛ',
-                     'አራት': 'አራተኛ',
-                     'አምስት': 'አምስተኛ',
-                     'ስድስት': 'ስድስተኛ',
-                     'ሰባት': 'ሰባተኛ',
-                     'ስምንት': 'ስምንተኛ',
-                     'ዘጠኝ': 'ዘጠነኛ',
-                     'አሥር': 'አሥረኛ',
-                     'አሥራ አንድ': 'አሥራ አንደኛ',
-                     'አሥራ ሁለት': 'አሥራ ሁለተኛ',
-                     'አሥራ ሦስት': 'አሥራ ሦስተኛ',
-                     'አሥራ አራት': 'አሥራ አራተኛ',
+        self.ords = {'አንድ'     : 'አንደኛ',
+                     'ሁለት'     : 'ሁለተኛ',
+                     'ሦስት'     : 'ሦስተኛ',
+                     'አራት'     : 'አራተኛ',
+                     'አምስት'    : 'አምስተኛ',
+                     'ስድስት'    : 'ስድስተኛ',
+                     'ሰባት'     : 'ሰባተኛ',
+                     'ስምንት'    : 'ስምንተኛ',
+                     'ዘጠኝ'     : 'ዘጠነኛ',
+                     'አሥር'     : 'አሥረኛ',
+                     'አሥራ አንድ' : 'አሥራ አንደኛ',
+                     'አሥራ ሁለት' : 'አሥራ ሁለተኛ',
+                     'አሥራ ሦስት' : 'አሥራ ሦስተኛ',
+                     'አሥራ አራት' : 'አሥራ አራተኛ',
                      'አሥራ አምስት': 'አሥራ አምስተኛ',
                      'አሥራ ስድስት': 'አሥራ ስድስተኛ',
-                     'አሥራ ሰባት': 'አሥራ ሰባተኛ',
+                     'አሥራ ሰባት' : 'አሥራ ሰባተኛ',
                      'አሥራ ስምንት': 'አሥራ ስምንተኛ',
-                     'አሥራ ዘጠኝ': 'አሥራ ዘጠነኛ'}
+                     'አሥራ ዘጠኝ' : 'አሥራ ዘጠነኛ'}
 
     def to_cardinal(self, value):
         try:
@@ -119,8 +119,8 @@ class Num2Word_AM(lang_EU.Num2Word_EU):
     def to_currency(self, val, currency='ብር', cents=True, separator=' ከ',
                     adjective=True):
         result = super(Num2Word_AM, self).to_currency(
-            val, currency=currency, cents=cents, separator=separator,
-            adjective=adjective)
+                val, currency=currency, cents=cents, separator=separator,
+                adjective=adjective)
         return result
 
     def to_year(self, val, longval=True):

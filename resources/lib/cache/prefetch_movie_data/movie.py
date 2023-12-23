@@ -6,9 +6,8 @@ Created on 4/13/21
 """
 import datetime
 
-from common.exceptions import AbortException
-from common.logger import *
 from cache.prefetch_movie_data.movie_constants import MovieField, MovieType
+from common.logger import *
 from common.typing import *
 
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
@@ -198,7 +197,6 @@ class AbstractMovie(RawMovie):
 
         self._movie_info = temp_movie_info
 
-
     def __str__(self) -> str:
         return f'{type(self).__name__} {self.get_title()} ({self.get_year()}) id:'
 
@@ -239,7 +237,7 @@ class AbstractMovie(RawMovie):
         return self._movie_info.setdefault(MovieField.DISCOVERY_STATE,
                                            MovieField.NOT_INITIALIZED)
 
-    def set_discovery_state(self, state: str) -> None:   # DiscoveryState):
+    def set_discovery_state(self, state: str) -> None:  # DiscoveryState):
         self._movie_info[MovieField.DISCOVERY_STATE] = state
 
     def get_title(self) -> str:
@@ -423,7 +421,7 @@ class AbstractMovie(RawMovie):
         return len(self.get_writers()) > 0
 
     def get_detail_actors(self) -> str:
-        return', '.join(self.get_actors())
+        return ', '.join(self.get_actors())
 
     def get_writers(self) -> List[str]:
         return self._movie_info.setdefault(MovieField.WRITER, [])
@@ -455,7 +453,7 @@ class AbstractMovie(RawMovie):
         return writers
 
     def get_voiced_actors(self) -> List[str]:
-            #  TODO: change set to loop
+        #  TODO: change set to loop
         actors: List[str] = list(set(self.get_actors()))  # In case not unique
 
         if len(actors) > MovieField.MAX_VOICED_ACTORS:

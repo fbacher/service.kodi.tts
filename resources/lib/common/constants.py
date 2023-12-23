@@ -64,7 +64,8 @@ class Constants:
 
         :return:
         """
-        Constants.KODI_ADDON = addon  # From kutils import addon, same as kodiaddon.Addon()
+        Constants.KODI_ADDON = addon  # From kutils import addon, same as
+        # kodiaddon.Addon()
         Constants.ADDON = addon.addon
 
         Constants.ADDON_PATH = addon.PATH
@@ -78,18 +79,19 @@ class Constants:
         Constants.PROFILE = addon.PROFILE
         Constants.PROFILE_PATH = xbmcvfs.translatePath(addon.PROFILE)
         Constants.SCRIPT_PATH = os.path.join(
-            addon.PATH, 'resources', 'skins', 'Default', '720p')
+                addon.PATH, 'resources', 'skins', 'Default', '720p')
         Constants.LOG_PATH = os.path.join(
-            xbmcvfs.translatePath('special://logpath'), 'kodi.log')
+                xbmcvfs.translatePath('special://logpath'), 'kodi.log')
 
         Constants.ADDON_DIRECTORY = xbmcvfs.translatePath(addon.PATH)
         Constants.BACKENDS_DIRECTORY = os.path.join(
-            Constants.PYTHON_ROOT_PATH, 'backends')
+                Constants.PYTHON_ROOT_PATH, 'backends')
         Constants.DISABLE_PATH = os.path.join(addon.DATA_PATH, 'DISABLED')
         Constants.ENABLE_PATH = os.path.join(addon.DATA_PATH, 'ENABLED')
         Constants.DEFAULT_CACHE_DIRECTORY = os.path.join(Constants.USER_DATA_PATH,
                                                          'cache')
         Constants.LOCALE, encoding = locale.getdefaultlocale()
+
 
 # def info(key): Use Constants.ADDON.info()
 
@@ -116,10 +118,6 @@ class DebugLevel(object):
     DEBUG_EXTRA_VERBOSE = '06_Debug_Extra_Verbose'
     DEBUG_VERBOSE = '07_Debug_Verbose'
     DEBUG = '08_Debug'
-
-
-class Notify:
-    STOP: str = 'stop'
 
 
 class ReturnCode(IntEnum):

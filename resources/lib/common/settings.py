@@ -1,24 +1,18 @@
 # -*- coding: utf-8 -*-
 import sys
 
-from google.protobuf.service import Service
-
 from backends.settings.i_validators import (IBoolValidator, IGenderValidator,
                                             IIntValidator,
-                                            IStrEnumValidator, IValidator,
-                                            ValueType)
+                                            IValidator)
 from backends.settings.service_types import Services
 from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import BoolValidator
-from common.constants import Constants
 from common.exceptions import *
 from common.logger import *
 from common.setting_constants import Genders
 from common.settings_bridge import SettingsBridge
 from common.settings_low_level import SettingsLowLevel
-
-from kutils.kodiaddon import Addon
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -62,7 +56,7 @@ class Settings(SettingsLowLevel):
     @classmethod
     def get_addons_md5(cls) -> str:
         addon_md5_val: IValidator = SettingsMap.get_validator(
-            SettingsProperties.TTS_SERVICE, SettingsProperties.ADDONS_MD5)
+                SettingsProperties.TTS_SERVICE, SettingsProperties.ADDONS_MD5)
         addon_md5: str = addon_md5_val.get_tts_value()
         # cls._logger.debug(f'addons MD5: {SettingsProperties.ADDONS_MD5}')
         return addon_md5
@@ -70,7 +64,7 @@ class Settings(SettingsLowLevel):
     @classmethod
     def set_addons_md5(cls, addon_md5: str) -> None:
         addon_md5_val: IValidator = SettingsMap.get_validator(
-            SettingsProperties.TTS_SERVICE, SettingsProperties.ADDONS_MD5)
+                SettingsProperties.TTS_SERVICE, SettingsProperties.ADDONS_MD5)
         addon_md5_val.set_tts_value(addon_md5)
         # cls._logger.debug(f'setting addons md5: {addon_md5}')
         return
@@ -118,6 +112,20 @@ class Settings(SettingsLowLevel):
         engine_id_validator = SettingsMap.get_validator(SettingsProperties.ENGINE, '')
         engine_id_validator.set_tts_value(engine_id)
         return
+
+    @classmethod
+    def get_alternate_engine_id(cls) -> str | None:
+        """
+           Returns the id of the engine to use in case the current/ctive
+           engine is too slow to respond. This is typically used when the current
+           engine is a remote service or is a slower, higher quality engine. The
+           alternate engine should be a fast engine.
+
+           Note that this is different from the default engine, which is used when
+           the user preferred (current) engine is broken or otherwise unavailable.
+           :return:
+           """
+        return SettingsProperties.ESPEAK_ID
 
     @classmethod
     def get_gender(cls, engine_id: str = None) -> Genders:
@@ -221,7 +229,7 @@ class Settings(SettingsLowLevel):
     def get_pitch(cls, engine_id: str = None) -> float | int:
         pitch_validator: IIntValidator
         pitch_validator = SettingsMap.get_validator(service_id=Services.TTS_SERVICE,
-                                              property_id=SettingsProperties.PITCH)
+                                                    property_id=SettingsProperties.PITCH)
         if pitch_validator is None:
             raise NotImplementedError()
 
@@ -245,7 +253,7 @@ class Settings(SettingsLowLevel):
     @classmethod
     def get_pipe(cls, engine_id: str = None) -> bool:
         pipe_validator: IBoolValidator
-        pipe_validator = SettingsMap.get_validator(service_id = engine_id,
+        pipe_validator = SettingsMap.get_validator(service_id=engine_id,
                                                    property_id=SettingsProperties.PIPE)
         if pipe_validator is None:
             raise NotImplemented()
@@ -263,7 +271,8 @@ class Settings(SettingsLowLevel):
     @classmethod
     def get_auto_item_extra(cls, default_value: bool = False) -> bool:
         value: bool = cls.get_setting_bool(
-                SettingsProperties.AUTO_ITEM_EXTRA, engine_id=SettingsProperties.TTS_SERVICE,
+                SettingsProperties.AUTO_ITEM_EXTRA,
+                engine_id=SettingsProperties.TTS_SERVICE,
                 ignore_cache=False,
                 default=default_value)
         # cls._logger.debug(f'{SettingsProperties.AUTO_ITEM_EXTRA}: {value}')
@@ -287,7 +296,8 @@ class Settings(SettingsLowLevel):
 
     @classmethod
     def set_auto_item_extra_delay(cls, value: int) -> None:
-        # cls._logger.debug(f'setting {SettingsProperties.AUTO_ITEM_EXTRA_DELAY}: {value}')
+        # cls._logger.debug(f'setting {SettingsProperties.AUTO_ITEM_EXTRA_DELAY}: {
+        # value}')
         cls.set_setting_int(SettingsProperties.AUTO_ITEM_EXTRA_DELAY, value,
                             SettingsProperties.TTS_SERVICE)
         return
@@ -296,7 +306,7 @@ class Settings(SettingsLowLevel):
     def get_reader_on(cls, default_value: bool = None) -> bool:
         reader_on_val: IValidator
         reader_on_val = SettingsMap.get_validator(SettingsProperties.TTS_SERVICE,
-                SettingsProperties.READER_ON)
+                                                  SettingsProperties.READER_ON)
         value: bool = reader_on_val.get_tts_value()
         # cls._logger.debug(f'{SettingsProperties.READER_ON}.'
         #                   f'{SettingsProperties.TTS_SERVICE}: {value}')
@@ -383,7 +393,8 @@ class Settings(SettingsLowLevel):
 
     @classmethod
     def get_converter_id(cls, engine_id: str = None) -> str:
-        value: str = cls.get_setting_str(SettingsProperties.CONVERTER, engine_id=engine_id,
+        value: str = cls.get_setting_str(SettingsProperties.CONVERTER,
+                                         engine_id=engine_id,
                                          ignore_cache=False,
                                          default=None)
         # cls._logger.debug(f'converter.{engine_id} = {value}')
@@ -404,8 +415,8 @@ class Settings(SettingsLowLevel):
     @classmethod
     def get_cache_base(cls) -> str:
         return cls.getSetting(SettingsProperties.CACHE_PATH,
-                                   SettingsProperties.TTS_SERVICE,
-                                   SettingsProperties.CACHE_PATH_DEFAULT)
+                              SettingsProperties.TTS_SERVICE,
+                              SettingsProperties.CACHE_PATH_DEFAULT)
 
     @classmethod
     def configuring_settings(cls):

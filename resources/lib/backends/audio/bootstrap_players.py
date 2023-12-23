@@ -100,7 +100,6 @@ class BootstrapPlayers:
             cls._logger.exception('')
             SettingsMap.set_is_available(player_id, Reason.BROKEN)
 
-
     '''
     @classmethod
     def load_other_players(cls) -> None:
@@ -109,5 +108,6 @@ class BootstrapPlayers:
             if BasePlayerServices.get_player(player_id) is None:
                 cls.load_player(player_id)
     '''
+
 
 BootstrapPlayers.init()

@@ -7,7 +7,6 @@ Created on Feb 19, 2019
 """
 import datetime
 import faulthandler
-import inspect
 import io
 import sys
 import threading
@@ -17,9 +16,9 @@ from io import StringIO
 from itertools import chain
 from sys import getsizeof
 
-import simplejson as json
 import xbmcvfs
 
+import simplejson as json
 from common.critical_settings import CriticalSettings
 
 try:
@@ -55,12 +54,12 @@ class Debug:
         """
         if cls._logger.isEnabledFor(level):
             if data is None:
-                cls._logger.log('json None', level=level)
+                cls._logger.log(level=level, msg='json None')
             else:
                 dump = json.dumps(data, ensure_ascii=False,
                                   encoding='unicode', indent=4,
                                   sort_keys=True)
-                cls._logger.log(f'{text} {dump}', level=level)
+                cls._logger.log(level=level, msg=f'{text} {dump}')
 
     @classmethod
     def dump_all_threads(cls, delay: float = None) -> None:
@@ -97,41 +96,17 @@ class Debug:
             code = []
             #  Monitor.dump_wait_counts()
             #  for threadId, stack in sys._current_frames().items():
+            sio.write(f'traceback.print_stack with no thread arg')
+            traceback.print_stack(file=sio)
             for th in threading.enumerate():
-                frame = sys._current_frames().get(th.ident, None)
-                cls._logger.debug(f'isframe: {inspect.isframe(frame)}')
-                cls._logger.debug(f'istraceback: {inspect.istraceback(frame)}')
+                th: threading.Thread
                 try:
-                    tracebackx  = inspect.getframeinfo(frame)
-                    cls._logger.debug(f'frameinfo: {tracebackx.filename}')
-                    traceback.print_tb(tracebackx, file=sio)
-
-                except Exception as e:
-                    cls._logger.exception('')
-                try:
-                    tb = traceback.extract_stack(f=frame)
-                    cls._logger.debug(f'extract_stack {traceback.print_tb(tb, file=sio)}')
-                except Exception as e:
-                    cls._logger.exception('') 
-                try:
-                    frameinfos: List[inspect.FrameInfo] = inspect.getouterframes(frame)
-                    cls._logger.debug(f'# frameinfos: {len(frameinfos)}')
+                    sio.write(f'\n# ThreadID: {th.name} Daemon: {th.daemon}\n\n')
+                    traceback.print_stack(file=sio)
                 except Exception as e:
                     cls._logger.exception('')
 
                 sio.write(f'\n# ThreadID: {th.name} Daemon: {th.daemon}\n\n')
-                if frame:
-                    sio.write(f'{traceback.format_stack(frame)}')
-                else:
-                    sio.write(f'No traceback available for {th.name}')
-
-                # Remove the logger's frames from it's thread.
-                # frames: List[inspect.FrameInfo] = inspect.stack(context=1)
-                # for frame in frames:
-                #     frame: inspect.FrameInfo
-                #     sio.write(f'File: "{frame.filename}" line {frame.lineno}. '
-                #               f'in {frame.function}\n')
-                #     sio.write(f'  {frame.code_context}\n')
 
             string_buffer: str = sio.getvalue() + '\n*** STACKTRACE - END ***\n'
             sio.close()
@@ -160,7 +135,6 @@ class Debug:
         except Exception as e:
             cls._logger.exception('')
 
-
     @classmethod
     def total_size(cls, o, handlers: Dict[Any, Any] = None, verbose: bool = False):
         """ Returns the approximate memory footprint an object and all of its contents.
@@ -178,19 +152,19 @@ class Debug:
 
         dict_handler = lambda d: chain.from_iterable(d.items())
 
-        all_handlers = {tuple: iter,
-                        list: iter,
-                        deque: iter,
-                        dict: dict_handler,
-                        set: iter,
+        all_handlers = {tuple    : iter,
+                        list     : iter,
+                        deque    : iter,
+                        dict     : dict_handler,
+                        set      : iter,
                         frozenset: iter,
                         }
-        all_handlers.update(handlers)     # user handlers take precedence
-        seen = set()                      # track which object id's have already been seen
-        default_size = getsizeof(0)       # estimate sizeof object without __sizeof__
+        all_handlers.update(handlers)  # user handlers take precedence
+        seen = set()  # track which object id's have already been seen
+        default_size = getsizeof(0)  # estimate sizeof object without __sizeof__
 
         def sizeof(o):
-            if id(o) in seen:       # do not double count the same object
+            if id(o) in seen:  # do not double count the same object
                 return 0
             seen.add(id(o))
             s = getsizeof(o, default_size)

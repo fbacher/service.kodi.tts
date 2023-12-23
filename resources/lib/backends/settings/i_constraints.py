@@ -1,7 +1,5 @@
 # coding=utf-8
 
-from common.typing import *
-
 
 class IConstraints:
 

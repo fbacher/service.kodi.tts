@@ -1,7 +1,7 @@
 from backends.i_backend import IBackend
 from backends.settings.constraints import Constraints
 from common.__init__ import *
-from common.phrases import Phrase, PhraseList
+from common.phrases import PhraseList
 
 
 class ITTSBackendBase(IBackend):
@@ -87,7 +87,7 @@ class ITTSBackendBase(IBackend):
         raise Exception('Not Implemented')
 
     def flagAsDead(self, reason=''):
-         raise Exception('Not Implemented')
+        raise Exception('Not Implemented')
 
     def say(self, phrases: PhraseList):
         raise Exception('Not Implemented')

@@ -14,9 +14,7 @@ from backends.speechd import Speaker, SSIPCommunicationError
 from common.constants import Constants
 from common.logger import *
 from common.messages import Messages
-from common.base_services import BaseServices
 from common.setting_constants import Backends
-from common.settings import Settings
 from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
 from common.typing import *
@@ -68,18 +66,22 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
     service_TYPE: str = ServiceType.ENGINE
     displayName = 'Speech Dispatcher'
 
-    # pitchConstraints: Constraints = Constraints(0, 0, 100, True, 1.0, SettingsProperties.PITCH)
+    # pitchConstraints: Constraints = Constraints(0, 0, 100, True, 1.0,
+    # SettingsProperties.PITCH)
     pitchConstraints: Constraints = Constraints(0, 50, 99, True, False, 1.0,
                                                 SettingsProperties.PITCH, None)
-    # volumeConstraints: Constraints = Constraints(-12, 8, 12, True, 1.0, SettingsProperties.VOLUME)
+    # volumeConstraints: Constraints = Constraints(-12, 8, 12, True, 1.0,
+    # SettingsProperties.VOLUME)
 
     SpeechDispatcherVolumeConstraints: Constraints = Constraints(-100, 0, 75,
                                                                  True, False,
                                                                  1.0,
                                                                  SettingsProperties.VOLUME,
                                                                  10)
-    SpeechDispatcherSpeedConstraints: Constraints = Constraints(-100, 0, 100, True, False, 1.0,
-                                                                 SettingsProperties.SPEED, 0, 10)
+    SpeechDispatcherSpeedConstraints: Constraints = Constraints(-100, 0, 100, True, False,
+                                                                1.0,
+                                                                SettingsProperties.SPEED,
+                                                                0, 10)
     # Pitch -- integer value within the range from -100 to 100, with 0
     #    corresponding to the default pitch of the current speech synthesis
     #    output module, lower values meaning lower pitch and higher values
@@ -126,9 +128,12 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
         clz.settings[SettingsProperties.LANGUAGE] = 'en-US',
         clz.settings[SettingsProperties.VOICE] = None,
         clz.settings[SettingsProperties.PIPE] = False,
-        clz.settings[SettingsProperties.SPEED] = clz.SpeechDispatcherSpeedConstraints.default
-        clz.settings[SettingsProperties.PITCH] = clz.SpeechDispatcherPitchConstraints.default
-        clz.settings[SettingsProperties.VOLUME] = clz.SpeechDispatcherVolumeConstraints.default
+        clz.settings[
+            SettingsProperties.SPEED] = clz.SpeechDispatcherSpeedConstraints.default
+        clz.settings[
+            SettingsProperties.PITCH] = clz.SpeechDispatcherPitchConstraints.default
+        clz.settings[
+            SettingsProperties.VOLUME] = clz.SpeechDispatcherVolumeConstraints.default
 
     def init(self):
         super().init()
@@ -227,7 +232,8 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
     def getEngineVolume(cls) -> float:
         """
         Get the configured volume in our standard  -12db .. +12db scale converted
-        to the native scale of the API (0.1 .. 1.0). The maximum volume (1.0) is equivalent
+        to the native scale of the API (0.1 .. 1.0). The maximum volume (1.0) is
+        equivalent
         to 0db. Since we have to use a different player AND since it almost guaranteed
         that the voiced text is cached, just set volume to fixed 1.0 and let player
         handle volume).
@@ -255,8 +261,8 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
         pitch: float = cls.getPitch()
         enginePitch: int
         enginePitch = cls.pitchConstraints.translate_value(
-            cls.SpeechDispatcherPitchConstraints,
-            pitch)
+                cls.SpeechDispatcherPitchConstraints,
+                pitch)
         return enginePitch
 
     @classmethod
@@ -387,11 +393,12 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
             return choices
         elif setting == SettingsProperties.VOICE:
             voices: Tuple[List[Tuple[str, str]], str] = cls.getVoices(
-                include_default=False)
+                    include_default=False)
 
             #  voice_name/language/variant , name/language/variant
             return voices
-        elif setting == SettingsProperties.GENDER:  # Only supported with generic voice names
+        elif setting == SettingsProperties.GENDER:  # Only supported with generic voice
+            # names
             # See client 'set_synthesis_voice'
             return [Messages.GENDER_UNKNOWN.get_msg_id()]
         else:

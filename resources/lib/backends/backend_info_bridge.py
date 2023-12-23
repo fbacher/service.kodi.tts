@@ -7,6 +7,7 @@ from common.logger import BasicLogger
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
+
 class BackendInfoBridge(IBackendInfo):
     _backendInfoImpl: IBackendInfo = None
     _class_name: str = None

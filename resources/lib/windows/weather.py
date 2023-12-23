@@ -15,11 +15,13 @@ class WeatherReader(WindowReaderBase):
         texts = windowparser.getWindowParser().getWindowTexts()
         return texts or None
 
-    def getItemExtraTexts(self,controlID):
+    def getItemExtraTexts(self, controlID):
         return parseItemExtra(controlID, self.getControlText(controlID)[0])
 
-    def getControlText(self,controlID):
-        if not controlID: return ('','')
+    def getControlText(self, controlID):
+        if not controlID:
+            return ('', '')
         text = xbmc.getInfoLabel('System.CurrentControl')
-        if not text: return ('','')
-        return (text,text)
+        if not text:
+            return ('', '')
+        return (text, text)

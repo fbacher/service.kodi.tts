@@ -13,7 +13,7 @@ class TextViewerReader(WindowReaderBase):
     ID = 'textviewer'
 
     def __init__(self):
-        super.__init__()
+        # super.__init__()
         self.start = time.time()
         self._last_md5sum: bytes = None
         self.doubleChecked: bool = False
@@ -35,7 +35,7 @@ class TextViewerReader(WindowReaderBase):
 
     def getViewerTexts(self) -> List[str]:
         text = xbmc.getInfoLabel('Control.GetLabel(5)') or xbmc.getInfoLabel(
-            'Control.GetLabel(2000)')
+                'Control.GetLabel(2000)')
         if text:
             return self.processLines(text.splitlines())
         else:

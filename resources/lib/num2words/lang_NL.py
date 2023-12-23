@@ -38,18 +38,18 @@ class Num2Word_NL(Num2Word_EU):
         self.pointword = "komma"
         # "Cannot treat float %s as ordinal."
         self.errmsg_floatord = (
-            "Het zwevende puntnummer %s kan niet omgezet worden " +
-            "naar een ordernummer."
+                "Het zwevende puntnummer %s kan niet omgezet worden " +
+                "naar een ordernummer."
         )
         # "type(((type(%s)) ) not in [long, int, float]"
         self.errmsg_nonnum = (
-            "Alleen nummers (type (%s)) kunnen naar " +
-            "woorden omgezet worden."
+                "Alleen nummers (type (%s)) kunnen naar " +
+                "woorden omgezet worden."
         )
         # "Cannot treat negative num %s as ordinal."
         self.errmsg_negord = (
-            "Het negatieve getal %s kan niet omgezet " +
-            "worden naar een ordernummer."
+                "Het negatieve getal %s kan niet omgezet " +
+                "worden naar een ordernummer."
         )
         # "abs(%s) must be less than %s."
         self.errmsg_toobig = "Het getal %s moet minder zijn dan %s."
@@ -62,7 +62,7 @@ class Num2Word_NL(Num2Word_EU):
                 "sexagint", "septuagint", "oktogint", "nonagint"]
 
         self.high_numwords = (
-            ["zend"] + self.gen_high_numwords(units, tens, lows))
+                ["zend"] + self.gen_high_numwords(units, tens, lows))
 
         self.mid_numwords = [(1000, "duizend"), (100, "honderd"),
                              (90, "negentig"), (80, "tachtig"),
@@ -78,25 +78,25 @@ class Num2Word_NL(Num2Word_EU):
 
         # Wiktionary says it is "nulde", not "nulte" or "nule"
         # https://en.wiktionary.org/wiki/nulde
-        self.ords = {"nul": "nuld",
-                     "één": "eerst",
-                     "twee": "tweed",
-                     "drie": "derd",
-                     "vier": "vierd",
-                     "vijf": "vijfd",
-                     "zes": "zesd",
-                     "zeven": "zevend",
-                     "acht": "achtst",
-                     "negen": "negend",
-                     "tien": "tiend",
-                     "elf": "elfd",
+        self.ords = {"nul"   : "nuld",
+                     "één"   : "eerst",
+                     "twee"  : "tweed",
+                     "drie"  : "derd",
+                     "vier"  : "vierd",
+                     "vijf"  : "vijfd",
+                     "zes"   : "zesd",
+                     "zeven" : "zevend",
+                     "acht"  : "achtst",
+                     "negen" : "negend",
+                     "tien"  : "tiend",
+                     "elf"   : "elfd",
                      "twaalf": "twaalfd",
 
-                     "ig": "igst",
-                     "erd": "erdst",
-                     "end": "endst",
-                     "joen": "joenst",
-                     "rd": "rdst"}
+                     "ig"    : "igst",
+                     "erd"   : "erdst",
+                     "end"   : "endst",
+                     "joen"  : "joenst",
+                     "rd"    : "rdst"}
 
     def merge(self, curr, next):
         ctext, cnum, ntext, nnum = curr + next

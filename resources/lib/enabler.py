@@ -29,8 +29,10 @@ def getXBMCVersion():
                                '"Application.GetProperties", "params": '
                                '{"properties": ["version", "name"]}, "id": 1 }')
     data = json.loads(resp)
-    if not 'result' in data: return None
-    if not 'version' in data['result']: return None
+    if not 'result' in data:
+        return None
+    if not 'version' in data['result']:
+        return None
     return data['result']['version']
 
 
@@ -48,7 +50,7 @@ def enableAddon():
         if addonIsEnabled():
             xbmc.executebuiltin('RunScript(service.kodi.tts)')
         else:
-            xbmc.executeJSONRPC(BASE % 'true') #So enable it instead
+            xbmc.executeJSONRPC(BASE % 'true')  # So enable it instead
     else:
         xbmc.executebuiltin('RunScript(service.kodi.tts)')
 
@@ -61,10 +63,11 @@ def disableAddon():
 
     if isPostInstalled():
         version = getXBMCVersion()
-        if not version or version['major'] < 13: return #Disabling in this manner crashes on Frodo
-        xbmc.executeJSONRPC(BASE % 'false') #Try to disable it
-        #if res and 'error' in res: #If we have an error, it's already disabled
-        #print res
+        if not version or version['major'] < 13:
+            return  # Disabling in this manner crashes on Frodo
+        xbmc.executeJSONRPC(BASE % 'false')  # Try to disable it
+        # if res and 'error' in res: #If we have an error, it's already disabled
+        # print res
 
 
 def markPreOrPost(enable=False, disable=False):
@@ -76,17 +79,23 @@ def markPreOrPost(enable=False, disable=False):
         with open(DISABLE_PATH, 'w') as f:
             f.write(isPostInstalled() and 'POST' or 'PRE')
 
+
 def addonIsEnabled():
     if os.path.exists(DISABLE_PATH):
         return False
 
     if isPostInstalled():
         import json
-        resp = xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "id": 1, "method": "Addons.GetAddonDetails", "params": {"addonid":"service.kodi.tts","properties": ["name","version","enabled"]}}')
+        resp = xbmc.executeJSONRPC(
+            '{ "jsonrpc": "2.0", "id": 1, "method": "Addons.GetAddonDetails", "params": '
+            '{"addonid":"service.kodi.tts","properties": ["name","version","enabled"]}}')
         data = json.loads(resp)
-        if 'result' not in data: return False
-        if 'addon' not in data['result']: return False
-        if 'enabled' not in data['result']['addon']: return False
+        if 'result' not in data:
+            return False
+        if 'addon' not in data['result']:
+            return False
+        if 'enabled' not in data['result']['addon']:
+            return False
         return data['result']['addon']['enabled']
     else:
         return True
@@ -94,7 +103,8 @@ def addonIsEnabled():
 
 def toggleEnabled():
     try:
-        if not addonIsEnabled(): raise Exception('Addon Disabled')
+        if not addonIsEnabled():
+            raise Exception('Addon Disabled')
         # xbmcaddon.Addon(ADDON_ID)
         xbmc.log(f'{ADDON_ID}: DISABLING', xbmc.LOGDEBUG)
         xbmc.executebuiltin('RunScript(service.kodi.tts,key.SHUTDOWN)')
@@ -104,12 +114,13 @@ def toggleEnabled():
 
 
 def reset():
-    if not addonIsEnabled(): return
+    if not addonIsEnabled():
+        return
     disableAddon()
-    ct=0
+    ct = 0
     while addonIsEnabled() and ct < 11:
         xbmc.sleep(500)
-        ct+=1
+        ct += 1
     enableAddon()
 
 

@@ -4,7 +4,7 @@ Created on Feb 10, 2019
 
 @author: Frank Feuerbacher
 """
-import os
+from pathlib import Path
 
 import xbmc
 import xbmcaddon
@@ -50,8 +50,9 @@ class CriticalSettings:
     except Exception:
         xbmc.log(f'xbmcaddon.Addon({ADDON_ID}) was not found.', level=xbmc.LOGERROR)
 
-    TOP_PACKAGE_PATH: Final[str] = os.path.join(ADDON.getAddonInfo('path'),
-                                               'resources', 'lib')
+    ADDON_PATH: Final[Path] = Path(ADDON.getAddonInfo('path'))
+    RESOURCES_PATH: Final[Path] = ADDON_PATH.joinpath('resources')
+    TOP_PACKAGE_PATH: Final[str] = RESOURCES_PATH.joinpath('lib')
     KODI_SETTINGS = ADDON.getSettings()
     addon = None
     _plugin_name: str = ""
@@ -125,8 +126,9 @@ class CriticalSettings:
             elif not CriticalSettings.is_debug_enabled():
                 level_setting = 0
                 python_logging_value = CriticalSettings.DEFAULT_DEBUG_LEVEL
-            else:   # Debug is enabled in Random Trailers Config Experimental Tab
-                level_setting: int = 4  # CriticalSettings.KODI_SETTINGS.getInt('log_level')
+            else:  # Debug is enabled in Random Trailers Config Experimental Tab
+                level_setting: int = 4  # CriticalSettings.KODI_SETTINGS.getInt(
+                # 'log_level')
                 if level_setting <= 0:  # Use DEFAULT value
                     python_logging_value = CriticalSettings.DEFAULT_DEBUG_LEVEL
                 elif level_setting == 1:  # Info

@@ -50,19 +50,19 @@ class Num2Word_NO(lang_EU.Num2Word_EU):
                              "tolv", "elleve", "ti", "ni", "\xe5tte",
                              "syv", "seks", "fem", "fire", "tre", "to",
                              "en", "null"]
-        self.ords = {"en": "f\xf8rste",
-                     "to": "andre",
-                     "tre": "tredje",
-                     "fire": "fjerde",
-                     "fem": "femte",
-                     "seks": "sjette",
-                     "syv": "syvende",
+        self.ords = {"en"     : "f\xf8rste",
+                     "to"     : "andre",
+                     "tre"    : "tredje",
+                     "fire"   : "fjerde",
+                     "fem"    : "femte",
+                     "seks"   : "sjette",
+                     "syv"    : "syvende",
                      "\xe5tte": "\xe5ttende",
-                     "ni": "niende",
-                     "ti": "tiende",
-                     "elleve": "ellevte",
-                     "tolv": "tolvte",
-                     "tjue": "tjuende"}
+                     "ni"     : "niende",
+                     "ti"     : "tiende",
+                     "elleve" : "ellevte",
+                     "tolv"   : "tolvte",
+                     "tjue"   : "tjuende"}
 
     def merge(self, lpair, rpair):
         ltext, lnum = lpair

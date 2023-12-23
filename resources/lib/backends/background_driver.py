@@ -5,15 +5,11 @@
  rate. This driver converts text to speech in the background and pupulates the
  cache.
  '''
-import sys
-import threading
 from pathlib import Path
 
 import xbmcvfs
 
-from backends.audio.sound_capabilties import SoundCapabilities
-from backends.base import BaseEngineService, SimpleTTSBackend
-from backends.settings.setting_properties import SettingsProperties
+from backends.base import SimpleTTSBackend
 from backends.settings.settings_map import SettingsMap
 from cache.voicecache import VoiceCache
 from common.base_services import BaseServices
@@ -55,7 +51,8 @@ class BackgroundDriver(BaseServices):
          Our job is to generate every missing voice file from the given directory
 
          cache files are organized:
-          <cache_path>/<engine_code>/<first-two-chars-of-cache-file-name>/<cache_file_name>.<suffix>
+          <cache_path>/<engine_code>/<first-two-chars-of-cache-file-name
+          >/<cache_file_name>.<suffix>
 
           Example: cache_path =  ~/.kodi/userdata/addon_data/service.kodi.tts/cache
                    engine_code = goo (for google)
@@ -74,7 +71,7 @@ class BackgroundDriver(BaseServices):
         assert engine_code is not None, \
             f'Can not find voice-cache dir for engine: {engine_id}'
         self.cache_directory: str = xbmcvfs.translatePath(f'{cache_path}/{engine_code}/'
-                                                     f'{changed_cache_dir}')
+                                                          f'{changed_cache_dir}')
 
         self.cache_directory: Path = Path(self.cache_directory)
         self.work_list = FindTextToVoice(top=self.cache_directory)
@@ -87,7 +84,7 @@ class BackgroundDriver(BaseServices):
 
     def start(self):
         self.stop = False
-        runInThread(self.create_voice_files, name = 'create_voice_files',
+        runInThread(self.create_voice_files, name='create_voice_files',
                     delay=0.0)
 
     def stop(self):

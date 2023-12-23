@@ -1,20 +1,18 @@
 # -*- coding: utf-8 -*-
-import sys
-from contextlib import AbstractContextManager
 import copy
 import threading
 import time
-
-from common.typing import *
+from contextlib import AbstractContextManager
 
 import xbmcaddon
 
 from backends.settings.service_types import Services
 from backends.settings.setting_properties import SettingsProperties, SettingType
 from backends.settings.settings_map import SettingsMap
-from common.monitor import Monitor
 from common.constants import Constants
 from common.logger import *
+from common.monitor import Monitor
+from common.typing import *
 from kutils.kodiaddon import Addon
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -123,6 +121,7 @@ class PreviousCachedSettings:
 
 
 class SettingsContext(AbstractContextManager):
+
     # module_logger = BasicLogger.get_module_logger(module_path=__file__)
     # _logger: BasicLogger = None
 
@@ -155,7 +154,7 @@ class SettingsWrapper:
 
     # new_api = xbmcaddon.Addon("service.kodi.tts").getSettings()
     old_api = xbmcaddon.Addon()
-    _logger : BasicLogger = None
+    _logger: BasicLogger = None
 
     def __init__(self):
         clz = type(self)
@@ -210,7 +209,6 @@ class SettingsWrapper:
             value = None
         return value
 
-
     def getNumber(self, id: str) -> float:
         """
         Returns the value of a setting as a floating point number.
@@ -229,7 +227,7 @@ class SettingsWrapper:
         clz = type(self)
         value: float | None = 0.0
         try:
-            value: float =  clz.old_api.getSettingNumber(id)
+            value: float = clz.old_api.getSettingNumber(id)
         except TypeError:
             clz._logger.error(f'Setting {id} is not a float. Setting to None/default')
             value = None
@@ -347,7 +345,6 @@ class SettingsWrapper:
         """
         clz = type(self)
         value = clz.old_api.setSettingBool(id, value)
-
 
     def setInt(self, id: str, value: int) -> None:
         """
@@ -519,12 +516,13 @@ class SettingsLowLevel:
     # here
     """
     _current_engine: str = None
+    _alternate_engine: str = None
     _logger: BasicLogger = None
     settings_wrapper = SettingsWrapper()
 
     _initialized: bool = False
     _loading: threading.Event = threading.Event()
-    _loading.set() # Enable
+    _loading.set()  # Enable
 
     @classmethod
     def init(cls):
@@ -596,8 +594,8 @@ class SettingsLowLevel:
                 changed = True
                 if module_logger.isEnabledFor(DEBUG):
                     SettingsLowLevel._logger.debug(f'setting changed: {setting_id} '
-                                           f'previous_value: {previous_value} '
-                                           f'current_value: {current_value}')
+                                                   f'previous_value: {previous_value} '
+                                                   f'current_value: {current_value}')
             else:
                 changed = False
 
@@ -626,7 +624,7 @@ class SettingsLowLevel:
 
         if not SettingsMap.is_valid_property(engine_id, setting_id):
             cls._logger.debug(
-                f'TRACE Setting {setting_id} NOT supported for {engine_id}')
+                    f'TRACE Setting {setting_id} NOT supported for {engine_id}')
         PROTO_LIST_BOOLS: List[bool] = [True, False]
         PROTO_LIST_FLOATS: List[float] = [0.7, 8.2]
         PROTO_LIST_INTEGERS: List[int] = [1, 57]
@@ -698,7 +696,7 @@ class SettingsLowLevel:
             # Besides, the code will still load from settings.xml when needed.
 
             blocked = True
-            Monitor.wait_for_abort(timeout=0.10)
+            Monitor.exception_on_abort(timeout=0.10)
 
         try:
             cls._loading.clear()
@@ -798,7 +796,8 @@ class SettingsLowLevel:
                             case SettingType.STRING_TYPE:
                                 value = value_str
                 except Exception as e:
-                    cls._logger.debug(f'Second attempt to read setting {setting_id} failed')
+                    cls._logger.debug(
+                        f'Second attempt to read setting {setting_id} failed')
         if value is None:
             value = SettingsMap.get_default_value(engine_id, setting_id)
         return value
@@ -813,7 +812,7 @@ class SettingsLowLevel:
         tmp_id: List[str] = setting_id.split(sep=".", maxsplit=2)
         real_key: str
         if len(tmp_id) > 1:
-        #     cls._logger.debug(f'already expanded: {setting_id}')
+            #     cls._logger.debug(f'already expanded: {setting_id}')
             real_key = setting_id
         else:
             suffix: str = ''
@@ -850,7 +849,8 @@ class SettingsLowLevel:
     def getRealSetting(cls, setting_id: str, backend_id: str | None,
                        default_value: Any | None) -> Any | None:
         cls._logger.debug(
-            f'TRACE getRealSetting NOT from cache id: {setting_id} backend: {backend_id}')
+                f'TRACE getRealSetting NOT from cache id: {setting_id} backend: '
+                f'{backend_id}')
         if backend_id is None or len(backend_id) == 0:
             backend_id = cls._current_engine
             if backend_id is None or len(backend_id) == 0:
@@ -901,7 +901,7 @@ class SettingsLowLevel:
 
                 match value_type:
                     case SettingType.BOOLEAN_TYPE:
-                         cls.settings_wrapper.setBool(full_setting_id, value)
+                        cls.settings_wrapper.setBool(full_setting_id, value)
                     case SettingType.BOOLEAN_LIST_TYPE:
                         cls.settings_wrapper.setBoolList(full_setting_id, value)
                     case SettingType.FLOAT_TYPE:
@@ -936,8 +936,8 @@ class SettingsLowLevel:
             engine_id = cls._current_engine
         if engine_id is None:
             engine_id = cls.get_setting_str(SettingsProperties.ENGINE, engine_id=None,
-                                             ignore_cache=ignore_cache,
-                                             default=default)
+                                            ignore_cache=ignore_cache,
+                                            default=default)
         #  cls._logger.debug(f'TRACE get_engine_id: {engine_id}')
         cls._current_engine = engine_id
         return engine_id
@@ -1041,7 +1041,8 @@ class SettingsLowLevel:
         return cls._getSetting(setting_id, engine_id, default)
 
     @classmethod
-    def set_setting_bool(cls, setting_id: str, value: bool, backend_id: str = None) -> bool:
+    def set_setting_bool(cls, setting_id: str, value: bool,
+                         backend_id: str = None) -> bool:
         """
 
         :return:

@@ -167,10 +167,10 @@ class Num2Word_AR(object):
                                               2000000000000, 2000000000000000,
                                               2000000000000000000]:
                         ret_val = "{}".format(
-                            self.arabicAppendedTwos[int(group_level)])
+                                self.arabicAppendedTwos[int(group_level)])
                     else:
                         ret_val = "{}".format(
-                            self.arabicTwos[int(group_level)])
+                                self.arabicTwos[int(group_level)])
                 else:
                     if ret_val != "":
                         ret_val += " و "
@@ -219,7 +219,7 @@ class Num2Word_AR(object):
         while temp_number > Decimal(0):
 
             number_to_process = int(
-                Decimal(str(temp_number)) % Decimal(str(1000)))
+                    Decimal(str(temp_number)) % Decimal(str(1000)))
             temp_number = int(Decimal(temp_number) / Decimal(1000))
 
             group_description = \
@@ -234,15 +234,15 @@ class Num2Word_AR(object):
                         if number_to_process % 100 != 1:
                             if 3 <= number_to_process <= 10:
                                 ret_val = "{} {}".format(
-                                    self.arabicPluralGroups[group], ret_val)
+                                        self.arabicPluralGroups[group], ret_val)
                             else:
                                 if ret_val != "":
                                     ret_val = "{} {}".format(
-                                        self.arabicAppendedGroup[group],
-                                        ret_val)
+                                            self.arabicAppendedGroup[group],
+                                            ret_val)
                                 else:
                                     ret_val = "{} {}".format(
-                                        self.arabicGroup[group], ret_val)
+                                            self.arabicGroup[group], ret_val)
 
                         else:
                             ret_val = "{} {}".format(self.arabicGroup[group],

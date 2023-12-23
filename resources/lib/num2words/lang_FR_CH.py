@@ -20,6 +20,7 @@ from .lang_FR import Num2Word_FR
 
 
 class Num2Word_FR_CH(Num2Word_FR):
+
     def setup(self):
         Num2Word_FR.setup(self)
 
@@ -35,7 +36,7 @@ class Num2Word_FR_CH(Num2Word_FR):
             if nnum < 1000000:
                 return next
 
-        if cnum < 1000 and nnum != 1000 and\
+        if cnum < 1000 and nnum != 1000 and \
                 ntext[-1] != "s" and not nnum % 100:
             ntext += "s"
 

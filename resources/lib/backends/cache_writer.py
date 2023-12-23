@@ -9,8 +9,8 @@ from backends.players.iplayer import IPlayer
 from backends.players.player_index import PlayerIndex
 from backends.settings.service_types import Services
 from cache.voicecache import VoiceCache
-from common.logger import *
 from common.base_services import BaseServices
+from common.logger import *
 from common.phrases import Phrase
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
@@ -50,8 +50,10 @@ of settings can directly query for the appropriate settings and conversions.
   better the more consistent the audio is using the same settings across the different
   engines, players, etc.).
            
-                                                |-- Not successful --> save text in cache --> alt engine
-text -> cache_reader --- not found --> engine --- successful ---> voiced_byte_stream -> cache_writer  --> player
+                                                |-- Not successful --> save text in 
+                                                cache --> alt engine
+text -> cache_reader --- not found --> engine --- successful ---> voiced_byte_stream -> 
+cache_writer  --> player
                    |---- found ---> player
                    
 
@@ -61,7 +63,8 @@ pre/post-demand voicing, a different model is needed.
 
 A Driver will be in charge of orchestrating the flow of voicing. service.py will 
 interact with Driver to initiate voicing. Driver will be in charge after that. 
-Of course Driver will let each sub-service manage it's own concerns, as appropriate.                   
+Of course Driver will let each sub-service manage it's own concerns, as appropriate.    
+               
 """
 
 
@@ -92,7 +95,7 @@ class BaseCache(BaseServices):
     '''
 
     settings: Dict[str, str | int | bool] = {
-       SettingsProperties.CACHE_PATH: None
+        SettingsProperties.CACHE_PATH: None
     }
     supported_settings: Dict[str, str | int | bool] = settings
     _logger: BasicLogger = None
@@ -127,8 +130,8 @@ class BaseCache(BaseServices):
         exists: bool
         file_type: str
         path, exists, file_type = VoiceCache.get_best_path(phrase,
-                                                                        sound_file_types)
-        return  path, exists, file_type
+                                                           sound_file_types)
+        return path, exists, file_type
 
     def get_path_to_voice_file(self, text_to_voice: str,
                                use_cache: bool = False) -> Tuple[str, bool]:
@@ -158,7 +161,7 @@ class BaseCache(BaseServices):
     def get_best_path(self, text_to_voice: str,
                       sound_file_types: List[str]) -> Tuple[str, bool, str]:
         path, exists, file_type = VoiceCache.get_best_path(text_to_voice,
-                          sound_file_types)
+                                                           sound_file_types)
         return path, exists, file_type
 
     def voiceFile(self, text_to_voice: str, path: str):
@@ -205,7 +208,6 @@ class BaseCache(BaseServices):
 
         # volume_db: float = clz.get_volume_db()  # -12 .. 12
         return byte_stream
-
 
     def update(self):
         self.process = None
@@ -255,7 +257,8 @@ class BaseCache(BaseServices):
         """
         Gets a setting from addon's settings.xml
 
-        A convenience method equivalent to Settings.getSetting(key + '.'. + cls.backend_id,
+        A convenience method equivalent to Settings.getSetting(key + '.'. +
+        cls.backend_id,
         default, useFullSettingName).
 
         :param key:
@@ -312,8 +315,9 @@ class CacheWriter(BaseCache):
     _supported_input_formats: List[str] = []
     _supported_output_formats: List[str] = [SoundCapabilities.WAVE]
     capable_services = SoundCapabilities.get_capable_services(ServiceType.ENGINE,
-                                                                _supported_input_formats,
-                                                                _supported_output_formats)
+                                                              _supported_input_formats,
+                                                              _supported_output_formats)
+
     def __init__(self):
         super().__init__()
         clz = type(self)
@@ -353,7 +357,7 @@ class CacheReader(BaseCache):
             clz._initialized = True
 
     def findVoicedText(self, text_to_voice: str, cache_identifier: str,
-                      forward: bool) -> Tuple[bool, str]:
+                       forward: bool) -> Tuple[bool, str]:
         # Tuple[found, path]
         pass
 

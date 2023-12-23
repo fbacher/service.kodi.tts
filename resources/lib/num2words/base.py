@@ -80,7 +80,7 @@ class Num2Word_Base(object):
                 out.append((self.cards[1], 1))
             else:
                 if div == value:  # The system tallies, eg Roman Numerals
-                    return [(div * self.cards[elem], div*elem)]
+                    return [(div * self.cards[elem], div * elem)]
                 out.append(self.splitnum(div))
 
             out.append((self.cards[elem], elem))
@@ -124,7 +124,7 @@ class Num2Word_Base(object):
         # Simple way of finding decimal places to update the precision
         self.precision = abs(Decimal(str(value)).as_tuple().exponent)
 
-        post = abs(value - pre) * 10**self.precision
+        post = abs(value - pre) * 10 ** self.precision
         if abs(round(post) - post) < 0.01:
             # We generally floor all values beyond our precision (rather than
             # rounding), but in cases where we have something like 1.239999999,
@@ -253,7 +253,8 @@ class Num2Word_Base(object):
     def pluralize(self, n, forms):
         """
         Should resolve gettext form:
-        http://docs.translatehouse.org/projects/localization-guide/en/latest/l10n/pluralforms.html
+        http://docs.translatehouse.org/projects/localization-guide/en/latest/l10n
+        /pluralforms.html
         """
         raise NotImplementedError
 
@@ -286,8 +287,8 @@ class Num2Word_Base(object):
 
         except KeyError:
             raise NotImplementedError(
-                'Currency code "%s" not implemented for "%s"' %
-                (currency, self.__class__.__name__))
+                    'Currency code "%s" not implemented for "%s"' %
+                    (currency, self.__class__.__name__))
 
         if adjective and currency in self.CURRENCY_ADJECTIVES:
             cr1 = prefix_currency(self.CURRENCY_ADJECTIVES[currency], cr1)

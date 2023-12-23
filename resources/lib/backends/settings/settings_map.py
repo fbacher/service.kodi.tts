@@ -1,11 +1,10 @@
 # coding=utf-8
-from strenum import StrEnum
+from enum import StrEnum
 
 from backends.settings.i_constraints import IConstraints
 from backends.settings.i_validators import (IBoolValidator, IConstraintsValidator,
-                                            IIntValidator,
-                                            IStrEnumValidator, IValidator,
-                                            IStringValidator)
+                                            IIntValidator, IStrEnumValidator,
+                                            IStringValidator, IValidator)
 from backends.settings.service_types import ServiceType
 from common.logger import BasicLogger
 from common.typing import *
@@ -86,7 +85,7 @@ class SettingsMap:
 
     @classmethod
     def get_services_for_service_type(cls, service_type: ServiceType) \
-                                        -> List[Tuple[str, str]]:
+            -> List[Tuple[str, str]]:
         services: List[Tuple[str, str]] = []
         service_dict: Dict[str, Any] = cls.service_type_to_services_map.get(service_type,
                                                                             {})
@@ -110,7 +109,8 @@ class SettingsMap:
         return properties.get(property, None)
 
     @classmethod
-    def get_available_service_ids(cls, service_type) -> List[Tuple[str, Dict[str, Any]]] | None:
+    def get_available_service_ids(cls, service_type) -> List[Tuple[
+        str, Dict[str, Any]]] | None:
         if not ServiceType.ALL.value <= service_type.value <= \
                ServiceType.LAST_SERVICE_TYPE.value:
             cls._logger.debug(f'Invalid ServiceType: {service_type}')
@@ -121,7 +121,8 @@ class SettingsMap:
         service_id: str
         properties: Dict[str, Any]
         for service_id, properties in service_ids.items():
-            if cls.service_availability_map.get(service_id, Reason.UNKNOWN) == Reason.AVAILABLE:
+            if cls.service_availability_map.get(service_id,
+                                                Reason.UNKNOWN) == Reason.AVAILABLE:
                 available_service_ids.append((service_id, properties))
         return available_service_ids
 
@@ -140,20 +141,21 @@ class SettingsMap:
             return True, reason
         return False, reason
 
-
     @classmethod
-    def define_setting(cls, service_id: str, property_id: str, validator: IValidator):
+    def define_setting(cls, service_id: str, property_id: str,
+                       validator: IValidator | None):
         """
         Defines a validator to use for a given property of a service
         :param service_id: Specifies the service: 'engine', 'player', etc. When
         the property has no service, then the service is 'tts'
         :param property_id: Specifies the property: volume, cache-path, etc.
-        :param validator:
+        :param validator: If None, then the
         """
         if property_id is None:
             property_id = ''
         assert isinstance(service_id, str), 'Service_id must be a str'
         assert isinstance(property_id, str), 'property_id must be a str'
+
         settings_for_service: Dict[str, IValidator]
         settings_for_service = cls.service_to_settings_map.get(service_id)
         if settings_for_service is None:
@@ -164,7 +166,14 @@ class SettingsMap:
         # initialization order since it is normal to initialize your ancestor
         # prior to yourself
 
-        settings_for_service[property_id] = validator
+        if validator is None:
+            settings_for_service.pop(property_id, None)
+        else:
+            settings_for_service[property_id] = validator
+
+    @classmethod
+    def is_setting_available(cls, service_id: str, property_id: str) -> bool:
+        return cls.is_valid_property(service_id, property_id)
 
     @classmethod
     def is_valid_property(cls, service_id: str, property_id: str) -> bool:
@@ -218,7 +227,7 @@ class SettingsMap:
 
     @classmethod
     def get_allowed_values(cls, service_id: str,
-                          property_id: str) -> List[str] | None:
+                           property_id: str) -> List[str] | None:
         if property_id is None:
             property_id = ''
         assert isinstance(service_id, str), 'Service_id must be a str'

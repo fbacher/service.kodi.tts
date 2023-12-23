@@ -1,8 +1,8 @@
 from backends.players.iplayer import IPlayer
 from backends.settings.setting_properties import SettingsProperties
+from common.logger import *
 from common.settings import Settings
 from common.typing import *
-from common.logger import *
 
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -32,11 +32,13 @@ class PlayerHandlerType:
         raise Exception('Not Implemented')
 
     def getSpeed(self) -> float:
-        speed: float = Settings.getSetting(SettingsProperties.SPEED, Settings.get_engine_id())
+        speed: float = Settings.getSetting(SettingsProperties.SPEED,
+                                           Settings.get_engine_id())
         return speed
 
     def getVolumeDb(self) -> float:
-        volumeDb: float = Settings.getSetting(SettingsProperties.VOLUME, Settings.get_engine_id())
+        volumeDb: float = Settings.getSetting(SettingsProperties.VOLUME,
+                                              Settings.get_engine_id())
         return volumeDb
 
     def setSpeed(self, speed: float):

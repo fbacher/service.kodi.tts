@@ -1,11 +1,9 @@
 import sys
 
-
-from common.exceptions import AbortException
-from common.logger import *
-from common.typing import *
 from cache.prefetch_movie_data.movie import LibraryMovie
 from cache.prefetch_movie_data.movie_constants import MovieField, MovieType
+from common.logger import *
+from common.typing import *
 
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -122,7 +120,6 @@ class ParseLibrary:
     def parse_votes(self) -> None:
         votes: int = self._library_entry.get(MovieField.VOTES, 0)
         self._movie.set_votes(votes)
-
 
     @classmethod
     def parse_movie(cls,

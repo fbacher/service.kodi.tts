@@ -36,7 +36,7 @@ class Num2Word_FR(Num2Word_EU):
         self.pointword = "virgule"
         self.errmsg_nonnum = (
             u"Seulement des nombres peuvent être convertis en mots."
-            )
+        )
         self.errmsg_toobig = u"Nombre trop grand pour être converti en mots."
         self.exclude_title = ["et", "virgule", "moins"]
         self.mid_numwords = [(1000, "mille"), (100, "cent"),
@@ -60,7 +60,7 @@ class Num2Word_FR(Num2Word_EU):
                 return next
         else:
             if (not (cnum - 80) % 100
-                or (not cnum % 100 and cnum < 1000))\
+                or (not cnum % 100 and cnum < 1000)) \
                     and nnum < 1000000 \
                     and ctext[-1] == "s":
                 ctext = ctext[:-1]
@@ -103,6 +103,6 @@ class Num2Word_FR(Num2Word_EU):
     def to_currency(self, val, currency='EUR', cents=True, separator=' et',
                     adjective=False):
         result = super(Num2Word_FR, self).to_currency(
-            val, currency=currency, cents=cents, separator=separator,
-            adjective=adjective)
+                val, currency=currency, cents=cents, separator=separator,
+                adjective=adjective)
         return result

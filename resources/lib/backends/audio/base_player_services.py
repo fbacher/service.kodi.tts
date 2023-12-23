@@ -1,7 +1,6 @@
 # coding=utf-8
 from backends.players.iplayer import IPlayer
 from backends.players.player_index import PlayerIndex
-from backends.settings.i_validators import IValidator
 from common.base_services import IServices
 
 

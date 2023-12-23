@@ -100,6 +100,7 @@ class BaseServiceSettings:
         SettingsMap.define_setting(BaseServiceSettings.service_ID,
                                    SettingsProperties.PITCH,
                                    pitch_constraints_validator)
+
     @classmethod
     def init_settings(cls):
         volume_constraints_validator: ConstraintsValidator
@@ -123,7 +124,8 @@ class BaseServiceSettings:
         SettingsMap.define_setting(SettingsProperties.ENGINE, '',
                                    engine_id_validator)
 
-        addon_md5_validator = StringValidator(SettingsProperties.ADDONS_MD5, Services.TTS_SERVICE,
+        addon_md5_validator = StringValidator(SettingsProperties.ADDONS_MD5,
+                                              Services.TTS_SERVICE,
                                               allowed_values=[], min_length=32,
                                               max_length=32, default='')
         SettingsMap.define_setting(Services.TTS_SERVICE,
@@ -131,7 +133,8 @@ class BaseServiceSettings:
                                    addon_md5_validator)
 
         auto_item_extra_validator: BoolValidator
-        auto_item_extra_validator = BoolValidator(SettingsProperties.AUTO_ITEM_EXTRA, Services.TTS_SERVICE,
+        auto_item_extra_validator = BoolValidator(SettingsProperties.AUTO_ITEM_EXTRA,
+                                                  Services.TTS_SERVICE,
                                                   default=False)
         SettingsMap.define_setting(Services.TTS_SERVICE,
                                    SettingsProperties.AUTO_ITEM_EXTRA,
@@ -175,7 +178,8 @@ class BaseServiceSettings:
                                    SettingsProperties.SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA,
                                    speak_during_media)
         cache_path_val: StringValidator
-        cache_path_val = StringValidator(SettingsProperties.CACHE_PATH, Services.TTS_SERVICE,
+        cache_path_val = StringValidator(SettingsProperties.CACHE_PATH,
+                                         Services.TTS_SERVICE,
                                          allowed_values=[],
                                          min_length=1,
                                          max_length=1024,
@@ -285,8 +289,9 @@ class BaseServiceSettings:
 
         @classmethod
         def _available(cls):
-            if cls.broken and Settings.getSetting(SettingsProperties.DISABLE_BROKEN_SERVICES,
-                                                  SettingsProperties.TTS_SERVICE, True):
+            if cls.broken and Settings.getSetting(
+                    SettingsProperties.DISABLE_BROKEN_SERVICES,
+                    SettingsProperties.TTS_SERVICE, True):
                 return False
             return cls.available()
 

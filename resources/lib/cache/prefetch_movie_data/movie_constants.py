@@ -8,7 +8,6 @@ Created on 5/17/21
 from common.logger import *
 from common.typing import *
 
-
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 CHECK_FOR_NULLS: bool = True
 
@@ -24,7 +23,8 @@ class MovieField:
 
     """
         Properties requested for initial query of library movies:
-                              ["title", "lastplayed", "studio", "cast", "plot", "writer", \
+                              ["title", "lastplayed", "studio", "cast", "plot", 
+                              "writer", \
                         "director", "fanart", "runtime", "mpaa", "thumbnail", "file", \
                         "year", "genre", "trailer"]\
 
@@ -259,23 +259,24 @@ List.Sort
 
     # Not all sources (TMDb, iTunes provide all of these 'trailer-types'
 
-    TRAILER_TYPES: Tuple[str] = (TRAILER_TYPE_OFFICIAL_TRAILER, TRAILER_TYPE_FINAL_TRAILER,
-                                 TRAILER_TYPE_TRAILER, TRAILER_TYPE_FEATURETTE,
-                                 TRAILER_TYPE_CLIP, TRAILER_TYPE_TEASER,
-                                 TRAILER_TYPE_BEHIND_THE_SCENES, TRAILER_TYPE_COMMENTARY)
+    TRAILER_TYPES: Tuple[str] = (
+    TRAILER_TYPE_OFFICIAL_TRAILER, TRAILER_TYPE_FINAL_TRAILER,
+    TRAILER_TYPE_TRAILER, TRAILER_TYPE_FEATURETTE,
+    TRAILER_TYPE_CLIP, TRAILER_TYPE_TEASER,
+    TRAILER_TYPE_BEHIND_THE_SCENES, TRAILER_TYPE_COMMENTARY)
 
     # Map the above TRAILER_TYPES into the base trailer types that this app
     # provides settings for
 
     TRAILER_TYPE_MAP: Dict[str, str] = {
-        TRAILER_TYPE_OFFICIAL_TRAILER:  TRAILER_TYPE_TRAILER,
-        TRAILER_TYPE_FINAL_TRAILER: TRAILER_TYPE_TRAILER,
-        TRAILER_TYPE_TRAILER: TRAILER_TYPE_TRAILER,
-        TRAILER_TYPE_FEATURETTE: TRAILER_TYPE_FEATURETTE,
-        TRAILER_TYPE_CLIP: TRAILER_TYPE_CLIP,
-        TRAILER_TYPE_TEASER: TRAILER_TYPE_TEASER,
+        TRAILER_TYPE_OFFICIAL_TRAILER : TRAILER_TYPE_TRAILER,
+        TRAILER_TYPE_FINAL_TRAILER    : TRAILER_TYPE_TRAILER,
+        TRAILER_TYPE_TRAILER          : TRAILER_TYPE_TRAILER,
+        TRAILER_TYPE_FEATURETTE       : TRAILER_TYPE_FEATURETTE,
+        TRAILER_TYPE_CLIP             : TRAILER_TYPE_CLIP,
+        TRAILER_TYPE_TEASER           : TRAILER_TYPE_TEASER,
         TRAILER_TYPE_BEHIND_THE_SCENES: TRAILER_TYPE_CLIP,
-        TRAILER_TYPE_COMMENTARY: TRAILER_TYPE_CLIP
+        TRAILER_TYPE_COMMENTARY       : TRAILER_TYPE_CLIP
     }
 
     SUPPORTED_TRAILER_TYPES: Tuple[str] = (
@@ -296,7 +297,8 @@ List.Sort
 
     # Trailer Type values:
     TMDB_TYPE: Final[str] = 'TMDB_type'
-    TMDB_BUFFER_NUMBER: Final[str] = 'TMDB_BUFFER_NUMBER'  # For statistics, remember download page
+    TMDB_BUFFER_NUMBER: Final[
+        str] = 'TMDB_BUFFER_NUMBER'  # For statistics, remember download page
     TMDB_TOTAL_PAGES: Final[str] = 'TMDB_TOTAL_PAGES'  # For statistics
 
     TMDB_TAG_NAMES: Final[str] = 'rts.tags'
@@ -379,75 +381,76 @@ List.Sort
     REJECTED_NOT_IN_CACHE: Final[int] = 12
 
     REJECTED_REASON_MAP = {
-        REJECTED_NO_TRAILER: 'No Trailer Found',
-        REJECTED_FILTER_GENRE: 'Genre filter',
-        REJECTED_FAIL: '',
-        REJECTED_FILTER_DATE: 'Date filter',
-        REJECTED_LANGUAGE: 'Language filter',
-        REJECTED_CERTIFICATION: 'Certification filter',
-        REJECTED_ADULT: 'Adult filter',
-        REJECTED_VOTE: 'Vote filter',
+        REJECTED_NO_TRAILER            : 'No Trailer Found',
+        REJECTED_FILTER_GENRE          : 'Genre filter',
+        REJECTED_FAIL                  : '',
+        REJECTED_FILTER_DATE           : 'Date filter',
+        REJECTED_LANGUAGE              : 'Language filter',
+        REJECTED_CERTIFICATION         : 'Certification filter',
+        REJECTED_ADULT                 : 'Adult filter',
+        REJECTED_VOTE                  : 'Vote filter',
         REJECTED_TOO_MANY_TMDB_REQUESTS: 'Too many requests try later',
-        REJECTED_NO_TMDB_ID: 'No TMDB-id',
-        REJECTED_WATCHED: 'Already watched filter',
-        REJECTED_NOT_IN_CACHE: 'Not found in cache'
+        REJECTED_NO_TMDB_ID            : 'No TMDB-id',
+        REJECTED_WATCHED               : 'Already watched filter',
+        REJECTED_NOT_IN_CACHE          : 'Not found in cache'
     }
     DEFAULT_MOVIE: MovieType = {
-        ACTORS: [],
+        ACTORS          : [],
         CERTIFICATION_ID: '',
-        DIRECTOR: [],
-        DISCOVERY_STATE: NOT_INITIALIZED,
-        FANART: '',
-        FILE: '',
-        GENRE_NAMES: [],
-        PLOT: '',
-        RATING: 0.0,
-        RUNTIME: 0,
-        SOURCE: '',
-        STUDIO: [],
-        THUMBNAIL: '',
-        TITLE: 'default_' + TITLE,
-        TMDB_TAG_NAMES: [],
-        TRAILER: '',
-        TRAILER_TYPE: '',
-        VOTES: 0,
-        WRITER: [],
-        YEAR: 0
+        DIRECTOR        : [],
+        DISCOVERY_STATE : NOT_INITIALIZED,
+        FANART          : '',
+        FILE            : '',
+        GENRE_NAMES     : [],
+        PLOT            : '',
+        RATING          : 0.0,
+        RUNTIME         : 0,
+        SOURCE          : '',
+        STUDIO          : [],
+        THUMBNAIL       : '',
+        TITLE           : 'default_' + TITLE,
+        TMDB_TAG_NAMES  : [],
+        TRAILER         : '',
+        TRAILER_TYPE    : '',
+        VOTES           : 0,
+        WRITER          : [],
+        YEAR            : 0
     }
 
-    # Used to by get_detail_info to copy fields from TMDb query to non-TMDb movie (TFH, etc.)
+    # Used to by get_detail_info to copy fields from TMDb query to non-TMDb movie (TFH,
+    # etc.)
     # to supply missing data. The values in this dict are here in case no value was found
     # in the movie to be copied from.
 
     CLONE_FIELDS: MovieType = {
-        ACTORS: [],
+        ACTORS          : [],
         CERTIFICATION_ID: '',
-        DIRECTOR: [],
-        DISCOVERY_STATE: NOT_INITIALIZED,
-        FANART: '',
+        DIRECTOR        : [],
+        DISCOVERY_STATE : NOT_INITIALIZED,
+        FANART          : '',
         # FILE: '',
-        GENRE_NAMES: [],
+        GENRE_NAMES     : [],
         # PLOT: '',
         # RATING: 0.0,
-        RUNTIME: 0,
+        RUNTIME         : 0,
         # SOURCE: '',
-        STUDIO: [],
+        STUDIO          : [],
         # THUMBNAIL: '',
-        TITLE: 'default_' + TITLE,
-        TMDB_TAG_NAMES: [],
+        TITLE           : 'default_' + TITLE,
+        TMDB_TAG_NAMES  : [],
         # TRAILER: '',
-        TRAILER_TYPE: '',
+        TRAILER_TYPE    : '',
         # VOTES: 0,
-        WRITER: [],
-        YEAR: 0
+        WRITER          : [],
+        YEAR            : 0
     }
 
     # Meant to clone fields that are generated at run-time.
 
     DETAIL_CLONE_FIELDS: MovieType = {
         NORMALIZED_TRAILER: '',
-        CACHED_TRAILER: '',
-        TRAILER: ''
+        CACHED_TRAILER    : '',
+        TRAILER           : ''
     }
 
     # Used to by get_detail_info to copy fields from TMDb query to TFH movies
@@ -455,36 +458,36 @@ List.Sort
     # in the movie to be copied from.
 
     TFH_CLONE_FIELDS: MovieType = {
-        ACTORS: [],
+        ACTORS          : [],
         CERTIFICATION_ID: '',
-        DIRECTOR: [],
-        DISCOVERY_STATE: NOT_INITIALIZED,
-        FANART: '',
-        FILE: '',
-        GENRE_NAMES: [],
+        DIRECTOR        : [],
+        DISCOVERY_STATE : NOT_INITIALIZED,
+        FANART          : '',
+        FILE            : '',
+        GENRE_NAMES     : [],
         # PLOT: '',
         # RATING: 0.0,
-        RUNTIME: 0,
+        RUNTIME         : 0,
         # SOURCE: '',
-        STUDIO: [],
+        STUDIO          : [],
         # THUMBNAIL: '',
-        TITLE: 'default_' + TITLE,
-        TMDB_TAG_NAMES: [],
+        TITLE           : 'default_' + TITLE,
+        TMDB_TAG_NAMES  : [],
         # TRAILER: '',
         # TRAILER_TYPE: '',
-        VOTES: 0,
-        WRITER: [],
-        YEAR: 0
+        VOTES           : 0,
+        WRITER          : [],
+        YEAR            : 0
     }
 
     # Initially, the only data in a TFH movie is that which comes from Youtube playlist
     TFH_SKELETAL_MOVIE: MovieType = {
-        TITLE: 'default_' + TITLE,
-        TFH_ID: '',
+        TITLE       : 'default_' + TITLE,
+        TFH_ID      : '',
         # ORIGINAL_LANGUAGE    # For TMDb, assume that only ORIGINAL_LANGUAGE is spoken
-        TRAILER: '',
-        PLOT: '',
-        SOURCE: '',
+        TRAILER     : '',
+        PLOT        : '',
+        SOURCE      : '',
         TRAILER_TYPE: TRAILER_TYPE_TRAILER
     }
 
@@ -501,7 +504,7 @@ List.Sort
         CERTIFICATION_ID,
         TMDB_BUFFER_NUMBER,
         TMDB_TOTAL_PAGES
-        ]
+    ]
 
     TMDB_ENTRY_FIELDS: Final[List[str]] = [
         #  "alternative_titles",

@@ -9,11 +9,11 @@ from backends.audio.base_audio import AudioPlayer
 from backends.audio.sound_capabilties import SoundCapabilities
 from backends.players.player_index import PlayerIndex
 from backends.settings.service_types import ServiceType
-from common.logger import BasicLogger
 from common.base_services import BaseServices
+from common.logger import BasicLogger
 from common.setting_constants import Players
-
 from common.typing import *
+
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 
 
@@ -67,7 +67,7 @@ class PlaySFXAudioPlayer(AudioPlayer):
         self.event.set()
         xbmc.stopSFX()
 
-    def close(self) ->None:
+    def close(self) -> None:
         self.stop()
 
     @classmethod
@@ -76,5 +76,5 @@ class PlaySFXAudioPlayer(AudioPlayer):
         BaseServices.register(cls)
 
     @staticmethod
-    def available(ext=None)  -> bool:
+    def available(ext=None) -> bool:
         return xbmc and hasattr(xbmc, 'stopSFX') and PLAYSFX_HAS_USECACHED

@@ -115,33 +115,33 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
                             list_item.select(False)
                         radio_button_control: ControlRadioButton = \
                             self.getControlRadioButton(
-                            101 + idx)
+                                    101 + idx)
                         label = list_item.getLabel()
                         radio_button_control.setLabel(label)
                         radio_button_control.setRadioDimension(
                                 x=0, y=0, width=530, height=20)
                         radio_button_control.setVisible(True)
                         clz._logger.debug_verbose(
-                            'SelectionDialog.onInit radio_button: {:d} label: {}'
-                            .format(radio_button_control.getId(),
-                                    label))
+                                'SelectionDialog.onInit radio_button: {:d} label: {}'
+                                .format(radio_button_control.getId(),
+                                        label))
 
                     for idx in range(min(len(self._init_list_items), 201),
                                      201):  # self.list_control.size() - 1):
                         radio_button_control: ControlRadioButton = \
                             self.getControlRadioButton(
-                            101 + idx)
+                                    101 + idx)
                         radio_button_control.setVisible(False)
                 except Exception as e:
                     clz._logger.exception('Setting up List and evaluating response')
 
                 radio_button_control: ControlRadioButton = self.getControlRadioButton(
-                    101 + self.selection_index)
+                        101 + self.selection_index)
 
                 label: str = self._init_list_items[self._initial_choice].getLabel()
                 clz._logger.debug_verbose(
                         'SelectionDialog.onInit setting focus on control: {:d} value: {}'
-                            .format(101 + self._initial_choice, label))
+                        .format(101 + self._initial_choice, label))
 
                 # Focus on group control, should in turn focus on selected item
                 radio_button_control.setSelected(True)
@@ -273,8 +273,8 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
 
             buttonCode: int = action.getButtonCode()
             clz._logger.debug_verbose(
-                'SelectionDialog.onAction action_id: {} buttonCode: {}'.
-                format(action_id, buttonCode))
+                    'SelectionDialog.onAction action_id: {} buttonCode: {}'.
+                    format(action_id, buttonCode))
             if (action_id == xbmcgui.ACTION_PREVIOUS_MENU
                     or action_id == xbmcgui.ACTION_NAV_BACK):
                 exit_dialog = True
@@ -321,7 +321,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
                 # Deselect previous
                 if self.selection_index >= 0:
                     radio_button: ControlRadioButton = self.getControlRadioButton(
-                        101 + self.selection_index)
+                            101 + self.selection_index)
                     radio_button.setSelected(False)
 
                 self.selection_index = controlId - 101
@@ -394,8 +394,8 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         """
         clz = type(self)
         clz._logger.debug_verbose(
-            f'SelectionDialog.addItem unexpected call item: {item.getLabel()}'
-            )
+                f'SelectionDialog.addItem unexpected call item: {item.getLabel()}'
+        )
         '''
         self.list_control.addItem(item)
         if position is None:
@@ -420,7 +420,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         """
         clz = type(self)
         clz._logger.debug_verbose(
-            f'SelectionDialog.addItems unexpected call item length: {len(items)}')
+                f'SelectionDialog.addItems unexpected call item length: {len(items)}')
         '''
         # self.list_control.addItems(items)
 
@@ -442,7 +442,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         """
         clz = type(self)
         clz._logger.debug_verbose('SelectionDialog.removeItem unexpected call item: {:d}'
-                                   .format(position))
+                                  .format(position))
         '''
         self.list_control.removeItem(position)
 
@@ -474,8 +474,8 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         #                      .format(number_selected))
         clz = type(self)
         clz._logger.debug_verbose(
-            f'SelectionDialog.getCurrentListPosition selected position: '
-            f'{self.selection_index}')
+                f'SelectionDialog.getCurrentListPosition selected position: '
+                f'{self.selection_index}')
         return self.selection_index
 
     def setCurrentListPosition(self, position: int) -> None:
@@ -489,7 +489,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
             self.setCurrentListPosition(5)
         """
         self.debug_list_items(
-            f'SelectionDialog.setCurrentListPosition unexpected call: {position}')
+                f'SelectionDialog.setCurrentListPosition unexpected call: {position}')
         '''
         self.list_control.selectItem(position)
         self.getListItem(position).select(True)

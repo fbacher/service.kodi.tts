@@ -1118,9 +1118,25 @@ msgid "Select Module"
 msgstr ""
 
 msgctxt "#32323"
-msgid "Experimental Engine"
+msgid "Experimental"
 msgstr ""
 
 msgctxt "#32324"
 msgid "Google TTS"
+msgstr ""
+
+msgctxt "#32325"
+msgid "Recite"
+msgstr ""
+
+msgctxt "#32326"
+msgid "Internal"
+msgstr ""
+
+msgctxt "#32327"
+msgid "Recite"
+msgstr ""
+
+msgctxt "#32328"
+msgid "Pico-Wave"
 msgstr ""

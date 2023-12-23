@@ -39,18 +39,18 @@ class Num2Word_DE(Num2Word_EU):
         self.pointword = "Komma"
         # "Cannot treat float %s as ordinal."
         self.errmsg_floatord = (
-            "Die Gleitkommazahl %s kann nicht in eine Ordnungszahl " +
-            "konvertiert werden."
-            )
+                "Die Gleitkommazahl %s kann nicht in eine Ordnungszahl " +
+                "konvertiert werden."
+        )
         # "type(((type(%s)) ) not in [long, int, float]"
         self.errmsg_nonnum = (
             "Nur Zahlen (type(%s)) können in Wörter konvertiert werden."
-            )
+        )
         # "Cannot treat negative num %s as ordinal."
         self.errmsg_negord = (
-            "Die negative Zahl %s kann nicht in eine Ordnungszahl " +
-            "konvertiert werden."
-            )
+                "Die negative Zahl %s kann nicht in eine Ordnungszahl " +
+                "konvertiert werden."
+        )
         # "abs(%s) must be less than %s."
         self.errmsg_toobig = "Die Zahl %s muss kleiner als %s sein."
         self.exclude_title = []
@@ -61,7 +61,7 @@ class Num2Word_DE(Num2Word_EU):
         tens = ["dez", "vigint", "trigint", "quadragint", "quinquagint",
                 "sexagint", "septuagint", "oktogint", "nonagint"]
         self.high_numwords = (
-            ["zent"] + self.gen_high_numwords(units, tens, lows)
+                ["zent"] + self.gen_high_numwords(units, tens, lows)
         )
         self.mid_numwords = [(1000, "tausend"), (100, "hundert"),
                              (90, "neunzig"), (80, "achtzig"), (70, "siebzig"),
@@ -72,17 +72,17 @@ class Num2Word_DE(Num2Word_EU):
                              "zw\xF6lf", "elf", "zehn", "neun", "acht",
                              "sieben", "sechs", "f\xFCnf", "vier", "drei",
                              "zwei", "eins", "null"]
-        self.ords = {"eins": "ers",
-                     "drei": "drit",
-                     "acht": "ach",
+        self.ords = {"eins"  : "ers",
+                     "drei"  : "drit",
+                     "acht"  : "ach",
                      "sieben": "sieb",
-                     "ig": "igs",
-                     "ert": "erts",
-                     "end": "ends",
-                     "ion": "ions",
-                     "nen": "ns",
-                     "rde": "rds",
-                     "rden": "rds"}
+                     "ig"    : "igs",
+                     "ert"   : "erts",
+                     "end"   : "ends",
+                     "ion"   : "ions",
+                     "nen"   : "ns",
+                     "rde"   : "rds",
+                     "rden"  : "rds"}
 
     def merge(self, curr, next):
         ctext, cnum, ntext, nnum = curr + next
@@ -145,13 +145,13 @@ class Num2Word_DE(Num2Word_EU):
     def to_currency(self, val, currency='EUR', cents=True, separator=' und',
                     adjective=False):
         result = super(Num2Word_DE, self).to_currency(
-            val, currency=currency, cents=cents, separator=separator,
-            adjective=adjective)
+                val, currency=currency, cents=cents, separator=separator,
+                adjective=adjective)
         # Handle exception, in german is "ein Euro" and not "eins Euro"
         return result.replace("eins ", "ein ")
 
     def to_year(self, val, longval=True):
         if not (val // 100) % 10:
             return self.to_cardinal(val)
-        return self.to_splitnum(val, hightxt="hundert", longval=longval)\
+        return self.to_splitnum(val, hightxt="hundert", longval=longval) \
             .replace(' ', '')

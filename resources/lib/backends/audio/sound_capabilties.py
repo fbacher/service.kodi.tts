@@ -37,8 +37,8 @@ class SoundCapabilities:
 
     @classmethod
     def add_service(cls, service_id: str, service_types: List[ServiceType],
-                 supported_input_formats: List[str],
-                 supported_output_formats: List[str]) -> None:
+                    supported_input_formats: List[str],
+                    supported_output_formats: List[str]) -> None:
         """
         :param service_types: services which this provides
         :param service_id: Uniquely identifies the engine, player or converter that

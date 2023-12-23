@@ -13,25 +13,30 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 def getDLLPath():
-    p = os.path.join(Constants.PROFILE_PATH,'nvdaControllerClient32.dll')
-    if os.path.exists(p): return p
-    p = os.path.join(Constants.BACKENDS_DIRECTORY,'nvda','nvdaControllerClient32.dll')
-    if os.path.exists(p): return p
+    p = os.path.join(Constants.PROFILE_PATH, 'nvdaControllerClient32.dll')
+    if os.path.exists(p):
+        return p
+    p = os.path.join(Constants.BACKENDS_DIRECTORY, 'nvda', 'nvdaControllerClient32.dll')
+    if os.path.exists(p):
+        return p
     try:
         import xbmc
         if xbmc.getCondVisibility('System.HasAddon(script.module.nvdacontrollerclient)'):
             import xbmcaddon
             nvdaCCAddon = xbmcaddon.Addon('script.module.nvdacontrollerclient')
-            p = os.path.join(nvdaCCAddon.getAddonInfo('path'),'nvda','nvdaControllerClient32.dll')
-            if os.path.exists(p): return p
-    except (ImportError,AttributeError):
+            p = os.path.join(nvdaCCAddon.getAddonInfo('path'), 'nvda',
+                             'nvdaControllerClient32.dll')
+            if os.path.exists(p):
+                return p
+    except (ImportError, AttributeError):
         return None
     return None
+
 
 try:
     from ctypes import windll
 except ImportError:
-    windll =None
+    windll = None
 
 
 class NVDATTSBackend(BaseEngineService):
@@ -85,7 +90,7 @@ class NVDATTSBackend(BaseEngineService):
     def isRunning(self):
         return self.dll.nvdaController_testIfRunning() == 0
 
-    def say(self,text,interrupt=False, preload_cache=False):
+    def say(self, text, interrupt=False, preload_cache=False):
         if not self.dll:
             return
 
@@ -96,15 +101,17 @@ class NVDATTSBackend(BaseEngineService):
                 self.flagAsDead('Not running')
                 return
 
-    def sayList(self,texts,interrupt=False):
-        self.say('\n'.join(texts),interrupt)
+    def sayList(self, texts, interrupt=False):
+        self.say('\n'.join(texts), interrupt)
 
     def stop(self):
-        if not self.dll: return
+        if not self.dll:
+            return
         self.dll.nvdaController_cancelSpeech()
 
     def close(self):
-        if not self.dll: return
+        if not self.dll:
+            return
         ctypes.windll.kernel32.FreeLibrary(self.dll._handle)
         del self.dll
         self.dll = None

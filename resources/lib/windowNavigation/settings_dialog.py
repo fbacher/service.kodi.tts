@@ -7,12 +7,8 @@ from xbmcgui import (ControlButton, ControlEdit, ControlGroup, ControlLabel,
 
 from backends.backend_info import BackendInfo
 from backends.base import *
-from backends.settings.i_constraints import IConstraints
-from backends.settings.i_validators import (IConstraintsValidator, IIntValidator,
-                                            IValidator)
-from backends.settings.service_types import Services
+from backends.settings.i_validators import (IConstraintsValidator)
 from backends.settings.settings_map import SettingsMap
-from backends.settings.validators import IntValidator
 from common.constants import Constants
 from common.logger import *
 from common.messages import Messages
@@ -45,8 +41,10 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
     SELECT_LANGUAGE_GROUP: Final[int] = 1104
     SELECT_LANGUAGE_BUTTON: Final[int] = 104
     SELECT_LANGUAGE_VALUE_LABEL: Final[int] = 105
+    SELECT_VOICE_GROUP: Final[int] = 1106
     SELECT_VOICE_BUTTON: Final[int] = 106
     SELECT_VOICE_VALUE_LABEL: Final[int] = 107
+    SELECT_GENDER_GROUP: Final[int] = 1108
     SELECT_GENDER_BUTTON: Final[int] = 108
     SELECT_GENDER_VALUE_LABEL: Final[int] = 109
     SELECT_PLAYER_BUTTON: Final[int] = 110
@@ -87,7 +85,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         self.exit_dialog: bool = False
         super().__init__(*args)
         self.api_key = None
-        self.engine_id: str | None= None
+        self.engine_id: str | None = None
         self.engine_instance: ITTSBackendBase | None = None
         self.backend_changed: bool = False
         self.gender_id: int | None = None
@@ -109,49 +107,51 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             self.getEngineClass(engine_id=initial_backend)
 
         self._logger.debug_extra_verbose('SettingsDialog.__init__')
-        self.header: Union[ControlLabel, None] = None
-        self.engine_tab: Union[ControlRadioButton, None] = None
-        self.options_tab: Union[ControlButton, None] = None
-        self.keymap_tab: Union[ControlButton, None] = None
-        self.advanced_tab: Union[ControlButton, None] = None
-        self.engine_group: Union[ControlGroup, None] = None
-        self.options_group: Union[ControlGroup, None] = None
-        self.keymap_group: Union[ControlGroup, None] = None
-        self.advanced_group: Union[ControlGroup, None] = None
-        self.ok_button: Union[ControlButton, None] = None
-        self.cancel_button: Union[ControlButton, None] = None
-        self.defaults_button: Union[ControlButton, None] = None
-        self.engine_engine_button: Union[ControlButton, None] = None
-        self.engine_engine_value: Union[ControlButton, None] = None
-        self.engine_language_group: Union[ControlGroup, None] = None
-        self.engine_language_button: Union[ControlButton, None] = None
+        self.header: ControlLabel | None = None
+        self.engine_tab: ControlRadioButton | None = None
+        self.options_tab: ControlButton | None = None
+        self.keymap_tab: ControlButton | None = None
+        self.advanced_tab: ControlButton | None = None
+        self.engine_group: ControlGroup | None = None
+        self.options_group: ControlGroup | None = None
+        self.keymap_group: ControlGroup | None = None
+        self.advanced_group: ControlGroup | None = None
+        self.ok_button: ControlButton | None = None
+        self.cancel_button: ControlButton | None = None
+        self.defaults_button: ControlButton | None = None
+        self.engine_engine_button: ControlButton | None = None
+        self.engine_engine_value: ControlButton | None = None
+        self.engine_language_group: ControlGroup | None = None
+        self.engine_language_button: ControlButton | None = None
         self.engine_language_value = None
-        self.engine_voice_button: Union[ControlButton, None] = None
+        self.engine_voice_group: ControlGroup | None = None
+        self.engine_voice_button: ControlButton | None = None
         self.engine_voice_value = None
-        self.engine_gender_button: Union[ControlButton, None] = None
+        self.engine_gender_group: ControlGroup | None = None
+        self.engine_gender_button: ControlButton | None = None
         self.engine_gender_value = None
-        self.engine_pitch_group: Union[ControlGroup, None] = None
-        self.engine_pitch_slider: Union[ControlSlider, None] = None
-        self.engine_pitch_label: Union[ControlLabel, None] = None
-        self.engine_player_button: Union[ControlLabel, None] = None
+        self.engine_pitch_group: ControlGroup | None = None
+        self.engine_pitch_slider: ControlSlider | None = None
+        self.engine_pitch_label: ControlLabel | None = None
+        self.engine_player_button: ControlLabel | None = None
         self.engine_player_value = None  # player and module
         self.engine_module_value = None  # share button and real-estate
-        self.engine_pipe_audio_group: Union[ControlGroup, None] = None
-        self.engine_pipe_audio_radio_button: Union[ControlRadioButton, None] = None
-        self.engine_speed_group: Union[ControlGroup, None] = None
-        self.engine_speed_slider: Union[ControlSlider, None] = None
-        self.engine_speed_label: Union[ControlLabel, None] = None
-        self.engine_cache_speech_group: Union[ControlGroup, None] = None
-        self.engine_cache_speech_radio_button: Union[ControlRadioButton, None] = None
-        self.engine_volume_group: Union[ControlGroup, None] = None
-        self.engine_volume_slider: Union[ControlSlider, None] = None
-        self.engine_volume_label: Union[ControlLabel, None] = None
-        self.engine_api_key_group: Union[ControlGroup, None] = None
+        self.engine_pipe_audio_group: ControlGroup | None = None
+        self.engine_pipe_audio_radio_button: ControlRadioButton | None  = None
+        self.engine_speed_group: ControlGroup | None = None
+        self.engine_speed_slider: ControlSlider | None = None
+        self.engine_speed_label: ControlLabel | None = None
+        self.engine_cache_speech_group: ControlGroup | None = None
+        self.engine_cache_speech_radio_button: ControlRadioButton | None  = None
+        self.engine_volume_group: ControlGroup | None = None
+        self.engine_volume_slider: ControlSlider | None = None
+        self.engine_volume_label: ControlLabel | None = None
+        self.engine_api_key_group: ControlGroup | None = None
         # self.engine_api_key_label = None
-        self.engine_api_key_edit: Union[ControlEdit, None] = None
-        self.options_dummy_button: Union[ControlButton, None] = None
-        self.keymap_dummy_button: Union[ControlButton, None] = None
-        self.advanced_dummy_button: Union[ControlButton, None] = None
+        self.engine_api_key_edit: ControlEdit | None = None
+        self.options_dummy_button: ControlButton | None = None
+        self.keymap_dummy_button: ControlButton | None = None
+        self.advanced_dummy_button: ControlButton | None = None
 
     def onInit(self) -> None:
         """
@@ -227,39 +227,56 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                         clz.SELECT_LANGUAGE_VALUE_LABEL)
                 self.engine_language_value.setLabel(self.get_language())
 
-                self.engine_voice_button: ControlButton = self.getControlButton(
-                        clz.SELECT_VOICE_BUTTON)
-                self.engine_voice_button.setLabel(
-                        Messages.get_msg(Messages.SELECT_VOICE))
+                self.engine_voice_group = self.getControlGroup(
+                        clz.SELECT_VOICE_GROUP)
+                if not SettingsMap.is_valid_property(self.engine_id,
+                                                     SettingsProperties.VOICE):
+                    self.engine_voice_group.setVisible(False)
+                else:
+                    self.engine_voice_button: ControlButton = self.getControlButton(
+                            clz.SELECT_VOICE_BUTTON)
+                    self.engine_voice_button.setLabel(
+                            Messages.get_msg(Messages.SELECT_VOICE))
+                    self.engine_voice_value = self.getControlLabel(
+                            clz.SELECT_VOICE_VALUE_LABEL)
+                    self.engine_voice_group.setVisible(True)
+                    self.engine_voice_value.setLabel(self.get_language())
 
-                self.engine_voice_value = self.getControlLabel(
-                        clz.SELECT_VOICE_VALUE_LABEL)
-                self.engine_voice_value.setLabel(self.get_language())
-
-                self.engine_gender_button: ControlButton = self.getControlButton(
-                        clz.SELECT_GENDER_BUTTON)
-                self.engine_gender_button.setLabel(
-                        Messages.get_msg(Messages.SELECT_VOICE_GENDER))
-
-                self.engine_gender_value: ControlLabel = self.getControlLabel(
-                        clz.SELECT_GENDER_VALUE_LABEL)
-                try:
-                    gender: Genders = Settings.get_gender(self.engine_id)
-                    self.engine_gender_value.setLabel(gender.name)
-                except AbortException:
-                    reraise(*sys.exc_info())
-                except Exception as e:
-                    self._logger.exception('')
+                self.engine_gender_group = self.getControlGroup(
+                        clz.SELECT_GENDER_GROUP)
+                if not SettingsMap.is_valid_property(self.engine_id,
+                                                     SettingsProperties.GENDER):
+                    self.engine_gender_group.setVisible(False)
+                    # self.engine_gender_button.setVisible(False)
+                else:
+                    self.engine_gender_button: ControlButton = self.getControlButton(
+                            clz.SELECT_GENDER_BUTTON)
+                    self.engine_gender_button.setLabel(
+                            Messages.get_msg(Messages.SELECT_VOICE_GENDER))
+                    self.engine_gender_value: ControlLabel = self.getControlLabel(
+                            clz.SELECT_GENDER_VALUE_LABEL)
+                    try:
+                        gender: Genders = Settings.get_gender(self.engine_id)
+                        self.engine_gender_value.setLabel(gender.name)
+                        self.engine_gender_group.setVisible(True)
+                    except AbortException:
+                        reraise(*sys.exc_info())
+                    except Exception as e:
+                        self._logger.exception('')
 
                 self.engine_pitch_group = self.getControlGroup(
                         clz.SELECT_PITCH_GROUP)
-                self.engine_pitch_label = self.getControlLabel(
-                        clz.SELECT_PITCH_LABEL)
-                self.engine_pitch_label.setLabel(
-                        Messages.get_msg(Messages.SELECT_PITCH))
-
-                self.engine_pitch_slider = self.getControlSlider(
-                        clz.SELECT_PITCH_SLIDER)
+                if not SettingsMap.is_valid_property(self.engine_id,
+                                                     SettingsProperties.PITCH):
+                    self.engine_pitch_group.setVisible(False)
+                else:
+                    self.engine_pitch_label = self.getControlLabel(
+                            clz.SELECT_PITCH_LABEL)
+                    self.engine_pitch_label.setLabel(
+                            Messages.get_msg(Messages.SELECT_PITCH))
+                    self.engine_pitch_slider = self.getControlSlider(
+                            clz.SELECT_PITCH_SLIDER)
+                    self.engine_pitch_group.setVisible(True)
 
                 # NOTE: player and module share control. Only one active at a
                 #       time. Probably should create two distinct buttons and
@@ -267,7 +284,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
                 self.engine_player_button = self.getControlLabel(
                         clz.SELECT_PLAYER_BUTTON)
-                if SettingsMap.is_valid_property(self.engine_id, SettingsProperties.PLAYER):
+                if SettingsMap.is_valid_property(self.engine_id,
+                                                 SettingsProperties.PLAYER):
                     self.engine_player_button.setLabel(
                             Messages.get_msg(Messages.SELECT_PLAYER))
                     self.engine_player_value = self.getControlButton(
@@ -307,6 +325,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
                 self.engine_volume_group = self.getControlGroup(
                         clz.SELECT_VOLUME_GROUP)
+                '''
                 self.engine_volume_label = self.getControlLabel(
                         clz.SELECT_VOLUME_LABEL)
                 self.engine_volume_label.setLabel(
@@ -314,6 +333,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
                 self.engine_volume_slider = self.getControlSlider(
                         clz.SELECT_VOLUME_SLIDER)
+                '''
 
                 self.engine_api_key_group = self.getControlGroup(
                         clz.SELECT_API_KEY_GROUP)
@@ -578,7 +598,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             elif controlId == clz.SELECT_PITCH_SLIDER:
                 self.select_pitch()
             elif controlId == clz.SELECT_PLAYER_BUTTON:
-                if SettingsMap.is_valid_property(self.engine_id, SettingsProperties.PLAYER):
+                if SettingsMap.is_valid_property(self.engine_id,
+                                                 SettingsProperties.PLAYER):
                     self.select_player()
                 else:
                     self.select_module()
@@ -663,7 +684,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 return None
 
             engine_list_item: ListItem = choices[idx]
-            self._logger.debug_verbose(f'selectEngine value: {engine_list_item.getLabel()} idx: {str(idx)}')
+            self._logger.debug_verbose(
+                f'selectEngine value: {engine_list_item.getLabel()} idx: {str(idx)}')
             self.engine_engine_value.setLabel(engine_list_item.getLabel())
             new_engine = engine_list_item.getLabel2()
 
@@ -686,7 +708,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 current_choice_index = 0
 
             if current_choice_index < 0 or current_choice_index > len(choices) - 1:
-                self.setSetting(SettingsProperties.LANGUAGE, SettingsProperties.UNKNOWN_VALUE)
+                self.setSetting(SettingsProperties.LANGUAGE,
+                                SettingsProperties.UNKNOWN_VALUE)
                 self.engine_language_group.setVisible(False)
                 self.engine_language_value.setEnabled(False)
                 self.engine_language_value.setLabel(
@@ -742,7 +765,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         try:
             choices, current_choice_index = self.get_language_choices()
             if len(choices) == 0:
-                self.setSetting(SettingsProperties.LANGUAGE, SettingsProperties.UNKNOWN_VALUE)
+                self.setSetting(SettingsProperties.LANGUAGE,
+                                SettingsProperties.UNKNOWN_VALUE)
                 self.engine_language_group.setVisible(False)
                 self.engine_language_value.setEnabled(False)
                 self.engine_language_value.setLabel(
@@ -782,7 +806,12 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             self._logger.exception('')
 
     def set_voice_field(self):
+        clz = type(self)
         try:
+            if not SettingsMap.is_setting_available(self.engine_id,
+                                                    SettingsProperties.VOICE):
+                self.engine_voice_group.setVisible(False)
+                return
             choices, current_choice_index = self.get_voice_choices()
             if current_choice_index < 0:
                 current_choice_index = 0
@@ -803,6 +832,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 self.engine_voice_value.setEnabled(True)
 
             self.setSetting(SettingsProperties.VOICE, voice.getLabel2())
+            self.engine_voice_group.setVisible(True)
         except Exception as e:
             self._logger.exception('')
 
@@ -862,27 +892,58 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         except Exception as e:
             self._logger.exception('')
 
+    def select_pitch(self):
+        try:
+            pitch = self.engine_pitch_slider.getInt()
+            constraints: Constraints = self.getEngineClass().get_constraints(
+                    SettingsProperties.PITCH)
+            constraints.setSetting(pitch, self.engine_id)
+        except Exception as e:
+            self._logger.exception('')
+
+    def set_pitch_range(self):
+        try:
+            if not SettingsMap.is_valid_property(self.engine_id,
+                                                 SettingsProperties.PITCH):
+                self.engine_pitch_group.setVisible(False)
+            else:
+                pitch_val: IConstraintsValidator
+                lower, upper, current, increment = self.get_pitch_range()
+                if lower == upper:
+                    self.engine_pitch_group.setVisible(False)
+                else:
+                    self.engine_pitch_slider.setInt(
+                            current, lower, increment, upper)
+                    self.engine_pitch_group.setVisible(True)
+        except Exception as e:
+            self._logger.exception('')
+
     def set_gender_field(self):
         try:
-            choices, current_choice_index = self.get_gender_choices()
-
-            if current_choice_index < 0:
-                current_choice_index = 0
-            if current_choice_index < 0 or current_choice_index > len(choices) - 1:
-                self.engine_gender_value.setEnabled(False)
-                self.engine_gender_value.setLabel(
-                        Messages.get_msg(Messages.UNKNOWN))
-
-                return
-
-            gender = choices[current_choice_index]
-            self.engine_gender_value.setLabel(gender.getLabel())
-            if len(choices) < 2:
-                self.engine_gender_value.setEnabled(False)
-                self.engine_gender_button.setEnabled(False)
+            if not SettingsMap.is_valid_property(self.engine_id,
+                                                 SettingsProperties.GENDER):
+                self.engine_gender_group.setVisible(False)
             else:
-                self.engine_gender_value.setEnabled(True)
-                self.engine_gender_button.setEnabled(True)
+                choices, current_choice_index = self.get_gender_choices()
+
+                if current_choice_index < 0:
+                    current_choice_index = 0
+                if current_choice_index < 0 or current_choice_index > len(choices) - 1:
+                    self.engine_gender_value.setEnabled(False)
+                    self.engine_gender_value.setLabel(
+                            Messages.get_msg(Messages.UNKNOWN))
+
+                    return
+
+                gender = choices[current_choice_index]
+                self.engine_gender_value.setLabel(gender.getLabel())
+                if len(choices) < 2:
+                    self.engine_gender_value.setEnabled(False)
+                    self.engine_gender_button.setEnabled(False)
+                else:
+                    self.engine_gender_value.setEnabled(True)
+                    self.engine_gender_button.setEnabled(True)
+                self.engine_gender_group.setVisible(True)
         except Exception as e:
             self._logger.exception('')
 
@@ -894,7 +955,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             # Fetch settings on every access because it can change
 
             engine = self.get_engine_id()
-            supported_genders = BackendInfo.getSettingsList(engine, SettingsProperties.GENDER)
+            supported_genders = BackendInfo.getSettingsList(engine,
+                                                            SettingsProperties.GENDER)
             if supported_genders is None:
                 supported_genders = []
             for gender_id in supported_genders:
@@ -945,13 +1007,15 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         choices: List[xbmcgui.ListItem] = []
         current_choice_index = -1
         try:
-            engine_output_formats = SoundCapabilities.get_output_formats(self.get_engine_id())
+            engine_output_formats = SoundCapabilities.get_output_formats(
+                self.get_engine_id())
             current_value = self.get_player()
             candidates: List[str]
             candidates = SoundCapabilities.get_capable_services(ServiceType.PLAYER,
                                                                 engine_output_formats,
                                                                 [])
-            if not SettingsMap.is_valid_property(self.engine_id, SettingsProperties.PLAYER):
+            if not SettingsMap.is_valid_property(self.engine_id,
+                                                 SettingsProperties.PLAYER):
                 return [], -1
 
             supported_players: List[str]
@@ -1063,7 +1127,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         current_choice_index: int = -1
         try:
             current_value = self.get_module()
-            if not SettingsMap.is_valid_property(self.engine_id, SettingsProperties.MODULE):
+            if not SettingsMap.is_valid_property(self.engine_id,
+                                                 SettingsProperties.MODULE):
                 return ([], -1)
 
             supported_modules: List[Tuple[str, str]]
@@ -1121,7 +1186,9 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
     def select_volume(self) -> None:
         try:
-            volume = self.engine_volume_slider.getInt()
+            # volume = self.engine_volume_slider.getInt()
+            volume: int
+            volume = Settings.getRealSetting('volume', 'tts', None)
             Settings.set_volume(volume, self.engine_id)
         except Exception as e:
             self._logger.exception('')
@@ -1153,7 +1220,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         try:
             volume_val: IConstraintsValidator
             volume_val = SettingsMap.get_validator(self.engine_id,
-                                                  SettingsProperties.VOLUME)
+                                                   SettingsProperties.VOLUME)
             if volume_val is None:
                 raise NotImplementedError
             values = volume_val.get_tts_values()
@@ -1174,14 +1241,16 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
     def select_pitch(self):
         try:
             pitch = self.engine_pitch_slider.getInt()
-            constraints: Constraints = self.getEngineClass().get_constraints(SettingsProperties.PITCH)
+            constraints: Constraints = self.getEngineClass().get_constraints(
+                SettingsProperties.PITCH)
             constraints.setSetting(pitch, self.engine_id)
         except Exception as e:
             self._logger.exception('')
 
     def set_pitch_range(self):
         try:
-            if not SettingsMap.is_valid_property(self.engine_id, SettingsProperties.PITCH):
+            if not SettingsMap.is_valid_property(self.engine_id,
+                                                 SettingsProperties.PITCH):
                 self.engine_pitch_group.setVisible(False)
             else:
                 pitch_val: IConstraintsValidator
@@ -1219,7 +1288,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
     def select_speed(self):
         try:
             speed: float = self.engine_speed_slider.getFloat()
-            constraints: Constraints = self.getEngineClass().get_constraints(SettingsProperties.SPEED)
+            constraints: Constraints = self.getEngineClass().get_constraints(
+                SettingsProperties.SPEED)
             constraints.setSetting(speed, self.engine_id)
         except Exception as e:
             self._logger.exception('')
@@ -1253,7 +1323,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             tts_constraints: Constraints = tts_val.get_constraints()
 
             return (minimum, maximum, current,
-                   tts_constraints.increment)
+                    tts_constraints.increment)
 
         except NotImplementedError:
             return 1, 1, 1, 1
@@ -1266,7 +1336,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             self.setSetting(SettingsProperties.CACHE_SPEECH, cache_speech)
             # self.update_engine_values()
         except NotImplementedError:
-                self.engine_cache_speech_group.setVisible(False)
+            self.engine_cache_speech_group.setVisible(False)
         except Exception as e:
             self._logger.exception('')
 
@@ -1312,8 +1382,9 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
     def set_api_field(self):
         try:
-            if SettingsMap.get_validator(self.engine_id,
-                                         property_id=SettingsProperties.API_KEY) is not None:
+            if (SettingsMap.get_validator(self.engine_id,
+                                         property_id=SettingsProperties.API_KEY) is not
+                    None):
                 api_key: str = Settings.get_api_key(self.engine_id)
                 self.engine_api_key_edit.setText(api_key)
                 self.engine_api_key_edit.setLabel(
@@ -1368,7 +1439,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 self.language = Settings.get_language(self.engine_id)
             if self.language is None:
                 _, default_setting = self.getEngineInstance().settingList(
-                    SettingsProperties.LANGUAGE)
+                        SettingsProperties.LANGUAGE)
                 self.language = default_setting
         except Exception as e:
             self._logger.exception('')
@@ -1464,13 +1535,14 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
     def set_engine_id(self, engine_id):
         try:
             if self.previous_engine != engine_id:
-                self.engine_instance: ITTSBackendBase = self.getEngineClass(engine_id=engine_id)
+                self.engine_instance: ITTSBackendBase = self.getEngineClass(
+                    engine_id=engine_id)
 
                 # Throw away all changes and switch to the current
                 # settings for a new backend.
 
                 self.engine_id = engine_id
-                if self.previous_engine is not None: # first time don't count
+                if self.previous_engine is not None:  # first time don't count
                     self.backend_changed = True
 
                 self.previous_engine = engine_id
@@ -1488,7 +1560,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
     def getEngineInstance(self) -> ITTSBackendBase:
         if self.engine_instance is None or self.engine_instance.backend_id != \
                 self.engine_id:
-            self.engine_instance:ITTSBackendBase = self.getEngineClass()
+            self.engine_instance: ITTSBackendBase = self.getEngineClass()
 
         return self.engine_instance
 
@@ -1518,7 +1590,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         player: str = Settings.get_player_id(self.engine_id)
         if player is None:
             default: str = SettingsMap.get_default_value(self.engine_id,
-                                               SettingsProperties.PLAYER)
+                                                         SettingsProperties.PLAYER)
             player = default
         return player
 

@@ -1,19 +1,14 @@
 # coding=utf-8
-import os
-import pathlib
 import sys
 
-import regex
-
 from backends.audio.sound_capabilties import SoundCapabilities
+from cache.prefetch_movie_data.db_access import DBAccess
 from cache.prefetch_movie_data.parse_library import ParseLibrary
 from cache.voicecache import VoiceCache
 from common.logger import *
 from common.monitor import Monitor
-from common.phrases import Phrase, PhraseList
-from common.settings import Settings
+from common.phrases import Phrase
 from common.typing import *
-from cache.prefetch_movie_data.db_access import DBAccess
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -29,7 +24,7 @@ class SeedCache:
     @classmethod
     def discover_movie_info(cls, engine_id: str) -> None:
         try:
-            query:str = DBAccess.create_details_query()
+            query: str = DBAccess.create_details_query()
             results: List[List[Any]] = DBAccess.get_movie_details(query)
             movies: List[Dict[str, Any]] = results[0]
             engine_output_formats = SoundCapabilities.get_output_formats(engine_id)
@@ -41,7 +36,7 @@ class SeedCache:
                     movie_counter += 1
                     if (movie_counter % 100) == 0:
                         cls._logger.debug(f'Movies processed: {movie_counter:d}')
-                    Monitor.wait_for_abort(60.0)  # yield back 60 seconds between entries
+                    Monitor.exception_on_abort(timeout=60.0)  # yield back 60 seconds
                     movie = ParseLibrary.parse_movie(is_sparse=False,
                                                      raw_movie=raw_movie)
                     '''
@@ -57,12 +52,14 @@ class SeedCache:
                         Last Played
                         Type movie
                     '''
-                    plot_found = cls.write_cache_txt(movie.get_plot(), engine_id, engine_output_formats)
+                    plot_found = cls.write_cache_txt(movie.get_plot(), engine_id,
+                                                     engine_output_formats)
                     if plot_found:
                         continue
                     title: str = movie.get_title()
                     cls.write_cache_txt(title, engine_id, engine_output_formats)
-                    cls.write_cache_txt(str(movie.get_year()), engine_id, engine_output_formats)
+                    cls.write_cache_txt(str(movie.get_year()), engine_id,
+                                        engine_output_formats)
                     genres: str = movie.get_detail_genres()
                     writers: str = movie.get_detail_writers()
                     directors: str = movie.get_detail_directors()
@@ -79,7 +76,7 @@ class SeedCache:
                 cls._logger.debug(f'Done counting movies # {movie_counter:d}')
 
         except AbortException:
-            reraise(*sys.exc_info())
+            return  # Let thread die
         except Exception as e:
             cls._logger.exception('')
 

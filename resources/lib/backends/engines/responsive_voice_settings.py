@@ -6,10 +6,10 @@ from backends.settings.i_validators import ValueType
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.settings_map import Reason, SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
-                                          EnumValidator, StringValidator)
+                                          StringValidator)
 from common.constants import Constants
 from common.logger import BasicLogger
-from common.setting_constants import Backends, Genders, Players
+from common.setting_constants import Backends, Players
 from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
 from common.typing import *
@@ -67,7 +67,8 @@ class ResponsiveVoiceSettings(BaseServiceSettings):
             constraints: Constraints = self.constraints
             constraints.setSetting(1, self.service_id)
 
-        def get_tts_value(self, value_type: ValueType = ValueType.VALUE) -> int | float | str:
+        def get_tts_value(self,
+                          value_type: ValueType = ValueType.VALUE) -> int | float | str:
             """
             Keep value fixed at 1
             :return:
@@ -108,9 +109,9 @@ class ResponsiveVoiceSettings(BaseServiceSettings):
         SettingsMap.set_is_available(clz.service_ID, Reason.AVAILABLE)
 
     def init_settings(self):
-        service_properties = {'name': self.displayName,
+        service_properties = {'name'                     : self.displayName,
                               Constants.MAX_PHRASE_LENGTH: 200,
-                              Constants.CACHE_SUFFIX: 'rv'}
+                              Constants.CACHE_SUFFIX     : 'rv'}
         SettingsMap.define_service(ServiceType.ENGINE, self.service_ID,
                                    service_properties)
         #
@@ -129,10 +130,10 @@ class ResponsiveVoiceSettings(BaseServiceSettings):
 
         volumeConversionConstraints: Constraints
         volumeConversionConstraints = Constraints(minimum=0.1, default=1.0,
-                                                   maximum=2.0, integer=False,
-                                                   decibels=False, scale=1.0,
-                                                   property_name=SettingsProperties.VOLUME,
-                                                   midpoint=0.8, increment=0.1)
+                                                  maximum=2.0, integer=False,
+                                                  decibels=False, scale=1.0,
+                                                  property_name=SettingsProperties.VOLUME,
+                                                  midpoint=0.8, increment=0.1)
         engine_id_constraints_validator = self.VolumeConstraintsValidator(
                 SettingsProperties.VOLUME, self.engine_id, volumeConversionConstraints)
 

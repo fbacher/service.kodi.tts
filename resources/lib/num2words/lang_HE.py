@@ -155,8 +155,8 @@ class Num2Word_HE(Num2Word_Base):
     def to_currency(self, val, currency='NIS', cents=True, separator=' ו',
                     adjective=False):
         result = super(Num2Word_HE, self).to_currency(
-            val, currency=currency, cents=cents, separator=separator,
-            adjective=adjective)
+                val, currency=currency, cents=cents, separator=separator,
+                adjective=adjective)
         # In Hebrew the separator is along with the following word
         return result.replace(" ו ", " ו")
 

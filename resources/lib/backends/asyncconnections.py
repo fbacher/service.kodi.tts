@@ -11,7 +11,6 @@ from common.monitor import Monitor
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
-
 STOP_REQUESTED = False
 STOPPABLE = False
 DEBUG = False
@@ -27,9 +26,13 @@ class StopRequestedException(Exception):
 
 if not hasattr(http.client.HTTPResponse, 'fileno'):
     class ModHTTPResponse(http.client.HTTPResponse):
+
         def fileno(self):
             return self.fp.fileno()
+
+
     http.client.HTTPResponse = ModHTTPResponse
+
 
 def StopConnection():
     global STOP_REQUESTED
@@ -41,9 +44,11 @@ def StopConnection():
 
     STOP_REQUESTED = True
 
+
 def setStoppable(val):
     global STOPPABLE
     STOPPABLE = val
+
 
 def resetStopRequest():
     global STOP_REQUESTED
@@ -53,9 +58,10 @@ def resetStopRequest():
 class _AsyncHTTPResponse(http.client.HTTPResponse):
     _prog_callback = None
 
-    def __init__(self, *args, ** kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._logger = module_logger.getChild(self.__class__.__name__)  # type: BasicLogger
+        self._logger = module_logger.getChild(
+            self.__class__.__name__)  # type: BasicLogger
 
     def _read_status(self):
         ## Do non-blocking checks for server response until something arrives.
@@ -68,10 +74,14 @@ class _AsyncHTTPResponse(http.client.HTTPResponse):
                 ## <--- Right here, check to see whether thread has requested to stop
                 ##      Also check to see whether timeout has elapsed
                 if Monitor.wait_for_abort(0.10) and self._logger.isEnabledFor(DEBUG):
-                    self._logger.debug(' -- XBMC requested abort during wait for server response: raising exception -- ')
+                    self._logger.debug(
+                        ' -- XBMC requested abort during wait for server response: '
+                        'raising exception -- ')
                     raise AbortRequestedException('httplib.HTTPResponse._read_status')
                 elif STOP_REQUESTED and self._logger.isEnabledFor(DEBUG):
-                    self._logger.debug('Stop requested during wait for server response: raising exception')
+                    self._logger.debug(
+                        'Stop requested during wait for server response: raising '
+                        'exception')
                     resetStopRequest()
                     raise StopRequestedException('httplib.HTTPResponse._read_status')
 
@@ -85,18 +95,24 @@ class _AsyncHTTPResponse(http.client.HTTPResponse):
             setStoppable(False)
             resetStopRequest()
 
+
 AsyncHTTPResponse = _AsyncHTTPResponse
+
 
 class Connection(http.client.HTTPConnection):
     response_class = AsyncHTTPResponse
 
+
 class _Handler(urllib.request.HTTPHandler):
+
     def http_open(self, req):
         return self.do_open(Connection, req)
 
+
 Handler = _Handler
 
-#def createHandlerWithCallback(callback):
+
+# def createHandlerWithCallback(callback):
 #    if getSetting('disable_async_connections',False):
 #        return urllib2.HTTPHandler
 #
@@ -114,14 +130,18 @@ Handler = _Handler
 
 def checkStop():
     if Monitor.is_abort_requested() and module_logger.isEnabledFor(DEBUG):
-        module_logger.debug(' -- XBMC requested abort during wait for connection to server: raising exception -- ')
+        module_logger.debug(
+            ' -- XBMC requested abort during wait for connection to server: raising '
+            'exception -- ')
         raise AbortRequestedException('socket[asyncconnections].create_connection')
     elif STOP_REQUESTED and module_logger.isEnabledFor(DEBUG):
-        module_logger.debug('Stop requested during wait for connection to server: raising exception')
+        module_logger.debug(
+            'Stop requested during wait for connection to server: raising exception')
         resetStopRequest()
         raise StopRequestedException('socket[asyncconnections].create_connection')
 
-def waitConnect(sock,timeout):
+
+def waitConnect(sock, timeout):
     start = time.time()
     while time.time() - start < timeout:
         sel = select.select([], [sock], [], 0)
@@ -132,7 +152,9 @@ def waitConnect(sock,timeout):
     sock.setblocking(True)
     return sock
 
-def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, source_address=None):
+
+def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
+                      source_address=None):
     setStoppable(True)
     try:
         return _create_connection(address, timeout=timeout, source_address=source_address)
@@ -140,7 +162,9 @@ def create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, source_ad
         setStoppable(False)
         resetStopRequest()
 
-def _create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, source_address=None):
+
+def _create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
+                       source_address=None):
     host, port = address
     err = None
     for res in socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM):
@@ -153,12 +177,12 @@ def _create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, source_a
                 sock.settimeout(timeout)
             if source_address:
                 sock.bind(source_address)
-            if port == 443: #SSL
+            if port == 443:  # SSL
                 sock.connect(sa)
             else:
                 sock.setblocking(False)
                 err = sock.connect_ex(sa)
-                waitConnect(sock,timeout)
+                waitConnect(sock, timeout)
             return sock
 
         except socket.error as _:
@@ -171,7 +195,9 @@ def _create_connection(address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, source_a
     else:
         raise socket.error("getaddrinfo returns an empty list")
 
+
 OLD_socket_create_connection = socket.create_connection
+
 
 def setEnabled(enable=True):
     global OLD_socket_create_connection, AsyncHTTPResponse, Handler
@@ -188,8 +214,8 @@ def setEnabled(enable=True):
 
         AsyncHTTPResponse = http.client.HTTPResponse
         Handler = urllib.request.HTTPHandler
-        if OLD_socket_create_connection: socket.create_connection = OLD_socket_create_connection
-
+        if OLD_socket_create_connection:
+            socket.create_connection = OLD_socket_create_connection
 
 # h = Handler()
 # o = urllib2.build_opener(h)

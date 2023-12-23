@@ -7,14 +7,13 @@ Created on Feb 10, 2019
 """
 
 import datetime
-from enum import Enum, auto
-
-import simplejson as json
 import random
+from enum import auto, Enum
+
 import xbmc
 
+import simplejson as json
 from common.logger import *
-from common.exceptions import AbortException
 from common.monitor import Monitor
 from common.typing import *
 from .movie_constants import MovieType
@@ -30,6 +29,7 @@ class JsonReturnCode(Enum):
 
 
 class Result:
+
     def __init__(self, rc: JsonReturnCode, status: int = None, msg: str = None,
                  data: MovieType = None) -> None:
         self._rc: JsonReturnCode = rc

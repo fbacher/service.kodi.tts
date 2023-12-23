@@ -5,9 +5,7 @@ from common.logger import BasicLogger
 from common.minimal_monitor import MinimalMonitor
 from common.python_debugger import PythonDebugger
 
-
-
-REMOTE_DEBUG: bool = True
+REMOTE_DEBUG: bool = False
 
 # PATCH PATCH PATCH
 # Monkey-Patch a well known, embedded Python problem
@@ -27,10 +25,12 @@ if REMOTE_DEBUG:
     xbmc.log('About to PythonDebugger.enable from tts main', xbmc.LOGINFO)
     PythonDebugger.enable(addon_id)
     from time import sleep
+
     sleep(5)
 
 import sys
 import xbmcvfs
+
 # import faulthandler
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -75,7 +75,7 @@ class MainThreadLoop(xbmc.Monitor):
             # stuff is handled quickly. Then revert to less frequent checks
 
             initial_timeout = 0.05
-            switch_timeouts_count = 10 * 20 # 10 seconds
+            switch_timeouts_count = 10 * 20  # 10 seconds
 
             # Don't start backend for about one second after start if
             # debugging is enabled in order for it to start.
@@ -158,7 +158,7 @@ class MainThreadLoop(xbmc.Monitor):
             keymapeditor.processCommand(command)
         elif arg == 'settings_dialog':
             ConfigUtils.selectSetting(*extra)
-        xbmc.sleep(30*60*1000)
+        xbmc.sleep(30 * 60 * 1000)
 
 
 def bootstrap_plugin() -> None:
@@ -192,6 +192,7 @@ def exit_plugin():
 
 if __name__ == '__main__':
     import threading
+
     threading.current_thread().name = "tts_main"
     bootstrap_plugin()
     exit_plugin()

@@ -19,7 +19,7 @@ class SystemQueries:
 
     def __init__(self):
         SystemQueries._logger = module_logger.getChild(
-            self.__class__.__name__)  # type: BasicLogger
+                self.__class__.__name__)  # type: BasicLogger
 
     @classmethod
     def isWindows(cls):
@@ -39,21 +39,17 @@ class SystemQueries:
             cls.is_android = xbmc.getCondVisibility('System.Platform.Android')
         return cls.is_android
 
-
     @classmethod
     def isATV2(cls):
         return xbmc.getCondVisibility('System.Platform.ATV2')
-
 
     @classmethod
     def isRaspberryPi(cls):
         return xbmc.getCondVisibility('System.Platform.Linux')
 
-
     @classmethod
     def isLinux(cls):
         return xbmc.getCondVisibility('System.Platform.Linux')
-
 
     @classmethod
     def raspberryPiDistro(cls):
@@ -65,25 +61,22 @@ class SystemQueries:
         import subprocess
         try:
             uname = subprocess.check_output(
-                ['uname', '-a'], universal_newlines=True)
+                    ['uname', '-a'], universal_newlines=True)
         except:
             module_logger.error('raspberryPiDistro() - Failed to get uname output')
         if uname and 'raspbmc' in uname:
             return 'RASPBMC'
         return 'UNKNOWN'
 
-
     @classmethod
     def isOpenElec(cls):
         return xbmc.getCondVisibility('System.HasAddon(os.openelec.tv)')
-
 
     @classmethod
     def isPreInstalled(cls):
         kodiPath = xbmcvfs.translatePath('special://xbmc')
         preInstalledPath = os.path.join(kodiPath, 'addons', Constants.ADDON_ID)
         return os.path.exists(preInstalledPath)
-
 
     @classmethod
     def wasPostInstalled(cls):

@@ -37,7 +37,8 @@ class SpeechDispatcherSettings:
             constraints: Constraints = self.constraints
             constraints.setSetting(1, self.service_id)
 
-        def get_tts_value(self, value_type: ValueType = ValueType.VALUE) -> int | float | str:
+        def get_tts_value(self,
+                          value_type: ValueType = ValueType.VALUE) -> int | float | str:
             """
             Keep value fixed at 1
             :return:

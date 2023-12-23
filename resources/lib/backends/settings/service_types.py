@@ -22,16 +22,16 @@ class Services:
     MPG321_ID: Final[str] = 'mpg321'
     PICO_TO_WAVE_ID: Final[str] = 'pico2wave'
     RECITE_ID: Final[str] = 'Recite'
-    SERVICE_ID: Final[str] = 'id'   # Specifies the service's id (FLite is the current
+    SERVICE_ID: Final[str] = 'id'  # Specifies the service's id (FLite is the current
     LAME_ID: Final[str] = 'lame'
     DEFAULT_ENGINE_ID: Final[str] = ESPEAK_ID
 
-# engine's id.
+    # engine's id.
 
     WavAudioPlayerHandler = 'wave_handler'
     MP3AudioPlayerHandler = 'mp3_handler'
     BuiltInAudioPlayerHandler = 'internal_handler'
-    NONE_ID : 'none'
+    NONE_ID: 'none'
 
 
 class ServiceType(Enum):

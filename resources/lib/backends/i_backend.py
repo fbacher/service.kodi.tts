@@ -1,4 +1,3 @@
-
 import xbmc
 
 from common.__init__ import *
@@ -10,7 +9,7 @@ class IBackend:
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        xbmc.log (f'IBackend classname: {self.__class__.__name__}')
+        xbmc.log(f'IBackend classname: {self.__class__.__name__}')
         type(self)._class_name = self.__class__.__name__
 
     @classmethod

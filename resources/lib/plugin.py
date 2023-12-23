@@ -1,4 +1,3 @@
-
 import faulthandler
 import io
 import signal
@@ -15,7 +14,7 @@ REMOTE_DEBUG: bool = False
 # from common.strptime_patch import StripTimePatch
 # StripTimePatch.monkey_patch_strptime()
 
-addon_id:str = CriticalSettings.ADDON_ID
+addon_id: str = CriticalSettings.ADDON_ID
 
 debug_file = io.open("/home/fbacher/.kodi/temp/kodi.crash", mode='w', buffering=1,
                      newline=None,
@@ -71,6 +70,7 @@ def main():
 
 if __name__ == '__main__':
     import threading
+
     threading.current_thread().name = "plugin.py"
     xbmc.log('plugin.py service.kodi.tts starting', xbmc.LOGDEBUG)
     main()

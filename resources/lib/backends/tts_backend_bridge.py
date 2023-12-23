@@ -106,7 +106,7 @@ class TTSBackendBridge(ITTSBackendBase):
 
     @classmethod
     def getSetting(cls, key: str, default: str | List[str] | List[bool] | list[
-                   float] | bool | int | float = None) -> Any | None:
+        float] | bool | int | float = None) -> Any | None:
         raise Exception('Not Implemented')
 
     @classmethod

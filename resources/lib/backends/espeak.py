@@ -1,33 +1,25 @@
 # -*- coding: utf-8 -*-
 
-import ctypes
 import ctypes.util
-import os
 import subprocess
 import sys
 from pathlib import Path
 
-from backends import base
 from backends.audio.builtin_audio_player import BuiltInAudioPlayer
 # from backends.audio.player_handler import BasePlayerHandler, WavAudioPlayerHandler
-from backends.audio.sound_capabilties import ServiceType, SoundCapabilities
-from backends.base import Constraints, SimpleTTSBackend
-from backends.espeak_settings import ESpeakSettings
-from backends.i_tts_backend_base import ITTSBackendBase
-from backends.players.iplayer import IPlayer
+from backends.audio.sound_capabilties import ServiceType
+from backends.base import SimpleTTSBackend
 from backends.settings.i_validators import IValidator
 from backends.settings.service_types import Services
 from backends.settings.settings_map import SettingsMap
-from backends.settings.validators import ConstraintsValidator
 from common import utils
+from common.base_services import BaseServices
 from common.constants import Constants
 from common.logger import *
-from common.base_services import BaseServices
 from common.phrases import Phrase
-from common.setting_constants import Backends, Genders, Mode, Players
+from common.setting_constants import Backends, Genders, Mode
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
-from common.system_queries import SystemQueries
 from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -130,7 +122,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         pitch = self.get_pitch()
         if voice_id:
             args.extend(
-                ('-v', voice_id))
+                    ('-v', voice_id))
         if speed:
             args.extend(('-s', str(speed)))
         if pitch:
@@ -174,7 +166,8 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         self.addCommonArgs(args, phrase)
         try:
             self.process = subprocess.Popen(args, universal_newlines=True)
-            while self.process is not None and self.process.poll() is None and self.active:
+            while (self.process is not None and self.process.poll() is None and
+                   self.active):
                 utils.sleep(10)
             clz._logger.debug(f'args: {args}')
         except subprocess.SubprocessError as e:
@@ -302,15 +295,15 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         clz = type(self)
         if self.mode != Mode.ENGINESPEAK:
             volume_val: IValidator = SettingsMap.get_validator(
-                clz.service_ID, SettingsProperties.VOLUME)
+                    clz.service_ID, SettingsProperties.VOLUME)
             volume: int = volume_val.tts_line_value
             return volume
         else:
             # volume = Settings.get_volume(clz.service_ID)
             volume_val: IValidator = SettingsMap.get_validator(
-                        clz.service_ID, SettingsProperties.VOLUME)
+                    clz.service_ID, SettingsProperties.VOLUME)
             # volume: int = volume_val.get_tts_value()
-            volume: int = volume_val.get_impl_value(clz.service_ID )
+            volume: int = volume_val.get_impl_value(clz.service_ID)
 
         return volume
 
@@ -321,15 +314,15 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         clz = type(self)
         if self.mode != Mode.ENGINESPEAK:
             pitch_val: IValidator = SettingsMap.get_validator(
-                clz.service_ID, SettingsProperties.PITCH)
+                    clz.service_ID, SettingsProperties.PITCH)
             pitch: int = pitch_val.tts_line_value
             return pitch
         else:
             # volume = Settings.get_volume(clz.service_ID)
             pitch_val: IValidator = SettingsMap.get_validator(
-                        clz.service_ID, SettingsProperties.PITCH)
+                    clz.service_ID, SettingsProperties.PITCH)
             # volume: int = volume_val.get_tts_value()
-            pitch: int = pitch_val.get_impl_value(clz.service_ID )
+            pitch: int = pitch_val.get_impl_value(clz.service_ID)
 
         return pitch
 
@@ -340,13 +333,13 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         clz = type(self)
         if self.mode != Mode.ENGINESPEAK:
             speed_val: IValidator = SettingsMap.get_validator(
-                clz.service_ID, SettingsProperties.SPEED)
+                    clz.service_ID, SettingsProperties.SPEED)
             speed: int = speed_val.tts_line_value
             return speed
         else:
             speed_val: IValidator = SettingsMap.get_validator(
-                        clz.service_ID, SettingsProperties.SPEED)
-            speed: int = speed_val.get_impl_value(clz.service_ID )
+                    clz.service_ID, SettingsProperties.SPEED)
+            speed: int = speed_val.get_impl_value(clz.service_ID)
         return speed
 
 

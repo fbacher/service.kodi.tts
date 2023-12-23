@@ -22,7 +22,6 @@ from xml.sax import saxutils
 
 from common.constants import Constants
 from common.logger import *
-from common.settings import Settings
 from common.system_queries import SystemQueries
 from common import utils
 from backends.base import SimpleTTSBackend
@@ -34,16 +33,21 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
   
   Modern Windows uses System.Speech.Synthesis 
  
-    If you run the following command in the terminal, it will speak the words "testing to see if this works properly"
-    PowerShell -Command "Add-Type -AssemblyName System.Speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('testing to see if this works properly');"
-    This python script generates this command with whatever text is passed to the speak function
+    If you run the following command in the terminal, it will speak the words "testing 
+    to see if this works properly"
+    PowerShell -Command "Add-Type -AssemblyName System.Speech; (New-Object 
+    System.Speech.Synthesis.SpeechSynthesizer).Speak('testing to see if this works 
+    properly');"
+    This python script generates this command with whatever text is passed to the speak 
+    function
     
     
     randomString = "Hello Matt!"
     
     def speak(stringOfText):
             # This function will make windows say whatever string is passed
-            # You can copy and paste this function into any script, and call it using: speak("Random String")
+            # You can copy and paste this function into any script, and call it using: 
+            speak("Random String")
             # Be sure to import os into any script you add this function to
             stringOfText = stringOfText.strip()
             # Removes any trailing spaces or new line characters
@@ -52,7 +56,8 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
         stringOfText = stringOfText.replace('"', "")
             # Removes all double quotes by replacing all instances with a blank character
         command = f"PowerShell -Command "Add-Type -AssemblyName System.Speech; \
-            (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('{stringOfText}');"
+            (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('{
+            stringOfText}');"
     # This is just a really long command that tells windows to say a text out loud
     # At the end I am adding in the stringOfText parameter to the command
     os.system(command)
@@ -98,9 +103,9 @@ class SAPI:
                                                  SettingsProperties.VOLUME)
 
     settings = {
-        SettingsProperties.PITCH: 0,
-        SettingsProperties.SPEED: 0,
-        SettingsProperties.VOICE: None,
+        SettingsProperties.PITCH : 0,
+        SettingsProperties.SPEED : 0,
+        SettingsProperties.VOICE : None,
         SettingsProperties.VOLUME: 0
     }
     _logger: BasicLogger = None
@@ -114,7 +119,6 @@ class SAPI:
 
     def __init__(self, *args, **kwargs):
         cls = type(self)
-
 
         self.SpVoice = None
         self.comtypesClient = None
@@ -217,26 +221,30 @@ class SAPI:
                 bits = l1.split()
                 if errno in bits:
                     cls._logger.debug(
-                        'SAPI specific COM error ({0})[{1}]: {2}'.format(errno, bits[0],
-                                                                         l2 or '?'))
+                            'SAPI specific COM error ({0})[{1}]: {2}'.format(errno,
+                                                                             bits[0],
+                                                                             l2 or '?'))
                     break
             else:
                 error = lookupGenericComError(com_error)
                 if error:
                     cls._logger.debug(
-                        'SAPI generic COM error ({0})[{1}]: {2}'.format(errno, error[0],
-                                                                        error[1] or '?'))
+                            'SAPI generic COM error ({0})[{1}]: {2}'.format(errno,
+                                                                            error[0],
+                                                                            error[
+                                                                                1] or
+                                                                            '?'))
                 else:
                     self._logger.debug(
-                        'Failed to lookup SAPI/COM error: {0}'.format(com_error))
+                            'Failed to lookup SAPI/COM error: {0}'.format(com_error))
         except AbortException:
             reraise(*sys.exc_info())
         except:
             cls._logger.exception('Error looking up SAPI error: {0}'.format(com_error))
         cls._logger.debug(
-            'Line: {1} In: {0}{2}'.format(sys.exc_info()[2].tb_frame.f_code.co_name,
-                                          sys.exc_info()[2].tb_lineno,
-                                          extra and ' ({0})'.format(extra) or ''))
+                'Line: {1} In: {0}{2}'.format(sys.exc_info()[2].tb_frame.f_code.co_name,
+                                              sys.exc_info()[2].tb_lineno,
+                                              extra and ' ({0})'.format(extra) or ''))
 
     def _getVoice(self, voice_name=None):
         cls = type(self)
@@ -356,10 +364,10 @@ class SAPITTSBackend(SimpleTTSBackend):
     backend_id = 'SAPI'
     displayName = 'SAPI (Windows Internal)'
     settings = {SettingsProperties.SPEAK_VIA_KODI: True,
-                SettingsProperties.VOICE: '',
-                SettingsProperties.SPEED: 0,
-                SettingsProperties.PITCH: 0,
-                SettingsProperties.VOLUME: 100
+                SettingsProperties.VOICE         : '',
+                SettingsProperties.SPEED         : 0,
+                SettingsProperties.PITCH         : 0,
+                SettingsProperties.VOLUME        : 100
                 }
     canStreamWav = True
     speedConstraints: Constraints = Constraints(-10, 0, 10, True, False, 1.0,
@@ -493,7 +501,8 @@ class SAPITTSBackend(SimpleTTSBackend):
         cls = type(self)
 
         self.setMode(self.getMode())
-        self.ssml = self.baseSSML.format(text='{text}', volume=self.setting(SettingsProperties.VOLUME),
+        self.ssml = self.baseSSML.format(text='{text}',
+                                         volume=self.setting(SettingsProperties.VOLUME),
                                          speed=self.setting(SettingsProperties.SPEED),
                                          pitch=self.setting(SettingsProperties.PITCH))
         voice_name = self.setting(SettingsProperties.VOICE)
@@ -530,6 +539,7 @@ class SAPITTSBackend(SimpleTTSBackend):
     @staticmethod
     def available():
         return SystemQueries.isWindows()
+
 
 #    def getWavStream(self,text):
 #        #Have SAPI write to file

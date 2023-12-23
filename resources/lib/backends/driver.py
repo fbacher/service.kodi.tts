@@ -8,10 +8,11 @@ Basically a request comes in to voice some text
 import sys
 
 from backends.audio.sound_capabilties import SoundCapabilities
-from backends.audio.worker_thread import TTSQueue, TTSQueueData, WorkerThread
+from backends.audio.worker_thread import TTSQueueData, WorkerThread
 from backends.backend_info_bridge import BackendInfoBridge
 from backends.base import BaseEngineService
 from backends.cache_writer import CacheReader
+from backends.google import GoogleSpeechGenerator
 from backends.i_tts_backend_base import ITTSBackendBase
 from backends.players.iplayer import IPlayer
 from backends.players.player_index import PlayerIndex
@@ -19,13 +20,11 @@ from backends.settings.service_types import Services, ServiceType
 from backends.settings.settings_map import SettingsMap
 from cache.voicecache import VoiceCache
 from common.base_services import BaseServices
-from common.constants import Notify
 from common.exceptions import ExpiredException
 from common.logger import BasicLogger
-from common.minimal_monitor import MinimalMonitor
 from common.monitor import Monitor
 from common.phrases import Phrase, PhraseList
-from common.setting_constants import Mode, Players
+from common.setting_constants import Mode
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
 from common.typing import *
@@ -34,6 +33,7 @@ module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class Result:
+
     def __init__(self):
         pass
 
@@ -116,7 +116,8 @@ class Driver(BaseServices):
                 else:
                     # Forces initialization and populates capabilities, settings, etc.
 
-                    player: IPlayer = active_engine.get_player()
+                    player: IPlayer = \
+                        active_engine.get_player(active_engine.get_active_engine_id())
                     player_input_formats: List[str]
                     player_input_formats = SoundCapabilities.get_input_formats(player_id)
                     if not SoundCapabilities.MP3 in player_input_formats:
@@ -134,19 +135,20 @@ class Driver(BaseServices):
                     if phrase.get_pre_pause() > 0:
                         pre_pause = f' PRE_PAUSE: {str(phrase.get_pre_pause())} '
                     if phrase.get_post_pause() > 0:
-                        post_pause= f' POST_PAUSE: {str(phrase.get_post_pause())} '
+                        post_pause = f' POST_PAUSE: {str(phrase.get_post_pause())} '
                     clz._logger.debug(f'Driver.Say PHRASE: {phrase.get_text()} '
                                       f'{interrupt}{pre_pause}{post_pause}')
                     '''
                     ALL text to be voiced, must be kept synchronized by going
                     through queues. Otherwise things will get scrambled.
                     '''
-                    
+
                     if Settings.is_use_cache():
                         VoiceCache.get_path_to_voice_file(phrase, use_cache=True)
                     '''
                         if phrase.exists():
-                            clz._logger.debug(f'{phrase.get_text()} is in cache: {phrase.get_cache_path()}')
+                            clz._logger.debug(f'{phrase.get_text()} is in cache: {
+                            phrase.get_cache_path()}')
                             success = self.say_file(active_engine, player_id, phrase)
                         else:  # if engine_settings.wait_for_generate_voice then generate
                                      # now and play, otherwise add to background job
@@ -158,16 +160,22 @@ class Driver(BaseServices):
                         # self.generate_voice(active_engine, phrase)
                     '''
                     if not phrase.exists() and Settings.is_use_cache():
-                            # Clone phrases to seed voice cache
+                        # Clone phrases to seed voice cache
                         phrases_new: PhraseList = PhraseList(check_expired=False)
                         phrase_new: Phrase = phrase.clone(check_expired=False)
                         phrases_new.append(phrase_new)
                         self.seed_text_cache(active_engine, phrases_new)
-                            
-                    tts_data: TTSQueueData = TTSQueueData(None, state='play_file',
-                                                  player_id=player_id,
-                                                  phrase=phrase,
-                                                  engine_id=active_engine.service_ID)
+                        # Mark original phrase as being downloaded
+                        phrase.set_download_pending()
+                        generator: GoogleSpeechGenerator = GoogleSpeechGenerator()
+                        generator.generate_speech(phrase, timeout=0.0,
+                                                  download_file_only=True)
+
+                    tts_data: TTSQueueData
+                    tts_data = TTSQueueData(None, state='play_file',
+                                            player_id=player_id,
+                                            phrase=phrase,
+                                            engine_id=active_engine.service_ID)
 
                     self.worker_thread.add_to_queue(tts_data)
 
@@ -214,6 +222,7 @@ class Driver(BaseServices):
 
         # tts.dead
         # tts.deadReason
+
     '''
     def sayList(self, texts, interrupt: bool = False):
         """Accepts a list of text strings to be spoke
@@ -345,7 +354,7 @@ class Driver(BaseServices):
                                                        SoundCapabilities.MP3)
             converter_id = None
             if len(eligible_converters) > 0:
-               converter_id = eligible_converters[0]
+                converter_id = eligible_converters[0]
             else:
                 converter = self.getService(converter_id)
             return converter_id
@@ -362,7 +371,8 @@ class Driver(BaseServices):
         """
         Gets a setting from addon's settings.xml
 
-        A convenience method equivalent to Settings.getSetting(key + '.'. + cls.backend_id,
+        A convenience method equivalent to Settings.getSetting(key + '.'. +
+        cls.backend_id,
         default, useFullSettingName).False
 
         :param key:
@@ -373,13 +383,15 @@ class Driver(BaseServices):
         if default is None:
             default = current_backend.get_setting_default(key)
 
-    def handle_caching(self, phrase: Phrase, engine_id: str, player_id: str, converter_id: str):
+    def handle_caching(self, phrase: Phrase, engine_id: str, player_id: str,
+                       converter_id: str):
         clz = type(self)
         Monitor.exception_on_abort(0.01)
         try:
             if converter_id is not None and len(converter_id) > 0:
                 converter_output_formats: List[str]
-                converter_output_formats = SoundCapabilities.get_output_formats(converter_id)
+                converter_output_formats = SoundCapabilities.get_output_formats(
+                    converter_id)
             player_input_formats: List[str]
             player_input_formats = SoundCapabilities.get_input_formats(player_id)
 
@@ -388,7 +400,7 @@ class Driver(BaseServices):
                                             sound_file_types=player_input_formats)
             if phrase.exists():
                 active_engine = BaseServices.getService(engine_id)
-                player: IPlayer = active_engine.get_player()
+                player: IPlayer = active_engine.get_player(engine_id)
                 player.init(engine_id)
                 player.play(phrase)
         except AbortException:

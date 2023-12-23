@@ -4,7 +4,6 @@ import sys
 
 from backends.audio.sound_capabilties import SoundCapabilities
 from backends.engines.base_engine_settings import (BaseEngineSettings)
-from backends.i_tts_backend_base import ITTSBackendBase
 from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.constraints import Constraints
 from backends.settings.i_validators import ValueType
@@ -12,11 +11,10 @@ from backends.settings.service_types import Services, ServiceType
 from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import Reason, SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
-                                          EnumValidator, StringValidator)
-from common.base_services import BaseServices
+                                          StringValidator)
 from common.constants import Constants
 from common.logger import BasicLogger
-from common.setting_constants import Backends, Genders, Players
+from common.setting_constants import Backends, Players
 from common.system_queries import SystemQueries
 from common.typing import *
 
@@ -48,8 +46,8 @@ class ESpeakSettings(BaseServiceSettings):
             constraints.setSetting(1, self.service_id)
 
         def get_tts_values(self) \
-                -> Tuple[int | float | str, int | float | str , int | float | str, \
-                         int | float| str]:
+                -> Tuple[int | float | str, int | float | str, int | float | str, \
+                         int | float | str]:
             """
             Keep value fixed at 1
             :return: current_value, min_value, default_value, max_value
@@ -98,23 +96,24 @@ class ESpeakSettings(BaseServiceSettings):
         # Need to define Conversion Constraints between the TTS 'standard'
         # constraints/settings to the engine's constraints/settings
 
-
         pitch_constraints: Constraints = Constraints(minimum=0, default=50,
-                                                   maximum=99, integer=True,
-                                                   decibels=False, scale=1.0,
-                                                   property_name=SettingsProperties.PITCH,
-                                                   midpoint=50, increment=1.0,
-                                                   tts_line_value=50)
+                                                     maximum=99, integer=True,
+                                                     decibels=False, scale=1.0,
+                                                     property_name=SettingsProperties.PITCH,
+                                                     midpoint=50, increment=1.0,
+                                                     tts_line_value=50)
 
         pitch_constraints_validator = ConstraintsValidator(SettingsProperties.PITCH,
                                                            cls.engine_id,
                                                            pitch_constraints)
 
-        volumeConversionConstraints: Constraints = Constraints(minimum=0, default=100, maximum=200,
-                                                     integer=True, decibels=False,
-                                                     scale=1.0,
-                                                     property_name=SettingsProperties.VOLUME,
-                                                     midpoint=100, increment=5,
+        volumeConversionConstraints: Constraints = Constraints(minimum=0, default=100,
+                                                               maximum=200,
+                                                               integer=True,
+                                                               decibels=False,
+                                                               scale=1.0,
+                                                               property_name=SettingsProperties.VOLUME,
+                                                               midpoint=100, increment=5,
                                                                tts_line_value=100)
 
         volume_constraints_validator = ConstraintsValidator(
@@ -169,11 +168,11 @@ class ESpeakSettings(BaseServiceSettings):
         #                                        SettingsProperties.PITCH, 50, 1.0)
 
         speedConstraints: Constraints = Constraints(minimum=43, default=175,
-                                                 maximum=700, integer=True,
-                                                 decibels=False, scale=1.0,
-                                                 property_name=SettingsProperties.SPEED,
-                                                 midpoint=175, increment=45,
-                                                 tts_line_value=175)
+                                                    maximum=700, integer=True,
+                                                    decibels=False, scale=1.0,
+                                                    property_name=SettingsProperties.SPEED,
+                                                    midpoint=175, increment=45,
+                                                    tts_line_value=175)
 
         #  Speed in words per minute. Default 175
         speed_constraints_validator = ConstraintsValidator(SettingsProperties.SPEED,

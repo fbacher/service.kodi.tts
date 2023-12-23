@@ -5,12 +5,6 @@ import xbmcvfs
 from backends.settings.service_types import Services
 from common.typing import *
 
-import xbmcaddon
-from xbmcaddon import Settings as KodiSettings
-
-
-from kutils import Addon
-
 
 class SettingType(Enum):
     BOOLEAN_TYPE = 'BOOLEAN_TYPE'
@@ -71,6 +65,7 @@ class SettingsProperties:  # (ISettings):
     PLAYER: Final[str] = 'player'  # Specifies the player
     PLAYER_VOLUME: Final[str] = 'player_volume'
     PLAYER_PITCH: Final[str] = 'player_pitch'
+    PLAYER_SLAVE: Final[str] = 'player_slave'
     PLAYER_SPEED: Final[str] = 'player_speed'
     POLL_INTERVAL: Final[str] = 'poll_interval'
     PUNCTUATION: Final[str] = 'punctuation'
@@ -107,7 +102,8 @@ class SettingsProperties:  # (ISettings):
     VOLUME_VISIBLE: Final[str] = 'volume_visible'
 
     API_KEY_DEFAULT: Final[str] = ''
-    CACHE_PATH_DEFAULT: Final[str] = xbmcvfs.translatePath('special://userdata/addon_data/service.kodi.tts/cache')
+    CACHE_PATH_DEFAULT: Final[str] = xbmcvfs.translatePath(
+        'special://userdata/addon_data/service.kodi.tts/cache')
     CACHE_EXPIRATION_DEFAULT: Final[int] = 365
     CACHE_SPEECH_DEFAULT: Final[bool] = False
     ENGINE_SPEEK_DEFAULT = None
@@ -172,7 +168,7 @@ class SettingsProperties:  # (ISettings):
     # 'top_level_settings'
 
     ALL_SETTINGS: List[str] = [
-        ENGINE,   # Leave this as the FIRST setting
+        ENGINE,  # Leave this as the FIRST setting
         ADDONS_MD5,
         API_KEY,
         AUTO_ITEM_EXTRA,
@@ -201,6 +197,7 @@ class SettingsProperties:  # (ISettings):
         PLAYER,
         PLAYER_VOLUME,
         PLAYER_PITCH,
+        PLAYER_SLAVE,
         PLAYER_SPEED,
         POLL_INTERVAL,
         PUNCTUATION,
@@ -265,6 +262,7 @@ class SettingsProperties:  # (ISettings):
             cls.PLAYER                                : SettingType.STRING_TYPE,
             cls.PLAYER_VOLUME                         : SettingType.INTEGER_TYPE,
             cls.PLAYER_PITCH                          : SettingType.INTEGER_TYPE,
+            cls.PLAYER_SLAVE                          : SettingType.BOOLEAN_TYPE,
             cls.PLAYER_SPEED                          : SettingType.INTEGER_TYPE,
             cls.POLL_INTERVAL                         : SettingType.INTEGER_TYPE,
             cls.READER_ON                             : SettingType.BOOLEAN_TYPE,

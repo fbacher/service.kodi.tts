@@ -45,11 +45,14 @@ class JAWSTTSBackend(ThreadedTTSBackend):
         return installed
 
     def threadedSay(self, text):
-        if not self.jaws: return
-        if not self.jaws.SayString(text,False): self.flagAsDead('Not running')
+        if not self.jaws:
+            return
+        if not self.jaws.SayString(text, False):
+            self.flagAsDead('Not running')
 
     def stop(self):
-        if not self.jaws: return
+        if not self.jaws:
+            return
         self.jaws.StopSpeech()
 
     def isSpeaking(self):
@@ -61,13 +64,15 @@ class JAWSTTSBackend(ThreadedTTSBackend):
 
     @staticmethod
     def available():
-        if not sys.platform.lower().startswith('win'): return False
+        if not sys.platform.lower().startswith('win'):
+            return False
         try:
             from comtypes import GUID
-            GUID.from_progid('FreedomSci.JawsApi') #If we fail on this, we haven't loaded anything
+            GUID.from_progid(
+                'FreedomSci.JawsApi')  # If we fail on this, we haven't loaded anything
             from comtypes.client import CreateObject
             test = CreateObject("FreedomSci.JawsApi")
-            return test.SayString("",False)
+            return test.SayString("", False)
         except:
             return False
         return True

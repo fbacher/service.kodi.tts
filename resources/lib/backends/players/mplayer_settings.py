@@ -71,7 +71,6 @@ class MPlayerSettings:
                                                            cls.service_ID,
                                                            BaseServiceSettings.ttsSpeedConstraints)
 
-
         speed_constraints_val = ConstraintsValidator(SettingsProperties.SPEED,
                                                      cls.service_ID,
                                                      BaseServiceSettings.ttsSpeedConstraints)

@@ -19,6 +19,7 @@ from backends.players.player_index import PlayerIndex
 from backends.settings.settings_map import SettingsMap
 from common.base_services import BaseServices
 from common.constants import Constants
+from common.exceptions import ExpiredException
 from common.logger import *
 from common.phrases import Phrase, PhraseList
 from common.settings import Settings
@@ -44,7 +45,7 @@ class VoiceCache:
     def __init__(self):
         clz = type(self)
         VoiceCache._logger = module_logger.getChild(
-            self.__class__.__name__)
+                self.__class__.__name__)
 
     @classmethod
     def get_cache_directory(cls) -> pathlib.Path:
@@ -103,6 +104,8 @@ class VoiceCache:
                 exists = False
         except AbortException:
             reraise(*sys.exc_info())
+        except ExpiredException as e:
+            reraise(*sys.exc_info())
         except Exception as e:
             cls._logger.exception('')
         return voice_file, exists
@@ -144,6 +147,8 @@ class VoiceCache:
                     best_exists = exists
                     best_sound_file_type = suffix
         except AbortException:
+            reraise(*sys.exc_info())
+        except ExpiredException:
             reraise(*sys.exc_info())
         except Exception as e:
             cls._logger.exception('')
@@ -211,14 +216,14 @@ class VoiceCache:
                     if not Constants.IGNORE_CACHE_EXPIRATION_DATE:
                         try:
                             expiration_time = time.time() - \
-                                datetime.timedelta(Settings.getSetting(
-                                    SettingsProperties.CACHE_EXPIRATION_DAYS,
-                                        SettingsProperties.TTS_SERVICE,
-                                    SettingsProperties.CACHE_EXPIRATION_DEFAULT)).total_seconds()
+                                              datetime.timedelta(Settings.getSetting(
+                                                      SettingsProperties.CACHE_EXPIRATION_DAYS,
+                                                      SettingsProperties.TTS_SERVICE,
+                                                      SettingsProperties.CACHE_EXPIRATION_DEFAULT)).total_seconds()
 
                             if os.stat(path).st_mtime < expiration_time:
                                 cls._logger.debug_verbose(
-                                    f'Expired sound file: {path}')
+                                        f'Expired sound file: {path}')
                                 delete = True
                         except Exception as e:
                             msg: str = f'Exception accessing voice file: {path}'
@@ -235,17 +240,19 @@ class VoiceCache:
                                     os.remove(path)
                             except Exception as e:
                                 cls._logger.warning(
-                                    'Trying to delete bad cache file.')
+                                        'Trying to delete bad cache file.')
 
                 results[suffix] = (path, path_found)
         except AbortException:
+            reraise(*sys.exc_info())
+        except ExpiredException:
             reraise(*sys.exc_info())
         except Exception as e:
             cls._logger.exception('')
         return results
 
     @classmethod
-    def get_paths(cls, phrase: Phrase, suffixes:List[str]) \
+    def get_paths(cls, phrase: Phrase, suffixes: List[str]) \
             -> Dict[str, Tuple[str, bool]]:
         results: Dict[str, Tuple[str, bool]] = {}
         try:
@@ -290,6 +297,8 @@ class VoiceCache:
                 if path and not exception_occurred:
                     results[suffix] = path, exists
         except AbortException:
+            reraise(*sys.exc_info())
+        except ExpiredException:
             reraise(*sys.exc_info())
         except Exception as e:
             cls._logger.exception('')
@@ -395,7 +404,8 @@ class VoiceCache:
                       f'No caching will occur.'
             else:
                 msg = f'Neither the specified TTS cache directory: {preferred_path} ' \
-                      f'nor the default cache directory: {alternate_path} were useable. ' \
+                      f'nor the default cache directory: {alternate_path} were useable. 
+                      ' \
                       f'' \
                       f'No caching will occur.'
         return ok, good_path, created_dir, alternate_used, msg
@@ -404,12 +414,12 @@ class VoiceCache:
     @classmethod
     def get_hash(cls, text_to_voice: str) -> str:
         hash_value: str = hashlib.md5(
-            text_to_voice.encode('UTF-8')).hexdigest()
+                text_to_voice.encode('UTF-8')).hexdigest()
         return hash_value
 
     @classmethod
     def create_sound_file(cls, voice_file_path: Path,
-                          create_dir_only: bool=False)\
+                          create_dir_only: bool = False) \
             -> Tuple[int, IO[io.BufferedWriter] | None]:
         """
             Create given voice_file_path and return file handle to it
@@ -498,9 +508,9 @@ class VoiceCache:
             dummy_cached_file: str = VoiceCache.get_path_to_voice_file('', '')
             cache_directory, _ = os.path.split(dummy_cached_file)
             expiration_time = time.time() - \
-                Settings.getSetting(
-                SettingsProperties.CACHE_EXPIRATION_DAYS,
-                        SettingsProperties.TTS_SERVICE, 30) * 86400
+                              Settings.getSetting(
+                                      SettingsProperties.CACHE_EXPIRATION_DAYS,
+                                      SettingsProperties.TTS_SERVICE, 30) * 86400
             for root, dirs, files in os.walk(cache_directory, topdown=False):
                 for file in files:
                     try:
@@ -559,7 +569,8 @@ class VoiceCache:
     def text_referenced(cls, phrase: Phrase) -> None:
         """
          cache files are organized:
-          <cache_path>/<engine_code>/<first-two-chars-of-cache-file-name>/<cache_file_name>.<suffix>
+          <cache_path>/<engine_code>/<first-two-chars-of-cache-file-name
+          >/<cache_file_name>.<suffix>
 
           Example: cache_path =  ~/.kodi/userdata/addon_data/service.kodi.tts/cache
                    engine_code = goo (for google)
@@ -571,7 +582,7 @@ class VoiceCache:
             cache_path: str = Settings.get_cache_base()
             engine_id: str = Settings.get_engine_id()
             engine_code: str = SettingsMap.get_service_property(engine_id,
-                                                               Constants.CACHE_SUFFIX)
+                                                                Constants.CACHE_SUFFIX)
             assert engine_code is not None, \
                 f'Can not find voice-cache dir for engine: {engine_id}'
             cache_directory = xbmcvfs.translatePath(f'{cache_path}/{engine_code}')
@@ -588,7 +599,8 @@ class VoiceCache:
         return
 
     @classmethod
-    def register_cache_change_listener(cls, cache_change_listener: Callable[[str], None]) -> None:
+    def register_cache_change_listener(cls, cache_change_listener: Callable[
+        [str], None]) -> None:
         cls.cache_change_listener = cache_change_listener
         if not cls.cache_changed():
             # Re-register if not fired
@@ -613,5 +625,6 @@ class VoiceCache:
         except KeyError:
             pass
         return False
+
 
 instance = VoiceCache()

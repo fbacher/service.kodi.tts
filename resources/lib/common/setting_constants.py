@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-from enum import Enum
-
-from strenum import StrEnum
+from enum import Enum, StrEnum
 
 from backends.settings.service_types import Services
 from backends.settings.setting_properties import SettingsProperties
@@ -54,11 +52,16 @@ class Backends(BaseSettingsConstants):
         SPEECH_DISPATCHER_ID
     ]
     settings_map: Dict[str, Message] = {
-        AUTO_ID: Messages.AUTO,
-        ESPEAK_ID: Messages.BACKEND_ESPEAK,
-        FESTIVAL_ID: Messages.BACKEND_FESTIVAL,
-        FLITE_ID: Messages.BACKEND_FLITE,
-        RESPONSIVE_VOICE_ID: Messages.BACKEND_RESPONSIVE_VOICE,
+        AUTO_ID             : Messages.AUTO,
+        ESPEAK_ID           : Messages.BACKEND_ESPEAK,
+        FESTIVAL_ID         : Messages.BACKEND_FESTIVAL,
+        FLITE_ID            : Messages.BACKEND_FLITE,
+        GOOGLE_ID           : Messages.BACKEND_GOOGLE,
+        INTERNAL_ID         : Messages.BACKEND_INTERNAL,
+        LOG_ONLY_ID         : Messages.BACKEND_LOG_ONLY,
+        PICO_TO_WAVE_ID     : Messages.CONVERT_PICO_TO_WAV,
+        RECITE_ID           : Messages.BACKEND_RECITE,
+        RESPONSIVE_VOICE_ID : Messages.BACKEND_RESPONSIVE_VOICE,
         SPEECH_DISPATCHER_ID: Messages.BACKEND_SPEECH_DISPATCHER
     }
 
@@ -66,13 +69,13 @@ class Backends(BaseSettingsConstants):
     # below the CACHE_PATH
 
     ENGINE_CACHE_CODE: Dict[str, str] = {
-        ESPEAK_ID: 'espeak',
-        FESTIVAL_ID: 'fest',
-        FLITE_ID: 'flite',
-        RESPONSIVE_VOICE_ID: 'rv',
-        SPEECH_DISPATCHER_ID: 'speechDisp',
+        ESPEAK_ID             : 'espeak',
+        FESTIVAL_ID           : 'fest',
+        FLITE_ID              : 'flite',
+        RESPONSIVE_VOICE_ID   : 'rv',
+        SPEECH_DISPATCHER_ID  : 'speechDisp',
         EXPERIMENTAL_ENGINE_ID: 'ex',
-        GOOGLE_ID: 'goo'
+        GOOGLE_ID             : 'goo'
     }
 
 
@@ -140,14 +143,14 @@ class Languages(BaseSettingsConstants):
     LOCALE_ZH_TW: Final[str] = 'zh-TW'
 
     settings_map = {
-        LOCALE_AF: Messages.LOCALE_AF,
+        LOCALE_AF   : Messages.LOCALE_AF,
         LOCALE_AF_ZA: Messages.LOCALE_AF_ZA,
         LOCALE_AR_SA: Messages.LOCALE_AR_SA,
-        LOCALE_BS: Messages.LOCALE_BS,
-        LOCALE_CA: Messages.LOCALE_CA,
+        LOCALE_BS   : Messages.LOCALE_BS,
+        LOCALE_CA   : Messages.LOCALE_CA,
         LOCALE_CA_ES: Messages.LOCALE_CA_ES,
-        LOCALE_CS: Messages.LOCALE_CS,
-        LOCALE_CY: Messages.LOCALE_CY,
+        LOCALE_CS   : Messages.LOCALE_CS,
+        LOCALE_CY   : Messages.LOCALE_CY,
         LOCALE_DA_DK: Messages.LOCALE_DA_DK,
         LOCALE_DE_DE: Messages.LOCALE_DE_DE,
         LOCALE_EL_GR: Messages.LOCALE_EL_GR,
@@ -157,17 +160,17 @@ class Languages(BaseSettingsConstants):
         LOCALE_EN_IN: Messages.LOCALE_EN_IN,
         LOCALE_EN_US: Messages.LOCALE_EN_US,
         LOCALE_EN_ZA: Messages.LOCALE_EN_ZA,
-        LOCALE_EO: Messages.LOCALE_EO,
+        LOCALE_EO   : Messages.LOCALE_EO,
         LOCALE_ES_ES: Messages.LOCALE_ES_ES,
-        LOCALE_ES: Messages.LOCALE_ES,
+        LOCALE_ES   : Messages.LOCALE_ES,
         LOCALE_ES_MX: Messages.LOCALE_ES_MX,
         LOCALE_ES_US: Messages.LOCALE_ES_US,
         LOCALE_FI_FI: Messages.LOCALE_FI_FI,
         LOCALE_FR_BE: Messages.LOCALE_FR_BE,
         LOCALE_FR_FR: Messages.LOCALE_FR_FR,
         LOCALE_FR_CA: Messages.LOCALE_FR_CA,
-        LOCALE_FR: Messages.LOCALE_FR,
-        LOCALE_HI: Messages.LOCALE_HI,
+        LOCALE_FR   : Messages.LOCALE_FR,
+        LOCALE_HI   : Messages.LOCALE_HI,
         LOCALE_HI_IN: Messages.LOCALE_HI_IN,
         LOCALE_HR_HR: Messages.LOCALE_HR_HR,
         LOCALE_HU_HU: Messages.LOCALE_HU_HU,
@@ -177,7 +180,7 @@ class Languages(BaseSettingsConstants):
         LOCALE_IT_IT: Messages.LOCALE_IT_IT,
         LOCALE_JA_JP: Messages.LOCALE_JA_JP,
         LOCALE_KO_KR: Messages.LOCALE_KO_KR,
-        LOCALE_LA: Messages.LOCALE_LA,
+        LOCALE_LA   : Messages.LOCALE_LA,
         LOCALE_LV_LV: Messages.LOCALE_LV_LV,
         LOCALE_NB_NO: Messages.LOCALE_NB_NO,
         LOCALE_NL_BE: Messages.LOCALE_NL_BE,
@@ -190,10 +193,10 @@ class Languages(BaseSettingsConstants):
         LOCALE_RU_RU: Messages.LOCALE_RU_RU,
         LOCALE_SK_SK: Messages.LOCALE_SK_SK,
         LOCALE_SQ_AL: Messages.LOCALE_SQ_AL,
-        LOCAL_SR_ME: Messages.LOCAL_SR_ME,
+        LOCAL_SR_ME : Messages.LOCAL_SR_ME,
         LOCALE_SR_RS: Messages.LOCALE_SR_RS,
         LOCALE_SW_KE: Messages.LOCALE_SW_KE,
-        LOCALE_TA: Messages.LOCALE_TA,
+        LOCALE_TA   : Messages.LOCALE_TA,
         LOCALE_TH_TH: Messages.LOCALE_TH_TH,
         LOCALE_TR_TR: Messages.LOCALE_TR_TR,
         LOCALE_VI_VN: Messages.LOCALE_VI_VN,
@@ -233,18 +236,18 @@ class Players(BaseSettingsConstants):
     BuiltInAudioPlayerHandler = 'internal_handler'
 
     settings_map = {
-        NONE: Messages.PLAYER_NONE,
-        SFX: Messages.PLAYER_SFX,
-        WINDOWS: Messages.PLAYER_WINDOWS,
-        APLAY: Messages.PLAYER_APLAY,
-        PAPLAY: Messages.PLAYER_PAPLAY,
-        AFPLAY: Messages.PLAYER_AFPLAY,
-        SOX: Messages.PLAYER_SOX,
-        MPLAYER: Messages.PLAYER_MPLAYER,
-        MPG321: Messages.PLAYER_MPG321,
-        MPG123: Messages.PLAYER_MPG123,
+        NONE        : Messages.PLAYER_NONE,
+        SFX         : Messages.PLAYER_SFX,
+        WINDOWS     : Messages.PLAYER_WINDOWS,
+        APLAY       : Messages.PLAYER_APLAY,
+        PAPLAY      : Messages.PLAYER_PAPLAY,
+        AFPLAY      : Messages.PLAYER_AFPLAY,
+        SOX         : Messages.PLAYER_SOX,
+        MPLAYER     : Messages.PLAYER_MPLAYER,
+        MPG321      : Messages.PLAYER_MPG321,
+        MPG123      : Messages.PLAYER_MPG123,
         MPG321_OE_PI: Messages.PLAYER_MPG321_OE_PI,
-        INTERNAL: Messages.PLAYER_INTERNAL
+        INTERNAL    : Messages.PLAYER_INTERNAL
     }
 
 
@@ -256,8 +259,8 @@ class Converters(BaseSettingsConstants):
     MPG123: Final[str] = 'mpg123'  # Can convert from mpg to wave, not too useful
     MPG321_OE_PI: Final[str] = 'mpg321_OE_Pi'
     MPG321: Final[str] = 'mpg321'  # near clone of mpg123, can convert mpg to wave
-    LAME: Final[str] = 'lame' # can be accessed directly via lame command (linux)
-                              # or via ffmpeg
+    LAME: Final[str] = 'lame'  # can be accessed directly via lame command (linux)
+    # or via ffmpeg
 
     # Built-in players
 
@@ -266,14 +269,14 @@ class Converters(BaseSettingsConstants):
     # TODO: Review to see if messages need to be unique to the converter job
 
     settings_map = {
-        NONE: Messages.PLAYER_NONE,
-        WINDOWS: Messages.PLAYER_WINDOWS,
-        SOX: Messages.PLAYER_SOX,
-        MPLAYER: Messages.PLAYER_MPLAYER,
-        MPG321: Messages.PLAYER_MPG321,
-        MPG123: Messages.PLAYER_MPG123,
+        NONE        : Messages.PLAYER_NONE,
+        WINDOWS     : Messages.PLAYER_WINDOWS,
+        SOX         : Messages.PLAYER_SOX,
+        MPLAYER     : Messages.PLAYER_MPLAYER,
+        MPG321      : Messages.PLAYER_MPG321,
+        MPG123      : Messages.PLAYER_MPG123,
         MPG321_OE_PI: Messages.PLAYER_MPG321_OE_PI,
-        INTERNAL: Messages.PLAYER_INTERNAL,
+        INTERNAL    : Messages.PLAYER_INTERNAL,
     }
 
 
@@ -285,8 +288,8 @@ class Genders(StrEnum):
 
 class GenderSettingsMap(BaseSettingsConstants):
     settings_map = {
-        Genders.MALE: Messages.GENDER_MALE,
-        Genders.FEMALE: Messages.GENDER_FEMALE,
+        Genders.MALE   : Messages.GENDER_MALE,
+        Genders.FEMALE : Messages.GENDER_FEMALE,
         Genders.UNKNOWN: Messages.GENDER_UNKNOWN
     }
 

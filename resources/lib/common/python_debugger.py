@@ -32,11 +32,12 @@ class PythonDebugger:
             return cls.remote_debug
 
         xbmc.log(
-            f'Attempting to attach to debugger python version: {sys.version}', xbmc.LOGINFO)
+                f'Attempting to attach to debugger python version: {sys.version}',
+                xbmc.LOGINFO)
         try:
             if cls.REMOTE_DEBUG and not cls.remote_debug:
                 cls.pydevd_addon_path = xbmcaddon.Addon(
-                    'script.module.pydevd').getAddonInfo('path')
+                        'script.module.pydevd').getAddonInfo('path')
                 addons_path = os.path.join(cls.pydevd_addon_path, 'lib')
                 sys.path.append(addons_path)
                 cls.remote_debug = True
@@ -57,8 +58,8 @@ class PythonDebugger:
             try:
                 if cls.START_IN_SEPARATE_THREAD:
                     cls.thread = threading.Thread(
-                        target=cls._enable,
-                        name=cls.plugin_name + 'pydevd startup thread')
+                            target=cls._enable,
+                            name=cls.plugin_name + 'pydevd startup thread')
                     cls.thread.start()
                 else:
                     cls._enable()
@@ -145,11 +146,13 @@ class PythonDebugger:
 
                 :param stderr_to_server: when this is true, the stderr is passed to 
                     the debug server
-                    so that they are printed in its console and not in this process console.
+                    so that they are printed in its console and not in this process 
+                    console.
 
                 :param port: specifies which port to use for communicating with the
                     server (note that the server must be started
-                    in the same port). @note: currently it's hard-coded at 5678 in the client
+                    in the same port). @note: currently it's hard-coded at 5678 in the 
+                    client
 
                 :param suspend: whether a breakpoint should be emulated as soon as
                     this function is called.
@@ -170,7 +173,8 @@ class PythonDebugger:
 
                 :param wait_for_ready_to_run: if True settrace will block until the 
                     ready_to_run flag is set to True,
-                    otherwise, it'll set ready_to_run to True and this function won't block.
+                    otherwise, it'll set ready_to_run to True and this function won't 
+                    block.
 
                     Note that if wait_for_ready_to_run == False, there are no guarantees
                     that the debugger is synchronized
@@ -185,18 +189,25 @@ class PythonDebugger:
                     one fo the patterns in the collection will not be traced
 
                 :param access_token: token to be sent from the client (i.e.: IDE) to 
-                    the debugger when a connection is established (verified by the debugger).
+                    the debugger when a connection is established (verified by the 
+                    debugger).
 
                 :param client_access_token: token to be sent from the debugger to the 
-                    client (i.e.: IDE) when a connection is established (verified by the client).
+                    client (i.e.: IDE) when a connection is established (verified by 
+                    the client).
 
                 :param notify_stdin:
-                    If True sys.stdin will be patched to notify the client when a message is requested
-                    from the IDE. This is done so that when reading the stdin the client is notified.
-                    Clients may need this to know when something that is being written should be interpreted
+                    If True sys.stdin will be patched to notify the client when a 
+                    message is requested
+                    from the IDE. This is done so that when reading the stdin the 
+                    client is notified.
+                    Clients may need this to know when something that is being written 
+                    should be interpreted
                     as an input to the process or as a command to be evaluated.
-                    Note that parallel-python has issues with this (because it tries to assert that sys.stdin
-                    is of a given type instead of just checking that it has what it needs).
+                    Note that parallel-python has issues with this (because it tries to 
+                    assert that sys.stdin
+                    is of a given type instead of just checking that it has what it 
+                    needs).
                 """
 
                 pydevd.settrace('localhost', stdoutToServer=True,
@@ -204,8 +215,9 @@ class PythonDebugger:
                                 wait_for_ready_to_run=cls.WAIT_FOR_READY_TO_RUN)
             except Exception as e:
                 xbmc.log(
-                    f' Looks like remote debugger was not started prior to {cls.plugin_name}',
-                    xbmc.LOGDEBUG)
+                        f' Looks like remote debugger was not started prior to '
+                        f'{cls.plugin_name}',
+                        xbmc.LOGDEBUG)
                 cls.remote_debug = False
 
         xbmc.log(f"PythonDebugger {cls.plugin_name}: " +

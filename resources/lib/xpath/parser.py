@@ -1,5 +1,3 @@
-import re
-
 from . import expr as X
 from .yappsrt import *
 
@@ -31,22 +29,29 @@ class XPathScanner(Scanner):
         ("r'or'", re.compile('or')),
         ('\\s+', re.compile('\\s+')),
         ('END', re.compile('$')),
-        ('FORWARD_AXIS_NAME', re.compile('child|descendant-or-self|attribute|self|descendant|following-sibling|following|namespace')),
-        ('REVERSE_AXIS_NAME', re.compile('parent|preceding-sibling|preceding|ancestor-or-self|ancestor')),
+        ('FORWARD_AXIS_NAME', re.compile(
+            'child|descendant-or-self|attribute|self|descendant|following-sibling'
+            '|following|namespace')),
+        ('REVERSE_AXIS_NAME',
+         re.compile('parent|preceding-sibling|preceding|ancestor-or-self|ancestor')),
         ('NCNAME', re.compile('[a-zA-Z_][a-zA-Z0-9_\\-\\.\\w]*(?!\\()')),
         ('FUNCNAME', re.compile('[a-zA-Z_][a-zA-Z0-9_\\-\\.\\w]*')),
         ('DQUOTE', re.compile('\\"(?:[^\\"])*\\"')),
         ('SQUOTE', re.compile("\\'(?:[^\\'])*\\'")),
-        ('NUMBER', re.compile('((\\.[0-9]+)|([0-9]+(\\.[0-9]*)?))([eE][\\+\\-]?[0-9]+)?')),
+        (
+        'NUMBER', re.compile('((\\.[0-9]+)|([0-9]+(\\.[0-9]*)?))([eE][\\+\\-]?[0-9]+)?')),
         ('EQ_COMP', re.compile('\\!?\\=')),
         ('REL_COMP', re.compile('[\\<\\>]\\=?')),
         ('ADD_COMP', re.compile('[\\+\\-]')),
         ('MUL_COMP', re.compile('\\*|div|mod')),
     ]
+
     def __init__(self, str):
-        Scanner.__init__(self,None,['\\s+'],str)
+        Scanner.__init__(self, None, ['\\s+'], str)
+
 
 class XPath(Parser):
+
     def XPath(self):
         Expr = self.Expr()
         END = self._scan('END')
@@ -68,7 +73,8 @@ class XPath(Parser):
     def AndExpr(self):
         EqualityExpr = self.EqualityExpr()
         Expr = EqualityExpr
-        while self._peek("r'and'", "r'or'", 'END', "r'\\]'", "r'\\)'", "r'\\,'") == "r'and'":
+        while self._peek("r'and'", "r'or'", 'END', "r'\\]'", "r'\\)'",
+                         "r'\\,'") == "r'and'":
             self._scan("r'and'")
             EqualityExpr = self.EqualityExpr()
             Expr = X.AndExpr('and', Expr, EqualityExpr)
@@ -77,7 +83,8 @@ class XPath(Parser):
     def EqualityExpr(self):
         RelationalExpr = self.RelationalExpr()
         Expr = RelationalExpr
-        while self._peek('EQ_COMP', "r'and'", "r'or'", 'END', "r'\\]'", "r'\\)'", "r'\\,'") == 'EQ_COMP':
+        while self._peek('EQ_COMP', "r'and'", "r'or'", 'END', "r'\\]'", "r'\\)'",
+                         "r'\\,'") == 'EQ_COMP':
             EQ_COMP = self._scan('EQ_COMP')
             RelationalExpr = self.RelationalExpr()
             Expr = X.EqualityExpr(EQ_COMP, Expr, RelationalExpr)
@@ -86,7 +93,8 @@ class XPath(Parser):
     def RelationalExpr(self):
         AdditiveExpr = self.AdditiveExpr()
         Expr = AdditiveExpr
-        while self._peek('REL_COMP', 'EQ_COMP', "r'and'", "r'or'", 'END', "r'\\]'", "r'\\)'", "r'\\,'") == 'REL_COMP':
+        while self._peek('REL_COMP', 'EQ_COMP', "r'and'", "r'or'", 'END', "r'\\]'",
+                         "r'\\)'", "r'\\,'") == 'REL_COMP':
             REL_COMP = self._scan('REL_COMP')
             AdditiveExpr = self.AdditiveExpr()
             Expr = X.EqualityExpr(REL_COMP, Expr, AdditiveExpr)
@@ -95,7 +103,8 @@ class XPath(Parser):
     def AdditiveExpr(self):
         MultiplicativeExpr = self.MultiplicativeExpr()
         Expr = MultiplicativeExpr
-        while self._peek('ADD_COMP', 'REL_COMP', 'EQ_COMP', "r'and'", "r'or'", 'END', "r'\\]'", "r'\\)'", "r'\\,'") == 'ADD_COMP':
+        while self._peek('ADD_COMP', 'REL_COMP', 'EQ_COMP', "r'and'", "r'or'", 'END',
+                         "r'\\]'", "r'\\)'", "r'\\,'") == 'ADD_COMP':
             ADD_COMP = self._scan('ADD_COMP')
             MultiplicativeExpr = self.MultiplicativeExpr()
             Expr = X.ArithmeticalExpr(ADD_COMP, Expr, MultiplicativeExpr)
@@ -104,7 +113,8 @@ class XPath(Parser):
     def MultiplicativeExpr(self):
         UnionExpr = self.UnionExpr()
         Expr = UnionExpr
-        while self._peek('MUL_COMP', 'ADD_COMP', 'REL_COMP', 'EQ_COMP', "r'and'", "r'or'", 'END', "r'\\]'", "r'\\)'", "r'\\,'") == 'MUL_COMP':
+        while self._peek('MUL_COMP', 'ADD_COMP', 'REL_COMP', 'EQ_COMP', "r'and'", "r'or'",
+                         'END', "r'\\]'", "r'\\)'", "r'\\,'") == 'MUL_COMP':
             MUL_COMP = self._scan('MUL_COMP')
             UnionExpr = self.UnionExpr()
             Expr = X.ArithmeticalExpr(MUL_COMP, Expr, UnionExpr)
@@ -113,14 +123,19 @@ class XPath(Parser):
     def UnionExpr(self):
         UnaryExpr = self.UnaryExpr()
         Expr = UnaryExpr
-        while self._peek("'\\|'", 'MUL_COMP', 'ADD_COMP', 'REL_COMP', 'EQ_COMP', "r'and'", "r'or'", 'END', "r'\\]'", "r'\\)'", "r'\\,'") == "'\\|'":
+        while self._peek("'\\|'", 'MUL_COMP', 'ADD_COMP', 'REL_COMP', 'EQ_COMP', "r'and'",
+                         "r'or'", 'END', "r'\\]'", "r'\\)'", "r'\\,'") == "'\\|'":
             self._scan("'\\|'")
             UnaryExpr = self.UnaryExpr()
             Expr = X.UnionExpr('|', Expr, UnaryExpr)
         return Expr
 
     def UnaryExpr(self):
-        _token_ = self._peek("r'\\-'", "r'\\/'", "r'\\/\\/'", "r'\\('", 'FORWARD_AXIS_NAME', "r'@'", 'REVERSE_AXIS_NAME', "r'\\.\\.'", "r'\\$'", "r'\\.'", 'FUNCNAME', 'NUMBER', 'DQUOTE', 'SQUOTE', "r'processing-instruction'", "r'comment'", "r'text'", "r'node'", "r'\\*'", 'NCNAME')
+        _token_ = self._peek("r'\\-'", "r'\\/'", "r'\\/\\/'", "r'\\('",
+                             'FORWARD_AXIS_NAME', "r'@'", 'REVERSE_AXIS_NAME',
+                             "r'\\.\\.'", "r'\\$'", "r'\\.'", 'FUNCNAME', 'NUMBER',
+                             'DQUOTE', 'SQUOTE', "r'processing-instruction'",
+                             "r'comment'", "r'text'", "r'node'", "r'\\*'", 'NCNAME')
         if _token_ == "r'\\-'":
             self._scan("r'\\-'")
             ValueExpr = self.ValueExpr()
@@ -134,11 +149,23 @@ class XPath(Parser):
         return PathExpr
 
     def PathExpr(self):
-        _token_ = self._peek("r'\\/'", "r'\\/\\/'", "r'\\('", 'FORWARD_AXIS_NAME', "r'@'", 'REVERSE_AXIS_NAME', "r'\\.\\.'", "r'\\$'", "r'\\.'", 'FUNCNAME', 'NUMBER', 'DQUOTE', 'SQUOTE', "r'processing-instruction'", "r'comment'", "r'text'", "r'node'", "r'\\*'", 'NCNAME')
+        _token_ = self._peek("r'\\/'", "r'\\/\\/'", "r'\\('", 'FORWARD_AXIS_NAME', "r'@'",
+                             'REVERSE_AXIS_NAME', "r'\\.\\.'", "r'\\$'", "r'\\.'",
+                             'FUNCNAME', 'NUMBER', 'DQUOTE', 'SQUOTE',
+                             "r'processing-instruction'", "r'comment'", "r'text'",
+                             "r'node'", "r'\\*'", 'NCNAME')
         if _token_ == "r'\\/'":
             self._scan("r'\\/'")
             path = None
-            if self._peek("r'\\('", 'FORWARD_AXIS_NAME', "r'@'", 'REVERSE_AXIS_NAME', "r'\\.\\.'", "r'\\$'", "r'\\.'", 'FUNCNAME', 'NUMBER', 'DQUOTE', 'SQUOTE', "r'processing-instruction'", "r'comment'", "r'text'", "r'node'", "r'\\*'", 'NCNAME', "'\\|'", 'MUL_COMP', 'ADD_COMP', 'REL_COMP', 'EQ_COMP', "r'and'", "r'or'", 'END', "r'\\]'", "r'\\)'", "r'\\,'") not in ["'\\|'", 'MUL_COMP', 'ADD_COMP', 'REL_COMP', 'EQ_COMP', "r'and'", "r'or'", 'END', "r'\\]'", "r'\\)'", "r'\\,'"]:
+            if self._peek("r'\\('", 'FORWARD_AXIS_NAME', "r'@'", 'REVERSE_AXIS_NAME',
+                          "r'\\.\\.'", "r'\\$'", "r'\\.'", 'FUNCNAME', 'NUMBER', 'DQUOTE',
+                          'SQUOTE', "r'processing-instruction'", "r'comment'", "r'text'",
+                          "r'node'", "r'\\*'", 'NCNAME', "'\\|'", 'MUL_COMP', 'ADD_COMP',
+                          'REL_COMP', 'EQ_COMP', "r'and'", "r'or'", 'END', "r'\\]'",
+                          "r'\\)'", "r'\\,'") not in ["'\\|'", 'MUL_COMP', 'ADD_COMP',
+                                                      'REL_COMP', 'EQ_COMP', "r'and'",
+                                                      "r'or'", 'END', "r'\\]'", "r'\\)'",
+                                                      "r'\\,'"]:
                 RelativePathExpr = self.RelativePathExpr()
                 path = RelativePathExpr
             return X.AbsolutePathExpr(path)
@@ -155,11 +182,13 @@ class XPath(Parser):
     def RelativePathExpr(self):
         StepExpr = self.StepExpr()
         steps = [StepExpr]
-        while self._peek("r'\\/'", "r'\\/\\/'", "'\\|'", 'MUL_COMP', 'ADD_COMP', 'REL_COMP', 'EQ_COMP', "r'and'", "r'or'", 'END', "r'\\]'", "r'\\)'", "r'\\,'") in ["r'\\/'", "r'\\/\\/'"]:
+        while self._peek("r'\\/'", "r'\\/\\/'", "'\\|'", 'MUL_COMP', 'ADD_COMP',
+                         'REL_COMP', 'EQ_COMP', "r'and'", "r'or'", 'END', "r'\\]'",
+                         "r'\\)'", "r'\\,'") in ["r'\\/'", "r'\\/\\/'"]:
             _token_ = self._peek("r'\\/'", "r'\\/\\/'")
             if _token_ == "r'\\/'":
                 self._scan("r'\\/'")
-            else:# == "r'\\/\\/'"
+            else:  # == "r'\\/\\/'"
                 self._scan("r'\\/\\/'")
                 steps.append(X.AxisStep('descendant-or-self'))
             StepExpr = self.StepExpr()
@@ -167,8 +196,12 @@ class XPath(Parser):
         return X.PathExpr(steps)
 
     def StepExpr(self):
-        _token_ = self._peek("r'\\('", 'FORWARD_AXIS_NAME', "r'@'", 'REVERSE_AXIS_NAME', "r'\\.\\.'", "r'\\$'", "r'\\.'", 'FUNCNAME', 'NUMBER', 'DQUOTE', 'SQUOTE', "r'processing-instruction'", "r'comment'", "r'text'", "r'node'", "r'\\*'", 'NCNAME')
-        if _token_ not in ["r'\\('", "r'\\$'", "r'\\.'", 'FUNCNAME', 'NUMBER', 'DQUOTE', 'SQUOTE']:
+        _token_ = self._peek("r'\\('", 'FORWARD_AXIS_NAME', "r'@'", 'REVERSE_AXIS_NAME',
+                             "r'\\.\\.'", "r'\\$'", "r'\\.'", 'FUNCNAME', 'NUMBER',
+                             'DQUOTE', 'SQUOTE', "r'processing-instruction'",
+                             "r'comment'", "r'text'", "r'node'", "r'\\*'", 'NCNAME')
+        if _token_ not in ["r'\\('", "r'\\$'", "r'\\.'", 'FUNCNAME', 'NUMBER', 'DQUOTE',
+                           'SQUOTE']:
             AxisStep = self.AxisStep()
             return AxisStep
         else:
@@ -176,21 +209,26 @@ class XPath(Parser):
             return FilterExpr
 
     def AxisStep(self):
-        _token_ = self._peek('FORWARD_AXIS_NAME', "r'@'", 'REVERSE_AXIS_NAME', "r'\\.\\.'", "r'processing-instruction'", "r'comment'", "r'text'", "r'node'", "r'\\*'", 'NCNAME')
+        _token_ = self._peek('FORWARD_AXIS_NAME', "r'@'", 'REVERSE_AXIS_NAME',
+                             "r'\\.\\.'", "r'processing-instruction'", "r'comment'",
+                             "r'text'", "r'node'", "r'\\*'", 'NCNAME')
         if _token_ not in ['REVERSE_AXIS_NAME', "r'\\.\\.'"]:
             ForwardStep = self.ForwardStep()
             step = ForwardStep
-        else:# in ['REVERSE_AXIS_NAME', "r'\\.\\.'"]
+        else:  # in ['REVERSE_AXIS_NAME', "r'\\.\\.'"]
             ReverseStep = self.ReverseStep()
             step = ReverseStep
         expr = X.AxisStep(*step)
-        if self._peek("r'\\['", "r'\\/'", "r'\\/\\/'", "'\\|'", 'MUL_COMP', 'ADD_COMP', 'REL_COMP', 'EQ_COMP', "r'and'", "r'or'", 'END', "r'\\]'", "r'\\)'", "r'\\,'") == "r'\\['":
+        if self._peek("r'\\['", "r'\\/'", "r'\\/\\/'", "'\\|'", 'MUL_COMP', 'ADD_COMP',
+                      'REL_COMP', 'EQ_COMP', "r'and'", "r'or'", 'END', "r'\\]'", "r'\\)'",
+                      "r'\\,'") == "r'\\['":
             PredicateList = self.PredicateList()
             expr = X.PredicateList(expr, PredicateList, step[0])
         return expr
 
     def ForwardStep(self):
-        _token_ = self._peek('FORWARD_AXIS_NAME', "r'@'", "r'processing-instruction'", "r'comment'", "r'text'", "r'node'", "r'\\*'", 'NCNAME')
+        _token_ = self._peek('FORWARD_AXIS_NAME', "r'@'", "r'processing-instruction'",
+                             "r'comment'", "r'text'", "r'node'", "r'\\*'", 'NCNAME')
         if _token_ == 'FORWARD_AXIS_NAME':
             ForwardAxis = self.ForwardAxis()
             NodeTest = self.NodeTest()
@@ -206,7 +244,8 @@ class XPath(Parser):
 
     def AbbrevForwardStep(self):
         axis = 'child'
-        if self._peek("r'@'", "r'processing-instruction'", "r'comment'", "r'text'", "r'node'", "r'\\*'", 'NCNAME') == "r'@'":
+        if self._peek("r'@'", "r'processing-instruction'", "r'comment'", "r'text'",
+                      "r'node'", "r'\\*'", 'NCNAME') == "r'@'":
             self._scan("r'@'")
             axis = 'attribute'
         NodeTest = self.NodeTest()
@@ -218,7 +257,7 @@ class XPath(Parser):
             ReverseAxis = self.ReverseAxis()
             NodeTest = self.NodeTest()
             return [ReverseAxis, NodeTest]
-        else:# == "r'\\.\\.'"
+        else:  # == "r'\\.\\.'"
             AbbrevReverseStep = self.AbbrevReverseStep()
             return AbbrevReverseStep
 
@@ -232,11 +271,12 @@ class XPath(Parser):
         return ['parent', None]
 
     def NodeTest(self):
-        _token_ = self._peek("r'processing-instruction'", "r'comment'", "r'text'", "r'node'", "r'\\*'", 'NCNAME')
+        _token_ = self._peek("r'processing-instruction'", "r'comment'", "r'text'",
+                             "r'node'", "r'\\*'", 'NCNAME')
         if _token_ not in ["r'\\*'", 'NCNAME']:
             KindTest = self.KindTest()
             return KindTest
-        else:# in ["r'\\*'", 'NCNAME']
+        else:  # in ["r'\\*'", 'NCNAME']
             NameTest = self.NameTest()
             return NameTest
 
@@ -244,7 +284,9 @@ class XPath(Parser):
         prefix = None
         WildcardOrNCName = self.WildcardOrNCName()
         localpart = WildcardOrNCName
-        if self._peek("r':'", "r'\\['", "r'\\/'", "r'\\/\\/'", "'\\|'", 'MUL_COMP', 'ADD_COMP', 'REL_COMP', 'EQ_COMP', "r'and'", "r'or'", 'END', "r'\\]'", "r'\\)'", "r'\\,'") == "r':'":
+        if self._peek("r':'", "r'\\['", "r'\\/'", "r'\\/\\/'", "'\\|'", 'MUL_COMP',
+                      'ADD_COMP', 'REL_COMP', 'EQ_COMP', "r'and'", "r'or'", 'END',
+                      "r'\\]'", "r'\\)'", "r'\\,'") == "r':'":
             self._scan("r':'")
             WildcardOrNCName = self.WildcardOrNCName()
             prefix = localpart
@@ -256,21 +298,25 @@ class XPath(Parser):
         if _token_ == "r'\\*'":
             self._scan("r'\\*'")
             return '*'
-        else:# == 'NCNAME'
+        else:  # == 'NCNAME'
             NCNAME = self._scan('NCNAME')
             return NCNAME
 
     def FilterExpr(self):
         PrimaryExpr = self.PrimaryExpr()
-        if self._peek("r'\\['", "r'\\/'", "r'\\/\\/'", "'\\|'", 'MUL_COMP', 'ADD_COMP', 'REL_COMP', 'EQ_COMP', "r'and'", "r'or'", 'END', "r'\\]'", "r'\\)'", "r'\\,'") == "r'\\['":
+        if self._peek("r'\\['", "r'\\/'", "r'\\/\\/'", "'\\|'", 'MUL_COMP', 'ADD_COMP',
+                      'REL_COMP', 'EQ_COMP', "r'and'", "r'or'", 'END', "r'\\]'", "r'\\)'",
+                      "r'\\,'") == "r'\\['":
             PredicateList = self.PredicateList()
-            PrimaryExpr = X.PredicateList(PrimaryExpr,PredicateList)
+            PrimaryExpr = X.PredicateList(PrimaryExpr, PredicateList)
         return PrimaryExpr
 
     def PredicateList(self):
         Predicate = self.Predicate()
         predicates = [Predicate]
-        while self._peek("r'\\['", "r'\\/'", "r'\\/\\/'", "'\\|'", 'MUL_COMP', 'ADD_COMP', 'REL_COMP', 'EQ_COMP', "r'and'", "r'or'", 'END', "r'\\]'", "r'\\)'", "r'\\,'") == "r'\\['":
+        while self._peek("r'\\['", "r'\\/'", "r'\\/\\/'", "'\\|'", 'MUL_COMP', 'ADD_COMP',
+                         'REL_COMP', 'EQ_COMP', "r'and'", "r'or'", 'END', "r'\\]'",
+                         "r'\\)'", "r'\\,'") == "r'\\['":
             Predicate = self.Predicate()
             predicates.append(Predicate)
         return predicates
@@ -282,7 +328,8 @@ class XPath(Parser):
         return Expr
 
     def PrimaryExpr(self):
-        _token_ = self._peek("r'\\('", "r'\\$'", "r'\\.'", 'FUNCNAME', 'NUMBER', 'DQUOTE', 'SQUOTE')
+        _token_ = self._peek("r'\\('", "r'\\$'", "r'\\.'", 'FUNCNAME', 'NUMBER', 'DQUOTE',
+                             'SQUOTE')
         if _token_ not in ["r'\\('", "r'\\$'", "r'\\.'", 'FUNCNAME']:
             Literal = self.Literal()
             return X.LiteralExpr(Literal)
@@ -297,7 +344,7 @@ class XPath(Parser):
         elif _token_ == "r'\\.'":
             ContextItemExpr = self.ContextItemExpr()
             return ContextItemExpr
-        else:# == 'FUNCNAME'
+        else:  # == 'FUNCNAME'
             FunctionCall = self.FunctionCall()
             return FunctionCall
 
@@ -314,7 +361,11 @@ class XPath(Parser):
         FUNCNAME = self._scan('FUNCNAME')
         self._scan("r'\\('")
         args = []
-        if self._peek("r'\\,'", "r'\\)'", "r'\\-'", "r'\\/'", "r'\\/\\/'", "r'\\('", 'FORWARD_AXIS_NAME', "r'@'", 'REVERSE_AXIS_NAME', "r'\\.\\.'", "r'\\$'", "r'\\.'", 'FUNCNAME', 'NUMBER', 'DQUOTE', 'SQUOTE', "r'processing-instruction'", "r'comment'", "r'text'", "r'node'", "r'\\*'", 'NCNAME') not in ["r'\\,'", "r'\\)'"]:
+        if self._peek("r'\\,'", "r'\\)'", "r'\\-'", "r'\\/'", "r'\\/\\/'", "r'\\('",
+                      'FORWARD_AXIS_NAME', "r'@'", 'REVERSE_AXIS_NAME', "r'\\.\\.'",
+                      "r'\\$'", "r'\\.'", 'FUNCNAME', 'NUMBER', 'DQUOTE', 'SQUOTE',
+                      "r'processing-instruction'", "r'comment'", "r'text'", "r'node'",
+                      "r'\\*'", 'NCNAME') not in ["r'\\,'", "r'\\)'"]:
             Expr = self.Expr()
             args.append(Expr)
             while self._peek("r'\\,'", "r'\\)'") == "r'\\,'":
@@ -325,7 +376,8 @@ class XPath(Parser):
         return X.Function(FUNCNAME, args)
 
     def KindTest(self):
-        _token_ = self._peek("r'processing-instruction'", "r'comment'", "r'text'", "r'node'")
+        _token_ = self._peek("r'processing-instruction'", "r'comment'", "r'text'",
+                             "r'node'")
         if _token_ == "r'processing-instruction'":
             PITest = self.PITest()
             return PITest
@@ -335,7 +387,7 @@ class XPath(Parser):
         elif _token_ == "r'text'":
             TextTest = self.TextTest()
             return TextTest
-        else:# == "r'node'"
+        else:  # == "r'node'"
             AnyKindTest = self.AnyKindTest()
             return AnyKindTest
 
@@ -348,7 +400,7 @@ class XPath(Parser):
             if _token_ == 'NCNAME':
                 NCNAME = self._scan('NCNAME')
                 name = NCNAME
-            else:# in ['DQUOTE', 'SQUOTE']
+            else:  # in ['DQUOTE', 'SQUOTE']
                 StringLiteral = self.StringLiteral()
                 name = StringLiteral
         self._scan("r'\\)'")
@@ -377,7 +429,7 @@ class XPath(Parser):
         if _token_ == 'NUMBER':
             NumericLiteral = self.NumericLiteral()
             return NumericLiteral
-        else:# in ['DQUOTE', 'SQUOTE']
+        else:  # in ['DQUOTE', 'SQUOTE']
             StringLiteral = self.StringLiteral()
             return StringLiteral
 
@@ -390,14 +442,16 @@ class XPath(Parser):
         if _token_ == 'DQUOTE':
             DQUOTE = self._scan('DQUOTE')
             return DQUOTE[1:-1]
-        else:# == 'SQUOTE'
+        else:  # == 'SQUOTE'
             SQUOTE = self._scan('SQUOTE')
             return SQUOTE[1:-1]
 
     def QName(self):
         NCNAME = self._scan('NCNAME')
         name = NCNAME
-        if self._peek("r'\\:'", "r'\\['", "r'\\/'", "r'\\/\\/'", "'\\|'", 'MUL_COMP', 'ADD_COMP', 'REL_COMP', 'EQ_COMP', "r'and'", "r'or'", 'END', "r'\\]'", "r'\\)'", "r'\\,'") == "r'\\:'":
+        if self._peek("r'\\:'", "r'\\['", "r'\\/'", "r'\\/\\/'", "'\\|'", 'MUL_COMP',
+                      'ADD_COMP', 'REL_COMP', 'EQ_COMP', "r'and'", "r'or'", 'END',
+                      "r'\\]'", "r'\\)'", "r'\\,'") == "r'\\:'":
             self._scan("r'\\:'")
             NCNAME = self._scan('NCNAME')
             return (name, NCNAME)
@@ -408,12 +462,15 @@ def parse(rule, text):
     P = XPath(XPathScanner(text))
     return wrap_error_reporter(P, rule)
 
+
 if __name__ == '__main__':
     from sys import argv, stdin
+
     if len(argv) >= 2:
         if len(argv) >= 3:
-            f = open(argv[2],'r')
+            f = open(argv[2], 'r')
         else:
             f = stdin
         print(parse(argv[1], f.read()))
-    else: print('Args:  <rule> [<filename>]')
+    else:
+        print('Args:  <rule> [<filename>]')

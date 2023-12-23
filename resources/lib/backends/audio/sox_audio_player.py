@@ -1,18 +1,18 @@
 import os
 import subprocess
 import sys
-from typing import *
 
 from backends.audio.base_audio import SubprocessAudioPlayer
 from backends.audio.sound_capabilties import SoundCapabilities
 from backends.players.player_index import PlayerIndex
 from backends.settings.service_types import ServiceType
-from common.logger import BasicLogger
 from common.base_services import BaseServices
+from common.logger import BasicLogger
 from common.setting_constants import Players
 from common.typing import *
 
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
+
 
 class SOXAudioPlayer(SubprocessAudioPlayer):
     ID = Players.SOX
@@ -31,6 +31,7 @@ class SOXAudioPlayer(SubprocessAudioPlayer):
     SoundCapabilities.add_service(service_ID, _provides_services,
                                   _supported_input_formats,
                                   _supported_output_formats)
+
     def __init__(self):
         super().__init__()
         self._logger = module_logger.getChild(

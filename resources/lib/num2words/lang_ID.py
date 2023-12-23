@@ -30,9 +30,9 @@ class Num2Word_ID():
             8: ["delapan"],
             9: ["sembilan"]}
 
-    TENS_TO = {3: "ribu",
-               6: "juta",
-               9: "miliar",
+    TENS_TO = {3 : "ribu",
+               6 : "juta",
+               9 : "miliar",
                12: "triliun",
                15: "kuadriliun",
                18: "kuantiliun",
@@ -95,8 +95,8 @@ class Num2Word_ID():
             spelling = self.puluh(first_block[0])
         else:
             spelling = (
-                self.ratus(first_block[0][0]) + self.puluh(first_block[0][1:3])
-                )
+                    self.ratus(first_block[0][0]) + self.puluh(first_block[0][1:3])
+            )
 
         word_blocks += (first_block[0], spelling),
 
@@ -129,8 +129,8 @@ class Num2Word_ID():
             return self.BASE[int(number[1])]
         else:
             return (
-                self.BASE[int(number[0])] + ['puluh']
-                + self.BASE[int(number[1])]
+                    self.BASE[int(number[0])] + ['puluh']
+                    + self.BASE[int(number[1])]
             )
 
     def spell_float(self, float_part):

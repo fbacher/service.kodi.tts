@@ -1,8 +1,6 @@
 # coding=utf-8
 from subprocess import Popen
 
-from cache.prefetch_movie_data.seed_cache import SeedCache
-from common.critical_settings import CriticalSettings
 from common.logger import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -20,6 +18,7 @@ class MyPopen(Popen):
         Such function accepts only 3 positional arguments, and everything after *
          can only be passed as keyword arguments.
     """
+
     def __init__(self, args, bufsize=- 1, executable=None, stdin=None, stdout=None,
                  stderr=None, preexec_fn=None, close_fds=True, shell=False, cwd=None,
                  env=None, universal_newlines=None, startupinfo=None, creationflags=0,
@@ -73,28 +72,40 @@ class MyPopen(Popen):
         one, use stdout=PIPE and stderr=STDOUT instead of capture_output.
 
         The timeout argument is passed to Popen.communicate(). If the timeout expires,
-        the child process will be killed and waited for. The TimeoutExpired exception will be
+        the child process will be killed and waited for. The TimeoutExpired exception
+        will be
         re-raised after the child process has terminated.
 
-        The input argument is passed to Popen.communicate() and thus to the subprocess’s stdin.
-        If used it must be a byte sequence, or a string if encoding or errors is specified or
+        The input argument is passed to Popen.communicate() and thus to the
+        subprocess’s stdin.
+        If used it must be a byte sequence, or a string if encoding or errors is
+        specified or
         text is true. When used, the internal Popen object is automatically created with
         stdin=PIPE, and the stdin argument may not be used as well.
 
-        If check is true, and the process exits with a non-zero exit code, a CalledProcessError
-        exception will be raised. Attributes of that exception hold the arguments, the exit
+        If check is true, and the process exits with a non-zero exit code,
+        a CalledProcessError
+        exception will be raised. Attributes of that exception hold the arguments,
+        the exit
         code, and stdout and stderr if they were captured.
 
         If encoding or errors are specified, or text is true, file objects for stdin,
-        stdout and stderr are opened in text mode using the specified encoding and errors or
-        the io.TextIOWrapper default. The universal_newlines argument is equivalent to text and
-        is provided for backwards compatibility. By default, file objects are opened in binary
+        stdout and stderr are opened in text mode using the specified encoding and
+        errors or
+        the io.TextIOWrapper default. The universal_newlines argument is equivalent to
+        text and
+        is provided for backwards compatibility. By default, file objects are opened in
+        binary
         mode.
 
-        If env is not None, it must be a mapping that defines the environment variables for the
-        new process; these are used instead of the default behavior of inheriting the current
-        process’ environment. It is passed directly to Popen. This mapping can be str to str on
-        any platform or bytes to bytes on POSIX platforms much like os.environ or os.environb.
+        If env is not None, it must be a mapping that defines the environment variables
+        for the
+        new process; these are used instead of the default behavior of inheriting the
+        current
+        process’ environment. It is passed directly to Popen. This mapping can be str
+        to str on
+        any platform or bytes to bytes on POSIX platforms much like os.environ or
+        os.environb.
         """
         return MyPopen(args, stdin=stdin, stdout=stdout, stderr=stderr, shell=shell,
                        cwd=cwd, encoding=encoding, errors=errors, text=text,

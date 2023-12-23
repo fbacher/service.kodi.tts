@@ -10,7 +10,7 @@ from common.critical_settings import CriticalSettings
 from common.minimal_monitor import MinimalMonitor
 from common.python_debugger import PythonDebugger
 
-REMOTE_DEBUG: bool = True
+REMOTE_DEBUG: bool = False
 
 addon_id: str = CriticalSettings.ADDON_ID
 
@@ -36,10 +36,6 @@ if REMOTE_DEBUG:
         PythonDebugger.disable()
         sys.exit()
 
-import datetime
-import faulthandler
-import io
-import signal
 try:
     pass
     # import web_pdb;
@@ -53,17 +49,13 @@ from common.logger import *
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 from common.typing import *
-
-
 from backends import audio
 from common.settings import Settings
-from backends.backend_info import BackendInfo
 from backends.settings.setting_properties import SettingsProperties
 
 from common.constants import Constants
 from common.system_queries import SystemQueries
 import enabler
-
 
 __version__ = Constants.VERSION
 
@@ -129,7 +121,9 @@ def startService():
         return
     xbmc.log('starting service.startservice thread', xbmc.LOGDEBUG)
 
+    #  Do NOT remove import!!
     from startup.bootstrap_engines import BootstrapEngines
+    BootstrapEngines.init()
     try:
         from backends.audio.bootstrap_players import BootstrapPlayers
 
@@ -178,7 +172,7 @@ class MainThreadLoop(xbmc.Monitor):
             # stuff is handled quickly. Then revert to less frequent checks
 
             initial_timeout = CriticalSettings.SHORT_POLL_DELAY
-            switch_timeouts_count = initial_timeout / 10.0 # 10 seconds
+            switch_timeouts_count = initial_timeout / 10.0  # 10 seconds
 
             # Don't start backend for about one second after start if
             # debugging is enabled in order for it to start.
@@ -232,6 +226,7 @@ class MainThreadLoop(xbmc.Monitor):
 
 if __name__ == '__main__':
     import threading
+
     module_logger.debug('starting service.py service.kodi.tts service thread')
     # sys.exit()
     #
@@ -241,6 +236,6 @@ if __name__ == '__main__':
     except AbortException:
         PythonDebugger.disable()
     except Exception as e:
-       module_logger.exception('')
-       PythonDebugger.disable()
+        module_logger.exception('')
+        PythonDebugger.disable()
     sys.exit()

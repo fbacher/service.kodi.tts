@@ -21,7 +21,7 @@ class PlayerIndex:
         Players.MPG123,
         Players.MPG321_OE_PI,
         Players.INTERNAL,
-        Players.NONE ]
+        Players.NONE]
     #     Players.WavAudioPlayerHandler,
     #     Players.MP3AudioPlayerHandler,
     #     Players.BuiltInAudioPlayerHandler
@@ -29,7 +29,7 @@ class PlayerIndex:
     _player_lookup: Dict[str, IPlayer] = {}
 
     @staticmethod
-    def register(player_id: str, player: IPlayer ) -> None:
+    def register(player_id: str, player: IPlayer) -> None:
         PlayerIndex._player_lookup[player_id] = player
         return
 

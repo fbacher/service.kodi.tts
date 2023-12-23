@@ -52,17 +52,17 @@ class Num2Word_RO(lang_EU.Num2Word_EU):
         self.gen_numwords_n = ["", "un", "două", "trei", "patru", "cinci",
                                "șase", "șapte", "opt", "nouă"]
         self.numwords_inflections = {
-            100: self.gen_numwords,
-            1000: self.gen_numwords,
-            1000000: self.gen_numwords_n,
+            100       : self.gen_numwords,
+            1000      : self.gen_numwords,
+            1000000   : self.gen_numwords_n,
             1000000000: self.gen_numwords_n
         }
-        self.ords = {"unu": "primul",
-                     "doi": "al doilea",
-                     "three": "al treilea",
-                     "cinci": "al cincilea",
-                     "opt": "al optulea",
-                     "nouă": "al nouălea",
+        self.ords = {"unu"        : "primul",
+                     "doi"        : "al doilea",
+                     "three"      : "al treilea",
+                     "cinci"      : "al cincilea",
+                     "opt"        : "al optulea",
+                     "nouă"       : "al nouălea",
                      "doisprezece": "al doisprezecelea"}
 
     def merge(self, lpair, rpair):
@@ -138,26 +138,26 @@ class Num2Word_RO(lang_EU.Num2Word_EU):
         # romanian currency has a particularity for numeral: one
         self.gen_numwords[1] = "una"
         result = super(Num2Word_RO, self).to_currency(
-            int(round(val*100)),
-            currency,
-            True,
-            separator,
-            adjective
+                int(round(val * 100)),
+                currency,
+                True,
+                separator,
+                adjective
         )
         self.gen_numwords[1] = "o"  # revert numeral
         return result.replace(
-            "unu leu", "un leu"
+                "unu leu", "un leu"
         ).replace(
-            "unu ban", "un ban"
+                "unu ban", "un ban"
         ).replace(
-            # if the romanian low text is 0, it is not usually printed
-            separator + " zero bani", ""
+                # if the romanian low text is 0, it is not usually printed
+                separator + " zero bani", ""
         )
 
     def to_year(self, val, suffix=None, longval=True):
         result = super(Num2Word_RO, self).to_year(
-            val,
-            longval=longval
+                val,
+                longval=longval
         )
         # for years we want the era negation e.g. B.C., in our case
         # it's î.Hr. or î.e.n

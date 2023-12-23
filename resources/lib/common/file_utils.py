@@ -3,14 +3,9 @@ import math
 import queue
 import sys
 import threading
-from collections.abc import Iterable, Iterator
 from pathlib import Path
 from queue import Queue
 
-import xbmcvfs
-
-
-from common import AbortException
 from common.logger import *
 from common.minimal_monitor import MinimalMonitor
 from common.monitor import Monitor
@@ -139,7 +134,7 @@ class FindTextToVoice:
                     except Exception:
                         module_logger.exception('')
         except AbortException:
-            pass # End Thread
+            pass  # End Thread
         except Exception:
             clz._logger.exception('')
 
@@ -176,7 +171,7 @@ class FindFiles(Iterable[Path]):
         # it before it can be used.
 
         self._file_queue: Queue = Queue(20)
-        runInThread(self._run, name = f'Find Files: {top}',
+        runInThread(self._run, name=f'Find Files: {top}',
                     delay=0.0)
 
     def _run(self) -> None:
@@ -203,7 +198,7 @@ class FindFiles(Iterable[Path]):
                     clz._logger.debug(f'Die')
                     break
         except AbortException:
-            self._die = True   # Let thread die
+            self._die = True  # Let thread die
 
         except Exception as e:
             clz._logger.exception(msg='')

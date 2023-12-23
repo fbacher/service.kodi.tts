@@ -7,14 +7,17 @@ import re
 
 class SyntaxError(Exception):
     """When we run into an unexpected token, this is the exception to use"""
+
     def __init__(self, pos=-1, msg="Bad Token"):
         Exception.__init__(self)
         self.pos = pos
         self.msg = msg
 
     def __repr__(self):
-        if self.pos < 0: return "#<syntax-error>"
-        else: return "SyntaxError[@ char %s: %s]" % (repr(self.pos), self.msg)
+        if self.pos < 0:
+            return "#<syntax-error>"
+        else:
+            return "SyntaxError[@ char %s: %s]" % (repr(self.pos), self.msg)
 
 
 class NoMoreTokens(Exception):
@@ -23,6 +26,7 @@ class NoMoreTokens(Exception):
 
 
 class Scanner:
+
     def __init__(self, patterns, ignore, input):
         """Patterns is [(terminal,regex)...]
         Ignore is [terminal,...];
@@ -39,19 +43,21 @@ class Scanner:
         if patterns is not None:
             self.patterns = []
             for k, r in patterns:
-                self.patterns.append( (k, re.compile(r)) )
+                self.patterns.append((k, re.compile(r)))
 
     def token(self, i, restrict=0):
         """Get the i'th token, and if i is one past the end, then scan
         for another token; restrict is a list of tokens that
         are allowed, or 0 for any token."""
-        if i == len(self.tokens): self.scan(restrict)
+        if i == len(self.tokens):
+            self.scan(restrict)
         if i < len(self.tokens):
             # Make sure the restriction is more restricted
             if restrict and self.restrictions[i]:
                 for r in restrict:
                     if r not in self.restrictions[i]:
-                        raise NotImplementedError("Unimplemented: restriction set changed")
+                        raise NotImplementedError(
+                            "Unimplemented: restriction set changed")
                 return self.tokens[i]
         raise NoMoreTokens()
 
@@ -59,7 +65,7 @@ class Scanner:
         """Print the last 10 tokens that have been scanned in"""
         output = ''
         for t in self.tokens[-10:]:
-            output = '%s\n  (@%s)  %s  =  %s' % (output,t[0],t[2],repr(t[3]))
+            output = '%s\n  (@%s)  %s  =  %s' % (output, t[0], t[2], repr(t[3]))
         return output
 
     def scan(self, restrict):
@@ -91,8 +97,8 @@ class Scanner:
             # If we found something that isn't to be ignored, return it
             if best_pat not in self.ignore:
                 # Create a token with this data
-                token = (self.pos, self.pos+best_match, best_pat,
-                     self.input[self.pos:self.pos+best_match])
+                token = (self.pos, self.pos + best_match, best_pat,
+                         self.input[self.pos:self.pos + best_match])
                 self.pos = self.pos + best_match
                 # Only add this token if it's not in the list
                 # (to prevent looping)
@@ -106,6 +112,7 @@ class Scanner:
 
 
 class Parser:
+
     def __init__(self, scanner):
         self._scanner = scanner
         self._pos = 0
@@ -120,10 +127,9 @@ class Parser:
         """Returns the matched text, and moves to the next token"""
         tok = self._scanner.token(self._pos, [type])
         if tok[2] != type:
-            raise SyntaxError(tok[0], 'Trying to find '+type)
-        self._pos = 1+self._pos
+            raise SyntaxError(tok[0], 'Trying to find ' + type)
+        self._pos = 1 + self._pos
         return tok[3]
-
 
 
 def print_error(input, err, scanner):
@@ -131,23 +137,25 @@ def print_error(input, err, scanner):
     p = err.pos
     # Figure out the line number
     line = input[:p].count('\n')
-    print(err.msg+" on line "+repr(line+1)+":")
+    print(err.msg + " on line " + repr(line + 1) + ":")
     # Now try printing part of the line
-    text = input[max(p-80, 0):p+80]
-    p = p - max(p-80, 0)
+    text = input[max(p - 80, 0):p + 80]
+    p = p - max(p - 80, 0)
 
     # Strip to the left
     i = text.rfind('\n', p)
     j = text.rfind('\r', p)
-    if i < 0 or (0 <= j < i): i = j
+    if i < 0 or (0 <= j < i):
+        i = j
     if 0 <= i < p:
         p = p - i - 1
-        text = text[i+1:]
+        text = text[i + 1:]
 
     # Strip to the right
     i = text.find('\n', p)
     j = text.find('\r', p)
-    if i < 0 or (0 <= j < i): i = j
+    if i < 0 or (0 <= j < i):
+        i = j
     if i >= 0:
         text = text[:i]
 
@@ -158,9 +166,10 @@ def print_error(input, err, scanner):
         p = p - 7
 
     # Now print the string, along with an indicator
-    print('> ',text)
-    print('> ',' '*p + '^')
+    print('> ', text)
+    print('> ', ' ' * p + '^')
     print('List of nearby tokens:', scanner)
+
 
 def wrap_error_reporter(parser, rule):
     return_value = None
@@ -171,7 +180,7 @@ def wrap_error_reporter(parser, rule):
         try:
             print_error(input, s, parser._scanner)
         except ImportError:
-            print('Syntax Error',s.msg,'on line',1 + input[:s.pos].count('\n'))
+            print('Syntax Error', s.msg, 'on line', 1 + input[:s.pos].count('\n'))
     except NoMoreTokens:
         print('Could not complete parsing; stopped around here:')
         print(parser._scanner)

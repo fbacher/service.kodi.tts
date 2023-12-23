@@ -11,14 +11,9 @@ import requests
 import xbmc
 from typing.io import IO
 
-from backends.players.iplayer import IPlayer
-from common.exceptions import ExpiredException
-from common.monitor import Monitor
-from common.phrases import Phrase, PhraseList
-from common.typing import *
 from backends.audio.sound_capabilties import ServiceType, SoundCapabilities
 from backends.base import SimpleTTSBackend
-from backends.engines.responsive_voice_settings import ResponsiveVoiceSettings
+from backends.players.iplayer import IPlayer
 from backends.settings.i_validators import IValidator
 from backends.settings.service_types import Services
 from backends.settings.setting_properties import SettingsProperties
@@ -27,11 +22,14 @@ from backends.settings.validators import ConstraintsValidator
 from cache.voicecache import VoiceCache
 from common.base_services import BaseServices
 from common.constants import Constants, ReturnCode
+from common.exceptions import ExpiredException
 from common.logger import *
 from common.messages import Messages
+from common.monitor import Monitor
+from common.phrases import Phrase, PhraseList
 from common.setting_constants import Backends, Genders, Languages, Mode
 from common.settings import Settings
-from common.system_queries import SystemQueries
+from common.typing import *
 from utils.util import runInThread
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -167,10 +165,10 @@ class SpeechGenerator:
                 failing_voice_text_file: pathlib.Path | None = None
                 if save_to_file:
                     failing_voice_text_file = phrase.get_cache_path().with_suffix(
-                        '.txt')
+                            '.txt')
                     if failing_voice_text_file.is_file():
                         expiration_time: float = time() - timedelta(
-                            hours=24).total_seconds()
+                                hours=24).total_seconds()
                         if (
                                 os.stat(failing_voice_text_file).st_mtime <
                                 expiration_time):
@@ -256,10 +254,11 @@ class SpeechGenerator:
             api_volume: str = volume  # volume
             api_speed = speed
             api_pitch: str = pitch
-            params: Dict[str, str] = {"key": key, # "t": text_to_voice,
-                "tl"                       : lang, "pitch": api_pitch, "rate": api_speed,
-                "vol"                      : api_volume, "sv": service, "vn": '',
-                "gender"                   : gender}
+            params: Dict[str, str] = {"key"   : key,  # "t": text_to_voice,
+                                      "tl"    : lang, "pitch": api_pitch,
+                                      "rate"  : api_speed,
+                                      "vol"   : api_volume, "sv": service, "vn": '',
+                                      "gender": gender}
             magic: Final[bytes] = b'<!DOCTYPE'
             failed: bool = False
             with phrases[0].get_cache_path().open('wb') as cache_file:
@@ -470,124 +469,124 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackend):
     VOICE_3: str = Messages.get_msg(Messages.VOICE_3)
 
     voices_by_locale_map: Dict[str, Tuple[str, str, str]] = {Languages.LOCALE_AF: (
-    (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.FEMALE)),
+        (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_AF_ZA                                                  : (
-        (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.MALE)),
+            (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.MALE)),
         Languages.LOCALE_AR_SA                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_BS                                                     : (
-        (VOICE_1, "", Genders.MALE), (VOICE_2, "g1", Genders.MALE),
-        (VOICE_3, "g2", Genders.MALE)), Languages.LOCALE_CA                     : (
-        VOICE_1, "", Genders.MALE), Languages.LOCALE_CA_ES                      : (
-        (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.MALE)),
+            (VOICE_1, "", Genders.MALE), (VOICE_2, "g1", Genders.MALE),
+            (VOICE_3, "g2", Genders.MALE)), Languages.LOCALE_CA                 : (
+            VOICE_1, "", Genders.MALE), Languages.LOCALE_CA_ES                  : (
+            (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.MALE)),
         Languages.LOCALE_CS                                                     : (
-        (VOICE_1, "", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_CY                                                     : (
-        (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.MALE)),
+            (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.MALE)),
         Languages.LOCALE_DA_DK                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_DE_DE                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_EL_GR                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_EN_AU                                                  : (
-        (VOICE_1, "", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_EN_GB                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_EN_IE                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_EN_IN                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_EN_US                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_EN_ZA                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_EO                                                     : (
-        (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.MALE)),
+            (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.MALE)),
         Languages.LOCALE_ES_ES                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_ES                                                     : (
-        (VOICE_1, "", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_ES_MX                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_ES_US                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_FI_FI                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_FR_BE                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_FR_FR                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_FR_CA                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_FR                                                     : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_HI                                                     : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_HI_IN                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_HR_HR                                                  : (
-        (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.MALE)),
+            (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.MALE)),
         Languages.LOCALE_HU_HU                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_HY_AM                                                  : (
-        (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.MALE)),
+            (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.MALE)),
         Languages.LOCALE_ID_ID                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_IS_IS                                                  : (
-        (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.MALE)),
+            (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.MALE)),
         Languages.LOCALE_IT_IT                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.MALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.MALE)),
         Languages.LOCALE_JA_JP                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_KO_KR                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.MALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.MALE)),
         Languages.LOCALE_LA                                                     : (
-        (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.MALE)),
+            (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.MALE)),
         Languages.LOCALE_LV_LV                                                  : (
-        (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.MALE)),
+            (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.MALE)),
         Languages.LOCALE_NB_NO                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_NL_BE                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_NL_NL                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_NO_NO                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_PL_PL                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.MALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.MALE)),
         Languages.LOCALE_PT_BR                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_PT_PT                                                  : (
-        (VOICE_1, "g1", Genders.UNKNOWN), (VOICE_2, "g2", Genders.UNKNOWN)),
+            (VOICE_1, "g1", Genders.UNKNOWN), (VOICE_2, "g2", Genders.UNKNOWN)),
         Languages.LOCALE_RO_RO                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_RU_RU                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_SK_SK                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_SQ_AL                                                  : (
-        (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.MALE)),
+            (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.MALE)),
         Languages.LOCAL_SR_ME                                                   : (
-        (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.MALE)),
+            (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.MALE)),
         Languages.LOCALE_SR_RS                                                  : (
-        (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.MALE)),
+            (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.MALE)),
         Languages.LOCALE_SW_KE                                                  : (
-        (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.MALE)),
+            (VOICE_1, "g1", Genders.MALE), (VOICE_2, "g2", Genders.MALE)),
         Languages.LOCALE_TA                                                     : (
-        (VOICE_1, "g1", Genders.UNKNOWN), (VOICE_2, "g2", Genders.UNKNOWN)),
+            (VOICE_1, "g1", Genders.UNKNOWN), (VOICE_2, "g2", Genders.UNKNOWN)),
         Languages.LOCALE_TH_TH                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_TR_TR                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_VI_VN                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_ZH_CN                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_ZH_HK                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE)),
         Languages.LOCALE_ZH_TW                                                  : (
-        (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE))}
+            (VOICE_1, "g1", Genders.FEMALE), (VOICE_2, "g2", Genders.FEMALE))}
 
     _logger: BasicLogger = None
 
@@ -611,7 +610,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackend):
 
     def getMode(self) -> Mode:
         clz = type(self)
-        player: IPlayer = self.get_player()
+        player: IPlayer = self.get_player(clz.service_ID)
         if clz.getSetting(SettingsProperties.PIPE):
             return Mode.PIPE
         else:
@@ -696,9 +695,12 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackend):
                         clz._logger.debug_extra_verbose(f'PHRASE Text {text_to_voice}')
                         rc: int = 0
                         try:
-                            # Should only get here if voiced file (.wav, .mp3, etc.) was NOT
-                            # found. We might see a pre-existing .txt file which means that
-                            # the download failed. To prevent multiple downloads, wait a day
+                            # Should only get here if voiced file (.wav, .mp3,
+                            # etc.) was NOT
+                            # found. We might see a pre-existing .txt file which means
+                            # that
+                            # the download failed. To prevent multiple downloads,
+                            # wait a day
                             # before retrying the download.
 
                             voice_text_file: pathlib.Path | None = None

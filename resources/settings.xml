@@ -117,6 +117,20 @@
                         <heading>32208</heading>
                     </control>
                 </setting> -->
+                 <setting help="" id="player_slave.tts" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="volume.tts" label="123" type="integer">
+                    <level>0</level>
+                    <default>0.0</default>
+                    <control format="integer" type="slider">
+                        <popup>false</popup>
+                    </control>
+                    <visible>false</visible>
+                </setting>
                 <setting help="" id="reader_on.tts" label="32032" type="boolean">
                     <level>0</level>
                     <default>false</default>
@@ -1434,6 +1448,7 @@
                     <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
+
                 <setting help="" id="delay_voicing.Google" label="32178" type="boolean">
                     <level>0</level>
                     <default>false</default>

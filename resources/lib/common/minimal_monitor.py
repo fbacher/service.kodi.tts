@@ -10,8 +10,7 @@ Created on Feb 19, 2019
 import threading
 
 import xbmc
-from common.imports import *
-from common.exceptions import AbortException
+
 from .__init__ import *
 
 
@@ -33,8 +32,7 @@ class MinimalMonitor(xbmc.Monitor):
     _initialized: bool = False
     _xbmc_monitor: xbmc.Monitor = None
     _abort_received: threading.Event = None
-    _abort_callback: Callable[[], None]  = None
-
+    _abort_callback: Callable[[], None] = None
 
     """
     xbmc wants to be called.
@@ -65,7 +63,7 @@ class MinimalMonitor(xbmc.Monitor):
 
         This method is the only one which calls xbmc.Monitor.waitForAbort. It is
         only called from the Main thread in a main module for the plugin. This is
-        done because their is some weirdness about calling Monitor.waitForAbort
+        done because there is some weirdness about calling Monitor.waitForAbort
         from a non-main thread.
 
         :param timeout: [opt] float - timeout in seconds.

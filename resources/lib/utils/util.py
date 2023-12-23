@@ -3,7 +3,6 @@
 import locale
 import os
 import re
-import time
 
 import xbmc
 import xbmcaddon
@@ -29,9 +28,9 @@ ADDON_PATH = xbmcaddon.Addon(ADDON_ID).getAddonInfo('path')
 LOG_PATH = os.path.join(xbmcvfs.translatePath('special://logpath'), 'kodi.log')
 
 DISABLE_PATH = os.path.join(xbmcvfs.translatePath(
-    'special://profile'), 'addon_data', ADDON_ID, 'DISABLED')
+        'special://profile'), 'addon_data', ADDON_ID, 'DISABLED')
 ENABLE_PATH = os.path.join(xbmcvfs.translatePath(
-    'special://profile'), 'addon_data', ADDON_ID, 'ENABLED')
+        'special://profile'), 'addon_data', ADDON_ID, 'ENABLED')
 
 POSSIBLE_SETTINGS = ['language',
                      SettingsProperties.VOICE,
@@ -44,6 +43,7 @@ POSSIBLE_SETTINGS = ['language',
                      'pipe']
 
 language_code = None
+
 
 def sleep(ms):
     return utils.sleep(ms)
@@ -73,7 +73,8 @@ def getTmpfs():
 def getXBMCVersion():
     import json
     resp = xbmc.executeJSONRPC(
-        '{ "jsonrpc": "2.0", "method": "Application.GetProperties", "params": {"properties": ["version", "name"]}, "id": 1 }')
+            '{ "jsonrpc": "2.0", "method": "Application.GetProperties", "params": {'
+            '"properties": ["version", "name"]}, "id": 1 }')
     data = json.loads(resp)
     if not 'result' in data:
         return None
@@ -165,8 +166,8 @@ def runInThread(func: Callable, args: List[Any] = [], name: str = '?',
                 delay: float = 0.0, **kwargs) -> None:
     import threading
     thread = threading.Thread(target=thread_wrapper, name=f'TTSThread: {name}',
-                              args=args, kwargs={'target':func,
-                                                 'delay':delay, **kwargs})
+                              args=args, kwargs={'target': func,
+                                                 'delay' : delay, **kwargs})
     xbmc.log(f'util.runInThread starting thread {name}', xbmc.LOGINFO)
     thread.start()
     GarbageCollector.add_thread(thread)
@@ -177,14 +178,18 @@ def thread_wrapper(*args, **kwargs):
         target: Callable = kwargs.pop('target')
         delay: float = kwargs.pop('delay')
         if delay is not None and isinstance(delay, float):
-            Monitor.wait_for_abort(delay)
+            Monitor.exception_on_abort(delay)
 
         target(*args, **kwargs)
+    except AbortException:
+        return  # Let thread die
     except Exception as e:
         module_logger.exception('')
 
 
-BASE_COMMAND = 'XBMC.NotifyAll(service.kodi.tts,SAY,"{{\\"text\\":\\"{0}\\",\\"interrupt\\":{1}}}")'
+BASE_COMMAND = ('XBMC.NotifyAll(service.kodi.tts,SAY,"{{\\"text\\":\\"{0}\\",'
+                '\\"interrupt\\":{1}}}")')
+
 
 # def safeEncode(text):
 #   return binascii.hexlify(text.encode('utf-8'))

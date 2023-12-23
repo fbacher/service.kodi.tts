@@ -10,13 +10,10 @@ Provides methods to create and execute queries to Kodi database
 import sys
 
 import simplejson
-
 from cache.prefetch_movie_data.json_utils_basic import JsonUtilsBasic
-from common.exceptions import AbortException
-from common.typing import *
 from common.logger import *
 from common.monitor import Monitor
-from __init__ import *
+from common.typing import *
 
 module_logger: Final[BasicLogger] = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -186,12 +183,12 @@ class DBAccess:
 
         query_properties: str = ', '.join(f'"{prop}"' for prop in props)
         query = f'{{"jsonrpc": "2.0", "method": "VideoLibrary.GetMovies", ' \
-                       f'"params": {{ "properties": [ {query_properties} ], ' \
-                       f'"filter": {{ "and": [ ' \
-                       f'{{ "field": "title", "operator": ' \
-                       f'"is", "value": "{title}" }}, ' \
-                       f'{{ "field": "year", "operator": "is", "value": "{year}" }} ' \
-                       f'] }} }}, "id": 1}}'
+                f'"params": {{ "properties": [ {query_properties} ], ' \
+                f'"filter": {{ "and": [ ' \
+                f'{{ "field": "title", "operator": ' \
+                f'"is", "value": "{title}" }}, ' \
+                f'{{ "field": "year", "operator": "is", "value": "{year}" }} ' \
+                f'] }} }}, "id": 1}}'
 
         if cls._logger.isEnabledFor(DISABLED):
             cls._logger.debug_verbose(f'title: {title} year: {year}')

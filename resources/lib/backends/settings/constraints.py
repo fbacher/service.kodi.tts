@@ -32,9 +32,11 @@ class Constraints:
         scale, as mentioned earlier, is used to scale an internal, usually integral value,
         to an external, typically float, api, value.
 
-        property_name is the same as property key used in Settings (ex. SettingsProperties.VOLUME)
+        property_name is the same as property key used in Settings (ex.
+        SettingsProperties.VOLUME)
 
-        midpoint is the value of the logical 'zero reference point' in the range. For example,
+        midpoint is the value of the logical 'zero reference point' in the range. For
+        example,
         using decibels, zero represents a gain of 1x. similarly, using percent to
         represent volume, 0 can also represent a gain of 1x while -25 represents a 25%
         decrease in volume, while +100 represents a doubling of volume. Like the
@@ -44,6 +46,7 @@ class Constraints:
          increment is the suggested step between values displayed in the UI.
 
         """
+
     def __init__(self, minimum: int = 0, default: int = 0, maximum: int = 0,
                  integer: bool = True, decibels: bool = False, scale: float = 1.0,
                  property_name: str = None,
@@ -80,7 +83,7 @@ class Constraints:
         self._increment: Final[float] = increment
         # if midpoint is None:
         #    midpoint = (maximum + minimum) / 2
-        self._midpoint: Final[int | None]  = midpoint
+        self._midpoint: Final[int | None] = midpoint
         self._tts_line_value: float | int = tts_line_value
 
     @property
@@ -219,7 +222,7 @@ class Constraints:
         """
         value = max(value, self.minimum)
         value = min(value, self.maximum)
-        scaled_value:float
+        scaled_value: float
         if self._decibels and other._decibels:
             value = max(value, other.minimum)
             value = min(value, other.maximum)
@@ -249,8 +252,8 @@ class Constraints:
             scaled_value: float = self.percent_to_db(value)
             scaled_value = max(scaled_value, other.minimum)
             scaled_value = min(scaled_value, other.maximum)
-            #midpoint: float = 0.0
-            #scaled_value = self.translate_linear_value(min_percent, max_percent,
+            # midpoint: float = 0.0
+            # scaled_value = self.translate_linear_value(min_percent, max_percent,
             #                                           midpoint, scaled_value,
             #                                           other.minimum, other.maximum,
             #                                           other.midpoint)
@@ -263,8 +266,8 @@ class Constraints:
             return scaled_value
 
         scaled_value = self.translate_linear_value(self.minimum, self.maximum,
-                                           self.midpoint, value, other.minimum,
-                                           other.maximum, other.midpoint)
+                                                   self.midpoint, value, other.minimum,
+                                                   other.maximum, other.midpoint)
         if other.integer:
             scaled_value = round(scaled_value)
         scaled_value = max(scaled_value, other.minimum)

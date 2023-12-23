@@ -8,9 +8,9 @@ from common.constants import Constants
 from common.logger import *
 from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
+from common.typing import *
 from .base import ThreadedTTSBackend
 from .settings.constraints import Constraints
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -168,9 +168,9 @@ class OSXSayTTSBackend(ThreadedTTSBackend):
 
     def isSpeaking(self):
         return (
-                           self.process and self.process.poll() is None) or \
-               ThreadedTTSBackend.isSpeaking(
-            self)
+                self.process and self.process.poll() is None) or \
+            ThreadedTTSBackend.isSpeaking(
+                    self)
 
     def stop(self):
         if not self.process:

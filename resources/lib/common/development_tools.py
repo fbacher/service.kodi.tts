@@ -5,6 +5,7 @@ try:
     from typing import (Any, Callable, FrozenSet, Optional, Iterable, List, Dict, Set,
                         Tuple,
                         Sequence, Union)
+
     TextType = str
     MovieType = Dict[TextType, Any]
 

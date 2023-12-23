@@ -1,5 +1,3 @@
-import sys
-
 from backends.audio.sound_capabilties import SoundCapabilities
 from backends.engines.base_engine_settings import (BaseEngineSettings)
 from backends.settings.base_service_settings import BaseServiceSettings
@@ -8,9 +6,9 @@ from backends.settings.i_validators import ValueType
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.settings_map import Reason, SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
-                                          EnumValidator, StringValidator)
+                                          GenderValidator, StringValidator)
 from common.constants import Constants
-from common.logger import BasicLogger, DEBUG_VERBOSE
+from common.logger import BasicLogger
 from common.setting_constants import Backends, Genders, Players
 from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
@@ -55,7 +53,6 @@ class GoogleSettings(BaseServiceSettings):
                                         cls.volumeConversionConstraints, volumeDb)
     
     """
-
 
     class VolumeConstraintsValidator(ConstraintsValidator):
 
@@ -119,12 +116,12 @@ class GoogleSettings(BaseServiceSettings):
 
     @classmethod
     def init_settings(cls):
-    # Maximum phrase length that a remote engine can convert to speech at a time
-    # None indicates that the engine does not download from a remote server
+        # Maximum phrase length that a remote engine can convert to speech at a time
+        # None indicates that the engine does not download from a remote server
         service_properties: Dict[str, Any]
-        service_properties = {'name': cls.displayName,
+        service_properties = {'name'                     : cls.displayName,
                               Constants.MAX_PHRASE_LENGTH: 100,
-                              Constants.CACHE_SUFFIX: 'goo'}
+                              Constants.CACHE_SUFFIX     : 'goo'}
         SettingsMap.define_service(ServiceType.ENGINE, cls.engine_id,
                                    service_properties)
         #
@@ -132,7 +129,7 @@ class GoogleSettings(BaseServiceSettings):
         # constraints/settings to the engine's constraints/settings
 
         speedConstraints: Constraints = Constraints(25, 100, 400, False, False, 0.01,
-                                               SettingsProperties.SPEED, 125, 0.25)
+                                                    SettingsProperties.SPEED, 125, 0.25)
         speed_constraints_validator = ConstraintsValidator(SettingsProperties.SPEED,
                                                            cls.engine_id,
                                                            speedConstraints)
@@ -146,11 +143,11 @@ class GoogleSettings(BaseServiceSettings):
         '''
 
         volume_constraints_validator = ConstraintsValidator(
-            SettingsProperties.VOLUME,
-            cls.engine_id,
-            cls.ttsVolumeConstraints)
+                SettingsProperties.VOLUME,
+                cls.engine_id,
+                cls.ttsVolumeConstraints)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOLUME,
-                               volume_constraints_validator)
+                                   volume_constraints_validator)
 
         language_validator: StringValidator
         language_validator = StringValidator(SettingsProperties.LANGUAGE, cls.engine_id,
@@ -158,7 +155,8 @@ class GoogleSettings(BaseServiceSettings):
                                              max_length=5)
         # voice_validator: StringValidator
         # voice_validator = StringValidator(SettingsProperties.VOICE, cls.engine_id,
-        #                                   allowed_values=[], min_length=1, max_length=10)
+        #                                   allowed_values=[], min_length=1,
+        #                                   max_length=10)
         pipe_validator: BoolValidator
         pipe_validator = BoolValidator(SettingsProperties.PIPE, cls.engine_id,
                                        default=False)
@@ -169,9 +167,10 @@ class GoogleSettings(BaseServiceSettings):
         #  TODO:  Need to eliminate un-available players
         #         Should do elimination in separate code
 
-        valid_players: List[str] = [Players.MPLAYER, Players.SFX, Players.WINDOWS, Players.APLAY,
+        valid_players: List[str] = [Players.MPLAYER, Players.SFX, Players.WINDOWS,
+                                    Players.APLAY,
                                     Players.PAPLAY, Players.AFPLAY, Players.SOX,
-                                     Players.MPG321, Players.MPG123,
+                                    Players.MPG321, Players.MPG123,
                                     Players.MPG321_OE_PI, Players.INTERNAL]
         player_validator: StringValidator
         player_validator = StringValidator(SettingsProperties.PLAYER, cls.engine_id,
@@ -187,15 +186,23 @@ class GoogleSettings(BaseServiceSettings):
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.SPEED,
                                    speed_constraints_validator)
 
-        #
-        # pitch_constraints: Constraints = Constraints(0, 50, 99, True, False, 1.0,
-        #                                             SettingsProperties.PITCH)
-        # pitch_constraints_validator = ConstraintsValidator(SettingsProperties.PITCH,
-        #                                                    cls.engine_id,
-        #                                                    pitch_constraints)
-        #
-        # SettingsMap.define_setting(cls.service_ID, SettingsProperties.PITCH,
-        #                            pitch_constraints_validator)
+        pitch_constraints: Constraints = Constraints(50, 50, 50, True, False, 1.0,
+                                                     SettingsProperties.PITCH)
+        pitch_constraints_validator = ConstraintsValidator(SettingsProperties.PITCH,
+                                                           cls.engine_id,
+                                                           pitch_constraints)
+        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PITCH,
+                                   pitch_constraints_validator)
+        # can't change gender
+
+        #  gender_validator = GenderValidator(SettingsProperties.GENDER, cls.engine_id,
+        #                                     min_value=Genders.UNKNOWN,
+        #                                     max_value=Genders.UNKNOWN,
+        #                                     default=Genders.UNKNOWN)
+        # gender_validator.set_tts_value(Genders.UNKNOWN)
+        SettingsMap.define_setting(cls.engine_id, SettingsProperties.GENDER,
+                                   None)
+
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER,
                                    player_validator)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.CACHE_SPEECH,

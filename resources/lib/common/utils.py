@@ -5,7 +5,8 @@ import xbmc
 
 from common.constants import Constants
 
-BASE_COMMAND = 'XBMC.NotifyAll(service.kodi.tts,SAY,"{{\\"text\\":\\"{0}\\",\\"interrupt\\":{1}}}")'
+BASE_COMMAND = ('XBMC.NotifyAll(service.kodi.tts,SAY,"{{\\"text\\":\\"{0}\\",'
+                '\\"interrupt\\":{1}}}")')
 XT = xbmc.getLocalizedString
 
 
@@ -35,7 +36,8 @@ def playSound(name, return_duration=False):
     wavPath = os.path.join(Constants.ADDON_DIRECTORY, 'resources',
                            'wavs', '{0}.wav'.format(name))
     # This doesn't work as this may be called when the addon is disabled
-    # wavPath = os.path.join(xbmcvfs.translatePath(xbmcaddon.Addon().getAddonInfo('path')),'resources','wavs','{0}.wav'.format(name))
+    # wavPath = os.path.join(xbmcvfs.translatePath(xbmcaddon.Addon().getAddonInfo(
+    # 'path')),'resources','wavs','{0}.wav'.format(name))
     xbmc.playSFX(wavPath)
     if return_duration:
         wavPath = wavPath

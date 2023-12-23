@@ -42,7 +42,7 @@ class BackendInfo(IBackendInfo):
 
     @classmethod
     def isValidBackend(cls, backend_id: str):
-        if backend_id is None  or len(backend_id) == 0:
+        if backend_id is None or len(backend_id) == 0:
             return False
         backends: List[ITTSBackendBase] = cls.getAvailableBackends()
         for backend in backends:
@@ -54,7 +54,8 @@ class BackendInfo(IBackendInfo):
     def getAvailableBackends(cls, can_stream_wav: bool = False) -> List[ITTSBackendBase]:
         available: List[ITTSBackendBase] = []
         cls._logger.debug_verbose(
-            f'backends.__init__.getAvailableBackends can_stream_wav: {str(can_stream_wav)}')
+                f'backends.__init__.getAvailableBackends can_stream_wav: '
+                f'{str(can_stream_wav)}')
         for engine_id in Backends.ALL_ENGINE_IDS:
             engine: ITTSBackendBase
             engine = BaseServices.getService(engine_id)
@@ -65,7 +66,8 @@ class BackendInfo(IBackendInfo):
                 continue
 
             if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                cls._logger.debug_verbose(f'Available engine: {engine.__class__.__name__}')
+                cls._logger.debug_verbose(
+                    f'Available engine: {engine.__class__.__name__}')
             available.append(engine)
         return available
 
@@ -76,9 +78,9 @@ class BackendInfo(IBackendInfo):
         elif SystemQueries.isWindows():
             return cls.getBackendByClassName(IEngineIndex.SAPITTSBackend)
         elif SystemQueries.isOSX():
-            return  cls.getBackendByClassName(IEngineIndex.OSXSayTTSBackend)
+            return cls.getBackendByClassName(IEngineIndex.OSXSayTTSBackend)
         elif SystemQueries.isOpenElec():
-            return  cls.getBackendByClassName(IEngineIndex.ESpeakTTSBackend)
+            return cls.getBackendByClassName(IEngineIndex.ESpeakTTSBackend)
         for b in cls.backendsByPriority:
             if b._available():
                 return b

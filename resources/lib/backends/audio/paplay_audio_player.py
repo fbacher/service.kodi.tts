@@ -1,12 +1,11 @@
-from typing import *
-
 from backends.audio.base_audio import SubprocessAudioPlayer
 from backends.players.player_index import PlayerIndex
-from common.logger import BasicLogger
 from common.base_services import BaseServices
+from common.logger import BasicLogger
 from common.setting_constants import Players
 
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
+
 
 class PaplayAudioPlayer(SubprocessAudioPlayer):
     #

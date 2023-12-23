@@ -52,15 +52,15 @@ def _keymapTarget():
 
 def _keymapSource(kind='base'):
     return os.path.join(
-        xbmcvfs.translatePath(xbmcaddon.Addon(Constants.ADDON_ID)
-                              .getAddonInfo('path')), 'resources', 'keymap.{0}.xml'
-                                            .format(kind))
+            xbmcvfs.translatePath(xbmcaddon.Addon(Constants.ADDON_ID)
+                                  .getAddonInfo('path')), 'resources', 'keymap.{0}.xml'
+            .format(kind))
 
 
 def _keyMapDefsPath():
     return os.path.join(
-        xbmcvfs.translatePath(xbmcaddon.Addon(Constants.ADDON_ID)
-                              .getAddonInfo('profile')), 'custom.keymap.defs')
+            xbmcvfs.translatePath(xbmcaddon.Addon(Constants.ADDON_ID)
+                                  .getAddonInfo('profile')), 'custom.keymap.defs')
 
 
 def loadCustomKeymapDefs():
@@ -154,10 +154,10 @@ def buildKeymap(defaults=False):  # TODO: Build XML with ElementTree?
         if key:
             xml = xml.replace('<{0}>'.format(action),
                               '<key id="{0}">'.format(key)).replace(
-                '</{0}>'.format(action), '</key>')
+                    '</{0}>'.format(action), '</key>')
         else:
             xml = xml.replace('<{0}>'.format(action), '<{0}>'.format(default)).replace(
-                '</{0}>'.format(action), '</{0}>'.format(default.split(' ', 1)[0]))
+                    '</{0}>'.format(action), '</{0}>'.format(default.split(' ', 1)[0]))
 
     xml = xml.format(SPECIAL=SystemQueries.isPreInstalled() and 'kodi' or 'home')
 
@@ -197,6 +197,7 @@ def editKey(key_id, defs):
     defs[key_id] = key
     saveCustomKeymapDefs(defs)
 
+
 # Taken from takoi's Keymap Editor
 
 
@@ -210,7 +211,7 @@ class KeyListener(xbmcgui.WindowXMLDialog):
         super().__init__()
         self.msg1 = Messages.get_msg(Messages.PRESS_KEY_TO_ASSIGN)
         self.msg2 = '{0}...'.format(Messages.TIMEOUT_IN_X_SECONDS) \
-                                    .format('%.0f' % self.TIMEOUT)
+            .format('%.0f' % self.TIMEOUT)
         self.key = None
 
     def onInit(self):

@@ -1,7 +1,5 @@
 import enum
 
-from strenum import StrEnum
-
 from backends.settings.i_constraints import IConstraints
 from common.setting_constants import Genders
 from common.typing import *
@@ -30,8 +28,8 @@ class IValidator:
 
     def get_tts_values(self, default_value: int | float | str = None,
                        setting_service_id: str = None) \
-                -> Tuple[int | float | str, int | float | str , int | float | str, \
-                         int | float| str]:
+            -> Tuple[int | float | str, int | float | str, int | float | str, \
+                     int | float | str]:
         """
 
         :param default_value:
@@ -40,9 +38,8 @@ class IValidator:
         """
         raise NotImplementedError()
 
-
     def get_tts_value(self, default_value: int | float | str = None,
-                       setting_service_id: str = None) -> int | float | str:
+                      setting_service_id: str = None) -> int | float | str:
         """
 
         :param default_value:
@@ -76,7 +73,7 @@ class IIntValidator(IValidator):
     def __init__(self, setting_id: str, service_id: str,
                  min_value: int, max_value: int, default_value: int,
                  step: int, scale_internal_to_external: int = 1) -> None:
-       pass
+        pass
 
     @property
     def default_value(self) -> int | float:
@@ -88,7 +85,7 @@ class IIntValidator(IValidator):
     def set_tts_value(self, value: int | float) -> None:
         raise NotImplementedError()
 
-    def setUIValue(self, ui_value:int) -> None:
+    def setUIValue(self, ui_value: int) -> None:
         raise NotImplementedError()
 
     def getUIValue(self) -> int:
@@ -126,7 +123,7 @@ class IStringValidator(IValidator):
                  max_length: int = 4096, default_value: str = None) -> None:
         pass
 
-    def get_tts_value(self, default : str | None = None,
+    def get_tts_value(self, default: str | None = None,
                       setting_service_id: str = None) -> str:
         raise NotImplementedError()
 
@@ -140,7 +137,7 @@ class IStringValidator(IValidator):
     def get_allowed_values(self) -> List[str] | None:
         raise NotImplementedError()
 
-    def setUIValue(self, ui_value:str) -> None:
+    def setUIValue(self, ui_value: str) -> None:
         raise NotImplementedError()
 
     def getUIValue(self) -> str:
@@ -166,6 +163,7 @@ class IStringValidator(IValidator):
 
 
 class IEnumValidator(IValidator):
+
     # Probably won't work as is, needs generics
     def __init__(self, setting_id: str, service_id: str,
                  min_value: enum.Enum, max_value: enum.Enum,
@@ -202,20 +200,21 @@ class IEnumValidator(IValidator):
 
 
 class IStrEnumValidator(IValidator):
+
     # Probably won't work as is, needs generics
     def __init__(self, setting_id: str, service_id: str,
-                 min_value: StrEnum, max_value: StrEnum,
-                 default_value: StrEnum = None) -> None:
+                 min_value: enum.StrEnum, max_value: enum.StrEnum,
+                 default_value: enum.StrEnum = None) -> None:
         pass
 
     @property
-    def default_value(self) -> StrEnum:
+    def default_value(self) -> enum.StrEnum:
         raise NotImplementedError()
 
-    def get_tts_value(self) -> StrEnum:
+    def get_tts_value(self) -> enum.StrEnum:
         raise NotImplementedError()
 
-    def set_tts_value(self, value: StrEnum) -> None:
+    def set_tts_value(self, value: enum.StrEnum) -> None:
         raise NotImplementedError()
 
     def setUIValue(self, ui_value: str) -> None:
@@ -224,20 +223,21 @@ class IStrEnumValidator(IValidator):
     def getUIValue(self) -> str:
         raise NotImplementedError()
 
-    def getInternalValue(self) -> StrEnum:
+    def getInternalValue(self) -> enum.StrEnum:
         raise NotImplementedError()
 
-    def setInternalValue(self, internalValue: StrEnum) -> None:
+    def setInternalValue(self, internalValue: enum.StrEnum) -> None:
         raise NotImplementedError()
 
-    def validate(self) -> Tuple[bool, StrEnum]:
+    def validate(self) -> Tuple[bool, enum.StrEnum]:
         raise NotImplementedError()
 
-    def preValidate(self, ui_value: StrEnum) -> Tuple[bool, StrEnum]:
+    def preValidate(self, ui_value: enum.StrEnum) -> Tuple[bool, enum.StrEnum]:
         raise NotImplementedError()
 
 
 class IConstraintsValidator:
+
     def __init__(self, setting_id: str, service_id: str,
                  constraints: IConstraints) -> None:
         pass
@@ -250,8 +250,8 @@ class IConstraintsValidator:
 
     def get_tts_values(self, default_value: int | float | str = None,
                        setting_service_id: str = None) \
-            -> Tuple[int | float | str, int | float | str , int | float | str, \
-                     int | float| str]:
+            -> Tuple[int | float | str, int | float | str, int | float | str, \
+                     int | float | str]:
         """
         :param default_value:
         :param setting_service_id:
@@ -315,6 +315,7 @@ class IConstraintsValidator:
 
 
 class IBoolValidator:
+
     def __init__(self, setting_id: str, service_id: str,
                  default: bool) -> None:
         pass

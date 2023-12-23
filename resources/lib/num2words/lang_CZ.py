@@ -71,15 +71,15 @@ HUNDREDS = {
 }
 
 THOUSANDS = {
-    1: ('tisíc', 'tisíce', 'tisíc'),  # 10^3
-    2: ('milion', 'miliony', 'milionů'),  # 10^6
-    3: ('miliarda', 'miliardy', 'miliard'),  # 10^9
-    4: ('bilion', 'biliony', 'bilionů'),  # 10^12
-    5: ('biliarda', 'biliardy', 'biliard'),  # 10^15
-    6: ('trilion', 'triliony', 'trilionů'),  # 10^18
-    7: ('triliarda', 'triliardy', 'triliard'),  # 10^21
-    8: ('kvadrilion', 'kvadriliony', 'kvadrilionů'),  # 10^24
-    9: ('kvadriliarda', 'kvadriliardy', 'kvadriliard'),  # 10^27
+    1 : ('tisíc', 'tisíce', 'tisíc'),  # 10^3
+    2 : ('milion', 'miliony', 'milionů'),  # 10^6
+    3 : ('miliarda', 'miliardy', 'miliard'),  # 10^9
+    4 : ('bilion', 'biliony', 'bilionů'),  # 10^12
+    5 : ('biliarda', 'biliardy', 'biliard'),  # 10^15
+    6 : ('trilion', 'triliony', 'trilionů'),  # 10^18
+    7 : ('triliarda', 'triliardy', 'triliard'),  # 10^21
+    8 : ('kvadrilion', 'kvadriliony', 'kvadrilionů'),  # 10^24
+    9 : ('kvadriliarda', 'kvadriliardy', 'kvadriliard'),  # 10^27
     10: ('quintillion', 'quintilliony', 'quintillionů'),  # 10^30
 }
 

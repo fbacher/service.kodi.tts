@@ -3,8 +3,7 @@ from backends.i_tts_backend_base import ITTSBackendBase
 from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.constraints import Constraints
 from backends.settings.service_types import Services
-from backends.settings.validators import (BoolValidator, IntValidator, StringValidator,
-                                          Validator)
+from backends.settings.validators import (Validator)
 from common.base_services import BaseServices
 from common.settings_low_level import SettingsProperties
 from common.typing import *
@@ -120,4 +119,4 @@ class BasePlayerServiceSettings(BaseServiceSettings):
 
     @classmethod
     def register(cls, what: Type[ITTSBackendBase]) -> None:
-        BaseServices.register(what) # _settings(what)
+        BaseServices.register(what)  # _settings(what)

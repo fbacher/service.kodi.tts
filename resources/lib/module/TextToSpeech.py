@@ -1,19 +1,20 @@
 # -*- coding: utf-8 -*-
 from common.critical_settings import *
 
+BASE_COMMAND = ('XBMC.NotifyAll(service.kodi.tts,SAY,"{{\\"text\\":\\"{0}\\",'
+                '\\"interrupt\\":{1}}}")')
 
-BASE_COMMAND = 'XBMC.NotifyAll(service.kodi.tts,SAY,"{{\\"text\\":\\"{0}\\",\\"interrupt\\":{1}}}")'
 
-#def safeEncode(text):
+# def safeEncode(text):
 #    return binascii.hexlify(text.encode('utf-8'))
 
-#def safeDecode(enc_text):
+# def safeDecode(enc_text):
 #    return binascii.unhexlify(enc_text)
 
 
-def sayText(text,interrupt=False):
-    command = BASE_COMMAND.format(text,repr(interrupt).lower())
-    #print command
+def sayText(text, interrupt=False):
+    command = BASE_COMMAND.format(text, repr(interrupt).lower())
+    # print command
     xbmc.executebuiltin(command)
 
 

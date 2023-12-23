@@ -89,7 +89,7 @@ class Num2Word_FA(object):
         # Simple way of finding decimal places to update the precision
         self.precision = abs(Decimal(str(value)).as_tuple().exponent)
 
-        post = abs(value - pre) * 10**self.precision
+        post = abs(value - pre) * 10 ** self.precision
         if abs(round(post) - post) < 0.01:
             # We generally floor all values beyond our precision (rather than
             # rounding), but in cases where we have something like 1.239999999,
@@ -150,7 +150,7 @@ class Num2Word_FA(object):
         return self.to_cardinal(value)
 
     def to_ordinal_num(self, value):
-        return str(value)+"م"
+        return str(value) + "م"
 
     def to_cardinal(self, number):
         if number < 0:

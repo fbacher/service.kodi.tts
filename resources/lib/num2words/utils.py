@@ -24,7 +24,7 @@ def splitbyx(n, x, format_int=True):
             result = n[:start]
             yield int(result) if format_int else result
         for i in range(start, length, x):
-            result = n[i:i+x]
+            result = n[i:i + x]
             yield int(result) if format_int else result
     else:
         yield int(n) if format_int else n

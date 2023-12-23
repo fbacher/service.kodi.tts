@@ -5,19 +5,9 @@ import os
 import shutil
 import subprocess
 
-from backends.audio.sound_capabilties import ServiceType, SoundCapabilities
-from backends.backend_info_bridge import BackendInfoBridge
-from backends.settings.constraints import Constraints
-from backends.settings.service_types import Services
-from common import utils
-from common.constants import Constants
 from common.logger import *
-from common.base_services import BaseServices
 from common.setting_constants import Converters
-from common.settings import Settings
-from common.settings_low_level import SettingsProperties
 from common.typing import *
-from converters.converter_index import ConverterIndex
 from converters.iconverter import IConverter
 
 try:
@@ -82,6 +72,7 @@ class AudioConverter(IConverter):
         # Is this Audio Player built-into the voice engine (i.e. espeak).
         #
         return False
+
 
 '''
 class WindowsAudioConverter(AudioConverter):
@@ -200,7 +191,7 @@ class BaseAudioConverter(AudioConverter):
         self._convert_process = None
 
     def convert(self, convert_from: str, convert_to: str,
-            input_path: str, output_path: str) -> bool:
+                input_path: str, output_path: str) -> bool:
         pass
 
     def stop(self):
@@ -235,6 +226,7 @@ class BaseAudioConverter(AudioConverter):
         except:
             return False
         return True
+
 
 '''
 class SOXAudioConverter(BaseAudioConverter):
@@ -326,7 +318,8 @@ class MPlayerAudioConverter(BaseAudioConverter, BaseServices):
                     if transcoder == WaveToMpg3Encoder.MPLAYER:
                         try:
                             subprocess.run(['mplayer', '-i', '/tmp/tst.wav', '-f', 'mp3',
-                                            f'{voice_file_path}'], shell=False, text=True, check=True)
+                                            f'{voice_file_path}'], shell=False, 
+                                            text=True, check=True)
                         except subprocess.CalledProcessError:
                             clz._logger.exception('')
                             reason = 'mplayer failed'
@@ -626,11 +619,13 @@ class ConverterHandlerType:
         raise Exception('Not Implemented')
 
     def getSpeed(self) -> float:
-        speed: float = Settings.getSetting(SettingsProperties.SPEED, Settings.get_engine_id())
+        speed: float = Settings.getSetting(SettingsProperties.SPEED, 
+        Settings.get_engine_id())
         return speed
 
     def getVolumeDb(self) -> float:
-        volumeDb: float = Settings.getSetting(SettingsProperties.VOLUME, Settings.get_engine_id())
+        volumeDb: float = Settings.getSetting(SettingsProperties.VOLUME, 
+        Settings.get_engine_id())
         return volumeDb
 
     def setSpeed(self, speed: float):
@@ -686,7 +681,8 @@ class BaseConverterHandler(ConverterHandlerType):
         clz.set_sound_dir()
 
     @classmethod
-    def getAvailablePlayers(cls, include_builtin=True) -> List[Type[ConverterHandlerType]]:
+    def getAvailablePlayers(cls, include_builtin=True) -> List[Type[
+    ConverterHandlerType]]:
         return []
 
     def player(self) -> str | None:
@@ -760,7 +756,8 @@ class WavAudioConverterHandler(BaseConverterHandler):
         self.preferred = None
         self.advanced = advanced
         self.set_sound_dir()
-        cls.sound_file_base = os.path.join(cls.sound_dir, '{speech_file_name}{sound_file_type}')
+        cls.sound_file_base = os.path.join(cls.sound_dir, '{speech_file_name}{
+        sound_file_type}')
         self._player: AudioConverter = AudioConverter()
         self.hasAdvancedPlayer: bool = False
         self._getAvailablePlayers(include_builtin=True)
@@ -924,7 +921,6 @@ class MP3AudioConverterHandler(WavAudioConverterHandler):
         if not os.path.exists(cls.sound_dir):
             os.makedirs(cls.sound_dir)
 '''
-
 
 '''
 

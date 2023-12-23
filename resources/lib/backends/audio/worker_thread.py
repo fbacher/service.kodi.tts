@@ -1,18 +1,13 @@
-import sys
+from queue import Empty as EmptyQueue, Full as FullQueue, Queue
+from threading import Thread
 
 from backends.players.iplayer import IPlayer
 from backends.players.player_index import PlayerIndex
-from backends.settings.setting_properties import SettingsProperties
 from common.base_services import BaseServices, IServices
 from common.logger import *
 from common.monitor import Monitor
 from common.phrases import Phrase, PhraseList
 from common.typing import *
-from threading import Thread, ThreadError
-from queue import Queue
-from queue import Empty as EmptyQueue
-from queue import Full as FullQueue
-
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -35,6 +30,7 @@ class TTSQueueData:
 
 
 class TTSQueue(Queue):
+
     def __init__(self, maxsize: int = 50):
         super().__init__(maxsize)
 
@@ -52,7 +48,7 @@ class WorkerThread:
         self.task: callable = task
         self.kwargs = kwargs
 
-        self.thread = Thread(target=self.process_queue, name=thread_name )
+        self.thread = Thread(target=self.process_queue, name=thread_name)
         self.thread_started: bool = False
         if clz._logger is None:
             clz._logger = module_logger.getChild(self.__class__.__name__)
@@ -84,33 +80,6 @@ class WorkerThread:
         except Exception as e:
             clz._logger.exception('')
 
-    '''
-    def empty_queue(self) -> None:
-        """
-        If this is needed, take care NOT to delete phrases which can be use
-        to seed a voice cache for future use
-        
-        :return: 
-        """
-        clz = type(self)
-        try:
-            while self.queue.not_empty:
-                data = self.queue.get_nowait()
-                self.queue.task_done()
-                kwargs: Dict[str, Any] = data.get_kwargs()
-                phrase: Phrase = kwargs.get('phrase')
-                engine_id: str = kwargs.get('engine_id')
-                if phrase is not None:
-                    clz._logger.debug(f'Purged {phrase.debug_data()}_{engine_id}',
-                                      trace=Trace.TRACE_AUDIO_START_STOP)
-        except EmptyQueue as e:
-            pass
-        except AbortException:
-            reraise(*sys.exc_info())
-        except Exception:
-            clz._logger.exception('')
-        '''
-
     def process_queue(self):
         clz = type(self)
         data: TTSQueueData = None
@@ -140,14 +109,7 @@ class WorkerThread:
                         except Exception as e:
                             clz._logger.exception('')
                         continue
-                        '''
-                        try:
-                            player.init(engine_id)
-                        except Exception as e:
-                            clz._logger.exception('')
-                        player.play(phrase)
-                        continue
-                        '''
+
                     if kwargs['state'] == 'seed_cache':
                         engine_id: str = kwargs.get('engine_id')
                         phrases: PhraseList = kwargs.get('phrases')
@@ -157,12 +119,12 @@ class WorkerThread:
                         except Exception as e:
                             clz._logger.exception('')
                 except AbortException as e:
-                    return  #  Exit thread
+                    return  # Exit thread
                 except Exception as e:
                     clz._logger.exception('')
 
         except AbortException as e:
-            pass # Let thread exit
+            pass  # Let thread exit
         except Exception as e:
             clz._logger.exception('')
         finally:

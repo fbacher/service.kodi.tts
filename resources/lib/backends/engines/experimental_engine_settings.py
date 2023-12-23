@@ -1,5 +1,3 @@
-import sys
-
 from backends.audio.sound_capabilties import SoundCapabilities
 from backends.engines.base_engine_settings import (BaseEngineSettings)
 from backends.settings.base_service_settings import BaseServiceSettings
@@ -8,10 +6,10 @@ from backends.settings.i_validators import ValueType
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.settings_map import Reason, SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
-                                          EnumValidator, StringValidator)
+                                          StringValidator)
 from common.constants import Constants
-from common.logger import BasicLogger, DEBUG_VERBOSE
-from common.setting_constants import Backends, Genders, Players
+from common.logger import BasicLogger
+from common.setting_constants import Backends, Players
 from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
 from common.typing import *
@@ -52,7 +50,6 @@ class ExperimentalSettings(BaseServiceSettings):
                                         cls.volumeConversionConstraints, volumeDb)
     
     """
-
 
     class VolumeConstraintsValidator(ConstraintsValidator):
 
@@ -113,7 +110,7 @@ class ExperimentalSettings(BaseServiceSettings):
 
     @classmethod
     def init_settings(cls):
-        service_properties = {Constants.NAME: cls.displayName,
+        service_properties = {Constants.NAME        : cls.displayName,
                               Constants.CACHE_SUFFIX: 'ex'}
         SettingsMap.define_service(ServiceType.ENGINE, cls.engine_id,
                                    service_properties)
@@ -122,21 +119,21 @@ class ExperimentalSettings(BaseServiceSettings):
         # constraints/settings to the engine's constraints/settings
 
         speedConstraints: Constraints = Constraints(25, 100, 400, False, False, 0.01,
-                                               SettingsProperties.SPEED, 125, 0.25)
+                                                    SettingsProperties.SPEED, 125, 0.25)
         speed_constraints_validator = ConstraintsValidator(SettingsProperties.SPEED,
                                                            cls.engine_id,
                                                            speedConstraints)
 
         pitch_constraints: Constraints = Constraints(0, 50, 99, True, False, 50.0,
-                                                    SettingsProperties.PITCH)
+                                                     SettingsProperties.PITCH)
         pitch_constraints_validator = ConstraintsValidator(SettingsProperties.PITCH,
                                                            cls.engine_id,
                                                            pitch_constraints)
 
         volume_constraints_validator = cls.VolumeConstraintsValidator(
-            SettingsProperties.VOLUME,
-            cls.engine_id,
-            cls.ttsVolumeConstraints)
+                SettingsProperties.VOLUME,
+                cls.engine_id,
+                cls.ttsVolumeConstraints)
 
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOLUME,
                                    volume_constraints_validator)
@@ -157,9 +154,10 @@ class ExperimentalSettings(BaseServiceSettings):
         #  TODO:  Need to eliminate un-available players
         #         Should do elimination in separate code
 
-        valid_players: List[str] = [Players.MPLAYER, Players.SFX, Players.WINDOWS, Players.APLAY,
+        valid_players: List[str] = [Players.MPLAYER, Players.SFX, Players.WINDOWS,
+                                    Players.APLAY,
                                     Players.PAPLAY, Players.AFPLAY, Players.SOX,
-                                     Players.MPG321, Players.MPG123,
+                                    Players.MPG321, Players.MPG123,
                                     Players.MPG321_OE_PI, Players.INTERNAL]
         player_validator: StringValidator
         player_validator = StringValidator(SettingsProperties.PLAYER, cls.engine_id,

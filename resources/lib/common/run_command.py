@@ -6,8 +6,6 @@ from subprocess import Popen
 
 import xbmc
 
-from cache.prefetch_movie_data.seed_cache import SeedCache
-from common.critical_settings import CriticalSettings
 from common.logger import *
 from common.monitor import Monitor
 from common.typing import *
@@ -80,12 +78,14 @@ class RunCommand:
 
                 self.process = subprocess.Popen(
                         self.args, stdin=None, stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE, shell=False, universal_newlines=True, env=env,
+                        stderr=subprocess.PIPE, shell=False, universal_newlines=True,
+                        env=env,
                         close_fds=True, creationflags=subprocess.DETACHED_PROCESS)
             else:
                 self.process = subprocess.Popen(
                         self.args, stdin=None, stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE, shell=False, universal_newlines=True, env=env,
+                        stderr=subprocess.PIPE, shell=False, universal_newlines=True,
+                        env=env,
                         close_fds=True)
             self.stdout_thread = threading.Thread(target=self.stdout_reader,
                                                   name='normalize stdout reader')

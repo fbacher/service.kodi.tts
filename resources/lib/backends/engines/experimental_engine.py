@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 import io
 import os
-import regex
+import pathlib
+import subprocess
 import sys
 from datetime import timedelta
 from enum import Enum
 from time import time
-import pathlib
-import subprocess
 
+import regex
 from typing.io import IO
 
 from backends.audio.sound_capabilties import ServiceType
@@ -241,7 +241,8 @@ class SpeechGenerator:
         clz = type(self)
         failed: bool = False
         if Settings.get_setting_bool(SettingsProperties.DELAY_VOICING,
-                                     ExperimentalTTSBackend.service_ID, ignore_cache=False,
+                                     ExperimentalTTSBackend.service_ID,
+                                     ignore_cache=False,
                                      default=True):
             clz._logger.debug(f'Generation of voice files disabled by settings')
             self.set_rc(ReturnCode.MINOR_SAVE_FAIL)
@@ -276,7 +277,8 @@ class SpeechGenerator:
                     subprocess.run(['mencoder', '-really_quiet',
                                     '-af', 'volume=-10', '-i', '/tmp/tst.wav',
                                     '-o', 'output_file',
-                                    f'{voice_file_path}'], shell=False, text=True, check=True)
+                                    f'{voice_file_path}'], shell=False, text=True,
+                                   check=True)
                 except subprocess.CalledProcessError:
                     clz._logger.exception('')
                     self.set_rc(ReturnCode.CALL_FAILED)
@@ -341,7 +343,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
 
     def getMode(self) -> Mode:
         clz = type(self)
-        player: IPlayer = self.get_player()
+        player: IPlayer = self.get_player(clz.service_ID)
         if clz.getSetting(SettingsProperties.PIPE):
             return Mode.PIPE
         else:
@@ -427,9 +429,12 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
                         clz._logger.debug_extra_verbose(f'PHRASE Text {text_to_voice}')
                         rc: int = 0
                         try:
-                            # Should only get here if voiced file (.wav, .mp3, etc.) was NOT
-                            # found. We might see a pre-existing .txt file which means that
-                            # the download failed. To prevent multiple downloads, wait a day
+                            # Should only get here if voiced file (.wav, .mp3,
+                            # etc.) was NOT
+                            # found. We might see a pre-existing .txt file which means
+                            # that
+                            # the download failed. To prevent multiple downloads,
+                            # wait a day
                             # before retrying the download.
 
                             voice_text_file: pathlib.Path | None = None
@@ -491,11 +496,13 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
                 # the download failed. To prevent multiple downloads, wait a day
                 # before retrying the download.
 
-                failing_voice_text_file: pathlib.Path | None = None  # None when save_to_file False
+                failing_voice_text_file: pathlib.Path | None = None  # None when
+                # save_to_file False
                 if save_to_file:
                     failing_voice_text_file = voice_file_path.with_suffix('.txt')
                     if failing_voice_text_file.is_file():
-                        expiration_time: float = time() - timedelta(hours=24).total_seconds()
+                        expiration_time: float = time() - timedelta(
+                            hours=24).total_seconds()
                         if (os.stat(failing_voice_text_file).st_mtime <
                                 expiration_time):
                             clz._logger.debug(f'voice_file_path.unlink(missing_ok=True)')
@@ -535,10 +542,11 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
                 model = 'tts_models/en/ljspeech/tacotron2-DDC_ph'
                 vocoder = 'vocoder_models/en/ljspeech/univnet'
                 try:
-                    self.simple_cmd = SimpleRunCommand(['tts', '--text', f'{text_to_voice}',
-                                                   '--model_name', model,
-                                                   '--vocoder_name', vocoder,
-                                                   '--out_path', '/tmp/tst.wav'])
+                    self.simple_cmd = SimpleRunCommand(
+                            ['tts', '--text', f'{text_to_voice}',
+                             '--model_name', model,
+                             '--vocoder_name', vocoder,
+                             '--out_path', '/tmp/tst.wav'])
                     if self.stop_processing:
                         rc = ReturnCode.STOP
                         return rc
@@ -560,7 +568,8 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
                             subprocess.run(['mencoder', '-really_quiet',
                                             '-af', 'volume=-10', '-i', '/tmp/tst.wav',
                                             '-o', 'output_file',
-                                            f'{voice_file_path}'], shell=False, text=True, check=True)
+                                            f'{voice_file_path}'], shell=False, text=True,
+                                           check=True)
                         except subprocess.CalledProcessError:
                             clz._logger.exception('')
                             reason = 'mplayer failed'
@@ -659,7 +668,8 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
 
     @classmethod
     def settingList(cls, setting, *args) \
-            -> List[str] | List[Tuple[str, str]] | Tuple[List[str], str] | Tuple[List[Tuple[str, str]], str]:
+            -> List[str] | List[Tuple[str, str]] | Tuple[List[str], str] | Tuple[
+                List[Tuple[str, str]], str]:
         """
         Gets the possible specified setting values in same representation
         as stored in settings.xml (not translated). Sorting/translating done

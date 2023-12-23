@@ -22,10 +22,10 @@ class VoiceOverBackend(SimpleTTSBackend):
     def init(self):
         self.setMode(Mode.ENGINESPEAK)
 
-    def runCommandAndSpeak(self,text):
+    def runCommandAndSpeak(self, text):
         subprocess.call(['osascript', '-e',
                          'tell application "voiceover" to output "{0}"'.format(
-                             text.replace('"',''))], universal_newlines=True)
+                                 text.replace('"', ''))], universal_newlines=True)
 
     def stop(self):
         subprocess.call(['osascript', '-e',
@@ -36,15 +36,15 @@ class VoiceOverBackend(SimpleTTSBackend):
     def available():
         return sys.platform == 'darwin' and not SystemQueries.isATV2()
 
-#on isVoiceOverRunning()
+# on isVoiceOverRunning()
 #	set isRunning to false
 #	tell application "System Events"
 #		set isRunning to (name of processes) contains "VoiceOver"
 #	end tell
 #	return isRunning
-#end isVoiceOverRunning
+# end isVoiceOverRunning
 #
-#on isVoiceOverRunningWithAppleScript()
+# on isVoiceOverRunningWithAppleScript()
 #	if isVoiceOverRunning() then
 #		set isRunningWithAppleScript to true
 #
@@ -59,4 +59,4 @@ class VoiceOverBackend(SimpleTTSBackend):
 #		return isRunningWithAppleScript
 #	end if
 #	return false
-#end isVoiceOverRunningWithAppleScript
+# end isVoiceOverRunningWithAppleScript

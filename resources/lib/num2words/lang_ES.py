@@ -219,12 +219,12 @@ class Num2Word_ES(Num2Word_EU):
         self.pointword = "punto"
         self.errmsg_nonnum = "type(%s) no es [long, int, float]"
         self.errmsg_floatord = "El float %s no puede ser tratado como un" \
-            " ordinal."
+                               " ordinal."
         self.errmsg_negord = "El número negativo %s no puede ser tratado" \
-            " como un ordinal."
+                             " como un ordinal."
         self.errmsg_toobig = (
             "abs(%s) deber ser inferior a %s."
-            )
+        )
         self.gender_stem = "o"
         self.exclude_title = ["y", "menos", "punto"]
         self.mid_numwords = [(1000, "mil"), (100, "cien"), (90, "noventa"),
@@ -238,36 +238,36 @@ class Num2Word_ES(Num2Word_EU):
                              "dieciséis", "quince", "catorce", "trece", "doce",
                              "once", "diez", "nueve", "ocho", "siete", "seis",
                              "cinco", "cuatro", "tres", "dos", "uno", "cero"]
-        self.ords = {1: "primer",
-                     2: "segund",
-                     3: "tercer",
-                     4: "cuart",
-                     5: "quint",
-                     6: "sext",
-                     7: "séptim",
-                     8: "octav",
-                     9: "noven",
-                     10: "décim",
-                     20: "vigésim",
-                     30: "trigésim",
-                     40: "quadragésim",
-                     50: "quincuagésim",
-                     60: "sexagésim",
-                     70: "septuagésim",
-                     80: "octogésim",
-                     90: "nonagésim",
-                     100: "centésim",
-                     200: "ducentésim",
-                     300: "tricentésim",
-                     400: "cuadrigentésim",
-                     500: "quingentésim",
-                     600: "sexcentésim",
-                     700: "septigentésim",
-                     800: "octigentésim",
-                     900: "noningentésim",
-                     1e3: "milésim",
-                     1e6: "millonésim",
-                     1e9: "billonésim",
+        self.ords = {1   : "primer",
+                     2   : "segund",
+                     3   : "tercer",
+                     4   : "cuart",
+                     5   : "quint",
+                     6   : "sext",
+                     7   : "séptim",
+                     8   : "octav",
+                     9   : "noven",
+                     10  : "décim",
+                     20  : "vigésim",
+                     30  : "trigésim",
+                     40  : "quadragésim",
+                     50  : "quincuagésim",
+                     60  : "sexagésim",
+                     70  : "septuagésim",
+                     80  : "octogésim",
+                     90  : "nonagésim",
+                     100 : "centésim",
+                     200 : "ducentésim",
+                     300 : "tricentésim",
+                     400 : "cuadrigentésim",
+                     500 : "quingentésim",
+                     600 : "sexcentésim",
+                     700 : "septigentésim",
+                     800 : "octigentésim",
+                     900 : "noningentésim",
+                     1e3 : "milésim",
+                     1e6 : "millonésim",
+                     1e9 : "billonésim",
                      1e12: "trillonésim",
                      1e15: "cuadrillonésim"}
 
@@ -310,21 +310,21 @@ class Num2Word_ES(Num2Word_EU):
             text = "%s%s" % (self.ords[value], self.gender_stem)
         elif value <= 12:
             text = (
-                "%s%s%s" % (self.ords[10], self.gender_stem,
-                            self.to_ordinal(value - 10))
-                    )
+                    "%s%s%s" % (self.ords[10], self.gender_stem,
+                                self.to_ordinal(value - 10))
+            )
         elif value <= 100:
             dec = (value // 10) * 10
             text = (
-                "%s%s %s" % (self.ords[dec], self.gender_stem,
-                             self.to_ordinal(value - dec))
-                    )
+                    "%s%s %s" % (self.ords[dec], self.gender_stem,
+                                 self.to_ordinal(value - dec))
+            )
         elif value <= 1e3:
             cen = (value // 100) * 100
             text = (
-                "%s%s %s" % (self.ords[cen], self.gender_stem,
-                             self.to_ordinal(value - cen))
-                    )
+                    "%s%s %s" % (self.ords[cen], self.gender_stem,
+                                 self.to_ordinal(value - cen))
+            )
         elif value < 1e18:
             # Round down to the nearest 1e(3n)
             # dec contains the following:
@@ -341,9 +341,9 @@ class Num2Word_ES(Num2Word_EU):
 
             cardinal = self.to_cardinal(high_part) if high_part != 1 else ""
             text = (
-                "%s%s%s %s" % (cardinal, self.ords[dec], self.gender_stem,
-                               self.to_ordinal(low_part))
-                    )
+                    "%s%s%s %s" % (cardinal, self.ords[dec], self.gender_stem,
+                                   self.to_ordinal(low_part))
+            )
         else:
             text = self.to_cardinal(value)
         return text.strip()
@@ -355,8 +355,8 @@ class Num2Word_ES(Num2Word_EU):
     def to_currency(self, val, currency='EUR', cents=True, separator=' con',
                     adjective=False):
         result = super(Num2Word_ES, self).to_currency(
-            val, currency=currency, cents=cents, separator=separator,
-            adjective=adjective)
+                val, currency=currency, cents=cents, separator=separator,
+                adjective=adjective)
         # Handle exception: In Spanish it's "un euro" and not "uno euro",
         # except in these currencies, where it's "una": leona, corona,
         # libra, lira, rupia, lempira, peseta.

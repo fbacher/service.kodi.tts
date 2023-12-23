@@ -18,7 +18,8 @@ class IBackendInfo:
         return cls._backendInfoImpl.isValidBackend(backend_id)
 
     @classmethod
-    def getBackendByProvider(cls, backend_id: str = None) -> Callable | ITTSBackendBase | None:
+    def getBackendByProvider(cls,
+                             backend_id: str = None) -> Callable | ITTSBackendBase | None:
         return cls._backendInfoImpl.getBackend(backend_id)
 
     @classmethod
@@ -45,9 +46,9 @@ class IBackendInfo:
     @classmethod
     def get_setting_default(cls, backend_id: str, setting_id: str) -> Any:
         return cls.getBackend(backend_id).get_setting_default(setting_id)
-    
+
     @classmethod
     def negotiate_engine_config(cls, backend_id: str, player_volume_adjustable: bool,
-                            player_speed_adjustable: bool,
-                            player_pitch_adjustable: bool) -> Tuple[bool, bool, bool]:
+                                player_speed_adjustable: bool,
+                                player_pitch_adjustable: bool) -> Tuple[bool, bool, bool]:
         pass

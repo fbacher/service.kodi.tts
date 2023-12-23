@@ -5,14 +5,12 @@ import subprocess
 #  from backends.audio.player_handler import BasePlayerHandler, WavAudioPlayerHandler
 from backends.base import SimpleTTSBackend
 from backends.settings.constraints import Constraints
-from backends.settings.Pico2WaveSettings import Pico2WaveSettings
 from backends.settings.service_types import Services
 from common.constants import Constants
 from common.logger import *
 from common.setting_constants import Backends
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
-from common.system_queries import SystemQueries
 from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -30,9 +28,9 @@ class Pico2WaveTTSBackend(SimpleTTSBackend):
     #  player_handler_class: Type[BasePlayerHandler] = WavAudioPlayerHandler
     constraints: Dict[str, Constraints] = {}
     settings = {SettingsProperties.LANGUAGE: '',
-                SettingsProperties.PLAYER: None,
-                SettingsProperties.SPEED: 0,
-                SettingsProperties.VOLUME: 0
+                SettingsProperties.PLAYER  : None,
+                SettingsProperties.SPEED   : 0,
+                SettingsProperties.VOLUME  : 0
                 }
     supported_settings: Dict[str, str | int | bool] = settings
     _logger: BasicLogger = None
@@ -70,9 +68,9 @@ class Pico2WaveTTSBackend(SimpleTTSBackend):
         # If caching is enabled, voice_file will be in the cache.
 
         voice_file, exists = self.get_path_to_voice_file(text_to_voice,
-                                                        use_cache=Settings.is_use_cache())
+                                                         use_cache=Settings.is_use_cache())
         self._logger.debug_verbose('pico2wave.runCommand text: ' + text_to_voice +
-                         ' language: ' + self.language)
+                                   ' language: ' + self.language)
         args = ['pico2wave']
         if self.language:
             args.extend(['-l', clz.getLanguage()])
@@ -101,12 +99,13 @@ class Pico2WaveTTSBackend(SimpleTTSBackend):
         pass
 
     @classmethod
-    def settingList(cls,setting,*args):
+    def settingList(cls, setting, *args):
         if setting == 'language':
             try:
-                out = subprocess.check_output(['pico2wave','-l','NONE','-w','/dev/null','X'],
-                                              stderr=subprocess.STDOUT,
-                                              universal_newlines=True)
+                out = subprocess.check_output(
+                        ['pico2wave', '-l', 'NONE', '-w', '/dev/null', 'X'],
+                        stderr=subprocess.STDOUT,
+                        universal_newlines=True)
             except subprocess.CalledProcessError as e:
                 out = e.output
             if 'languages:' not in out:
@@ -114,7 +113,7 @@ class Pico2WaveTTSBackend(SimpleTTSBackend):
 
             languages = [(v, v) for v in
                          out.split('languages:', 1)[-1].split('\n\n')[0].strip(
-                             '\n').split('\n')]
+                                 '\n').split('\n')]
 
             default_locale = Constants.LOCALE.lower().replace('_', '-')
             default_language = languages[0][0]

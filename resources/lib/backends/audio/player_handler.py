@@ -15,7 +15,6 @@ from backends.audio.sfx_audio_player import PlaySFXAudioPlayer
 from backends.audio.sound_capabilties import SoundCapabilities
 from backends.audio.sox_audio_player import SOXAudioPlayer
 from backends.audio.windows_audio_player import WindowsAudioPlayer
-from backends.i_tts_backend_base import ITTSBackendBase
 from backends.players.player_index import PlayerIndex
 from backends.settings.service_types import Services
 from backends.settings.setting_properties import SettingsProperties
@@ -26,8 +25,8 @@ from common.logger import BasicLogger
 from common.setting_constants import Players
 from common.settings import Settings
 from common.typing import *
-module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 
+module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class BasePlayerHandler(PlayerHandlerType):
@@ -131,7 +130,8 @@ class WavAudioPlayerHandler(BasePlayerHandler):
         self.preferred = None
         self.advanced = advanced
         self.set_sound_dir()
-        cls.sound_file_base = os.path.join(cls.sound_dir, '{speech_file_name}{sound_file_type}')
+        cls.sound_file_base = os.path.join(cls.sound_dir,
+                                           '{speech_file_name}{sound_file_type}')
         self._player: AudioPlayer = AudioPlayer()
         self.hasAdvancedPlayer: bool = False
         self._getAvailablePlayers(include_builtin=True)
@@ -250,7 +250,7 @@ class WavAudioPlayerHandler(BasePlayerHandler):
 
     @classmethod
     def getAvailablePlayers(cls, include_builtin=True) -> List[Type[AudioPlayer]]:
-        players: List[Type[AudioPlayer]] = [] # cast(List[Type[AudioPlayer]], [])
+        players: List[Type[AudioPlayer]] = []  # cast(List[Type[AudioPlayer]], [])
         for p in cls.players:
             if p.available():
                 if not p.is_builtin() or include_builtin == p.is_builtin():

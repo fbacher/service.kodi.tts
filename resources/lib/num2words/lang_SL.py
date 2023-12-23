@@ -49,14 +49,14 @@ class Num2Word_SL(Num2Word_EU):
                              "enajst", "deset", "devet", "osem", "sedem",
                              "šest", "pet", "štiri", "tri", "dve", "ena",
                              "nič"]
-        self.ords = {"ena": "prv",
-                     "dve": "drug",
-                     "tri": "tretj",
-                     "štiri": "četrt",
-                     "sedem": "sedm",
-                     "osem": "osm",
-                     "sto": "stot",
-                     "tisoč": "tisoč",
+        self.ords = {"ena"    : "prv",
+                     "dve"    : "drug",
+                     "tri"    : "tretj",
+                     "štiri"  : "četrt",
+                     "sedem"  : "sedm",
+                     "osem"   : "osm",
+                     "sto"    : "stot",
+                     "tisoč"  : "tisoč",
                      "milijon": "milijont"
                      }
         self.ordflag = False
@@ -65,13 +65,13 @@ class Num2Word_SL(Num2Word_EU):
         ctext, cnum, ntext, nnum = curr + next
 
         if ctext.endswith("dve") and self.ordflag and nnum <= 1000000:
-            ctext = ctext[:len(ctext)-1] + "a"
+            ctext = ctext[:len(ctext) - 1] + "a"
 
         if ctext == "dve" and not self.ordflag and nnum < 1000000000:
             ctext = "dva"
 
-        if (ctext.endswith("tri") or ctext.endswith("štiri")) and\
-           nnum == 1000000 and not self.ordflag:
+        if (ctext.endswith("tri") or ctext.endswith("štiri")) and \
+                nnum == 1000000 and not self.ordflag:
             if ctext.endswith("štiri"):
                 ctext = ctext[:-1]
             ctext = ctext + "je"
@@ -83,12 +83,12 @@ class Num2Word_SL(Num2Word_EU):
             ctext = ctext[0:-1]
 
         if cnum == 1:
-            if nnum < 10**6 or self.ordflag:
+            if nnum < 10 ** 6 or self.ordflag:
                 return next
             ctext = ""
 
         if nnum > cnum:
-            if nnum >= 10**6:
+            if nnum >= 10 ** 6:
                 if self.ordflag:
                     ntext += "t"
 
@@ -125,14 +125,14 @@ class Num2Word_SL(Num2Word_EU):
                     else:
                         ntext += "ov"
 
-            if nnum >= 10**2 and self.ordflag is False and ctext:
+            if nnum >= 10 ** 2 and self.ordflag is False and ctext:
                 ctext += " "
 
             val = cnum * nnum
         else:
             if nnum < 10 < cnum < 100:
                 ntext, ctext = ctext, ntext + "in"
-            elif cnum >= 10**2 and self.ordflag is False:
+            elif cnum >= 10 ** 2 and self.ordflag is False:
                 ctext += " "
             val = cnum + nnum
 
@@ -164,6 +164,6 @@ class Num2Word_SL(Num2Word_EU):
                                                     longval=longval)
 
     def to_year(self, val, longval=True):
-        if not (val//100) % 10:
+        if not (val // 100) % 10:
             return self.to_cardinal(val)
         return self.to_splitnum(val, hightxt="hundert", longval=longval)

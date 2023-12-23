@@ -17,7 +17,7 @@ class Message:
 
     msg_index: Dict[int, 'Message'] = {}
 
-    def __init__(self, default_msg: str, msg_id:int) -> None:
+    def __init__(self, default_msg: str, msg_id: int) -> None:
         clz = type(self)
         self.default_msg: str = default_msg
         self.msg_id: int = msg_id
@@ -87,7 +87,8 @@ class Messages:
     INSTALLED = Message('Installed', 32111)
     UPDATED = Message('Updated', 32112)
     DEFAULT_KEYMAP_INSTALLED = Message('Default keymap installed successfully!', 32113)
-    CUSTOM_KEYMAP_INSTALLED = Message('Custom keymap installed or updated successfully!', 32114)
+    CUSTOM_KEYMAP_INSTALLED = Message('Custom keymap installed or updated successfully!',
+                                      32114)
     CUSTOM_KEYMAP_RESET = Message('Custom keymap reset to defaults.', 32115)
     REMOVED = Message('Removed', 32116)
     KEYMAP_REMOVED = Message('Keymap removed.', 32117)
@@ -213,8 +214,8 @@ class Messages:
     LOCALE_KO_KR = Message('Korean (Korea)', 32273)
     LOCALE_LA = Message('Latin', 32274)
     LOCALE_LV_LV = Message('Latvian (Latvia)', 32275)
-    #LOCALE_MK_MK = Message('FYRO Macedonian (Former Yugoslav Republic of Macedonia)')
-    #LOCALE_MO = Message('Moldovan (Deprecated)')
+    # LOCALE_MK_MK = Message('FYRO Macedonian (Former Yugoslav Republic of Macedonia)')
+    # LOCALE_MO = Message('Moldovan (Deprecated)')
     LOCALE_NB_NO = Message('Norwegian (Norway)', 32276)
     LOCALE_NL_BE = Message('Dutch (Belgium)', 32277)
     LOCALE_NL_NL = Message('Dutch (Netherlands)', 32278)
@@ -224,7 +225,7 @@ class Messages:
     LOCALE_PT_PT = Message('Portuguese (Portugal)', 32282)
     LOCALE_RO_RO = Message('Romanian (Romania)', 32283)
     LOCALE_RU_RU = Message('Russian (Russia)', 32284)
-    #LOCALE_SH = Message('Serbo-Croation (Deprecated)')
+    # LOCALE_SH = Message('Serbo-Croation (Deprecated)')
     LOCALE_SK_SK = Message('Slovak (Slovakia)', 32285)
     LOCALE_SQ_AL = Message('Albanian (Albania)', 32286)
     LOCAL_SR_ME = Message('Serbian (Montenegro)', 32287)
@@ -259,10 +260,17 @@ class Messages:
     BACKEND_ESPEAK = Message('eSpeak', 32314)
     BACKEND_FESTIVAL = Message('Festival', 32315)
     BACKEND_FLITE = Message('Flite', 32316)
-    GOOGLE = Message('Google TTS', 32324)
+    BACKEND_EXPERIMENTAL = Message('Experimental', 32323)
+    BACKEND_GOOGLE = Message('Google TTS', 32324)
+    BACKEND_RECITE = Message('Recite', 32325)
     BACKEND_RESPONSIVE_VOICE = Message('ResponsiveVoice', 32317)
     BACKEND_SPEECH_DISPATCHER = Message('Speech Dispatcher', 32318)
-    BACKEND_EXPERIMENTAL = Message('Experimental Engine', 32323)
+    BACKEND_INTERNAL = Message('Internal', 32326)
+    BACKEND_LOG_ONLY = Message('Logging Only', 32327)
+    CONVERT_PICO_TO_WAV = Message('Pico to wave', 32328)
+
+    # INTERNAL_ID: Messages.BACKEND_INTERNAL,
+    # LOG_ONLY_ID: Messages.BACKEND_LOG_ONLY,
 
     # Generic VOICE Names
 
@@ -290,7 +298,7 @@ class Messages:
         self._logger = module_logger.getChild(self.__class__.__name__)
 
     @staticmethod
-    def get_msg(msg_ref: Message| int) -> str:
+    def get_msg(msg_ref: Message | int) -> str:
         """
 
         :param msg_ref:
@@ -337,7 +345,8 @@ class Messages:
                     unformatted_msg = f'Message not defined: {msg_ref}'
                 if Messages._instance._logger.isEnabledFor(ERROR):
                     Messages._instance._logger.error(
-                        f'Can not find message from strings for message id: {str(msg_id)}')
+                            f'Can not find message from strings for message id: '
+                            f'{str(msg_id)}')
         except:
             unformatted_msg = f"Invalid msg id: {str(msg_id)}"
             module_logger.exception(unformatted_msg)

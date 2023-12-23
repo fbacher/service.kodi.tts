@@ -11,9 +11,8 @@ from backends.backend_info_bridge import BackendInfoBridge
 from backends.settings.constraints import Constraints
 from backends.settings.service_types import Services
 from common import utils
-from common.constants import Constants
-from common.logger import *
 from common.base_services import BaseServices
+from common.logger import *
 from common.setting_constants import Converters
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
@@ -21,7 +20,6 @@ from common.system_queries import SystemQueries
 from common.typing import *
 from converters.base_converter import AudioConverter
 from converters.converter_index import ConverterIndex
-from converters.iconverter import IConverter
 
 try:
     import xbmc
@@ -183,6 +181,8 @@ class BaseAudioConverter(AudioConverter):
         return True
 
 '''
+
+
 class SOXAudioConverter(AudioConverter):
     ID = Converters.SOX
     service_ID = ID
@@ -250,7 +250,7 @@ class SOXAudioConverter(AudioConverter):
         try:
             if ext == '.mp3':
                 if '.mp3' not in subprocess.check_output(['sox', '--help'],
-                                                        universal_newlines=True):
+                                                         universal_newlines=True):
                     return False
             else:
                 subprocess.call(cls._availableArgs, stdout=(open(os.path.devnull, 'w')),
@@ -274,7 +274,8 @@ class MPlayerAudioConverter(AudioConverter, BaseServices):
                     if transcoder == WaveToMpg3Encoder.MPLAYER:
                         try:
                             subprocess.run(['mplayer', '-i', '/tmp/tst.wav', '-f', 'mp3',
-                                            f'{voice_file_path}'], shell=False, text=True, check=True)
+                                            f'{voice_file_path}'], shell=False,
+                                            text=True, check=True)
                         except subprocess.CalledProcessError:
                             clz._logger.exception('')
                             reason = 'mplayer failed'
@@ -321,8 +322,8 @@ class MPlayerAudioConverter(AudioConverter, BaseServices):
         backend_id: str = Settings.get_engine_id()
         self.configVolume, self.configSpeed, self.configPitch = \
             BackendInfoBridge.negotiate_engine_config(
-                                            backend_id, self.canSetVolume(),
-                                            self.canSetSpeed(), self.canSetPitch())
+                    backend_id, self.canSetVolume(),
+                    self.canSetSpeed(), self.canSetPitch())
 
     def playArgs(self, path: str):
         clz = type(self)
@@ -513,12 +514,12 @@ class Mpg321OEPiAudioConverter(AudioConverter):
 
     def pipe(self, source):  # Plays using ALSA
         self._convert_process = subprocess.Popen('mpg321 - --wav - | aplay',
-                                            stdin=subprocess.PIPE,
-                                            stdout=(
-                                                open(os.path.devnull, 'w')),
-                                            stderr=subprocess.STDOUT,
-                                            env=self.env, shell=True,
-                                            universal_newlines=True)
+                                                 stdin=subprocess.PIPE,
+                                                 stdout=(
+                                                     open(os.path.devnull, 'w')),
+                                                 stderr=subprocess.STDOUT,
+                                                 env=self.env, shell=True,
+                                                 universal_newlines=True)
         try:
             shutil.copyfileobj(source, self._convert_process.stdin)
         except IOError as e:
@@ -533,10 +534,10 @@ class Mpg321OEPiAudioConverter(AudioConverter):
 
     def play(self, path):  # Plays using ALSA
         self._convert_process = subprocess.Popen(f'mpg321 --wav - "{path}" | aplay',
-                                            stdout=(
-                                                open(os.path.devnull, 'w')),
-                                            stderr=subprocess.STDOUT, env=self.env,
-                                            shell=True, universal_newlines=True)
+                                                 stdout=(
+                                                     open(os.path.devnull, 'w')),
+                                                 stderr=subprocess.STDOUT, env=self.env,
+                                                 shell=True, universal_newlines=True)
 
     @classmethod
     def available(cls, ext=None):

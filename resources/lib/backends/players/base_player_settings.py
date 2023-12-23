@@ -3,7 +3,7 @@ from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.constraints import Constraints
 from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import SettingsMap
-from backends.settings.validators import (BoolValidator, IntValidator, StringValidator,
+from backends.settings.validators import (StringValidator,
                                           Validator)
 from common.base_services import BaseServices
 from common.setting_constants import Players

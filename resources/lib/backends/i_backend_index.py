@@ -1,6 +1,5 @@
 from backends.i_tts_backend_base import ITTSBackendBase
 from common import *
-from common.setting_constants import Backends, BaseSettingsConstants
 
 
 class IEngineIndex:
@@ -25,29 +24,29 @@ class IEngineIndex:
     ExperimentalTTSBackend: Final[str] = 'ExperimentalTTSBackend'
     LogOnlyTTSBackend = 'LogOnlyTTSBackend'
 
-    backendClassNames: List[str] = [# SAPITTSBackend,
-                                    # OSXSayTTSBackend,
-                                    ESpeakTTSBackend,
-                                    # JAWSTTSBackend,
-                                    # NVDATTSBackend,
-                                    FliteTTSBackend,
-                                    Pico2WaveTTSBackend,
-                                    FestivalTTSBackend,
-                                    # CepstralTTSBackend,
-                                    #            CepstralTTSOEBackend,
-                                    # SpeechDispatcherTTSBackend,
-                                    #            VoiceOverBackend,
-                                    # SpeechServerBackend,
-                                    # ReciteTTSBackend,
-                                    GoogleTTSBackend,
-                                    ResponsiveVoiceTTSBackend,
-                                    ExperimentalTTSBackend,
-                                    #            SpeechUtilComTTSBackend,
-                                    # ESpeakCtypesTTSBackend,
-                                    LogOnlyTTSBackend
-                                    ]
+    backendClassNames: List[str] = [  # SAPITTSBackend,
+        # OSXSayTTSBackend,
+        ESpeakTTSBackend,
+        # JAWSTTSBackend,
+        # NVDATTSBackend,
+        FliteTTSBackend,
+        Pico2WaveTTSBackend,
+        FestivalTTSBackend,
+        # CepstralTTSBackend,
+        #            CepstralTTSOEBackend,
+        # SpeechDispatcherTTSBackend,
+        #            VoiceOverBackend,
+        # SpeechServerBackend,
+        # ReciteTTSBackend,
+        GoogleTTSBackend,
+        ResponsiveVoiceTTSBackend,
+        ExperimentalTTSBackend,
+        #            SpeechUtilComTTSBackend,
+        # ESpeakCtypesTTSBackend,
+        LogOnlyTTSBackend
+    ]
 
     @classmethod
     def setBackendByPriorities(cls, backendsByPriority: List[ITTSBackendBase],
-                           backendsById: Dict[str, ITTSBackendBase]) -> None:
+                               backendsById: Dict[str, ITTSBackendBase]) -> None:
         pass

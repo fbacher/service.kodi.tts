@@ -14,6 +14,7 @@ import traceback
 import warnings
 from io import StringIO
 from logging import *
+from pathlib import Path
 
 import xbmc
 import xbmcaddon
@@ -46,7 +47,6 @@ DEFAULT_LOG_LEVEL: Final[int] = CriticalSettings.get_logging_level()
 INCLUDE_THREAD_INFO: bool = CriticalSettings.is_debug_include_thread_info()
 INCLUDE_THREAD_LABEL: bool = True
 INCLUDE_DEBUG_LEVEL: bool = True
-
 
 # Define extra log levels in between predefined values.
 
@@ -162,7 +162,7 @@ class BasicLogger(Logger):
                 return
         if self.isEnabledFor(level):
             kwargs.setdefault('ignore_frames', 0)
-            ignore_frames = kwargs.pop('ignore_frames') + 1
+            ignore_frames = kwargs.pop('ignore_frames') + 2  # 1
             trace = kwargs.pop('trace', None)
             notify: str = kwargs.pop('notify', None)
 
@@ -200,13 +200,13 @@ class BasicLogger(Logger):
     @staticmethod
     def get_addon_logger() -> ForwardRef('BasicLogger'):
         root_logger: BasicLogger = BasicLogger.getLogger()
-        addon_logger: BasicLogger = root_logger.getChild(CriticalSettings.get_plugin_name())
+        addon_logger: BasicLogger = root_logger.getChild(
+            CriticalSettings.get_plugin_name())
         return addon_logger
-
 
     @classmethod
     def get_module_logger(cls,
-                          module_path: str = None) -> ForwardRef('BasicLogger'):
+                          module_path: str | Path = None) -> ForwardRef('BasicLogger'):
         """
             Creates a logger based upon something like the python module naming
             convention. Ex: lib.common.playlist.<classname>
@@ -218,16 +218,17 @@ class BasicLogger(Logger):
         logger: BasicLogger = None
 
         root_logger = getLogger()
-        addon_logger: BasicLogger = root_logger.getChild(CriticalSettings.get_plugin_name())
+        addon_logger: BasicLogger = root_logger.getChild(
+            CriticalSettings.get_plugin_name())
 
         # Calculate the module path relative to the TOP_PACKAGE_PATH
 
         if INCLUDE_MODULE_PATH_IN_LOGGER:
             if module_path is not None:
-                file_path = module_path.replace('.py', '', 1)
+                file_path: str = str(module_path).replace('.py', '', 1)
                 # xbmc.log(f'TOP_PACKAGE_PATH: {TOP_PACKAGE_PATH} '
                 #          f'file_path: {file_path}')
-                suffix = file_path.replace(CriticalSettings.TOP_PACKAGE_PATH, '', 1)
+                suffix = file_path.replace(str(CriticalSettings.TOP_PACKAGE_PATH), '', 1)
                 suffix = suffix.replace('/', '.')
                 if suffix.startswith('.'):
                     suffix = suffix.replace('.', '', 1)
@@ -394,6 +395,11 @@ class BasicLogger(Logger):
         """
 
         if get_addon_logger().isEnabledFor(level):
+            for th in threading.enumerate():
+                print(th)
+                traceback.print_stack(sys._current_frames()[th.ident])
+                print()
+
             ignore_frames += 1
             sio: StringIO = StringIO()
             sio.write('LEAK Traceback StackTrace StackDump\n')
@@ -408,9 +414,11 @@ class BasicLogger(Logger):
             for th in threads_to_dump:
                 th: threading.Thread
                 sio.write(f'\n# ThreadID: {th.name} Daemon: {th.daemon}\n\n')
+                traceback.print_stack(th, file=sio)
 
-                # Remove the logger's frames from it's thread.
-                frames: List[inspect.FrameInfo] = inspect.stack(context=1)
+            '''
+            # Remove the logger's frames from it's thread.
+                # frames: List[inspect.FrameInfo] = inspect.stack(context=1)
 
                 if th == current_thread:
                     frames_to_ignore = ignore_frames
@@ -422,7 +430,7 @@ class BasicLogger(Logger):
                     sio.write(f'File: "{frame.filename}" line {frame.lineno}. '
                               f'in {frame.function}\n')
                     sio.write(f'  {frame.code_context}\n')
-
+            '''
             kwargs: Any = {}
             msg: str = sio.getvalue()
             sio.close()
@@ -471,7 +479,6 @@ class KodiHandler(logging.Handler):
 
         super().__init__(level=level)
         self.setFormatter(KodiFormatter())
-
 
     def handle(self, record):
         try:
@@ -542,26 +549,27 @@ class KodiHandler(logging.Handler):
                 else:
                     # couldn't find the right stack frame, for some reason
                     sio.write('Logged from file %s, line %s\n' % (
-                                     record.filename, record.lineno))
+                        record.filename, record.lineno))
                 # Issue 18671: output logging message and arguments
                 try:
                     sio.write('Message: %r\n'
-                                     'Arguments: %s\n' % (record.msg,
-                                                          record.args))
+                              'Arguments: %s\n' % (record.msg,
+                                                   record.args))
                 except RecursionError:  # See issue 36272
                     raise
                 except Exception:
                     sio.write('Unable to print the message and arguments'
-                                     ' - possible formatting error.\nUse the'
-                                     ' traceback above to help find the error.\n'
-                                    )
-            except OSError: #pragma: no cover
-                pass    # see issue 5971
+                              ' - possible formatting error.\nUse the'
+                              ' traceback above to help find the error.\n'
+                              )
+            except OSError:  # pragma: no cover
+                pass  # see issue 5971
             finally:
                 xbmc.log(sio.getvalue(), xbmc.LOGDEBUG)
                 sio.close()
                 del sio
                 del t, v, tb
+
 
 class KodiFormatter(logging.Formatter):
     """
@@ -595,30 +603,49 @@ class KodiFormatter(logging.Formatter):
 
         """
             Attribute name 	Format 	Description
-            args 	You shouldn’t need to format this yourself. 	The tuple of arguments merged into msg to produce message, or a dict whose values are used for the merge (when there is only one argument, and it is a dictionary).
-            asctime 	%(asctime)s 	Human-readable time when the LogRecord was created. By default this is of the form ‘2003-07-08 16:49:45,896’ (the numbers after the comma are millisecond portion of the time).
-            created 	%(created)f 	Time when the LogRecord was created (as returned by time.time()).
-            exc_info 	You shouldn’t need to format this yourself. 	Exception tuple (à la sys.exc_info) or, if no exception has occurred, None.
+            args 	You shouldn’t need to format this yourself. 	The tuple of 
+            arguments merged into msg to produce message, or a dict whose values are 
+            used for the merge (when there is only one argument, and it is a dictionary).
+            asctime 	%(asctime)s 	Human-readable time when the LogRecord was 
+            created. By default this is of the form ‘2003-07-08 16:49:45,896’ (the 
+            numbers after the comma are millisecond portion of the time).
+            created 	%(created)f 	Time when the LogRecord was created (as returned 
+            by time.time()).
+            exc_info 	You shouldn’t need to format this yourself. 	Exception tuple 
+            (à la sys.exc_info) or, if no exception has occurred, None.
             filename 	%(filename)s 	Filename portion of pathname.
             funcName 	%(funcName)s 	Name of function containing the logging call.
-            levelname 	%(levelname)s 	Text logging level for the message ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL').
-            levelno 	%(levelno)s 	Numeric logging level for the message (DEBUG, INFO, WARNING, ERROR, CRITICAL).
-            lineno 	%(lineno)d 	Source line number where the logging call was issued (if available).
+            levelname 	%(levelname)s 	Text logging level for the message ('DEBUG', 
+            'INFO', 'WARNING', 'ERROR', 'CRITICAL').
+            levelno 	%(levelno)s 	Numeric logging level for the message (DEBUG, 
+            INFO, WARNING, ERROR, CRITICAL).
+            lineno 	%(lineno)d 	Source line number where the logging call was issued (if 
+            available).
             module 	%(module)s 	Module (name portion of filename).
-            msecs 	%(msecs)d 	Millisecond portion of the time when the LogRecord was created.
-            message 	%(message)s 	The logged message, computed as msg % args. This is set when Formatter.format() is invoked.
-            msg 	You shouldn’t need to format this yourself. 	The format string passed in the original logging call. Merged with args to produce message, or an arbitrary object (see Using arbitrary objects as messages).
+            msecs 	%(msecs)d 	Millisecond portion of the time when the LogRecord was 
+            created.
+            message 	%(message)s 	The logged message, computed as msg % args. This 
+            is set when Formatter.format() is invoked.
+            msg 	You shouldn’t need to format this yourself. 	The format string 
+            passed in the original logging call. Merged with args to produce message, 
+            or an arbitrary object (see Using arbitrary objects as messages).
             name 	%(name)s 	Name of the config_logger used to log the call.
-            pathname 	%(pathname)s 	Full pathname of the source file where the logging call was issued (if available).
+            pathname 	%(pathname)s 	Full pathname of the source file where the 
+            logging call was issued (if available).
             process 	%(process)d 	Process ID (if available).
             processName 	%(processName)s 	Process name (if available).
-            relativeCreated 	%(relativeCreated)d 	Time in milliseconds when the LogRecord was created, relative to the time the logging module was loaded.
-            stack_info 	You shouldn’t need to format this yourself. 	Stack frame information (where available) from the bottom of the stack in the current thread, up to and including the stack frame of the logging call which resulted in the creation of this record.
+            relativeCreated 	%(relativeCreated)d 	Time in milliseconds when the 
+            LogRecord was created, relative to the time the logging module was loaded.
+            stack_info 	You shouldn’t need to format this yourself. 	Stack frame 
+            information (where available) from the bottom of the stack in the current 
+            thread, up to and including the stack frame of the logging call which 
+            resulted in the creation of this record.
             thread 	%(thread)d 	Thread ID (if available).
             threadName 	%(threadName)s 	Thread name (if available).
 
             [service.randomtrailers.backend:DiscoverTmdbMovies:process_page] 
-            [service.randomtrailers.backend:FolderMovieData:add_to_discovered_movies  TRACE_DISCOVERY]
+            [service.randomtrailers.backend:FolderMovieData:add_to_discovered_movies  
+            TRACE_DISCOVERY]
         """
         # threadName Constants.CURRENT_ADDON_SHORT_NAME funcName:lineno
         # [threadName name funcName:lineno]
@@ -685,8 +712,8 @@ class KodiFormatter(logging.Formatter):
             else:
                 passed_traces = ''
 
-            prefix = f'[{thread_field}{addon_label}{module_path}{func_name}:{record.lineno}:' \
-                     f'{level}{passed_traces}]'
+            prefix = (f'[{thread_field}{addon_label}{module_path}{func_name}:'
+                      f'{record.lineno}:{level}{passed_traces}]')
 
             text = f'{prefix} {suffix}'
 
@@ -713,7 +740,8 @@ class KodiFormatter(logging.Formatter):
 
             sio = StringIO()
             '''
-            xtraceback.print_exception(etype, value, tb, limit=None, file=log_file, chain=True)
+            xtraceback.print_exception(etype, value, tb, limit=None, file=log_file, 
+            chain=True)
 print_exception(etype: Type = None,
                     value: Any = None,
                     tb: Any = None,
@@ -953,6 +981,8 @@ _STYLES = {
 
             text = f'{prefix} {suffix}'
 """
+
+
 # Default style is:  '{': (StrFormatStyle, '{levelname}:{name}:{message}'),
 # _STYLES[style][0](fmt)
 
@@ -978,7 +1008,8 @@ else:
     level_field = ''
 
 # format_str: str = f'[{thread_info}{{name}}.{{funcName}}:{{lineno}}:{level_field}]'
-# format_str: str = ''  # f'[{thread_info}{{filename}}.{{funcName}}:{{lineno}}:{level_field}]'
+# format_str: str = ''  # f'[{thread_info}{{filename}}.{{funcName}}:{{lineno}}:{
+# level_field}]'
 
 handler: Handler = KodiHandler(level=CriticalSettings.get_logging_level())
 handler.setFormatter(KodiFormatter(style='{'))
@@ -990,11 +1021,11 @@ get_addon_logger().addFilter(Trace())
 xbmc.log(f'Configure.get_logging_level: {CriticalSettings.get_logging_level()}')
 
 #  xbmc.log(f'format_str: {format_str}')
-my_kwargs: Dict[str, str] = {'style': '{',
-                          # 'format': format_str,
-                          'level': CriticalSettings.get_logging_level(),
-                          'handlers': handlers}
-                          #  'force': True}
+my_kwargs: Dict[str, str] = {'style'   : '{',
+                             # 'format': format_str,
+                             'level'   : CriticalSettings.get_logging_level(),
+                             'handlers': handlers}
+#  'force': True}
 
 basicConfig(**my_kwargs)
 

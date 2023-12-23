@@ -6,24 +6,14 @@ Created on Feb 19, 2019
 @author: Frank Feuerbacher
 
 """
-import hashlib
-import io
-import pickle
-import sys
-
-import xbmcvfs
-
-from backends.settings.setting_properties import SettingsProperties
 
 import copy
-import os
 import threading
 
 import xbmc
 
 from common.constants import Constants
 from common.critical_settings import CriticalSettings
-from common.exceptions import AbortException
 from common.logger import *
 from common.minimal_monitor import MinimalMonitor
 from common.typing import *
@@ -40,6 +30,7 @@ class Monitor(MinimalMonitor):
     """
 
     class NotificationMonitor(xbmc.Monitor):
+
         def onNotification(self, sender: str, method: str, data: str) -> None:
             """
             onNotification method.
@@ -77,6 +68,7 @@ class Monitor(MinimalMonitor):
     """
       Can't get rid of __init__
     """
+
     def __init__(self):
         super().__init__()
 
@@ -115,8 +107,8 @@ class Monitor(MinimalMonitor):
             super().register_abort_callback(cls._inform_abort_listeners)
 
             cls._monitor_changes_in_settings_thread = threading.Thread(
-                target=cls._monitor_changes_in_settings,
-                name='_monitor_changes_in_settings')
+                    target=cls._monitor_changes_in_settings,
+                    name='_monitor_changes_in_settings')
             cls._monitor_changes_in_settings_thread.start()
 
     @classmethod
@@ -130,7 +122,8 @@ class Monitor(MinimalMonitor):
         try:
             # Add one minute delay
             change_file = xbmcvfs.translatePath(
-               f'special://userdata/addon_data/{Constants.ADDON_ID}/settings_changed.pickle')
+               f'special://userdata/addon_data/{
+               Constants.ADDON_ID}/settings_changed.pickle')
             settings_file = xbmcvfs.translatePath(
                 f'special://userdata/addon_data/{Constants.ADDON_ID}/settings.xml')
 
@@ -173,7 +166,8 @@ class Monitor(MinimalMonitor):
 
             if changed:
                 try:
-                    change_record[SettingsProperties.SETTINGS_DIGEST] = new_settings_digest
+                    change_record[SettingsProperties.SETTINGS_DIGEST] = 
+                    new_settings_digest
                     with io.open(change_file, mode='wb') as change_file_fd:
                         pickle.dump(change_record, change_file_fd)
 
@@ -264,8 +258,8 @@ class Monitor(MinimalMonitor):
                     delay: float = 0.0, **kwargs) -> None:
         import threading
         thread = threading.Thread(target=cls.thread_wrapper, name=f'TTSThread: {name}',
-                                  args=args, kwargs={'target':func,
-                                                     'delay':delay, **kwargs})
+                                  args=args, kwargs={'target': func,
+                                                     'delay' : delay, **kwargs})
         xbmc.log(f'util.runInThread starting thread {name}', xbmc.LOGINFO)
         thread.start()
 
@@ -275,9 +269,11 @@ class Monitor(MinimalMonitor):
             target: Callable = kwargs.get('target')
             delay: float = kwargs.get('delay')
             if delay is not None and isinstance(delay, float):
-                Monitor.wait_for_abort(delay)
+                Monitor.exception_on_abort(timeout=delay)
 
             target(*args, **kwargs)
+        except AbortException:
+            pass  # Let thread die
         except Exception as e:
             cls._logger.exception('')
 
@@ -411,14 +407,14 @@ class Monitor(MinimalMonitor):
             if cls._logger.isEnabledFor(DEBUG_VERBOSE):
                 cls._logger.debug_verbose('Entered')
             listeners_copy = copy.copy(cls._abort_listeners)
-            cls._abort_listeners.clear() # Unregister all
+            cls._abort_listeners.clear()  # Unregister all
             cls._abort_listeners_informed = True
 
         for listener, listener_name in listeners_copy.items():
             # noinspection PyTypeChecker
             thread = threading.Thread(
-                target=cls._listener_wrapper, name=listener_name,
-                args=(),  kwargs={'listener':listener})
+                    target=cls._listener_wrapper, name=listener_name,
+                    args=(), kwargs={'listener': listener})
             thread.start()
 
         cls.startup_complete_event.set()
@@ -457,9 +453,9 @@ class Monitor(MinimalMonitor):
         for listener, listener_name in listeners.items():
             if cls._logger.isEnabledFor(DEBUG_VERBOSE):
                 cls._logger.debug_verbose(
-                    f'Notifying listener: {listener_name}')
+                        f'Notifying listener: {listener_name}')
             thread = threading.Thread(
-                target=listener, name='Monitor.inform_' + listener_name)
+                    target=listener, name='Monitor.inform_' + listener_name)
             thread.start()
 
     @classmethod
@@ -479,8 +475,8 @@ class Monitor(MinimalMonitor):
             cls._logger.debug_verbose(f'Screensaver activated: {activated}')
         for listener, listener_name in listeners_copy.items():
             thread = threading.Thread(
-                target=listener, name='Monitor._inform_' + listener_name,
-                args=(activated,))
+                    target=listener, name='Monitor._inform_' + listener_name,
+                    args=(activated,))
             thread.start()
 
     def onSettingsChanged(self) -> None:
@@ -544,7 +540,8 @@ class Monitor(MinimalMonitor):
 
     @classmethod
     def _inform_notification_listeners(cls,
-                                       sender: str, method: str, data: str = None) -> None:
+                                       sender: str, method: str,
+                                       data: str = None) -> None:
         """
 
         :param activated:
@@ -562,10 +559,9 @@ class Monitor(MinimalMonitor):
         for listener, listener_name in listeners_copy.items():
             try:
                 cls.runInThread(listener, [], name=listener_name,
-                            **{'sender': sender, 'method': method, 'data': data})
+                                **{'sender': sender, 'method': method, 'data': data})
             except Exception as e:
                 cls._logger.exception('')
-
 
     def waitForAbort(self, timeout: float = None) -> bool:
         # Provides signature of super class (xbmc.Monitor)
@@ -580,10 +576,10 @@ class Monitor(MinimalMonitor):
         if timeout is not None and timeout < 0.0:
             timeout = None
 
-        clz.track_wait_call_counts()
+        #  clz.track_wait_call_counts()
         abort = self.real_waitForAbort(timeout=timeout)
         # abort = clz._abort_received.wait(timeout=timeout)
-        clz.track_wait_return_counts()
+        #  clz.track_wait_return_counts()
 
         return abort
 
@@ -601,10 +597,13 @@ class Monitor(MinimalMonitor):
 
         New function added.
         """
-        if timeout is not None and timeout < 0.0:
-            timeout = None
+        FOREVER = 24 * 60 * 60 * 365  # A year
+        if timeout is None:
+            timeout = FOREVER
+        elif timeout < 0.0:
+            timeout = 0.1
 
-        cls.track_wait_call_counts()
+        # cls.track_wait_call_counts()
         abort = False
         while timeout > 0.0:
             poll_delay: float = min(timeout, CriticalSettings.SHORT_POLL_DELAY)
@@ -619,7 +618,7 @@ class Monitor(MinimalMonitor):
                     break
             timeout -= poll_delay
 
-        cls.track_wait_return_counts()
+        # cls.track_wait_return_counts()
 
         return abort
 
@@ -643,7 +642,7 @@ class Monitor(MinimalMonitor):
         cls.startup_complete_event.set()
         if cls._logger.isEnabledFor(DEBUG):
             cls._logger.debug(
-                'startup_complete_event set', trace=Trace.TRACE_MONITOR)
+                    'startup_complete_event set', trace=Trace.TRACE_MONITOR)
 
     @classmethod
     def is_startup_complete(cls) -> bool:
@@ -664,8 +663,10 @@ class Monitor(MinimalMonitor):
         approximate_wait_time = 0.0
         while not is_set:
             is_set = cls.startup_complete_event.wait(timeout=None)
+            cls.track_wait_call_counts()
             Monitor.real_waitForAbort(timeout=0.2)
             # Monitor.exception_on_abort(timeout=0.2)
+            cls.track_wait_return_counts()
             approximate_wait_time += 0.2
             if timeout is not None and approximate_wait_time >= timeout:
                 break
@@ -688,10 +689,12 @@ class Monitor(MinimalMonitor):
             count += 1
 
         cls._wait_call_count_map[thread_name] = count
-        cls.dump_wait_counts()
+        #  cls.dump_wait_counts()
 
     @classmethod
     def track_wait_return_counts(cls, thread_name: str = None) -> None:
+        return
+
         if thread_name is None:
             thread_name = threading.current_thread().name
         # xbmc.log('track_wait_return_counts thread: ' + thread_name, xbmc.LOGDEBUG)
@@ -706,7 +709,7 @@ class Monitor(MinimalMonitor):
             count += 1
 
         cls._wait_return_count_map[thread_name] = count
-        cls.dump_wait_counts()
+        #    cls.dump_wait_counts()
 
     @classmethod
     def dump_wait_counts(cls) -> None:
@@ -722,6 +725,7 @@ class Monitor(MinimalMonitor):
 
         from common.debug import Debug
         Debug.dump_all_threads()
+
 
 # Initialize class:
 #

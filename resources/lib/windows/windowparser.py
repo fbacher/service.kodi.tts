@@ -41,7 +41,7 @@ def getXBMCSkinPath(fname):
     else:
         aspect = xbmc.getInfoLabel('Skin.AspectRatio')
         addonXMLPath = os.path.join(
-            xbmcvfs.translatePath('special://skin'), 'addon.xml')
+                xbmcvfs.translatePath('special://skin'), 'addon.xml')
         skinpath = ''
         if os.path.exists(addonXMLPath):
             with open(addonXMLPath, 'r') as f:
@@ -50,7 +50,7 @@ def getXBMCSkinPath(fname):
                 if 'aspect="{0}"'.format(aspect) in l:
                     folder = l.split('folder="', 1)[-1].split('"', 1)[0]
                     skinpath = os.path.join(
-                        xbmcvfs.translatePath('special://skin'), folder)
+                            xbmcvfs.translatePath('special://skin'), folder)
     path = os.path.join(skinpath, fname)
     if os.path.exists(path):
         return path
@@ -59,18 +59,21 @@ def getXBMCSkinPath(fname):
         return path
     return ''
 
+    # Compiler wants global flag (?i) at beginning
+    # tagRE = re.compile(r'\[/?(?:B|I|COLOR|UPPERCASE|LOWERCASE)[^\]]*\](?i)')
 
-tagRE = re.compile(r'\[/?(?:B|I|COLOR|UPPERCASE|LOWERCASE)[^\]]*\](?i)')
-varRE = re.compile(r'\$VAR\[([^\]]*)\]')
-localizeRE = re.compile(r'\$LOCALIZE\[([^\]]*)\]')
-addonRE = re.compile(r'\$ADDON\[[\w+.]+ (\d+)\]')
-infoLableRE = re.compile(r'\$INFO\[([^\]]*)\]')
+
+tagRE = re.compile(r'(?i)\[/?(?:B|I|COLOR|UPPERCASE|LOWERCASE)[^]]*]')
+varRE = re.compile(r'\$VAR\[([^]]*)]')
+localizeRE = re.compile(r'\$LOCALIZE\[([^]]*)]')
+addonRE = re.compile(r'\$ADDON\[[\w+.]+ (\d+)]')
+infoLableRE = re.compile(r'\$INFO\[([^]]*)]')
 
 
 def getInfoLabel(info, container):
     if container:
         info = info.replace(
-            'ListItem.', 'Container({0}).ListItem.'.format(container))
+                'ListItem.', f'Container({container}).ListItem.')
     return xbmc.getInfoLabel(info)
 
 
@@ -125,15 +128,18 @@ def extractInfos(text, container):
 
 
 class WindowParser:
+
     def __init__(self, xml_path):
-        module_logger.debug(f'xml_path {xml_path}')
+        #  module_logger.debug(f'xml_path {xml_path}')
         self.xml = minidom.parse(xml_path)
         self.currentControl = None
         self.includes = None
         if not currentWindowIsAddon():
             self.processIncludes()
-#            import codecs
-#            with codecs.open(os.path.join(getXBMCSkinPath(''),'TESTCurrent.xml'),'w','utf-8') as f: f.write(self.soup.prettify())
+
+    #            import codecs
+    #            with codecs.open(os.path.join(getXBMCSkinPath(''),'TESTCurrent.xml'),
+    #            'w','utf-8') as f: f.write(self.soup.prettify())
 
     def processIncludes(self):
         self.includes = Includes()
@@ -168,11 +174,12 @@ class WindowParser:
         text = addonRE.sub(self.addonReplacer, text)
         text = extractInfos(text, self.currentControl)
         text = tagRE.sub('', text).replace('[CR]', '... ').strip(' .')
-        #text = infoLableRE.sub(self.infoReplacer,text)
+        # text = infoLableRE.sub(self.infoReplacer,text)
         return text
 
     def getControl(self, controlID):
-        return xpath.findnode("//control[attribute::id='{0}']".format(controlID), self.xml)
+        return xpath.findnode(f"//control[attribute::id='{controlID}']",
+                              self.xml)
 
     def getLabelText(self, label):
         l = xpath.findnode('label', label)
@@ -180,7 +187,7 @@ class WindowParser:
         if label.attributes.get('id'):
             # Try getting programatically set label first.
             text = xbmc.getInfoLabel('Control.GetLabel({0})'.format(
-                label.attributes.get('id').value))
+                    label.attributes.get('id').value))
         if not text or text == '-':
             text = None
             if l and l.childNodes:
@@ -211,6 +218,8 @@ class WindowParser:
         return texts
 
     def getListItemTexts(self, controlID):
+        if controlID < 0:
+            controlID = - controlID
         self.currentControl = controlID
         try:
             clist = self.getControl(controlID)
@@ -220,7 +229,9 @@ class WindowParser:
             if not fl:
                 return None
             lt = xpath.find(
-                "//control[attribute::type='label' or attribute::type='fadelabel' or attribute::type='textbox']", fl)
+                    "//control[attribute::type='label' or attribute::type='fadelabel' "
+                    "or attribute::type='textbox']",
+                    fl)
             texts = []
             for l in lt:
                 if not self.controlIsVisibleGlobally(l):
@@ -234,7 +245,9 @@ class WindowParser:
 
     def getWindowTexts(self):
         lt = xpath.find(
-            "//control[attribute::type='label' or attribute::type='fadelabel' or attribute::type='textbox']", self.xml)
+                "//control[attribute::type='label' or attribute::type='fadelabel' or "
+                "attribute::type='textbox']",
+                self.xml)
         texts = []
         for l in lt:
             if not self.controlIsVisible(l):
@@ -243,7 +256,8 @@ class WindowParser:
                 if not self.controlIsVisible(p):
                     break
                 typeAttr = p.attributes.get('type')
-                if typeAttr and typeAttr.value in ('list', 'fixedlist', 'wraplist', 'panel'):
+                if typeAttr and typeAttr.value in (
+                'list', 'fixedlist', 'wraplist', 'panel'):
                     break
             else:
                 text = self.getLabelText(l)
@@ -286,7 +300,8 @@ class WindowParser:
         condition = visible.childNodes[0].data
         if self.currentControl:
             condition = condition.replace(
-                'ListItem.Property', 'Container({0}).ListItem.Property'.format(self.currentControl))
+                    'ListItem.Property',
+                    'Container({0}).ListItem.Property'.format(self.currentControl))
         if not xbmc.getCondVisibility(condition):
             return False
         else:
@@ -294,6 +309,7 @@ class WindowParser:
 
 
 class Includes:
+
     def __init__(self):
         path = getXBMCSkinPath('Includes.xml')
         self.xml = minidom.parse(path)
@@ -323,8 +339,10 @@ class Includes:
                 if nameAttr:
                     self.includesMap[nameAttr.value] = i.cloneNode(True)
         self._includesFilesLoaded = True
-#        import codecs
-#        with codecs.open(os.path.join(getXBMCSkinPath(''),'Includes_Processed.xml'),'w','utf-8') as f: f.write(self.soup.prettify())
+
+    #        import codecs
+    #        with codecs.open(os.path.join(getXBMCSkinPath(''),
+    #        'Includes_Processed.xml'),'w','utf-8') as f: f.write(self.soup.prettify())
 
     def getInclude(self, name):
         self.loadIncludesFiles()
@@ -333,7 +351,8 @@ class Includes:
 
     def getVariable(self, name):
         var = xpath.findnode(
-            ".//variable[attribute::name='{0}']".format(name), xpath.findnode('includes', self.xml))
+                ".//variable[attribute::name='{0}']".format(name),
+                xpath.findnode('includes', self.xml))
         if not var:
             return ''
         for val in xpath.find('.//value', var):
@@ -350,7 +369,7 @@ class Includes:
 
 def getWindowParser():
     path = currentWindowXMLFile()
-    module_logger.debug_extra_verbose('getWindowParser path: {}'.format(path))
+    module_logger.debug_extra_verbose(f'getWindowParser path: {path}')
     if not path:
         return
     return WindowParser(path)

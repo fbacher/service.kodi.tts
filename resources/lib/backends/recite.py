@@ -31,14 +31,16 @@ class ReciteTTSBackend(base.SimpleTTSBackend):
     def init(self):
         self.process = None
 
-    def runCommandAndSpeak(self,text):
-        args = ['recite',text]
+    def runCommandAndSpeak(self, text):
+        args = ['recite', text]
         self.process = subprocess.Popen(args, universal_newlines=True)
-        while self.process.poll() is None and self.active: utils.sleep(10)
+        while self.process.poll() is None and self.active:
+            utils.sleep(10)
 
     @staticmethod
     def isSupportedOnPlatform():
-        return SystemQueries.isLinux() or SystemQueries.isWindows() or SystemQueries.isOSX()
+        return (SystemQueries.isLinux() or SystemQueries.isWindows() or
+                SystemQueries.isOSX())
 
     @staticmethod
     def isInstalled():
@@ -48,7 +50,8 @@ class ReciteTTSBackend(base.SimpleTTSBackend):
         return installed
 
     def stop(self):
-        if not self.process: return
+        if not self.process:
+            return
         try:
             self.process.terminate()
         except AbortException:
@@ -59,7 +62,7 @@ class ReciteTTSBackend(base.SimpleTTSBackend):
     @staticmethod
     def available():
         try:
-            subprocess.call(['recite','-VERSion'], stdout=(open(os.path.devnull, 'w')),
+            subprocess.call(['recite', '-VERSion'], stdout=(open(os.path.devnull, 'w')),
                             stderr=subprocess.STDOUT, universal_newlines=True)
         except AbortException:
             reraise(*sys.exc_info())

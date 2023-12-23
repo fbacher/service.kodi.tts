@@ -11,7 +11,7 @@ import urllib.parse
 import urllib.request
 import urllib.request
 
-from backends import asyncconnections, audio
+from backends import asyncconnections
 # from backends.audio.player_handler import WavAudioPlayerHandler
 from backends.base import SimpleTTSBackend
 from common import utils
@@ -28,7 +28,9 @@ class SpeechUtilComTTSBackend(SimpleTTSBackend):
     backend_id = 'speechutil'
     displayName = 'speechutil.com'
     ttsURL = 'http://speechutil.com/convert/wav?text={0}'
-    headers = { 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.116 Safari/537.36' }
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, '
+                      'like Gecko) Chrome/34.0.1847.116 Safari/537.36'}
     canStreamWav = True
     _class_name: str = None
     _logger: BasicLogger = None
@@ -42,15 +44,17 @@ class SpeechUtilComTTSBackend(SimpleTTSBackend):
     def init(self):
         self.process = None
 
-    def threadedSay(self,text):
-        if not text: return
-        sections = textwrap.wrap(text,100)
+    def threadedSay(self, text):
+        if not text:
+            return
+        sections = textwrap.wrap(text, 100)
         for text in sections:
             #  outFile = self.player_handler.getOutFile(text, use_cache=False)
-            if not self.runCommand(text,outFile): return
+            if not self.runCommand(text, outFile):
+                return
             # self.player_handler.play()
 
-    def runCommand(self,text,outFile):
+    def runCommand(self, text, outFile):
         h = asyncconnections.Handler()
         o = urllib.request.build_opener(h)
         url = self.ttsURL.format(urllib.parse.quote(text))
@@ -59,20 +63,22 @@ class SpeechUtilComTTSBackend(SimpleTTSBackend):
             resp = o.open(req)
         except AbortException:
             reraise(*sys.exc_info())
-        except (asyncconnections.StopRequestedException, asyncconnections.AbortRequestedException):
+        except (asyncconnections.StopRequestedException,
+                asyncconnections.AbortRequestedException):
             return False
         except:
             self._logger.error('Failed to open speechutil.com TTS URL')
             return False
 
-        with open(outFile,'wb') as out:
-            shutil.copyfileobj(resp,out)
+        with open(outFile, 'wb') as out:
+            shutil.copyfileobj(resp, out)
         return True
 
-    def getWavStream(self,text):
-        wav_path = os.path.join(utils.getTmpfs(),'speech.wav')
-        if not self.runCommand(text,wav_path): return None
-        return open(wav_path,'rb')
+    def getWavStream(self, text):
+        wav_path = os.path.join(utils.getTmpfs(), 'speech.wav')
+        if not self.runCommand(text, wav_path):
+            return None
+        return open(wav_path, 'rb')
 
     def stop(self):
         asyncconnections.StopConnection()

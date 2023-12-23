@@ -1,20 +1,20 @@
 # coding=utf-8
-
 #  TODO: change to regex
 import pathlib
 import sys
-
-import regex
 from collections import UserList
 from pathlib import Path
-import simplejson as json
-from simplejson import JSONEncoder
 
+import regex
+
+from common.constants import Constants
+from common.critical_settings import CriticalSettings
 from common.exceptions import ExpiredException
 from common.logger import *
 from common.messages import Messages
 from common.monitor import Monitor
 from common.typing import *
+from simplejson import JSONEncoder
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -39,10 +39,30 @@ class Phrase:
     PAUSE_SHORT: int = 45
     PAUSE_LONG: int = 0
 
-    _formatTagRE: Final[regex.Pattern] = regex.compile(r'\[/?(?:CR|B|I|UPPERCASE|LOWERCASE)](?i)')
+    available_pauses: List[int] = [
+        45,
+        50,
+        100,
+        145,
+        150,
+        200,
+        250,
+        300,
+        350,
+        400,
+        450,
+        500
+    ]
+    min_pause: int = available_pauses[0]
+    max_pause: int = available_pauses[len(available_pauses) - 1]
+
+    _formatTagRE: Final[regex.Pattern] = regex.compile(
+        r'\[/?(?:CR|B|I|UPPERCASE|LOWERCASE)](?i)')
     _colorTagRE: Final[regex.Pattern] = regex.compile(r'\[/?COLOR[^]\[]*?](?i)')
-    _okTagRE: Final[regex.Pattern] = regex.compile(r'(^|\W|\s)OK($|\s|\W)')  # Prevents saying Oklahoma
+    _okTagRE: Final[regex.Pattern] = regex.compile(
+        r'(^|\W|\s)OK($|\s|\W)')  # Prevents saying Oklahoma
     _hyphen_prefix: Final[regex.Pattern] = regex.compile(r'(:?(-\[)([^[]*)(\]))')
+    _pauseRE: Final[regex.Pattern] = regex.compile(Constants.PAUSE_INSERT)
 
     _logger: BasicLogger = None
 
@@ -65,15 +85,15 @@ class Phrase:
         if post_pause_ms is None:
             post_pause_ms = clz.PAUSE_DEFAULT
         self.post_pause_ms: int = post_pause_ms
-        self.preload_cache = preload_cache
+        self.preload_cache: bool = preload_cache
         self.serial_number: int = PhraseList.global_serial_number
         self._speak_while_playing: bool = speak_while_playing
+        self.download_pending: bool = False
 
         # PhraseList can disable expiration checking when you explicitly
         # make an unchecked clone. Useful for seeding a cache for the future
 
         self.check_expired: bool = check_expired
-
 
     @classmethod
     def new_instance(cls, text: str = '', interrupt: bool = False,
@@ -119,15 +139,15 @@ class Phrase:
         :return:
         """
         tmp: Dict[str, Dict[str, Any]] = {'phrase': {
-            'text'         : self.text,
-            'interrupt'    : self.interrupt,
-            'pre_pause_ms' : self.pre_pause_ms,
-            'post_pause_ms': self.post_pause_ms,
-            'cache_path'   : self.cache_path,
-            'exists'       : self._exists,
-            'preload_cache': self.preload_cache,
-            'speak_while_playing' : self._speak_while_playing,
-            'check_expired' : self.check_expired
+            'text'               : self.text,
+            'interrupt'          : self.interrupt,
+            'pre_pause_ms'       : self.pre_pause_ms,
+            'post_pause_ms'      : self.post_pause_ms,
+            'cache_path'         : self.cache_path,
+            'exists'             : self._exists,
+            'preload_cache'      : self.preload_cache,
+            'speak_while_playing': self._speak_while_playing,
+            'check_expired'      : self.check_expired
         }}
         return tmp
 
@@ -140,7 +160,8 @@ class Phrase:
                                 cache_path=params.get('cache_path'),
                                 exists=params.get('exists'),
                                 preload_cache=params.get('preload_cache'),
-                                speak_while_playing=params.get('speak_while_playing', False),
+                                speak_while_playing=params.get('speak_while_playing',
+                                                               False),
                                 check_expired=params.get('check_expired', True))
         return phrase
 
@@ -189,9 +210,37 @@ class Phrase:
         self.test_expired()
         self.pre_pause_ms = pre_pause_ms
 
+    def get_pre_pause_path(self, audio_type: str = 'mp3') -> Path | None:
+        clz = type(self)
+        return self.get_pause_path(self.get_post_pause())
+
     def get_post_pause(self) -> int:
         self.test_expired()
         return self.post_pause_ms
+
+    def get_post_pause_path(self, audio_type: str = 'mp3') -> Path | None:
+        clz = type(self)
+        return self.get_pause_path(self.get_post_pause())
+
+    def get_pause_path(self, pause_ms: int) -> Path | None:
+        clz = type(self)
+        if pause_ms == 0:
+            return None
+
+        if (pause_ms < Phrase.min_pause) or (pause_ms > Phrase.max_pause):
+            clz._logger.debug(f'pause out of range: {pause_ms}')
+
+        found_pause_ms: int | None = None
+        for available_pause in Phrase.available_pauses:
+            if pause_ms <= available_pause:
+                found_pause_ms = available_pause
+                break
+
+        if found_pause_ms is None:
+            found_pause_ms = Phrase.max_pause
+        pause_file_path: Path = CriticalSettings.RESOURCES_PATH.joinpath(
+                'wavs', f'silence{found_pause_ms:03d}.wav')
+        return pause_file_path
 
     def set_post_pause(self, post_pause_ms: int) -> None:
         self.test_expired()
@@ -201,9 +250,15 @@ class Phrase:
         self.test_expired()
         return self.preload_cache
 
-    def set_preload_cache(self, preload_cache: bool):
+    def set_preload_cache(self, preload_cache: bool) -> None:
         self.test_expired()
         self.preload_cache = preload_cache
+
+    def is_download_pending(self) -> bool:
+        return self.download_pending
+
+    def set_download_pending(self, is_pending: bool = True) -> None:
+        self.download_pending = is_pending
 
     def get_serial_num(self) -> int:
         self.test_expired()
@@ -222,7 +277,6 @@ class Phrase:
         text = text.replace('XBMC', 'Kodi')
         if text == '..':
             text = Messages.get_msg(Messages.PARENT_DIRECTORY)
-        #  fragments: List[str] = text.split(Constants.PAUSE_INSERT)
 
         return text
 
@@ -317,16 +371,22 @@ class PhraseList(UserList[Phrase]):
             if isinstance(text, int):
                 pre_pause = text
                 continue
-            text: str = Phrase.clean_phrase_text(text)
+            fragments: List[str] = text.split(Constants.PAUSE_INSERT)
+            fragment: str
+            for fragment in fragments:
+                if fragment == Constants.PAUSE_INSERT:
+                    pre_pause = Phrase.PAUSE_NORMAL
+                else:
+                    fragment: str = Phrase.clean_phrase_text(fragment)
 
-            # Drop any empty text
+                # Drop any empty text
 
-            if len(text) != 0:
-                phrase: Phrase = Phrase(text=text, preload_cache=preload_cache,
-                                        pre_pause_ms = pre_pause)
-                pre_pause = 0
-                phrase.serial_number = phrases.serial_number
-                phrases.append(phrase)
+                if len(fragment) != 0:
+                    phrase: Phrase = Phrase(text=text, preload_cache=preload_cache,
+                                            pre_pause_ms=pre_pause)
+                    pre_pause = 0
+                    phrase.serial_number = phrases.serial_number
+                    phrases.append(phrase)
 
         phrase: Phrase = phrases[0]
         phrase.set_interrupt = interrupt
@@ -600,7 +660,8 @@ class PhraseUtils:
         clz._initialized = True
 
     @classmethod
-    def split_into_chunks(cls, phrase: Phrase, chunk_size: int = 100) -> PhraseList[Phrase]:
+    def split_into_chunks(cls, phrase: Phrase, chunk_size: int = 100) -> PhraseList[
+        Phrase]:
         phrases: PhraseList[Phrase] = PhraseList(check_expired=False)
         out_chunks: List[str] = []
         try:
@@ -680,6 +741,7 @@ class PhraseUtils:
         except Exception as e:
             cls._logger.exception('')
         return phrases
+
 
 if not PhraseUtils._initialized:
     PhraseUtils()

@@ -1,12 +1,9 @@
-import enum
-
 from backends.settings.constraints import Constraints
 from backends.settings.service_types import Services
 from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import SettingsMap
-from backends.settings.validators import (GenderValidator, Validator, BoolValidator,
-                                          IntValidator,
-                                          StringValidator)
+from backends.settings.validators import (BoolValidator, GenderValidator, IntValidator,
+                                          StringValidator, Validator)
 from common.logger import BasicLogger
 from common.setting_constants import Backends, Genders
 from common.typing import *
@@ -48,7 +45,8 @@ class BaseEngineSettings:
     @classmethod
     def init_settings(cls, service_id):
         gender_validator = GenderValidator(SettingsProperties.GENDER, service_id,
-                                           min_value=Genders.FEMALE, max_value=Genders.UNKNOWN,
+                                           min_value=Genders.FEMALE,
+                                           max_value=Genders.UNKNOWN,
                                            default=Genders.UNKNOWN)
         gender_validator.set_tts_value(Genders.FEMALE)
         SettingsMap.define_setting(service_id, SettingsProperties.GENDER,
@@ -123,3 +121,10 @@ class BaseEngineSettings:
         SettingsMap.define_setting(Services.TTS_SERVICE,
                                    SettingsProperties.USE_TEMPFS,
                                    use_tempfs_val)
+
+        slave_validator: BoolValidator
+        slave_validator = BoolValidator(SettingsProperties.PLAYER_SLAVE,
+                                        Services.TTS_SERVICE, default=True)
+        SettingsMap.define_setting(Services.TTS_SERVICE,
+                                   SettingsProperties.PLAYER_SLAVE,
+                                   slave_validator)

@@ -37,15 +37,15 @@ ONES = {
 }
 
 ONES_ORDINALS = {
-    1: ('pierwszy', "pierwszo"),
-    2: ('drugi', "dwu"),
-    3: ('trzeci', "trzy"),
-    4: ('czwarty', "cztero"),
-    5: ('piąty', "pięcio"),
-    6: ('szósty', "sześcio"),
-    7: ('siódmy', "siedmio"),
-    8: ('ósmy', "ośmio"),
-    9: ('dziewiąty', "dziewięcio"),
+    1 : ('pierwszy', "pierwszo"),
+    2 : ('drugi', "dwu"),
+    3 : ('trzeci', "trzy"),
+    4 : ('czwarty', "cztero"),
+    5 : ('piąty', "pięcio"),
+    6 : ('szósty', "sześcio"),
+    7 : ('siódmy', "siedmio"),
+    8 : ('ósmy', "ośmio"),
+    9 : ('dziewiąty', "dziewięcio"),
     10: ('dziesiąty', "dziesięcio"),
     11: ('jedenasty', "jedenasto"),
     12: ('dwunasty', "dwunasto"),
@@ -70,7 +70,6 @@ TENS = {
     8: ('osiemnaście',),
     9: ('dziewiętnaście',),
 }
-
 
 TWENTIES = {
     2: ('dwadzieścia',),
@@ -128,23 +127,23 @@ prefixes_ordinal = {
     3: "milairdowy"
 }
 
-prefixes = (   # 10^(6*x)
-    "mi",      # 10^6
-    "bi",      # 10^12
-    "try",     # 10^18
+prefixes = (  # 10^(6*x)
+    "mi",  # 10^6
+    "bi",  # 10^12
+    "try",  # 10^18
     "kwadry",  # 10^24
     "kwinty",  # 10^30
     "seksty",  # 10^36
-    "septy",   # 10^42
-    "okty",    # 10^48
-    "nony",    # 10^54
-    "decy"     # 10^60
+    "septy",  # 10^42
+    "okty",  # 10^48
+    "nony",  # 10^54
+    "decy"  # 10^60
 )
 suffixes = ("lion", "liard")  # 10^x or 10^(x+3)
 
 for idx, (p, s) in enumerate(itertools.product(prefixes, suffixes)):
     name = p + s
-    THOUSANDS[idx+2] = (name, name + 'y', name + 'ów')
+    THOUSANDS[idx + 2] = (name, name + 'y', name + 'ów')
 
 
 class Num2Word_PL(Num2Word_Base):
@@ -187,7 +186,7 @@ class Num2Word_PL(Num2Word_Base):
 
     def last_fragment_to_ordinal(self, last, words, level):
         n1, n2, n3 = get_digits(last)
-        last_two = n2*10+n1
+        last_two = n2 * 10 + n1
         if last_two == 0:
             words.append(HUNDREDS_ORDINALS[n3][level])
         elif level == 1 and last == 1:
@@ -214,11 +213,11 @@ class Num2Word_PL(Num2Word_Base):
         level = 0
         last = fragments[-1]
         while last == 0:
-            level = level+1
+            level = level + 1
             fragments.pop()
             last = fragments[-1]
         if len(fragments) > 1:
-            pre_part = self._int2word(number-(last*1000**level))
+            pre_part = self._int2word(number - (last * 1000 ** level))
             words.append(pre_part)
         self.last_fragment_to_ordinal(last, words, 0 if level == 0 else 1)
         output = " ".join(words)

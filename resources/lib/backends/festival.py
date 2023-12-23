@@ -1,20 +1,15 @@
 # -*- coding: utf-8 -*-
 import io
-import os
 import subprocess
-
 #  from backends.audio.player_handler import BasePlayerHandler, WavAudioPlayerHandler
 import sys
 
 from backends.audio.sound_capabilties import SoundCapabilities
 from backends.base import SimpleTTSBackend
-from backends.engines.festival_settings import FestivalSettings
 from backends.settings.constraints import Constraints
 from backends.settings.service_types import Services, ServiceType
 from common.logger import *
-from common.base_services import BaseServices
 from common.setting_constants import Backends, Players
-from common.settings import Settings
 from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
 from common.typing import *
@@ -27,25 +22,30 @@ class FestivalTTSBackend(SimpleTTSBackend):
     service_ID: str = Services.FESTIVAL_ID
     displayName = 'Festival'
     canStreamWav = SystemQueries.commandIsAvailable('mpg123')
-    speedConstraints: Constraints = Constraints(-16, 0, 12, True, False, 1.0, SettingsProperties.SPEED)
-    pitchConstraints: Constraints = Constraints(50, 105, 500, True, False, 1.0, SettingsProperties.PITCH)
-    volumeConstraints: Constraints = Constraints(-12, 0, 12, True, True, 1.0, SettingsProperties.VOLUME)
+    speedConstraints: Constraints = Constraints(-16, 0, 12, True, False, 1.0,
+                                                SettingsProperties.SPEED)
+    pitchConstraints: Constraints = Constraints(50, 105, 500, True, False, 1.0,
+                                                SettingsProperties.PITCH)
+    volumeConstraints: Constraints = Constraints(-12, 0, 12, True, True, 1.0,
+                                                 SettingsProperties.VOLUME)
     #  player_handler_class: Type[BasePlayerHandler] = WavAudioPlayerHandler
     constraints: Dict[str, Constraints] = {}
 
     _supported_input_formats: List[str] = []
     _supported_output_formats: List[str] = [SoundCapabilities.WAVE]
-    _provides_services: List[ServiceType] = [ServiceType.ENGINE, ServiceType.INTERNAL_PLAYER]
+    _provides_services: List[ServiceType] = [ServiceType.ENGINE,
+                                             ServiceType.INTERNAL_PLAYER]
     SoundCapabilities.add_service(service_ID, _provides_services,
                                   _supported_input_formats,
                                   _supported_output_formats)
 
     settings = {
-        SettingsProperties.PIPE: False,
-        SettingsProperties.PITCH: 105,
+        SettingsProperties.PIPE  : False,
+        SettingsProperties.PITCH : 105,
         SettingsProperties.PLAYER: Players.MPLAYER,
-        SettingsProperties.SPEED: 0,    # Undoubtedly settable, also supported by some players
-        SettingsProperties.VOICE: '',
+        SettingsProperties.SPEED : 0,
+        # Undoubtedly settable, also supported by some players
+        SettingsProperties.VOICE : '',
         SettingsProperties.VOLUME: 0
     }
     supported_settings: Dict[str, str | int | bool] = settings
@@ -114,16 +114,17 @@ class FestivalTTSBackend(SimpleTTSBackend):
         durationMultiplier = 1.8 - (((speed + 16) / 28.0) * 1.4)  #
         # Convert from (-16 to +12) value to (1.8 to 0.4)
         durMult = durationMultiplier and "(Parameter.set 'Duration_Stretch {0})".format(
-            durationMultiplier) or ''
+                durationMultiplier) or ''
 
         pitch = self.getPitch()
         pitch = pitch != 105 and "(require 'prosody-param)(set-pitch {0})".format(
-            pitch) or ''
+                pitch) or ''
 
         # Assumption is to only adjust speech settings in engine, not player
 
         player_volume = 0.0  # '{:.2f}'.format(0.0)  # Don't alter volume (db)
-        player_speed =  100.0  # '{:.2f}'.format(100.0)  # Don't alter speed/tempo (percent)
+        player_speed = 100.0  # '{:.2f}'.format(100.0)  # Don't alter speed/tempo (
+        # percent)
         # Changing pitch without impacting tempo (speed) is
         player_pitch = 100.0  # '{:.2f}'.format(100.0)  # Percent
         # not easy. One suggestion is to use lib LADSPA
@@ -134,10 +135,9 @@ class FestivalTTSBackend(SimpleTTSBackend):
                                                 stdin=subprocess.PIPE,
                                                 universal_newlines=True)
         text_to_voice = text_to_voice.replace('"', '\\"').strip()
-        out = '(audio_mode \'async){0}{1}{2}(utt.save.wave (utt.wave.rescale (SynthText ' \
-              '' \
-              '"{3}") {4:.2f} nil)"{5}")\n'.format(
-                     voice, durMult, pitch, text_to_voice, volume, wave_file)
+        out = (f'(audio_mode \'async){voice}{durMult}{pitch}'
+               f'(utt.save.wave (utt.wave.rescale (SynthText '
+               f'"{text_to_voice}") {volume:.2f} nil)"{wave_file}")\n')
         self.festivalProcess.communicate(out)
         return True
 
@@ -160,7 +160,8 @@ class FestivalTTSBackend(SimpleTTSBackend):
                                  universal_newlines=True)
             d = p.communicate('(voice.list)')
             voices = list(
-                map(str.strip, d[0].rsplit('> (', 1)[-1].rsplit(')', 1)[0].split(' ')))
+                    map(str.strip,
+                        d[0].rsplit('> (', 1)[-1].rsplit(')', 1)[0].split(' ')))
             if voices:
                 return [(v, v) for v in voices]  # name, id
 

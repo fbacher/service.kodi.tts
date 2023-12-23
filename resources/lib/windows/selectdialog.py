@@ -16,8 +16,9 @@ class SelectDialogReader(WindowReaderBase):
     def getControlText(self, controlID):
         label = xbmc.getInfoLabel('System.CurrentControl')
         selected = xbmc.getCondVisibility(
-            'Container({0}).ListItem.IsSelected'.format(controlID)) and ': {0}'.format(
-            Messages.get_msg(Messages.SELECTED)) or ''
+                'Container({0}).ListItem.IsSelected'.format(
+                    controlID)) and ': {0}'.format(
+                Messages.get_msg(Messages.SELECTED)) or ''
         text = '{0}{1}'.format(label, selected)
         return (text, text)
 

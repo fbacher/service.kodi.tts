@@ -6,6 +6,7 @@ from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
+
 class BootstrapConverters:
     converter_ids: List[str] = [
         Converters.NONE,

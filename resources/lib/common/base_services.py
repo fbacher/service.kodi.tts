@@ -1,4 +1,3 @@
-from backends.players.iplayer import IPlayer
 from backends.settings.i_validators import IValidator
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.setting_properties import SettingsProperties
@@ -19,6 +18,7 @@ class IServices:
     """
     service_ID: str = None
     service_TYPE: ServiceType = None
+
     #  sound_capabilities: SoundCapabilities = None
 
     def __init__(self, *args, **kwargs):
@@ -26,7 +26,8 @@ class IServices:
 
     # Few engines implement
 
-    def seed_text_cache(self, phrases: PhraseList) -> None:
+    def seed_text_cache(self, active_engine: ForwardRef("BaseServices"),
+                        phrases_arg: PhraseList) -> None:
         raise NotImplementedError()
 
     def getVolumeDb(self) -> float:
@@ -49,7 +50,10 @@ class BaseServices(IServices):
     def __init__(self, *args, **kwargs):
         clz = type(self)
         super(BaseServices, self).__init__(*args, **kwargs)
-        BaseServices._logger = module_logger.getChild(clz.__name__)
+
+    @classmethod
+    def class_init(cls):
+        BaseServices._logger = module_logger.getChild(cls.__name__)
 
     @classmethod
     def register(cls, service: Type['BaseServices']) -> None:
@@ -71,7 +75,8 @@ class BaseServices(IServices):
         return service
 
     @classmethod
-    def get_available_service_ids(cls, service_type: ServiceType) -> List[Tuple[str, Dict[str, Any]]]:
+    def get_available_service_ids(cls, service_type: ServiceType) -> List[
+        Tuple[str, Dict[str, Any]]]:
         return SettingsMap.get_available_service_ids(service_type)
 
     @classmethod
@@ -130,8 +135,9 @@ class BaseServices(IServices):
     @classmethod
     def is_speak_background_progress_during_media(cls) -> bool:
         speak_background_progress_during_media_validator: BoolValidator | IValidator
-        speak_background_progress_during_media_validator = cls.getValidator(Services.TTS_SERVICE,
-                                           SettingsProperties.SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA)
+        speak_background_progress_during_media_validator = cls.getValidator(
+            Services.TTS_SERVICE,
+            SettingsProperties.SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA)
         return speak_background_progress_during_media_validator.get_tts_value()
 
     @classmethod
@@ -145,7 +151,7 @@ class BaseServices(IServices):
     def is_auto_item_extra(cls) -> bool:
         auto_item_extra_val: BoolValidator | IValidator
         auto_item_extra_val = cls.getValidator(Services.TTS_SERVICE,
-                                           SettingsProperties.AUTO_ITEM_EXTRA)
+                                               SettingsProperties.AUTO_ITEM_EXTRA)
         return auto_item_extra_val.get_tts_value()
 
     @classmethod
@@ -158,14 +164,15 @@ class BaseServices(IServices):
     @classmethod
     def is_reader_on(cls) -> bool:
         cache_validator: BoolValidator | IValidator
-        cache_validator = cls.getValidator(Services.TTS_SERVICE, SettingsProperties.READER_ON)
+        cache_validator = cls.getValidator(Services.TTS_SERVICE,
+                                           SettingsProperties.READER_ON)
         return cache_validator.get_tts_value()
 
     @classmethod
     def is_override_poll_interval(cls) -> bool:
         overide_poll_validator: BoolValidator | IValidator
         overide_poll_validator = cls.getValidator(Services.TTS_SERVICE,
-                                           SettingsProperties.OVERRIDE_POLL_INTERVAL)
+                                                  SettingsProperties.OVERRIDE_POLL_INTERVAL)
         return overide_poll_validator.get_tts_value()
 
     @classmethod
@@ -193,7 +200,7 @@ class BaseServices(IServices):
     def get_background_progress_interval(cls) -> int:
         background_progress_interval_val: IntValidator | IValidator
         background_progress_interval_val = cls.getValidator(Services.TTS_SERVICE,
-                                                SettingsProperties.BACKGROUND_PROGRESS_INTERVAL)
+                                                            SettingsProperties.BACKGROUND_PROGRESS_INTERVAL)
         return background_progress_interval_val.get_tts_value()
 
     @classmethod
@@ -205,7 +212,8 @@ class BaseServices(IServices):
 
     # @classmethod
     # def getSoundCapabilities(cls, service_name: str) -> SoundCapabilities:
-    #     service: BaseServices = BaseServices.service_settings_index.get(service_name, None)
+    #     service: BaseServices = BaseServices.service_settings_index.get(service_name,
+    #     None)
     #     if service is None:
     #         return None
     #     return service.sound_capabilities
@@ -213,6 +221,7 @@ class BaseServices(IServices):
     '''
         Applies to multiple services
     '''
+
     @classmethod
     def uses_pipe(cls, service_id: str) -> bool:
         pipe_validator: BoolValidator | IValidator
@@ -272,27 +281,31 @@ class BaseServices(IServices):
 
     @classmethod
     def get_active_engine_id(cls) -> str:
+        """
+        Returns the id of the current engine
+        :return:
+        """
         return Settings.get_engine_id()
 
     @classmethod
-    def notify_active_engine(cls, msg: str, now: bool = False) -> None:
-        # engine_id = cls.get_active_engine_id()
-        # engine = cls.getService(engine_id)
-        # engine.notify(msg, now)
-        pass
+    def get_alternate_engine_id(cls) -> str | None:
+        """
+        Returns the id of the engine to use in case the current/ctive
+        engine is too slow to respond. This is typically used when the current
+        engine is a remote service or is a slower, higher quality engine. The
+        alternate engine should be a fast engine.
+
+        Note that this is different from the default engine, which is used when
+        the user preferred (current) engine is broken or otherwise unavailable.
+        :return:
+        """
+        return Settings.get_alternate_engine_id()
 
     @classmethod
     def get_active_player_id(cls) -> str:
         # engine_id: str = cls.get_active_engine_id()
         # player_id: str = Settings.get_player_id(engine_id)
         # return player_id
-        pass
-
-    @classmethod
-    def notify_active_player(cls, msg: str, now: bool = False) -> None:
-        # player_id: str = cls.get_active_player_id()
-        # player: IPlayer = cls.getService(player_id)
-        # player.notify(msg, now)
         pass
 
     @classmethod
@@ -304,3 +317,6 @@ class BaseServices(IServices):
         Engine replies what it is allowing engine to control
         """
         pass
+
+
+BaseServices.class_init()

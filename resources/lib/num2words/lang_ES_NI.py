@@ -28,6 +28,6 @@ class Num2Word_ES_NI(Num2Word_ES):
     def to_currency(self, val, currency='NIO', cents=True, separator=' con',
                     adjective=False):
         result = super(Num2Word_ES, self).to_currency(
-            val, currency=currency, cents=cents, separator=separator,
-            adjective=adjective)
+                val, currency=currency, cents=cents, separator=separator,
+                adjective=adjective)
         return result.replace("uno", "un")

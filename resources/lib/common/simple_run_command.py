@@ -7,12 +7,11 @@ from subprocess import Popen
 
 import xbmc
 
-from common.critical_settings import CriticalSettings
 from common.garbage_collector import GarbageCollector
+from common.kodi_player_monitor import KodiPlayerMonitor, KodiPlayerState
 from common.logger import *
 from common.monitor import Monitor
 from common.phrases import PhraseList
-from common.player_monitor import PlayerMonitor, PlayerState
 from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -30,7 +29,7 @@ class SimpleRunCommand:
     """
 
     """
-    player_state: str = PlayerState.PLAYING_STOPPED
+    player_state: str = KodiPlayerState.PLAYING_STOPPED
     logger: BasicLogger = None
 
     def __init__(self, args: List[str], phrase_serial: int = 0, name: str = '',
@@ -38,8 +37,6 @@ class SimpleRunCommand:
         """
 
         :param args: arguments to be passed to exec command
-        :param msg_identifier: Tag to use in any error or status messages to
-                identify command run
         """
         clz = type(self)
         SimpleRunCommand.logger = module_logger.getChild(clz.__name__)
@@ -56,15 +53,19 @@ class SimpleRunCommand:
         self.stderr_thread: threading.Thread | None = None
         self.stdout_lines: List[str] = []
         self.stderr_lines: List[str] = []
+
         Monitor.register_abort_listener(self.abort_listener, name=name)
 
         if self.stop_on_play:
-            PlayerMonitor.register_player_status_listener(
-                    self.player_status_listener,
-                    f'{self.thread_name}_Play_Monitor')
+            if KodiPlayerMonitor.player_status == KodiPlayerState.PLAYING:
+                return
+
+            KodiPlayerMonitor.register_player_status_listener(
+                    self.kodi_player_status_listener,
+                    f'{self.thread_name}_Kodi_Player_Monitor')
 
     def terminate(self):
-        if self.process is not None and self.run_state <= RunState.RUNNING:
+        if self.process is not None and self.run_state.value <= RunState.RUNNING.value:
             self.process.terminate()
 
     def kill(self):
@@ -73,16 +74,24 @@ class SimpleRunCommand:
     def get_state(self) -> RunState:
         return self.run_state
 
+    def poll(self) -> int | None:
+        return self.process.poll()
+
     def abort_listener(self) -> None:
         pass
 
-    def player_status_listener(self, player_state: PlayerState) -> None:
+    def kodi_player_status_listener(self, kodi_player_state: KodiPlayerState) -> bool:
         clz = type(self)
-        clz.player_state = player_state
-        if player_state == PlayerState.PLAYING and self.stop_on_play:
-            clz.logger.debug(f'PLAYING_STOPPED terminating command: '
-                              f'args: {self.args} ')
+        clz.player_state = kodi_player_state
+        clz.logger.debug(f'KodiPlayerState: {kodi_player_state} stop_on_play: '
+                         f'{self.stop_on_play} args: {self.args} '
+                         f'serial: {self.phrase_serial}')
+        if kodi_player_state == KodiPlayerState.PLAYING and self.stop_on_play:
+            clz.logger.debug(f'KODI_PLAYING terminating command: '
+                             f'args: {self.args} ')
             self.terminate()
+            return True  # Unregister
+        return False
 
     def run_cmd(self) -> int:
         """
@@ -140,9 +149,10 @@ class SimpleRunCommand:
                     elif kill_countdown == 0:
                         next_state = RunState.KILLED
                         module_logger.debug(f'terminate not work, KILLING')
-                        clz.logger.debug(f'Terminate not working, Killing {self.phrase_serial} '
-                                         f'{self.args[0]}',
-                                         trace=Trace.TRACE_AUDIO_START_STOP)
+                        clz.logger.debug(
+                            f'Terminate not working, Killing {self.phrase_serial} '
+                            f'{self.args[0]}',
+                            trace=Trace.TRACE_AUDIO_START_STOP)
                         self.process.kill()
                         break
                 except subprocess.TimeoutExpired:
@@ -199,12 +209,13 @@ class SimpleRunCommand:
             self.rc = 99  # Thread will exit very soon
         finally:
             Monitor.unregister_abort_listener(self.abort_listener)
-            PlayerMonitor.unregister_player_status_listener(self.player_status_listener)
+            KodiPlayerMonitor.unregister_player_status_listener(
+                self.kodi_player_status_listener)
         return self.rc
 
     def run_worker(self) -> None:
         clz = type(self)
-        rc = 0
+        self.rc = 0
         GarbageCollector.add_thread(self.run_thread)
         env = os.environ.copy()
         try:
@@ -217,13 +228,17 @@ class SimpleRunCommand:
                 # via pipe and don't log
 
                 self.process = subprocess.Popen(self.args, stdin=None,
-                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False,
-                        universal_newlines=True, env=env, close_fds=True,
-                        creationflags=subprocess.DETACHED_PROCESS)
+                                                stdout=subprocess.PIPE,
+                                                stderr=subprocess.PIPE, shell=False,
+                                                universal_newlines=True, env=env,
+                                                close_fds=True,
+                                                creationflags=subprocess.DETACHED_PROCESS)
             else:
                 self.process = subprocess.Popen(self.args, stdin=None,
-                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False,
-                        universal_newlines=True, env=env, close_fds=True)
+                                                stdout=subprocess.PIPE,
+                                                stderr=subprocess.PIPE, shell=False,
+                                                universal_newlines=True, env=env,
+                                                close_fds=True)
             self.run_state = RunState.RUNNING
             self.stdout_thread = threading.Thread(target=self.stdout_reader,
                                                   name=f'{self.thread_name}_stdout_rdr')
@@ -237,6 +252,9 @@ class SimpleRunCommand:
         except Exception as e:
             clz.logger.exception('')
             self.rc = 10
+        if self.rc == 0:
+            self.run_state = RunState.COMPLETE
+        return
 
     def stderr_reader(self):
         GarbageCollector.add_thread(self.stderr_thread)

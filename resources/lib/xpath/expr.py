@@ -1,4 +1,3 @@
-
 import math
 import operator
 import re
@@ -15,7 +14,7 @@ from xpath.exceptions import *
 def string_value(node):
     """Compute the string-value of a node."""
     if (node.nodeType == node.DOCUMENT_NODE or
-        node.nodeType == node.ELEMENT_NODE):
+            node.nodeType == node.ELEMENT_NODE):
         s = ''
         for n in axes['descendant'](node):
             if n.nodeType == n.TEXT_NODE:
@@ -29,6 +28,7 @@ def string_value(node):
           node.nodeType == node.COMMENT_NODE or
           node.nodeType == node.TEXT_NODE):
         return node.data
+
 
 def document_order(node):
     """Compute a document order value for the node.
@@ -67,6 +67,7 @@ def document_order(node):
     order.append(sibpos)
     return order
 
+
 #
 # Type functions, operating on the various XPath types.
 #
@@ -83,10 +84,12 @@ def nodeset(v):
         raise XPathTypeError("value is not a node-set")
     return v
 
+
 def nodesetp(v):
     """Return true iff 'v' is a node-set."""
     if isinstance(v, list):
         return True
+
 
 def string(v):
     """Convert a value to a string."""
@@ -108,9 +111,11 @@ def string(v):
         return 'true' if v else 'false'
     return v
 
+
 def stringp(v):
     """Return true iff 'v' is a string."""
     return isinstance(v, str)
+
 
 def boolean(v):
     """Convert a value to a boolean."""
@@ -124,9 +129,11 @@ def boolean(v):
         return v != ''
     return v
 
+
 def booleanp(v):
     """Return true iff 'v' is a boolean."""
     return isinstance(v, bool)
+
 
 def number(v):
     """Convert a value to a number."""
@@ -137,10 +144,12 @@ def number(v):
     except ValueError:
         return float('NaN')
 
+
 def numberp(v):
     """Return true iff 'v' is a number."""
-    return (not(isinstance(v, bool)) and
+    return (not (isinstance(v, bool)) and
             (isinstance(v, int) or isinstance(v, float)))
+
 
 class Expr(object):
     """Abstract base class for XPath expressions."""
@@ -154,6 +163,7 @@ class Expr(object):
         Returns an XPath value: a nodeset, string, boolean, or number.
 
         """
+
 
 class BinaryOperatorExpr(Expr):
     """Base class for all binary operators."""
@@ -171,13 +181,15 @@ class BinaryOperatorExpr(Expr):
     def __str__(self):
         return '(%s %s %s)' % (self.left, self.op, self.right)
 
+
 class AndExpr(BinaryOperatorExpr):
     """<x> and <y>"""
 
     def evaluate(self, node, pos, size, context):
         # Note that XPath boolean operations short-circuit.
         return (boolean(self.left.evaluate(node, pos, size, context) and
-                boolean(self.right.evaluate(node, pos, size, context))))
+                        boolean(self.right.evaluate(node, pos, size, context))))
+
 
 class OrExpr(BinaryOperatorExpr):
     """<x> or <y>"""
@@ -185,18 +197,19 @@ class OrExpr(BinaryOperatorExpr):
     def evaluate(self, node, pos, size, context):
         # Note that XPath boolean operations short-circuit.
         return (boolean(self.left.evaluate(node, pos, size, context) or
-                boolean(self.right.evaluate(node, pos, size, context))))
+                        boolean(self.right.evaluate(node, pos, size, context))))
+
 
 class EqualityExpr(BinaryOperatorExpr):
     """<x> = <y>, <x> != <y>, etc."""
 
     operators = {
-        '='  : operator.eq,
-        '!=' : operator.ne,
-        '<=' : operator.le,
-        '<'  : operator.lt,
-        '>=' : operator.ge,
-        '>'  : operator.gt,
+        '=' : operator.eq,
+        '!=': operator.ne,
+        '<=': operator.le,
+        '<' : operator.lt,
+        '>=': operator.ge,
+        '>' : operator.gt,
     }
 
     def operate(self, a, b):
@@ -225,6 +238,7 @@ class EqualityExpr(BinaryOperatorExpr):
         a, b = convert(a), convert(b)
         return self.operators[self.op](a, b)
 
+
 def divop(x, y):
     try:
         return x / y
@@ -235,20 +249,22 @@ def divop(x, y):
             return float('-inf')
         return float('inf')
 
+
 class ArithmeticalExpr(BinaryOperatorExpr):
     """<x> + <y>, <x> - <y>, etc."""
 
     # Note that we must use math.fmod for the correct modulo semantics.
     operators = {
-        '+'   : operator.add,
-        '-'   : operator.sub,
-        '*'   : operator.mul,
-        'div' : divop,
-        'mod' : math.fmod
+        '+'  : operator.add,
+        '-'  : operator.sub,
+        '*'  : operator.mul,
+        'div': divop,
+        'mod': math.fmod
     }
 
     def operate(self, a, b):
         return self.operators[self.op](number(a), number(b))
+
 
 class UnionExpr(BinaryOperatorExpr):
     """<x> | <y>"""
@@ -259,6 +275,7 @@ class UnionExpr(BinaryOperatorExpr):
 
         # Need to sort the result to preserve document order.
         return sorted(set(chain(a, b)), key=document_order)
+
 
 class NegationExpr(Expr):
     """- <x>"""
@@ -271,6 +288,7 @@ class NegationExpr(Expr):
 
     def __str__(self):
         return '(-%s)' % self.expr
+
 
 class LiteralExpr(Expr):
     """Literals--either numbers or strings."""
@@ -288,6 +306,7 @@ class LiteralExpr(Expr):
             else:
                 return "'%s'" % self.literal
         return string(self.literal)
+
 
 class VariableReference(Expr):
     """Variable references."""
@@ -315,6 +334,7 @@ class VariableReference(Expr):
         else:
             return '$%s:%s' % (self.prefix, self.name)
 
+
 class Function(Expr):
     """Functions."""
 
@@ -328,7 +348,7 @@ class Function(Expr):
         if len(self.args) < self.evaluate.minargs:
             raise XPathTypeError('too few arguments for "%s()"' % name)
         if (self.evaluate.maxargs is not None and
-            len(self.args) > self.evaluate.maxargs):
+                len(self.args) > self.evaluate.maxargs):
             raise XPathTypeError('too many arguments for "%s()"' % name)
 
     #
@@ -349,6 +369,7 @@ class Function(Expr):
                     (e.g., string() and number().)
         convert -- When non-None, a function used to filter function arguments.
         """
+
         def decorator(f):
             def new_f(self, node, pos, size, context):
                 if implicit and len(self.args) == 0:
@@ -371,6 +392,7 @@ class Function(Expr):
             new_f.__name__ = f.__name__
             new_f.__doc__ = f.__doc__
             return new_f
+
         return decorator
 
     # Node Set Functions
@@ -402,7 +424,7 @@ class Function(Expr):
         if argnode is None:
             return ''
         if (argnode.nodeType == argnode.ELEMENT_NODE or
-            argnode.nodeType == argnode.ATTRIBUTE_NODE):
+                argnode.nodeType == argnode.ATTRIBUTE_NODE):
             return argnode.localName
         elif argnode.nodeType == argnode.PROCESSING_INSTRUCTION_NODE:
             return argnode.target
@@ -454,7 +476,7 @@ class Function(Expr):
     @function(2, 2, convert=string)
     def f_substring_after(self, node, pos, size, context, a, b):
         try:
-            return a[a.index(b)+len(b):]
+            return a[a.index(b) + len(b):]
         except ValueError:
             return ''
 
@@ -474,7 +496,7 @@ class Function(Expr):
                 # Catch NaN
                 return ''
             if end > len(s):
-                end = len(s)+1
+                end = len(s) + 1
 
         if start < 1:
             start = 1
@@ -482,7 +504,7 @@ class Function(Expr):
             return ''
         if end <= start:
             return ''
-        return s[int(start)-1:int(end)-1]
+        return s[int(start) - 1:int(end) - 1]
 
     @function(0, 1, implicit=True, convert=string)
     def f_string_length(self, node, pos, size, context, s):
@@ -564,12 +586,14 @@ class Function(Expr):
     def __str__(self):
         return '%s(%s)' % (self.name, ', '.join((str(x) for x in self.args)))
 
+
 #
 # XPath axes.
 #
 
 # Dictionary of all axis functions.
 axes = {}
+
 
 def axisfn(reverse=False, principal_node_type=xml.dom.Node.ELEMENT_NODE):
     """Axis function decorator.
@@ -578,12 +602,15 @@ def axisfn(reverse=False, principal_node_type=xml.dom.Node.ELEMENT_NODE):
     over the nodes along an XPath axis.  Axis functions have two extra
     attributes indicating the axis direction and principal node type.
     """
+
     def decorate(f):
         f.__name__ = f.__name__.replace('_', '-')
         f.reverse = reverse
         f.principal_node_type = principal_node_type
         return f
+
     return decorate
+
 
 def make_axes():
     """Define functions to walk each of the possible XPath axes."""
@@ -670,7 +697,9 @@ def make_axes():
     for axis in list(locals().values()):
         axes[axis.__name__] = axis
 
+
 make_axes()
+
 
 def merge_into_nodeset(target, source):
     """Place all the nodes from the source node-set into the target
@@ -697,6 +726,7 @@ def merge_into_nodeset(target, source):
         target.extend(source)
         target.sort(key=document_order)
 
+
 class AbsolutePathExpr(Expr):
     """Absolute location paths."""
 
@@ -712,6 +742,7 @@ class AbsolutePathExpr(Expr):
 
     def __str__(self):
         return '/%s' % (self.path or '')
+
 
 class PathExpr(Expr):
     """Location path expressions."""
@@ -733,7 +764,7 @@ class PathExpr(Expr):
         for step in self.steps[1:]:
             aggregate = []
             for i in range(len(result)):
-                nodes = step.evaluate(result[i], i+1, len(result), context)
+                nodes = step.evaluate(result[i], i + 1, len(result), context)
                 if not nodesetp(nodes):
                     raise XPathTypeError("path step is not a node-set")
                 merge_into_nodeset(aggregate, nodes)
@@ -744,6 +775,7 @@ class PathExpr(Expr):
     def __str__(self):
         return '/'.join((str(s) for s in self.steps))
 
+
 class PredicateList(Expr):
     """A list of predicates.
 
@@ -751,6 +783,7 @@ class PredicateList(Expr):
     filtered by the predicates.
 
     """
+
     def __init__(self, expr, predicates, axis='child'):
         self.predicates = predicates
         self.expr = expr
@@ -790,6 +823,7 @@ class PredicateList(Expr):
             s = '(%s)' % s
         return s + ''.join(('[%s]' % x for x in self.predicates))
 
+
 class AxisStep(Expr):
     """One step in a location path expression."""
 
@@ -813,6 +847,7 @@ class AxisStep(Expr):
     def __str__(self):
         return '%s::%s' % (self.axis.__name__, self.test)
 
+
 #
 # Node tests.
 #
@@ -823,7 +858,9 @@ class Test(object):
     def match(self, node, axis, context):
         """Return True if 'node' matches the test along 'axis'."""
 
+
 class NameTest(object):
+
     def __init__(self, prefix, localpart):
         self.prefix = prefix
         self.localName = localpart
@@ -856,7 +893,9 @@ class NameTest(object):
         else:
             return self.localName
 
+
 class PITest(object):
+
     def __init__(self, name=None):
         self.name = name
 
@@ -873,21 +912,27 @@ class PITest(object):
             name = "'%s'" % self.name
         return 'processing-instruction(%s)' % name
 
+
 class CommentTest(object):
+
     def match(self, node, axis, context):
         return node.nodeType == node.COMMENT_NODE
 
     def __str__(self):
         return 'comment()'
 
+
 class TextTest(object):
+
     def match(self, node, axis, context):
         return node.nodeType == node.TEXT_NODE
 
     def __str__(self):
         return 'text()'
 
+
 class AnyKindTest(object):
+
     def match(self, node, axis, context):
         return True
 
