@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 import queue
 import sys
 import threading
 from pathlib import Path
+
+from common import *
 
 from backends import audio
 from backends.audio.sound_capabilties import ServiceType, SoundCapabilities
@@ -26,7 +30,6 @@ from common.phrases import Phrase, PhraseList
 from common.setting_constants import Genders, Mode, Players
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -105,7 +108,7 @@ class EngineQueue:
                 self.tts_queue.task_done()  # TODO: Change this to use phrase delays
                 phrase: Phrase = item.phrase
                 if (clz.kodi_player_state == KodiPlayerState.PLAYING and not
-                phrase.speak_while_playing):
+                        phrase.speak_while_playing):
                     clz._logger.debug(f'skipping play of {phrase.debug_data()} '
                                       f'speak while playing: '
                                       f'{phrase.speak_while_playing}',
@@ -1042,6 +1045,7 @@ class SimpleTTSBackend(ThreadedTTSBackend):
 
         """
         clz = type(self)
+        clz._logger.debug(f'In base.config_mode')
 
         player_id: str = Settings.get_player_id(clz.engine_id)
 
@@ -1065,13 +1069,13 @@ class SimpleTTSBackend(ThreadedTTSBackend):
             return
 
         try:
-            player: IPlayer = self.get_player(self.engine_id)
-            player.init(clz.engine_id)
+            self.initialize_player()
             self.config_mode()
             text: str = phrase.get_text()
             if phrase.get_interrupt():
-                player.stop(now=True)
+                self.stop_player(now=True)
 
+            clz._logger.debug(f'mode: {self.mode}')
             if self.mode == Mode.FILEOUT:
                 outFile: str
                 exists: bool
@@ -1081,22 +1085,54 @@ class SimpleTTSBackend(ThreadedTTSBackend):
                 if not self.runCommand(phrase):
                     return
 
-                # try:
-                #     player.init(clz.engine_id)
-                # except Exception as e:
-                #     clz._logger.exception('')
-                player.play(phrase)
+                player: IPlayer = self.get_player(self.engine_id)
+                if player:  # if None, then built-in
+                    player.play(phrase)
             elif self.mode == Mode.PIPE:
                 source: BinaryIO = self.runCommandAndPipe(phrase)
                 if not source:
                     return
-                player.pipe(source, phrase)
+                player: IPlayer = self.get_player(self.engine_id)
+                if player:
+                    player.pipe(source, phrase)
             else:
                 clz._simpleIsSpeaking = True
                 self.runCommandAndSpeak(phrase)
                 clz._simpleIsSpeaking = False
         except ExpiredException:
             clz._logger.debug('EXPIRED')
+        except Exception as e:
+            clz._logger.exception('')
+
+    def initialize_player(self):
+        """
+        Ensure that player is initialized before playing. Some engines
+        may want to override this method, particularly if they use a built-in
+        player.
+
+        :return:
+        """
+        clz = type(self)
+        try:
+            player: IPlayer = self.get_player(self.engine_id)
+            if player:
+                player.init(clz.engine_id)
+        except Exception as e:
+            clz._logger.exception('')
+
+    def stop_player(self, now: bool = True):
+        """
+        Stop player (most likely because current text is expired)
+        Engines may wish to override this method, particularly when
+        the player is built-in.
+
+        :return:
+        """
+        clz = type(self)
+        try:
+            player: IPlayer = self.get_player(self.engine_id)
+            if player:
+                player.stop(now=now)
         except Exception as e:
             clz._logger.exception('')
 

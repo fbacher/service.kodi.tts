@@ -1,6 +1,8 @@
+from __future__ import annotations  # For union operator |
+
 import xbmc
 
-from common.__init__ import *
+from common import *
 
 
 class IBackend:

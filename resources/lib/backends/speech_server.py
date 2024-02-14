@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
 
 import shutil
 import sys
@@ -9,12 +10,13 @@ import urllib.parse
 import urllib.request
 import urllib.request
 
+from common import *
+
 from backends.base import SimpleTTSBackend
 from backends.settings.constraints import Constraints
 from common.logger import *
 from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -102,7 +104,7 @@ class SpeechServerBackend(SimpleTTSBackend):
             self.updatePostdata(postdata)
             req = urllib.request.Request(self.httphost + 'wav',
                                          urllib.parse.urlencode(postdata))
-        with open(outFile, "w") as wav:
+        with open(outFile, "w", encoding='utf-8') as wav:
             try:
                 res = urllib.request.urlopen(req)
                 if not res.info().get('Content-Type') == 'audio/x-wav':

@@ -1,4 +1,7 @@
 # coding=utf-8
+from __future__ import annotations  # For union operator |
+
+from common import *
 
 
 class IConstraints:
@@ -29,7 +32,21 @@ class IConstraints:
     def increment(self) -> float:
         raise NotImplementedError()
 
-    def currentValue(self, service_id: str) -> float:
+    def currentValue(self, service_id: str, as_decibels: bool | None = None,
+                     limit: bool = True) -> float:
+        """
+        @service_id: The service (engine, player, etc.) to get this validator's
+        property from.
+        @as_decibels: Converts between decibel and percentage units.
+                     True, convert to decibels
+                     False, convert to percentage units (based on the scale
+                     configured for this validator)
+                     None, use decibels or percentage, as set by constructo
+        @limit: Limits the returned value to the range configured for this
+                validator
+        @return: Returns the current, scaled value of the Setting with this
+        constraint's property name. Default values are used, as needed.
+        """
         raise NotImplementedError()
 
     def setSetting(self, value: float, backend_id: str) -> None:
@@ -44,7 +61,19 @@ class IConstraints:
     def translate(self, other: 'IConstraints', integer: bool = True) -> 'IConstraints':
         raise NotImplementedError()
 
-    def translate_value(self, other: 'IConstraints', value: float) -> int | float:
+    def translate_value(self, other: 'IConstraints', value: float,
+                        as_decibels: bool | None = None) -> int | float:
+        """
+        Translates an (external) value of this constraint to an (external) value of
+        'other' constraint
+        @param other: Specifies the constraint to use for converting the given value
+        @param value: (external) value of this constraint to convert
+        @param as_decibels: Converts to either decibel or percent scale.
+                            True, converts to decibels
+                            False, converts to percent scale
+                            None does no conversion
+        @return: Value scaled appropriately to comply with the other constraint
+        """
         raise NotImplementedError()
 
     def translate_linear_value(self, from_minimum: float,

@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
+from common import *
+
 from common.critical_settings import *
 
 BASE_COMMAND = ('XBMC.NotifyAll(service.kodi.tts,SAY,"{{\\"text\\":\\"{0}\\",'

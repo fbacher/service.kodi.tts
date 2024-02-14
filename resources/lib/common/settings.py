@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 import sys
+
+from common import *
 
 from backends.settings.i_validators import (IBoolValidator, IGenderValidator,
                                             IIntValidator,
@@ -133,7 +137,7 @@ class Settings(SettingsLowLevel):
             engine_id = cls._current_engine
         # cls._logger.debug(f'getting gender for engine_id: {engine_id}')
         gender_validator: IGenderValidator
-        gender_validator = SettingsMap.get_validator(engine_id,
+        gender_validator = SettingsMap.get_validator(Services.TTS_SERVICE,
                                                      property_id=SettingsProperties.GENDER)
         gender: Genders = gender_validator.get_tts_value()
         return gender
@@ -376,7 +380,7 @@ class Settings(SettingsLowLevel):
         player_validator = SettingsMap.get_validator(engine_id,
                                                      property_id=SettingsProperties.PLAYER)
         player_id: str = player_validator.get_tts_value()
-        # cls._logger.debug(f'player.{engine_id} = {player}')
+        cls._logger.debug(f'player.{engine_id} = {player_id}')
         return player_id
 
     @classmethod

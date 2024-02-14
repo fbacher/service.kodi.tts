@@ -1,10 +1,15 @@
 # -*- coding: utf-8 -*-
-from enum import Enum, StrEnum
+
+from enum import Enum
+try:
+    from enum import StrEnum
+except ImportError:
+    from common.strenum import StrEnum
+from common import *
 
 from backends.settings.service_types import Services
 from backends.settings.setting_properties import SettingsProperties
 from common.messages import Message, Messages
-from common.typing import *
 
 
 class BaseSettingsConstants:
@@ -36,6 +41,7 @@ class Backends(BaseSettingsConstants):
     GOOGLE_ID: Final[str] = Services.GOOGLE_ID
     SPEECH_DISPATCHER_ID: Final[str] = Services.SPEECH_DISPATCHER_ID
     EXPERIMENTAL_ENGINE_ID: Final[str] = Services.EXPERIMENTAL_ENGINE_ID
+    SAPI_ID: Final[str] = Services.SAPI_ID
 
     ALL_ENGINE_IDS: List[str] = [
         AUTO_ID,
@@ -49,6 +55,7 @@ class Backends(BaseSettingsConstants):
         PICO_TO_WAVE_ID,
         RECITE_ID,
         RESPONSIVE_VOICE_ID,
+        SAPI_ID,
         SPEECH_DISPATCHER_ID
     ]
     settings_map: Dict[str, Message] = {
@@ -62,6 +69,7 @@ class Backends(BaseSettingsConstants):
         PICO_TO_WAVE_ID     : Messages.CONVERT_PICO_TO_WAV,
         RECITE_ID           : Messages.BACKEND_RECITE,
         RESPONSIVE_VOICE_ID : Messages.BACKEND_RESPONSIVE_VOICE,
+        SAPI_ID             : Messages.BACKEND_SAPI,
         SPEECH_DISPATCHER_ID: Messages.BACKEND_SPEECH_DISPATCHER
     }
 

@@ -1,3 +1,7 @@
+from __future__ import annotations  # For union operator |
+
+from common import *
+
 from backends.settings.i_validators import IValidator
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.setting_properties import SettingsProperties
@@ -7,7 +11,6 @@ from backends.settings.validators import (BoolValidator, ConstraintsValidator,
 from common.logger import BasicLogger
 from common.phrases import PhraseList
 from common.settings import Settings
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 

@@ -1,11 +1,14 @@
+from __future__ import annotations  # For union operator |
+
 import sys
+
+from common import *
 
 from backends.settings.settings_map import Reason, SettingsMap
 from common.logger import BasicLogger
 from common.setting_constants import Players
 from common.settings_low_level import SettingsLowLevel
 from common.system_queries import SystemQueries
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -45,6 +48,7 @@ class BootstrapPlayers:
             cls.load_player(player_id)
         # Add all settings
         SettingsLowLevel.load_settings()
+        SettingsLowLevel.commit_settings()
 
     @classmethod
     def load_player(cls, player_id: str) -> None:

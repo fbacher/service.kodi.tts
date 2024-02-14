@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 """
 Created on 6/12/21
 
@@ -10,10 +12,12 @@ Provides methods to create and execute queries to Kodi database
 import sys
 
 import simplejson
+
+from common import *
+
 from cache.prefetch_movie_data.json_utils_basic import JsonUtilsBasic
 from common.logger import *
 from common.monitor import Monitor
-from common.typing import *
 
 module_logger: Final[BasicLogger] = BasicLogger.get_module_logger(module_path=__file__)
 

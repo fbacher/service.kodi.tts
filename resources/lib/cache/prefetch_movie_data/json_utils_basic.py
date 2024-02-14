@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
 
 """
 Created on Feb 10, 2019
@@ -13,10 +14,12 @@ from enum import auto, Enum
 import xbmc
 
 import simplejson as json
+
+from common import *
+
 from common.logger import *
 from common.monitor import Monitor
-from common.typing import *
-from .movie_constants import MovieType
+from cache.prefetch_movie_data.movie_constants import MovieType
 
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 

@@ -1,8 +1,11 @@
+from __future__ import annotations  # For union operator |
+
 import sys
+
+from common import *
 
 from common.logger import BasicLogger
 from common.setting_constants import Converters
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 

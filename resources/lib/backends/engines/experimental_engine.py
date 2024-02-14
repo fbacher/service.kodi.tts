@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 import io
 import os
 import pathlib
@@ -8,8 +10,12 @@ from datetime import timedelta
 from enum import Enum
 from time import time
 
-import regex
-from typing.io import IO
+try:
+    import regex
+except ImportError:
+    import re as regex
+
+from common import *
 
 from backends.audio.sound_capabilties import ServiceType
 from backends.base import SimpleTTSBackend
@@ -28,7 +34,6 @@ from common.phrases import Phrase, PhraseList
 from common.setting_constants import Backends, Genders, Mode
 from common.settings import Settings
 from common.simple_run_command import SimpleRunCommand
-from common.typing import *
 from utils.util import runInThread
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -191,7 +196,7 @@ class SpeechGenerator:
                         try:
                             text_file_path.unlink(missing_ok=True)
 
-                            with text_file_path.open('wt') as f:
+                            with text_file_path.open('wt', encoding='utf-8') as f:
                                 f.write(phrase.get_text())
                         except Exception as e:
                             if clz._logger.isEnabledFor(ERROR):
@@ -443,7 +448,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
                                 if os.path.isfile(voice_text_file):
                                     os.unlink(voice_text_file)
 
-                                with open(voice_text_file, 'wt') as f:
+                                with open(voice_text_file, 'wt', encoding='utf-8') as f:
                                     f.write(text_to_voice)
                             except Exception as e:
                                 if clz._logger.isEnabledFor(ERROR):
@@ -521,7 +526,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
                             if copy_text_file_path.is_file():
                                 copy_text_file_path.unlink()
 
-                            with copy_text_file_path.open('wt') as f:
+                            with copy_text_file_path.open('wt', encoding='utf-8') as f:
                                 f.write(text_to_voice)
                         except Exception as e:
                             if clz._logger.isEnabledFor(ERROR):
@@ -606,7 +611,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
                             if os.path.isfile(failing_voice_text_file):
                                 os.unlink(failing_voice_text_file)
 
-                            with open(failing_voice_text_file, 'wt') as f:
+                            with open(failing_voice_text_file, 'wt', encoding='utf-8') as f:
                                 f.write(text_to_voice)
                         except Exception as e:
                             if clz._logger.isEnabledFor(ERROR):

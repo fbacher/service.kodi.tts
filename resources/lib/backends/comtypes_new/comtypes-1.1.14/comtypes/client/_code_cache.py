@@ -101,7 +101,7 @@ def _create_comtypes_gen_package():
             comtypes_init = os.path.join(comtypes_path, "__init__.py")
             if not os.path.exists(comtypes_init):
                 logger.info("Writing __init__.py file: '%s'", comtypes_init)
-                ofi = open(comtypes_init, "w")
+                ofi = open(comtypes_init, "wt", encoding='utf-8')
                 ofi.write("# comtypes.gen package, directory for generated files.\n")
                 ofi.close()
         except (OSError, IOError) as details:

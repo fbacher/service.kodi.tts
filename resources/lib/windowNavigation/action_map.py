@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 '''
 Created on Feb 6, 2019
 
@@ -6,6 +8,8 @@ Created on Feb 6, 2019
 '''
 
 import xbmc
+
+from common import *
 
 
 class Action:

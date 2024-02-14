@@ -1,6 +1,6 @@
 # coding=utf-8
 
-from common.typing import *
+from common import *
 
 
 class GoogleData:

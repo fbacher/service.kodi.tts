@@ -1,4 +1,6 @@
-from common.typing import *
+from __future__ import annotations  # For union operator |
+
+from common import *
 
 
 class ISettings:

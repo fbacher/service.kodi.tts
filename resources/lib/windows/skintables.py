@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 import xbmc
 import xbmcvfs
+
+from common import *
 
 from common.messages import Messages
 

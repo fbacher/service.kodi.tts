@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
 
 import os
 import subprocess
 import sys
 
+from common import *
+
 from common.constants import Constants
 from common.logger import *
-from common.typing import *
 
 
 try:

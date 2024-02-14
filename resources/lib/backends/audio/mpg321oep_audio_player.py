@@ -1,8 +1,12 @@
+from __future__ import annotations  # For union operator |
+
 import errno
 import os
 import shutil
 import subprocess
 import sys
+
+from common import *
 
 from backends.audio.base_audio import SubprocessAudioPlayer
 from backends.audio.sound_capabilties import SoundCapabilities
@@ -12,7 +16,6 @@ from common import utils
 from common.base_services import BaseServices
 from common.logger import BasicLogger
 from common.setting_constants import Players
-from common.typing import *
 
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -61,7 +64,7 @@ class Mpg321OEPiAudioPlayer(SubprocessAudioPlayer):
                                                 open(os.path.devnull, 'w')),
                                             stderr=subprocess.STDOUT,
                                             env=self.env, shell=True,
-                                            universal_newlines=True)
+                                            universal_newlines=True, encoding='utf-8')
         try:
             shutil.copyfileobj(source, self._wavProcess.stdin)
         except AbortException:
@@ -81,7 +84,8 @@ class Mpg321OEPiAudioPlayer(SubprocessAudioPlayer):
                                             stdout=(
                                                 open(os.path.devnull, 'w')),
                                             stderr=subprocess.STDOUT, env=self.env,
-                                            shell=True, universal_newlines=True)
+                                            shell=True, universal_newlines=True,
+                                            encoding='utf-8')
 
     @classmethod
     def available(cls, ext=None):

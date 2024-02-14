@@ -1,10 +1,13 @@
+from __future__ import annotations  # For union operator |
+
 # TODO: NOT WORKING AND NOT USED CURRENTLY
 
 # -*- coding: utf-8 -*-
 import xbmcgui
 
+from common import *
+
 from common.messages import Messages
-from common.typing import *
 from utils import addoninfo
 from .base import WindowHandlerBase
 

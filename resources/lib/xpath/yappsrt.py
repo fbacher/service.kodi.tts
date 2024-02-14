@@ -1,9 +1,12 @@
+from __future__ import annotations  # For union operator |
+
 # Yapps 2.0 Runtime
 #
 # This module is needed to run generated parsers.
 
 import re
 
+from common import *
 
 class SyntaxError(Exception):
     """When we run into an unexpected token, this is the exception to use"""

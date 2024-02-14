@@ -12,11 +12,12 @@ import threading
 
 import xbmc
 
+from common import *
+
 from common.constants import Constants
 from common.critical_settings import CriticalSettings
 from common.logger import *
 from common.minimal_monitor import MinimalMonitor
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -563,7 +564,9 @@ class Monitor(MinimalMonitor):
             except Exception as e:
                 cls._logger.exception('')
 
-    def waitForAbort(self, timeout: float = None) -> bool:
+    def waitForAbort(self, timeout: float | None = None) -> bool:
+        """
+        #
         # Provides signature of super class (xbmc.Monitor)
         #
         # Only real_waitForAbort() calls xbmc.Monitor.waitForAbort, which is
@@ -571,14 +574,23 @@ class Monitor(MinimalMonitor):
         # only from the main thread.
         #
         # WaitForAbort and wait_for_abort depend upon _abort_received
+         :param timeout: [opt] float - timeout in seconds.
+                        if -1 or None: wait forever
+                        if 0: check without wait & return
+                        if > 0: wait at max wait seconds
+        """
 
         clz = type(self)
         if timeout is not None and timeout < 0.0:
             timeout = None
 
-        #  clz.track_wait_call_counts()
-        abort = self.real_waitForAbort(timeout=timeout)
-        # abort = clz._abort_received.wait(timeout=timeout)
+        #  Use xbmc wait for long timeouts so that the wait time is better
+        #  shared with other threads, etc.
+
+        if timeout is None or timeout < 0.0 or timeout > 0.2:
+            abort = self.real_waitForAbort(timeout=timeout)
+        else:
+            abort = clz._abort_received.wait(timeout=timeout)
         #  clz.track_wait_return_counts()
 
         return abort
@@ -598,28 +610,22 @@ class Monitor(MinimalMonitor):
         New function added.
         """
         FOREVER = 24 * 60 * 60 * 365  # A year
-        if timeout is None:
+        if timeout is None or timeout < 0.0:
             timeout = FOREVER
-        elif timeout < 0.0:
-            timeout = 0.1
 
-        # cls.track_wait_call_counts()
-        abort = False
-        while timeout > 0.0:
-            poll_delay: float = min(timeout, CriticalSettings.SHORT_POLL_DELAY)
-            if CriticalSettings.POLL_MONITOR_WAIT_FOR_ABORT:
-                if cls._abort_received.is_set():
-                    abort = True
-                    break
-                cls.real_waitForAbort(timeout=poll_delay)
-            else:
+        #  Use xbmc wait for long timeouts so that the wait time is better
+        #  shared with other threads, etc.
+
+        abort: bool = False
+        if timeout > 0.21:
+            abort = cls.real_waitForAbort(timeout=timeout)
+        else:
+            while timeout > 0.0:
+                poll_delay: float = min(timeout, CriticalSettings.SHORT_POLL_DELAY)
                 if cls._abort_received.wait(timeout=poll_delay):
                     abort = True
                     break
-            timeout -= poll_delay
-
-        # cls.track_wait_return_counts()
-
+                timeout -= poll_delay
         return abort
 
     @classmethod

@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 """
 Created on 2/3/22
 
@@ -20,6 +22,8 @@ import xbmc
 import xbmcaddon
 import xbmcvfs
 
+from common import *
+
 __all__ = ['BASIC_FORMAT', 'CRITICAL', 'DEBUG', 'DEBUG_VERBOSE',
            'DEBUG_EXTRA_VERBOSE', 'ERROR', 'DISABLED',
            'FATAL', 'FileHandler', 'Filter', 'Formatter', 'Handler', 'INFO',
@@ -32,7 +36,6 @@ __all__ = ['BASIC_FORMAT', 'CRITICAL', 'DEBUG', 'DEBUG_VERBOSE',
            'lastResort', 'raiseExceptions', 'Trace']
 
 from common.critical_settings import CriticalSettings
-from .__init__ import *
 
 ADDON_ID: str = CriticalSettings.ADDON_ID
 ADDON: xbmcaddon = CriticalSettings.ADDON

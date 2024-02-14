@@ -1,6 +1,9 @@
 # coding=utf-8
+from __future__ import annotations  # For union operator |
 
 from xbmc import Player
+
+from common import *
 
 from common.monitor import *
 from utils.util import runInThread

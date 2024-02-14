@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
-#
+from __future__ import annotations  # For union operator |
+
 import datetime
 import sys
 
 import xbmc
+
+from common import *
 
 from cache.prefetch_movie_data.seed_cache import SeedCache
 from common.exceptions import ExpiredException
@@ -22,8 +25,6 @@ import time
 import queue
 import json
 import xbmcgui
-
-from common.typing import *
 
 from backends.background_driver import BackgroundDriver
 from backends.driver import Driver
@@ -124,6 +125,7 @@ class TTSService:
     bgProgress = backgroundprogress.BackgroundProgress(10151).init()
     noticeDialog = notice.NoticeDialog(10107).init()
     winID = None
+    dialogID = None
     windowReader = None
     controlID = None
     text = None
@@ -132,7 +134,7 @@ class TTSService:
     keyboardText = ''
     progressPercent = ''
     lastProgressPercentUnixtime = 0
-    interval = 200
+    interval: int = 200
     listIndex = None
     waitingToReadItemExtra = None
     driver: Driver = None
@@ -185,7 +187,7 @@ class TTSService:
         # Monitor.register_abort_listener(TTSService.onAbortRequested,
         #                                            'tts_service aborting')
 
-        # module_logger.info(f'SERVICE STARTED :: Interval: {cls.tts.interval}')
+        # module_logger.info(f'SERVICE STARTED :: Interval: {cls.get_tts().interval}')
         # cls._logger.info(f'TTSService.init instance_count: {cls.instance_count}')
         # Debug.dump_all_threads()
 
@@ -206,12 +208,26 @@ class TTSService:
         except TTSClosedException:
             pass
 
-    @classmethod
     @property
-    def tts(cls):
+    def tts(self) -> ITTSBackendBase:
+        clz = type(self)
+        if clz.is_tts_closed():
+            raise TTSClosedException()
+        return clz.active_backend
+
+    @classmethod
+    def get_tts(cls) -> ITTSBackendBase:
         if cls.is_tts_closed():
             raise TTSClosedException()
         return cls.active_backend
+
+    '''
+    def tts_getter(self) ->ITTSBackendBase:
+        clz = type(self)
+        if clz.is_tts_closed():
+            raise TTSClosedException()
+        return clz.active_backend
+    '''
 
     @classmethod
     def close_tts(cls) -> None:
@@ -266,12 +282,12 @@ class TTSService:
             # incorrect
 
             phrases: PhraseList = PhraseList()
-            args: Dict[str, List[Phrase]] = json.loads(data, object_hook=Phrase.from_json)
-            if not args:
+            phrase_args: Dict[str, List[Phrase]] = json.loads(data, object_hook=Phrase.from_json)
+            if not phrase_args:
                 return
             try:
                 phrase: Phrase
-                for phrase in args.get('phrases'):
+                for phrase in phrase_args.get('phrases'):
                     phrases.append(phrase)
                 cls.queueNotice(phrases)
             except ExpiredException:
@@ -284,13 +300,14 @@ class TTSService:
             # voiced
             if not data:
                 return
-            args = json.loads(data)
-            if not args:
+            str_args: Dict[str, str | List[str]] = json.loads(data)
+            if not str_args:
                 return
-            if not args.get('text'):
+            if not str_args.get('text'):
                 return
             try:
-                phrases: PhraseList = PhraseList.create(args.get('text'), interrupt=False,
+                phrases: PhraseList = PhraseList.create(str_args.get('text'),
+                                                        interrupt=False,
                                                         preload_cache=True)
                 cls.queueNotice(phrases)
             except ExpiredException:
@@ -545,7 +562,7 @@ class TTSService:
                         break
                     except TTSClosedException:
                         module_logger.info('TTSCLOSED')
-                    except:  # Because we don't want to kill speech on an error
+                    except Exception as e:  # Because we don't want to kill speech on an error
                         cls._logger.exception("")
                         cls.initState()  # To help keep errors from repeating on the loop
 
@@ -574,7 +591,7 @@ class TTSService:
                     for x in range(
                             5):  # Check the queue every 100ms, check state every 500ms
                         if cls.noticeQueue.empty():
-                            TTSService.instance.waitForAbort(0.1)
+                            Monitor.wait_for_abort(timeout=0.1)
                     break
 
         finally:
@@ -604,12 +621,13 @@ class TTSService:
         if Settings.getSetting(SettingsProperties.OVERRIDE_POLL_INTERVAL,
                                backend_id=SettingsProperties.TTS_SERVICE,
                                default_value=False):
+            engine: ITTSBackendBase = cls.tts
             cls.interval = Settings.getSetting(
                     SettingsProperties.POLL_INTERVAL,
                     backend_id=SettingsProperties.TTS_SERVICE,
-                    default_value=cls.tts.interval)
+                    default_value=engine.interval)
         else:
-            cls.interval = cls.tts.interval
+            cls.interval = cls.get_tts().interval
 
     @classmethod
     def get_active_backend(cls) -> ITTSBackendBase:
@@ -618,7 +636,7 @@ class TTSService:
     @classmethod
     def set_active_backend(cls, backend: ITTSBackendBase) -> str:
         if isinstance(backend, str):
-            module_logger._logger.debug(f'backend is string: {backend}')
+            module_logger.debug(f'backend is string: {backend}')
         else:
             backend.init()
             pass
@@ -626,6 +644,8 @@ class TTSService:
             cls.close_tts()
 
         #  backend.init()
+        module_logger.debug(f'setting active_backend: {str(backend)}')
+        module_logger.debug(f'backend_id: {backend.backend_id}')
         cls.active_backend = backend
         if cls.driver is None:
             cls.driver = Driver()
@@ -667,15 +687,15 @@ class TTSService:
 
         if cls.playerStatus.visible():
             monitored = cls.playerStatus.getMonitoredText(
-                    cls.tts.isSpeaking())
+                    cls.get_tts().isSpeaking())
         if cls.bgProgress.visible():
-            monitored = cls.bgProgress.getMonitoredText(cls.tts.isSpeaking())
+            monitored = cls.bgProgress.getMonitoredText(cls.get_tts().isSpeaking())
         if cls.noticeDialog.visible():
             monitored = cls.noticeDialog.getMonitoredText(
-                    cls.tts.isSpeaking())
+                    cls.get_tts().isSpeaking())
         if not monitored:
             monitored = cls.windowReader.getMonitoredText(
-                    cls.tts.isSpeaking())
+                    cls.get_tts().isSpeaking())
         if monitored:
             try:
                 phrases: PhraseList = PhraseList.create(monitored, interrupt=True)
@@ -687,7 +707,7 @@ class TTSService:
     def checkAutoRead(cls):
         if not cls.waitingToReadItemExtra:
             return
-        if cls.tts.isSpeaking():
+        if cls.get_tts().isSpeaking():
             cls.waitingToReadItemExtra = time.time()
             return
         if time.time() - cls.waitingToReadItemExtra > cls.autoItemExtra:
@@ -713,19 +733,23 @@ class TTSService:
     @classmethod
     def sayItemExtra(cls, interrupt=True):
         texts = cls.windowReader.getItemExtraTexts(cls.controlID)
+        if texts is None:
+            return
         try:
             phrases: PhraseList = PhraseList.create(texts, interrupt=interrupt)
             cls.sayText(phrases)
         except ExpiredException:
             cls._logger.debug(f'Expired at sayText')
+        except Exception as e:
+            cls._logger.exception('')
 
     @classmethod
     def sayText(cls, phrases: PhraseList, preload_cache=False):
         if KodiPlayerMonitor.player_status == KodiPlayerState.PLAYING:
             cls._logger.debug_verbose(f'Ignoring text, PLAYING')
             return
-        if cls.tts.dead:
-            return cls.fallbackTTS(cls.tts.deadReason)
+        if cls.get_tts().dead:
+            return cls.fallbackTTS(cls.get_tts().deadReason)
         try:
             cls._logger.debug_verbose(f'sayText {repr(phrases[0].get_text())} '
                                       f'interrupt: {str(phrases[0].get_interrupt())} '
@@ -740,21 +764,21 @@ class TTSService:
     def sayTexts(cls, texts, interrupt=True):
         if not texts:
             return
-        if cls.tts.dead:
-            return cls.fallbackTTS(cls.tts.deadReason)
+        if cls.get_tts().dead:
+            return cls.fallbackTTS(cls.get_tts().deadReason)
         module_logger.debug_verbose(repr(texts))
-        cls.tts.sayList(cls.cleanText(texts), interrupt=interrupt)
+        cls.get_tts().sayList(cls.cleanText(texts), interrupt=interrupt)
     '''
     '''
     @classmethod
     def insertPause(cls, ms=500):
-        cls.tts.insertPause(ms=ms)
+        cls.get_tts().insertPause(ms=ms)
         pass
     '''
 
     @classmethod
     def volumeUp(cls) -> None:
-        msg = cls.tts.volumeUp()
+        msg = cls.get_tts().volumeUp()
         if not msg:
             return
         try:
@@ -767,7 +791,7 @@ class TTSService:
 
     @classmethod
     def volumeDown(cls) -> None:
-        msg = cls.tts.volumeDown()
+        msg = cls.get_tts().volumeDown()
         if not msg:
             return
         try:
@@ -780,12 +804,13 @@ class TTSService:
 
     @classmethod
     def stopSpeech(cls) -> None:
-        cls.tts._stop()
+        cls.get_tts()._stop()
         PhraseList.set_current_expired()
 
     @classmethod
     def updateWindowReader(cls):
-        cls._logger.debug(f'winID: {cls.winID}')
+        if module_logger.isEnabledFor(DISABLED):
+            cls._logger.debug(f'winID: {cls.winID}')
         readerClass = windows.getWindowReader(cls.winID)
         if cls.windowReader:
             cls.windowReader.close()
@@ -805,16 +830,22 @@ class TTSService:
     def checkWindow(cls, newN):
         winID = xbmcgui.getCurrentWindowId()
         dialogID = xbmcgui.getCurrentWindowDialogId()
-        if dialogID != 9999:
-            winID = dialogID
-        if winID == cls.winID:
-            #  cls._logger.debug(f'Same winID: {winID} newN:{newN}')
+        changed: bool = False
+        if dialogID != 9999 and dialogID != cls.dialogID:
+            # winID = dialogID
+            cls.dialogID = dialogID
+            changed = True
+        if winID != cls.winID:
+            cls.winID = winID
+            changed = True
+        if not changed:
+            if module_logger.isEnabledFor(DISABLED):
+                cls._logger.debug(f'new winID: {winID} previous winID:{cls.winID}')
             return newN
-        cls._logger.debug(f'winID: {winID} dialogID: {dialogID}')
-        cls.winID = winID
         cls.updateWindowReader()
-        if module_logger.isEnabledFor(DEBUG):
+        if module_logger.isEnabledFor(DISABLED):
             module_logger.debug(f'Window ID: {winID} '
+                                f'dialogID: {dialogID} '
                                 f'Handler: {cls.windowReader.ID} '
                                 f'File: {xbmc.getInfoLabel("Window.Property(xmlfile)")}')
         name = cls.windowReader.getName()
@@ -921,7 +952,7 @@ class TTSService:
     @classmethod
     def newSecondaryText(cls, text):
         cls.secondaryText = text
-        if not text or cls.tts.isSpeaking():
+        if not text or cls.get_tts().isSpeaking():
             return
         if text.endswith('%'):
             # Get just the percent part, so we don't keep saying downloading

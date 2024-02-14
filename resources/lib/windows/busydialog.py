@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 import time
 
+from common import *
+
 from common import utils
-from common.typing import *
 from .base import WindowReaderBase
 
 

@@ -1,7 +1,10 @@
+from __future__ import annotations  # For union operator |
+import common
+
 from backends.i_backend_info import IBackendInfo
 from backends.i_tts_backend_base import ITTSBackendBase
 from backends.settings.constraints import Constraints
-from common.__init__ import *
+from common import *
 from common.base_services import BaseServices
 from common.logger import BasicLogger
 

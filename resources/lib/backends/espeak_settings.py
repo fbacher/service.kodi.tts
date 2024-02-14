@@ -1,6 +1,10 @@
+from __future__ import annotations  # For union operator |
+
 import os
 import subprocess
 import sys
+
+from common import *
 
 from backends.audio.sound_capabilties import SoundCapabilities
 from backends.engines.base_engine_settings import (BaseEngineSettings)
@@ -11,12 +15,11 @@ from backends.settings.service_types import Services, ServiceType
 from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import Reason, SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
-                                          StringValidator)
+                                          GenderValidator, StringValidator)
 from common.constants import Constants
 from common.logger import BasicLogger
 from common.setting_constants import Backends, Players
 from common.system_queries import SystemQueries
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -159,6 +162,7 @@ class ESpeakSettings(BaseServiceSettings):
         voice_validator = StringValidator(SettingsProperties.VOICE, cls.engine_id,
                                           allowed_values=[], min_length=1, max_length=10,
                                           default=None)
+
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOICE,
                                    voice_validator)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PIPE,
@@ -188,6 +192,7 @@ class ESpeakSettings(BaseServiceSettings):
         #                           volume_constraints_validator)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER,
                                    player_validator)
+
 
     @classmethod
     def isSupportedOnPlatform(cls) -> bool:

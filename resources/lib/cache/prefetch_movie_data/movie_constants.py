@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 """
 Created on 5/17/21
 
 @author: Frank Feuerbacher
 """
 
+from common import *
+
 from common.logger import *
-from common.typing import *
 
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 CHECK_FOR_NULLS: bool = True

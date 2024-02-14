@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
 
 import sys
+
+from common import *
 
 from common.logger import *
 from common.system_queries import SystemQueries

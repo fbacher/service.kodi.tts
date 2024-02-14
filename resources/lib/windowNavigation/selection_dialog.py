@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
 
 import xbmcgui
 from xbmcgui import (Control, ControlButton, ControlEdit, ControlGroup, ControlLabel,
                      ControlRadioButton, ControlSlider, ListItem)
 
+from common import *
+
 from common.constants import Constants
 from common.logger import *
 from common.messages import Messages
-from common.typing import *
 
 if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
     module_logger = BasicLogger.get_module_logger(module_path=__file__)

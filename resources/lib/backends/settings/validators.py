@@ -1,5 +1,9 @@
 # coding=utf-8
+from __future__ import annotations  # For union operator |
+
 import enum
+
+from common import *
 
 from backends.settings.constraints import Constraints
 from backends.settings.i_constraints import IConstraints
@@ -9,7 +13,6 @@ from backends.settings.settings_map import SettingsMap
 from common.logger import BasicLogger
 from common.setting_constants import Genders
 from common.settings_low_level import SettingsLowLevel
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -142,6 +145,7 @@ class StringValidator(IStringValidator):
         valid: bool = True
         if default is None:
             default = self._default
+            module_logger.debug(f'_default: {self._default}')
         if setting_service_id is None:
             setting_service_id = SettingsLowLevel.get_engine_id()
         internal_value: str = SettingsLowLevel.get_setting_str(self.setting_id,
@@ -150,6 +154,9 @@ class StringValidator(IStringValidator):
                                                                default=default)
         if internal_value is None:
             internal_value = self._default
+        module_logger.debug(f'setting_id: {self.setting_id}'
+                            f' setting_service_id: {setting_service_id} '
+                            f'internal: {internal_value} default: {default}')
         return internal_value
 
         module_logger.debug(f'internal: {internal_value}')
@@ -348,11 +355,24 @@ class ConstraintsValidator(Validator):
         tts_constraints.setSetting(value, self.service_id)
 
     def get_impl_value(self,
-                       setting_service_id: str | None = None) -> int | float | str:
+                       setting_service_id: str | None = None,
+                       as_decibels: bool | None = None,
+                       limit: bool | None = None) -> int | float | str:
         """
             Translates the 'TTS' value (used internally) to the implementation's
             scale (player or engine).
-            :return:
+
+            :setting_service_id: The service (engine, player, etc.) to get
+                this validator's property from.
+            :as_decibels: Converts between decibel and percentage units.
+                         True, convert to decibels
+                         False, convert to percentage units (based on the scale
+                         configured for this validator)
+                         None, use decibels or percentage, as set by constructor
+            :limit: Limits the returned value to the range configured for this
+                    validator
+            :return: Returns the current, scaled value of the Setting with this
+            constraint's property name. Default values are used, as needed.
         """
         constraints: IConstraints = self.constraints
         tts_val: IValidator | ConstraintsValidator = self.get_tts_validator()
@@ -362,7 +382,8 @@ class ConstraintsValidator(Validator):
                                                  setting_service_id=setting_service_id)
         value: int | float | str
         # Translates from tts to self units
-        value = tts_constraints.translate_value(constraints, tts_value)
+        value = tts_constraints.translate_value(constraints, tts_value,
+                                                as_decibels=as_decibels)
         if tts_constraints.integer:
             return int(round(value))
         else:

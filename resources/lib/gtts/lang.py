@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from common.logger import BasicLogger
 from gtts.langs import _main_langs
 from warnings import warn
 import logging
@@ -6,8 +7,10 @@ import logging
 __all__ = ["tts_langs"]
 
 # Logger
-log = logging.getLogger(__name__)
-log.addHandler(logging.NullHandler())
+log = BasicLogger.get_module_logger(module_path=__file__)
+
+# log = logging.getLogger(__name__)
+# log.addHandler(logging.NullHandler())
 
 
 def tts_langs():

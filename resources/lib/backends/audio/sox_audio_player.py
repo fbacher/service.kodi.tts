@@ -1,6 +1,10 @@
+from __future__ import annotations  # For union operator |
+
 import os
 import subprocess
 import sys
+
+from common import *
 
 from backends.audio.base_audio import SubprocessAudioPlayer
 from backends.audio.sound_capabilties import SoundCapabilities
@@ -9,7 +13,6 @@ from backends.settings.service_types import ServiceType
 from common.base_services import BaseServices
 from common.logger import BasicLogger
 from common.setting_constants import Players
-from common.typing import *
 
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -83,7 +86,8 @@ class SOXAudioPlayer(SubprocessAudioPlayer):
                     return False
             else:
                 subprocess.call(cls._availableArgs, stdout=(open(os.path.devnull, 'w')),
-                                stderr=subprocess.STDOUT, universal_newlines=True)
+                                stderr=subprocess.STDOUT, universal_newlines=True,
+                                encoding='utf-8')
         except AbortException:
             reraise(*sys.exc_info())
         except:

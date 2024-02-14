@@ -1,7 +1,12 @@
+from __future__ import annotations  # For union operator |
+
 import os
 import subprocess
 import sys
 from datetime import datetime, timedelta
+from pathlib import Path
+
+from common import *
 
 from backends.players.iplayer import IPlayer
 from backends.settings.i_constraints import IConstraints
@@ -21,8 +26,7 @@ from common.setting_constants import Players
 from common.settings import Settings
 from common.simple_pipe_command import SimplePipeCommand
 from common.simple_run_command import RunState, SimpleRunCommand
-from common.slave_run_command import PlayerSlaveInfo, SlaveRunCommand
-from common.typing import *
+from common.slave_run_command import SlaveRunCommand
 
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -33,7 +37,6 @@ class AudioPlayer(IPlayer, BaseServices):
 
     _advanced: bool = False
     sound_file_types: List[str] = ['.wav']
-    sound_file_base = '{speech_file_name}{sound_file_type}'
     sound_dir: str = None
     _logger: BasicLogger = None
 
@@ -58,11 +61,14 @@ class AudioPlayer(IPlayer, BaseServices):
             os.makedirs(cls.sound_dir)
 
     @classmethod
+    def get_sound_dir(cls) -> str:
+        return cls.sound_dir
+
+    @classmethod
     def get_tmp_path(cls, speech_file_name: str, sound_file_type: str) -> str:
         sound_file_base = '{speech_file_name}{sound_file_type}'
 
-        filename: str = cls.sound_file_base.format(speech_file_name=speech_file_name,
-                                                   sound_file_type=sound_file_type)
+        filename: str = f'{speech_file_name}{sound_file_type}'
         sound_file_path: str = os.path.join(cls.sound_dir, filename)
         return sound_file_path
 
@@ -145,7 +151,6 @@ class SubprocessAudioPlayer(AudioPlayer):
                 self.__class__.__name__)
         self._player_busy: bool = False
         self._simple_player_busy: bool = False
-        self.slave_info: PlayerSlaveInfo | None = None
         self.speed: float = 0.0
         self.volume: float | None = None
         self.active = True
@@ -207,7 +212,9 @@ class SubprocessAudioPlayer(AudioPlayer):
         :return:  True if this player is running in slave mode.
                   False, otherwise
         """
-        return self.slave_info is not None
+        clz = type(self)
+        clz._logger.debug(f'slave_player: {self.slave_player_process is not None}')
+        return self.slave_player_process is not None
 
     def speedArg(self, speed: float) -> str:
         #  self._logger.debug(f'speedArg speed: {speed} multiplier: {
@@ -228,25 +235,34 @@ class SubprocessAudioPlayer(AudioPlayer):
         clz._logger.debug_verbose(f'args: {"|".join(base_args)}')
         return base_args
 
+    '''
     def get_start_slave_args(self) -> List[str]:
         # Can raise ExpiredException
         clz = type(self)
         args = []
 
         return args
+    '''
 
-    def get_play_slave_args(self) -> List[str]:
+    def get_slave_play_args(self) -> List[str]:
         clz = type(self)
         args = []
         return args
 
-    _availableArgs = ('/usr/bin/mplayer', '--help')
-    _playArgs = ('/usr/bin/mplayer', '-really-quiet', None)
-    _playArgsSlave = ('/usr/bin/mpv',
-                      '--input-ipc-server=', 'file=/tmp/tts_mplayer_slave_input')
-    _pipeArgs = ('/usr/bin/mplayer', '-', '-really-quiet', '-cache', '8192')
+    if Constants.PLATFORM_WINDOWS:
+        _availableArgs = (Constants.MPV_PATH, '--help')
+        _playArgs = (Constants.MPV_PATH, '--really-quiet', None)
+        _playArgsSlave = (Constants.MPV_PATH,
+                          '--input-ipc-server=', 'file=/tmp/tts_mplayer_slave_input')
+        _pipeArgs = (Constants.MPV_PATH, '-', '--really-quiet', '--cache', '8192')
+    else:
+        _availableArgs = (Constants.MPLAYER_PATH, '--help')
+        _playArgs = (Constants.MPLAYER_PATH, '-really-quiet', None)
+        _playArgsSlave = (Constants.MPV_PATH,
+                          '--input-ipc-server=', 'file=/tmp/tts_mplayer_slave_input')
+        _pipeArgs = (Constants.MPLAYER_PATH, '-', '-really-quiet', '-cache', '8192')
 
-    # _pipeArgs = ('/usr/bin/mplayer', '-', '-really-quiet', '-cache', '8192',
+    # _pipeArgs = (MPLAYER_PATH, '-', '-really-quiet', '-cache', '8192',
     #              '-slave', '-input', 'file=/tmp/tts_mplayer_pipe')
     # Send commands via named pipe (or stdin) to play files:
     # mkpipe ./slave.input
@@ -291,9 +307,9 @@ class SubprocessAudioPlayer(AudioPlayer):
                                                      name='mplayer',
                                                      stop_on_play=stop_on_play)
             # shutil.copyfileobj(source, self._player_process.stdin)
-            self._player_process.run_cmd()
             clz._logger.debug_verbose(
-                    f'START Running player to voice NOW args: {" ".join(pipe_args)}')
+                    f'START Running player to voice PIPE args: {" ".join(pipe_args)}')
+            self._player_process.run_cmd()
         except subprocess.CalledProcessError as e:
             clz._logger.exception('')
             self.reason = 'mplayer failed'
@@ -371,9 +387,20 @@ class SubprocessAudioPlayer(AudioPlayer):
     def get_player_volume(self) -> float:
         pass
 
+    def get_slave_pipe_path(self) -> Path:
+        pass
+
     def play(self, phrase: Phrase):
+        """
+        Play the voice file for the given phrase
+        :param phrase: Contains information about the spoken phrase, including
+        path to .wav or .mp3 file
+        :return:
+        """
         if Settings.getSetting(SettingsProperties.PLAYER_SLAVE,
-                               Services.TTS_SERVICE) or True:
+                               Services.TTS_SERVICE):
+            # Slave player has less overhead and gives better control over
+            # voiced text.
             self.slave_play(phrase)
             return
         stop_on_play: bool = not phrase.speak_while_playing
@@ -418,13 +445,17 @@ class SubprocessAudioPlayer(AudioPlayer):
                 if KodiPlayerMonitor.player_status == KodiPlayerState.PLAYING:
                     return
             self._simple_player_busy = True
+            delete_after_run: Path = None
+            if Constants.PLATFORM_WINDOWS:
+                delete_after_run = phrase.get_cache_path()
             self._player_process = SimpleRunCommand(args,
                                                     phrase_serial=phrase_serial,
+                                                    delete_after_run=delete_after_run,
                                                     name='mplayer',
                                                     stop_on_play=stop_on_play)
-            self._player_process.run_cmd()
             clz._logger.debug_verbose(
                     f'START Running player to voice NOW args: {" ".join(args)}')
+            self._player_process.run_cmd()
         except subprocess.CalledProcessError:
             clz._logger.exception('')
             self.reason = 'mplayer failed'
@@ -443,22 +474,24 @@ class SubprocessAudioPlayer(AudioPlayer):
         :return:
         """
         clz = type(self)
+        clz._logger.debug(f'In slave_play phrase: {phrase}')
         stop_on_play: bool = not phrase.speak_while_playing
         try:
             if self.slave_player_process is None:
                 try:
-                    args: List[str] = self.get_start_slave_args()
+                    args: List[str] = self.get_slave_play_args()
                     self._simple_player_busy = True
+                    slave_pipe_path = self.get_slave_pipe_path()
                     self.slave_player_process = SlaveRunCommand(args,
                                                                 phrase_serial=phrase.serial_number,
-                                                                name='mplayer',
+                                                                name='mpv',
                                                                 stop_on_play=True,
-                                                                slave_info=self.slave_info,
+                                                                slave_pipe_path=slave_pipe_path,
                                                                 speed=self.get_player_speed(),
                                                                 volume=self.get_player_volume())
-                    self.slave_player_process.start_service()
                     clz._logger.debug_verbose(
-                            f'START Running player to voice NOW args: {" ".join(args)}')
+                            f'START Running slave player to voice NOW args: {" ".join(args)}')
+                    self.slave_player_process.start_service()
                 except subprocess.CalledProcessError:
                     clz._logger.exception('')
                     self.reason = 'mpv failed'
@@ -650,7 +683,8 @@ class SubprocessAudioPlayer(AudioPlayer):
     def available(cls, ext=None) -> bool:
         try:
             subprocess.call(cls._availableArgs, stdout=(open(os.path.devnull, 'w')),
-                            stderr=subprocess.STDOUT, universal_newlines=True)
+                            stderr=subprocess.STDOUT, universal_newlines=True,
+                            encoding='utf-8')
         except AbortException:
             reraise(*sys.exc_info())
         except:

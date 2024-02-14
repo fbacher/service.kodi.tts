@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 import os
 from threading import Timer
 
@@ -6,6 +8,8 @@ import xbmc
 import xbmcaddon
 import xbmcgui
 import xbmcvfs
+
+from common import *
 
 from common import utils
 from common.constants import Constants
@@ -67,7 +71,7 @@ def loadCustomKeymapDefs():
     path = _keyMapDefsPath()
     if not os.path.exists(path):
         return {}
-    with open(path, 'r') as f:
+    with open(path, 'r', encoding='utf-8') as f:
         lines = f.read().splitlines()
     defs = {}
     try:
@@ -87,7 +91,7 @@ def saveCustomKeymapDefs(defs):
     for k, v in list(defs.items()):
         out += '{0}={1}\n'.format(k, v)
     path = _keyMapDefsPath()
-    with open(path, 'w') as f:
+    with open(path, 'w', encoding='utf-8') as f:
         f.write(out)
 
 
@@ -100,7 +104,7 @@ def installDefaultKeymap(quiet=False):
 
 def installBasicKeymap():
     xml = None
-    with open(_keymapSource('basic'), 'r') as f:
+    with open(_keymapSource('basic'), 'r', encoding='utf-8') as f:
         xml = f.read()
     if not xml:
         return
@@ -134,14 +138,14 @@ def saveKeymapXML(xml):
     targetPath = _keymapTarget()
     if os.path.exists(targetPath):
         xbmcvfs.delete(targetPath)
-    with open(targetPath, 'w') as f:
+    with open(targetPath, 'w', encoding='utf-8') as f:
         f.write(xml)
     xbmc.executebuiltin("action(reloadkeymaps)")
 
 
 def buildKeymap(defaults=False):  # TODO: Build XML with ElementTree?
     xml = None
-    with open(_keymapSource(), 'r') as f:
+    with open(_keymapSource(), 'r', encoding='utf-8') as f:
         xml = f.read()
     if not xml:
         return

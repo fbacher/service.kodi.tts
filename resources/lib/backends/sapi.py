@@ -1,374 +1,51 @@
 # -*- coding: utf-8 -*-
-import array
-import io
-import os
+from __future__ import annotations  # For union operator |
+
 import sys
-import wave
+from io import BytesIO
+from pathlib import Path
 
+import backends.pyttsx4_proxy.proxy_impl.engine as engine_proxy
+from backends.pyttsx4_proxy.proxy import Pyttsx4Proxy
+from backends.pyttsx4_proxy.proxy_impl.voice import Voice
 from backends.settings.constraints import Constraints
-from common.setting_constants import Mode
-from common.settings_low_level import SettingsProperties
-from common.typing import *
+from common import *
 
-try:
-    import importlib
-
-    importHelper = importlib.import_module
-except ImportError:
-    importHelper = __import__
-    importlib = None
-
-from xml.sax import saxutils
-
-from common.constants import Constants
-from common.logger import *
-from common.system_queries import SystemQueries
-from common import utils
+# from backends.audio.player_handler import BasePlayerHandler, WavAudioPlayerHandler
+from backends.audio.sound_capabilties import ServiceType
 from backends.base import SimpleTTSBackend
+from backends.settings.i_validators import IValidator
+from backends.settings.service_types import Services
+from backends.settings.settings_map import SettingsMap
+from common.base_services import BaseServices
+from common.constants import Constants
+from common.exceptions import ExpiredException
+from common.logger import *
+from common.phrases import Phrase
+from common.setting_constants import Backends, Genders, Mode
+from common.settings import Settings
+from common.settings_low_level import SettingsProperties
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
-'''
-  SAPI is a built-in Windows TTS api. SAPI 5.4 (the latest) was released 2009
-  
-  Modern Windows uses System.Speech.Synthesis 
- 
-    If you run the following command in the terminal, it will speak the words "testing 
-    to see if this works properly"
-    PowerShell -Command "Add-Type -AssemblyName System.Speech; (New-Object 
-    System.Speech.Synthesis.SpeechSynthesizer).Speak('testing to see if this works 
-    properly');"
-    This python script generates this command with whatever text is passed to the speak 
-    function
-    
-    
-    randomString = "Hello Matt!"
-    
-    def speak(stringOfText):
-            # This function will make windows say whatever string is passed
-            # You can copy and paste this function into any script, and call it using: 
-            speak("Random String")
-            # Be sure to import os into any script you add this function to
-            stringOfText = stringOfText.strip()
-            # Removes any trailing spaces or new line characters
-            stringOfText = stringOfText.replace("'", "")
-            # Removes all single quotes by replacing all instances with a blank character
-        stringOfText = stringOfText.replace('"', "")
-            # Removes all double quotes by replacing all instances with a blank character
-        command = f"PowerShell -Command "Add-Type -AssemblyName System.Speech; \
-            (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('{
-            stringOfText}');"
-    # This is just a really long command that tells windows to say a text out loud
-    # At the end I am adding in the stringOfText parameter to the command
-    os.system(command)
-    # This runs the command as if you opened up a terminal and typed it in
 
-    speak(randomString)
-    speak("testing 1 2 3 4 5")
+class SAPIBackend(SimpleTTSBackend):
+    ID = Backends.SAPI_ID
+    service_ID: str = Services.SAPI_ID
+    service_TYPE: str = ServiceType.ENGINE_SETTINGS
+    backend_id: str = Backends.SAPI_ID
+    engine_id: str = Backends.SAPI_ID
+    displayName: str = 'SAPI'
+    PYTTSX_SAPI_NAME: Final[str] = 'sapi5'
+    UTF_8: Final[str] = '1'
 
-'''
-
-
-def lookupGenericComError(com_error):
-    try:
-        errno = '0x%08X' % (com_error.hresult & 0xffffffff)
-        with open(os.path.join(Constants.BACKENDS_DIRECTORY, 'comerrors.txt'), 'r') as f:
-            lines = f.read().splitlines()
-        for l1, l2, l3 in zip(lines[0::3], lines[1::3], lines[2::3]):
-            if errno in l2:
-                return l1, l3
-    except AbortException:
-        reraise(*sys.exc_info())
-    except:
-        pass
-    return None
-
-
-class SAPI:
-    DEFAULT = 0
-    ASYNC = 1
-    PURGE_BEFORE_SPEAK = 2
-    IS_FILENAME = 4
-    IS_XML = 8
-    IS_NOT_XML = 16
-    PERSIST_XML = 32
-    SPEAK_PUNC = 64
-    PARSE_SAPI = 128
-
-    speedConstraints: Constraints = Constraints(-10, 0, 10, True, False, 1.0,
-                                                SettingsProperties.SPEED)
-    pitchConstraints: Constraints = Constraints(-10, 0, 10, True, False, 1.0,
-                                                SettingsProperties.PITCH)
-    volumeConstraints: Constraints = Constraints(0, 100, 100, True, False, 1.0,
-                                                 SettingsProperties.VOLUME)
-
-    settings = {
-        SettingsProperties.PITCH : 0,
-        SettingsProperties.SPEED : 0,
-        SettingsProperties.VOICE : None,
-        SettingsProperties.VOLUME: 0
-    }
+    voice_map: Dict[str, Voice] = None
+    lang_map: Dict[str, List[Voice]] = None
     _logger: BasicLogger = None
     _class_name: str = None
-
-    @classmethod
-    def class_init(cls):
-        cls._class_name = cls.__class__.__name__
-        if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__class__.__name__)
-
-    def __init__(self, *args, **kwargs):
-        cls = type(self)
-
-        self.SpVoice = None
-        self.comtypesClient = None
-        self.valid = False
-        self._voiceName = None
-        self.streamFlags = None
-        self.flags = None
-        self.interrupt = False
-        try:
-            self.reset()
-        except AbortException:
-            reraise(*sys.exc_info())
-        except:
-            self._logger.exception('SAPI: Initialization failed: retrying...')
-            utils.sleep(1000)  # May not be necessary, but here it is
-            try:
-                self.reset()
-            except AbortException:
-                reraise(*sys.exc_info())
-            except:
-                self._logger.exception('SAPI: Initialization failed: Giving up.')
-                return
-        self.valid = True
-        self.COMError = importHelper('_ctypes').COMError
-        self.setStreamFlags()
-
-    def importComtypes(self):
-        # Remove all (hopefully) references to comtypes import...
-        cls = type(self)
-
-        del self.comtypesClient
-        self.comtypesClient = None
-        for m in list(sys.modules.keys()):
-            if m.startswith('comtypes'):
-                del sys.modules[m]
-        import gc
-        gc.collect()
-        # and then import
-        self.comtypesClient = importHelper('comtypes.client')
-
-    def reset(self):
-        cls = type(self)
-
-        del self.SpVoice
-        self.SpVoice = None
-        self.cleanComtypes()
-        self.importComtypes()
-        self.resetSpVoice()
-
-    def resetSpVoice(self):
-        cls = type(self)
-
-        self.SpVoice = self.comtypesClient.CreateObject("SAPI.SpVoice")
-        voice = self._getVoice()
-        if voice:
-            self.SpVoice.Voice = voice
-
-    def setStreamFlags(self):
-        cls = type(self)
-
-        self.flags = self.PARSE_SAPI | self.IS_XML | self.ASYNC
-        self.streamFlags = self.PARSE_SAPI | self.IS_XML | self.ASYNC
-        try:
-            self.SpVoice.Speak('', self.flags)
-        except self.COMError as e:
-            if cls._logger.isEnabledFor(DEBUG):
-                self.logSAPIError(e)
-                cls._logger.debug('SAPI: XP Detected - changing flags')
-            self.flags = self.ASYNC
-            self.streamFlags = self.ASYNC
-        finally:
-            pass
-
-    def cleanComtypes(self):  # TODO: Make this SAPI specific?
-        cls = type(self)
-
-        try:
-            gen = os.path.join(Constants.BACKENDS_DIRECTORY, 'comtypes', 'gen')
-            import stat, shutil
-            os.chmod(gen, stat.S_IWRITE)
-            shutil.rmtree(gen, ignore_errors=True)
-            if not os.path.exists(gen):
-                os.makedirs(gen)
-        except AbortException:
-            reraise(*sys.exc_info())
-        except:
-            cls._logger.exception('SAPI: Failed to empty comtypes gen dir')
-        finally:
-            pass
-
-    def logSAPIError(self, com_error, extra=''):
-        cls = type(self)
-
-        try:
-            errno = str(com_error.hresult)
-            with open(os.path.join(Constants.BACKENDS_DIRECTORY,
-                                   'sapi_comerrors.txt'), 'r') as f:
-                lines = f.read().splitlines()
-            for l1, l2 in zip(lines[0::2], lines[1::2]):
-                bits = l1.split()
-                if errno in bits:
-                    cls._logger.debug(
-                            'SAPI specific COM error ({0})[{1}]: {2}'.format(errno,
-                                                                             bits[0],
-                                                                             l2 or '?'))
-                    break
-            else:
-                error = lookupGenericComError(com_error)
-                if error:
-                    cls._logger.debug(
-                            'SAPI generic COM error ({0})[{1}]: {2}'.format(errno,
-                                                                            error[0],
-                                                                            error[
-                                                                                1] or
-                                                                            '?'))
-                else:
-                    self._logger.debug(
-                            'Failed to lookup SAPI/COM error: {0}'.format(com_error))
-        except AbortException:
-            reraise(*sys.exc_info())
-        except:
-            cls._logger.exception('Error looking up SAPI error: {0}'.format(com_error))
-        cls._logger.debug(
-                'Line: {1} In: {0}{2}'.format(sys.exc_info()[2].tb_frame.f_code.co_name,
-                                              sys.exc_info()[2].tb_lineno,
-                                              extra and ' ({0})'.format(extra) or ''))
-
-    def _getVoice(self, voice_name=None):
-        cls = type(self)
-
-        voice_name = voice_name or self._voiceName
-        if voice_name:
-            v = self.SpVoice.getVoices() or []
-            for i in range(len(v)):
-                voice = v[i]
-                if voice_name == voice.GetDescription():
-                    return voice
-        return None
-
-    def checkSAPI(func):
-        def checker(self, *args, **kwargs):
-            cls = type(self)
-
-            if not self.valid:
-                cls._logger.debug('SAPI: Broken - ignoring {0}'.format(func.__name__))
-                return None
-            try:
-                return func(self, *args, **kwargs)
-            except AbortException:
-                reraise(*sys.exc_info())
-            except self.COMError as e:
-                self.logSAPIError(e, func.__name__)
-            except:
-                cls._logger.exception('SAPI: {0} error'.format(func.__name__))
-            self.valid = False
-            cls._logger.debug('SAPI: Resetting...')
-            utils.sleep(1000)
-            try:
-                self.reset()
-                self.valid = True
-                cls._logger.debug('SAPI: Resetting succeeded.')
-                return func(self, *args, **kwargs)
-            except AbortException:
-                reraise(*sys.exc_info())
-            except self.COMError as e:
-                self.valid = False
-                self.logSAPIError(e, func.__name__)
-            except:
-                self.valid = False
-                cls._logger.error('SAPI: {0} error'.format(func.__name__))
-            finally:
-                pass
-
-        return checker
-
-    # Wrapped SAPI methods
-    @checkSAPI
-    def SpVoice_Speak(self, ssml, flags):
-        cls = type(self)
-
-        return self.SpVoice.Speak(ssml, flags)
-
-    @checkSAPI
-    def SpVoice_GetVoices(self):
-        cls = type(self)
-
-        return self.SpVoice.getVoices()
-
-    @checkSAPI
-    def stopSpeech(self):
-        cls = type(self)
-
-        self.SpVoice.Speak('', self.ASYNC | self.PURGE_BEFORE_SPEAK)
-
-    @checkSAPI
-    def SpFileStream(self):
-        cls = type(self)
-
-        return self.comtypesClient.CreateObject("SAPI.SpFileStream")
-
-    @checkSAPI
-    def SpAudioFormat(self):
-        cls = type(self)
-
-        return self.comtypesClient.CreateObject("SAPI.SpAudioFormat")
-
-    @checkSAPI
-    def SpMemoryStream(self):
-        cls = type(self)
-
-        return self.comtypesClient.CreateObject("SAPI.SpMemoryStream")
-
-    def validCheck(func):
-        def checker(self, *args, **kwargs):
-            cls = type(self)
-
-            if not self.valid:
-                cls._logger.debug('SAPI: Broken - ignoring {0}'.format(func.__name__))
-                return
-            return func(self, *args, **kwargs)
-
-        return checker
-
-    @validCheck
-    def set_SpVoice_Voice(self, voice_name):
-        cls = type(self)
-
-        self._voiceName = voice_name
-        voice = self._getVoice(voice_name)
-        self.SpVoice.Voice = voice
-
-    @validCheck
-    def set_SpVoice_AudioOutputStream(self, stream):
-        cls = type(self)
-
-        self.SpVoice.AudioOutputStream = stream
-
-
-SAPI.class_init()
-
-
-class SAPITTSBackend(SimpleTTSBackend):
-    backend_id = 'SAPI'
+    _initialized: bool = False
     displayName = 'SAPI (Windows Internal)'
-    settings = {SettingsProperties.SPEAK_VIA_KODI: True,
-                SettingsProperties.VOICE         : '',
-                SettingsProperties.SPEED         : 0,
-                SettingsProperties.PITCH         : 0,
-                SettingsProperties.VOLUME        : 100
-                }
+
     canStreamWav = True
     speedConstraints: Constraints = Constraints(-10, 0, 10, True, False, 1.0,
                                                 SettingsProperties.SPEED)
@@ -380,199 +57,346 @@ class SAPITTSBackend(SimpleTTSBackend):
     volumeStep = 5
     volumeSuffix = '%'
     baseSSML = '''<?xml version="1.0"?>
-<speak version="1.0"
-         xmlns="http://www.w3.org/2001/10/synthesis"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://www.w3.org/2001/10/synthesis
-                   http://www.w3.org/TR/speech-synthesis/synthesis.xsd"
-         xml:lang="en-US">
-  <volume level="{volume}" />
-  <pitch absmiddle="{pitch}" />
-  <rate absspeed="{speed}" />
-  <p>{text}</p>
-</speak>'''
+    '''
 
-    _logger: BasicLogger = None
-    _class_name: str = None
-
-    @classmethod
-    def class_init(cls):
-        pass
+    pytts_engine: engine_proxy = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        type(self)._class_name = self.__class__.__name__
-        if type(self)._logger is None:
-            type(self)._logger = module_logger.getChild(type(self)._class_name)
+        clz = type(self)
+        clz._class_name = self.__class__.__name__
+        if clz._logger is None:
+            clz._logger = module_logger.getChild(clz._class_name)
+        clz._logger.debug(f'In init args: {args}')
 
-        self.ssml = None
-        self.streamFlags = None
-        self.sapi = SAPI()
-        if not self.sapi.valid:
-            self.flagAsDead('RESET')
-            return
+        '''
+        local_site_modules = pathlib.Path(os.environ['SYSTEM_PYTHON'])
+        clz._logger.debug(f'SYSTEM_PYTHON: {local_site_modules}')
+        sys.path.append(str(local_site_modules))
+        sys.path.append(f'{local_site_modules / "win32"}')
+        sys.path.append(f'{local_site_modules / "win32" / "lib"}')
+        clz._logger.debug(f'SYSTEM_PYTHON: {sys.path}')
+
+        os.add_dll_directory(str(local_site_modules))
+        os.add_dll_directory(f'{local_site_modules / "win32"}')
+        os.add_dll_directory(f'{local_site_modules / "win32" / "lib"}')
+        '''
+        if not clz._initialized:
+            clz._initialized = True
+            BaseServices.register(self)
+
+    def init(self):
+        super().init()
+        clz = type(self)
         self.update()
-
-    @classmethod
-    def isSupportedOnPlatform(cls):
-
-        return SystemQueries.isWindows()
-
-    @classmethod
-    def isInstalled(cls):
-
-        return cls.isSupportedOnPlatform()
-
-    def sapiValidCheck(func):
-        def checker(self, *args, **kwargs):
-            cls = type(self)
-
-            if not self.sapi or not self.sapi.valid:
-                return self.flagAsDead('RESET')
-            else:
-                return func(self, *args, **kwargs)
-
-        return checker
-
-    @sapiValidCheck
-    def runCommand(self, text, outFile):
-        cls = type(self)
-
-        stream = self.sapi.SpFileStream()
-        if not stream:
-            return False
         try:
-            stream.Open(outFile, 3)  # 3=SSFMCreateForWrite
-        except self.sapi.COMError as e:
-            self.sapi.logSAPIError(e)
-            return False
-        ssml = self.ssml.format(text=saxutils.escape(text))
-        self.sapi.SpVoice_Speak(ssml, self.sapi.streamFlags)
-        stream.close()
-        return True
+            clz._logger.debug(f'About to init pyttsx4')
+            clz.proxy = Pyttsx4Proxy()
+            clz.pytts_engine = clz.proxy.init(SAPIBackend.PYTTSX_SAPI_NAME, debug=True)
+            clz._logger.debug(f'About to speak')
+            clz.pytts_engine.say('You are a disgusting pig.')
+            clz.pytts_engine.runAndWait()
+            clz.pytts_engine.setProperty('speed', 300)
+            clz.proxy.speak('You suck, you old dog.')
+            voices: List[Voice] = clz.pytts_engine.getProperty('voices')
+            for voice in voices:
+                clz._logger.debug(voice)
 
-    @sapiValidCheck
-    def runCommandAndSpeak(self, text):
-        cls = type(self)
+            #  clz.pytts_engine.connect('started-utterance', clz.onStart)
+            #  clz.pytts_engine.connect('started-word', clz.onWord)
+            #  clz.pytts_engine.connect('finished-utterance', clz.onEnd)
+        except ImportError as e:
+            clz._logger.exception('')
+        except RuntimeError as e:
+            clz._logger.exception('')
+        clz._logger.debug(f'pytts_engine: {clz.pytts_engine}')
 
-        ssml = self.ssml.format(text=saxutils.escape(text))
-        self.sapi.SpVoice_Speak(ssml, self.sapi.flags)
+    @classmethod
+    def onStart(cls, name):
+        cls._logger.debug('starting', name)
 
-    @sapiValidCheck
-    def getWavStream(self, text):
-        cls = type(self)
+    @classmethod
+    def onWord(cls, name, location, length):
+        cls._logger.debug('word', name, location, length)
 
-        fmt = self.sapi.SpAudioFormat()
-        if not fmt:
-            return None
-        fmt.Type = 22
+    @classmethod
+    def onEnd(cls, name, completed):
+        cls._logger.debug('finishing', name, completed)
 
-        stream = self.sapi.SpMemoryStream()
-        if not stream:
-            return None
-        stream.Format = fmt
-        self.sapi.set_SpVoice_AudioOutputStream(stream)
 
-        ssml = self.ssml.format(text=saxutils.escape(text))
-        self.sapi.SpVoice_Speak(ssml, self.streamFlags)
+    '''
+    @classmethod
+    def register_me(cls, what: Type[ITTSBackendBase]) -> None:
+        cls._logger.debug(f'Registering {repr(what)}')
+        BaseServices.register(service=what)
+    '''
 
-        wavIO = io.StringIO()
-        self.createWavFileObject(wavIO, stream)
-        return wavIO
+    @classmethod
+    def get_backend_id(cls) -> str:
+        return cls.service_ID
 
-    def createWavFileObject(self, wavIO, stream):
-        cls = type(self)
-
-        # Write wave via the wave module
-        wavFileObj = wave.open(wavIO, 'wb')
-        wavFileObj.setparams((1, 2, 22050, 0, 'NONE', 'not compressed'))
-        wavFileObj.writeframes(array.array('B', stream.GetData()).tostring())
-        wavFileObj.close()
-
-    def stop(self):
-        cls = type(self)
-
-        if not self.sapi:
+    @classmethod
+    def init_voices(cls):
+        if cls.voice_map is not None:
             return
-        if not self.inWavStreamMode:
-            self.sapi.stopSpeech()
 
-    def update(self):
-        cls = type(self)
+        cls.voice_map: Dict[str, Voice] = {}
+        cls.lang_map: Dict[str, List[Voice]] = {}
+        voices: List[Voice] = cls.pytts_engine.getProperty('voices')
+        for voice in voices:
+            cls.voice_map[voice.id] = voice
+            for lang in voice.languages:
+                lang_voices: List[Voice] = cls.lang_map.get(lang)
+                if not lang_voices:
+                    lang_voices = []
+                    cls.lang_map[lang] = lang_voices
+                lang_voices.append(lang)
+        cls.initialized_static = True
 
+    def addCommonArgs(self, args, phrase: Phrase | None = None):
+        clz = type(self)
+        voice_id = Settings.get_voice(clz.service_ID)
+        if voice_id is None or voice_id in ('unknown', ''):
+            voice_id = None
+
+        speed = self.get_speed()
+        volume = self.getVolume()
+        pitch = self.get_pitch()
+        if voice_id:
+            args.extend(
+                    ('-v', voice_id))
+        if speed:
+            args.extend(('-s', str(speed)))
+        if pitch:
+            args.extend(('-p', str(pitch)))
+
+        args.extend(('-a', str(volume)))
+        if phrase:
+            args.append(phrase.get_text())
+
+    def update(self) -> None:
+        self._logger.debug(f'In update')
         self.setMode(self.getMode())
-        self.ssml = self.baseSSML.format(text='{text}',
-                                         volume=self.setting(SettingsProperties.VOLUME),
-                                         speed=self.setting(SettingsProperties.SPEED),
-                                         pitch=self.setting(SettingsProperties.PITCH))
-        voice_name = self.setting(SettingsProperties.VOICE)
-        self.sapi.set_SpVoice_Voice(voice_name)
 
     def getMode(self):
-        cls = type(self)
-
-        if self.setting(SettingsProperties.SPEAK_VIA_KODI):
-            return Mode.FILEOUT
-        else:
-            if self.sapi:
-                self.sapi.set_SpVoice_AudioOutputStream(None)
+        clz = type(self)
+        clz._logger.debug(f' In SAPI getMode')
+        return Mode.ENGINESPEAK
+    '''
+        clz = type(self)
+        player_id: str = Settings.get_player_id(clz.service_ID)
+        if player_id == BuiltInAudioPlayer.ID:
             return Mode.ENGINESPEAK
+        elif Settings.get_pipe(clz.service_ID):
+            return Mode.PIPE
+        else:
+            return Mode.FILEOUT
+     '''
+
+    def runCommand(self, phrase: Phrase):
+        clz = type(self)
+        try:
+            out_file: Path = phrase.get_cache_path()
+            if clz._logger.isEnabledFor(DEBUG_VERBOSE):
+                clz._logger.debug_verbose(f'sapi.runCommand outFile: {out_file}\n'
+                                          f'text: {phrase.text}')
+            clz.pytts_engine.save_to_file(phrase.text, out_file)
+            clz.pytts_engine.runAndWait()
+        except ExpiredException as e:
+            clz._logger.debug(f'EXPIRED: {phrase.text}')
+        except Exception as e:
+            clz._logger.exception('')
+        return True
+
+    def runCommandAndSpeak(self, phrase: Phrase):
+        clz = type(self)
+        try:
+            clz._logger.debug(f'about to say {phrase.text}')
+            clz.pytts_engine.say(phrase.get_text())
+            clz.pytts_engine.runAndWait()
+        except ExpiredException as e:
+            clz._logger.debug(f'EXPIRED: {phrase.text}')
+        except Exception as e:
+            clz._logger.exception('')
+
+    def runCommandAndPipe(self, phrase: Phrase) -> BytesIO:
+        clz = type(self)
+        try:
+            clz._logger.debug(f'runCommandAndPipe phrase: {phrase.get_text()}')
+            byte_stream = BytesIO()
+            clz.pytts_engine.save_to_file(phrase.get_text(), byte_stream)
+            clz.pytts_engine.runAndWait()
+            # the bs is raw data of the audio.
+            bs = byte_stream.getvalue()
+            # add a wav file format header
+            b = bytes(b'RIFF') + (len(bs) + 38).to_bytes(4,
+                                                         byteorder='little') + b'WAVEfmt\x20\x12\x00\x00' \
+                                                                               b'\x00\x01\x00\x01\x00' \
+                                                                               b'\x22\x56\x00\x00\x44\xac\x00\x00' + \
+                b'\x02\x00\x10\x00\x00\x00data' + (len(bs)).to_bytes(4,
+                                                                     byteorder='little') + bs
+            # changed to BytesIO
+            b = BytesIO(b)
+            return
+        except ExpiredException as e:
+            clz._logger.debug(f'EXPIRED: {phrase.text}')
+        except Exception as e:
+            clz._logger.exception('')
+        return None
+
+    def stop(self):
+        clz = type(self)
+        try:
+            clz.pytts_engine.stop()
+        except AbortException:
+            reraise(*sys.exc_info())
+        except:
+            clz._logger.exception("")
 
     @classmethod
     def settingList(cls, setting, *args):
+        if setting == SettingsProperties.LANGUAGE:
+            # Returns list of languages and index to closest match to current
+            # locale
+            # Get current process' language_code i.e. en-us
+            default_locale = Constants.LOCALE.lower().replace('_', '-')
 
-        sapi = SAPI()
+            longest_match = -1
+            default_lang = default_locale[0:2]
+            default_lang_country = ''
+            if len(default_locale) >= 5:
+                default_lang_country = default_locale[0:5]
+
+            idx = 0
+            languages = []
+            for lang in sorted(cls.lang_map.keys()):
+                lower_lang = lang.lower()
+                if longest_match == -1:
+                    if lower_lang.startswith(default_lang):
+                        longest_match = idx
+                elif lower_lang.startswith(default_lang_country):
+                    longest_match = idx
+                elif lower_lang.startswith(default_locale):
+                    longest_match = idx
+
+                entry = (lang, lang)  # Display value, setting_value
+                languages.append(entry)
+                idx += 1
+
+            # Now, convert index to default_setting
+
+            default_setting = ''
+            if longest_match > 0:
+                default_setting = languages[longest_match][1]
+
+            return languages, default_setting
+
         if setting == SettingsProperties.VOICE:
+            cls.init_voices()
+            current_lang = cls.getLanguage()
+            current_lang = current_lang[0:2]
             voices = []
-            v = sapi.SpVoice_GetVoices()
-            if not v:
-                return voices
-            for i in range(len(v)):
-                name = 'voice name not found'
-                try:
-                    name = v[i].GetDescription()
-                except Exception as e:  # COMError as e: #analysis:ignore
-                    sapi.logSAPIError(e)
-                voices.append((name, name))
+            for lang, voice_list in cls.lang_map.keys():
+                if lang.startswith(current_lang):
+                    for voice in  voice_list:
+                        # TODO: verify
+                        # Voice_name is from command and not translatable?
+
+                        # display_value, setting_value
+                        voices.append((voice.name, voice.id))
+
             return voices
 
-    @staticmethod
-    def available():
-        return SystemQueries.isWindows()
+        elif setting == SettingsProperties.GENDER:
+            cls.init_voices()
+            genders: List[str] = []
+            current_lang = cls.getLanguage()
+            current_lang = current_lang[0:2]
+            voices = []
+            for lang, voice_list in cls.lang_map.keys():
+                if lang.startswith(current_lang):
+                    for voice in voice_list:
+                        # Voice_name is from command and not translatable?
 
+                        # Unlike voices and languages, we just return gender ids
+                        # translation is handled by SettingsDialog
 
-#    def getWavStream(self,text):
-#        #Have SAPI write to file
-#        stream = self.sapi.SpFileStream()
-#        fpath = os.path.join(util.getTmpfs(),'speech.wav')
-#        open(fpath,'w').close()
-#        stream.Open(fpath,3)
-#        self.sapi.set_SpVoice_AudioOutputStream(stream)
-#        self.sapi.SpVoice_Speak(text,0)
-#        stream.close()
-#        return open(fpath,'rb')
+                        genders.append(voice.gender)
 
-#    def createWavFileObject(self,wavIO,stream):
-#        #Write wave headers manually
-#        import struct
-#        data = array.array('B',stream.GetData()).tostring()
-#        dlen = len(data)
-#        header = struct.pack(        '4sl8slhhllhh4sl',
-#                                            'RIFF',
-#                                            dlen+36,
-#                                            'WAVEfmt ',
-#                                            16, #Bits
-#                                            1, #Mode
-#                                            1, #Channels
-#                                            22050, #Samplerate
-#                                            22050*16/8, #Samplerate*Bits/8
-#                                            1*16/8, #Channels*Bits/8
-#                                            16,
-#                                            'data',
-#                                            dlen
-#        )
-#        wavIO.write(header)
-#        wavIO.write(data)
+            return genders
 
+        elif setting == SettingsProperties.PLAYER:
+            # Get list of player ids. Id is same as is stored in settings.xml
+            default_player: str = cls.get_setting_default(SettingsProperties.PLAYER)
+            player_ids: List[str]
+            player_ids = SettingsMap.get_allowed_values(cls.service_ID,
+                                                        SettingsProperties.PLAYER)
+            return player_ids, default_player
+        return None
 
-SAPITTSBackend.class_init()
+    @classmethod
+    def get_default_language(cls) -> str:
+        languages: List[str]
+        default_lang: str
+        languages, default_lang = cls.settingList(SettingsProperties.LANGUAGE)
+        return default_lang
+
+    @classmethod
+    def get_voice_id_for_name(cls, name):
+        if len(cls.voice_map) == 0:
+            cls.settingList(SettingsProperties.VOICE)
+        return cls.voice_map[name]
+
+    def getVolume(self) -> int:
+        # All volumes in settings use a common TTS db scale.
+        # Conversions to/from the engine's or player's scale are done using
+        # Constraints
+        clz = type(self)
+        if self.mode != Mode.ENGINESPEAK:
+            volume_val: IValidator = SettingsMap.get_validator(
+                    clz.service_ID, SettingsProperties.VOLUME)
+            volume: int = volume_val.tts_line_value
+            return volume
+        else:
+            # volume = Settings.get_volume(clz.service_ID)
+            volume_val: IValidator = SettingsMap.get_validator(
+                    clz.service_ID, SettingsProperties.VOLUME)
+            # volume: int = volume_val.get_tts_value()
+            volume: int = volume_val.get_impl_value(clz.service_ID)
+
+        return volume
+
+    def get_pitch(self) -> int:
+        # All pitches in settings use a common TTS scale.
+        # Conversions to/from the engine's or player's scale are done using
+        # Constraints
+        clz = type(self)
+        if self.mode != Mode.ENGINESPEAK:
+            pitch_val: IValidator = SettingsMap.get_validator(
+                    clz.service_ID, SettingsProperties.PITCH)
+            pitch: int = pitch_val.tts_line_value
+            return pitch
+        else:
+            # volume = Settings.get_volume(clz.service_ID)
+            pitch_val: IValidator = SettingsMap.get_validator(
+                    clz.service_ID, SettingsProperties.PITCH)
+            # volume: int = volume_val.get_tts_value()
+            pitch: int = pitch_val.get_impl_value(clz.service_ID)
+
+        return pitch
+
+    def get_speed(self) -> int:
+        # All settings use a common TTS scale.
+        # Conversions to/from the engine's or player's scale are done using
+        # Constraints
+        clz = type(self)
+        if self.mode != Mode.ENGINESPEAK:
+            speed_val: IValidator = SettingsMap.get_validator(
+                    clz.service_ID, SettingsProperties.SPEED)
+            speed: int = speed_val.tts_line_value
+            return speed
+        else:
+            speed_val: IValidator = SettingsMap.get_validator(
+                    clz.service_ID, SettingsProperties.SPEED)
+            speed: int = speed_val.get_impl_value(clz.service_ID)
+        return speed

@@ -1,5 +1,9 @@
+from __future__ import annotations  # For union operator |
+
 import os
 import subprocess
+
+from common import *
 
 from backends.audio.sound_capabilties import SoundCapabilities
 from backends.engines.base_engine_settings import BaseEngineSettings
@@ -9,7 +13,6 @@ from common.constants import Constants
 from common.logger import BasicLogger
 from common.setting_constants import Backends
 from common.system_queries import SystemQueries
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -70,7 +73,8 @@ class FliteSettings:
     def available(cls):
         try:
             subprocess.call(['flite', '--help'], stdout=(open(os.path.devnull, 'w')),
-                            universal_newlines=True, stderr=subprocess.STDOUT)
+                            universal_newlines=True, encoding='utf-8',
+                            stderr=subprocess.STDOUT)
         except (OSError, IOError):
             return SystemQueries.isATV2() and SystemQueries.commandIsAvailable('flite')
         return True

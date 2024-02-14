@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 import subprocess
 import sys
+
+from common import *
 
 from backends.base import SimpleTTSBackend
 from common.logger import *

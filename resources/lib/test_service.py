@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 #
 import sys
 
@@ -9,6 +11,8 @@ try:
     # web_pdb.set_trace()
 except Exception as e:
     pass
+
+from common import *
 
 if __name__ == '__main__':
     try:

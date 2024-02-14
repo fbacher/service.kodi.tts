@@ -1,3 +1,5 @@
+from __future__ import annotations  # For union operator |
+
 from responsive_voice import ResponsiveVoice
 
 

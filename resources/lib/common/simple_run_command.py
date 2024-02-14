@@ -1,18 +1,22 @@
 # coding=utf-8
+from __future__ import annotations  # For union operator |
+
 import os
 import subprocess
 import threading
 from enum import Enum
+from pathlib import Path
 from subprocess import Popen
 
 import xbmc
+
+from common import *
 
 from common.garbage_collector import GarbageCollector
 from common.kodi_player_monitor import KodiPlayerMonitor, KodiPlayerState
 from common.logger import *
 from common.monitor import Monitor
 from common.phrases import PhraseList
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -33,7 +37,7 @@ class SimpleRunCommand:
     logger: BasicLogger = None
 
     def __init__(self, args: List[str], phrase_serial: int = 0, name: str = '',
-                 stop_on_play: bool = False) -> None:
+                 stop_on_play: bool = False, delete_after_run: Path = None) -> None:
         """
 
         :param args: arguments to be passed to exec command
@@ -46,6 +50,7 @@ class SimpleRunCommand:
         self.rc = 0
         self.run_state: RunState = RunState.NOT_STARTED
         self.stop_on_play: bool = stop_on_play
+        self.delete_after_run: Path | None = delete_after_run
         self.cmd_finished: bool = False
         self.process: Popen = None
         self.run_thread: threading.Thread | None = None
@@ -58,15 +63,25 @@ class SimpleRunCommand:
 
         if self.stop_on_play:
             if KodiPlayerMonitor.player_status == KodiPlayerState.PLAYING:
+                self.cleanup()
                 return
 
             KodiPlayerMonitor.register_player_status_listener(
                     self.kodi_player_status_listener,
                     f'{self.thread_name}_Kodi_Player_Monitor')
 
+    def cleanup(self):
+        clz = type(self)
+        try:
+            if self.delete_after_run and self.delete_after_run.exists():
+                pass  # self.delete_after_run.unlink()
+        except Exception as e:
+            clz.logger.exception('')
+
     def terminate(self):
         if self.process is not None and self.run_state.value <= RunState.RUNNING.value:
             self.process.terminate()
+        self.cleanup()
 
     def kill(self):
         pass
@@ -130,6 +145,8 @@ class SimpleRunCommand:
                 try:
                     # Move on if command finished
                     if self.process.poll() is not None:
+                        clz.logger.debug(f'Process finished rc: '
+                                         f'{self.process.returncode} next: {next_state}')
                         self.run_state = next_state
                         break
                     # Are we trying to kill it?
@@ -148,7 +165,6 @@ class SimpleRunCommand:
                         kill_countdown -= 1
                     elif kill_countdown == 0:
                         next_state = RunState.KILLED
-                        module_logger.debug(f'terminate not work, KILLING')
                         clz.logger.debug(
                             f'Terminate not working, Killing {self.phrase_serial} '
                             f'{self.args[0]}',
@@ -162,13 +178,16 @@ class SimpleRunCommand:
             # No matter how process ends, there will be a return code
             while not Monitor.wait_for_abort(timeout=0.1):
                 try:
-                    rc = self.process.poll()
+                    rc = self.process.returncode
                     if rc is not None:
                         self.rc = rc
                         self.cmd_finished = True
                         clz.logger.debug(f'FINISHED COMMAND {self.phrase_serial} '
                                          f'{self.args[0]} rc: {rc}',
                                          trace=Trace.TRACE_AUDIO_START_STOP)
+                        break
+                    else:
+                        clz.logger.debug(f'Should be finished, but returncode is None')
                         break  # Complete
                 except subprocess.TimeoutExpired:
                     # Only indicates the timeout is expired, not the run state
@@ -194,12 +213,14 @@ class SimpleRunCommand:
                         pass
                 self.rc = 99
 
+            self.cleanup()
             if self.run_thread.is_alive():
                 self.run_thread.join(timeout=1.0)
             if self.stdout_thread.is_alive():
                 self.stdout_thread.join(timeout=0.2)
-            if self.stderr_thread.is_alive():
-                self.stderr_thread.join(timeout=0.2)
+            if self.stderr_thread:
+                if self.stderr_thread.is_alive():
+                    self.stderr_thread.join(timeout=0.2)
             Monitor.exception_on_abort(timeout=0.0)
             # If abort did not occur, then process finished
 
@@ -220,17 +241,20 @@ class SimpleRunCommand:
         env = os.environ.copy()
         try:
             if xbmc.getCondVisibility('System.Platform.Windows'):
-                # Prevent console for ffmpeg from opening
+                # Prevent console for command from opening
                 #
                 # Here, we keep stdout & stderr separate and combine the output in the
                 # log. Need to change to be configureable: separate, combined at
                 # process level (stderr = subprocess.STDOUT), devnull or pass through
                 # via pipe and don't log
 
-                self.process = subprocess.Popen(self.args, stdin=None,
+                stderr = subprocess.STDOUT
+                clz.logger.debug(f'Starting cmd args: {self.args}')
+                self.process = subprocess.Popen(self.args, stdin=None,  # subprocess.DEVNULL,
                                                 stdout=subprocess.PIPE,
-                                                stderr=subprocess.PIPE, shell=False,
+                                                stderr=stderr, shell=False,
                                                 universal_newlines=True, env=env,
+                                                encoding='cp1252',  # 'utf-8',
                                                 close_fds=True,
                                                 creationflags=subprocess.DETACHED_PROCESS)
             else:
@@ -244,9 +268,10 @@ class SimpleRunCommand:
                                                   name=f'{self.thread_name}_stdout_rdr')
             Monitor.exception_on_abort()
             self.stdout_thread.start()
-            self.stderr_thread = threading.Thread(target=self.stderr_reader,
-                                                  name=f'{self.thread_name}_stderr_rdr')
-            self.stderr_thread.start()
+            if not xbmc.getCondVisibility('System.Platform.Windows'):
+                self.stderr_thread = threading.Thread(target=self.stderr_reader,
+                                                      name=f'{self.thread_name}_stderr_rdr')
+                self.stderr_thread.start()
         except AbortException as e:
             self.rc = 99  # Let thread die
         except Exception as e:
@@ -255,6 +280,7 @@ class SimpleRunCommand:
         if self.rc == 0:
             self.run_state = RunState.COMPLETE
         return
+
 
     def stderr_reader(self):
         GarbageCollector.add_thread(self.stderr_thread)

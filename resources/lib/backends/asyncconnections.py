@@ -6,6 +6,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from common import *
+
 from common.logger import *
 from common.monitor import Monitor
 

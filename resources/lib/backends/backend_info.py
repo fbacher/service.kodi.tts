@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
+from common import *
 
 from backends.backend_info_bridge import BackendInfoBridge
 from backends.i_backend_index import IEngineIndex

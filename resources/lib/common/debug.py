@@ -19,6 +19,8 @@ from sys import getsizeof
 import xbmcvfs
 
 import simplejson as json
+from common import *
+
 from common.critical_settings import CriticalSettings
 
 try:
@@ -29,7 +31,6 @@ except ImportError:
 import xbmc
 from common.constants import Constants
 from common.logger import *
-from common.typing import *
 
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -119,7 +120,7 @@ class Debug:
                             f'{CriticalSettings.get_plugin_name()}_thread_dump.txt'
 
                 with io.open(dump_path.encode('utf-8'), mode='at', buffering=1,
-                             newline=None) as dump_file:
+                             newline=None, encoding='utf-8') as dump_file:
 
                     dump_file.write(f'\n{datetime.datetime.now()}'
                                     f'   *** STACKTRACE - START ***\n\n')

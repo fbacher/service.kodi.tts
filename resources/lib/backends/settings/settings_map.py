@@ -1,13 +1,24 @@
 # coding=utf-8
-from enum import StrEnum
+from __future__ import annotations  # For union operator |
+
+from enum import Enum
+
+from backends.settings.setting_properties import SettingsProperties
+
+try:
+    from enum import StrEnum
+except ImportError:
+    from common.strenum import StrEnum
+
+from common import *
 
 from backends.settings.i_constraints import IConstraints
 from backends.settings.i_validators import (IBoolValidator, IConstraintsValidator,
-                                            IIntValidator, IStrEnumValidator,
+                                            IGenderValidator, IIntValidator,
+                                            IStrEnumValidator,
                                             IStringValidator, IValidator)
 from backends.settings.service_types import ServiceType
 from common.logger import BasicLogger
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -62,12 +73,12 @@ class SettingsMap:
     _initialized: bool = False
     _logger: BasicLogger = None
 
-    def __init__(self):
-        clz = type(self)
-        if clz._initialized:
+    @classmethod
+    def init(cls):
+        if cls._initialized:
             return
-        clz._initialized = True
-        clz._logger = module_logger.getChild(clz.__name__)
+        cls._initialized = True
+        cls._logger = module_logger.getChild(cls.__name__)
 
     @classmethod
     def define_service(cls, service_type: ServiceType, service_id: str,
@@ -128,18 +139,19 @@ class SettingsMap:
 
     @classmethod
     def set_is_available(cls, service_id: str, reason: Reason) -> None:
+        cls._logger.debug(f'{service_id} is available reason: {reason}')
         cls.service_availability_map[service_id] = reason
 
     @classmethod
-    def is_available(cls, service_id) -> Tuple[bool, Reason]:
+    def is_available(cls, service_id) -> bool:
         reason: Reason = cls.service_availability_map.get(service_id, None)
         if reason is None:
             cls.set_is_available(service_id, Reason.UNKNOWN)
-            return False, Reason.UNKNOWN
+            return False
 
         if reason == Reason.AVAILABLE:
-            return True, reason
-        return False, reason
+            return True
+        return False
 
     @classmethod
     def define_setting(cls, service_id: str, property_id: str,
@@ -181,6 +193,10 @@ class SettingsMap:
             property_id = ''
         assert isinstance(service_id, str), 'Service_id must be a str'
         assert isinstance(property_id, str), 'property_id must be a str'
+        if not service_id or len(service_id) == 0:
+            if property_id == SettingsProperties.ENGINE:
+                return True
+
         settings_for_service: Dict[str, IValidator]
         settings_for_service = cls.service_to_settings_map.get(service_id)
         if settings_for_service is None:
@@ -194,7 +210,8 @@ class SettingsMap:
     def get_validator(cls, service_id: str,
                       property_id: str) -> IBoolValidator | IStringValidator | \
                                            IIntValidator | IStrEnumValidator | \
-                                           IConstraintsValidator | None:
+                                           IConstraintsValidator | \
+                                           IGenderValidator | None:
         if property_id is None:
             property_id = ''
         assert isinstance(service_id, str), 'Service_id must be a str'
@@ -254,4 +271,4 @@ class SettingsMap:
         return value
 
 
-SettingsMap()
+SettingsMap.init()

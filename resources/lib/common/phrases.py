@@ -1,11 +1,17 @@
 # coding=utf-8
+from __future__ import annotations  # For union operator |
+
 #  TODO: change to regex
 import pathlib
 import sys
 from collections import UserList
 from pathlib import Path
 
-import regex
+try:
+    import regex
+except ImportError:
+    import re as regex
+from common import *
 
 from common.constants import Constants
 from common.critical_settings import CriticalSettings
@@ -13,7 +19,6 @@ from common.exceptions import ExpiredException
 from common.logger import *
 from common.messages import Messages
 from common.monitor import Monitor
-from common.typing import *
 from simplejson import JSONEncoder
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -56,6 +61,7 @@ class Phrase:
     min_pause: int = available_pauses[0]
     max_pause: int = available_pauses[len(available_pauses) - 1]
 
+    _remove_multiple_whitespace_re: Final[regex.Pattern] = regex.compile(r'(\s{2,})')
     _formatTagRE: Final[regex.Pattern] = regex.compile(
         r'\[/?(?:CR|B|I|UPPERCASE|LOWERCASE)](?i)')
     _colorTagRE: Final[regex.Pattern] = regex.compile(r'\[/?COLOR[^]\[]*?](?i)')
@@ -68,8 +74,9 @@ class Phrase:
 
     def __init__(self, text: str = '', interrupt: bool = False, pre_pause_ms: int = None,
                  post_pause_ms: int = None,
-                 cache_path: Path = None, exists: bool = False,
+                 cache_path: Path = None, exists: bool = False, temp: bool = False,
                  preload_cache: bool = False,
+                 serial_number: int | None = None,
                  check_expired: bool = True,
                  speak_while_playing: bool = True):
         clz = type(self)
@@ -78,6 +85,7 @@ class Phrase:
         self.text: str = clz.clean_phrase_text(text)
         self.cache_path: Path = cache_path
         self._exists: bool = exists
+        self._temp: bool = temp
         self.interrupt: bool = interrupt
         if pre_pause_ms is None:
             pre_pause_ms = 0
@@ -86,7 +94,10 @@ class Phrase:
             post_pause_ms = clz.PAUSE_DEFAULT
         self.post_pause_ms: int = post_pause_ms
         self.preload_cache: bool = preload_cache
-        self.serial_number: int = PhraseList.global_serial_number
+        if serial_number:
+            self.serial_number = serial_number
+        else:
+            self.serial_number: int = PhraseList.global_serial_number
         self._speak_while_playing: bool = speak_while_playing
         self.download_pending: bool = False
 
@@ -100,6 +111,7 @@ class Phrase:
                      pre_pause_ms: int = None,
                      post_pause_ms: int = None,
                      cache_path: Path = None, exists: bool = False,
+                     temp: bool = False,
                      preload_cache: bool = False,
                      serial_number: int = None,
                      speak_while_playing: bool = False,
@@ -111,7 +123,7 @@ class Phrase:
             serial_number = PhraseList.global_serial_number
         return Phrase(text=text, interrupt=interrupt, pre_pause_ms=pre_pause_ms,
                       post_pause_ms=post_pause_ms, cache_path=cache_path,
-                      exists=exists,
+                      exists=exists, temp=temp,
                       preload_cache=preload_cache,
                       serial_number=serial_number,
                       speak_while_playing=speak_while_playing,
@@ -123,7 +135,8 @@ class Phrase:
                         pre_pause_ms=self.pre_pause_ms,
                         post_pause_ms=self.post_pause_ms,
                         cache_path=self.cache_path,
-                        exists=self._exists, preload_cache=self.preload_cache,
+                        exists=self._exists, temp=self._temp,
+                        preload_cache=self.preload_cache,
                         speak_while_playing=self._speak_while_playing)
         phrase.check_expired = check_expired
         return phrase
@@ -145,6 +158,7 @@ class Phrase:
             'post_pause_ms'      : self.post_pause_ms,
             'cache_path'         : self.cache_path,
             'exists'             : self._exists,
+            'temp'               : self._temp,
             'preload_cache'      : self.preload_cache,
             'speak_while_playing': self._speak_while_playing,
             'check_expired'      : self.check_expired
@@ -159,6 +173,7 @@ class Phrase:
                                 post_pause_ms=params.get('post_pause_ms'),
                                 cache_path=params.get('cache_path'),
                                 exists=params.get('exists'),
+                                temp=params.get('temp'),
                                 preload_cache=params.get('preload_cache'),
                                 speak_while_playing=params.get('speak_while_playing',
                                                                False),
@@ -177,10 +192,11 @@ class Phrase:
         self.test_expired()
         self.text = text
 
-    def set_cache_path(self, cache_path: Path, exists: bool):
+    def set_cache_path(self, cache_path: Path, exists: bool, temp: bool = False):
         self.test_expired()
         self.cache_path = cache_path
         self._exists = exists
+        self._temp = temp
 
     def get_cache_path(self) -> Path:
         self.test_expired()
@@ -266,6 +282,8 @@ class Phrase:
 
     @classmethod
     def clean_phrase_text(cls, text: str):
+        text = text.strip()
+        text = cls._remove_multiple_whitespace_re.sub('', text)
         text = cls._formatTagRE.sub('', text)
         text = cls._colorTagRE.sub('', text)
         # Some speech engines say OK as Oklahoma
@@ -300,7 +318,7 @@ class Phrase:
             phrase: Phrase = phrase_or_list
             if PhraseList.expired_serial_number < phrase.serial_number:
                 cls.expired_serial_number = phrase.serial_number
-            cls._logger.debug(f'Set Phrase EXPIRED: {phrase.debug_data} '
+            cls._logger.debug(f'Set Phrase EXPIRED: {phrase.debug_data()} '
                               f'global serial: {PhraseList.expired_serial_number}')
 
         elif isinstance(phrase_or_list, PhraseList):
@@ -312,7 +330,7 @@ class Phrase:
 
         if PhraseList.expired_serial_number >= PhraseList.global_serial_number:
             PhraseList.global_serial_number = PhraseList.expired_serial_number + 1
-        cls._logger.debug(f'Set Phrase EXPIRED: {phrases.debug_data} '
+        cls._logger.debug(f'Set Phrase EXPIRED: {phrase_or_list.debug_data()} '
                           f'global serial: {PhraseList.expired_serial_number}')
 
     def is_expired(self) -> bool:
@@ -335,7 +353,10 @@ class Phrase:
         self._speak_while_playing = speak_while_playing
 
 
-class PhraseList(UserList[Phrase]):
+# Python 3.8 does not support (Windows)
+# class PhraseList(UserList[Phrase]):
+class PhraseList(UserList):
+
     # To aid in throwing away text which is no longer relevant due to the
     # changing UI, every PhraseList has a serial number. Each Phrase in that
     # PhraseList is assigned the PhraseList's serial number. This makes it
@@ -358,12 +379,8 @@ class PhraseList(UserList[Phrase]):
     @classmethod
     def create(cls, texts: str | List[str], interrupt: bool = False,
                preload_cache: bool = False, check_expired: bool = True) -> 'PhraseList':
-        if not isinstance(texts, str):
-            raise TypeError('Expected list of strings')
-
         if not isinstance(texts, list):
             texts = [texts]
-
         phrases: PhraseList = PhraseList(check_expired=check_expired)
         pre_pause: int = 0
         for text in texts:
@@ -371,6 +388,8 @@ class PhraseList(UserList[Phrase]):
             if isinstance(text, int):
                 pre_pause = text
                 continue
+            elif not isinstance(text, str):
+                raise TypeError(f'Expected list of strings and ints not {type(text)}')
             fragments: List[str] = text.split(Constants.PAUSE_INSERT)
             fragment: str
             for fragment in fragments:
@@ -670,7 +689,7 @@ class PhraseUtils:
                 cls._logger.debug_verbose(f'len chunks: {len(chunks)}')
             text_file_path: pathlib.Path
             text_file_path = phrase.get_cache_path().with_suffix('.txt')
-            with text_file_path.open('at') as text_file:
+            with text_file_path.open('at', encoding='utf-8') as text_file:
                 while len(chunks) > 0:
                     Monitor.exception_on_abort()
                     chunk: str = chunks.pop(0)

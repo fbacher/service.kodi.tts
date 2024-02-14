@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 import io
 import subprocess
 #  from backends.audio.player_handler import BasePlayerHandler, WavAudioPlayerHandler
 import sys
+
+from common import *
 
 from backends.audio.sound_capabilties import SoundCapabilities
 from backends.base import SimpleTTSBackend
@@ -12,7 +16,6 @@ from common.logger import *
 from common.setting_constants import Backends, Players
 from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -133,7 +136,8 @@ class FestivalTTSBackend(SimpleTTSBackend):
 
         self.festivalProcess = subprocess.Popen(['festival', '--pipe'],
                                                 stdin=subprocess.PIPE,
-                                                universal_newlines=True)
+                                                universal_newlines=True,
+                                                encoding='utf-8')
         text_to_voice = text_to_voice.replace('"', '\\"').strip()
         out = (f'(audio_mode \'async){voice}{durMult}{pitch}'
                f'(utt.save.wave (utt.wave.rescale (SynthText '
@@ -157,7 +161,7 @@ class FestivalTTSBackend(SimpleTTSBackend):
         elif setting == SettingsProperties.VOICE:
             p = subprocess.Popen(['festival', '-i'], stdin=subprocess.PIPE,
                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                 universal_newlines=True)
+                                 universal_newlines=True, encoding='utf-8')
             d = p.communicate('(voice.list)')
             voices = list(
                     map(str.strip,

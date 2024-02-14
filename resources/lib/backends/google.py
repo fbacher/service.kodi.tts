@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 import os
 import pathlib
 import re
@@ -6,6 +8,8 @@ import sys
 import tempfile
 
 import gtts
+from common import *
+
 from backends import base
 from backends.audio.sound_capabilties import SoundCapabilities
 from backends.google_data import GoogleData
@@ -26,8 +30,6 @@ from common.monitor import Monitor
 from common.phrases import Phrase, PhraseList, PhraseUtils
 from common.setting_constants import Backends, Mode
 from common.settings import Settings
-from common.simple_run_command import SimpleRunCommand
-from common.typing import *
 from gtts import gTTS, gTTSError, lang
 from utils.util import runInThread
 
@@ -405,7 +407,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz.__name__)
 
-        self.simple_cmd: SimpleRunCommand = None
+        # self.simple_cmd: SimpleRunCommand = None
         self.f = False
         if not clz._initialized:
             BaseServices().register(self)
@@ -539,7 +541,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
                                 if os.path.isfile(voice_text_file):
                                     os.unlink(voice_text_file)
 
-                                with open(voice_text_file, 'wt') as f:
+                                with open(voice_text_file, 'wt', encoding='utf-8') as f:
                                     f.write(text_to_voice)
                             except Exception as e:
                                 if clz._logger.isEnabledFor(ERROR):
@@ -576,15 +578,15 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
             clz._logger.debug_verbose('stop')
 
     @classmethod
-    def settingList(cls, setting, *args) -> List[str] | List[Tuple[str, str]] | Tuple[
+    def settingList(cls, setting: str, *args) -> List[str] | List[Tuple[str, str]] | Tuple[
         List[str], str] | Tuple[List[Tuple[str, str]], str]:
         """
         Gets the possible specified setting values in same representation
         as stored in settings.xml (not translated). Sorting/translating done
         in UI.
 
-        :param setting:
-        :param args:
+        :param setting: name of the setting
+        :param args: Not used
         :return:
         """
         if setting == SettingsProperties.LANGUAGE:
@@ -661,7 +663,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
             longest_match = -1
             default_lang = default_locale[0:2]
             idx = 0
-            languages = []
+            languages: List[Tuple[str, str]] = []
             locale_ids: List[str] = LanguageInfo.get_locales()
             # Sort by locale so that we have shortest locales listed first
             # i.e. 'en" before 'en-us'
@@ -731,6 +733,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
     def get_default_language(cls) -> str:
         languages: List[str]
         default_lang: str
+        languages: List[Tuple[str, str]]  # lang_id, locale_id
         languages, default_lang = cls.settingList(SettingsProperties.LANGUAGE)
         return default_lang
 
@@ -807,10 +810,13 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
 
         :return:
         """
-        language_validator: StringValidator
-        language_validator = cls.get_validator(cls.service_ID,
-                                               property_id=SettingsProperties.LANGUAGE)
-        language = language_validator.get_tts_value()
+        languages: List[Tuple[str, str]]  # lang_id, locale_id
+        languages, default_lang = cls.settingList(SettingsProperties.LANGUAGE)
+        language = default_lang
+        # language_validator: StringValidator
+        # language_validator = cls.get_validator(cls.service_ID,
+        #                                        property_id=SettingsProperties.LANGUAGE)
+        # language = language_validator.get_tts_value()
         return language
 
     @classmethod

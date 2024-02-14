@@ -1,24 +1,34 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 #
 import os
 import sys
 
 import xbmc
+import xbmcaddon
 import xbmcvfs
 
+'''
+addon = xbmcaddon.Addon('service.kodi.tts')
+all_settings: xbmcaddon.Settings = addon.getSettings()
+# an_int: int = all_settings.getInt('background_progress_interval.tts')
+# xbmc.log(f'background_progress_interval value: {an_int}')
+a_string = all_settings.getString('engine')
+xbmc.log(f'engine: {a_string}')
+all_settings.setString('engine', 'Google')
+a_string = all_settings.getString(f'engine')
+xbmc.log(f'new engine value: {a_string}')
+addon.setSettingString('engine', 'Festival')
+'''
+
+from common import *
 from common.critical_settings import CriticalSettings
 from common.minimal_monitor import MinimalMonitor
 from common.python_debugger import PythonDebugger
 
-REMOTE_DEBUG: bool = False
-
+REMOTE_DEBUG: bool = True
 addon_id: str = CriticalSettings.ADDON_ID
-
-# PATCH PATCH PATCH
-# Monkey-Patch a well known, embedded Python problem
-#
-# from common.strptime_patch import StripTimePatch
-# StripTimePatch.monkey_patch_strptime()
 
 # debug_file = io.open("/home/fbacher/.kodi/temp/kodi.crash", mode='w', buffering=1,
 #                      newline=None,
@@ -48,7 +58,6 @@ from common.logger import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
-from common.typing import *
 from backends import audio
 from common.settings import Settings
 from backends.settings.setting_properties import SettingsProperties
@@ -117,14 +126,14 @@ def preInstalledFirstRun():
 
 
 def startService():
-    if preInstalledFirstRun():
-        return
-    xbmc.log('starting service.startservice thread', xbmc.LOGDEBUG)
-
-    #  Do NOT remove import!!
-    from startup.bootstrap_engines import BootstrapEngines
-    BootstrapEngines.init()
     try:
+        if preInstalledFirstRun():
+            return
+        xbmc.log('starting service.startservice thread', xbmc.LOGDEBUG)
+
+        #  Do NOT remove import!!
+        from startup.bootstrap_engines import BootstrapEngines
+        BootstrapEngines.init()
         from backends.audio.bootstrap_players import BootstrapPlayers
 
         from service_worker import TTSService
@@ -141,7 +150,7 @@ def startService():
     #  xbmc.log(f'AbortRequested. Exiting startService', xbmc.LOGDEBUG)
 
 
-class MainThreadLoop(xbmc.Monitor):
+class MainThreadLoop:
     """
         Kodi's Monitor class has some quirks in it that strongly favors creating
         it from the main thread as well as calling xbmc.sleep/xbmc.wait_for_abort.

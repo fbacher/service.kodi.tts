@@ -9,6 +9,8 @@ from pathlib import Path
 
 import xbmcvfs
 
+from common import *
+
 from backends.base import SimpleTTSBackend
 from backends.settings.settings_map import SettingsMap
 from cache.voicecache import VoiceCache
@@ -19,7 +21,6 @@ from common.logger import *
 from common.monitor import Monitor
 from common.phrases import Phrase
 from common.settings import Settings
-from common.typing import *
 from utils.util import runInThread
 
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
@@ -114,7 +115,7 @@ class BackgroundDriver(BaseServices):
 
             text: str
             try:
-                with text_file.open('rt') as f:
+                with text_file.open('rt', encoding='utf-8') as f:
                     text = f.read()
             except Exception as e:
                 clz._logger.exception('')

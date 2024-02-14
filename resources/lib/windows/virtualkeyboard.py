@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 import difflib
 import re
 import time
 
 import xbmc
+
+from common import *
 
 from common.constants import Constants
 from common.messages import Messages

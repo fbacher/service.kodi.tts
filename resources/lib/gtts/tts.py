@@ -7,6 +7,9 @@ import urllib
 
 import requests
 
+from common import *
+
+from common.logger import BasicLogger
 from gtts.lang import _fallback_deprecated_lang, tts_langs
 from gtts.tokenizer import Tokenizer, pre_processors, tokenizer_cases
 from gtts.utils import _clean_tokens, _len, _minimize, _translate_url
@@ -14,8 +17,10 @@ from gtts.utils import _clean_tokens, _len, _minimize, _translate_url
 __all__ = ["gTTS", "gTTSError"]
 
 # Logger
-log = logging.getLogger(__name__)
-log.addHandler(logging.NullHandler())
+# log = logging.getLogger(__name__)
+# log.addHandler(logging.NullHandler())
+log = BasicLogger.get_module_logger(module_path=__file__)
+
 
 
 class Speed:
@@ -95,6 +100,13 @@ class gTTS:
     }
     GOOGLE_TTS_RPC = "jQ1olc"
 
+    DEFAULT_PREPROCESSOR_FUNCS: Final[List[Callable[[str], str]]] = [
+        pre_processors.tone_marks,
+        pre_processors.end_of_line,
+        pre_processors.abbreviations,
+        pre_processors.word_sub,
+    ]
+
     def __init__(
         self,
         text,
@@ -102,12 +114,7 @@ class gTTS:
         lang="en",
         slow=False,
         lang_check=True,
-        pre_processor_funcs=[
-            pre_processors.tone_marks,
-            pre_processors.end_of_line,
-            pre_processors.abbreviations,
-            pre_processors.word_sub,
-        ],
+        pre_processor_funcs: List[Callable[[str], str]] = DEFAULT_PREPROCESSOR_FUNCS.copy(),
         tokenizer_func=Tokenizer(
             [
                 tokenizer_cases.tone_marks,

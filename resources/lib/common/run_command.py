@@ -6,9 +6,10 @@ from subprocess import Popen
 
 import xbmc
 
+from common import *
+
 from common.logger import *
 from common.monitor import Monitor
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -79,13 +80,13 @@ class RunCommand:
                 self.process = subprocess.Popen(
                         self.args, stdin=None, stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE, shell=False, universal_newlines=True,
-                        env=env,
+                        env=env, encoding='utf-8',
                         close_fds=True, creationflags=subprocess.DETACHED_PROCESS)
             else:
                 self.process = subprocess.Popen(
                         self.args, stdin=None, stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE, shell=False, universal_newlines=True,
-                        env=env,
+                        env=env, encoding='utf-8',
                         close_fds=True)
             self.stdout_thread = threading.Thread(target=self.stdout_reader,
                                                   name='normalize stdout reader')

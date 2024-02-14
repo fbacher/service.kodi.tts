@@ -1,13 +1,16 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 
 import errno
 import os
 import shutil
 import subprocess
 
+from common import *
+
 from common.logger import *
 from common.setting_constants import Converters
-from common.typing import *
 from converters.iconverter import IConverter
 
 try:
@@ -222,7 +225,8 @@ class BaseAudioConverter(AudioConverter):
     def available(cls, ext=None) -> bool:
         try:
             subprocess.call(cls._availableArgs, stdout=(open(os.path.devnull, 'w')),
-                            stderr=subprocess.STDOUT, universal_newlines=True)
+                            stderr=subprocess.STDOUT, universal_newlines=True,
+                            encoding='utf-8')
         except:
             return False
         return True

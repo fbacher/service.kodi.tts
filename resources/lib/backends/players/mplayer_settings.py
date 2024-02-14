@@ -1,3 +1,7 @@
+from __future__ import annotations  # For union operator |
+
+from common import *
+
 from backends.audio.sound_capabilties import SoundCapabilities
 from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.service_types import Services, ServiceType
@@ -6,7 +10,6 @@ from backends.settings.validators import (BoolValidator, ConstraintsValidator,
                                           Validator)
 from common.setting_constants import Players
 from common.settings_low_level import SettingsProperties
-from common.typing import *
 
 
 class MPlayerSettings:
@@ -74,9 +77,15 @@ class MPlayerSettings:
         speed_constraints_val = ConstraintsValidator(SettingsProperties.SPEED,
                                                      cls.service_ID,
                                                      BaseServiceSettings.ttsSpeedConstraints)
-        # MPlayer uses a decibel volume scale with range -200db .. +40db.
-        # TTS uses a decibel scale with range -12db .. +12db. Just convert the
-        # values with no change. Do this by simply using the TTS volume constraints
+        """
+         MPlayer uses both percentage and decibel volume scales.
+         The decibel scale is used for the (-af) audio filter with range -200db .. +40db.
+         The percent scale is used for the --volume flag (there are multiple ways to
+         specify volume, including json).
+        
+         TTS uses a decibel scale with range -12db .. +12db. Just convert the
+         values with no change. Do this by simply using the TTS volume constraints
+        """
 
         volume_constraints_validator: ConstraintsValidator
         volume_constraints_validator = ConstraintsValidator(SettingsProperties.VOLUME,

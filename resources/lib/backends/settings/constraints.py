@@ -1,8 +1,11 @@
 # coding=utf-8
+from __future__ import annotations  # For union operator |
+
 import math
 
+from common import *
+
 from common.settings_bridge import SettingsBridge
-from common.typing import *
 
 
 class Constraints:
@@ -143,8 +146,18 @@ class Constraints:
     def tts_line_value(self) -> float | int:
         return self._tts_line_value
 
-    def currentValue(self, service_id: str) -> float:
+    def currentValue(self, service_id: str, as_decibels: bool | None = None,
+                     limit: bool = True) -> float:
         """
+        @service_id: The service (engine, player, etc.) to get this validator's
+        property from.
+        @as_decibels: Converts between decibel and percentage units.
+                     True, convert to decibels
+                     False, convert to percentage units (based on the scale
+                     configured for this validator)
+                     None, use decibels or percentage, as set by constructo
+        @limit: Limits the returned value to the range configured for this
+                validator
         @return: Returns the current, scaled value of the Setting with this
         constraint's property name. Default values are used, as needed.
         """
@@ -159,10 +172,22 @@ class Constraints:
 
             corrected: bool
             corrected_value: float
-            corrected, corrected_value = self.in_range(value)
+            if limit:
+                corrected, corrected_value = self.in_range(value)
+            else:
+                corrected_value = value
+            value: int | float
             if self.integer:
-                return int(round(corrected_value))
-            return corrected_value
+                value = int(round(corrected_value))
+            value = corrected_value
+            if as_decibels is None:
+                return value
+            elif as_decibels == self._decibels:
+                return value
+            elif as_decibels:
+                return self.percent_to_db(value, limit=limit)
+            return self.db_to_percent(value)
+
         return None
 
     def setSetting(self, value: float, backend_id: str) -> None:
@@ -212,18 +237,26 @@ class Constraints:
                 integer)
         return trans_constraints
 
-    def translate_value(self, other: 'Constraints', value: float) -> int | float:
+    def translate_value(self, other: 'Constraints', value: float,
+                        as_decibels: bool | None = None) -> int | float:
         """
         Translates an (external) value of this constraint to an (external) value of
         'other' constraint
         @param other: Specifies the constraint to use for converting the given value
         @param value: (external) value of this constraint to convert
+        @param as_decibels: Converts to either decibel or percent scale.
+                            True, converts to decibels
+                            False, converts to percent scale
+                            None does no conversion
         @return: Value scaled appropriately to comply with the other constraint
         """
         value = max(value, self.minimum)
         value = min(value, self.maximum)
         scaled_value: float
-        if self._decibels and other._decibels:
+        if as_decibels is None:
+            as_decibels = other._decibels
+
+        if self._decibels and as_decibels:
             value = max(value, other.minimum)
             value = min(value, other.maximum)
             if other.integer:
@@ -248,7 +281,7 @@ class Constraints:
                 scaled_value = int(round(scaled_value))
             return scaled_value
 
-        elif other._decibels:
+        elif as_decibels:
             scaled_value: float = self.percent_to_db(value)
             scaled_value = max(scaled_value, other.minimum)
             scaled_value = min(scaled_value, other.maximum)
@@ -332,14 +365,27 @@ class Constraints:
         return trans_value
         '''
 
-    def db_to_percent(self, value: float) -> float:
-        value = max(value, self.minimum)
-        value = min(value, self.maximum)
+    def db_to_percent(self, value: float, limit: bool = True) -> float:
+        """
+        Converts the given value from decibels to percent.
+        :param value:
+        :param limit:
+        :return:
+        """
+        if not self._decibels:
+            raise ValueError('Requested conversion from decibels, but not in decibels')
+        if limit:
+            value = max(value, self.minimum)
+            value = min(value, self.maximum)
         result = int(round(100 * (10 ** (value / 20.0))))
         return result
 
-    def percent_to_db(self, value: float) -> float:
-        value = max(value, self.minimum)
-        value = min(value, self.maximum)
+    def percent_to_db(self, value: float, limit: bool = True) -> float:
+        if self._decibels:
+            raise ValueError('Requested conversion from percent to decibels, '
+                             'already in decibels')
+        if limit:
+            value = max(value, self.minimum)
+            value = min(value, self.maximum)
         result: float = 10.0 * math.log10(float(value) / 100.0)
         return result

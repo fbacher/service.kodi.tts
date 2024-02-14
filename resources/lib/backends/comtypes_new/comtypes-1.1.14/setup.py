@@ -10,7 +10,7 @@ from setuptools import setup
 
 from distutils.command.build_py import build_py
 
-with open('README.md') as readme_stream:
+with open('README.md', mode='rt', encoding='utf-8') as readme_stream:
     readme = readme_stream.read()
 
 class test(Command):
@@ -79,7 +79,7 @@ def read_version():
     # Determine the version number by reading it from the file
     # 'comtypes\__init__.py'.  We cannot import this file (with py3,
     # at least) because it is in py2.x syntax.
-    for line in open("comtypes/__init__.py"):
+    for line in open("comtypes/__init__.py", mode='rt', encoding='utf-8'):
         if line.startswith("__version__ = "):
             var, value = line.split('=')
             return value.strip().strip('"').strip("'")

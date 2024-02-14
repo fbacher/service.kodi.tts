@@ -8,9 +8,10 @@ Created on Feb 10, 2019
 
 import threading
 
+from common import *
+
 from common.logger import *
 from common.monitor import Monitor
-from .__init__ import *
 
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -29,6 +30,8 @@ class GarbageCollector:
 
     @classmethod
     def add_thread(cls, thread: threading.Thread) -> None:
+        if thread is None:
+            return
         with cls._lock:
             if not cls._stopped:
                 if thread not in cls._threads_to_join:

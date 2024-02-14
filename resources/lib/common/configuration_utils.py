@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
 
 import xbmcaddon
 import xbmcgui
+
+from common import *
 
 from backends.backend_info_bridge import BackendInfoBridge
 from common.constants import Constants

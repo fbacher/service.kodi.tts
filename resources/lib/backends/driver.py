@@ -1,3 +1,5 @@
+from __future__ import annotations  # For union operator |
+
 """
 Classes which orchestrates the voicing of text.
 
@@ -6,6 +8,8 @@ Basically a request comes in to voice some text
  say "" ->
 """
 import sys
+
+from common import *
 
 from backends.audio.sound_capabilties import SoundCapabilities
 from backends.audio.worker_thread import TTSQueueData, WorkerThread
@@ -27,7 +31,6 @@ from common.phrases import Phrase, PhraseList
 from common.setting_constants import Mode
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
-from common.typing import *
 
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 

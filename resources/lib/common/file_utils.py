@@ -6,10 +6,11 @@ import threading
 from pathlib import Path
 from queue import Queue
 
+from common import *
+
 from common.logger import *
 from common.minimal_monitor import MinimalMonitor
 from common.monitor import Monitor
-from common.typing import *
 from utils.util import runInThread
 
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)

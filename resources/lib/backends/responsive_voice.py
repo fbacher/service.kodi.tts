@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 import io
 import os
 import pathlib
@@ -9,7 +11,8 @@ from time import time
 
 import requests
 import xbmc
-from typing.io import IO
+
+from common import *
 
 from backends.audio.sound_capabilties import ServiceType, SoundCapabilities
 from backends.base import SimpleTTSBackend
@@ -29,7 +32,6 @@ from common.monitor import Monitor
 from common.phrases import Phrase, PhraseList
 from common.setting_constants import Backends, Genders, Languages, Mode
 from common.settings import Settings
-from common.typing import *
 from utils.util import runInThread
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -188,7 +190,7 @@ class SpeechGenerator:
                         try:
                             text_file_path.unlink(missing_ok=True)
 
-                            with text_file_path.open('wt') as f:
+                            with text_file_path.open('wt', encoding='utf-8') as f:
                                 f.write(phrase.get_text())
                         except Exception as e:
                             if clz._logger.isEnabledFor(ERROR):
@@ -357,7 +359,7 @@ class SpeechGenerator:
                 clz._logger.debug_verbose(f'len chunks: {len(chunks)}')
             text_file_path: pathlib.Path
             text_file_path = phrase.get_cache_path().with_suffix('.txt')
-            with text_file_path.open('at') as text_file:
+            with text_file_path.open('at', encoding='utf-8') as text_file:
                 while len(chunks) > 0:
                     Monitor.exception_on_abort()
                     chunk: str = chunks.pop(0)
@@ -709,7 +711,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackend):
                                 if os.path.isfile(voice_text_file):
                                     os.unlink(voice_text_file)
 
-                                with open(voice_text_file, 'wt') as f:
+                                with open(voice_text_file, 'wt', encoding='utf-8') as f:
                                     f.write(text_to_voice)
                             except Exception as e:
                                 if clz._logger.isEnabledFor(ERROR):

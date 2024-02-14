@@ -1,6 +1,8 @@
 # coding=utf-8
 from subprocess import Popen
 
+from common import *
+
 from common.logger import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)

@@ -1,4 +1,8 @@
+from __future__ import annotations  # For union operator |
+
 import sys
+
+from common import *
 
 import xpath.exceptions
 import xpath.expr

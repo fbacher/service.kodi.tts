@@ -1,14 +1,17 @@
 # coding=utf-8
+from __future__ import annotations  # For union operator |
+
+from common import *
+
 from backends.settings.constraints import Constraints
 from backends.settings.service_types import Services
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
-                                          IntValidator, StringValidator)
+                                          GenderValidator, IntValidator, StringValidator)
 from common.logger import BasicLogger
-from common.setting_constants import Backends
+from common.setting_constants import Backends, Genders
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -40,8 +43,8 @@ class BaseServiceSettings:
 
     # TODO: move to default settings map
     TTSConstraints: Dict[str, Constraints] = {
-        SettingsProperties.SPEED : ttsSpeedConstraints,
-        SettingsProperties.PITCH : ttsPitchConstraints,
+        SettingsProperties.SPEED: ttsSpeedConstraints,
+        SettingsProperties.PITCH: ttsPitchConstraints,
         SettingsProperties.VOLUME: ttsVolumeConstraints
     }
     global_settings_initialized: bool = False
@@ -257,6 +260,16 @@ class BaseServiceSettings:
         SettingsMap.define_setting(Services.TTS_SERVICE,
                                    SettingsProperties.USE_TEMPFS,
                                    use_tempfs_val)
+
+        gender_validator = GenderValidator(SettingsProperties.GENDER,
+                                           Services.TTS_SERVICE,
+                                           min_value=Genders.FEMALE,
+                                           max_value=Genders.UNKNOWN,
+                                           default=Genders.UNKNOWN)
+        SettingsMap.define_setting(Services.TTS_SERVICE, SettingsProperties.GENDER,
+                                   gender_validator)
+        gender_validator.set_tts_value(Genders.FEMALE)
+
 
         # def register(self, what: Type[ITTSBackendBase]) -> None:
         #     BaseServices.register(what)

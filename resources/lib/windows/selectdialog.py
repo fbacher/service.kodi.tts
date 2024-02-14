@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 import xbmc
+
+from common import *
 
 from common.messages import Messages
 from .base import CURRENT_SKIN, WindowReaderBase

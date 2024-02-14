@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
 
 import datetime
 import hashlib
@@ -6,17 +7,20 @@ import io
 import os
 import pathlib
 import sys
+import tempfile
 import time
 from pathlib import Path
-from typing import IO
 
 import xbmcvfs
+
+from common import *
 
 from backends.audio.sound_capabilties import SoundCapabilities
 from backends.i_tts_backend_base import ITTSBackendBase
 from backends.players.iplayer import IPlayer
 from backends.players.player_index import PlayerIndex
 from backends.settings.settings_map import SettingsMap
+from common import utils
 from common.base_services import BaseServices
 from common.constants import Constants
 from common.exceptions import ExpiredException
@@ -24,7 +28,6 @@ from common.logger import *
 from common.phrases import Phrase, PhraseList
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
-from common.typing import *
 
 if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
     module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -58,8 +61,6 @@ class VoiceCache:
             assert engine_dir is not None, \
                 f'Can not find voice-cache dir for engine: {engine_id}'
             cache_directory = xbmcvfs.translatePath(f'{cache_path}/{engine_dir}')
-
-
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
@@ -93,14 +94,20 @@ class VoiceCache:
             player_id: str = Settings.get_player_id(engine_id=engine_id)
             player = PlayerIndex.get_player(player_id)
             input_formats: List[str] = SoundCapabilities.get_input_formats(player_id)
-            file_type: str = ''
+            file_type: str = None
             if use_cache:
                 paths: Tuple[str, bool, str] = VoiceCache.get_best_path(phrase,
                                                                         input_formats)
                 voice_file, exists, file_type = paths
             else:
-                voice_file = player.get_tmp_path(phrase.get_text(), input_formats[0])
-                phrase.set_cache_path(Path(voice_file), False)
+                file_type: str = input_formats[0]
+                tempdir: str = player.get_sound_dir()
+                voice_file = tempfile.NamedTemporaryFile(mode='w+b', buffering=-1,
+                                                              suffix=None,
+                                                              prefix=None,
+                                                              dir=tempdir,
+                                                              delete=False)
+                phrase.set_cache_path(Path(voice_file.name, temp=True), False)
                 exists = False
         except AbortException:
             reraise(*sys.exc_info())
@@ -313,7 +320,9 @@ class VoiceCache:
             filename: str = VoiceCache.get_hash(text_to_voice)
             filename = cls.sound_file_base.format(filename=filename, suffix=suffix)
             subdir: str = filename[0:2]
-            path = Path(cls.get_cache_directory(), subdir, filename)
+            path = Path(cls.get_cache_directory(), subdir)
+            path.mkdir(mode=0o777, exist_ok=True, parents=True)
+            path = path.joinpath(filename)
             if path.is_dir():
                 msg = f'Ignoring cached voice file: {path}. It is a directory.'
                 path_found = False
@@ -549,7 +558,7 @@ class VoiceCache:
                                 if os.path.isfile(text_file):
                                     os.unlink(text_file)
 
-                                with open(text_file, 'wt') as f:
+                                with open(text_file, 'wt', encoding='utf-8') as f:
                                     f.write(text)
                             except Exception as e:
                                 if cls._logger.isEnabledFor(ERROR):

@@ -1,9 +1,13 @@
+from __future__ import annotations  # For union operator |
+
 '''
 Created on Jul 7, 2020
 
 @author: fbacher
 '''
 import threading
+
+from common import *
 
 from common.constants import Constants
 from common.logger import (BasicLogger)

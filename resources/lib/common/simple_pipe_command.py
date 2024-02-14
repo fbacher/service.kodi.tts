@@ -1,4 +1,6 @@
 # coding=utf-8
+from __future__ import annotations  # For union operator |
+
 import io
 import os
 import shutil
@@ -9,12 +11,13 @@ from subprocess import Popen
 
 import xbmc
 
+from common import *
+
 from common.garbage_collector import GarbageCollector
 from common.kodi_player_monitor import KodiPlayerMonitor, KodiPlayerState
 from common.logger import *
 from common.monitor import Monitor
 from common.phrases import PhraseList
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -44,9 +47,9 @@ class SimplePipeCommand:
 
         :param args: arguments to be passed to exec command
         """
-        self.stdin: io.IOBase | int | None = stdin
-        self.stderr: io.IOBase | int | None = stderr
-        self.stdout: io.IOBase | int | None = stdout
+        self.stdin: BinaryIO | int | None = stdin
+        self.stderr: TextIO | int | None = stderr
+        self.stdout: TextIO | int | None = stdout
         clz = type(self)
         SimplePipeCommand.logger = module_logger.getChild(clz.__name__)
         self.args: List[str] = args
@@ -134,8 +137,6 @@ class SimplePipeCommand:
             next_state = RunState.COMPLETE
             while not Monitor.wait_for_abort(timeout=0.1):
                 try:
-                    stdout_data, stderr_data = self.process.communicate(input=input_bytes,
-                                                                        timeout=0.5)
                     rc: int | None = self.process.poll()
                     if rc is not None:
                         self.run_state = next_state
@@ -168,7 +169,7 @@ class SimplePipeCommand:
                     #  Only indicates the timeout is expired, not the run state
                     pass
                 except Exception as e:
-                    clz._logger.exception('')
+                    clz.logger.exception('')
 
             # No matter how process ends, there will be a return code
             while not Monitor.wait_for_abort(timeout=0.1):
@@ -206,7 +207,7 @@ class SimplePipeCommand:
                     except subprocess.TimeoutExpired:
                         pass
                     except Exception as e:
-                        clz._logger.exception('')
+                        clz.logger.exception('')
                 self.rc = 99
 
             if self.run_thread.is_alive():
@@ -228,7 +229,7 @@ class SimplePipeCommand:
         except subprocess.TimeoutExpired:
             pass
         except Exception as e:
-            clz._logger.exception('')
+            clz.logger.exception('')
 
         finally:
             Monitor.unregister_abort_listener(self.abort_listener)
@@ -241,6 +242,7 @@ class SimplePipeCommand:
         self.rc = 0
         GarbageCollector.add_thread(self.run_thread)
         env = os.environ.copy()
+
         try:
             if xbmc.getCondVisibility('System.Platform.Windows'):
                 # Prevent console for ffmpeg from opening
@@ -253,19 +255,19 @@ class SimplePipeCommand:
                 self.process = subprocess.Popen(self.args, stdin=subprocess.PIPE,
                                                 stdout=subprocess.PIPE,
                                                 stderr=subprocess.PIPE, shell=False,
-                                                universal_newlines=False, env=env,
+                                                universal_newlines=False,
+                                                env=env,
                                                 close_fds=True,
                                                 creationflags=subprocess.DETACHED_PROCESS)
             else:
                 self.process = subprocess.Popen(self.args, stdin=subprocess.PIPE,
                                                 stdout=subprocess.DEVNULL,
-                                                stderr=subprocess.DEVNULL, shell=False,
-                                                universal_newlines=False, env=env,
+                                                stderr=subprocess.DEVNULL,
+                                                shell=False,
+                                                env=env,
                                                 close_fds=True)
-
-            if not isinstance(self.stdin, bytes):
-                shutil.copyfileobj(self.stdin, self.process.stdin)
-
+            stdout_data, stderr_data = self.process.communicate(input=self.stdin.read(),
+                                                                timeout=10.0)
             self.run_state = RunState.RUNNING
             if self.capture_output:
                 self.stdout_thread = threading.Thread(target=self.stdout_reader,

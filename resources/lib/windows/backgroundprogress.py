@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
 
 import time
 
 import xbmc
 import xbmcgui
+
+from common import *
 
 from backends.settings.setting_properties import SettingsProperties
 from common import utils

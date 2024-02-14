@@ -9,6 +9,8 @@ from pathlib import Path
 import xbmc
 import xbmcaddon
 
+from common import *
+
 from kutils.kodiaddon import Addon
 from .__init__ import *
 

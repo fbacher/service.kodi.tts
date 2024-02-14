@@ -1,12 +1,14 @@
 # coding=utf-8
+from __future__ import annotations  # For union operator |
 
 '''
     Helper to exchange audio related information between players, engines
     and anything else that can produce, consume or transform audio.
 '''
+from common import *
+
 from backends.settings.service_types import ServiceType
 from common.logger import BasicLogger
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 

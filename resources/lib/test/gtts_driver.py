@@ -3,7 +3,7 @@ import logging
 
 import gtts
 
-from common.typing import *
+from common import *
 # from common.logger import *
 from gtts import gTTS, lang
 from test.google_data import GoogleData

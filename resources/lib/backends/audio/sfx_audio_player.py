@@ -1,8 +1,12 @@
+from __future__ import annotations  # For union operator |
+
 import os
 import threading
 import wave
 
 import xbmc
+
+from common import *
 
 from backends.audio import PLAYSFX_HAS_USECACHED
 from backends.audio.base_audio import AudioPlayer
@@ -12,7 +16,6 @@ from backends.settings.service_types import ServiceType
 from common.base_services import BaseServices
 from common.logger import BasicLogger
 from common.setting_constants import Players
-from common.typing import *
 
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -51,7 +54,7 @@ class PlaySFXAudioPlayer(AudioPlayer):
             return
         self._isPlaying = True
         self.doPlaySFX(path)
-        f = wave.open(path, 'r')
+        f = wave.open(path, 'rb')
         frames = f.getnframes()
         rate = f.getframerate()
         f.close()

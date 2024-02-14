@@ -11,7 +11,7 @@ import threading
 
 import xbmc
 
-from .__init__ import *
+from common import *
 
 
 class MinimalMonitor(xbmc.Monitor):
@@ -54,7 +54,7 @@ class MinimalMonitor(xbmc.Monitor):
             cls._abort_received = threading.Event()
 
     @classmethod
-    def real_waitForAbort(cls, timeout: float = -1.0) -> bool:
+    def real_waitForAbort(cls, timeout: float | None = -1.0) -> bool:
         """
         Wait for Abort
 
@@ -79,7 +79,7 @@ class MinimalMonitor(xbmc.Monitor):
         abort = False
         if timeout is None or timeout < 0.0:  # Wait forever
             while not abort:
-                abort = cls._xbmc_monitor.waitForAbort(timeout=0.10)
+                abort = cls._xbmc_monitor.waitForAbort(timeout=0.20)
         else:
             timeout_arg = float(timeout)
             if timeout_arg == 0.0:

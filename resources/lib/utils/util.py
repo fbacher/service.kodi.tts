@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
 
 import locale
 import os
@@ -8,6 +9,8 @@ import xbmc
 import xbmcaddon
 import xbmcvfs
 
+from common import *
+
 from backends.settings.setting_properties import SettingsProperties
 from common import utils
 from common.constants import Constants
@@ -15,7 +18,6 @@ from common.garbage_collector import GarbageCollector
 from common.logger import *
 from common.monitor import Monitor
 from common.settings import Settings
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -58,7 +60,7 @@ def backendsDirectory():
 
 
 def tailXBMCLog(num_lines=10):
-    with open(LOG_PATH, "r") as f:
+    with open(LOG_PATH, "r", encoding='utf-8') as f:
         f.seek(0, 2)
         fsize = f.tell()
         f.seek(max(fsize - 1024, 0), 0)

@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 import os
 import re
 import xml.dom.minidom as minidom
@@ -7,6 +9,8 @@ import xbmc
 import xbmcvfs
 
 import xpath
+from common import *
+
 from common.constants import Constants
 from common.logger import *
 
@@ -44,7 +48,7 @@ def getXBMCSkinPath(fname):
                 xbmcvfs.translatePath('special://skin'), 'addon.xml')
         skinpath = ''
         if os.path.exists(addonXMLPath):
-            with open(addonXMLPath, 'r') as f:
+            with open(addonXMLPath, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
             for l in lines:
                 if 'aspect="{0}"'.format(aspect) in l:

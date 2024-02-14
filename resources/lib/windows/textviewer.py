@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 import hashlib
 import re
 import time
 
 import xbmc
 
-from common.typing import *
+from common import *
+
 from .base import WindowReaderBase
 
 

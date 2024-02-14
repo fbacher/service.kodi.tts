@@ -1,3 +1,7 @@
+from __future__ import annotations  # For union operator |
+
+from common import *
+
 from backends.settings.constraints import Constraints
 from backends.settings.service_types import Services
 from backends.settings.setting_properties import SettingsProperties
@@ -6,7 +10,6 @@ from backends.settings.validators import (BoolValidator, GenderValidator, IntVal
                                           StringValidator, Validator)
 from common.logger import BasicLogger
 from common.setting_constants import Backends, Genders
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -48,9 +51,9 @@ class BaseEngineSettings:
                                            min_value=Genders.FEMALE,
                                            max_value=Genders.UNKNOWN,
                                            default=Genders.UNKNOWN)
-        gender_validator.set_tts_value(Genders.FEMALE)
         SettingsMap.define_setting(service_id, SettingsProperties.GENDER,
                                    gender_validator)
+        # gender_validator.set_tts_value(Genders.FEMALE)
 
         engine_id_validator = StringValidator(SettingsProperties.ENGINE,
                                               Services.TTS_SERVICE,

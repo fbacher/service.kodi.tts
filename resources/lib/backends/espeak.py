@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
 
 import ctypes.util
+import os
 import subprocess
 import sys
 from pathlib import Path
+
+from common import *
 
 from backends.audio.builtin_audio_player import BuiltInAudioPlayer
 # from backends.audio.player_handler import BasePlayerHandler, WavAudioPlayerHandler
@@ -20,7 +24,6 @@ from common.phrases import Phrase
 from common.setting_constants import Backends, Genders, Mode
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -35,6 +38,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
     backend_id: str = Backends.ESPEAK_ID
     engine_id: str = Backends.ESPEAK_ID
     displayName: str = 'eSpeak'
+    UTF_8: Final[str] = '1'
 
     voice_map: Dict[str, Tuple[str, str, Genders]] = None
     _logger: BasicLogger = None
@@ -47,6 +51,8 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         clz._class_name = self.__class__.__name__
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz._class_name)
+        self.process: subprocess.Popen = None
+
         if not clz._initialized:
             clz._initialized = True
             BaseServices.register(self)
@@ -80,7 +86,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         try:
             process = subprocess.run(args, stdin=None, stdout=subprocess.PIPE,
                                      universal_newlines=True,
-                                     stderr=None, shell=False)
+                                     stderr=None, shell=False, check=True)
             for line in process.stdout.split('\n'):
                 if len(line) > 0:
                     voices.append(line)
@@ -111,7 +117,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             entries.append((voice_name, voice_id, gender))
             cls.initialized_static = True
 
-    def addCommonArgs(self, args, phrase: Phrase):
+    def addCommonArgs(self, args, phrase: Phrase | None = None):
         clz = type(self)
         voice_id = Settings.get_voice(clz.service_ID)
         if voice_id is None or voice_id in ('unknown', ''):
@@ -129,7 +135,8 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             args.extend(('-p', str(pitch)))
 
         args.extend(('-a', str(volume)))
-        args.append(phrase.get_text())
+        if phrase:
+            args.append(phrase.get_text())
 
     def update(self) -> None:
         self.setMode(self.getMode())
@@ -146,15 +153,35 @@ class ESpeakTTSBackend(SimpleTTSBackend):
 
     def runCommand(self, phrase: Phrase):
         clz = type(self)
-        outFile: Path = phrase.get_cache_path()
+        out_file: Path = phrase.get_cache_path()
         if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose(f'espeak.runCommand outFile: {outFile}')
-        args = ['espeak', '-w', outFile]
-        self.addCommonArgs(args, phrase)
+            clz._logger.debug_verbose(f'espeak.runCommand outFile: {out_file}\n'
+                                      f'text: {phrase.text}')
+        env = os.environ.copy()
+        args = ['espeak-ng', '-b', clz.UTF_8, '-w', out_file, '--stdin']
+        self.addCommonArgs(args)
         try:
-            completed: subprocess.CompletedProcess = subprocess.run(args, check=True,
-                                                                    shell=False)
-            clz._logger.debug(f'args: {completed.args}')
+            if Constants.PLATFORM_WINDOWS:
+                subprocess.run(args,
+                               input=f'{phrase.text} ',
+                               text=True,
+                               shell=False,
+                               encoding='utf-8',
+                               close_fds=True,
+                               env=env,
+                               check=True,
+                               creationflags=subprocess.DETACHED_PROCESS)
+            else:
+                subprocess.run(args,
+                               input=f'{phrase.text} ',
+                               text=True,
+                               shell=False,
+                               encoding='utf-8',
+                               close_fds=True,
+                               env=env,
+                               check=True)
+
+            clz._logger.debug(f'args: {args}')
         except subprocess.CalledProcessError as e:
             if clz._logger.isEnabledFor(DEBUG):
                 clz._logger.exception('')
@@ -162,22 +189,27 @@ class ESpeakTTSBackend(SimpleTTSBackend):
 
     def runCommandAndSpeak(self, phrase: Phrase):
         clz = type(self)
-        args = ['espeak']
+        args = ['espeak', '-b', clz.UTF_8, '--stdin']
         self.addCommonArgs(args, phrase)
         try:
-            self.process = subprocess.Popen(args, universal_newlines=True)
+            self.process = subprocess.Popen(args, universal_newlines=True,
+                                            encoding='utf-8',
+                                            stdin=subprocess.PIPE)
             while (self.process is not None and self.process.poll() is None and
                    self.active):
                 utils.sleep(10)
             clz._logger.debug(f'args: {args}')
         except subprocess.SubprocessError as e:
             if clz._logger.isEnabledFor(DEBUG):
-                clz._logger.debug('espeak.runCommand Exception: ' + str(e))
+                clz._logger.debug('espeak.runCommandAndSpeak Exception: ' + str(e))
 
     def runCommandAndPipe(self, phrase: Phrase):
-        args = ['espeak', '--stdout']
+        clz = type(self)
+        args = ['espeak', '-b', clz.UTF_8, '--stdin', '--stdout']
+
         self.addCommonArgs(args, phrase)
-        self.process = subprocess.Popen(args, stdout=subprocess.PIPE)
+        self.process = subprocess.Popen(args, stdout=subprocess.PIPE,
+                                        encoding='utf-8')
         return self.process.stdout
 
     def stop(self):

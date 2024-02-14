@@ -1,9 +1,13 @@
+from __future__ import annotations  # For union operator |
+
 import os
 import platform
 import subprocess
 import tempfile
 
 import requests
+
+from common import *
 
 if platform.system() == "Windows":
     try:

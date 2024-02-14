@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
 
 import xbmc
 import xbmcgui
 
+from common import *
+
 from common.constants import Constants
 from common.logger import BasicLogger
 from common.messages import Messages
-from common.typing import *
 from . import guitables, skintables, windowparser
 
 CURRENT_SKIN = skintables.CURRENT_SKIN

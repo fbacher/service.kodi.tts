@@ -1,5 +1,9 @@
 # coding=utf-8
+from __future__ import annotations  # For union operator |
+
 import sys
+
+from common import *
 
 from backends.audio.sound_capabilties import SoundCapabilities
 from cache.prefetch_movie_data.db_access import DBAccess
@@ -8,7 +12,6 @@ from cache.voicecache import VoiceCache
 from common.logger import *
 from common.monitor import Monitor
 from common.phrases import Phrase
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 

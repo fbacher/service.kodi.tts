@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from common.logger import BasicLogger
 from gtts import gTTS, gTTSError, __version__
 from gtts.lang import tts_langs, _fallback_deprecated_lang
 import click
@@ -17,8 +18,9 @@ LOGGER_SETTINGS = {
 }
 
 # Logger
-logging.config.dictConfig(LOGGER_SETTINGS)
-log = logging.getLogger("gtts")
+# logging.config.dictConfig(LOGGER_SETTINGS)
+# log = logging.getLogger("gtts")
+log = BasicLogger.get_module_logger(module_path=__file__)
 
 
 def sys_encoding():

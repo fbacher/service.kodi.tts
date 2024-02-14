@@ -1,3 +1,7 @@
+from __future__ import annotations  # For union operator |
+
+from common import *
+
 from backends.i_tts_backend_base import ITTSBackendBase
 from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.constraints import Constraints
@@ -7,7 +11,6 @@ from backends.settings.validators import (StringValidator,
                                           Validator)
 from common.base_services import BaseServices
 from common.setting_constants import Players
-from common.typing import *
 
 
 class BasePlayerSettings(BaseServiceSettings):

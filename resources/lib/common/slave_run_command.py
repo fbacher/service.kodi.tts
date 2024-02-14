@@ -1,4 +1,6 @@
 # coding=utf-8
+from __future__ import annotations  # For union operator |
+
 #  import simplejson as json
 import json
 import os
@@ -11,6 +13,9 @@ from subprocess import Popen
 
 import xbmc
 
+from common import *
+from common.constants import Constants
+
 from common.debug import Debug
 from common.garbage_collector import GarbageCollector
 from common.kodi_player_monitor import KodiPlayerMonitor, KodiPlayerState
@@ -18,42 +23,9 @@ from common.logger import *
 from common.monitor import Monitor
 from common.phrases import Phrase
 from common.simple_run_command import RunState
-from common.typing import *
+from common.utils import sleep
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
-
-
-class PlayerSlaveInfo():
-
-    def __init__(self, slave_pipe_dir: str, fifo_name: str) -> None:
-        clz = type(self)
-        self.slave_pipe_dir: str = slave_pipe_dir
-        self.fifo_name: str = fifo_name
-        self.fifo_in = None
-        self.fifo_in_initialized = False
-        self.fifo_out = None
-        self.socket = None
-
-    def get_pipe_dir(self) -> str:
-        return self.slave_pipe_dir
-
-    def get_fifo_name(self) -> str:
-        return self.fifo_name
-
-    def set_socket(self, socket):
-        self.socket = socket
-
-    def get_socket(self):
-        return self.socket
-
-    def set_fifo_in(self, fifo_in):
-        self.fifo_in(fifo_in)
-
-    def set_fifo_out(self, fifo_out):
-        self.fifo_out = fifo_out
-
-    def get_fifo_out(self):
-        return self.fifo_in
 
 
 class SlaveRunCommand:
@@ -64,7 +36,7 @@ class SlaveRunCommand:
     logger: BasicLogger = None
 
     def __init__(self, args: List[str], phrase_serial: int = 0, name: str = '',
-                 stop_on_play: bool = True, slave_info: PlayerSlaveInfo = None,
+                 stop_on_play: bool = True, slave_pipe_path: Path = None,
                  label: str = '',
                  speed: float = 1.0, volume: float = 100.0) -> None:
         """
@@ -84,6 +56,9 @@ class SlaveRunCommand:
         self.stop_on_play: bool = stop_on_play
         self.cmd_finished: bool = False
         self._thread: threading.Thread | None = None
+        self.fifo_in = None;
+        self.fifo_out = None
+        self.fifo_initialized: bool = False
         self.fifo_reader_thread: threading.Thread | None = None
         self.filename_sequence_number: int = 0
         self.flip_flop: bool = False
@@ -97,8 +72,7 @@ class SlaveRunCommand:
         # self.stderr_thread: threading.Thread | None = None
         self.stdout_lines: List[str] = []
         # self.stderr_lines: List[str] = []
-        self.slave_pipe: int = 0
-        self.slave_info: PlayerSlaveInfo = slave_info
+        self.slave_pipe_path: Path = slave_pipe_path
         self.volume: float = volume
         self.play_count: int = 0
 
@@ -108,28 +82,34 @@ class SlaveRunCommand:
             KodiPlayerMonitor.register_player_status_listener(
                     self.kodi_player_status_listener,
                     f'{self.thread_name}_Kodi_Player_Monitor')
+        '''            
+        try:
+            os.mkfifo(slave_pipe_path, mode=0o777)
+        except OSError as e:
+            clz.logger.exception(f'Failed to create FIFO: {slave_pipe_path}')
+        '''
 
     def add_phrase(self, phrase: Phrase) -> None:
         clz = type(self)
         try:
-            if self.slave_info.fifo_out is None:
+            if self.fifo_out is None:
                 #
-                # Open FIFO for read AFTER starting writer (mpv). Otherwise,
+                # Open FIFO for write AFTER starting reader (mpv). Otherwise,
                 # open will block until there is a writer.
                 try:
-                    slave_pipe_name = self.slave_info.get_fifo_name()
+                    slave_pipe_name = self.slave_pipe_path
                 except Exception as e:
                     clz.logger.exception('')
                     return
             suffix: str
             suffix = 'append-play'
             self.play_count += 1
-            self.send_speed()
-            self.send_volume()
             pre_silence_path: Path = phrase.get_pre_pause_path()
             if pre_silence_path is not None:
                 self.send_line(f'loadfile {str(pre_silence_path)} {suffix}')
 
+            self.send_speed()   # Speed, Volume is reset to initial values on each
+            self.send_volume()  # file played
             self.send_line(f'loadfile {str(phrase.get_cache_path())} {suffix}')
             post_silence_path: Path = phrase.get_post_pause_path()
             if post_silence_path is not None:
@@ -137,6 +117,7 @@ class SlaveRunCommand:
 
         except Exception as e:
             clz.logger.exception('')
+        clz.logger.debug(f'Exiting add_phrase: {phrase}')
 
     def set_speed(self, speed: float):
         self.speed = speed
@@ -155,12 +136,22 @@ class SlaveRunCommand:
         self.send_line(speed_str)
 
     def send_volume(self) -> None:
+        """
+        Sets the volume for the next played file. Note that the scale is in
+        percent. 100% is the original volume of file.
+        :return:
+        """
         self.fifo_sequence_number += 1
-        volume_str: str = (f'{{ "command": ["set_property", "volume", "{self.volume}"],'
+        volume_str: str = (f'{{ "command": ["set_property", "volume", "100.0"],'  # "{self.volume}"],'
                            f' "request_id": "{self.fifo_sequence_number}" }}')
         self.send_line(volume_str)
 
     def stop_playing(self):
+        """
+        Tell mpv to abort the playing of currently queued files. --q options
+        prevents mpv from exiting
+        :return:
+        """
         clz = type(self)
         try:
             # stop[<flags>]
@@ -168,6 +159,8 @@ class SlaveRunCommand:
             self.send_line(stop_str)
         except Exception as e:
             clz.logger.exception('')
+        clz.logger.debug(f'Stop playing')
+
 
     def quit(self, now: bool):
         """
@@ -185,6 +178,7 @@ class SlaveRunCommand:
             self.cmd_finished = True
         except Exception as e:
             clz.logger.exception('')
+        clz.logger.debug(f'Quit')
 
     def config_observers(self) -> None:
         self.fifo_sequence_number += 1
@@ -207,16 +201,18 @@ class SlaveRunCommand:
     def send_line(self, text: str) -> None:
         clz = type(self)
         try:
-            if self.slave_info.fifo_out is not None:
+            if self.fifo_out is not None:
                 clz.logger.debug(f'FIFO_OUT: {text}')
-                self.slave_info.fifo_out.write(f'{text}\n')
-                self.slave_info.fifo_out.flush()
+                self.fifo_out.write(f'{text}\n')
+                self.fifo_out.flush()
         except Exception as e:
             clz.logger.exception('')
 
     def terminate(self):
         if self.process is not None and self.run_state.value <= RunState.RUNNING.value:
             self.process.terminate()
+        clz = type(self)
+        clz.logger.debug(f'terminate')
 
     def kill(self):
         pass
@@ -240,18 +236,18 @@ class SlaveRunCommand:
         clz.logger.debug(f'In destroy')
         self.quit(now=True)
         self.process.kill()
-        if self.slave_info is not None and self.slave_info.fifo_in is not None:
+        if self.fifo_in is not None and self.fifo_in is not None:
             try:
-                self.slave_info.fifo_in.close()
+                self.fifo_in.close()
             except:
                 pass
-            self.slave_info.fifo_in = None
-        if self.slave_info is not None and self.slave_info.fifo_out is not None:
+            self.fifo_in = None
+        if self.fifo_out is not None:
             try:
-                self.slave_info.fifo_out.close()
+                self.fifo_out.close()
             except:
                 pass
-            self.slave_info.fifo_out = None
+            self.fifo_out = None
         try:
             self.process.stdout.close()
             self.process.stdout = None
@@ -269,6 +265,7 @@ class SlaveRunCommand:
         except:
             pass
         self.process.wait(0.5)
+        clz.logger.debug('Destroyed')
 
     def kodi_player_status_listener(self, player_state: KodiPlayerState) -> bool:
         clz = type(self)
@@ -412,6 +409,7 @@ class SlaveRunCommand:
         clz = type(self)
         self.rc = 0
         GarbageCollector.add_thread(self.run_thread)
+        clz.logger.debug(f'run_service started')
         env = os.environ.copy()
         try:
             if xbmc.getCondVisibility('System.Platform.Windows'):
@@ -422,17 +420,23 @@ class SlaveRunCommand:
                 # process level (stderr = subprocess.STDOUT), devnull or pass through
                 # via pipe and don't log
 
-                self.process = subprocess.Popen(self.args, stdin=subprocess.DEVNULL,
+                clz.logger.debug(f'Cond_Visibility: '
+                                 f'{xbmc.getCondVisibility("System.Platform.Windows")} '
+                                 f'mpv_path: {Constants.MPV_PATH} '
+                                 f'mplayer_path: {Constants.MPLAYER_PATH}')
+                self.process = subprocess.Popen(self.args, stdin=subprocess.PIPE,
                                                 stdout=subprocess.PIPE,
                                                 stderr=subprocess.STDOUT, shell=False,
-                                                universal_newlines=True, env=env,
+                                                universal_newlines=True,
+                                                encoding='utf-8', env=env,
                                                 close_fds=True,
                                                 creationflags=subprocess.DETACHED_PROCESS)
             else:
-                self.process = subprocess.Popen(self.args, stdin=subprocess.DEVNULL,
+                self.process = subprocess.Popen(self.args, stdin=subprocess.PIPE,
                                                 stdout=subprocess.PIPE,
                                                 stderr=subprocess.STDOUT, shell=False,
-                                                universal_newlines=True, env=env,
+                                                universal_newlines=True,
+                                                encoding='utf-8', env=env,
                                                 close_fds=True)
             self.stdout_thread = threading.Thread(target=self.stdout_reader,
                                                   name=f'{self.thread_name}_stdout_rdr')
@@ -443,14 +447,18 @@ class SlaveRunCommand:
             #                                        self.thread_name}_stderr_rdr')
             # self.stderr_thread.start()
             Monitor.exception_on_abort(timeout=1.0)
-            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            sock.settimeout(0.0)
-            self.logger.debug(f'fifo_name: {self.slave_info.get_fifo_name()}')
+
+            # fifo_file_in = os.open(self.slave_pipe_path, os.O_RDONLY | os.O_NONBLOCK)
+            # fifo_file_out = os.open(self.slave_pipe_path, os.O_WRONLY)
+
+            fifo_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            fifo_sock.settimeout(0.0)
             finished: bool = False
             limit: int = 30
+
             while limit > 0:
                 try:
-                    sock.connect(self.slave_info.get_fifo_name())
+                    fifo_sock.connect(str(self.slave_pipe_path))
                     break
                 except TimeoutError:
                     limit -= 1
@@ -458,7 +466,7 @@ class SlaveRunCommand:
                     limit -= 1
                     if limit == 0:
                         clz.logger.warning(f'FIFO does not exist: '
-                                           f'{self.slave_info.get_fifo_name()}')
+                                           f'{self.slave_pipe_path}')
                 except AbortException:
                     self.abort_listener()
                     break
@@ -472,16 +480,17 @@ class SlaveRunCommand:
             except Exception as e:
                 self.logger.exception('')
 
-            self.slave_info.fifo_in = sock.makefile(mode='r', buffering=1,
-                                                    encoding='utf-8', errors=None,
-                                                    newline=None)
-            self.slave_info.fifo_out = sock.makefile(mode='w', buffering=1,
-                                                     encoding='utf-8', errors=None,
-                                                     newline=None)
+            self.fifo_in = fifo_sock.makefile(mode='r', buffering=1,
+                                              encoding='utf-8', errors=None,
+                                               newline=None)
+            self.fifo_out = fifo_sock.makefile(mode='w', buffering=1,
+                                               encoding='utf-8', errors=None,
+                                               newline=None)
             self.fifo_reader_thread = threading.Thread(target=self.fifo_reader,
                                                        name=f'{self.thread_name}_fifo_reader')
-            self.send_speed()
             self.fifo_reader_thread.start()
+            sleep(0.25)
+            self.send_speed()
             self.send_volume()
             self.config_observers()
         except AbortException as e:
@@ -507,9 +516,9 @@ class SlaveRunCommand:
                 try:
                     if finished or self.cmd_finished:
                         break
-                    line = self.slave_info.fifo_in.readline()
+                    line = self.fifo_in.readline()
                     if len(line) > 0:
-                        self.slave_info.fifo_in_initialized = True
+                        self.fifo_initialized = True
                         clz.logger.debug(f'FIFO_IN: {line}')
                 except ValueError as e:
                     rc = self.process.poll()
@@ -517,6 +526,7 @@ class SlaveRunCommand:
                         self.rc = rc
                         # Command complete
                         finished = True
+                        clz.logger.debug(f'mpv process ended')
                         break
                     else:
                         clz.logger.exception('')
@@ -528,8 +538,8 @@ class SlaveRunCommand:
                 try:
                     '''
                         bacher@smeagol$ (cat gonzo2.mpv; echo '{ "command": [
-                        "observe_property_string", 1, "filename"] }'; echo '{ 
-                        "command": ["observe_property_string", 2, 
+                        "observe_property_string", 1, "filename"] }'; echo '{
+                        "command": ["observe_property_string", 2,
                         "playlist_playing_pos"] }'; sleep 60) | socat - ./slave.input
                         {"request_id":0,"error":"success"}
                         {"request_id":0,"error":"success"}
@@ -575,7 +585,7 @@ class SlaveRunCommand:
                      '''
                     if line and len(line) > 0:
                         data: dict = json.loads(line)
-                        # clz.logger.debug(f'data: {data}')
+                        clz.logger.debug(f'data: {data}')
 
                         #  Debug.dump_json('line_out:', data, DEBUG)
                         mpv_error: str = data.get('error', None)
@@ -598,7 +608,7 @@ class SlaveRunCommand:
                     clz.logger.exception('')
 
         except AbortException as e:
-            self.slave_info.fifo_in.close()
+            self.fifo_in.close()
             return
         except Exception as e:
             clz.logger.exception('')

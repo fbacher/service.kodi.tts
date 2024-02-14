@@ -49,7 +49,7 @@ def _name_module(tlib):
 
 def _resolve_filename(tlib_string, dirpath):
     """Tries to make sense of a type library specified as a string.
-    
+
     Args:
         tlib_string: type library designator
         dirpath: a directory to relativize the location
@@ -119,7 +119,7 @@ def GetModule(tlib):
     """
     if isinstance(tlib, base_text_type):
         tlib_string = tlib
-        # if a relative pathname is used, we try to interpret it relative to the 
+        # if a relative pathname is used, we try to interpret it relative to the
         # directory of the calling module (if not from command line)
         frame = sys._getframe(1)
         _file_ = frame.f_globals.get("__file__", None)
@@ -127,7 +127,7 @@ def GetModule(tlib):
         logger.debug("GetModule(%s), resolved: %s", pathname, is_abs)
         tlib = _load_tlib(pathname)  # don't register
         if not is_abs:
-            # try to get path after loading, but this only works if already registered            
+            # try to get path after loading, but this only works if already registered
             pathname = comtypes.tools.tlbparser.get_tlib_filename(tlib)
             if pathname is None:
                 logger.info("GetModule(%s): could not resolve to a filename", tlib)
@@ -213,7 +213,8 @@ def _create_friendly_module(tlib, modulename):
         setattr(comtypes.gen, modulename, mod)
         return mod
     # create in file system, and import it
-    with open(os.path.join(comtypes.client.gen_dir, modulename + ".py"), "w") as ofi:
+    with open(os.path.join(comtypes.client.gen_dir, modulename + ".py"), "wt",
+              encoding='utf-8') as ofi:
         print(code, file=ofi)
     _invalidate_import_caches()
     return _my_import("comtypes.gen." + modulename)
@@ -244,7 +245,8 @@ def _create_wrapper_module(tlib, pathname):
         sys.modules[fullname] = mod
         setattr(comtypes.gen, modname, mod)
     else:
-        with open(os.path.join(comtypes.client.gen_dir, modname + ".py"), "w") as ofi:
+        with open(os.path.join(comtypes.client.gen_dir, modname + ".py"), "wt",
+                  encoding='utf-8') as ofi:
             print(stream.getvalue(), file=ofi)
         _invalidate_import_caches()
         mod = _my_import(fullname)

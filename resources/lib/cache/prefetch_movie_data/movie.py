@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 """
 Created on 4/13/21
 
@@ -6,9 +8,10 @@ Created on 4/13/21
 """
 import datetime
 
+from common import *
+
 from cache.prefetch_movie_data.movie_constants import MovieField, MovieType
 from common.logger import *
-from common.typing import *
 
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 CHECK_FOR_NULLS: bool = True

@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 import ctypes
 import os
 import sys
 
+from common import *
+
 from common.configuration_utils import ConfigUtils
 from common.constants import Constants
 from common.logger import *
-from common.typing import *
 from .base import BaseEngineService
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)

@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 """
 Created on Feb 28, 2019
 
@@ -6,9 +8,10 @@ Created on Feb 28, 2019
 """
 from enum import Enum
 
+from common import *
+
 from common.critical_settings import CriticalSettings
 from common.logger import *
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -264,6 +267,7 @@ class Messages:
     BACKEND_GOOGLE = Message('Google TTS', 32324)
     BACKEND_RECITE = Message('Recite', 32325)
     BACKEND_RESPONSIVE_VOICE = Message('ResponsiveVoice', 32317)
+    BACKEND_SAPI = Message('SAPI', 32329)
     BACKEND_SPEECH_DISPATCHER = Message('Speech Dispatcher', 32318)
     BACKEND_INTERNAL = Message('Internal', 32326)
     BACKEND_LOG_ONLY = Message('Logging Only', 32327)

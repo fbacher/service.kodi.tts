@@ -1,6 +1,7 @@
 # coding=utf-8
+from __future__ import annotations  # For union operator |
 
-from common.typing import *
+from common import *
 
 
 class GoogleData:

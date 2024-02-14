@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 import hashlib
 import logging
 import pathlib
 
 import regex
+
+from common import *
 
 from gtts import gTTS, gTTSError
 
@@ -11,7 +15,6 @@ from gtts import gTTS, gTTSError
 # from common.exceptions import ExpiredException
 # from common.logger import *
 # from common.monitor import Monitor
-from common.typing import *
 
 from test.google_data import GoogleData
 
@@ -101,7 +104,7 @@ class SpeechGenerator:
             text_file_path = path_prefix / f'{file_hash}.txt'
             mp3_path: pathlib.Path = path_prefix / f'{locale_id}_{tld}/{file_hash}.mp3'
             mp3_path.parent.mkdir(mode=0o777, parents=True, exist_ok=True)
-            with text_file_path.open('wt') as f:
+            with text_file_path.open('wt', encoding='utf-8') as f:
                 f.write(phrase)
 
             with mp3_path.open('wb') as sound_file:

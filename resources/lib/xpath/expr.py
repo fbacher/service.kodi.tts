@@ -1,8 +1,12 @@
+from __future__ import annotations  # For union operator |
+
 import math
 import operator
 import re
 import xml.dom
 from itertools import *
+
+from common import *
 
 from xpath.exceptions import *
 

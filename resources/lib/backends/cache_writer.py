@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 import io
 import sys
 
-from typing.io import IO
-
+from common import *
 from backends.audio.sound_capabilties import ServiceType, SoundCapabilities
 from backends.players.iplayer import IPlayer
 from backends.players.player_index import PlayerIndex
@@ -14,7 +15,6 @@ from common.logger import *
 from common.phrases import Phrase
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 

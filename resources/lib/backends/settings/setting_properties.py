@@ -1,9 +1,12 @@
+from __future__ import annotations  # For union operator |
+
 from enum import Enum
 
 import xbmcvfs
 
+from common import *
+
 from backends.settings.service_types import Services
-from common.typing import *
 
 
 class SettingType(Enum):
@@ -44,10 +47,10 @@ class SettingsProperties:  # (ISettings):
     CACHE_PATH: Final[str] = 'cache_path'
     CACHE_EXPIRATION_DAYS: Final[str] = 'cache_expiration_days'
     CACHE_SPEECH: Final[str] = 'cache_speech'
+    CACHE_VOICE_FILES: Final[str] = 'cache_voice_files'
     CAPITAL_RECOGNITION: Final[str] = 'capital_recognition'
     CONVERTER: Final[str] = 'converter'
-    # DEBUG_LOGGING: Final[str] = 'debug_logging'
-    DEBUG_LOG_LEVEL: Final[str] = 'log_level'
+    DEBUG_LOG_LEVEL: Final[str] = 'debug_log_level'
     DELAY_VOICING: Final[str] = 'delay_voicing'
     DISABLE_BROKEN_SERVICES: Final[str] = 'disable_broken_services'
     # TODO: Change settings like output_via_espeak to be output <string value>
@@ -116,35 +119,41 @@ class SettingsProperties:  # (ISettings):
     VOLUME_DEFAULT = None
 
     TOP_LEVEL_SETTINGS: List[str] = [
-        # AUTO_ITEM_EXTRA,
-        # AUTO_ITEM_EXTRA_DELAY,
         ENGINE,
+        TTS_SERVICE
+    ]
+
+    TTS_SETTINGS: List[str] = [
+        AUTO_ITEM_EXTRA,
+        AUTO_ITEM_EXTRA_DELAY,
         BACKGROUND_PROGRESS_INTERVAL,
         DISABLE_BROKEN_SERVICES,
         SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA,
         SPEAK_BACKGROUND_PROGRESS,
-        # CACHE_PATH,   # Move to engine specific
+        CACHE_PATH,   # Move to engine specific
         CACHE_EXPIRATION_DAYS,  # Move to engine specific
-        # ADDONS_MD5,
+        CACHE_VOICE_FILES,
+        ADDONS_MD5,
         # DEBUG_LOGGING,  # Boolean needed to toggle visibility
         DEBUG_LOG_LEVEL,  # Merge into Logging, get rid of verbose_logging, etc
         GENDER_VISIBLE,
         GUI,
-        SPEECH_DISPATCHER,
+        #  SPEECH_DISPATCHER,
         OUTPUT_VIA,
         OUTPUT_VISIBLE,
-        # OVERRIDE_POLL_INTERVAL,
-        # POLL_INTERVAL,
-        # READER_ON,
+        OVERRIDE_POLL_INTERVAL,
+        PLAYER_SLAVE, # Probably not global (.tts)
+        POLL_INTERVAL,
+        READER_ON,
         SETTINGS_BEING_CONFIGURED,
         SETTINGS_DIGEST,
         # SETTINGS_LAST_CHANGED,
         SPEAK_LIST_COUNT,
         SPEAK_VIA_KODI,
+        SPEED_VISIBLE,
         TTSD_HOST,
         TTSD_PORT,
-        TTS_SERVICE,
-        # USE_TEMPFS,
+        USE_TEMPFS,
         VERSION,
         VOICE_VISIBLE,
         VOLUME_VISIBLE
@@ -178,6 +187,7 @@ class SettingsProperties:  # (ISettings):
         CACHE_PATH,
         CACHE_EXPIRATION_DAYS,
         CACHE_SPEECH,
+        CACHE_VOICE_FILES,
         CAPITAL_RECOGNITION,
         CONVERTER,
         # DEBUG_LOGGING,
@@ -244,10 +254,11 @@ class SettingsProperties:  # (ISettings):
             cls.CACHE_PATH                            : SettingType.STRING_TYPE,
             cls.CACHE_EXPIRATION_DAYS                 : SettingType.INTEGER_TYPE,
             cls.CACHE_SPEECH                          : SettingType.BOOLEAN_TYPE,
-            cls.CAPITAL_RECOGNITION                   : SettingType.STRING_TYPE,
+            cls.CACHE_VOICE_FILES                     : SettingType.BOOLEAN_TYPE,
+            cls.CAPITAL_RECOGNITION                   : SettingType.BOOLEAN_TYPE,
             cls.CONVERTER                             : SettingType.STRING_TYPE,
-            # cls.DEBUG_LOGGING: SettingType.BOOLEAN_TYPE,
             cls.DEBUG_LOG_LEVEL                       : SettingType.INTEGER_TYPE,
+            cls.DELAY_VOICING                         : SettingType.BOOLEAN_TYPE,
             cls.DISABLE_BROKEN_SERVICES               : SettingType.BOOLEAN_TYPE,
             cls.GENDER                                : SettingType.STRING_TYPE,
             cls.GENDER_VISIBLE                        : SettingType.BOOLEAN_TYPE,

@@ -1,14 +1,17 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 import os
 import subprocess
 import sys
+
+from common import *
 
 from backends import base
 from common import utils
 from common.logger import *
 from common.setting_constants import Backends
 from common.system_queries import SystemQueries
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -33,7 +36,7 @@ class ReciteTTSBackend(base.SimpleTTSBackend):
 
     def runCommandAndSpeak(self, text):
         args = ['recite', text]
-        self.process = subprocess.Popen(args, universal_newlines=True)
+        self.process = subprocess.Popen(args, universal_newlines=True, encoding='utf-8')
         while self.process.poll() is None and self.active:
             utils.sleep(10)
 
@@ -62,8 +65,10 @@ class ReciteTTSBackend(base.SimpleTTSBackend):
     @staticmethod
     def available():
         try:
-            subprocess.call(['recite', '-VERSion'], stdout=(open(os.path.devnull, 'w')),
-                            stderr=subprocess.STDOUT, universal_newlines=True)
+            subprocess.call(['recite', '-VERSion'],
+                            stdout=(open(os.path.devnull, 'w')),
+                            stderr=subprocess.STDOUT, universal_newlines=True,
+                            encoding='utf-8')
         except AbortException:
             reraise(*sys.exc_info())
         except:

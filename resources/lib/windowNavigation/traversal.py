@@ -1,6 +1,11 @@
+from __future__ import annotations  # For union operator |
+
 import xbmcgui
 
+from common import *
+
 import windows.guitables as guitables
+
 from common.constants import Constants
 from common.logger import (BasicLogger)
 

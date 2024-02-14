@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 import copy
 import threading
 import time
@@ -6,13 +8,15 @@ from contextlib import AbstractContextManager
 
 import xbmcaddon
 
+from common import *
+
 from backends.settings.service_types import Services
 from backends.settings.setting_properties import SettingsProperties, SettingType
 from backends.settings.settings_map import SettingsMap
 from common.constants import Constants
 from common.logger import *
 from common.monitor import Monitor
-from common.typing import *
+from common.setting_constants import Backends
 from kutils.kodiaddon import Addon
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -93,7 +97,7 @@ class PreviousCachedSettings:
 
     _previous_settings: Dict[str, Union[Any, None]] = {}
     _previous_settings_changed: bool = False
-    _previous_settings_update_begin: float | None = None
+    _previous_settings_update_begin: float |  None = None
 
     @classmethod
     def backup(cls, settings_to_backup: Dict[str, Any],
@@ -131,7 +135,7 @@ class SettingsContext(AbstractContextManager):
         self.ks: xbmcaddon.Settings = None
 
     def __enter__(self) -> ForwardRef('SettingsContext'):
-        self.ks = xbmcaddon.Addon("service.kodi.tts").getSettings()
+        self.ks = xbmcaddon.Addon(Constants.ADDON_ID).getSettings()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -152,14 +156,13 @@ class SettingsContext(AbstractContextManager):
 
 class SettingsWrapper:
 
-    # new_api = xbmcaddon.Addon("service.kodi.tts").getSettings()
-    old_api = xbmcaddon.Addon()
     _logger: BasicLogger = None
 
     def __init__(self):
         clz = type(self)
         #  clz._logger = module_logger.getChild(clz.__name__)
 
+    '''
     def getBool(self, id: str) -> bool:
         """
         Returns the value of a setting as a boolean.
@@ -495,6 +498,7 @@ class SettingsWrapper:
             ..
         """
         pass
+    '''
 
 
 class SettingsLowLevel:
@@ -518,7 +522,10 @@ class SettingsLowLevel:
     _current_engine: str = None
     _alternate_engine: str = None
     _logger: BasicLogger = None
-    settings_wrapper = SettingsWrapper()
+    # settings_wrapper = SettingsWrapper()
+    addon = xbmcaddon.Addon(Constants.ADDON_ID)
+    all_settings: xbmcaddon.Settings = addon.getSettings()
+    settings_wrapper = all_settings
 
     _initialized: bool = False
     _loading: threading.Event = threading.Event()
@@ -614,55 +621,59 @@ class SettingsLowLevel:
         engine_id: str = None
         type_error: bool = False
         expected_type: str = ''
-        if full_setting_id not in SettingsProperties.TOP_LEVEL_SETTINGS:
-            engine_id, setting_id = cls.splitSettingId(full_setting_id)
-        else:
-            setting_id = full_setting_id
-
-        if engine_id is None:
+        cls._logger.debug(f'full_setting_id: {full_setting_id} value: {value}')
+        engine_id, setting_id = cls.splitSettingId(full_setting_id)
+        if full_setting_id in SettingsProperties.TTS_SETTINGS:
             engine_id = Services.TTS_SERVICE
 
+        cls._logger.debug(f'setting_id: {setting_id} engine_id: {engine_id}')
         if not SettingsMap.is_valid_property(engine_id, setting_id):
             cls._logger.debug(
                     f'TRACE Setting {setting_id} NOT supported for {engine_id}')
+        if setting_id is None or len(setting_id) == 0:
+            setting_id = engine_id
+
         PROTO_LIST_BOOLS: List[bool] = [True, False]
         PROTO_LIST_FLOATS: List[float] = [0.7, 8.2]
         PROTO_LIST_INTEGERS: List[int] = [1, 57]
         PROTO_LIST_STRINGS: List[str] = ['a', 'b']
         try:
-            match SettingsProperties.SettingTypes[setting_id]:
-                case SettingType.BOOLEAN_TYPE:
+            try:
+                setting_type = SettingsProperties.SettingTypes[setting_id]
+                if setting_type == SettingType.BOOLEAN_TYPE:
                     expected_type = 'bool'
                     if not isinstance(value, bool):
                         type_error = True
-                case SettingType.BOOLEAN_LIST_TYPE:
+                elif setting_type == SettingType.BOOLEAN_LIST_TYPE:
                     expected_type = 'List[bool]'
                     if not isinstance(value, type(PROTO_LIST_BOOLS)):
                         type_error = True
-                case SettingType.FLOAT_TYPE:
+                elif setting_type == SettingType.FLOAT_TYPE:
                     expected_type = 'float'
                     if not isinstance(value, float):
                         type_error = True
-                case SettingType.FLOAT_LIST_TYPE:
+                elif setting_type == SettingType.FLOAT_LIST_TYPE:
                     expected_type = 'List[float]'
                     if not isinstance(value, type(PROTO_LIST_FLOATS)):
                         type_error = True
-                case SettingType.INTEGER_TYPE:
+                elif setting_type == SettingType.INTEGER_TYPE:
                     expected_type = 'int'
                     if not isinstance(value, int):
                         type_error = True
-                case SettingType.INTEGER_LIST_TYPE:
+                elif setting_type == SettingType.INTEGER_LIST_TYPE:
                     expected_type = 'List[int]'
                     if not isinstance(value, type(PROTO_LIST_INTEGERS)):
                         type_error = True
-                case SettingType.STRING_TYPE:
+                elif setting_type == SettingType.STRING_TYPE:
                     expected_type = 'str'
                     if not isinstance(value, str):
                         type_error = True
-                case SettingType.STRING_LIST_TYPE:
+                elif setting_type == SettingType.STRING_LIST_TYPE:
                     expected_type = 'List[str'
                     if not isinstance(value, type(PROTO_LIST_STRINGS)):
                         type_error = True
+            finally:
+                pass
         except TypeError:
             cls._logger.exception(
                     f'TRACE: failed to find type of setting: {full_setting_id}. '
@@ -704,33 +715,30 @@ class SettingsLowLevel:
                 return
             new_settings: Dict[str, Any] = {}
             # Get Lock
-            engine_id: str = cls.load_setting(SettingsProperties.ENGINE)
+            engine_id: str
+            _, engine_id = cls.load_setting(SettingsProperties.ENGINE)
+            if engine_id == Backends.AUTO_ID:
+                engine_id = Backends.DEFAULT_ENGINE_ID
             force_load: bool = False
             for setting_id in SettingsProperties.ALL_SETTINGS:
                 value: Any | None
                 service_id: str = engine_id
                 key: str = cls.getExpandedSettingId(setting_id, engine_id)
-                if setting_id not in SettingsProperties.TOP_LEVEL_SETTINGS:
-                    if SettingsMap.is_valid_property(service_id, setting_id):
-                        value = cls.load_setting(setting_id, engine_id)
-                    elif force_load:
-                        cls._logger.debug(f'FORCED load of property: {setting_id}')
-                        value = cls.load_setting(setting_id, engine_id)
-                    else:
-                        cls._logger.debug(f'Skipping load of property: {setting_id} '
-                                          f'for service_id: {service_id}')
-                        continue
+                if setting_id in SettingsProperties.TOP_LEVEL_SETTINGS:
+                    continue
+                if setting_id in SettingsProperties.TTS_SETTINGS:
+                    service_id = Services.TTS_SERVICE
+                if SettingsMap.is_valid_property(service_id, setting_id):
+                    key, value = cls.load_setting(setting_id, service_id)
+                elif force_load:
+                    cls._logger.debug(f'FORCED load of property: {setting_id}')
+                    key, value = cls.load_setting(setting_id, service_id)
                 else:
-                    if SettingsMap.is_valid_property(Services.TTS_SERVICE, setting_id):
-                        value = cls.load_setting(setting_id)
-                    elif force_load:
-                        cls._logger.debug(f'FORCED load of property: {setting_id}')
-                        value = cls.load_setting(setting_id)
-                    else:
-                        cls._logger.debug(f'Skipping load of top-level (.tts) property: '
-                                          f'{setting_id}')
+                    cls._logger.debug(f'Skipping load of property: {setting_id} '
+                                      f'for service_id: {service_id}')
                     continue
                 if value is not None:
+                    cls._logger.debug(f'Adding {key} value: {value} to settings cache')
                     new_settings[key] = value
 
             cls._current_engine = engine_id
@@ -744,8 +752,8 @@ class SettingsLowLevel:
 
     @classmethod
     def load_setting(cls, setting_id: str,
-                     engine_id: str = None) -> Any | None:
-        if engine_id is None:
+                     engine_id: str = None) -> Tuple[str, Any | None]:
+        if setting_id in SettingsProperties.TTS_SETTINGS:
             engine_id = Services.TTS_SERVICE
 
         found: bool = True
@@ -756,6 +764,7 @@ class SettingsLowLevel:
         key: str = cls.getExpandedSettingId(setting_id, engine_id)
         value: Any | None = None
         try:
+
             match SettingsProperties.SettingTypes[setting_id]:
                 case SettingType.BOOLEAN_TYPE:
                     value = cls.settings_wrapper.getBool(key)
@@ -782,10 +791,11 @@ class SettingsLowLevel:
             cls._logger.exception(f'failed to get type of setting: {key}.{engine_id} ')
             if force_load:
                 try:
-                    value_str: str = xbmcaddon.Addon("service.kodi.tts").getSetting(key)
+                    value_str: str = xbmcaddon.Addon(Constants.ADDON_ID).getSetting(key)
                     if value_str is None:
                         value = None
                     else:
+                        """
                         match SettingsProperties.SettingTypes[setting_id]:
                             case SettingType.BOOLEAN_TYPE:
                                 value = bool(value_str)
@@ -795,12 +805,28 @@ class SettingsLowLevel:
                                 value = int(value_str)
                             case SettingType.STRING_TYPE:
                                 value = value_str
+                        """
+                        setting_type = SettingsProperties.SettingTypes[setting_id]
+                        if setting_type == SettingType.BOOLEAN_TYPE:
+                            value = bool(value_str)
+                        elif setting_type == SettingType.FLOAT_TYPE:
+                            value = float(value_str)
+                        elif setting_type == SettingType.INTEGER_TYPE:
+                            value = int(value_str)
+                        elif setting_type == SettingType.STRING_TYPE:
+                            value = value_str
                 except Exception as e:
                     cls._logger.debug(
                         f'Second attempt to read setting {setting_id} failed')
         if value is None:
-            value = SettingsMap.get_default_value(engine_id, setting_id)
-        return value
+            try:
+                value = SettingsMap.get_default_value(engine_id, setting_id)
+            except Exception as e:
+                cls._logger.exception(f'Can not set default for '
+                                      f'{setting_id} {engine_id}')
+        if value:
+            cls._logger.debug(f'Read {key} value: {value}')
+        return key, value
 
     @classmethod
     def configuring_settings(cls):
@@ -808,18 +834,21 @@ class SettingsLowLevel:
         return False
 
     @classmethod
-    def getExpandedSettingId(cls, setting_id: str, backend: str) -> str:
+    def getExpandedSettingId(cls, setting_id: str, engine_id: str) -> str:
         tmp_id: List[str] = setting_id.split(sep=".", maxsplit=2)
         real_key: str
+
         if len(tmp_id) > 1:
             #     cls._logger.debug(f'already expanded: {setting_id}')
             real_key = setting_id
         else:
             suffix: str = ''
-            if setting_id not in SettingsProperties.TOP_LEVEL_SETTINGS:
-                if backend is None:
-                    backend = cls._current_engine
-                suffix = "." + backend
+            if engine_id is None:
+                if setting_id not in SettingsProperties.TOP_LEVEL_SETTINGS:
+                    engine_id = cls._current_engine
+
+            if engine_id:
+                suffix = "." + engine_id
 
             real_key: str = setting_id + suffix
         # cls._logger.debug(
@@ -857,6 +886,7 @@ class SettingsLowLevel:
                 cls._logger.error("TRACE null or empty backend")
         real_key = cls.getExpandedSettingId(setting_id, backend_id)
         try:
+            """
             match SettingsProperties.SettingTypes[setting_id]:
                 case SettingType.BOOLEAN_TYPE:
                     return cls.settings_wrapper.getBool(real_key)
@@ -874,13 +904,31 @@ class SettingsLowLevel:
                     return cls.settings_wrapper.getString(real_key)
                 case SettingType.STRING_LIST_TYPE:
                     return cls.settings_wrapper.getStringList(real_key)
+            """
+            setting_type =  SettingsProperties.SettingTypes[setting_id]
+            if setting_type == SettingType.BOOLEAN_TYPE:
+                return cls.settings_wrapper.getBool(real_key)
+            elif setting_type == SettingType.BOOLEAN_LIST_TYPE:
+                return cls.settings_wrapper.getBoolList(real_key)
+            elif setting_type == SettingType.FLOAT_TYPE:
+                return cls.settings_wrapper.getNumber(real_key)
+            elif setting_type == SettingType.FLOAT_LIST_TYPE:
+                return cls.settings_wrapper.getNumberList(real_key)
+            elif setting_type == SettingType.INTEGER_TYPE:
+                return cls.settings_wrapper.getInt(real_key)
+            elif setting_type == SettingType.INTEGER_LIST_TYPE:
+                return cls.settings_wrapper.getIntList(real_key)
+            elif setting_type == SettingType.STRING_TYPE:
+                return cls.settings_wrapper.getString(real_key)
+            elif setting_type == SettingType.STRING_LIST_TYPE:
+                return cls.settings_wrapper.getStringList(real_key)
         except Exception as e:
             cls._logger.exception('')
 
     @classmethod
     def commit_settings(cls):
         #  cls._logger.debug('TRACE commit_settings')
-        addon: xbmcaddon.Addon = xbmcaddon.Addon('service.kodi.tts')
+        addon: xbmcaddon.Addon = xbmcaddon.Addon(Constants.ADDON_ID)
 
         for full_setting_id, value in CurrentCachedSettings.get_settings().items():
             full_setting_id: str
@@ -898,7 +946,7 @@ class SettingsLowLevel:
                 if value == 'NO_VALUE':
                     cls._logger.debug(f'Expected setting not found {prefix}')
                     continue
-
+                """
                 match value_type:
                     case SettingType.BOOLEAN_TYPE:
                         cls.settings_wrapper.setBool(full_setting_id, value)
@@ -916,11 +964,34 @@ class SettingsLowLevel:
                         cls.settings_wrapper.setString(full_setting_id, value)
                     case SettingType.STRING_LIST_TYPE:
                         cls.settings_wrapper.setStringList(full_setting_id, value)
+                """
+                if value_type == SettingType.BOOLEAN_TYPE:
+                    cls.settings_wrapper.setBool(full_setting_id, value)
+                if value_type == SettingType.BOOLEAN_LIST_TYPE:
+                    cls.settings_wrapper.setBoolList(full_setting_id, value)
+                if value_type == SettingType.FLOAT_TYPE:
+                    cls.settings_wrapper.setNumber(full_setting_id, value)
+                if value_type == SettingType.FLOAT_LIST_TYPE:
+                    cls.settings_wrapper.setNumberList(full_setting_id, value)
+                if value_type == SettingType.INTEGER_TYPE:
+                    cls.settings_wrapper.setInt(full_setting_id, value)
+                if value_type == SettingType.INTEGER_LIST_TYPE:
+                    cls.settings_wrapper.setIntList(full_setting_id, value)
+                if value_type == SettingType.STRING_TYPE:
+                    cls.settings_wrapper.setString(full_setting_id, value)
+                if value_type == SettingType.STRING_LIST_TYPE:
+                    cls.settings_wrapper.setStringList(full_setting_id, value)
             except Exception as e:
                 cls._logger.exception('')
                 cls._logger.exception(f'Error saving setting: {full_setting_id} '
                                       f'value: {str_value} as '
                                       f'{value_type.name}')
+            engine = addon.getSettingString('engine')
+            addon.setSettingString('engine', engine)
+
+            del cls.all_settings
+            cls.all_settings: xbmcaddon.Settings = addon.getSettings()
+            cls.settings_wrapper = cls.all_settings
 
     @classmethod
     def get_engine_id(cls, default: str = None,
@@ -954,9 +1025,9 @@ class SettingsLowLevel:
 
     @classmethod
     def setSetting(cls, setting_id: str, value: Any,
-                   engine_id_id: str) -> bool:
+                   engine_id: str) -> bool:
 
-        real_key = cls.getExpandedSettingId(setting_id, engine_id_id)
+        real_key = cls.getExpandedSettingId(setting_id, engine_id)
         success, found_type = cls.type_and_validate_settings(real_key, value)
         try:
             success: bool = CurrentCachedSettings.set_setting(real_key, value)
@@ -998,9 +1069,9 @@ class SettingsLowLevel:
 
     @classmethod
     def set_setting_str(cls, setting_id: str, value: str, engine_id: str = None) -> bool:
-        if setting_id == SettingsProperties.ENGINE:
-            cls._logger.debug(f'TRACE engine_id: {value}')
         real_key = cls.getExpandedSettingId(setting_id, engine_id)
+        if setting_id == SettingsProperties.ENGINE:
+            cls._logger.debug(f'TRACE engine_id: {value} real_key: {real_key} value: {value}')
         success, found_type = cls.type_and_validate_settings(real_key, value)
         passed: bool = CurrentCachedSettings.set_setting(real_key, value)
         return passed
@@ -1010,9 +1081,10 @@ class SettingsLowLevel:
                         ignore_cache: bool = False,
                         default: str = None) -> str:
         force_load: bool = False
-        if ignore_cache and setting_id == SettingsProperties.ENGINE:
-            cls._logger.debug(f'TRACE get_setting_str IGNORING CACHE id: {setting_id}')
         real_key = cls.getExpandedSettingId(setting_id, engine_id)
+        if ignore_cache and setting_id == SettingsProperties.ENGINE:
+            cls._logger.debug(
+                f'TRACE get_setting_str IGNORING CACHE id: {setting_id} {engine_id} -> {real_key}')
         if ignore_cache:
             try:
                 value: str = cls.settings_wrapper.getString(real_key)

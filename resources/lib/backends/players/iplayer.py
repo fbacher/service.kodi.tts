@@ -1,5 +1,8 @@
+from __future__ import annotations  # For union operator |
+
+from common import *
+
 from common.phrases import Phrase
-from common.typing import *
 
 
 class IPlayer:
@@ -13,6 +16,10 @@ class IPlayer:
 
     @classmethod
     def set_sound_dir(cls):
+        raise NotImplementedError
+
+    @classmethod
+    def get_sound_dir(cls) -> str:
         raise NotImplementedError
 
     @classmethod

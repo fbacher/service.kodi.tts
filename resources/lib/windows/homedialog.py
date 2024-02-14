@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 import xbmc
+
+from common import *
 
 from common.logger import BasicLogger
 from common.messages import Messages
-from common.typing import *
 from .base import WindowReaderBase
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)

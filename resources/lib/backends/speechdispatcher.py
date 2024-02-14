@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 import locale
 import os
 import sys
+
+from common import *
 
 from backends.audio.sound_capabilties import ServiceType, SoundCapabilities
 from backends.base import ThreadedTTSBackend
@@ -17,7 +21,6 @@ from common.messages import Messages
 from common.setting_constants import Backends
 from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 

@@ -1,3 +1,7 @@
+from __future__ import annotations  # For union operator |
+
+from common import *
+
 from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.service_types import Services
 from common.setting_constants import Backends

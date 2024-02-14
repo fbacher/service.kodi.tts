@@ -9,7 +9,8 @@ def load(filename):
     """Return an AudioClip for the given filename."""
     return AudioClip(filename)
 
-class AudioClip(object):
+
+class AudioClip:
     __slots__ = ['_clip']
 
     def __init__(self, filename):

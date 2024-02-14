@@ -1,5 +1,7 @@
+from __future__ import annotations  # For union operator |
+
 from backends.i_tts_backend_base import ITTSBackendBase
-from common.__init__ import *
+from common import *
 
 
 class IBackendInfo:

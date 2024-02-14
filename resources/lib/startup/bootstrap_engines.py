@@ -1,13 +1,17 @@
+from __future__ import annotations  # For union operator |
+
 # from backends.i_tts_backend_base import ITTSBackendBase
 # from backends.settings.service_types import Services
 import sys
+
+from common import *
 
 from backends.base import BaseEngineService
 from backends.settings.setting_properties import SettingsProperties
 # from backends.settings.settings_map import SettingsMap
 # from backends.settings.validators import StringValidator
 from backends.settings.settings_map import Reason, SettingsMap
-from common import *
+from common.constants import Constants
 from common.logger import BasicLogger
 from common.setting_constants import Backends
 from common.settings import Settings
@@ -43,17 +47,23 @@ class BootstrapEngines:
         Backends.EXPERIMENTAL_ENGINE_ID,
         #   SpeechUtilComTTSBackend(),
         # ESpeakCtypesTTSBackend(),
+        Backends.SAPI_ID,
         Backends.LOG_ONLY_ID
     ]
     _initialized: bool = False
 
     @classmethod
     def init(cls) -> None:
+        module_logger.debug(f'Initialized: {cls._initialized}')
         if not cls._initialized:
+            module_logger.debug(f'initializing')
             cls._initialized = True
             cls._logger = module_logger.getChild(cls.__class__.__name__)
+            cls._logger.debug(f'About to load_base')
             cls.load_base()
+            cls._logger.debug(f'About to determine_available_engines')
             cls.determine_available_engines()
+            cls._logger.debug(f'About to load_current_backend')
             cls.load_current_backend()
             # Load all settings for current backend
             # Can be called multiple times
@@ -188,6 +198,27 @@ class BootstrapEngines:
             cls._logger.exception('')
             SettingsMap.set_is_available(Backends.SPEECH_DISPATCHER_ID, Reason.BROKEN)
 
+        if Constants.PLATFORM_WINDOWS:
+            try:
+                cls._logger.debug(f'Loading SAPI_Settings')
+                from backends.engines.sapi_settings import SAPI_Settings
+                sapi: SAPI_Settings = SAPI_Settings()
+                is_available: bool = sapi.isInstalled()
+                cls._logger.debug(f'SAPI available: {is_available}')
+                if is_available:
+                    SettingsMap.set_is_available(Backends.SAPI_ID,
+                                                 Reason.AVAILABLE)
+                    cls._logger.debug(f'SAPIBackend is available')
+                else:
+                    SettingsMap.set_is_available(Backends.SAPI_ID,
+                                                 Reason.NOT_AVAILABLE)
+                    cls._logger.debug(f'SAPIBackend is NOT available')
+            except AbortException:
+                reraise(*sys.exc_info())
+            except Exception as e:
+                cls._logger.exception('')
+                SettingsMap.set_is_available(Backends.SAPI_ID, Reason.BROKEN)
+
     @classmethod
     def load_current_backend(cls) -> str:
         """
@@ -201,10 +232,13 @@ class BootstrapEngines:
         """
         engine_id: str = SettingsLowLevel.get_engine_id(bootstrap=True,
                                                         default=None)
+        cls._logger.debug(f'engine_id: {engine_id}')
         if engine_id is None:
             engine_id = SettingsProperties.ENGINE_DEFAULT
+        cls._logger.debug(f'Trying to load engine: {engine_id}')
         Settings.set_engine_id(engine_id)
         engine_id = BootstrapEngines.load_engine(engine_id)
+        cls._logger.debug(f'Loaded:{engine_id}')
 
     @classmethod
     def load_engine(cls, engine_id: str) -> None:
@@ -239,10 +273,21 @@ class BootstrapEngines:
             elif engine_id == Backends.GOOGLE_ID:
                 from backends.google import GoogleTTSEngine
                 engine = GoogleTTSEngine()
+            elif engine_id == Backends.SAPI_ID:
+                try:
+                    from backends.sapi import SAPIBackend
+                    cls._logger.debug(f'Loading {Backends.SAPI_ID}')
+                    engine = SAPIBackend()
+                    cls._logger.debug(f'Finished loading {Backends.SAPI_ID}')
+                except Exception as e:
+                    cls._logger.exception('Loading SAPI')
             else:  # Catch all default
-                # engine_id = ESpeakSettings().service_ID
-                from backends.responsive_voice import ResponsiveVoiceTTSBackend
-                engine = ResponsiveVoiceTTSBackend()
+                try:
+                    # engine_id = ESpeakSettings().service_ID
+                    from backends.responsive_voice import ResponsiveVoiceTTSBackend
+                    engine = ResponsiveVoiceTTSBackend()
+                except Exception as e:
+                    cls._logger.exception('Loading DEFAULT engine')
                 # engine.destroy()
         except AbortException:
             reraise(*sys.exc_info())
@@ -256,7 +301,9 @@ class BootstrapEngines:
         for engine_id in cls.engine_ids_by_priority:
             engine_id: str
             if BaseServices.getService(engine_id) is None:
+                cls._logger.debug(f'Loading engine: {engine_id}')
                 cls.load_engine(engine_id)
+                cls._logger.debug(f'Loaded engine: {engine_id}')
 
         # Include settings for other engines
         Settings.load_settings()

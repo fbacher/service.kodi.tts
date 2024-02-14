@@ -1,9 +1,6 @@
 # coding=utf-8
 
-from typing import *
-from typing import Match, Pattern, SupportsIndex
-
-from common.exceptions import AbortException, reraise
+from common import *
 
 DownloadInfo = Dict[str, Any]
 

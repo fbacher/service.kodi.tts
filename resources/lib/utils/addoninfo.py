@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 import hashlib
 import json
 import os
 
 import xbmc
+
+from common import *
 
 from common.constants import Constants
 from common.logger import *
@@ -37,7 +41,7 @@ def initAddonsData(force=False):
     md5 = getAddonsMD5()
     saveAddonsMD5(md5)
     jsonString = xbmc.executeJSONRPC(BASE)
-    with open(DATAPATH, 'w') as f:
+    with open(DATAPATH, 'w', encoding='utf-8') as f:
         f.write(jsonString)
 
 
@@ -50,7 +54,7 @@ def getAddonsDetails():
 def loadAddonsDetails(as_dict=False):
     if not os.path.exists(DATAPATH):
         return None
-    with open(DATAPATH, 'r') as f:
+    with open(DATAPATH, 'r', encoding='utf-8') as f:
         data = json.load(f)
     detailsList = data['result']['addons']
     if as_dict:

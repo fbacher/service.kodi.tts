@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
 
 import os
 
 import xbmc
 import xbmcvfs
+
+from common import *
 
 from common.constants import Constants
 from common.logger import *
@@ -81,10 +84,10 @@ class SystemQueries:
     @classmethod
     def wasPostInstalled(cls):
         if os.path.exists(Constants.DISABLE_PATH):
-            with open(Constants.DISABLE_PATH, 'r') as f:
+            with open(Constants.DISABLE_PATH, 'rt', encoding='utf-8') as f:
                 return f.read() == 'POST'
         elif os.path.exists(Constants.ENABLE_PATH):
-            with open(Constants.ENABLE_PATH, 'r') as f:
+            with open(Constants.ENABLE_PATH, 'rt', encoding='utf-8') as f:
                 return f.read() == 'POST'
 
         return False
@@ -92,10 +95,10 @@ class SystemQueries:
     @classmethod
     def wasPreInstalled(cls):
         if os.path.exists(Constants.DISABLE_PATH):
-            with open(Constants.DISABLE_PATH, 'r') as f:
+            with open(Constants.DISABLE_PATH, 'rt', encoding='utf-8') as f:
                 return f.read() == 'PRE'
         elif os.path.exists(Constants.ENABLE_PATH):
-            with open(Constants.ENABLE_PATH, 'r') as f:
+            with open(Constants.ENABLE_PATH, 'rt', encoding='utf-8') as f:
                 return f.read() == 'PRE'
 
         return False

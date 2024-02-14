@@ -1,3 +1,7 @@
+from __future__ import annotations  # For union operator |
+
+from common import *
+
 from backends.audio.sound_capabilties import SoundCapabilities
 from backends.engines.base_engine_settings import (BaseEngineSettings)
 from backends.settings.base_service_settings import BaseServiceSettings
@@ -12,7 +16,6 @@ from common.logger import BasicLogger
 from common.setting_constants import Backends, Players
 from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 

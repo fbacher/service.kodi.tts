@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
 
 import os
 import shutil
@@ -11,12 +12,13 @@ import urllib.parse
 import urllib.request
 import urllib.request
 
+from common import *
+
 from backends import asyncconnections
 # from backends.audio.player_handler import WavAudioPlayerHandler
 from backends.base import SimpleTTSBackend
 from common import utils
 from common.logger import *
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 

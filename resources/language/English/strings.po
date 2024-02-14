@@ -1140,3 +1140,7 @@ msgstr ""
 msgctxt "#32328"
 msgid "Pico-Wave"
 msgstr ""
+
+msgcdtxt "#32329"
+msgid "SAPI"
+msgstr ""

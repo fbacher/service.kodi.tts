@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 import time
 
 import xbmc
+
+from common import *
 
 from . import guitables
 from .base import WindowReaderBase

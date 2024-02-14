@@ -1,4 +1,8 @@
 # coding=utf-8
+from __future__ import annotations  # For union operator |
+
+from common import *
+
 from backends.players.iplayer import IPlayer
 from backends.players.player_index import PlayerIndex
 from common.base_services import IServices

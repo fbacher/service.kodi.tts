@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
 
 import errno
 import os
 import shutil
 import subprocess
 import threading
+
+from common import *
 
 from backends.audio.sound_capabilties import ServiceType, SoundCapabilities
 from backends.backend_info_bridge import BackendInfoBridge
@@ -17,7 +20,6 @@ from common.setting_constants import Converters
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
-from common.typing import *
 from converters.base_converter import AudioConverter
 from converters.converter_index import ConverterIndex
 
@@ -254,7 +256,8 @@ class SOXAudioConverter(AudioConverter):
                     return False
             else:
                 subprocess.call(cls._availableArgs, stdout=(open(os.path.devnull, 'w')),
-                                stderr=subprocess.STDOUT, universal_newlines=True)
+                                stderr=subprocess.STDOUT, universal_newlines=True,
+                                encoding='utf-8')
         except:
             return False
         return True
@@ -519,7 +522,8 @@ class Mpg321OEPiAudioConverter(AudioConverter):
                                                      open(os.path.devnull, 'w')),
                                                  stderr=subprocess.STDOUT,
                                                  env=self.env, shell=True,
-                                                 universal_newlines=True)
+                                                 universal_newlines=True,
+                                                 encoding='utf-8')
         try:
             shutil.copyfileobj(source, self._convert_process.stdin)
         except IOError as e:
@@ -537,7 +541,8 @@ class Mpg321OEPiAudioConverter(AudioConverter):
                                                  stdout=(
                                                      open(os.path.devnull, 'w')),
                                                  stderr=subprocess.STDOUT, env=self.env,
-                                                 shell=True, universal_newlines=True)
+                                                 shell=True, universal_newlines=True,
+                                                 encoding='utf-8')
 
     @classmethod
     def available(cls, ext=None):

@@ -1,16 +1,19 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 import os
 import subprocess
 import sys
+
+from common import *
 
 from common import utils
 from common.constants import Constants
 from common.logger import *
 from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
-from common.typing import *
-from .base import ThreadedTTSBackend
-from .settings.constraints import Constraints
+from backends.base import ThreadedTTSBackend
+from backends.settings.constraints import Constraints
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -114,14 +117,14 @@ class OSXSayTTSBackend_Internal(ThreadedTTSBackend):
         if not voices:
             return
         out = '\n'.join(voices)
-        with open(cls.voicesPath, 'w') as f:
+        with open(cls.voicesPath, 'w', encoding='utf-8') as f:
             f.write(out)
 
     @classmethod
     def loadVoices(cls):
         if not os.path.exists(cls.voicesPath):
             return None
-        with open(cls.voicesPath, 'r') as f:
+        with open(cls.voicesPath, 'r', encoding='utf-8') as f:
             return f.read().splitlines()
 
     @staticmethod
@@ -155,7 +158,8 @@ class OSXSayTTSBackend(ThreadedTTSBackend):
     def threadedSay(self, text):
         if not text:
             return
-        self.process = subprocess.Popen(['say', text], universal_newlines=True)
+        self.process = subprocess.Popen(['say', text], universal_newlines=True,
+                                        encoding='utf-8')
         while self.process.poll() is None and self.active:
             utils.sleep(10)
 

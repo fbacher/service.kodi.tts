@@ -2,9 +2,7 @@
 
 DEVELOPMENT = True
 try:
-    from typing import (Any, Callable, FrozenSet, Optional, Iterable, List, Dict, Set,
-                        Tuple,
-                        Sequence, Union)
+    from common import *
 
     TextType = str
     MovieType = Dict[TextType, Any]

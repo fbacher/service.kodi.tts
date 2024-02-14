@@ -1,10 +1,13 @@
+from __future__ import annotations  # For union operator |
+
 """
 Provides a means to access a Converter class by name. The map is built using dynamic
 code to invoke a Converter's register function which adds itself to the map. This
 avoids nasty dependency issues during startup.
 """
+from common import *
+
 from common.setting_constants import Converters
-from common.typing import *
 from converters.iconverter import IConverter
 
 

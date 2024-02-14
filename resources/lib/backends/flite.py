@@ -1,16 +1,19 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 import os
 import subprocess
 import sys
 
 import xbmc
 
+from common import *
+
 from backends.base import SimpleTTSBackend
 from common.logger import *
 from common.setting_constants import Backends, Mode, Players
 from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
-from common.typing import *
 
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -65,7 +68,7 @@ class FliteTTSBackend(SimpleTTSBackend):
 
         voice = type(self).getVoice()
         self.process = subprocess.Popen(['flite', '-voice', voice, '-t', text_to_voice],
-                                        universal_newlines=True)
+                                        universal_newlines=True, encoding='utf-8')
         while self.process.poll() is None and self.active:
             xbmc.sleep(10)
 

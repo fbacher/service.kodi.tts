@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
+
 import os
 import sys
 
 import xbmc
 # import xbmcaddon
 import xbmcvfs
+
+from common import *
 
 # from common.constants import Constants
 
@@ -72,11 +76,11 @@ def disableAddon():
 
 def markPreOrPost(enable=False, disable=False):
     if os.path.exists(ENABLE_PATH) or enable:
-        with open(ENABLE_PATH, 'w') as f:
+        with open(ENABLE_PATH, 'w', encoding='utf-8') as f:
             f.write(isPostInstalled() and 'POST' or 'PRE')
 
     if os.path.exists(DISABLE_PATH) or disable:
-        with open(DISABLE_PATH, 'w') as f:
+        with open(DISABLE_PATH, 'w', encoding='utf-8') as f:
             f.write(isPostInstalled() and 'POST' or 'PRE')
 
 

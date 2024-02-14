@@ -1,9 +1,15 @@
+from __future__ import annotations  # For union operator |
+
 import os
 import sys
+from pathlib import Path
 
 import xbmc
 
+from common import *
+
 from common.constants import Constants
+from common.monitor import Monitor
 
 BASE_COMMAND = ('XBMC.NotifyAll(service.kodi.tts,SAY,"{{\\"text\\":\\"{0}\\",'
                 '\\"interrupt\\":{1}}}")')
@@ -11,7 +17,7 @@ XT = xbmc.getLocalizedString
 
 
 def tailXBMCLog(num_lines=10):
-    with open(Constants.LOG_PATH, "r") as f:
+    with open(Constants.LOG_PATH, "rt", encoding='utf-8') as f:
         f.seek(0, 2)
         fsize = f.tell()
         f.seek(max(fsize - 1024, 0), 0)
@@ -19,17 +25,24 @@ def tailXBMCLog(num_lines=10):
     return lines[-num_lines:]
 
 
-def getTmpfs():
+def getTmpfs(subdir: str = None):
     if sys.platform.startswith('win'):
         return None
-    for tmpfs in ('/run/shm', '/dev/shm', '/tmp'):
-        if os.path.exists(tmpfs):
-            return tmpfs
+    temp_path: str = None
+    for temp_path in ('/run/shm', '/dev/shm', '/tmp'):
+        if os.path.exists(temp_path):
+            break
+    if temp_path is not None:
+        temp_path: Path = Path(temp_path)
+        if subdir:
+            temp_path = temp_path / subdir
+        return str(temp_path)
     return None
 
 
 def sleep(ms):
-    xbmc.sleep(ms)
+    seconds: float = ms / 1000.0
+    Monitor.exception_on_abort(timeout=seconds)
 
 
 def playSound(name, return_duration=False):

@@ -1,8 +1,11 @@
+from __future__ import annotations  # For union operator |
+
+from common import *
+
 from backends.players.iplayer import IPlayer
 from backends.settings.setting_properties import SettingsProperties
 from common.logger import *
 from common.settings import Settings
-from common.typing import *
 
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 

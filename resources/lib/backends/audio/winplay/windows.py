@@ -8,6 +8,7 @@ def idCounter():
     if ID_COUNTER > 65535: ID_COUNTER = 1
     return ID_COUNTER
 
+
 class _mci:
     def __init__(self):
         self.w32mci = windll.winmm.mciSendStringA
@@ -33,8 +34,9 @@ class _mci:
             print('Error %s for "%s": %s' % (str(err), txt, buf))
         return (err, buf)
 
+
 # TODO: detect errors in all mci calls
-class AudioClip(object):
+class AudioClip:
     def __init__(self, filename):
         filename = filename.replace('/', '\\')
         self.filename = filename

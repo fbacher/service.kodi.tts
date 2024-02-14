@@ -1,9 +1,12 @@
+from __future__ import annotations  # For union operator |
+
 import sys
+
+from common import *
 
 from cache.prefetch_movie_data.movie import LibraryMovie
 from cache.prefetch_movie_data.movie_constants import MovieField, MovieType
 from common.logger import *
-from common.typing import *
 
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 

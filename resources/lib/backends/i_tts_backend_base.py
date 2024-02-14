@@ -1,6 +1,9 @@
+from __future__ import annotations  # For union operator |
+
+from common import *
+
 from backends.i_backend import IBackend
 from backends.settings.constraints import Constraints
-from common.__init__ import *
 from common.phrases import PhraseList
 
 
@@ -48,7 +51,6 @@ class ITTSBackendBase(IBackend):
     def init(self):
         raise Exception('Not Implemented')
 
-    @classmethod
     @property
     def backend_id(self) -> str:
         clz = type(self)

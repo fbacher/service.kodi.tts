@@ -1,3 +1,7 @@
+from __future__ import annotations  # For union operator |
+
+from common import *
+
 from . import expr as X
 from .yappsrt import *
 
@@ -468,7 +472,7 @@ if __name__ == '__main__':
 
     if len(argv) >= 2:
         if len(argv) >= 3:
-            f = open(argv[2], 'r')
+            f = open(argv[2], 'r', encoding='utf-8')
         else:
             f = stdin
         print(parse(argv[1], f.read()))

@@ -1,11 +1,14 @@
+from __future__ import annotations  # For union operator |
+
 """
 Provides a means to access a Player class by name. The map is built using dynamic
 code to invoke a Player's register function which adds itself to the map. This
 avoids nasty dependency issues during startup.
 """
+from common import *
+
 from backends.players.iplayer import IPlayer
 from common.setting_constants import Players
-from common.typing import *
 
 
 class PlayerIndex:

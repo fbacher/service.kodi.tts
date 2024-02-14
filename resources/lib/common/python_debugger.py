@@ -13,6 +13,8 @@ import threading
 import xbmc
 import xbmcaddon
 
+from common import *
+
 
 class PythonDebugger:
     REMOTE_DEBUG: bool = True

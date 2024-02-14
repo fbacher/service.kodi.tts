@@ -1,24 +1,20 @@
+from __future__ import annotations  # For union operator |
+
 import faulthandler
 import io
 import signal
 from time import sleep
 
+from common import *
+
 from common.critical_settings import *
 from common.python_debugger import PythonDebugger
 
 REMOTE_DEBUG: bool = False
-
-# PATCH PATCH PATCH
-# Monkey-Patch a well known, embedded Python problem
-#
-# from common.strptime_patch import StripTimePatch
-# StripTimePatch.monkey_patch_strptime()
-
 addon_id: str = CriticalSettings.ADDON_ID
-
 debug_file = io.open("/home/fbacher/.kodi/temp/kodi.crash", mode='w', buffering=1,
                      newline=None,
-                     encoding='ASCII')
+                     encoding='utf-8')
 
 faulthandler.register(signal.SIGUSR1, file=debug_file, all_threads=True)
 

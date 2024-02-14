@@ -9,10 +9,12 @@ Created on Feb 10, 2019
 import locale
 import os
 from enum import IntEnum
+from pathlib import Path
 
+import xbmc
 import xbmcvfs
 
-from common.typing import *
+from common import *
 from kutils.kodiaddon import Addon
 
 addonName = 'service.kodi.tts'
@@ -54,8 +56,17 @@ class Constants:
     CACHE_SUFFIX: Final[str] = 'cache_suffix'
     LOCALE = ''
     MAX_PHRASE_LENGTH: Final[str] = 'max_phrase_length'
+
+    MPV_PATH_LINUX: Final[str] = '/usr/bin/mpv'
+    MPLAYER_PATH_LINUX: Final[str] = '/usr/bin/mplayer'
+    MPV_PATH_WINDOWS: Final[str] = 'mpv.exe'
+    MPLAYER_PATH_WINDOWS: Final[str] = 'mplayer.exe'
+    MPLAYER_PATH: str = None
+    MPV_PATH: str = None
+
     NAME: Final[str] = 'name'
     PAUSE_INSERT = '...'
+    PLATFORM_WINDOWS: bool = False
 
     @staticmethod
     def static_init() -> None:
@@ -91,6 +102,32 @@ class Constants:
         Constants.DEFAULT_CACHE_DIRECTORY = os.path.join(Constants.USER_DATA_PATH,
                                                          'cache')
         Constants.LOCALE, encoding = locale.getdefaultlocale()
+
+        Constants.PLATFORM_WINDOWS = xbmc.getCondVisibility('System.Platform.Windows')
+        if xbmc.getCondVisibility('System.Platform.Windows'):
+            mpv_dir = os.environ.get('MPV_PATH', '')
+            if mpv_dir:
+                Constants.MPV_PATH = str(Path(mpv_dir) / Constants.MPV_PATH_WINDOWS)
+            else:
+                Constants.MPV_PATH = Constants.MPV_PATH_WINDOWS
+            xbmc.log(f'mpv_dir: {mpv_dir} MPV_PATH: {Constants.MPV_PATH}', xbmc.LOGDEBUG)
+
+            mplayer_dir: str = os.environ.get('MPLAYER_PATH', None)
+            xbmc.log(f'mplayer_path1: {mplayer_dir} '
+                     f'PROGRAMFILES: {os.environ.get("PROGRAMFILES", None)}',
+                     xbmc.LOGDEBUG)
+            if not mplayer_dir:
+                mplayer_dir = os.environ.get('PROGRAMFILES', None)
+                if mplayer_dir:
+                    mplayer_dir = str(Path(mplayer_dir) / 'Mplayer')
+            if mplayer_dir:
+                Constants.MPLAYER_PATH = str(Path(mplayer_dir) /
+                                             Constants.MPLAYER_PATH_WINDOWS)
+            xbmc.log(f'mplayer_dir: {mplayer_dir} MPLAYER_PATH: '
+                     f'{Constants.MPLAYER_PATH}', xbmc.LOGDEBUG)
+        else:
+            Constants.MPV_PATH = Constants.MPV_PATH_LINUX
+            Constants.MPLAYER_PATH = Constants.MPLAYER_PATH_LINUX
 
 
 # def info(key): Use Constants.ADDON.info()

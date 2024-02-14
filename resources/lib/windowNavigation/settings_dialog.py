@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
 
 import xbmcaddon
 import xbmcgui
 from xbmcgui import (ControlButton, ControlEdit, ControlGroup, ControlLabel,
                      ControlRadioButton, ControlSlider, ListItem)
+
+from common import *
 
 from backends.backend_info import BackendInfo
 from backends.base import *
@@ -14,7 +17,6 @@ from common.logger import *
 from common.messages import Messages
 from common.setting_constants import Backends, Genders, Players
 from common.settings import Settings
-from common.typing import *
 from utils.util import get_language_code
 from windowNavigation.action_map import Action
 from windowNavigation.selection_dialog import SelectionDialog
@@ -1424,7 +1426,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         valid_engine: bool = False
 
         if self.engine_id != SettingsProperties.ENGINE_DEFAULT:
-            valid_engine, _ = SettingsMap.is_available(self.engine_id)
+            valid_engine = SettingsMap.is_available(self.engine_id)
         if not valid_engine:
             self.engine_id = BackendInfo.getAvailableBackends()[0].backend_id
             self.set_engine_id(self.engine_id)

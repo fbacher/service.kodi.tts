@@ -1,15 +1,17 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
 
 import os
 import subprocess
 import sys
+
+from common import *
 
 from backends import base
 from backends.settings.setting_properties import SettingsProperties
 from common.logger import *
 from common.setting_constants import Mode
 from common.system_queries import SystemQueries
-from common.typing import *
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -69,7 +71,7 @@ class CepstralTTSOEBackend(base.SimpleTTSBackend):
         args = ['/lib/ld-linux.so.3', '--library-path', '/storage/music/callie/lib',
                 '/storage/music/callie/bin/swift.bin', '-d',
                 '/storage/music/callie/voices/Callie', '-o', '-', text]
-        self.process = subprocess.Popen(args, stdout=subprocess.PIPE,
+        self.process = subprocess.Popen(args, stdout=subprocess.PIPE, encoding='utf-8',
                                         universal_newlines=True)
         return self.process.stdout
 
@@ -84,11 +86,11 @@ class CepstralTTSOEBackend(base.SimpleTTSBackend):
         self.process = subprocess.Popen(args, stdin=subprocess.PIPE,
                                         stdout=subprocess.PIPE,
                                         stderr=(open(os.path.devnull, 'w')),
-                                        universal_newlines=True)
+                                        universal_newlines=True, encoding='utf-8')
         self.aplayProcess = subprocess.Popen(['aplay', '-q'], stdin=self.process.stdout,
                                              stdout=(open(os.path.devnull, 'w')),
                                              stderr=subprocess.STDOUT,
-                                             universal_newlines=True)
+                                             universal_newlines=True, encoding='utf-8')
 
     def stopProcess(self):
         if self.process:
@@ -176,7 +178,8 @@ class CepstralTTSBackend(base.SimpleTTSBackend):
         self.process = subprocess.Popen(args, startupinfo=self.startupinfo,
                                         stdin=subprocess.PIPE,
                                         stdout=(open(os.path.devnull, 'w')),
-                                        stderr=subprocess.STDOUT, universal_newlines=True)
+                                        stderr=subprocess.STDOUT,
+                                        universal_newlines=True, encoding='utf-8')
 
     def stopProcess(self):
         if self.process:
@@ -244,7 +247,8 @@ class CepstralTTSBackend(base.SimpleTTSBackend):
         try:
             subprocess.call(['swift', '-V'], startupinfo=getStartupInfo(),
                             stdout=(open(os.path.devnull, 'w')),
-                            stderr=subprocess.STDOUT, universal_newlines=True)
+                            stderr=subprocess.STDOUT,
+                            universal_newlines=True, encoding='utf-8')
         except (OSError, IOError):
             return False
         return True
