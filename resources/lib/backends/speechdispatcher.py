@@ -207,8 +207,9 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
             pass
 
     def reconnect(self):
+        clz = type(self)
         self.close()
-        if self.active:
+        if clz.is_active_engine(clz):
             self._logger.debug('Speech-Dispatcher reconnecting...')
             self.connect()
 

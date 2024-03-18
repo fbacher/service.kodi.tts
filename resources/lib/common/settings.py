@@ -7,6 +7,7 @@ from common import *
 
 from backends.settings.i_validators import (IBoolValidator, IGenderValidator,
                                             IIntValidator,
+                                            INumericValidator, IStringValidator,
                                             IValidator)
 from backends.settings.service_types import Services
 from backends.settings.setting_properties import SettingsProperties
@@ -184,21 +185,57 @@ class Settings(SettingsLowLevel):
         return
 
     @classmethod
+    def get_voice_path(cls, service_id: str = None) -> str:
+        if service_id is None:
+            service_id = cls._current_engine
+        validator: IStringValidator
+        property_id: str = SettingsProperties.VOICE_PATH
+        validator = SettingsMap.get_validator(service_id,  property_id=property_id)
+        value: str = validator.getInternalValue()
+        return value
+
+    @classmethod
+    def set_voice_path(cls, voice_path: str = None, service_id: str = None) -> None:
+        if service_id is None:
+            service_id = cls._current_engine
+        engine_language_validator: IStringValidator
+        property_id: str = SettingsProperties.VOICE_PATH
+        validator: IStringValidator = SettingsMap.get_validator(service_id,
+                                                                property_id=property_id)
+        validator.setInternalValue(voice_path)
+        return
+
+    @classmethod
     def get_volume(cls, engine_id: str = None) -> int:
         if engine_id is None:
             engine_id = cls._current_engine
-        volume_val: IValidator = SettingsMap.get_validator(
-                engine_id, SettingsProperties.VOLUME)
-        volume, _, _, _ = volume_val.get_tts_values()
-        return volume
+        volume_val: INumericValidator = SettingsMap.get_validator(
+            engine_id, SettingsProperties.VOLUME)
+        return volume_val.get_value()
 
     @classmethod
     def set_volume(cls, volume: int, engine_id: str = None) -> None:
         if engine_id is None:
             engine_id = cls._current_engine
-        volume_val: IValidator = SettingsMap.get_validator(
+        volume_val: INumericValidator = SettingsMap.get_validator(
                 engine_id, SettingsProperties.VOLUME)
-        volume_val.set_tts_value(volume)
+        volume_val.set_value(volume)
+        return
+
+    def get_speed(cls, engine_id: str = None) -> float:
+        if engine_id is None:
+            engine_id = cls._current_engine
+        speed_val: INumericValidator = SettingsMap.get_validator(
+                engine_id, SettingsProperties.SPEED)
+        return speed_val.get_value()
+
+    @classmethod
+    def set_speed(cls, speed: int, engine_id: str = None) -> None:
+        if engine_id is None:
+            engine_id = cls._current_engine
+        speed_val: INumericValidator = SettingsMap.get_validator(
+                engine_id, SettingsProperties.SPEED)
+        speed_val.set_value(speed)
         return
 
     @classmethod
@@ -341,24 +378,6 @@ class Settings(SettingsLowLevel):
         # cls._logger.debug(f'setting {SettingsProperties.SPEAK_LIST_COUNT}: {value}')
         cls.set_setting_bool(SettingsProperties.SPEAK_LIST_COUNT, value,
                              SettingsProperties.TTS_SERVICE)
-        return
-
-    @classmethod
-    def get_speed(cls, service_id: str) -> float | int:
-        engine_speed_validator: IValidator
-        engine_speed_validator = SettingsMap.get_validator(service_id,
-                                                           property_id=SettingsProperties.SPEED)
-        speed, _, _, _ = engine_speed_validator.get_tts_values()
-        return speed
-
-    @classmethod
-    def set_speed(cls, value: int, service_id: str = None) -> float:
-        if service_id is None:
-            service_id = cls._current_engine
-        speed_validator: IValidator
-        speed_validator = SettingsMap.get_validator(service_id,
-                                                    property_id=SettingsProperties.SPEED)
-        speed = speed_validator.set_tts_value(value)
         return
 
     @classmethod

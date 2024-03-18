@@ -1,6 +1,7 @@
 from __future__ import annotations  # For union operator |
 
 from enum import Enum
+from pathlib import Path
 
 import xbmcvfs
 
@@ -49,6 +50,7 @@ class SettingsProperties:  # (ISettings):
     CACHE_SPEECH: Final[str] = 'cache_speech'
     CACHE_VOICE_FILES: Final[str] = 'cache_voice_files'
     CAPITAL_RECOGNITION: Final[str] = 'capital_recognition'
+    CHANNELS: Final[str] = 'channels'
     CONVERTER: Final[str] = 'converter'
     DEBUG_LOG_LEVEL: Final[str] = 'debug_log_level'
     DELAY_VOICING: Final[str] = 'delay_voicing'
@@ -99,6 +101,7 @@ class SettingsProperties:  # (ISettings):
     USE_TEMPFS: Final[str] = 'use_tmpfs'
     VERSION: Final[str] = 'version'
     VOICE: Final[str] = 'voice'
+    VOICE_PATH: Final[str] = 'voice_path'
     VOICE_TTSD: Final[str] = 'voice_ttsd'
     VOICE_VISIBLE: Final[str] = 'voice_visible'
     VOLUME: Final[str] = 'volume'
@@ -142,7 +145,7 @@ class SettingsProperties:  # (ISettings):
         OUTPUT_VIA,
         OUTPUT_VISIBLE,
         OVERRIDE_POLL_INTERVAL,
-        PLAYER_SLAVE, # Probably not global (.tts)
+        PLAYER_SLAVE,  # Probably not global (.tts)
         POLL_INTERVAL,
         READER_ON,
         SETTINGS_BEING_CONFIGURED,
@@ -189,6 +192,7 @@ class SettingsProperties:  # (ISettings):
         CACHE_SPEECH,
         CACHE_VOICE_FILES,
         CAPITAL_RECOGNITION,
+        CHANNELS,
         CONVERTER,
         # DEBUG_LOGGING,
         DEBUG_LOG_LEVEL,
@@ -236,6 +240,7 @@ class SettingsProperties:  # (ISettings):
         USE_TEMPFS,
         VERSION,
         VOICE,
+        VOICE_PATH,
         VOICE_VISIBLE,
         VOLUME
     ]
@@ -256,6 +261,7 @@ class SettingsProperties:  # (ISettings):
             cls.CACHE_SPEECH                          : SettingType.BOOLEAN_TYPE,
             cls.CACHE_VOICE_FILES                     : SettingType.BOOLEAN_TYPE,
             cls.CAPITAL_RECOGNITION                   : SettingType.BOOLEAN_TYPE,
+            cls.CHANNELS                              : SettingType.STRING_TYPE,
             cls.CONVERTER                             : SettingType.STRING_TYPE,
             cls.DEBUG_LOG_LEVEL                       : SettingType.INTEGER_TYPE,
             cls.DELAY_VOICING                         : SettingType.BOOLEAN_TYPE,
@@ -301,6 +307,7 @@ class SettingsProperties:  # (ISettings):
             cls.USE_TEMPFS                            : SettingType.BOOLEAN_TYPE,
             cls.VERSION                               : SettingType.STRING_TYPE,
             cls.VOICE                                 : SettingType.STRING_TYPE,
+            cls.VOICE_PATH                            : SettingType.STRING_TYPE,
             cls.VOICE_VISIBLE                         : SettingType.BOOLEAN_TYPE,
             cls.VOLUME                                : SettingType.INTEGER_TYPE,
             cls.VOLUME_VISIBLE                        : SettingType.STRING_TYPE

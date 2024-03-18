@@ -1,3 +1,4 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
 from common import *
@@ -6,7 +7,6 @@ from backends.audio.sound_capabilties import SoundCapabilities
 from backends.engines.base_engine_settings import (BaseEngineSettings)
 from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.constraints import Constraints
-from backends.settings.i_validators import ValueType
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.settings_map import Reason, SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
@@ -20,14 +20,14 @@ from common.system_queries import SystemQueries
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
-class ExperimentalSettings(BaseServiceSettings):
+class PiperSettings(BaseServiceSettings):
     # Only returns .mp3 files
-    ID: str = Backends.EXPERIMENTAL_ENGINE_ID
-    backend_id = Backends.EXPERIMENTAL_ENGINE_ID
-    engine_id = Backends.EXPERIMENTAL_ENGINE_ID
-    service_ID: str = Services.EXPERIMENTAL_ENGINE_ID
+    ID: str = Backends.PIPER_ID
+    backend_id = Backends.PIPER_ID
+    engine_id = Backends.PIPER_ID
+    service_ID: str = Services.PIPER_ID
     service_TYPE: str = ServiceType.ENGINE_SETTINGS
-    displayName = 'Experimental_TTS'
+    displayName = 'Piper_TTS'
     # player_handler_class: Type[BasePlayerHandler] = WavAudioPlayerHandler
 
     """
@@ -47,10 +47,6 @@ class ExperimentalSettings(BaseServiceSettings):
     
     In other words, create a custom validator which always returns a volume of 1
     (or just don't use the validator and such and hard code it inline).
-
-    
-        volume = cls.volumeConstraints.translate_value(
-                                        cls.volumeConversionConstraints, volumeDb)
     
     """
 
@@ -70,30 +66,37 @@ class ExperimentalSettings(BaseServiceSettings):
         clz = type(self)
         super().__init__(clz.service_ID, *args, **kwargs)
         BaseEngineSettings(clz.service_ID)
-        if ExperimentalSettings.initialized:
+        if PiperSettings.initialized:
             return
-        ExperimentalSettings.initialized = True
+        PiperSettings.initialized = True
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz.__name__)
-        ExperimentalSettings.init_settings()
+        PiperSettings.init_settings()
         installed: bool = clz.isInstalled()
         SettingsMap.set_is_available(clz.service_ID, Reason.AVAILABLE)
 
     @classmethod
     def init_settings(cls):
-        service_properties = {Constants.NAME        : cls.displayName,
-                              Constants.CACHE_SUFFIX: 'ex'}
+        service_properties: Dict[str, Any]
+        service_properties = {'name'                     : cls.displayName,
+                              Constants.MAX_PHRASE_LENGTH: 400,
+                              Constants.CACHE_SUFFIX     : 'piper'}
         SettingsMap.define_service(ServiceType.ENGINE, cls.engine_id,
                                    service_properties)
         #
         # Need to define Conversion Constraints between the TTS 'standard'
         # constraints/settings to the engine's constraints/settings
 
-        speedConstraints: Constraints = Constraints(25, 100, 400, False, False, 0.01,
-                                                    SettingsProperties.SPEED, 125, 0.25)
-        speed_constraints_validator = ConstraintsValidator(SettingsProperties.SPEED,
-                                                           cls.engine_id,
-                                                           speedConstraints)
+        speed_validator: NumericValidator
+        speed_validator = NumericValidator(SettingsProperties.SPEED,
+                                           cls.service_ID,
+                                           minimum=.25, maximum=3,
+                                           default=1,
+                                           is_decibels=False,
+                                           is_integer=False)
+        SettingsMap.define_setting(cls.service_ID,
+                                   SettingsProperties.SPEED,
+                                   speed_validator)
 
         pitch_constraints: Constraints = Constraints(0, 50, 99, True, False, 50.0,
                                                      SettingsProperties.PITCH)
@@ -116,6 +119,11 @@ class ExperimentalSettings(BaseServiceSettings):
         voice_validator: StringValidator
         voice_validator = StringValidator(SettingsProperties.VOICE, cls.engine_id,
                                           allowed_values=[], min_length=1, max_length=10)
+        voice_path_validator: StringValidator
+        voice_path_validator = StringValidator(SettingsProperties.VOICE_PATH,
+                                               cls.engine_id,
+                                               allowed_values=[], min_length=1,
+                                               max_length=1024)
         pipe_validator: BoolValidator
         pipe_validator = BoolValidator(SettingsProperties.PIPE, cls.engine_id,
                                        default=False)
@@ -126,8 +134,8 @@ class ExperimentalSettings(BaseServiceSettings):
         #  TODO:  Need to eliminate un-available players
         #         Should do elimination in separate code
 
-        valid_players: List[str] = [Players.MPLAYER, Players.SFX, Players.WINDOWS,
-                                    Players.APLAY,
+        valid_players: List[str] = [Players.MPV, Players.MPLAYER, Players.SFX,
+                                    Players.WINDOWS, Players.APLAY,
                                     Players.PAPLAY, Players.AFPLAY, Players.SOX,
                                     Players.MPG321, Players.MPG123,
                                     Players.MPG321_OE_PI, Players.INTERNAL]
@@ -138,12 +146,13 @@ class ExperimentalSettings(BaseServiceSettings):
 
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.LANGUAGE,
                                    language_validator)
+        SettingsMap.define_setting(cls.service_ID,
+                                   SettingsProperties.VOICE_PATH,
+                                   voice_path_validator)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOICE,
                                    voice_validator)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PIPE,
                                    pipe_validator)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.SPEED,
-                                   speed_constraints_validator)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PITCH,
                                    pitch_constraints_validator)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER,
@@ -153,8 +162,7 @@ class ExperimentalSettings(BaseServiceSettings):
 
     @classmethod
     def isSupportedOnPlatform(cls) -> bool:
-        return (SystemQueries.isLinux() or SystemQueries.isWindows()
-                or SystemQueries.isOSX())
+        return SystemQueries.isLinux()
 
     @classmethod
     def isInstalled(cls) -> bool:

@@ -4,7 +4,6 @@ from __future__ import annotations  # For union operator |
 import math
 
 from common import *
-
 from common.settings_bridge import SettingsBridge
 
 
@@ -18,7 +17,7 @@ class Constraints:
         define values so that they are integers. Scale is provided to convert the
         integral values of mininum, maximum, etc. into the float (or even int) values
         that the api requires. For example, mplayer represent speed as:
-        0.25 = 1/4 x , 1.0 = 1x, 2.0 = 2x, etc.. Therefore, it's Constraint is defined
+        0.25 = 1/4 x , 1.0 = 1x, 2.0 = 2x, etc.... Therefore, it's Constraint is defined
         as minimum = 25, maximum = 400 (mplayer supports a wider range, but it seems
         that 1/4x .. 4x is a reasonable practical range, and more likely to be
         supported by other engines/players).
@@ -238,7 +237,8 @@ class Constraints:
         return trans_constraints
 
     def translate_value(self, other: 'Constraints', value: float,
-                        as_decibels: bool | None = None) -> int | float:
+                        as_decibels: bool | None = None,
+                        scale: bool | None = None) -> int | float:
         """
         Translates an (external) value of this constraint to an (external) value of
         'other' constraint
@@ -248,6 +248,8 @@ class Constraints:
                             True, converts to decibels
                             False, converts to percent scale
                             None does no conversion
+        @param scale: Scales percent values to be within 0 .. 100% by scaling
+                      within the range of values of
         @return: Value scaled appropriately to comply with the other constraint
         """
         value = max(value, self.minimum)
@@ -264,12 +266,17 @@ class Constraints:
             return value
 
         elif self._decibels:
-            scaled_value: float = self.db_to_percent(int(value))
+            # Scale from decibels to percent
+
+            percent_value: float = self.db_to_percent(int(value))
+            if scale is not None and not scale:
+                return percent_value
+
             min_percent: float = self.db_to_percent(self.minimum)
             max_percent: float = self.db_to_percent(self.maximum)
             midpoint_percent: float = self.db_to_percent(self.midpoint)
             scaled_value = self.translate_linear_value(min_percent, max_percent,
-                                                       midpoint_percent, scaled_value,
+                                                       midpoint_percent, percent_value,
                                                        other.minimum, other.maximum,
                                                        other.midpoint)
 

@@ -108,7 +108,7 @@ class MinimalMonitor(xbmc.Monitor):
                 MinimalMonitor._abort_callback()
 
     @classmethod
-    def exception_on_abort(cls, timeout: float = 0) -> None:
+    def exception_on_abort(cls, timeout: float = 0.0) -> bool:
         """
          Throws an AbortException if Abort has been set within the specified
           time period.
@@ -119,7 +119,7 @@ class MinimalMonitor(xbmc.Monitor):
             if timeout = None, then wait forever until abort is set.
             Otherwise, wait a maximum of the specified time in seconds.
         :param timeout:
-        :return:
+        :return: False if no abort, otherwise raises AbortException
 
         Note: Included in minimal_monitor so that startup code can
               call without dragging in BasicLogger.
@@ -128,6 +128,7 @@ class MinimalMonitor(xbmc.Monitor):
         if cls._abort_received.wait(timeout=timeout):
             raise AbortException()
         #  cls.track_wait_return_counts()
+        return False
 
     @classmethod
     def register_abort_callback(cls, callback: Callable[[], None]) -> None:

@@ -6,6 +6,8 @@ import subprocess
 #  from backends.audio.player_handler import BasePlayerHandler, WavAudioPlayerHandler
 import sys
 
+from backends.settings.settings_map import SettingsMap
+from backends.settings.validators import NumericValidator
 from common import *
 
 from backends.audio.sound_capabilties import SoundCapabilities
@@ -29,8 +31,7 @@ class FestivalTTSBackend(SimpleTTSBackend):
                                                 SettingsProperties.SPEED)
     pitchConstraints: Constraints = Constraints(50, 105, 500, True, False, 1.0,
                                                 SettingsProperties.PITCH)
-    volumeConstraints: Constraints = Constraints(-12, 0, 12, True, True, 1.0,
-                                                 SettingsProperties.VOLUME)
+
     #  player_handler_class: Type[BasePlayerHandler] = WavAudioPlayerHandler
     constraints: Dict[str, Constraints] = {}
 
@@ -65,7 +66,15 @@ class FestivalTTSBackend(SimpleTTSBackend):
         self.festivalProcess = None
         clz.constraints[SettingsProperties.SPEED] = clz.speedConstraints
         clz.constraints[SettingsProperties.PITCH] = clz.pitchConstraints
-        clz.constraints[SettingsProperties.VOLUME] = clz.volumeConstraints
+        volume_validator: NumericValidator
+        volume_validator = NumericValidator(SettingsProperties.VOLUME,
+                                            clz.service_ID,
+                                            minimum=-12, maximum=12,
+                                            default=0, is_decibels=True,
+                                            is_integer=False)
+        SettingsMap.define_setting(clz.service_ID,
+                                   SettingsProperties.VOLUME,
+                                   volume_validator)
 
     def init(self):
         super().init()

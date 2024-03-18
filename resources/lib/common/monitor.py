@@ -86,9 +86,9 @@ class Monitor(MinimalMonitor):
             cls._screen_saver_listener_lock = threading.RLock()
             cls._settings_changed_listeners = {}
             cls._settings_changed_listener_lock = threading.RLock()
-            cls._abort_listeners = {}
+            cls._abort_listeners: Dict[Callable[[None], None], str] = {}
             cls._abort_listener_lock = threading.RLock()
-            cls._abort_listeners_informed = False
+            cls._abort_listeners_informed: bool = False
             cls._notification_listeners = {}
             cls._notification_listener_lock = threading.RLock()
 

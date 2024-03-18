@@ -156,11 +156,12 @@ class OSXSayTTSBackend(ThreadedTTSBackend):
         return OSXSayTTSBackend.isSupportedOnPlatform()
 
     def threadedSay(self, text):
+        clz = type(self)
         if not text:
             return
         self.process = subprocess.Popen(['say', text], universal_newlines=True,
                                         encoding='utf-8')
-        while self.process.poll() is None and self.active:
+        while self.process.poll() is None and clz.is_active_engine(clz):
             utils.sleep(10)
 
     def getWavStream(self, text):

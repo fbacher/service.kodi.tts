@@ -1144,3 +1144,23 @@ msgstr ""
 msgcdtxt "#32329"
 msgid "SAPI"
 msgstr ""
+
+msgctxt "#32330"
+msgid "mpv"
+msgstr ""
+
+msgctxt "#32331"
+msgid "Piper"
+msgstr ""
+
+msgctxt "#32332"
+msgid "Default"
+msgstr ""
+
+msgctxt "#32333"
+msgid "Mono"
+msgstr ""
+
+msgctxt "#32334"
+msgid "Stereo"
+msgstr ""

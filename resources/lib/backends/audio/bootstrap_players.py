@@ -5,6 +5,7 @@ import sys
 from common import *
 
 from backends.settings.settings_map import Reason, SettingsMap
+from common.constants import Constants
 from common.logger import BasicLogger
 from common.setting_constants import Players
 from common.settings_low_level import SettingsLowLevel
@@ -15,6 +16,7 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 class BootstrapPlayers:
     player_ids: List[str] = [
+        Players.MPV,
         Players.MPLAYER,
         Players.SFX,
         Players.WINDOWS,
@@ -40,6 +42,8 @@ class BootstrapPlayers:
             if cls._logger is None:
                 cls._logger = module_logger.getChild(cls.__name__)
             cls.initialized = True
+            if Constants.PLATFORM_WINDOWS:
+                cls.player_ids.append(Players.MPLAYER)
             cls.load_players()
 
     @classmethod
@@ -58,6 +62,11 @@ class BootstrapPlayers:
                 MPlayerSettings()
                 from backends.audio.mplayer_audio_player import MPlayerAudioPlayer
                 MPlayerAudioPlayer()
+            if player_id == Players.MPV:
+                from backends.players.mpv_player_settings import MPVPlayerSettings
+                MPVPlayerSettings()
+                from backends.audio.mpv_audio_player import MPVAudioPlayer
+                MPVAudioPlayer()
             elif player_id == Players.SFX:
                 from backends.audio.sfx_audio_player import PlaySFXAudioPlayer
                 PlaySFXAudioPlayer()

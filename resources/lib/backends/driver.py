@@ -1,5 +1,7 @@
 from __future__ import annotations  # For union operator |
 
+from backends.ispeech_generator import ISpeechGenerator
+
 """
 Classes which orchestrates the voicing of text.
 
@@ -123,7 +125,7 @@ class Driver(BaseServices):
                         active_engine.get_player(active_engine.get_active_engine_id())
                     player_input_formats: List[str]
                     player_input_formats = SoundCapabilities.get_input_formats(player_id)
-                    if not SoundCapabilities.MP3 in player_input_formats:
+                    if SoundCapabilities.MP3 not in player_input_formats:
                         pass
 
             try:
@@ -162,7 +164,8 @@ class Driver(BaseServices):
                     # else:
                         # self.generate_voice(active_engine, phrase)
                     '''
-                    if not phrase.exists() and Settings.is_use_cache():
+                    if (not phrase.exists() and Settings.is_use_cache()
+                            and active_engine.has_speech_generator()):
                         # Clone phrases to seed voice cache
                         phrases_new: PhraseList = PhraseList(check_expired=False)
                         phrase_new: Phrase = phrase.clone(check_expired=False)
@@ -170,9 +173,8 @@ class Driver(BaseServices):
                         self.seed_text_cache(active_engine, phrases_new)
                         # Mark original phrase as being downloaded
                         phrase.set_download_pending()
-                        generator: GoogleSpeechGenerator = GoogleSpeechGenerator()
-                        generator.generate_speech(phrase, timeout=0.0,
-                                                  download_file_only=True)
+                        generator: ISpeechGenerator = active_engine.get_speech_generator()
+                        generator.generate_speech(phrase, timeout=0.0)
 
                     tts_data: TTSQueueData
                     tts_data = TTSQueueData(None, state='play_file',

@@ -10,12 +10,13 @@ from backends.audio.sound_capabilties import SoundCapabilities
 from backends.engines.base_engine_settings import (BaseEngineSettings)
 from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.constraints import Constraints
-from backends.settings.i_validators import ValueType
+from backends.settings.i_validators import INumericValidator, ValueType
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import Reason, SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
-                                          GenderValidator, StringValidator)
+                                          GenderValidator, NumericValidator,
+                                          StringValidator)
 from common.constants import Constants
 from common.logger import BasicLogger
 from common.setting_constants import Backends, Players
@@ -31,40 +32,7 @@ class ESpeakSettings(BaseServiceSettings):
     service_ID: str = Services.ESPEAK_ID
     displayName = 'eSpeak'
 
-    class VolumeConstraintsValidator(ConstraintsValidator):
-
-        def __init__(self, setting_id: str, service_id: str,
-                     constraints: Constraints) -> None:
-            super().__init__(setting_id, service_id, constraints)
-            clz = type(self)
-
-        def set_tts_value(self, value: int | float | str,
-                          value_type: ValueType = ValueType.VALUE) -> None:
-            """
-            Keep value fixed at 1
-            :param value:
-            :param value_type:
-            """
-            constraints: Constraints = self.constraints
-            constraints.setSetting(1, self.service_id)
-
-        def get_tts_values(self) \
-                -> Tuple[int | float | str, int | float | str, int | float | str, \
-                         int | float | str]:
-            """
-            Keep value fixed at 1
-            :return: current_value, min_value, default_value, max_value
-            """
-            return 1
-
-        def setUIValue(self, ui_value: str) -> None:
-            pass
-
-        def getUIValue(self) -> str:
-            current_value: int | float | str
-            current_value, _, _, _ = self.get_tts_values()
-            return f'{current_value}'
-
+ 
     # Every setting from settings.xml must be listed here
     # SettingName, default value
 
@@ -110,22 +78,16 @@ class ESpeakSettings(BaseServiceSettings):
                                                            cls.engine_id,
                                                            pitch_constraints)
 
-        volumeConversionConstraints: Constraints = Constraints(minimum=0, default=100,
-                                                               maximum=200,
-                                                               integer=True,
-                                                               decibels=False,
-                                                               scale=1.0,
-                                                               property_name=SettingsProperties.VOLUME,
-                                                               midpoint=100, increment=5,
-                                                               tts_line_value=100)
 
-        volume_constraints_validator = ConstraintsValidator(
-                SettingsProperties.VOLUME,
-                cls.engine_id,
-                volumeConversionConstraints)
-
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOLUME,
-                                   volume_constraints_validator)
+        volume_validator: NumericValidator
+        volume_validator = NumericValidator(SettingsProperties.VOLUME,
+                                            cls.service_ID,
+                                            minimum=0, maximum=200,
+                                            default=100, is_decibels=False,
+                                            is_integer=True)
+        SettingsMap.define_setting(cls.service_ID,
+                                   SettingsProperties.VOLUME,
+                                   volume_validator)
 
         audio_validator: StringValidator
         audio_converter_validator = StringValidator(SettingsProperties.CONVERTER,
@@ -144,8 +106,9 @@ class ESpeakSettings(BaseServiceSettings):
 
         valid_players: List[str] = [Players.SFX, Players.WINDOWS, Players.APLAY,
                                     Players.PAPLAY, Players.AFPLAY, Players.SOX,
-                                    Players.MPLAYER, Players.MPG321, Players.MPG123,
-                                    Players.MPG321_OE_PI, Players.INTERNAL]
+                                    Players.MPLAYER, Players.MPV, Players.MPG321,
+                                    Players.MPG123, Players.MPG321_OE_PI,
+                                    Players.INTERNAL]
         player_validator: StringValidator
         player_validator = StringValidator(SettingsProperties.PLAYER, cls.engine_id,
                                            allowed_values=valid_players,

@@ -22,10 +22,11 @@ from common.kodi_player_monitor import KodiPlayerMonitor, KodiPlayerState
 from common.logger import BasicLogger
 from common.monitor import Monitor
 from common.phrases import Phrase
-from common.setting_constants import Players
+from common.setting_constants import Channels, Players
 from common.settings import Settings
 from common.simple_pipe_command import SimplePipeCommand
 from common.simple_run_command import RunState, SimpleRunCommand
+from common.slave_communication import SlaveCommunication
 from common.slave_run_command import SlaveRunCommand
 
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
@@ -157,7 +158,7 @@ class SubprocessAudioPlayer(AudioPlayer):
         self._player_process: SimpleRunCommand | None = None
         self._post_play_pause_ms: int = 0
         #  HACK!
-        self.slave_player_process: SlaveRunCommand | None = None
+        self.slave_player_process: SlaveCommunication | None = None
         self._time_of_previous_play_ended: datetime = datetime.now()
         self.kill: bool = False
         self.stop_urgent: bool = False
@@ -384,10 +385,13 @@ class SubprocessAudioPlayer(AudioPlayer):
     def get_player_speed(self) -> float:
         pass
 
-    def get_player_volume(self) -> float:
+    def get_player_volume(self, as_decibels: bool = True) -> float:
         pass
 
     def get_slave_pipe_path(self) -> Path:
+        pass
+
+    def get_player_channels(self) -> Channels:
         pass
 
     def play(self, phrase: Phrase):
@@ -482,13 +486,15 @@ class SubprocessAudioPlayer(AudioPlayer):
                     args: List[str] = self.get_slave_play_args()
                     self._simple_player_busy = True
                     slave_pipe_path = self.get_slave_pipe_path()
-                    self.slave_player_process = SlaveRunCommand(args,
+                    volume: float = self.get_player_volume(as_decibels=False)
+                    #  play_channels: Channels = self.get_player_channels()
+                    self.slave_player_process = SlaveCommunication(args,
                                                                 phrase_serial=phrase.serial_number,
-                                                                name='mpv',
+                                                                thread_name='mpv',
                                                                 stop_on_play=True,
                                                                 slave_pipe_path=slave_pipe_path,
                                                                 speed=self.get_player_speed(),
-                                                                volume=self.get_player_volume())
+                                                                volume=volume)
                     clz._logger.debug_verbose(
                             f'START Running slave player to voice NOW args: {" ".join(args)}')
                     self.slave_player_process.start_service()
@@ -506,7 +512,12 @@ class SubprocessAudioPlayer(AudioPlayer):
         phrase_serial: int = phrase.serial_number
         try:
             phrase.test_expired()  # Throws ExpiredException
-            self.slave_player_process.add_phrase(phrase)
+            volume: float = self.get_player_volume(as_decibels=False)
+            speed: float = self.get_player_speed()
+            self.slave_player_process.set_volume(volume)
+            self.slave_player_process.set_speed(speed)
+            self.slave_player_process.set_channels(Channels.STEREO)
+            self.slave_player_process.add_phrase(phrase, volume, speed)
         except AbortException:
             self.stop(now=True)
             reraise(*sys.exc_info())

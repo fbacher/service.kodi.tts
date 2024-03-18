@@ -116,18 +116,17 @@ class PVRSGuideSearchDialogReader(VirtualKeyboardReader):
         cls = type(self)
         ID = self.window().getFocusId()
         if ID == 9:
-            text = xbmc.getLocalizedString(19133)
+            new_text = xbmc.getLocalizedString(19133)
         else:
             text = xbmc.getInfoLabel('System.CurrentControl')
-            cls._logger.debug(f'elipsis substitution orig text: {text} ')
-            text = text.replace('( )',
-                                '{0} {1}'.format(Constants.PAUSE_INSERT,
-                                                 Messages.get_msg(Messages.NO))).replace(
-                '(*)',
-                '{0} {1}'.format(
-                        Constants.PAUSE_INSERT,
-                        Messages.get_msg(Messages.YES)))  # For boolean settings
-        return (text, text)
+            # For boolean settings
+            new_text: str = text.replace('( )',
+                                         f'{Constants.PAUSE_INSERT} '
+                                         f'{Messages.get_msg(Messages.NO)}')
+            new_text = new_text.replace('(*)', f'{Constants.PAUSE_INSERT} '
+                                               f'{Messages.get_msg(Messages.YES)}')
+            cls._logger.debug(f'elipsis substitution orig text: {text} New: {new_text} ')
+        return new_text, new_text
 
     def getMonitoredText(self, isSpeaking=False):
         ID = self.window().getFocusId()

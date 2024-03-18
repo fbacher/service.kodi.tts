@@ -13,10 +13,10 @@ from common.setting_constants import Players
 from common.settings_low_level import SettingsProperties
 
 
-class MPlayerSettings:
-    ID = Players.MPLAYER
-    service_ID: str = Services.MPLAYER_ID
-    displayName = 'MPlayer'
+class MPVPlayerSettings:
+    ID = Players.MPV
+    service_ID: str = Services.MPV_ID
+    displayName = 'MPV'
 
     """
     In an attempt to bring some consistency between the various players, engines and 
@@ -59,36 +59,31 @@ class MPlayerSettings:
 
     @classmethod
     def init(cls):
-        # Not supporting Pitch changes with mplayer at this time
+        # Not supporting Pitch changes with MPV_Player at this time
 
         # TTS Speed constraints defined as linear from 0.25 to 4 with 1 being 100%
-        # speed. 0.25 is 1/4 speed, 4 is 4x speed. This fits nicely with Mplayer
+        # speed. 0.25 is 1/4 speed, 4 is 4x speed. This fits nicely with MPV_Player
         # speed settings.
         # Since saving the value in settings.xml as a float makes it more difficult
         # for a human to work with, we save it as an int by scaling it by 100 when it
-        # it is saved.
+        # is saved.
         #
+        # ttsSpeedConstraints: Constraints = Constraints(25, 100, 400, False, False, 0.01,
+        #                                           SettingsProperties.SPEED, 100, 0.25)
 
-        speed_validator: NumericValidator
-        speed_validator = NumericValidator(SettingsProperties.SPEED,
-                                           cls.service_ID,
-                                           minimum=.25, maximum=5,
-                                           default=1,
-                                           is_decibels=False,
-                                           is_integer=False)
-        SettingsMap.define_setting(cls.service_ID,
-                                   SettingsProperties.SPEED,
-                                   speed_validator)
         """
          MPlayer uses both percentage and decibel volume scales.
          The decibel scale is used for the (-af) audio filter with range -200db .. +40db.
          The percent scale is used for the --volume flag (there are multiple ways to
          specify volume, including json).
-        
+
          TTS uses a decibel scale with range -12db .. +12db. Just convert the
          values with no change. Do this by simply using the TTS volume constraints
         """
 
+        tts_volume_validator: INumericValidator
+        tts_volume_validator = SettingsMap.get_validator(SettingsProperties.TTS_SERVICE,
+                                                         SettingsProperties.VOLUME)
         volume_validator: NumericValidator
         volume_validator = NumericValidator(SettingsProperties.VOLUME,
                                             cls.service_ID,
@@ -98,6 +93,25 @@ class MPlayerSettings:
         SettingsMap.define_setting(cls.service_ID,
                                    SettingsProperties.VOLUME,
                                    volume_validator)
+
+        speed_validator: NumericValidator
+        speed_validator = NumericValidator(SettingsProperties.SPEED,
+                                           cls.service_ID,
+                                           minimum=0.25, maximum=3,
+                                           is_decibels=False,
+                                           is_integer=False)
+        SettingsMap.define_setting(cls.service_ID,
+                                   SettingsProperties.SPEED,
+                                   speed_validator)
+
+        '''
+        volume_constraints_validator: ConstraintsValidator
+        volume_constraints_validator = ConstraintsValidator(SettingsProperties.VOLUME,
+                                                            cls.service_ID,
+                                                            BaseServiceSettings.ttsVolumeConstraints)
+        SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOLUME,
+                                   volume_constraints_validator)
+        '''
 
         cache_validator: BoolValidator
         cache_validator = BoolValidator(SettingsProperties.CACHE_SPEECH, cls.service_ID,

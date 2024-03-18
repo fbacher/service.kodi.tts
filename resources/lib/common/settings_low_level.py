@@ -714,32 +714,12 @@ class SettingsLowLevel:
             if blocked:
                 return
             new_settings: Dict[str, Any] = {}
-            # Get Lock
+            cls._load_settings(new_settings, Services.TTS_SERVICE)
             engine_id: str
             _, engine_id = cls.load_setting(SettingsProperties.ENGINE)
             if engine_id == Backends.AUTO_ID:
                 engine_id = Backends.DEFAULT_ENGINE_ID
-            force_load: bool = False
-            for setting_id in SettingsProperties.ALL_SETTINGS:
-                value: Any | None
-                service_id: str = engine_id
-                key: str = cls.getExpandedSettingId(setting_id, engine_id)
-                if setting_id in SettingsProperties.TOP_LEVEL_SETTINGS:
-                    continue
-                if setting_id in SettingsProperties.TTS_SETTINGS:
-                    service_id = Services.TTS_SERVICE
-                if SettingsMap.is_valid_property(service_id, setting_id):
-                    key, value = cls.load_setting(setting_id, service_id)
-                elif force_load:
-                    cls._logger.debug(f'FORCED load of property: {setting_id}')
-                    key, value = cls.load_setting(setting_id, service_id)
-                else:
-                    cls._logger.debug(f'Skipping load of property: {setting_id} '
-                                      f'for service_id: {service_id}')
-                    continue
-                if value is not None:
-                    cls._logger.debug(f'Adding {key} value: {value} to settings cache')
-                    new_settings[key] = value
+            cls._load_settings(new_settings, engine_id)
 
             cls._current_engine = engine_id
 
@@ -749,6 +729,43 @@ class SettingsLowLevel:
             # Notify
         finally:
             cls._loading.set()
+
+    @classmethod
+    def _load_settings(cls, new_settings: Dict[str, Any], engine_id: str) -> None:
+        """
+        Load ALL of the settings for the current backend.
+        Settings from multiple backends can be in the cache simultaneously
+        Settings not supported by a backend are not read and not put into
+        the cache. The settings.xml can have orphaned settings as long as
+        kodi allows it, based on the rules in the addon's settings.xml definition
+        file.
+
+        Ignore any other changes to settings until finished
+        """
+
+        cls._logger.debug('TRACE load_settings')
+        # Get Lock
+        force_load: bool = False
+        for setting_id in SettingsProperties.ALL_SETTINGS:
+            value: Any | None
+            service_id: str = engine_id
+            key: str = cls.getExpandedSettingId(setting_id, engine_id)
+            if setting_id in SettingsProperties.TOP_LEVEL_SETTINGS:
+                continue
+            if setting_id in SettingsProperties.TTS_SETTINGS:
+                service_id = Services.TTS_SERVICE
+            if SettingsMap.is_valid_property(service_id, setting_id):
+                key, value = cls.load_setting(setting_id, service_id)
+            elif force_load:
+                cls._logger.debug(f'FORCED load of property: {setting_id}')
+                key, value = cls.load_setting(setting_id, service_id)
+            else:
+                cls._logger.debug(f'Skipping load of property: {setting_id} '
+                                  f'for service_id: {service_id}')
+                continue
+            if value is not None:
+                cls._logger.debug(f'Adding {key} value: {value} to settings cache')
+                new_settings[key] = value
 
     @classmethod
     def load_setting(cls, setting_id: str,
@@ -1050,7 +1067,7 @@ class SettingsLowLevel:
         cls.check_reload()
 
         value: Any = cls._getSetting(setting_id, backend_id, default_value)
-        cls._logger.debug(f'setting_id: {real_key} value: {value}')
+        #  cls._logger.debug(f'setting_id: {real_key} value: {value}')
         return value
 
     @classmethod

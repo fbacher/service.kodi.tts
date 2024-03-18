@@ -106,6 +106,7 @@ class Commands:
 
 
 class TTSService:
+    autoItemExtra: int = 0
     instance_count: int = 0
     instance: ForwardRef('TTSService') = None
     _is_configuring: bool = False
@@ -386,7 +387,7 @@ class TTSService:
     def reloadSettings(cls):
         cls.readerOn = Settings.get_reader_on(True)
         cls.speakListCount = Settings.get_speak_list_count(True)
-        cls.autoItemExtra = False
+        cls.autoItemExtra = 0
         if Settings.get_auto_item_extra(False):
             cls.autoItemExtra = Settings.get_auto_item_extra_delay(2)
 
@@ -484,7 +485,7 @@ class TTSService:
         cls.listIndex = None
         cls.waitingToReadItemExtra = None
         cls.reloadSettings()
-        cls.background_driver: BackgroundDriver = None
+        cls.background_driver: BackgroundDriver | None = None
 
     @classmethod
     def initTTS(cls, backend_id: str = None):
@@ -824,26 +825,39 @@ class TTSService:
 
     @classmethod
     def window(cls):
-        return xbmcgui.Window(cls.winID)
+        try:
+            return xbmcgui.Window(cls.winID)
+        except RuntimeError as e:
+            cls._logger.exception(f'Invalid winID: {cls.winID}')
+        return None
 
     @classmethod
     def checkWindow(cls, newN):
         winID = xbmcgui.getCurrentWindowId()
         dialogID = xbmcgui.getCurrentWindowDialogId()
-        changed: bool = False
-        if dialogID != 9999 and dialogID != cls.dialogID:
-            # winID = dialogID
-            cls.dialogID = dialogID
-            changed = True
-        if winID != cls.winID:
-            cls.winID = winID
-            changed = True
-        if not changed:
-            if module_logger.isEnabledFor(DISABLED):
-                cls._logger.debug(f'new winID: {winID} previous winID:{cls.winID}')
+        if dialogID != 9999:
+            winID = dialogID
+        if winID == cls.winID:
+            #  cls._logger.debug(f'Same winID: {winID} newN:{newN}')
             return newN
+        cls._logger.debug(f'winID: {winID} dialogID: {dialogID}')
+        cls.winID = winID
         cls.updateWindowReader()
-        if module_logger.isEnabledFor(DISABLED):
+
+        # changed: bool = False
+        # if dialogID != 9999 and dialogID != cls.dialogID:
+            # winID = dialogID
+        #     cls.dialogID = dialogID
+        #     changed = True
+        # if winID != cls.winID:
+        #     cls.winID = winID
+        #     changed = True
+        # if not changed:
+        #     if module_logger.isEnabledFor(DISABLED):
+        #         cls._logger.debug(f'new winID: {winID} previous winID:{cls.winID}')
+        #     return newN
+        # cls.updateWindowReader()
+        if module_logger.isEnabledFor(DEBUG):
             module_logger.debug(f'Window ID: {winID} '
                                 f'dialogID: {dialogID} '
                                 f'Handler: {cls.windowReader.ID} '
@@ -887,17 +901,9 @@ class TTSService:
         if controlID < 0:
             controlID = - controlID
         control = xbmc.getInfoLabel("System.CurrentControl()")
-        clist = windowparser.getWindowParser().getControl(controlID)
-        #  cls._logger.debug(f'windowparser.getControl: {str(control)}')
+        cls._logger.debug(f'winID: {cls.winID} controlID: {controlID} info label: {control}')
         if controlID == cls.controlID:
             return newW
-        if module_logger.isEnabledFor(DEBUG):
-            window = cls.window()
-            #  cls._logger.debug(f'window: {type(window).__name__}')
-            try:
-                pass
-            except Exception as e:
-                cls._logger.exception('')
         cls.controlID = controlID
         if not controlID:
             return newW

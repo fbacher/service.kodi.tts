@@ -98,9 +98,9 @@
                 </setting>
                 <setting help="" id="volume.tts" label="123" type="integer">
                     <level>0</level>
-                    <default>0.0</default>
-                    <control format="integer" type="slider">
-                        <popup>false</popup>
+                    <default>0</default>
+                     <control type="edit" format="integer">
+                        <heading>32005</heading>
                     </control>
                     <visible>false</visible>
                 </setting>
@@ -170,7 +170,8 @@
                     </control>
                     <visible>false</visible>
                 </setting>
-                <!-- <setting help="" id="EXTERNAL_COMMAND.tts" label="32178" type="string">
+                <!-- <setting help="" id="EXTERNAL_COMMAND.tts" label="32178"
+                type="string">
                     <level>0</level>
                     <constraints>
                         <allowempty>true</allowempty>
@@ -235,7 +236,9 @@
                 <setting help="" id="speed.Cepstral" label="32178" type="integer">
                     <level>0</level>
                     <default>5</default>
-                    <control type="toggle"/>
+                  <control type="edit" format="integer">
+                        <heading>32005</heading>
+                    </control>
                     <visible>false</visible>
                 </setting>
                 <setting help="" id="voice.Cepstral" label="32178" type="string">
@@ -341,7 +344,6 @@
                     <control type="edit" format="integer">
                         <heading>32005</heading>
                     </control>
-                    <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
                 <setting help="" id="language.Festival" label="32178" type="string">
@@ -938,7 +940,8 @@
                     <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
-                <setting help="" id="remote_server.Speech-Dispatcher" label="32211" type="string">
+                <setting help="" id="remote_server.Speech-Dispatcher" label="32211"
+                         type="string">
                     <level>0</level>
                     <constraints>
                         <allowempty>true</allowempty>
@@ -1032,6 +1035,189 @@
                     <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
+                 <setting help="" id="gender.tts" label="32178" type="string">
+                    <level>0</level>
+                    <default>female</default>
+                    <control type="edit" format="string">
+                        <heading>32005</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                  <setting help="" id="channels.tts" label="32178" type="string">
+                    <level>0</level>
+                    <default>female</default>
+                    <control type="edit" format="string">
+                        <heading>32005</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="language.tts" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="pipe.tts" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="pitch.tts" label="32178" type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="edit" format="integer">
+                        <heading>32005</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="player.tts" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                 <setting help="" id="pipe.tts" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="delay_voicing.tts" label="32178"
+                         type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="use_aoss.tts" label="32017" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="pitch.tts" label="32178" type="integer">
+                    <level>0</level>
+                    <default>0</default>
+                    <control type="edit" format="integer">
+                        <heading>32005</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="player.tts" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                 <setting help="" id="speed.tts" label="32178" type="integer">
+                    <level>0</level>
+                    <default>1</default>
+                    <control type="edit" format="integer">
+                        <heading>32005</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="voice.tts" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <default>mildred</default>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="cache_speech.tts" label="32178"
+                         type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="remote_pitch.tts" label="32178"
+                         type="integer">
+                    <level>0</level>
+                    <default>5</default>
+                    <control type="edit" format="integer">
+                        <heading>32005</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="remote_speed.tts" label="32178"
+                         type="integer">
+                    <level>0</level>
+                    <default>2</default>
+                    <control type="edit" format="integer">
+                        <heading>32005</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="remote_volume.tts" label="32178"
+                         type="integer">
+                    <level>0</level>
+                    <default>2</default>
+                    <control type="edit" format="integer">
+                        <heading>32005</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="player_volume.tts" label="32178"
+                         type="integer">
+                    <level>0</level>
+                    <default>2</default>
+                    <control type="edit" format="integer">
+                        <heading>32005</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="player_pitch.tts" label="32178"
+                         type="integer">
+                    <level>0</level>
+                    <default>2</default>
+                    <control type="edit" format="integer">
+                        <heading>32005</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="player_speed.tts" label="32178"
+                         type="integer">
+                    <level>0</level>
+                    <default>0</default>
+                    <control type="edit" format="integer">
+                        <heading>32005</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="speak_on_server.tts" label="32013"
+                         type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="speed_enabled.tts" label="32013"
+                         type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+
+
                 <setting help="" id="pitch.Speech-Dispatcher" label="32018"
                          type="integer">
                     <level>0</level>
@@ -1060,7 +1246,7 @@
                     <visible>false</visible>
                 </setting>
                 <setting help="" id="module.Speech-Dispatcher" label="32178"
-                         type="STRING">
+                         type="string">
                     <level>0</level>
                     <constraints>
                         <allowempty>true</allowempty>
@@ -1070,7 +1256,7 @@
                     </control>
                     <visible>false</visible>
                 </setting>
-                <setting help="" id="voice.Speech-Dispatcher" label="32178" type="STRING">
+                <setting help="" id="voice.Speech-Dispatcher" label="32178" type="string">
                     <level>0</level>
                     <constraints>
                         <allowempty>true</allowempty>
@@ -1093,9 +1279,7 @@
                          type="boolean">
                     <level>0</level>
                     <default>false</default>
-                    <control type="edit" format="string">
-                        <heading>32178</heading>
-                    </control>
+                    <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
                 <setting help="" id="pipe.Speech-Dispatcher" label="32013"
@@ -1118,7 +1302,6 @@
                     <control type="edit" format="string">
                         <heading>32005</heading>
                     </control>
-                    <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
                 <setting help="" id="language.experimental" label="32178" type="string">
@@ -1168,7 +1351,6 @@
                     <control type="edit" format="integer">
                         <heading>32005</heading>
                     </control>
-                    <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
                 <setting help="" id="player.experimental" label="32178" type="string">
@@ -1187,7 +1369,6 @@
                     <control type="edit" format="integer">
                         <heading>32005</heading>
                     </control>
-                    <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
                 <setting help="" id="voice.experimental" label="32178" type="string">
@@ -1207,7 +1388,6 @@
                     <control type="edit" format="integer">
                         <heading>32005</heading>
                     </control>
-                    <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
                 <setting help="" id="cache_speech.experimental" label="32178"
@@ -1224,7 +1404,6 @@
                     <control type="edit" format="integer">
                         <heading>32005</heading>
                     </control>
-                    <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
                 <setting help="" id="remote_speed.experimental" label="32178"
@@ -1287,16 +1466,15 @@
                     <visible>false</visible>
                 </setting>
 
-                <setting help="" id="gender.Google" label="32178" type="string">
+                <setting help="" id="gender.google" label="32178" type="string">
                     <level>0</level>
                     <default>female</default>
                     <control type="edit" format="string">
                         <heading>32005</heading>
                     </control>
-                    <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
-                <setting help="" id="language.Google" label="32178" type="string">
+                <setting help="" id="language.google" label="32178" type="string">
                     <level>0</level>
                     <constraints>
                         <allowempty>true</allowempty>
@@ -1307,7 +1485,7 @@
                     </control>
                     <visible>false</visible>
                 </setting>
-                <setting help="" id="converter.Google" label="32178" type="string">
+                <setting help="" id="converter.google" label="32178" type="string">
                     <level>0</level>
                     <constraints>
                         <allowempty>true</allowempty>
@@ -1318,37 +1496,36 @@
                     </control>
                     <visible>false</visible>
                 </setting>
-                <setting help="" id="pipe.Google" label="32178" type="boolean">
+                <setting help="" id="pipe.google" label="32178" type="boolean">
                     <level>0</level>
                     <default>false</default>
                     <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
 
-                <setting help="" id="delay_voicing.Google" label="32178" type="boolean">
+                <setting help="" id="delay_voicing.google" label="32178" type="boolean">
                     <level>0</level>
                     <default>false</default>
                     <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
                 <!--
-                <setting help="" id="use_aoss.Google" label="32017" type="boolean">
+                <setting help="" id="use_aoss.google" label="32017" type="boolean">
                     <level>0</level>
                     <default>false</default>
                     <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
                 -->
-                <setting help="" id="pitch.Google" label="32178" type="integer">
+                <setting help="" id="pitch.google" label="32178" type="integer">
                     <level>0</level>
                     <default>0</default>
                     <control type="edit" format="integer">
                         <heading>32005</heading>
                     </control>
-                    <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
-                <setting help="" id="player.Google" label="32178" type="string">
+                <setting help="" id="player.google" label="32178" type="string">
                     <level>0</level>
                     <constraints>
                         <allowempty>true</allowempty>
@@ -1358,16 +1535,15 @@
                     </control>
                     <visible>false</visible>
                 </setting>
-                <setting help="" id="speed.Google" label="32178" type="integer">
+                <setting help="" id="speed.google" label="32178" type="integer">
                     <level>0</level>
                     <default>1</default>
                     <control type="edit" format="integer">
                         <heading>32005</heading>
                     </control>
-                    <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
-                <setting help="" id="voice.Google" label="32178" type="string">
+                <setting help="" id="voice.google" label="32178" type="string">
                     <level>0</level>
                     <constraints>
                         <allowempty>true</allowempty>
@@ -1378,32 +1554,30 @@
                     </control>
                     <visible>false</visible>
                 </setting>
-                <setting help="" id="player_volume.Google" label="32178" type="integer">
+                <setting help="" id="player_volume.google" label="32178" type="integer">
                     <level>0</level>
                     <default>0</default>
                     <control type="edit" format="integer">
                         <heading>32005</heading>
                     </control>
-                    <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
-                <setting help="" id="volume.Google" label="32178" type="integer">
+                <setting help="" id="volume.google" label="32178" type="integer">
                     <level>0</level>
                     <default>0</default>
                     <control type="edit" format="integer">
                         <heading>32005</heading>
                     </control>
-                    <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
-                <setting help="" id="cache_speech.Google" label="32178"
+                <setting help="" id="cache_speech.google" label="32178"
                          type="boolean">
                     <level>0</level>
                     <default>true</default>
                     <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
-                <setting help="" id="speed_enabled.Google" label="32013"
+                <setting help="" id="speed_enabled.google" label="32013"
                          type="boolean">
                     <level>0</level>
                     <default>false</default>
@@ -1450,7 +1624,6 @@
                     <control type="edit" format="integer">
                         <heading>32005</heading>
                     </control>
-                    <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
                 <setting help="" id="voice.SAPI" label="32178" type="string">
@@ -1470,7 +1643,6 @@
                     <control type="edit" format="integer">
                         <heading>32005</heading>
                     </control>
-                    <control type="toggle"/>
                     <visible>false</visible>
                 </setting>
                 <setting help="" id="cache_speech.SAPI" label="32178"
@@ -1481,6 +1653,142 @@
                     <visible>false</visible>
                 </setting>
                 <setting help="" id="speed_enabled.SAPI" label="32013"
+                         type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                 <setting help="" id="gender.piper" label="32178" type="string">
+                    <level>0</level>
+                    <default>female</default>
+                    <control type="edit" format="string">
+                        <heading>32005</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="language.piper" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <default>en</default>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="converter.piper" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <default>lame</default>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="pipe.piper" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="player_speed.piper" label="32178"
+                         type="integer">
+                    <level>0</level>
+                    <default>100</default>
+                    <control type="edit" format="integer">
+                        <heading>32005</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="delay_voicing.piper" label="32178" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <!--
+                <setting help="" id="use_aoss.piper" label="32017" type="boolean">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                -->
+                <setting help="" id="pitch.piper" label="32178" type="integer">
+                    <level>0</level>
+                    <default>0</default>
+                    <control type="edit" format="integer">
+                        <heading>32005</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="player.piper" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="speed.piper" label="32178" type="integer">
+                    <level>0</level>
+                    <default>1</default>
+                    <control type="edit" format="integer">
+                        <heading>32005</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="voice.piper" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <default>mildred</default>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="voice_path.piper" label="32178" type="string">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="player_volume.piper" label="32178" type="integer">
+                    <level>0</level>
+                    <default>0</default>
+                    <control type="edit" format="integer">
+                        <heading>32005</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="volume.piper" label="32178" type="integer">
+                    <level>0</level>
+                    <default>0</default>
+                    <control type="edit" format="integer">
+                        <heading>32005</heading>
+                    </control>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="cache_speech.piper" label="32178"
+                         type="boolean">
+                    <level>0</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                    <visible>false</visible>
+                </setting>
+                <setting help="" id="speed_enabled.piper" label="32013"
                          type="boolean">
                     <level>0</level>
                     <default>false</default>

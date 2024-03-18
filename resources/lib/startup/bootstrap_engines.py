@@ -34,6 +34,7 @@ class BootstrapEngines:
         # NVDATTSBackend(),
         Backends.FLITE_ID,
         Backends.PICO_TO_WAVE_ID,
+        Backends.PIPER_ID,
         Backends.FESTIVAL_ID,
         # CepstralTTSBackend(),
         #            CepstralTTSOEBackend(),
@@ -148,6 +149,20 @@ class BootstrapEngines:
         except Exception as e:
             cls._logger.exception('')
             SettingsMap.set_is_available(Backends.PICO_TO_WAVE_ID, Reason.BROKEN)
+        try:
+            from backends.settings.piper_settings import PiperSettings
+            piper: PiperSettings = PiperSettings()
+            is_available: bool = piper.isInstalled()
+            if is_available:
+                SettingsMap.set_is_available(Backends.PIPER_ID, Reason.AVAILABLE)
+            else:
+                SettingsMap.set_is_available(Backends.PIPER_ID,
+                                             Reason.NOT_AVAILABLE)
+        except AbortException:
+            reraise(*sys.exc_info())
+        except Exception as e:
+            cls._logger.exception('')
+            SettingsMap.set_is_available(Backends.PIPER_ID, Reason.BROKEN)
 
         try:
             from backends.engines.responsive_voice_settings import ResponsiveVoiceSettings
@@ -260,6 +275,9 @@ class BootstrapEngines:
             elif engine_id == Backends.PICO_TO_WAVE_ID:
                 from backends.pico2wave import Pico2WaveTTSBackend
                 engine = Pico2WaveTTSBackend()
+            elif engine_id == Backends.PIPER_ID:
+                from backends.engines.piper import PiperTTSBackend
+                engine = PiperTTSBackend()
             # elif engine_id == Backends.RECITE_ID:
             elif engine_id == Backends.RESPONSIVE_VOICE_ID:
                 from backends.responsive_voice import ResponsiveVoiceTTSBackend

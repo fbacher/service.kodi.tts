@@ -48,6 +48,9 @@ class Messages:
 
     UNKNOWN = Message('Unknown', 32165)
 
+    CHANNEL_NO_PREF = Message('Default', 32332)
+    CHANNEL_MONO = Message('Mono', 32333)
+    CHANNEL_STEREO = Message('Stereo', 32334)
     GENDER_MALE = Message('Male', 32212)
     GENDER_FEMALE = Message('Female', 32213)
     VIDEO_MENU = Message('video menu', 32163)
@@ -252,6 +255,7 @@ class Messages:
     PLAYER_AFPLAY = Message('afplay', 32301)
     PLAYER_SOX = Message('SOX', 32302)
     PLAYER_MPLAYER = Message('Mplayer', 32303)
+    PLAYER_MPV = Message('MPV', 32330)
     PLAYER_MPG321 = Message('mpg321', 32305)
     PLAYER_MPG123 = Message('mpg123', 32306)
     PLAYER_MPG321_OE_PI = Message('mpg321 OE Pi', 32307)
@@ -272,6 +276,7 @@ class Messages:
     BACKEND_INTERNAL = Message('Internal', 32326)
     BACKEND_LOG_ONLY = Message('Logging Only', 32327)
     CONVERT_PICO_TO_WAV = Message('Pico to wave', 32328)
+    BACKEND_PIPER = Message('Piper', 32331)
 
     # INTERNAL_ID: Messages.BACKEND_INTERNAL,
     # LOG_ONLY_ID: Messages.BACKEND_LOG_ONLY,

@@ -27,9 +27,9 @@ class HomeDialogReader(WindowReaderBase):
         #  info = xbmc.getInfoLabel(f'Control.GetLabel({label_id})')
         text = xbmc.getInfoLabel('System.CurrentControl')
         # info = xbmc.getInfoLabel(f'{1732}')
-        cls._logger.debug(f'controlID: {controlID}  '
-                          f'service.controlID: {self.service.controlID} '
-                          f'text: {text}')
+        # cls._logger.debug(f'controlID: {controlID}  '
+        #                   f'service.controlID: {self.service.controlID} '
+        #                   f'text: {text}')
 
         #  winID = xbmcgui.getCurrentWindowId()
         #  window = xbmcgui.Window(winID)

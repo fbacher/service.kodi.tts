@@ -14,16 +14,16 @@ from common.messages import Message, Messages
 
 class BaseSettingsConstants:
 
-    settings_map: Dict[int, Message] = {}
+    settings_map: Dict[str, Message] = {}
 
     @classmethod
-    def get_label(cls, setting_id: int) -> str:
+    def get_label(cls, setting_id: str) -> str:
         msg_handle = cls.settings_map.get(setting_id, setting_id)
         label = Messages.get_msg(msg_handle)
         return label
 
     @classmethod
-    def get_msg_handle(cls, setting_id: int) -> Message:
+    def get_msg_handle(cls, setting_id: str) -> Message:
         return cls.settings_map.get(setting_id, None)
 
 
@@ -36,6 +36,7 @@ class Backends(BaseSettingsConstants):
     INTERNAL_ID: Final[str] = Services.INTERNAL_PLAYER_ID
     LOG_ONLY_ID: Final[str] = Services.LOG_ONLY_ID
     PICO_TO_WAVE_ID: Final[str] = Services.PICO_TO_WAVE_ID
+    PIPER_ID: Final[str] = Services.PIPER_ID
     RECITE_ID: Final[str] = Services.RECITE_ID
     RESPONSIVE_VOICE_ID: Final[str] = Services.RESPONSIVE_VOICE_ID
     GOOGLE_ID: Final[str] = Services.GOOGLE_ID
@@ -53,6 +54,7 @@ class Backends(BaseSettingsConstants):
         INTERNAL_ID,
         LOG_ONLY_ID,
         PICO_TO_WAVE_ID,
+        PIPER_ID,
         RECITE_ID,
         RESPONSIVE_VOICE_ID,
         SAPI_ID,
@@ -67,6 +69,7 @@ class Backends(BaseSettingsConstants):
         INTERNAL_ID         : Messages.BACKEND_INTERNAL,
         LOG_ONLY_ID         : Messages.BACKEND_LOG_ONLY,
         PICO_TO_WAVE_ID     : Messages.CONVERT_PICO_TO_WAV,
+        PIPER_ID            : Messages.BACKEND_PIPER,
         RECITE_ID           : Messages.BACKEND_RECITE,
         RESPONSIVE_VOICE_ID : Messages.BACKEND_RESPONSIVE_VOICE,
         SAPI_ID             : Messages.BACKEND_SAPI,
@@ -83,7 +86,8 @@ class Backends(BaseSettingsConstants):
         RESPONSIVE_VOICE_ID   : 'rv',
         SPEECH_DISPATCHER_ID  : 'speechDisp',
         EXPERIMENTAL_ENGINE_ID: 'ex',
-        GOOGLE_ID             : 'goo'
+        GOOGLE_ID             : 'goo',
+        PIPER_ID              : 'piper'
     }
 
 
@@ -229,6 +233,7 @@ class Players(BaseSettingsConstants):
     AFPLAY: Final[str] = 'afplay'
     SOX: Final[str] = 'sox'
     MPLAYER: Final[str] = 'mplayer'
+    MPV: Final[str] = 'mpv'
     MPG321: Final[str] = 'mpg321'
     MPG123: Final[str] = 'mpg123'
     MPG321_OE_PI: Final[str] = 'mpg321_OE_Pi'
@@ -252,6 +257,7 @@ class Players(BaseSettingsConstants):
         AFPLAY      : Messages.PLAYER_AFPLAY,
         SOX         : Messages.PLAYER_SOX,
         MPLAYER     : Messages.PLAYER_MPLAYER,
+        MPV         : Messages.PLAYER_MPV,
         MPG321      : Messages.PLAYER_MPG321,
         MPG123      : Messages.PLAYER_MPG123,
         MPG321_OE_PI: Messages.PLAYER_MPG321_OE_PI,
@@ -299,6 +305,20 @@ class GenderSettingsMap(BaseSettingsConstants):
         Genders.MALE   : Messages.GENDER_MALE,
         Genders.FEMALE : Messages.GENDER_FEMALE,
         Genders.UNKNOWN: Messages.GENDER_UNKNOWN
+    }
+
+
+class Channels(StrEnum):
+    NO_PREF = 'no_pref'
+    MONO = 'mono'
+    STEREO = 'stereo'
+
+
+class ChannelSettingsMap(BaseSettingsConstants):
+    settings_map = {
+        Channels.NO_PREF   : Messages.CHANNEL_NO_PREF,
+        Channels.MONO      : Messages.CHANNEL_MONO,
+        Channels.STEREO    : Messages.CHANNEL_STEREO
     }
 
 

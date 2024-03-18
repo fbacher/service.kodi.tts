@@ -13,9 +13,10 @@ except ImportError:
 from common import *
 
 from backends.settings.i_constraints import IConstraints
-from backends.settings.i_validators import (IBoolValidator, IConstraintsValidator,
+from backends.settings.i_validators import (IBoolValidator, IChannelValidator,
+                                            IConstraintsValidator,
                                             IGenderValidator, IIntValidator,
-                                            IStrEnumValidator,
+                                            INumericValidator, IStrEnumValidator,
                                             IStringValidator, IValidator)
 from backends.settings.service_types import ServiceType
 from common.logger import BasicLogger
@@ -208,10 +209,11 @@ class SettingsMap:
 
     @classmethod
     def get_validator(cls, service_id: str,
-                      property_id: str) -> IBoolValidator | IStringValidator | \
+                      property_id: str) -> (IBoolValidator | IStringValidator | \
                                            IIntValidator | IStrEnumValidator | \
                                            IConstraintsValidator | \
-                                           IGenderValidator | None:
+                                           IGenderValidator | INumericValidator | \
+                                           IChannelValidator |  None):
         if property_id is None:
             property_id = ''
         assert isinstance(service_id, str), 'Service_id must be a str'

@@ -104,18 +104,16 @@ class WindowReaderBase(WindowHandlerBase):
 
     def getSettingControlText(self, controlID):
         cls = type(self)
-        text = xbmc.getInfoLabel('System.CurrentControl')
+        text: str = xbmc.getInfoLabel('System.CurrentControl')
+        text = f'controlID: {controlID} {text}'
         if text.endswith(')'):  # Skip this most of the time
-            cls._logger.debug(f'elipsis substitution orig text: {text} ')
-            text = text.replace('( )', '{0} {1}'.format(Constants.PAUSE_INSERT,
-                                                        Messages.get_msg(
-                                                                Messages.NO)).replace(
-                '(*)',
-                '{0} '
-                '{1}'.format(
-                        Constants.PAUSE_INSERT,
-                        Messages.get_msg(
-                                Messages.YES))))  # For boolean settings
+            # For boolean settings
+            new_text: str = text.replace('( )', f'{Constants.PAUSE_INSERT} '
+                                                f'{Messages.get_msg(Messages.NO)}')
+            new_text = new_text.replace('(*)', f'{Constants.PAUSE_INSERT} '
+                                        f'{Messages.get_msg(Messages.YES)}')
+            cls._logger.debug(f'elipsis substitution control {controlID} text: {text} new: {new_text}')
+            text = new_text
         return text
 
     def getSlideoutText(self, controlID):

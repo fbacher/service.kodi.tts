@@ -20,9 +20,11 @@ class Services:
     LOG_ONLY_ID: Final[str] = 'LogOnly'
     SPEECH_DISPATCHER_ID: Final[str] = 'Speech-Dispatcher'
     MPLAYER_ID: Final[str] = 'mplayer'
+    MPV_ID: Final[str] = 'mpv'
     MPG123_ID: Final[str] = 'mpg123'
     MPG321_ID: Final[str] = 'mpg321'
     PICO_TO_WAVE_ID: Final[str] = 'pico2wave'
+    PIPER_ID: Final[str] = 'piper'
     RECITE_ID: Final[str] = 'Recite'
     SAPI_ID: Final[str] = 'SAPI'
     SERVICE_ID: Final[str] = 'id'  # Specifies the service's id (FLite is the current

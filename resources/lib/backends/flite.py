@@ -11,6 +11,7 @@ from common import *
 
 from backends.base import SimpleTTSBackend
 from common.logger import *
+from common.monitor import Monitor
 from common.setting_constants import Backends, Mode, Players
 from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
@@ -65,12 +66,12 @@ class FliteTTSBackend(SimpleTTSBackend):
         return True
 
     def runCommandAndSpeak(self, text_to_voice: str) -> None:
-
+        clz = type(self)
         voice = type(self).getVoice()
         self.process = subprocess.Popen(['flite', '-voice', voice, '-t', text_to_voice],
                                         universal_newlines=True, encoding='utf-8')
-        while self.process.poll() is None and self.active:
-            xbmc.sleep(10)
+        while self.process.poll() is None and clz.is_active_engine(clz):
+            Monitor.exception_on_abort(timeout=0.10)
 
     def update(self):
         pass

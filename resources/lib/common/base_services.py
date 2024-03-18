@@ -7,7 +7,7 @@ from backends.settings.service_types import Services, ServiceType
 from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
-                                          IntValidator, StringValidator)
+                                          IntValidator, NumericValidator, StringValidator)
 from common.logger import BasicLogger
 from common.phrases import PhraseList
 from common.settings import Settings
@@ -251,8 +251,7 @@ class BaseServices(IServices):
     def get_validator(cls, service_or_id: str,
                       property_id: str) -> IValidator | ConstraintsValidator | \
                                            StringValidator | IntValidator | \
-                                           BoolValidator | None:
-        settings_for_service: Dict[str, IValidator]
+                                           BoolValidator | NumericValidator | None:
         service_id: str
         if isinstance(service_or_id, BaseServices):
             service_id = service_or_id.service_ID

@@ -6,6 +6,7 @@ import sys
 import threading
 from pathlib import Path
 
+from backends.ispeech_generator import ISpeechGenerator
 from common import *
 
 from backends import audio
@@ -384,6 +385,14 @@ class BaseEngineService(BaseServices):
                 converter_id = candidate_converters[0]
 
         return converter_id
+
+    @classmethod
+    def get_speech_generator(cls) -> ISpeechGenerator | None:
+        return None
+
+    @classmethod
+    def has_speech_generator(cls) -> bool:
+        return False
 
     '''
     @classmethod
@@ -824,7 +833,6 @@ class ThreadedTTSBackend(BaseEngineService):
         clz = type(self)
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz._class_name)
-        # self.active: bool = False
         self.process = None
         BaseServices.register(self)
         KodiPlayerMonitor.register_player_status_listener(
@@ -838,7 +846,6 @@ class ThreadedTTSBackend(BaseEngineService):
         """
         super().init()
         clz = type(self)
-        # self.active = True
 
     def destroy(self):
         """
@@ -901,7 +908,6 @@ class ThreadedTTSBackend(BaseEngineService):
         raise Exception('Not Implemented')
 
     def _close(self):
-        # self.active = False
         super()._close()
         EngineQueue.empty_queue()
 

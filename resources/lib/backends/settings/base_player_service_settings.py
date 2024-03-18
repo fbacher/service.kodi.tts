@@ -7,7 +7,7 @@ from backends.i_tts_backend_base import ITTSBackendBase
 from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.constraints import Constraints
 from backends.settings.service_types import Services
-from backends.settings.validators import (Validator)
+from backends.settings.validators import (NumericValidator, Validator)
 from common.base_services import BaseServices
 from common.settings_low_level import SettingsProperties
 
@@ -25,23 +25,32 @@ class BasePlayerServiceSettings(BaseServiceSettings):
     # Min, Default, Max, Integer_Only (no float)
     ttsPitchConstraints: Constraints = Constraints(0, 50, 99, True, False, 1.0,
                                                    SettingsProperties.PITCH, 50, 1.0)
-    ttsVolumeConstraints: Constraints = Constraints(minimum=-12, default=0, maximum=12,
-                                                    integer=True, decibels=True,
-                                                    scale=1.0,
-                                                    property_name=SettingsProperties.VOLUME,
-                                                    midpoint=0, increment=1.0)
+    tts_volume_validator: NumericValidator
+    tts_volume_validator = NumericValidator(SettingsProperties.VOLUME,
+                                            Services.TTS_SERVICE,
+                                            minimum=5, maximum=400,
+                                            default=100, is_decibels=False,
+                                            is_integer=False)
+
+    tts_speed_validator: NumericValidator
+    tts_speed_validator = NumericValidator(SettingsProperties.SPEED,
+                                           Services.TTS_SERVICE,
+                                           minimum=25, maximum=400,
+                                           default=100, is_decibels=False,
+                                           is_integer=False)
+
     ttsSpeedConstraints: Constraints = Constraints(25, 100, 400, False, False, 0.01,
                                                    SettingsProperties.SPEED, 100, 0.25)
 
     # TODO: move to default settings map
     TTSConstraints: Dict[str, Constraints] = {
-        SettingsProperties.SPEED : ttsSpeedConstraints,
-        SettingsProperties.PITCH : ttsPitchConstraints,
-        SettingsProperties.VOLUME: ttsVolumeConstraints
+        SettingsProperties.SPEED: ttsSpeedConstraints,
+        SettingsProperties.PITCH: ttsPitchConstraints,
+        SettingsProperties.VOLUME: tts_volume_validator
     }
     # TODO: eliminate these
     pitchConstraints: Constraints = ttsPitchConstraints
-    volumeConstraints: Constraints = ttsVolumeConstraints
+    volume_validator: NumericValidator = tts_volume_validator
     speedConstraints: Constraints = ttsSpeedConstraints
     # Volume scale as presented to the user
 

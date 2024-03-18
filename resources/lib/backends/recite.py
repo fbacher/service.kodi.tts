@@ -10,6 +10,7 @@ from common import *
 from backends import base
 from common import utils
 from common.logger import *
+from common.monitor import Monitor
 from common.setting_constants import Backends
 from common.system_queries import SystemQueries
 
@@ -35,10 +36,11 @@ class ReciteTTSBackend(base.SimpleTTSBackend):
         self.process = None
 
     def runCommandAndSpeak(self, text):
+        clz = type(self)
         args = ['recite', text]
         self.process = subprocess.Popen(args, universal_newlines=True, encoding='utf-8')
-        while self.process.poll() is None and self.active:
-            utils.sleep(10)
+        while self.process.poll() is None and clz.is_active_engine(clz):
+            Monitor.exception_on_abort(timeout=0.1)
 
     @staticmethod
     def isSupportedOnPlatform():

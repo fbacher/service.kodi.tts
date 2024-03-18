@@ -6,11 +6,12 @@ import xbmcgui
 from xbmcgui import (ControlButton, ControlEdit, ControlGroup, ControlLabel,
                      ControlRadioButton, ControlSlider, ListItem)
 
+from backends.settings.validators import NumericValidator
 from common import *
 
 from backends.backend_info import BackendInfo
 from backends.base import *
-from backends.settings.i_validators import (IConstraintsValidator)
+from backends.settings.i_validators import (IConstraintsValidator, INumericValidator)
 from backends.settings.settings_map import SettingsMap
 from common.constants import Constants
 from common.logger import *
@@ -211,7 +212,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 self.engine_engine_button = self.getControlButton(
                         clz.SELECT_ENGINE_BUTTON)
                 self.engine_engine_button.setLabel(
-                        Messages.get_msg(Messages.ENGINE))
+                        f'{Messages.get_msg(Messages.ENGINE)}. {Backends.get_label(self.get_engine_id(init=True))}')
 
                 self.engine_engine_value = self.getControlLabel(
                         clz.SELECT_ENGINE_VALUE_LABEL)
@@ -1219,26 +1220,28 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         minimum_volume: int = 0
         maximum_volume: int = 0
         current_volume: int = 0
+        increment: float = 0.0
         try:
-            volume_val: IConstraintsValidator
+            volume_val: INumericValidator
             volume_val = SettingsMap.get_validator(self.engine_id,
                                                    SettingsProperties.VOLUME)
             if volume_val is None:
                 raise NotImplementedError
+
+            volume_val: NumericValidator
             values = volume_val.get_tts_values()
 
             current_volume = values[0]
             minimum_volume = values[1]
             default_volume = values[2]
             maximum_volume = values[3]
-            tts_val: IConstraintsValidator = volume_val.get_tts_validator()
-            tts_constraints = tts_val.get_constraints()
+            increment = float(volume_val.increment)
         except NotImplementedError:
             pass
         except Exception as e:
             self._logger.exception('')
         return (minimum_volume, maximum_volume,
-                current_volume, tts_constraints.increment)
+                current_volume, increment)
 
     def select_pitch(self):
         try:

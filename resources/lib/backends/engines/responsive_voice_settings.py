@@ -10,7 +10,7 @@ from backends.settings.i_validators import ValueType
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.settings_map import Reason, SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
-                                          StringValidator)
+                                          NumericValidator, StringValidator)
 from common.constants import Constants
 from common.logger import BasicLogger
 from common.setting_constants import Backends, Players
@@ -112,6 +112,7 @@ class ResponsiveVoiceSettings(BaseServiceSettings):
         SettingsMap.set_is_available(clz.service_ID, Reason.AVAILABLE)
 
     def init_settings(self):
+        clz = type(self)
         service_properties = {'name'                     : self.displayName,
                               Constants.MAX_PHRASE_LENGTH: 200,
                               Constants.CACHE_SUFFIX     : 'rv'}
@@ -121,27 +122,33 @@ class ResponsiveVoiceSettings(BaseServiceSettings):
         # Need to define Conversion Constraints between the TTS 'standard'
         # constraints/settings to the engine's constraints/settings
 
-        speed_constraints_val = ConstraintsValidator(SettingsProperties.SPEED,
-                                                     self.engine_id,
-                                                     BaseServiceSettings.ttsSpeedConstraints)
-
         pitch_constraints: Constraints = Constraints(0, 50, 99, True, False, 1.0,
                                                      SettingsProperties.PITCH)
         pitch_constraints_validator = ConstraintsValidator(SettingsProperties.PITCH,
                                                            self.engine_id,
                                                            pitch_constraints)
 
-        volumeConversionConstraints: Constraints
-        volumeConversionConstraints = Constraints(minimum=0.1, default=1.0,
-                                                  maximum=2.0, integer=False,
-                                                  decibels=False, scale=1.0,
-                                                  property_name=SettingsProperties.VOLUME,
-                                                  midpoint=0.8, increment=0.1)
-        engine_id_constraints_validator = self.VolumeConstraintsValidator(
-                SettingsProperties.VOLUME, self.engine_id, volumeConversionConstraints)
+        speed_validator: NumericValidator
+        speed_validator = NumericValidator(SettingsProperties.SPEED,
+                                           clz.service_ID,
+                                           minimum=.25, maximum=5,
+                                           default=1,
+                                           is_decibels=False,
+                                           is_integer=False)
+        SettingsMap.define_setting(clz.service_ID,
+                                   SettingsProperties.SPEED,
+                                   speed_validator)
 
-        SettingsMap.define_setting(self.service_ID, SettingsProperties.VOLUME,
-                                   engine_id_constraints_validator)
+        volume_validator: NumericValidator
+        volume_validator = NumericValidator(SettingsProperties.VOLUME,
+                                            clz.service_ID,
+                                            minimum=5, maximum=400,
+                                            default=100, is_decibels=False,
+                                            is_integer=False)
+        SettingsMap.define_setting(clz.service_ID,
+                                   SettingsProperties.VOLUME,
+                                   volume_validator)
+
         '''
         volume_constraints_validator = self.VolumeConstraintsValidator(
                 SettingsProperties.VOLUME,
@@ -198,8 +205,6 @@ class ResponsiveVoiceSettings(BaseServiceSettings):
                                    voice_validator)
         SettingsMap.define_setting(self.service_ID, SettingsProperties.PIPE,
                                    pipe_validator)
-        SettingsMap.define_setting(self.service_ID, SettingsProperties.SPEED,
-                                   speed_constraints_val)
         SettingsMap.define_setting(self.service_ID, SettingsProperties.PITCH,
                                    pitch_constraints_validator)
         SettingsMap.define_setting(self.service_ID, SettingsProperties.PLAYER,

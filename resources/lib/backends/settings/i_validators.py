@@ -9,13 +9,55 @@ except ImportError:
 from common import *
 
 from backends.settings.i_constraints import IConstraints
-from common.setting_constants import Genders
+from common.setting_constants import Channels, Genders
 
 
 class ValueType(Enum):
     VALUE = 0
     INTERNAL = 1
     UI = 2
+
+
+class INumericValidator:
+
+    def __init__(self, setting_id: str, service_id: str,
+                 minimum: int, maximum: int,
+                 default: int | None = None,
+                 is_decibels: bool = False,
+                 is_integer: bool = True) -> None:
+       pass
+
+    def get_value(self) -> bool | int | float | str:
+        pass
+
+    def get_raw_value(self) -> int:
+        pass
+
+    def set_value(self, value: int | float) -> None:
+        pass
+
+    def validate(self, value: int | None) -> bool:
+        pass
+
+    def get_minimum(self) -> int:
+        pass
+
+    def get_maximum(self) -> int:
+        pass
+
+    @classmethod
+    def to_percent(cls, value: int | float) -> float:
+        """
+        Converts the value from decibels to percent.
+
+        :return:
+        """
+        pass
+
+    @classmethod
+    def to_decibels(cls, value) -> float:
+
+        pass
 
 
 class IValidator:
@@ -386,7 +428,50 @@ class IGenderValidator(IValidator):
     def setInternalValue(self, internalValue: int | str) -> None:
         raise NotImplementedError()
 
+    def get_value(self) -> str:
+        raise NotImplementedError()
+
     def validate(self, value: Genders | None) -> Tuple[bool, Any]:
+        raise NotImplementedError()
+
+    def preValidate(self, ui_value: Enum) -> Tuple[bool, Enum]:
+        raise NotImplementedError()
+
+
+class IChannelValidator(IValidator):
+
+    def __init__(self, setting_id: str, service_id: str,
+                 min_value: Channels, max_value: Channels,
+                 default_value: Channels = Channels.NO_PREF) -> None:
+        super().__init__(setting_id, service_id)
+        pass
+
+    @property
+    def default_value(self) -> Channels:
+        raise NotImplementedError()
+
+    def get_tts_value(self) -> Channels:
+        raise NotImplementedError()
+
+    def set_tts_value(self, value: Channels) -> None:
+        raise NotImplementedError()
+
+    def setUIValue(self, ui_value: str) -> None:
+        raise NotImplementedError()
+
+    def getUIValue(self) -> str:
+        raise NotImplementedError()
+
+    def get_value(self) -> str:
+        raise NotImplementedError()
+
+    def getInternalValue(self) -> Channels:
+        raise NotImplementedError()
+
+    def setInternalValue(self, internalValue: int | str) -> None:
+        raise NotImplementedError()
+
+    def validate(self, value: Channels | None) -> Tuple[bool, Any]:
         raise NotImplementedError()
 
     def preValidate(self, ui_value: Enum) -> Tuple[bool, Enum]:

@@ -10,7 +10,8 @@ from backends.settings.i_validators import ValueType
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.settings_map import Reason, SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
-                                          GenderValidator, StringValidator)
+                                          GenderValidator, NumericValidator,
+                                          StringValidator)
 from common.constants import Constants
 from common.logger import BasicLogger
 from common.setting_constants import Backends, Genders, Players
@@ -52,46 +53,7 @@ class GoogleSettings(BaseServiceSettings):
     (or just don't use the validator and such and hard code it inline).
 
     
-        volume = cls.volumeConstraints.translate_value(
-                                        cls.volumeConversionConstraints, volumeDb)
-    
     """
-
-    class VolumeConstraintsValidator(ConstraintsValidator):
-
-        # This engine
-        def __init__(self, setting_id: str, service_id: str,
-                     constraints: Constraints) -> None:
-            super().__init__(setting_id, service_id, constraints)
-
-        def set_tts_value(self, value: int | float | str,
-                          value_type: ValueType = ValueType.VALUE) -> None:
-            """
-            Keep value fixed at 5 db
-            :param value:
-            :param value_type:
-            """
-            constraints: Constraints = self.constraints
-            constraints.setSetting(5, self.service_id)
-
-        def get_tts_value(self, default_value: int | float | str = None,
-                          setting_service_id: str = None) -> int | float | str:
-            """
-            Keep value fixed at 5
-            kodi volume
-            :return:
-            """
-            clz = type(self)
-
-            return 5
-
-        def setUIValue(self, ui_value: str) -> None:
-            pass
-
-        def getUIValue(self) -> str:
-            value, _, _, _ = self.get_tts_value()
-            return str(value)
-
     _supported_input_formats: List[str] = []
     _supported_output_formats: List[str] = [SoundCapabilities.MP3]
     _provides_services: List[ServiceType] = [ServiceType.ENGINE]
@@ -127,30 +89,16 @@ class GoogleSettings(BaseServiceSettings):
                               Constants.CACHE_SUFFIX     : 'goo'}
         SettingsMap.define_service(ServiceType.ENGINE, cls.engine_id,
                                    service_properties)
-        #
-        # Need to define Conversion Constraints between the TTS 'standard'
-        # constraints/settings to the engine's constraints/settings
 
-        speedConstraints: Constraints = Constraints(25, 100, 400, False, False, 0.01,
-                                                    SettingsProperties.SPEED, 125, 0.25)
-        speed_constraints_validator = ConstraintsValidator(SettingsProperties.SPEED,
-                                                           cls.engine_id,
-                                                           speedConstraints)
-        '''
-        engine_volume_constraints_validator = cls.VolumeConstraintsValidator(
-            SettingsProperties.VOLUME,
-            cls.engine_id,
-            cls.ttsVolumeConstraints)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOLUME,
-                                   engine_volume_constraints_validator)
-        '''
-
-        volume_constraints_validator = ConstraintsValidator(
-                SettingsProperties.VOLUME,
-                cls.engine_id,
-                cls.ttsVolumeConstraints)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOLUME,
-                                   volume_constraints_validator)
+        volume_validator: NumericValidator
+        volume_validator = NumericValidator(SettingsProperties.VOLUME,
+                                            cls.service_ID,
+                                            minimum=5, maximum=400,
+                                            default=100, is_decibels=False,
+                                            is_integer=False)
+        SettingsMap.define_setting(cls.service_ID,
+                                   SettingsProperties.VOLUME,
+                                   volume_validator)
 
         language_validator: StringValidator
         language_validator = StringValidator(SettingsProperties.LANGUAGE, cls.engine_id,
@@ -170,8 +118,8 @@ class GoogleSettings(BaseServiceSettings):
         #  TODO:  Need to eliminate un-available players
         #         Should do elimination in separate code
 
-        valid_players: List[str] = [Players.MPLAYER, Players.SFX, Players.WINDOWS,
-                                    Players.APLAY,
+        valid_players: List[str] = [Players.MPLAYER, Players.MPV,
+                                    Players.SFX, Players.WINDOWS, Players.APLAY,
                                     Players.PAPLAY, Players.AFPLAY, Players.SOX,
                                     Players.MPG321, Players.MPG123,
                                     Players.MPG321_OE_PI, Players.INTERNAL]
@@ -186,8 +134,17 @@ class GoogleSettings(BaseServiceSettings):
         #                            voice_validator)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PIPE,
                                    pipe_validator)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.SPEED,
-                                   speed_constraints_validator)
+
+        speed_validator: NumericValidator
+        speed_validator = NumericValidator(SettingsProperties.SPEED,
+                                           cls.service_ID,
+                                           minimum=.25, maximum=5,
+                                           default=1,
+                                           is_decibels=False,
+                                           is_integer=False)
+        SettingsMap.define_setting(cls.service_ID,
+                                   SettingsProperties.SPEED,
+                                   speed_validator)
 
         pitch_constraints: Constraints = Constraints(50, 50, 50, True, False, 1.0,
                                                      SettingsProperties.PITCH)

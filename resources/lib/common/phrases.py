@@ -106,6 +106,9 @@ class Phrase:
 
         self.check_expired: bool = check_expired
 
+    def __repr__(self) -> str:
+        return f'Phrase: {self.text}'
+		
     @classmethod
     def new_instance(cls, text: str = '', interrupt: bool = False,
                      pre_pause_ms: int = None,

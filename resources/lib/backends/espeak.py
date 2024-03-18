@@ -20,6 +20,7 @@ from common import utils
 from common.base_services import BaseServices
 from common.constants import Constants
 from common.logger import *
+from common.monitor import Monitor
 from common.phrases import Phrase
 from common.setting_constants import Backends, Genders, Mode
 from common.settings import Settings
@@ -196,8 +197,8 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                                             encoding='utf-8',
                                             stdin=subprocess.PIPE)
             while (self.process is not None and self.process.poll() is None and
-                   self.active):
-                utils.sleep(10)
+                    clz.is_active_engine(engine=clz)):
+                Monitor.exception_on_abort(timeout=0.1)
             clz._logger.debug(f'args: {args}')
         except subprocess.SubprocessError as e:
             if clz._logger.isEnabledFor(DEBUG):
@@ -226,7 +227,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
     @classmethod
     def settingList(cls, setting, *args):
         if setting == SettingsProperties.LANGUAGE:
-            # Returns list of languages and index to closest match to current
+            # Returns list of languages and index to the closest match to current
             # locale
 
             cls.init_voices()

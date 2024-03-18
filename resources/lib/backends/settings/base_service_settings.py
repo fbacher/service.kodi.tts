@@ -7,7 +7,8 @@ from backends.settings.constraints import Constraints
 from backends.settings.service_types import Services
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
-                                          GenderValidator, IntValidator, StringValidator)
+                                          GenderValidator, IntValidator, StringValidator,
+                                          TTSNumericValidator)
 from common.logger import BasicLogger
 from common.setting_constants import Backends, Genders
 from common.settings import Settings
@@ -32,20 +33,26 @@ class BaseServiceSettings:
                                                    property_name=SettingsProperties.PITCH,
                                                    midpoint=50, increment=1.0,
                                                    tts_line_value=50)
-    ttsVolumeConstraints: Constraints = Constraints(minimum=-12, default=0, maximum=12,
-                                                    integer=True, decibels=True,
-                                                    scale=1.0,
-                                                    property_name=SettingsProperties.VOLUME,
-                                                    midpoint=0, increment=1.0)
-    ttsSpeedConstraints: Constraints = Constraints(25, 100, 400, False, False, 0.01,
-                                                   SettingsProperties.SPEED, 100, 0.25,
-                                                   tts_line_value=100)
+    tts_volume_validator: TTSNumericValidator
+    tts_volume_validator = TTSNumericValidator(SettingsProperties.VOLUME,
+                                               minimum=-120, maximum=120,
+                                               default=0, is_decibels=True,
+                                               is_integer=True,
+                                               internal_scale_factor=10)
+
+    tts_speed_validator: TTSNumericValidator
+    tts_speed_validator = TTSNumericValidator(SettingsProperties.SPEED,
+                                              minimum=25, maximum=300,
+                                              default=100,
+                                              is_decibels=False,
+                                              is_integer=False,
+                                              internal_scale_factor=100)
 
     # TODO: move to default settings map
     TTSConstraints: Dict[str, Constraints] = {
-        SettingsProperties.SPEED: ttsSpeedConstraints,
+        SettingsProperties.SPEED: tts_speed_validator,
         SettingsProperties.PITCH: ttsPitchConstraints,
-        SettingsProperties.VOLUME: ttsVolumeConstraints
+        SettingsProperties.VOLUME: tts_volume_validator
     }
     global_settings_initialized: bool = False
 
@@ -80,21 +87,16 @@ class BaseServiceSettings:
         # -12 .. +12 dB scale. The engine modifies it's own volume constraints
         # to adjust the TTS volume into the equivalent engine volume
 
-        volume_constraints_validator: ConstraintsValidator
-        volume_constraints_validator = ConstraintsValidator(SettingsProperties.VOLUME,
-                                                            Services.TTS_SERVICE,
-                                                            BaseServiceSettings.ttsVolumeConstraints)
-        SettingsMap.define_setting(BaseServiceSettings.service_ID,
+        SettingsMap.define_setting(Services.TTS_SERVICE,
                                    SettingsProperties.VOLUME,
-                                   volume_constraints_validator)
+                                   cls.tts_volume_validator)
+        SettingsMap.define_setting(Services.TTS_SERVICE,
+                                   SettingsProperties.SPEED,
+                                   cls.tts_speed_validator)
 
-        speed_constraints_validator: ConstraintsValidator
-        speed_constraints_validator = ConstraintsValidator(SettingsProperties.SPEED,
-                                                           Services.TTS_SERVICE,
-                                                           BaseServiceSettings.ttsSpeedConstraints)
         SettingsMap.define_setting(BaseServiceSettings.service_ID,
                                    SettingsProperties.SPEED,
-                                   speed_constraints_validator)
+                                   BaseServiceSettings.tts_speed_validator)
 
         pitch_constraints_validator: ConstraintsValidator
         pitch_constraints_validator = ConstraintsValidator(SettingsProperties.PITCH,
@@ -106,12 +108,6 @@ class BaseServiceSettings:
 
     @classmethod
     def init_settings(cls):
-        volume_constraints_validator: ConstraintsValidator
-        volume_constraints_validator = ConstraintsValidator(SettingsProperties.VOLUME,
-                                                            cls.service_ID,
-                                                            cls.ttsVolumeConstraints)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOLUME,
-                                   volume_constraints_validator)
         pipe_validator: BoolValidator
         pipe_validator = BoolValidator(SettingsProperties.PIPE, cls.service_ID,
                                        default=False)

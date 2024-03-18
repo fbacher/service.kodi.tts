@@ -8,6 +8,7 @@ import sys
 import tempfile
 
 import gtts
+from backends.ispeech_generator import ISpeechGenerator
 from common import *
 
 from backends import base
@@ -18,7 +19,8 @@ from backends.settings.i_validators import IValidator
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import SettingsMap
-from backends.settings.validators import ConstraintsValidator, StringValidator
+from backends.settings.validators import (ConstraintsValidator, NumericValidator,
+                                          StringValidator)
 from cache.voicecache import VoiceCache
 from common.base_services import BaseServices
 from common.constants import Constants, ReturnCode
@@ -123,7 +125,7 @@ class LanguageInfo:
         return list(cls.lang_info_map.keys())
 
 
-class GoogleSpeechGenerator:
+class GoogleSpeechGenerator(ISpeechGenerator):
     RESPONSIVE_VOICE_URL: Final[
         str] = "http://responsivevoice.org/responsivevoice/getvoice.php"
     MAXIMUM_PHRASE_LENGTH: Final[int] = 200
@@ -154,13 +156,12 @@ class GoogleSpeechGenerator:
     def is_finished(self) -> bool:
         return self.download_results.is_finished()
 
-    def generate_speech(self, phrase: Phrase, timeout=1.0,
-                        download_file_only: bool = True) -> Results:
+    def generate_speech(self, phrase: Phrase, timeout=1.0) -> Results:
         # Disable expiration checks. We are doing this in background. Results
         # are cached for next time
 
         clz = type(self)
-        Monitor.exception_on_abort(timeout=0.01)
+        Monitor.exception_on_abort(timeout=0.0)
         max_phrase_length: int | None
         max_phrase_length = SettingsMap.get_service_property(GoogleTTSEngine.service_ID,
                                                              Constants.MAX_PHRASE_LENGTH)
@@ -172,7 +173,7 @@ class GoogleSpeechGenerator:
         unchecked_phrase_chunks: PhraseList = phrase_chunks.clone(check_expired=False)
         runInThread(self._generate_speech, name='download_speech', delay=0.0,
                     phrase_chunks=unchecked_phrase_chunks, original_phrase=phrase,
-                    timeout=timeout, download_file_only=download_file_only)
+                    timeout=timeout)
         max_wait: int = int(timeout / 0.1)
         while max_wait > 0:
             Monitor.exception_on_abort(timeout=0.1)
@@ -193,7 +194,6 @@ class GoogleSpeechGenerator:
         self.set_rc(ReturnCode.OK)
         text_file_path: pathlib.Path = None
         phrase_chunks: PhraseList | None = None
-        phrase_chunks: Phrase = None
         original_phrase: Phrase = None
         try:
             # The passed in phrase_chunks, are actually chunks of a phrase. Therefore
@@ -201,7 +201,6 @@ class GoogleSpeechGenerator:
             # sound file. This phrase list has expiration disabled.
 
             phrase_chunks = kwargs.get('phrase_chunks', None)
-            download_file_only: bool = kwargs.get('download_file_only', True)
             if phrase_chunks is None or len(phrase_chunks) == 0:
                 self.set_rc(ReturnCode.NO_PHRASES)
                 self.set_finished()
@@ -238,7 +237,7 @@ class GoogleSpeechGenerator:
                 self.set_finished()
                 return
 
-            lang: str = GoogleTTSEngine.getLanguage()
+            language: str = GoogleTTSEngine.getLanguage()
             gender: str = GoogleTTSEngine.getGender()
             pitch: str = GoogleTTSEngine.getPitch_str()  # hard coded. Let
             # player decide
@@ -259,6 +258,7 @@ class GoogleSpeechGenerator:
                 # are small enough for gTTS to handle. We concatenate the results
                 # from the phrase_chunks to the same file.
                 temp_file = pathlib.Path(sound_file.name)
+                phrase_chunk: Phrase = None
                 for phrase_chunk in phrase_chunks:
                     try:
                         Monitor.exception_on_abort()
@@ -266,7 +266,7 @@ class GoogleSpeechGenerator:
                             clz._logger.debug_verbose(f'phrase: '
                                                       f'{phrase_chunk.get_text()}')
 
-                        my_gtts: MyGTTS = MyGTTS(phrase_chunk, lang=lang)
+                        my_gtts: MyGTTS = MyGTTS(phrase_chunk, lang=language)
                         # gtts.save(phrase.get_cache_path())
                         #     gTTSError – When there’s an error with the API request.
                         # gtts.stream() # Streams bytes
@@ -431,7 +431,6 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         # Caching is ALWAYS used here, otherwise the delay would be maddening.
         # Therefore, this is only called when the voice file is NOT in the
         # cache. It is also ONLY called by the background thread in SeedCache.
-
         try:
             attempts: int = 25
             while (not phrase.exists() and phrase.is_download_pending() and
@@ -446,13 +445,10 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
 
             if not phrase.is_download_pending and not phrase.exists():
                 tmp_phrase: Phrase = phrase.clone(check_expired=False)
-                #  espeak_engine = BaseServices.getService(SettingsProperties.ESPEAK_ID)
-                #  espeak_engine.say_phrase(phrase)
                 # generate voice in cache for the future.
                 # Ignore result, don't wait
                 generator: GoogleSpeechGenerator = GoogleSpeechGenerator()
-                generator.generate_speech(tmp_phrase, timeout=1.0,
-                                          download_file_only=True)
+                generator.generate_speech(tmp_phrase, timeout=1.0)
         except ExpiredException:
             return False
 
@@ -481,8 +477,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
                 # generate voice in cache for the future.
                 # Ignore result, don't wait
                 generator: GoogleSpeechGenerator = GoogleSpeechGenerator()
-                generator.generate_speech(tmp_phrase, timeout=1.0,
-                                          download_file_only=True)
+                generator.generate_speech(tmp_phrase, timeout=1.0)
             try:
                 attempts: int = 10
                 while not phrase.get_cache_path().exists():
@@ -576,6 +571,14 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         clz = type(self)
         if clz._logger.isEnabledFor(DEBUG_VERBOSE):
             clz._logger.debug_verbose('stop')
+
+    @classmethod
+    def get_speech_generator(cls) -> GoogleSpeechGenerator:
+        return GoogleSpeechGenerator()
+
+    @classmethod
+    def has_speech_generator(cls) -> bool:
+        return True
 
     @classmethod
     def settingList(cls, setting: str, *args) -> List[str] | List[Tuple[str, str]] | Tuple[
@@ -749,47 +752,15 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         VoiceCache.for_debug_setting_changed()
         return changed
 
-    @classmethod
-    def negotiate_engine_config(cls, backend_id: str, player_volume_adjustable: bool,
-                                player_speed_adjustable: bool,
-                                player_pitch_adjustable: bool) -> Tuple[bool, bool, bool]:
-        """
-        Player is informing engine what it is capable of controlling
-        Engine replies what it is allowing engine to control
-        """
-        if Settings.is_use_cache():
-            return True, True, True
-
-        return False, False, False
-
-    @classmethod
-    def getVolumeDb(cls) -> float | None:
-        volume_validator: ConstraintsValidator | IValidator
-        volume_validator = SettingsMap.get_validator(cls.service_ID,
-                                                     property_id=SettingsProperties.VOLUME)
-        volume, _, _, _ = volume_validator.get_tts_values()
-
-        return None  # Find out if used
-
-    @classmethod
-    def getEngineVolume(cls) -> float:
-        """
-        Get the configured volume in our standard  -12db .. +12db scale converted
-        to the native scale of the API (0.1 .. 1.0). The maximum volume (1.0) is
-        equivalent
-        to 0db. Since we have to use a different player AND since it almost guaranteed
-        that the voiced text is cached, just set volume to fixed 1.0 and let player
-        handle volume).
-        """
-        return cls.getVolumeDb()
+ 
 
     @classmethod
     def getEngineVolume_str(cls) -> str:
-        volume_validator: ConstraintsValidator
+        volume_validator: NumericValidator
         volume_validator = cls.get_validator(cls.service_ID,
                                              property_id=SettingsProperties.VOLUME)
-        volume: str = volume_validator.getUIValue()
-        return volume
+        volume: int = volume_validator.get_value()
+        return str(volume)
 
     @classmethod
     def getVoice(cls) -> str:
@@ -860,11 +831,11 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         # This speed is represented as a setting as in integer by multiplying
         # by 100.
         #
-        speed_validator: ConstraintsValidator
+        speed_validator: NumericValidator
         speed_validator = cls.get_validator(cls.service_ID,
                                             property_id=SettingsProperties.SPEED)
         speed: float
-        speed, _, _, _ = speed_validator.get_tts_values()
+        speed = speed_validator.get_value()
         return speed
 
     @classmethod
