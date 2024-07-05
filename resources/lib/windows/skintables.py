@@ -5,8 +5,11 @@ import xbmc
 import xbmcvfs
 
 from common import *
+from common.logger import BasicLogger
 
 from common.messages import Messages
+from common.phrases import Phrase, PhraseList
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 quartz = {10000:
               {301: {'name': 20342, 'prefix': Messages.get_msg(Messages.SECTION)},
@@ -17,7 +20,7 @@ quartz = {10000:
                304: {'name': 1, 'prefix': Messages.get_msg(Messages.SECTION)},  # Pictures
                305: {'name': 24001, 'prefix': Messages.get_msg(Messages.SECTION)},
                # Addons
-               306: {'name': 'X B M C', 'prefix': Messages.get_msg(Messages.SECTION)},
+               306: {'name': 'Kodi', 'prefix': Messages.get_msg(Messages.SECTION)},
                312: {'name': 20387, 'prefix': Messages.get_msg(Messages.AREA)},
                # Recently added tv shows
                313: {'name': 359, 'prefix': Messages.get_msg(Messages.AREA)},
@@ -33,22 +36,24 @@ CURRENT_SKIN_TABLE = None
 CURRENT_SKIN = None
 
 
-def getControlText(winID, controlID):
+def getControlText(winID, control_id, phrases: PhraseList) -> bool:
     table = CURRENT_SKIN_TABLE
     if not table:
-        return
-    if not winID in table:
-        return
-    if not controlID in table[winID]:
-        return
-    label = table[winID][controlID]['name']
+        return False
+    if winID not in table:
+        return False
+    if control_id not in table[winID]:
+        return False
+    label = table[winID][control_id]['name']
     if isinstance(label, int):
         label = xbmc.getLocalizedString(label)
-    if not label:
-        return
-    if not 'prefix' in table[winID][controlID]:
-        return label
-    return '{0}: {1}'.format(table[winID][controlID]['prefix'], label)
+    if label is None:
+        return False
+    if 'prefix' not in table[winID][control_id]:
+        return False
+
+    phrases.add_text(texts=f"{table[winID][control_id]['prefix']}: {label}")
+    return True
 
 
 def getSkinTable():

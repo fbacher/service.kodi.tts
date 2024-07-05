@@ -27,10 +27,34 @@ class FestivalTTSBackend(SimpleTTSBackend):
     service_ID: str = Services.FESTIVAL_ID
     displayName = 'Festival'
     canStreamWav = SystemQueries.commandIsAvailable('mpg123')
-    speedConstraints: Constraints = Constraints(-16, 0, 12, True, False, 1.0,
-                                                SettingsProperties.SPEED)
-    pitchConstraints: Constraints = Constraints(50, 105, 500, True, False, 1.0,
-                                                SettingsProperties.PITCH)
+
+    volume_validator: NumericValidator
+    volume_validator = NumericValidator(SettingsProperties.VOLUME,
+                                        service_ID,
+                                        minimum=5, maximum=400,
+                                        default=100, is_decibels=False,
+                                        is_integer=False)
+    SettingsMap.define_setting(service_ID,
+                               SettingsProperties.VOLUME,
+                               volume_validator)
+    speed_validator: NumericValidator
+    speed_validator = NumericValidator(SettingsProperties.SPEED,
+                                       service_ID,
+                                       minimum=-16, maximum=12,
+                                       default=0,
+                                       is_decibels=False,
+                                       is_integer=True)
+    SettingsMap.define_setting(service_ID,
+                               SettingsProperties.SPEED,
+                               speed_validator)
+
+    pitch_validator: NumericValidator
+    pitch_validator = NumericValidator(SettingsProperties.PITCH,
+                                       service_ID,
+                                       minimum=50, maximum=500, default=105,
+                                       is_decibels=False, is_integer=True)
+    SettingsMap.define_setting(service_ID, SettingsProperties.PITCH,
+                               pitch_validator)
 
     #  player_handler_class: Type[BasePlayerHandler] = WavAudioPlayerHandler
     constraints: Dict[str, Constraints] = {}
@@ -43,6 +67,7 @@ class FestivalTTSBackend(SimpleTTSBackend):
                                   _supported_input_formats,
                                   _supported_output_formats)
 
+    '''
     settings = {
         SettingsProperties.PIPE  : False,
         SettingsProperties.PITCH : 105,
@@ -52,7 +77,9 @@ class FestivalTTSBackend(SimpleTTSBackend):
         SettingsProperties.VOICE : '',
         SettingsProperties.VOLUME: 0
     }
+    
     supported_settings: Dict[str, str | int | bool] = settings
+    '''
     _logger: BasicLogger = None
     _class_name: str = None
 
@@ -64,17 +91,6 @@ class FestivalTTSBackend(SimpleTTSBackend):
             clz._logger = module_logger.getChild(clz._class_name)
             self.register(self)
         self.festivalProcess = None
-        clz.constraints[SettingsProperties.SPEED] = clz.speedConstraints
-        clz.constraints[SettingsProperties.PITCH] = clz.pitchConstraints
-        volume_validator: NumericValidator
-        volume_validator = NumericValidator(SettingsProperties.VOLUME,
-                                            clz.service_ID,
-                                            minimum=-12, maximum=12,
-                                            default=0, is_decibels=True,
-                                            is_integer=False)
-        SettingsMap.define_setting(clz.service_ID,
-                                   SettingsProperties.VOLUME,
-                                   volume_validator)
 
     def init(self):
         super().init()

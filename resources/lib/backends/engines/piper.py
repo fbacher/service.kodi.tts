@@ -32,7 +32,8 @@ from backends.settings.i_validators import IValidator
 from backends.settings.service_types import Services
 from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import SettingsMap
-from backends.settings.validators import ConstraintsValidator, StringValidator
+from backends.settings.validators import (ConstraintsValidator, NumericValidator,
+                                          StringValidator)
 from cache.voicecache import VoiceCache
 from common.constants import Constants, ReturnCode
 from common.exceptions import ExpiredException
@@ -805,7 +806,7 @@ class PiperTTSBackend(SimpleTTSBackend):
     def getPitch(cls) -> float:
         # Range 0 .. 99, 50 default
         # API 0.1 .. 1.0. 0.5 default
-        pitch_validator: ConstraintsValidator
+        pitch_validator: NumericValidator
         pitch_validator = cls.get_validator(cls.service_ID,
                                             property_id=SettingsProperties.PITCH)
         if Settings.is_use_cache():

@@ -4,28 +4,34 @@ from __future__ import annotations  # For union operator |
 import xbmc
 
 from common import *
+from common.logger import BasicLogger
 
 from common.messages import Messages
+from common.phrases import PhraseList
 from .base import WindowReaderBase
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class SettingsReader(WindowReaderBase):
     ID = 'settings'
 
-    def getWindowExtraTexts(self):
-        return None
+    def getWindowExtraTexts(self, phrases: PhraseList) -> bool:
+        return False
 
-    def getItemExtraTexts(self, controlID):
-        text = xbmc.getInfoLabel('Container({0}).ListItem.Label2'.format(controlID))
-        if not text:
-            return None
-        return [text]
+    def getItemExtraTexts(self, control_id, phrases: PhraseList) -> bool:
+        text: str = xbmc.getInfoLabel(f'Container({control_id}).ListItem.Label2')
+        if text:
+            phrases.add_text(texts=text)
+            return True
+        return False
 
-    def getControlText(self, controlID):
-        if not controlID:
-            return ('', '')
+    def getControlText(self, control_id: int, phrases: PhraseList) -> bool:
+        clz = type(self)
+        if not control_id:
+            return False
         sub = ''
-        text = self.getSettingControlText(controlID)
+        text = self.getSettingControlText(control_id)
         if text.startswith('-'):
-            sub = '{0}: '.format(Messages.get_msg(Messages.SUB_SETTING))
-        return ('{0}{1}'.format(sub, text), text)
+            sub = f'{Messages.get_msg(Messages.SUB_SETTING)}: '
+        phrases.add_text(texts=f'{sub} {text}')
+        return True

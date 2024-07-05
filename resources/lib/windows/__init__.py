@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations  # For union operator |
 
+from pathlib import Path
+
 import xbmc
 
 from common import *
 
 from common.logger import BasicLogger
-from .base import DefaultWindowReader, KeymapKeyInputReader, NullReader
+from .base import (DefaultWindowReader, KeymapKeyInputReader, NullReader,
+                   WindowHandlerBase, WindowReaderBase)
 from .busydialog import BusyDialogReader
 from .contextmenu import ContextMenuReader
 from .homedialog import HomeDialogReader
@@ -25,10 +28,11 @@ from .videoinfodialog import VideoInfoDialogReader
 from .virtualkeyboard import PVRSGuideSearchDialogReader, VirtualKeyboardReader
 from .weather import WeatherReader
 from .yesnodialog import YesNoDialogReader
+from windows.custom_tts import CustomTTSReader
 
 module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 
-READERS = (
+READERS: Tuple[Type[WindowReaderBase], ...] = (
     HomeDialogReader,
     KeymapKeyInputReader,
     DefaultWindowReader,
@@ -56,7 +60,7 @@ READERS = (
     SubtitlesDialogReader
 )
 
-READERS_WINID_MAP = {
+READERS_WINID_MAP: Dict[int, Type[WindowReaderBase]] = {
     10000: HomeDialogReader,  # Home
     10004: SettingsReader,  # settings
     10012: SettingsReader,  # picturesettings
@@ -116,13 +120,20 @@ READERS_WINID_MAP = {
     12901: SettingsReader,  # videoosd
 }
 
-READERS_MAP = {}
+READERS_MAP: Dict[str, WindowHandlerBase] = {}
 for r in READERS:
     READERS_MAP[r.ID] = r
 
 
-def getWindowReader(winID):
+def getWindowReader(winID) -> Type[WindowReaderBase]:
+
     xbmc.log(f'Window: {winID}', xbmc.LOGDEBUG)
+    simple_path: Path = Path(xbmc.getInfoLabel('Window.Property(xmlfile)'))
+    xbmc.log(f'Window simple_path: {simple_path}')
+    if str(simple_path.name) == 'script-tts-settings-dialog.xml':
+        reader = CustomTTSReader
+        return reader
+
     reader_id = xbmc.getInfoLabel(f'Window({winID}).Property(TTS.READER)')
     module_logger.debug(f'winID: {winID} reader: {reader_id}')
     if reader_id and reader_id in READERS_MAP:

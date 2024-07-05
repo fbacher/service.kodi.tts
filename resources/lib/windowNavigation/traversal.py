@@ -8,6 +8,8 @@ import windows.guitables as guitables
 
 from common.constants import Constants
 from common.logger import (BasicLogger)
+from common.phrases import Phrase, PhraseList
+from windows.window_state_monitor import WindowStateMonitor
 
 if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
     module_logger = BasicLogger.get_module_logger(
@@ -17,64 +19,70 @@ else:
 
 
 class WindowTraversal:
+    """
+    Not called
+    """
 
     def __init__(self):
         self._logger = module_logger.getChild(self.__class__.__name__)
 
-    def voice_focused_control(self):
+    def voice_focused_control(self):  # Not called?
 
         control = None
         current_window_id = None
         try:
-            current_window_id = xbmcgui.getCurrentWindowId()
-            window_name = guitables.getWindowName(current_window_id)
-            extra_texts = guitables.getExtraTexts(current_window_id)
+            current_window_id: int = xbmcgui.getCurrentWindowId()
+            window_name: str = guitables.getWindowName(current_window_id)
+            extra_texts: PhraseList | None = guitables.getExtraTexts(current_window_id)
             self._logger.debug_extra_verbose(
-                'WindowTraversal: current_window_id: {} name: {}'.
-                format(str(current_window_id), window_name))
+                f'WindowTraversal: current_window_id: {current_window_id} name: {window_name}')
             self._logger.debug_extra_verbose(
-                'window extra texts: {} '.format(extra_texts))
+                f'window extra texts: {extra_texts}')
+            item_extra_texts: PhraseList | None
             item_extra_texts = guitables.getItemExtraTexts(current_window_id)
             self._logger.debug_extra_verbose(
-                'window item extra texts: {item_extra_texts}')
+                f'window item extra texts: {item_extra_texts}')
+            list_item_property: Phrase | None
             list_item_property = guitables.getListItemProperty(current_window_id)
             self._logger.debug_extra_verbose(
-                'window list item extra property: {} '.format(list_item_property))
+                f'window list item extra property: {list_item_property}')
         except Exception as e:
             pass
             self._logger.debug_extra_verbose('WindowTraversal: no current Window ID')
 
-        current_window_dialog_id = None
+        current_window_dialog_id: int | None = None
         try:
             current_window_dialog_id = xbmcgui.getCurrentWindowDialogId()
-            window_name = guitables.getWindowName(current_window_dialog_id)
+            window_name: str = guitables.getWindowName(current_window_dialog_id)
+            extra_texts: PhraseList | None
             extra_texts = guitables.getExtraTexts(current_window_dialog_id)
             self._logger.debug_extra_verbose(
-                'WindowTraversal: current_window_dialog_id: {} name: {}'
-                .format(str(current_window_dialog_id),
-                        window_name))
+                f'WindowTraversal: current_window_dialog_id: {current_window_dialog_id}'
+                f' name: {window_name}')
             self._logger.debug_extra_verbose(
-                'window extra texts: {} '.format(extra_texts))
+                f'window extra texts: {extra_texts}')
+            item_extra_texts: PhraseList | None
             item_extra_texts = guitables.getItemExtraTexts(current_window_dialog_id)
             self._logger.debug_extra_verbose(
-                'window item extra texts: {} '.format(item_extra_texts))
+                f'window item extra texts: {item_extra_texts}')
+            list_item_property: Phrase | None
             list_item_property = guitables.getListItemProperty(current_window_dialog_id)
             self._logger.debug_extra_verbose(
-                'window list item extra property: {} '.format(list_item_property))
+                f'window list item extra property: {list_item_property}')
 
         except Exception as e:
             pass
             self._logger.debug_extra_verbose(
                 'WindowTraversal: no current Window Dialog ID')
 
-        window = xbmcgui.Window(current_window_id)
+        window = WindowStateMonitor.get_window(current_window_id)
         try:
             control = window.getFocus()
         except Exception as e:
             pass
             self._logger.debug_extra_verbose(
-                'WindowTraversal: focused_control ID:{}'.format(control.getId()))
-            self._logger.debug_extra_verbose('isVisible:{}'.format(control.isVisible()))
+                f'WindowTraversal: focused_control ID:{control.getId()}')
+            self._logger.debug_extra_verbose(f'isVisible:{control.isVisible()}')
 
         if control is None:
             self._logger.debug_extra_verbose('WindowTraversal: no control with focus')

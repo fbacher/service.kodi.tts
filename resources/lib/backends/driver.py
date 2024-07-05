@@ -18,7 +18,6 @@ from backends.audio.worker_thread import TTSQueueData, WorkerThread
 from backends.backend_info_bridge import BackendInfoBridge
 from backends.base import BaseEngineService
 from backends.cache_writer import CacheReader
-from backends.google import GoogleSpeechGenerator
 from backends.i_tts_backend_base import ITTSBackendBase
 from backends.players.iplayer import IPlayer
 from backends.players.player_index import PlayerIndex
@@ -82,6 +81,7 @@ class Driver(BaseServices):
             result: Result = None
             mode: Mode
             engine_id: str = Settings.get_engine_id()
+            #  clz._logger.debug(f'engine_id: {engine_id}')
             active_engine: BaseEngineService
             if engine_id is None:
                 clz._logger.debug(f'engine_id is not set')
@@ -90,18 +90,16 @@ class Driver(BaseServices):
             if active_engine is None:
                 clz._logger.debug(f'invalid active_engine engine_id: {engine_id}')
                 return
+            #  clz._logger.debug(f'engine_id: {engine_id} active_engine: {active_engine}')
             try:
                 if phrases[0].get_interrupt():  # Interrupt should only be on first phrase
-                    clz._logger.debug(f'INTERRUPT Driver.Say {phrases[0].get_text()}')
+                    # clz._logger.debug(f'INTERRUPT Driver.Say {phrases[0].get_text()}')
                     phrases.expire_all_prior()
                     # self.worker_thread.interrupt()
             except ExpiredException:
                 clz._logger.debug('Expired at Interrupt')
 
             player_id: str = Settings.get_player_id(engine_id)
-
-            # active_engine.say(text, interrupt, preload_cache)
-            # return
 
             '''
             if player_id == Players.INTERNAL:
@@ -111,7 +109,6 @@ class Driver(BaseServices):
             else:
                 mode = Mode.FILEOUT
             '''
-
             # Ensure player has been initialized
 
             converter_id: str = self.getConverter_for(engine_id)
@@ -131,7 +128,9 @@ class Driver(BaseServices):
             try:
                 phrase: Phrase = None
                 success: bool = True
+                phrase_idx: int = -1
                 for phrase in phrases:
+                    phrase_idx += 1
                     interrupt: str = ''
                     if phrase.get_interrupt():
                         interrupt = 'INTERRUPT'
@@ -141,8 +140,10 @@ class Driver(BaseServices):
                         pre_pause = f' PRE_PAUSE: {str(phrase.get_pre_pause())} '
                     if phrase.get_post_pause() > 0:
                         post_pause = f' POST_PAUSE: {str(phrase.get_post_pause())} '
-                    clz._logger.debug(f'Driver.Say PHRASE: {phrase.get_text()} '
-                                      f'{interrupt}{pre_pause}{post_pause}')
+                    # clz._logger.debug(f'Driver.Say PHRASE: {phrase.get_text()} '
+                    #                  f'idx: {phrase_idx}'
+                    #                  f' serial: {phrase.get_serial_num()}'
+                    #                  f' {interrupt}{pre_pause}{post_pause}')
                     '''
                     ALL text to be voiced, must be kept synchronized by going
                     through queues. Otherwise things will get scrambled.

@@ -125,9 +125,11 @@ class BaseEngineSettings:
                                    SettingsProperties.USE_TEMPFS,
                                    use_tempfs_val)
 
+        '''
         slave_validator: BoolValidator
         slave_validator = BoolValidator(SettingsProperties.PLAYER_SLAVE,
                                         Services.TTS_SERVICE, default=True)
         SettingsMap.define_setting(Services.TTS_SERVICE,
                                    SettingsProperties.PLAYER_SLAVE,
                                    slave_validator)
+        '''

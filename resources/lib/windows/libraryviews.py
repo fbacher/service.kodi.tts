@@ -4,34 +4,41 @@ from __future__ import annotations  # For union operator |
 import xbmc
 
 from common import *
+from common.logger import BasicLogger
 
 from common.messages import Messages
+from common.phrases import PhraseList
 from . import base
+
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class VideoLibraryWindowReader(base.DefaultWindowReader):
     ID = 'videolibrary'
 
-    def getControlText(self, controlID):
+    def __init__(self, win_id=None, service: ForwardRef('TTSService') = None) -> None:
+        super().__init__(win_id, service)
+        clz = type(self)
+        clz._logger = module_logger.getChild(clz.__class__.__name__)
+
+    def getControlText(self, control_id, phrases: PhraseList) -> bool:
         cls = type(self)
+        text: str
+        compare: str
         if self.slideoutHasFocus():
-            cls._logger.debug(f'slideoutHasFocus controlID: {controlID}'
-                              f' slideoutText: {self.getSlideoutText(controlID)}')
-            return self.getSlideoutText(controlID)
-        cls._logger.debug(f'controlID: {controlID}')
-        if not controlID:
-            return ('', '')
+            return self.getSlideoutText(control_id, phrases)
+        if not control_id:
+            return False
         text = xbmc.getInfoLabel('ListItem.Label')
         if not text:
-            text = base.DefaultWindowReader.getControlText(self, controlID)
-            cls._logger.debug(f'ControlText: {text}')
-            return text
-        status = ''
+            return base.DefaultWindowReader.getControlText(self, control_id,
+                                                           phrases)
+        status: str = ''
         if xbmc.getCondVisibility('ListItem.IsResumable'):
-            status = ': {0}'.format(Messages.get_msg(Messages.RESUMABLE))
-            cls._logger.debug(f'resumable: {status}')
-        else:
-            if xbmc.getInfoLabel('ListItem.Overlay') == 'OverlayWatched.png':
-                status = ': {0}'.format(Messages.get_msg(Messages.WATCHED))
-        cls._logger.debug('text: {text} status: {status}')
-        return ('{0}{1}'.format(text, status), text)
+            status = f': {Messages.get_msg(Messages.RESUMABLE)}'
+        elif xbmc.getInfoLabel('ListItem.Overlay') == 'OverlayWatched.png':
+                status = f': {Messages.get_msg(Messages.WATCHED)}'
+        if status != '':
+            phrases.add_text(texts=f'{text} {status}')
+            return True
+        return False

@@ -14,7 +14,7 @@ from backends.settings.validators import (BoolValidator, ConstraintsValidator,
                                           StringValidator)
 from common.constants import Constants
 from common.logger import BasicLogger
-from common.setting_constants import Backends, Genders, Players
+from common.setting_constants import Backends, Genders, PlayerModes, Players
 from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
 
@@ -90,30 +90,33 @@ class GoogleSettings(BaseServiceSettings):
         SettingsMap.define_service(ServiceType.ENGINE, cls.engine_id,
                                    service_properties)
 
-        volume_validator: NumericValidator
-        volume_validator = NumericValidator(SettingsProperties.VOLUME,
-                                            cls.service_ID,
-                                            minimum=5, maximum=400,
-                                            default=100, is_decibels=False,
-                                            is_integer=False)
-        SettingsMap.define_setting(cls.service_ID,
-                                   SettingsProperties.VOLUME,
-                                   volume_validator)
-
         language_validator: StringValidator
-        language_validator = StringValidator(SettingsProperties.LANGUAGE, cls.engine_id,
+        language_validator = StringValidator(SettingsProperties.LANGUAGE, cls.service_ID,
                                              allowed_values=[], min_length=2,
                                              max_length=5)
         # voice_validator: StringValidator
         # voice_validator = StringValidator(SettingsProperties.VOICE, cls.engine_id,
         #                                   allowed_values=[], min_length=1,
         #                                   max_length=10)
-        pipe_validator: BoolValidator
-        pipe_validator = BoolValidator(SettingsProperties.PIPE, cls.engine_id,
-                                       default=False)
+        # pipe_validator: BoolValidator
+        # pipe_validator = BoolValidator(SettingsProperties.PIPE, cls.service_ID,
+        #                                default=True, const=True)
+        # cls._logger.debug(f'Boolvalidator value: {pipe_validator.get_tts_value()} '
+        #                   f'const: {pipe_validator.is_const()}')
+        allowed_player_modes: List[str] = [
+            PlayerModes.SLAVE_FILE.value,
+            PlayerModes.FILE.value
+        ]
+        player_mode_validator: StringValidator
+        player_mode_validator = StringValidator(SettingsProperties.PLAYER_MODE,
+                                                cls.service_ID,
+                                                allowed_values=allowed_player_modes,
+                                                default=PlayerModes.SLAVE_FILE.value)
+        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER_MODE,
+                                   player_mode_validator)
         cache_validator: BoolValidator
-        cache_validator = BoolValidator(SettingsProperties.CACHE_SPEECH, cls.engine_id,
-                                        default=True)
+        cache_validator = BoolValidator(SettingsProperties.CACHE_SPEECH, cls.service_ID,
+                                        default=True, const=True)
 
         #  TODO:  Need to eliminate un-available players
         #         Should do elimination in separate code
@@ -124,7 +127,7 @@ class GoogleSettings(BaseServiceSettings):
                                     Players.MPG321, Players.MPG123,
                                     Players.MPG321_OE_PI, Players.INTERNAL]
         player_validator: StringValidator
-        player_validator = StringValidator(SettingsProperties.PLAYER, cls.engine_id,
+        player_validator = StringValidator(SettingsProperties.PLAYER, cls.service_ID,
                                            allowed_values=valid_players,
                                            default=Players.MPLAYER)
 
@@ -132,42 +135,24 @@ class GoogleSettings(BaseServiceSettings):
                                    language_validator)
         # SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOICE,
         #                            voice_validator)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PIPE,
-                                   pipe_validator)
-
-        speed_validator: NumericValidator
-        speed_validator = NumericValidator(SettingsProperties.SPEED,
-                                           cls.service_ID,
-                                           minimum=.25, maximum=5,
-                                           default=1,
-                                           is_decibels=False,
-                                           is_integer=False)
-        SettingsMap.define_setting(cls.service_ID,
-                                   SettingsProperties.SPEED,
-                                   speed_validator)
-
-        pitch_constraints: Constraints = Constraints(50, 50, 50, True, False, 1.0,
-                                                     SettingsProperties.PITCH)
-        pitch_constraints_validator = ConstraintsValidator(SettingsProperties.PITCH,
-                                                           cls.engine_id,
-                                                           pitch_constraints)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PITCH,
-                                   pitch_constraints_validator)
-        # can't change gender
-
-        #  gender_validator = GenderValidator(SettingsProperties.GENDER, cls.engine_id,
-        #                                     min_value=Genders.UNKNOWN,
-        #                                     max_value=Genders.UNKNOWN,
-        #                                     default=Genders.UNKNOWN)
-        # gender_validator.set_tts_value(Genders.UNKNOWN)
+        # SettingsMap.define_setting(cls.service_ID, SettingsProperties.PIPE,
+        #                            pipe_validator)
         SettingsMap.define_setting(cls.engine_id, SettingsProperties.GENDER,
                                    None)
-
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER,
                                    player_validator)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.CACHE_SPEECH,
                                    cache_validator)
 
+        # TEST
+
+        api_key_validator = StringValidator(SettingsProperties.API_KEY, cls.service_ID,
+                                            allowed_values=[], min_length=0,
+                                            max_length=1024)
+
+        SettingsMap.define_setting(cls.service_ID, SettingsProperties.API_KEY,
+                                   api_key_validator
+                                   )
     @classmethod
     def isSupportedOnPlatform(cls) -> bool:
         return (SystemQueries.isLinux() or SystemQueries.isWindows()
@@ -204,5 +189,6 @@ class GoogleSettings(BaseServiceSettings):
                 service_type=ServiceType.PLAYER,
                 consumer_formats=[SoundCapabilities.MP3],
                 producer_formats=[])
+        cls._logger.debug(f'mp3 player candidates: {candidates}')
         if len(candidates) > 0:
             return True

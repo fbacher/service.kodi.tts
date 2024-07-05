@@ -102,12 +102,13 @@ class VoiceCache:
             else:
                 file_type: str = input_formats[0]
                 tempdir: str = player.get_sound_dir()
-                voice_file = tempfile.NamedTemporaryFile(mode='w+b', buffering=-1,
+                temp_voice_file = tempfile.NamedTemporaryFile(mode='w+b', buffering=-1,
                                                               suffix=None,
                                                               prefix=None,
                                                               dir=tempdir,
                                                               delete=False)
-                phrase.set_cache_path(Path(voice_file.name, temp=True), False)
+                voice_file = temp_voice_file.name
+                phrase.set_cache_path(Path(voice_file, temp=True), False)
                 exists = False
         except AbortException:
             reraise(*sys.exc_info())

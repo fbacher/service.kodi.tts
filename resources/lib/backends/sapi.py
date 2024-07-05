@@ -5,10 +5,16 @@ import sys
 from io import BytesIO
 from pathlib import Path
 
-import backends.pyttsx4_proxy.proxy_impl.engine as engine_proxy
-from backends.pyttsx4_proxy.proxy import Pyttsx4Proxy
-from backends.pyttsx4_proxy.proxy_impl.voice import Voice
+# from pyttsx4 import engine
+# import backends.pyttsx4_proxy.proxy as pyttsx4_proxy
+# import backends.pyttsx4_run_daemon as pyttsx4_run_daemon
+# import backends.pyttsx4_proxy.proxy_impl.engine as engine_proxy
+# from backends.pyttsx4_proxy.proxy import Pyttsx4Proxy
+# from backends.pyttsx4_proxy.proxy_impl.voice import Voice
+from pyttsx4.voice import Voice
+import pyttsx4
 from backends.settings.constraints import Constraints
+from backends.settings.validators import NumericValidator
 from common import *
 
 # from backends.audio.player_handler import BasePlayerHandler, WavAudioPlayerHandler
@@ -47,19 +53,15 @@ class SAPIBackend(SimpleTTSBackend):
     displayName = 'SAPI (Windows Internal)'
 
     canStreamWav = True
-    speedConstraints: Constraints = Constraints(-10, 0, 10, True, False, 1.0,
-                                                SettingsProperties.SPEED)
-    pitchConstraints: Constraints = Constraints(-10, 0, 10, True, False, 1.0,
-                                                SettingsProperties.PITCH)
-    volumeConstraints: Constraints = Constraints(0, 100, 100, True, False, 1.0,
-                                                 SettingsProperties.VOLUME)
     volumeExternalEndpoints = (0, 100)
     volumeStep = 5
     volumeSuffix = '%'
     baseSSML = '''<?xml version="1.0"?>
+    phrase: Phrase = None
+    
     '''
 
-    pytts_engine: engine_proxy = None
+    pytts_engine: pyttsx4.engine = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -91,16 +93,18 @@ class SAPIBackend(SimpleTTSBackend):
         self.update()
         try:
             clz._logger.debug(f'About to init pyttsx4')
-            clz.proxy = Pyttsx4Proxy()
-            clz.pytts_engine = clz.proxy.init(SAPIBackend.PYTTSX_SAPI_NAME, debug=True)
-            clz._logger.debug(f'About to speak')
-            clz.pytts_engine.say('You are a disgusting pig.')
-            clz.pytts_engine.runAndWait()
-            clz.pytts_engine.setProperty('speed', 300)
-            clz.proxy.speak('You suck, you old dog.')
-            voices: List[Voice] = clz.pytts_engine.getProperty('voices')
-            for voice in voices:
-                clz._logger.debug(voice)
+            clz.phrase = None
+            # clz.proxy = pyttsx4  # Pyttsx4Proxy()
+            # clz.pytts_engine = clz.proxy.init(SAPIBackend.PYTTSX_SAPI_NAME, debug=True)
+            # clz._logger.debug(f'About to speak')
+            # clz.pytts_engine.say('You are a disgusting pig.')
+            # clz.pytts_engine.runAndWait()
+            # clz.pytts_engine.setProperty('speed', 300)
+            # Speak => say + runAndWait
+            # clz.proxy.speak('You suck, you old dog.')
+            # voices: List[Voice] = clz.pytts_engine.getProperty('voices')
+            # for voice in voices:
+            #     clz._logger.debug(f'voice: {voice}')
 
             #  clz.pytts_engine.connect('started-utterance', clz.onStart)
             #  clz.pytts_engine.connect('started-word', clz.onWord)
@@ -110,6 +114,11 @@ class SAPIBackend(SimpleTTSBackend):
         except RuntimeError as e:
             clz._logger.exception('')
         clz._logger.debug(f'pytts_engine: {clz.pytts_engine}')
+
+    @classmethod
+    def init_pytts(cls) -> None:
+        if cls.pytts_engine is None:
+            cls.pytts_engine = pyttsx4.init(SAPIBackend.PYTTSX_SAPI_NAME, debug=True)
 
     @classmethod
     def onStart(cls, name):
@@ -144,8 +153,10 @@ class SAPIBackend(SimpleTTSBackend):
         cls.lang_map: Dict[str, List[Voice]] = {}
         voices: List[Voice] = cls.pytts_engine.getProperty('voices')
         for voice in voices:
+            cls._logger.debug(f'Setting voice: {voice.id}')
             cls.voice_map[voice.id] = voice
             for lang in voice.languages:
+                cls._logger.debug(f'Setting lang: {lang}')
                 lang_voices: List[Voice] = cls.lang_map.get(lang)
                 if not lang_voices:
                     lang_voices = []
@@ -155,6 +166,7 @@ class SAPIBackend(SimpleTTSBackend):
 
     def addCommonArgs(self, args, phrase: Phrase | None = None):
         clz = type(self)
+        clz.phrase = phrase
         voice_id = Settings.get_voice(clz.service_ID)
         if voice_id is None or voice_id in ('unknown', ''):
             voice_id = None
@@ -196,6 +208,11 @@ class SAPIBackend(SimpleTTSBackend):
     def runCommand(self, phrase: Phrase):
         clz = type(self)
         try:
+            clz.phrase = phrase
+            self.init_pytts()
+            self.current_phrase = phrase
+            if phrase.get_interrupt():
+                self.stop_current_phrases()
             out_file: Path = phrase.get_cache_path()
             if clz._logger.isEnabledFor(DEBUG_VERBOSE):
                 clz._logger.debug_verbose(f'sapi.runCommand outFile: {out_file}\n'
@@ -203,6 +220,7 @@ class SAPIBackend(SimpleTTSBackend):
             clz.pytts_engine.save_to_file(phrase.text, out_file)
             clz.pytts_engine.runAndWait()
         except ExpiredException as e:
+            self.stop_current_phrases()
             clz._logger.debug(f'EXPIRED: {phrase.text}')
         except Exception as e:
             clz._logger.exception('')
@@ -211,10 +229,17 @@ class SAPIBackend(SimpleTTSBackend):
     def runCommandAndSpeak(self, phrase: Phrase):
         clz = type(self)
         try:
+            clz.phrase = phrase
+            self.init_pytts()
+            if phrase.get_interrupt():
+                self.stop_current_phrases()
             clz._logger.debug(f'about to say {phrase.text}')
             clz.pytts_engine.say(phrase.get_text())
+            clz._logger.debug(f'about to runAndWait')
             clz.pytts_engine.runAndWait()
+            clz._logger.debug(f'returned from runAndWait')
         except ExpiredException as e:
+            self.stop_current_phrases()
             clz._logger.debug(f'EXPIRED: {phrase.text}')
         except Exception as e:
             clz._logger.exception('')
@@ -222,6 +247,10 @@ class SAPIBackend(SimpleTTSBackend):
     def runCommandAndPipe(self, phrase: Phrase) -> BytesIO:
         clz = type(self)
         try:
+            clz.phrase = phrase
+            self.init_pytts()
+            if phrase.get_interrupt():
+                self.stop_current_phrases()
             clz._logger.debug(f'runCommandAndPipe phrase: {phrase.get_text()}')
             byte_stream = BytesIO()
             clz.pytts_engine.save_to_file(phrase.get_text(), byte_stream)
@@ -239,6 +268,7 @@ class SAPIBackend(SimpleTTSBackend):
             b = BytesIO(b)
             return
         except ExpiredException as e:
+            self.stop_current_phrases()
             clz._logger.debug(f'EXPIRED: {phrase.text}')
         except Exception as e:
             clz._logger.exception('')
@@ -246,12 +276,20 @@ class SAPIBackend(SimpleTTSBackend):
 
     def stop(self):
         clz = type(self)
-        try:
+        if clz.pytts_engine is not None:
+            try:
+                self.stop_current_phrases()
+            except AbortException:
+                reraise(*sys.exc_info())
+            except:
+                clz._logger.exception("")
+        clz.pytts_engine = None
+
+    def stop_current_phrases(self):
+        clz = type(self)
+        if clz.pytts_engine is not None:
+            clz._logger.debug(f'INTERRUPT stopping speech {clz.phrase.debug_data()}')
             clz.pytts_engine.stop()
-        except AbortException:
-            reraise(*sys.exc_info())
-        except:
-            clz._logger.exception("")
 
     @classmethod
     def settingList(cls, setting, *args):
@@ -347,23 +385,12 @@ class SAPIBackend(SimpleTTSBackend):
             cls.settingList(SettingsProperties.VOICE)
         return cls.voice_map[name]
 
-    def getVolume(self) -> int:
-        # All volumes in settings use a common TTS db scale.
-        # Conversions to/from the engine's or player's scale are done using
-        # Constraints
-        clz = type(self)
-        if self.mode != Mode.ENGINESPEAK:
-            volume_val: IValidator = SettingsMap.get_validator(
-                    clz.service_ID, SettingsProperties.VOLUME)
-            volume: int = volume_val.tts_line_value
-            return volume
-        else:
-            # volume = Settings.get_volume(clz.service_ID)
-            volume_val: IValidator = SettingsMap.get_validator(
-                    clz.service_ID, SettingsProperties.VOLUME)
-            # volume: int = volume_val.get_tts_value()
-            volume: int = volume_val.get_impl_value(clz.service_ID)
-
+    @classmethod
+    def getVolume(cls) -> int:
+        volume_validator: NumericValidator
+        volume_validator = cls.get_validator(cls.service_ID,
+                                             property_id=SettingsProperties.VOLUME)
+        volume: int = volume_validator.get_value()
         return volume
 
     def get_pitch(self) -> int:
@@ -385,18 +412,11 @@ class SAPIBackend(SimpleTTSBackend):
 
         return pitch
 
-    def get_speed(self) -> int:
-        # All settings use a common TTS scale.
-        # Conversions to/from the engine's or player's scale are done using
-        # Constraints
-        clz = type(self)
-        if self.mode != Mode.ENGINESPEAK:
-            speed_val: IValidator = SettingsMap.get_validator(
-                    clz.service_ID, SettingsProperties.SPEED)
-            speed: int = speed_val.tts_line_value
-            return speed
-        else:
-            speed_val: IValidator = SettingsMap.get_validator(
-                    clz.service_ID, SettingsProperties.SPEED)
-            speed: int = speed_val.get_impl_value(clz.service_ID)
+    @classmethod
+    def get_speed(cls) -> float:
+        speed_validator: NumericValidator
+        speed_validator = cls.get_validator(cls.service_ID,
+                                            property_id=SettingsProperties.SPEED)
+        speed: float
+        speed = speed_validator.get_value()
         return speed

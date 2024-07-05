@@ -51,19 +51,19 @@ class SlaveRunCommand:
         self.run_state: RunState = RunState.NOT_STARTED
         self.cmd_finished: bool = False
         self._thread: threading.Thread | None = None
-        self.fifo_in = None;
-        self.fifo_out = None
-        self.fifo_initialized: bool = False
-        self.fifo_reader_thread: threading.Thread | None = None
-        self.filename_sequence_number: int = 0
-        self.playlist_playing_pos: int = 0
+        #  self.fifo_in = None;
+        #  self.fifo_out = None
+        #  self.fifo_initialized: bool = False
+        #  self.fifo_reader_thread: threading.Thread | None = None
+        #  self.filename_sequence_number: int = 0
+        #  self.playlist_playing_pos: int = 0
         self.process: Popen | None = None
         self.run_thread: threading.Thread | None = None
-        self.fifo_sequence_number: int = 0
-        self.observer_sequence_number: int = 0
+        #  self.fifo_sequence_number: int = 0
+        #  self.observer_sequence_number: int = 0
         self.stdout_thread: threading.Thread | None = None
-        self.stdout_lines: List[str] = []
-        self.play_count: int = 0
+        #  self.stdout_lines: List[str] = []
+        #  self.play_count: int = 0
         self.post_start_callback: Callable[[None], None] = post_start_callback
 
         Monitor.register_abort_listener(self.abort_listener, name=thread_name)
@@ -139,15 +139,17 @@ class SlaveRunCommand:
             self.process: Popen
 
             # First, wait until process has started. Should be very quick
-            attempts: int = 100  # Approx one second
+            attempts: int = 300  # Approx one second
             while not Monitor.wait_for_abort(timeout=0.01):
                 if self.run_state != RunState.NOT_STARTED or attempts < 0:
+                    # clz.logger.debug(f'attempts: {attempts} state: {self.run_state}')
                     break
                 attempts -= 1
 
         except AbortException:
             # abort_listener will do the kill
             self.rc = 99  # Thread will exit very soon
+            self.run_state = RunState.TERMINATED
 
         return 0
 
@@ -158,7 +160,7 @@ class SlaveRunCommand:
         clz = type(self)
         self.rc = 0
         GarbageCollector.add_thread(self.run_thread)
-        clz.logger.debug(f'run_service started')
+        # clz.logger.debug(f'run_service started')
         env = os.environ.copy()
         try:
             if Constants.PLATFORM_WINDOWS:
@@ -187,10 +189,10 @@ class SlaveRunCommand:
                                                 universal_newlines=True,
                                                 encoding='utf-8', env=env,
                                                 close_fds=True)
-            self.stdout_thread = threading.Thread(target=self.stdout_reader,
-                                                  name=f'{self.thread_name}_stdout_rdr')
+            # self.stdout_thread = threading.Thread(target=self.stdout_reader,
+            #                                      name=f'{self.thread_name}_stdout_rdr')
             Monitor.exception_on_abort()
-            self.stdout_thread.start()
+            #  self.stdout_thread.start()
             if self.post_start_callback:
                 self.post_start_callback()
 
@@ -217,6 +219,7 @@ class SlaveRunCommand:
                     line: str
                     line, _ = self.process.communicate(input='',
                                                        timeout=0.0)
+                    self.run_state = RunState.RUNNING
                     if len(line) > 0:
                         clz.logger.debug_verbose(f'STDOUT: {line}')
                 except subprocess.TimeoutExpired:
@@ -232,9 +235,22 @@ class SlaveRunCommand:
                         clz.logger.exception('')
                         finished = True
         except AbortException as e:
-            self.process.stdout.close()
-            self.process.stdout = None
+            try:
+                if hasattr(self.process) and hasattr(self.process.stdout):
+                    self.process.stdout.close()
+                    self.process.stdout = None
+            except:
+                finished = True
+                pass
             return
         except Exception as e:
             clz.logger.exception('')
+            finished = True
+        try:
+            if hasattr(self.process) and hasattr(self.process.stdout):
+                self.process.stdout.close()
+                self.process.stdout = None
+        except:
+            finished = True
+            pass
         return

@@ -33,9 +33,9 @@ from common.phrases import Phrase, PhraseList
 from common.setting_constants import Backends, Genders, Languages, Mode
 from common.settings import Settings
 from utils.util import runInThread
+from windows.ui_constants import UIConstants
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
-PUNCTUATION_PATTERN = re.compile(r'([.,:])', re.DOTALL)
 
 
 class Results:
@@ -354,7 +354,7 @@ class SpeechGenerator:
         phrases.check_expired = False
         out_chunks: List[str] = []
         try:
-            chunks: List[str] = re.split(PUNCTUATION_PATTERN, phrase.get_text())
+            chunks: List[str] = re.split(UIConstants.PUNCTUATION_PATTERN, phrase.get_text())
             if clz._logger.isEnabledFor(DEBUG_VERBOSE):
                 clz._logger.debug_verbose(f'len chunks: {len(chunks)}')
             text_file_path: pathlib.Path

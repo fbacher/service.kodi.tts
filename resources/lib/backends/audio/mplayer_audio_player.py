@@ -43,58 +43,18 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
                                   _supported_output_formats)
 
     if Constants.PLATFORM_WINDOWS:
-        _availableArgs = (Constants.MPV_PATH, '--help')
+        # Mplayer not readily available on Windows
+        raise NotImplementedError('mplayer not available on Windows')
     else:
         _availableArgs = (Constants.MPLAYER_PATH, '--help')
     #
-    # Run mplayer in slave mode, not exiting when idle and reading
-    # slave commands from a path yet to be provided by file=
-
-    MPV_AUDIO_FILTER: str = '--af='
+    """
+      mplayer is NOT used for slave mode since it has an inferior implementation
+      than mpv.
+    """
     MPLAYER_AUDIO_FILTER: str = '-af'
-
-    USE_MPV_PLAYER: bool
-    if Constants.PLATFORM_WINDOWS:
-        USE_MPV_PLAYER = True
-    else:
-        USE_MPV_PLAYER = False
-
-    MPV_PLAY_ARGS = (Constants.MPV_PATH, '--really-quiet', None)
     MPLAYER_PLAY_ARGS = (Constants.MPLAYER_PATH, '-really-quiet', None)
-    MPV_PIPE_ARGS = (Constants.MPV_PATH, '-', '--really_quiet', '--cache', '8192')
     MPLAYER_PIPE_ARGS = (Constants.MPLAYER_PATH, '-', '-really-quiet', '-cache', '8192')
-    SLAVE_ARGS: Tuple[str] = (Constants.MPV_PATH, '--really-quiet',  '--idle')
-
-    # _pipeArgs = (Constants.MPLAYER_PATH, '-', '-really-quiet', '-cache', '8192',
-    #              '-slave', '-input', 'file=/tmp/tts_mplayer_pipe')
-    # Send commands via named pipe (or stdin) to play files:
-    # mkpipe ./slave.input
-    #
-    # Note that speed, volume, etc. RESET between each file played. Example below
-    # resets speed/tempo before each play.
-    #
-    # mplayer  -af "scaletempo" -slave  -idle -input file=./slave.input
-    #
-    # From another shell:
-    # (echo "loadfile <audio_file> 0"; echo "speed_mult 1.5") >> ./slave.input
-    # To play another AFTER the previous completes
-    # (echo loadfile <audio_file2> 0; echo speed_mult 1.5) >> ./slave.input
-    # To stop playing current file and start playing another:
-    # (echo loadfile <audio_file3> 1; echo speed_mult 1.5) >>./slave.input
-
-    # Mplayer supports speeds > 0:
-    #  0.30 ~1/3 speed
-    #  0.5 1/2 speed
-    #  1   1 x speed
-    #  2   2 x speed ...
-    # When volume specified with --af=scaletempo=scale=1.50:speed=none,volume=12
-    # Then the volume is in decibels, otherwise it is a percentage as in:
-    #  mpv --really-quiet --idle --volume=200.0 525d04b81883fcc53188d624bb389e79.mp3
-    # Or even
-    # mpv --really-quiet --af=scaletempo=scale=1.50:speed=none --volume=200 525d04b81883fcc53188d624bb389e79.mp3
-
-
-    MPV_SPEED_ARGS = 'scaletempo2=scale={0}:speed=none'
     MPLAYER_SPEED_ARGS = 'scaletempo=scale={0}:speed=none'
 
     # Multiplier of 1.0 = 100% of speed (i.e. no change)
@@ -103,9 +63,7 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
     _logger: BasicLogger = None
 
     def __init__(self):
-        clz = type(self)
-        # Set logger here size super also sets clz.logger. And clz is the same for
-        # both. This messes up register
+        clz = MPlayerAudioPlayer
         if clz._logger is None:
             clz._logger = module_logger.getChild(self.__class__.__name__)
             clz.register(self)
@@ -115,7 +73,6 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
         self.configVolume: bool = True
         self.configSpeed: bool = True
         self.configPitch: bool = True
-        self.slave_pipe_path: Path = None
 
     def init(self, engine_id: str):
         self.engine_id = engine_id
@@ -136,7 +93,7 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
         clz = type(self)
         args: List[str] = []
         try:
-            args = self.baseArgs(phrase)
+            args.append(phrase.get_text())
         except ExpiredException:
             reraise(*sys.exc_info())
         #
@@ -146,7 +103,6 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
         # Get the volume produced by the engine using TTS scale
 
         volume: float
-
         volume = self.get_player_volume(as_decibels=True)
 
         if speed is None:
@@ -157,99 +113,21 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
         if self.configSpeed or self.configVolume:
             filters: List[str] = []
             if self.configSpeed:
-                filters.append(clz.MPV_SPEED_ARGS.format(
-                        self.speedArg(speed)))
+                filters.append(clz.MPLAYER_SPEED_ARGS.format(self.speedArg(speed)))
             if self.configVolume:
                 filters.append(self._volumeArgs.format(volume))
             audio_filter: List[str] = []
-            if clz.USE_MPV_PLAYER:
-                audio_filter.append(f'{MPlayerAudioPlayer.MPV_AUDIO_FILTER}{",".join(filters)}')
-            else:
-                audio_filter.append(MPlayerAudioPlayer.MPLAYER_AUDIO_FILTER)
-                audio_filter.append(",".join(filters))
+            audio_filter.append(MPlayerAudioPlayer.MPLAYER_AUDIO_FILTER)
+            audio_filter.append(",".join(filters))
             clz._logger.debug(f'audio_filter: {audio_filter}')
             args.extend(audio_filter)
-        self._logger.debug_verbose(f'args: {" ".join(args)}')
-        return args
-
-    '''
-    def get_speed_volume_argsx(self) -> List[str]:
-        clz = type(self)
-        args: List[str] = []
-        #
-        # None is returned if engine can not control speed, etc.
-        #
-        speed: float = self.get_player_speed()
-        # Get the volume produced by the engine using TTS scale
-        volume: float
-        volume = self.get_player_volume()
-        if speed is None:
-            self.configSpeed = False
-        if volume is None:
-            self.configVolume = False
-
-        if self.configSpeed or self.configVolume:
-            filters = []
-            if self.configSpeed:
-                filters.append(clz.MPV_SPEED_ARGS.format(
-                        self.speedArg(speed)))
-            if self.configVolume:
-                filters.append(self._volumeArgs.format(volume))
-            clz._logger.debug(f'audio_filter: {MPlayerAudioPlayer.AUDIO_FILTER}')
-
-            if Constants.PLATFORM_WINDOWS:
-                args.append(f'{MPlayerAudioPlayer.AUDIO_FILTER}{",".join(filters)}')
-            else:
-                args.append(MPlayerAudioPlayer.AUDIO_FILTER)
-                args.append(",".join(filters))
-
-            clz._logger.debug(f'audio_filters: {",".join(filters)}')
-        return args
-    '''
-
-    def get_slave_pipe_path(self) -> Path:
-        return self.slave_pipe_path
-
-    '''
-    def get_start_slave_args(self):
-        clz = type(self)
-        slave_pipe_dir: Path = Path(tempfile.mkdtemp())
-        self.slave_pipe_path = slave_pipe_dir.joinpath('mpv.tts')
-        clz._logger.debug(f'slave_pipe_path: {self.slave_pipe_path}')
-        args: List[str] = []
-        args.extend(clz.SLAVE_ARGS)
-        args.append(f'--input-ipc-server={self.slave_pipe_path}')
-        # args.extend(self.get_speed_volume_args())
-        #  Debug.dump_all_threads(0.0)
-        self._logger.debug(f'args: {args}')
-        return args
-        '''
-
-    def get_slave_play_args(self) -> List[str]:
-        """
-        mpv is used for slave mode since it has a much better implementation
-        than mplayer.
-
-        In slave mode you have to set volume, speed, etc. for EVERY item
-        played because it is reset to the values set when mplayer started
-        for each item played.
-
-        :return:
-        """
-        clz = type(self)
-        slave_pipe_dir: Path = Path(tempfile.mkdtemp())
-        self.slave_pipe_path = slave_pipe_dir.joinpath('mpv.tts')
-        clz._logger.debug(f'slave_pipe_path: {self.slave_pipe_path}')
-        args: List[str] = []
-        args.extend(clz.SLAVE_ARGS)
-        args.append(f'--input-ipc-server={self.slave_pipe_path}')
         self._logger.debug_verbose(f'args: {" ".join(args)}')
         return args
 
     def get_pipe_args(self) -> List[str]:
         clz = type(self)
         args: List[str] = []
-        args.extend(self._pipeArgs)
+        args.extend(clz.MPLAYER_PIPE_ARGS)
         speed: float = self.get_player_speed()
         volume: float = self.get_player_volume(as_decibels=True)
         if speed is None:
@@ -260,17 +138,12 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
         if self.configSpeed or self.configVolume:
             filters = []
             if self.configSpeed:
-                filters.append(clz.MPV_SPEED_ARGS.format(
-                        self.speedArg(speed)))
+                filters.append(clz.MPLAYER_SPEED_ARGS.format(self.speedArg(speed)))
             if self.configVolume:
                 filters.append(self._volumeArgs.format(volume))
             audio_filter: List[str] = []
-            if clz.USE_MPV_PLAYER:
-                audio_filter.append(
-                    f'{MPlayerAudioPlayer.MPV_AUDIO_FILTER}{",".join(filters)}')
-            else:
-                audio_filter.append(MPlayerAudioPlayer.MPLAYER_AUDIO_FILTER)
-                audio_filter.append(",".join(filters))
+            audio_filter.append(MPlayerAudioPlayer.MPLAYER_AUDIO_FILTER)
+            audio_filter.append(",".join(filters))
             clz._logger.debug(f'audio_filter: {audio_filter}')
             args.extend(audio_filter)
         self._logger.debug_verbose(f'args: {" ".join(args)}')
@@ -299,6 +172,7 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
         speed_validator = clz.get_validator(clz.service_ID,
                                             property_id=SettingsProperties.SPEED)
         speed = speed_validator.get_value()
+        # clz._logger.debug(f'service_ID: {clz.service_ID} speed: {speed}')
         return speed
 
     def get_player_volume(self, as_decibels: bool = True) -> float:

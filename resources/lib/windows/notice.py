@@ -6,10 +6,14 @@ from __future__ import annotations  # For union operator |
 import xbmcgui
 
 from common import *
+from common.logger import BasicLogger
 
 from common.messages import Messages
+from common.monitor import Monitor
 from utils import addoninfo
 from .base import WindowHandlerBase
+
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class NoticeDialog(WindowHandlerBase):
@@ -65,8 +69,9 @@ class NoticeDialog(WindowHandlerBase):
         return ret
 
     def getMonitoredText(self,
-                         isSpeaking=False):  # getLabel() Doesn't work currently with
-        # FadeLabels
+                         isSpeaking: bool = False) -> str | None:
+        # getLabel() Doesn't work currently with FadeLabels
+        Monitor.exception_on_abort()
         if self._visible:
             return None
         if not addoninfo.checkForNewVersions():

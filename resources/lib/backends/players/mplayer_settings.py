@@ -8,8 +8,8 @@ from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
-                                          NumericValidator, Validator)
-from common.setting_constants import Players
+                                          NumericValidator, StringValidator, Validator)
+from common.setting_constants import PlayerModes, Players
 from common.settings_low_level import SettingsProperties
 
 
@@ -105,8 +105,21 @@ class MPlayerSettings:
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.CACHE_SPEECH,
                                    cache_validator)
 
+        '''
         pipe_validator: BoolValidator
         pipe_validator = BoolValidator(SettingsProperties.PIPE, cls.service_ID,
                                        default=False)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PIPE,
                                    pipe_validator)
+       '''
+        allowed_player_modes: List[str] = [
+            PlayerModes.SLAVE_FILE.value,
+            PlayerModes.FILE.value
+        ]
+        player_mode_validator: StringValidator
+        player_mode_validator = StringValidator(SettingsProperties.PLAYER_MODE,
+                                                cls.service_ID,
+                                                allowed_values=allowed_player_modes,
+                                                default=PlayerModes.SLAVE_FILE.value)
+        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER_MODE,
+                                   player_mode_validator)

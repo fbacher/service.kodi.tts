@@ -34,8 +34,6 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
      launching a player for each phrase spoken. There are some significant differences
      in the commands/aruments/behavior, but not radically different.
 
-     MPV seems to behave better on Windows than MPlayer.
-
      MPV supports -idle and -slave which keeps player from exiting
      after files played. When in slave mode, commands are read from sockets or
      named pipe.
@@ -80,39 +78,36 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
         in different units. In particular, volume is sometimes in decibels.
     """
 
-
     MPV_PLAY_ARGS = (Constants.MPV_PATH, '--really-quiet')
-    MPV_PIPE_ARGS = (Constants.MPV_PATH, '-', '--really_quiet', '--cache', '8192')
+    MPV_PIPE_ARGS = (Constants.MPV_PATH, '-', '--really-quiet', '--cache', '8192')
     SLAVE_ARGS: Tuple[str] = (Constants.MPV_PATH, '--really-quiet',  '--idle')
 
     '''
-    # _pipeArgs = (Constants.MPLAYER_PATH, '-', '-really-quiet', '-cache', '8192',
-    #              '-slave', '-input', 'file=/tmp/tts_mplayer_pipe')
-    # Send commands via named pipe (or stdin) to play files:
-    # mkpipe ./slave.input
-    #
-    # Note that speed, volume, etc. RESET between each file played. Example below
-    # resets speed/tempo before each play.
-    #
-    # mplayer  -af "scaletempo" -slave  -idle -input file=./slave.input
-    #
-    # From another shell:
-    # (echo "loadfile <audio_file> 0"; echo "speed_mult 1.5") >> ./slave.input
-    # To play another AFTER the previous completes
-    # (echo loadfile <audio_file2> 0; echo speed_mult 1.5) >> ./slave.input
-    # To stop playing current file and start playing another:
-    # (echo loadfile <audio_file3> 1; echo speed_mult 1.5) >>./slave.input
+     Send commands via named pipe (or stdin) to play files:
+       mkpipe ./slave.input
+    
+     Note that speed, volume, etc. RESET between each file played. Example below
+     resets speed/tempo before each play.
+    
+     mplayer  -af "scaletempo" -slave  -idle -input file=./slave.input
+    
+     From another shell:
+     (echo "loadfile <audio_file> 0"; echo "speed_mult 1.5") >> ./slave.input
+     To play another AFTER the previous completes
+     (echo loadfile <audio_file2> 0; echo speed_mult 1.5) >> ./slave.input
+     To stop playing current file and start playing another:
+     (echo loadfile <audio_file3> 1; echo speed_mult 1.5) >>./slave.input
 
-    # Mplayer supports speeds > 0:
-    #  0.30 ~1/3 speed
-    #  0.5 1/2 speed
-    #  1   1 x speed
-    #  2   2 x speed ...
-    # When volume specified with --af=scaletempo=scale=1.50:speed=none,volume=12
-    # Then the volume is in decibels, otherwise it is a percentage as in:
-    #  mpv --really-quiet --idle --volume=200.0 525d04b81883fcc53188d624bb389e79.mp3
-    # Or even
-    # mpv --really-quiet --af=scaletempo=scale=1.50:speed=none --volume=200 525d04b81883fcc53188d624bb389e79.mp3
+     Mplayer supports speeds > 0:
+      0.30 ~1/3 speed
+      0.5 1/2 speed
+      1   1 x speed
+      2   2 x speed ...
+     When volume specified with --af=scaletempo=scale=1.50:speed=none,volume=12
+     Then the volume is in decibels, otherwise it is a percentage as in:
+      mpv --really-quiet --idle --volume=200.0 525d04b81883fcc53188d624bb389e79.mp3
+     Or even
+     mpv --really-quiet --af=scaletempo=scale=1.50:speed=none --volume=200 525d04b81883fcc53188d624bb389e79.mp3
     
     mpv plays mono on only one channel by default. To force playing on stereo 
     speakers use:
@@ -123,7 +118,7 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
     _logger: BasicLogger = None
 
     def __init__(self):
-        clz = type(self)
+        clz = MPVAudioPlayer
         # Set logger here size super also sets clz.logger. And clz is the same for
         # both. This messes up register
         if clz._logger is None:
@@ -153,7 +148,7 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
         self.play_channels: Channels = channels
 
     def playArgs(self, phrase: Phrase) -> List[str]:
-        clz = type(self)
+        clz = MPVAudioPlayer
         args: List[str] = []
         try:
             args.extend(clz.MPV_PLAY_ARGS)
@@ -179,8 +174,8 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
 
     def get_slave_play_args(self) -> List[str]:
         """
-        mpv is used for slave mode since it has a much better implementation
-        than mplayer.
+        mpv is used for PlayerModes.SLAVE_FILE & SLAVE_PIPE since it has a much better
+        implementation than mplayer.
 
         In slave mode you have to set volume, speed, etc. for EVERY item
         played because it is reset to the values set when mpv started
@@ -188,7 +183,7 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
 
         :return:
         """
-        clz = type(self)
+        clz = MPVAudioPlayer
         slave_pipe_dir: Path = Path(tempfile.mkdtemp())
         self.slave_pipe_path = slave_pipe_dir.joinpath('mpv.tts')
         clz._logger.debug(f'slave_pipe_path: {self.slave_pipe_path}')
@@ -219,12 +214,11 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
         self._logger.debug_verbose(f'args: {" ".join(args)}')
         return args
 
-    '''
     def get_pipe_args(self) -> List[str]:
-        clz = type(self)
+        clz = MPVAudioPlayer
         args: List[str] = []
         try:
-            args.extend((Constants.MPV_PATH, '-', '--really_quiet', '--cache', '8192')
+            args.extend(MPVAudioPlayer.MPV_PIPE_ARGS)
 
             volume: float = self.get_player_volume(as_decibels=False)
             speed = self.get_player_speed()
@@ -242,7 +236,6 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
             reraise(*sys.exc_info())
         self._logger.debug_verbose(f'args: {" ".join(args)}')
         return args
-    '''
 
     def canSetSpeed(self) -> bool:
         return True
@@ -261,9 +254,9 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
         return True
 
     def get_player_speed(self) -> float:
-        clz = type(self)
+        clz = MPVAudioPlayer
         speed_validator: NumericValidator
-        speed_validator = clz.get_validator(self.engine_id,
+        speed_validator = clz.get_validator(self.service_ID,
                                             property_id=SettingsProperties.SPEED)
         speed = speed_validator.get_value()
         return speed
@@ -286,9 +279,9 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
                  the software volume.
         :return:
         """
-        clz = type(self)
+        clz = MPVAudioPlayer
         volume_validator: INumericValidator
-        volume_validator = SettingsMap.get_validator(self.engine_id,
+        volume_validator = SettingsMap.get_validator(SettingsProperties.TTS_SERVICE,
                                                      property_id=SettingsProperties.VOLUME)
         volume_validator: NumericValidator
         volume: float
@@ -297,7 +290,7 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
         else:
             volume = volume_validator.as_percent()
 
-        clz._logger.debug(f'getVolume as_decibels: {as_decibels} volume: {volume}')
+        # clz._logger.debug(f'getVolume as_decibels: {as_decibels} volume: {volume}')
         return volume
 
     def get_player_channels(self) -> Channels:
@@ -312,7 +305,7 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
                  None means to do default behavior
         """
 
-        clz = type(self)
+        clz = MPVAudioPlayer
         channel_validator: IChannelValidator
         channels_prop: str = SettingsProperties.CHANNELS
         channel_validator = SettingsMap.get_validator(clz.service_ID,

@@ -16,10 +16,7 @@ from common.messages import Messages
 from common.settings import Settings
 from windows.base import WindowHandlerBase, WindowReaderBase
 
-if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = BasicLogger.get_module_logger(module_path=__file__)
-else:
-    module_logger = BasicLogger.get_module_logger()
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class ProgressNotice(xbmcgui.Window):
@@ -48,7 +45,7 @@ class ProgressNotice(xbmcgui.Window):
         self.started = True
         self.setTitle()
         if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug('BG Prog: Ready ({0})'.format(self.title))
+            self._logger.debug(f'BG Prog: Ready ({self.title})')
         return False
 
     def setTitle(self):
@@ -129,6 +126,11 @@ class ProgressNotice(xbmcgui.Window):
 
 class BackgroundProgress(WindowHandlerBase):
     ID = 'backgroundprogress'
+
+    def __init__(self, win_id=None, service: ForwardRef('TTSService') = None) -> None:
+        cls = type(self)
+        super().__init__(win_id, service)
+        cls._logger = module_logger.getChild(cls.__class__.__name__)
 
     def init(self):
         self._win = None

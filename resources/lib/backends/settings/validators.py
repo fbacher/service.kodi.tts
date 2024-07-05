@@ -9,7 +9,7 @@ from common import *
 from backends.settings.constraints import Constraints
 from backends.settings.i_constraints import IConstraints
 from backends.settings.i_validators import (IChannelValidator, IGenderValidator,
-                                            IStringValidator, IValidator)
+                                            IStringValidator, IValidator, UIValues)
 from backends.settings.service_types import Services
 from backends.settings.settings_map import SettingsMap
 from common.logger import BasicLogger
@@ -19,24 +19,40 @@ from common.settings_low_level import SettingsLowLevel
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
+class ConvertType(enum.Enum):
+    NONE = enum.auto()
+    PERCENT = enum.auto()
+    DECIBELS = enum.auto()
+
+
 class Validator(IValidator):
 
-    def __init__(self, setting_id: str, service_id: str) -> None:
+    def __init__(self, setting_id: str, service_id: str,
+                 default: Any | None = None, const: bool = False) -> None:
         self._default = None
         super().__init__(setting_id, service_id)
         self.service_id = service_id
         self.setting_id = setting_id
+        self.const: bool = const
+        self.tts_validator: IValidator | None = None
+
+    def is_const(self) -> bool:
+        return self.const
+
+    def get_const_value(self) -> Any:
+        return None
 
     def get_tts_validator(self) -> IValidator:
-        tts_val: IValidator = None
-        if self.service_id == Services.TTS_SERVICE:
-            return self
+        if self.tts_validator is None:
+            if self.service_id == Services.TTS_SERVICE:
+                return self
         try:
             tts_val = SettingsMap.get_validator(Services.TTS_SERVICE,
                                                 self.setting_id)
+            self.tts_validator = tts_val
         except Exception:
             module_logger.exception('')
-        return tts_val
+        return self.tts_validator
 
 
 class BaseNumericValidator(Validator):
@@ -46,20 +62,29 @@ class BaseNumericValidator(Validator):
                  default: int | None = None,
                  is_decibels: bool = False,
                  is_integer: bool = True,
-                 increment: int | float = 0.0
+                 increment: int | float = 0.0,
+                 const: bool = False
                  ) -> None:
-        super().__init__(setting_id, service_id)
+        super().__init__(setting_id, service_id, const=const)
         self.setting_id: str = setting_id
         self.service_id: str = service_id
         self.minimum: int = minimum
         self.maximum: int = maximum
         self._default = default
-        self._is_decibels: bool = is_decibels
+        self.is_decibels: bool = is_decibels
         self.is_integer = is_integer
         if increment is None or increment <= 0.0:
             increment = (maximum - minimum) / 20.0
         self._increment = increment
+        self.const: bool = const
         return
+
+    def is_const(self) -> bool:
+        return self.const
+
+    def get_const_value(self) -> Any:
+        if self.const:
+            return self.default_value
 
     @classmethod
     def to_percent(cls, value: int | float) -> float:
@@ -78,8 +103,14 @@ class BaseNumericValidator(Validator):
         return result
 
     @property
-    def increment(self):
+    def increment(self) -> int:
+        if self.const:
+            return 0
         return self._increment
+
+    @property
+    def default_value(self) -> int:
+        return self._default
 
 
 class TTSNumericValidator(BaseNumericValidator):
@@ -90,7 +121,8 @@ class TTSNumericValidator(BaseNumericValidator):
                  is_decibels: bool = False,
                  is_integer: bool = True,
                  internal_scale_factor: int | float = 1,
-                 increment: int | float = 0.0
+                 increment: int | float = 0.0,
+                 const: bool = False
                  ) -> None:
         super().__init__(setting_id=setting_id,
                          service_id=Services.TTS_SERVICE,
@@ -98,15 +130,30 @@ class TTSNumericValidator(BaseNumericValidator):
                          maximum=maximum,
                          default=default,
                          is_decibels=is_decibels,
-                         is_integer=is_integer)
+                         is_integer=is_integer,
+                         increment=increment,
+                         const=False)
         self.internal_scale_factor: int | float = internal_scale_factor
+        if const:
+            self.set_value(default)
+            super().const = const
+            self.const = const
         return
+
+    def is_const(self) -> bool:
+        return self.const
+
+    def get_const_value(self) -> Any:
+        if self.const:
+            return self.default_value
 
     def get_raw_value(self) -> int:
         default = self._default
         internal_value: int = SettingsLowLevel.get_setting_int(self.setting_id,
                                                                self.service_id,
                                                                default)
+        # module_logger.debug(f'service_id {self.service_id} setting: {self.setting_id} '
+        #                     f'internal_value: {internal_value}')
         return internal_value
 
     def get_value(self) -> int | float:
@@ -118,12 +165,28 @@ class TTSNumericValidator(BaseNumericValidator):
             return int(round(tts_value))
         return tts_value
 
-    def set_value(self, value: int | float) -> None:
-        internal_value: int = int(value * self.internal_scale_factor)
-        internal_value = min(internal_value, self.maximum)
+    def get_value_from(self, raw_value: int,
+                       convert: ConvertType = ConvertType.NONE,
+                       is_integer: bool = False) -> int | float:
+        # internal_value: int = self.get_raw_value()
+        internal_value = min(raw_value, self.maximum)
         internal_value = max(internal_value, self.minimum)
-        SettingsLowLevel.set_setting_int(self.setting_id, internal_value,
-                                         self.service_id)
+        tts_value: float = float(internal_value) / float(self.internal_scale_factor)
+        if convert == ConvertType.PERCENT and self.is_decibels:
+            tts_value = 100.0 * (10 ** (tts_value / 20.0))
+        elif convert == ConvertType.DECIBELS and not self.is_decibels:
+            tts_value = 10.0 * math.log10(float(tts_value) / 100.0)
+        if is_integer:
+            return int(round(tts_value))
+        return tts_value
+
+    def set_value(self, value: int | float) -> None:
+        if not self.const:
+            internal_value: int = int(value * self.internal_scale_factor)
+            internal_value = min(internal_value, self.maximum)
+            internal_value = max(internal_value, self.minimum)
+            SettingsLowLevel.set_setting_int(self.setting_id, internal_value,
+                                             self.service_id)
         return
 
     def validate(self, value: int | None) -> bool:
@@ -136,7 +199,7 @@ class TTSNumericValidator(BaseNumericValidator):
 
         :return:
         """
-        if not self._is_decibels:
+        if not self.is_decibels:
             return self.get_value()
 
         internal_value: int = self.get_raw_value()
@@ -145,11 +208,12 @@ class TTSNumericValidator(BaseNumericValidator):
         tts_value: int | float = internal_value / self.internal_scale_factor
         result = 100 * (10 ** (tts_value / 20.0))
         if self.is_integer:
-            return int(round(result))
+            result = int(round(result))
+        #  module_logger.debug(f'raw_value: {internal_value} result: {result}')
         return result
 
     def as_decibels(self) -> int | float:
-        if self._is_decibels:
+        if self.is_decibels:
             return self.get_value()
 
         internal_value: int = self.get_raw_value()
@@ -159,6 +223,63 @@ class TTSNumericValidator(BaseNumericValidator):
         result: float = 10.0 * math.log10(float(tts_value) / 100.0)
         return result
 
+    def get_tts_values(self) -> UIValues:
+        return self.get_values(convert=ConvertType.NONE, is_integer=self.is_integer)
+
+    def get_values(self, convert: ConvertType = ConvertType.NONE,
+                   is_integer: bool = False) -> UIValues:
+        """
+           Gets values suitable for a UI to display and change.
+
+        :return: (min_value, max_value, current_value, minimum_increment,
+                 values_are_int: bool)
+        """
+        result: UIValues
+        result = UIValues(minimum=self.get_value_from(self.minimum, convert=convert,
+                                                      is_integer=is_integer),
+                          maximum=self.get_value_from(self.maximum, convert=convert,
+                                                      is_integer=is_integer),
+                          default=self.get_value_from(self.default_value,
+                                                      convert=convert,
+                                                      is_integer=is_integer),
+                          current=self.get_value_from(self.get_raw_value(),
+                                                      convert=convert,
+                                                      is_integer=is_integer),
+                          increment=self.get_value_from(self.increment,
+                                                        convert=convert,
+                                                        is_integer=is_integer),
+                          is_integer=is_integer)
+        # module_logger.debug(f'raw_value: {self.get_raw_value()}'
+        #                     f' current: {result.current}')
+
+        return result
+
+    def __repr__(self) -> str:
+        return (f'service: {self.service_id} setting: {self.setting_id} '
+                f'val: {self.get_value()} db: {self.is_decibels}')
+
+    def adjust(self, positive_increment: bool) -> float | int:
+        """
+        Increases/decreases the current value by one unit (increment).
+        :param positive_increment: If True, then add one increment to value,
+               else, subtract one increment
+        :return: value after the increment (same as using get_value())
+        """
+        if self.const:
+            return self.get_value()
+
+        value: float | int = self.get_value_from(self.increment,
+                                                 convert=ConvertType.NONE,
+                                                 is_integer=self.is_integer)
+        current = self.get_value_from(self.get_raw_value(),
+                                      convert=ConvertType.NONE,
+                                      is_integer=self.is_integer)
+        if not positive_increment:
+            value = -value
+        current += value
+        self.set_value(current)
+        return self.get_value()   # Handles range checking
+
 
 class NumericValidator(BaseNumericValidator):
 
@@ -167,7 +288,8 @@ class NumericValidator(BaseNumericValidator):
                  default: int | float | None = None,
                  is_decibels: bool = False,
                  is_integer: bool = True,
-                 increment: int | float = 0.0
+                 increment: int | float = 0.0,
+                 const: bool = False
                  ) -> None:
         super().__init__(setting_id=setting_id,
                          service_id=service_id,
@@ -176,17 +298,31 @@ class NumericValidator(BaseNumericValidator):
                          default=default,
                          is_decibels=is_decibels,
                          is_integer=is_integer,
-                         increment=increment)
+                         increment=increment,
+                         const=False)
+        self.tts_validator: TTSNumericValidator | None = None
+        if const:
+            self.set_value(default)
+            super().const = const
+            self.const = const
         return
 
+    def is_const(self) -> bool:
+        return self.const
+
+    def get_const_value(self) -> Any:
+        if self.const:
+            return self.default_value
+
     def _get_value(self) -> int | float:
-        tts_validator: IValidator = self.get_tts_validator()
-        tts_validator: TTSNumericValidator
+        if self.tts_validator is None:
+            self.tts_validator: IValidator = self.get_tts_validator()
+        self.tts_validator: TTSNumericValidator
         value: int | float
-        if self._is_decibels:
-            value = tts_validator.as_decibels()
+        if self.is_decibels:
+            value = self.tts_validator.as_decibels()
         else:
-            value = tts_validator.as_percent()
+            value = self.tts_validator.as_percent()
         return value
 
     def get_value(self) -> int | float:
@@ -194,19 +330,38 @@ class NumericValidator(BaseNumericValidator):
         value = min(value, self.maximum)
         value = max(value, self.minimum)
         if self.is_integer:
-            return int(round(value))
+            value = int(round(value))
         return value
 
+    def get_value_from(self, raw_value: int) -> int | float:
+        if self.const:
+            return self.get_value()
+
+        if self.tts_validator is None:
+            self.tts_validator: IValidator = self.get_tts_validator()
+        self.tts_validator: TTSNumericValidator
+        # internal_value: int = self.get_raw_value()
+        internal_value = min(raw_value, self.maximum)
+        internal_value = max(internal_value, self.minimum)
+        tts_value: int | float = internal_value / self.tts_validator.internal_scale_factor
+        if self.is_integer:
+            return int(round(tts_value))
+        return tts_value
+
     def set_value(self, value: int | float) -> None:
+        if self.const:
+            return
+
         value = min(value, self.maximum)
         value = max(value, self.minimum)
-        tts_validator: IValidator = self.get_tts_validator()
-        tts_validator: TTSNumericValidator
-        if tts_validator._is_decibels:
+        if self.tts_validator is None:
+            self.tts_validator: IValidator = self.get_tts_validator()
+        self.tts_validator: TTSNumericValidator
+        if self.tts_validator.is_decibels:
             value = self.to_decibels(value)
         else:
             value = self.to_percent(value)
-        tts_validator.set_value(value)
+        self.tts_validator.set_value(value)
         return
 
     def validate(self, value: int | None) -> bool:
@@ -219,7 +374,7 @@ class NumericValidator(BaseNumericValidator):
 
         :return:
         """
-        if not self._is_decibels:
+        if not self.is_decibels:
             return self.get_value()
 
         value: int | float = self.get_value()
@@ -229,12 +384,48 @@ class NumericValidator(BaseNumericValidator):
         return result
 
     def as_decibels(self) -> int | float:
-        if self._is_decibels:
+        if self.is_decibels:
             return self.get_value()
 
         value: int | float = self.get_value()
         result: float = 10.0 * math.log10(float(value) / 100.0)
         return result
+
+    def get_values(self) -> UIValues:
+        """
+           Gets values suitable for a UI to display and change.
+
+        :return: (min_value, max_value, default_value, current_value,
+                 minimum_increment, is_integer: bool)
+        """
+        result: UIValues
+        result = UIValues(minimum=self.get_value_from(self.minimum),
+                          maximum=self.get_value_from(self.maximum),
+                          default=self.get_value_from(self.default_value),
+                          current=self.get_value(),
+                          increment=self.get_value_from(self.increment),
+                          is_integer=self.is_integer)
+        return result
+
+    def get_tts_values(self) -> UIValues:
+        """
+           Gets values suitable for a UI to display and change.
+
+        :return: (min_value, max_value, current_value, minimum_increment,
+                 values_are_int: bool)
+        """
+        if self.tts_validator is None:
+            self.tts_validator: IValidator = self.get_tts_validator()
+        self.tts_validator: TTSNumericValidator
+        convert: ConvertType = ConvertType.DECIBELS
+        if not self.is_decibels:
+            convert = ConvertType.PERCENT
+        return self.tts_validator.get_values(convert=convert,
+                                             is_integer=self.is_integer)
+
+    def __repr__(self) -> str:
+        return (f'service: {self.service_id} setting: {self.setting_id} '
+                f'val: {self.get_value()} max: {self.maximum} db: {self.is_decibels}')
 
 
 class IntValidator(Validator):
@@ -257,7 +448,7 @@ class IntValidator(Validator):
         if default is None:
             default = self._default
         if setting_service_id is None:
-            setting_service_id = SettingsLowLevel.get_engine_id()
+            setting_service_id = SettingsLowLevel.get_engine_id_ll()
         internal_value: int = SettingsLowLevel.get_setting_int(self.setting_id,
                                                                setting_service_id,
                                                                default)
@@ -340,24 +531,23 @@ class StringValidator(IStringValidator):
         valid: bool = True
         if default is None:
             default = self._default
-            # module_logger.debug(f'_default: {self._default}')
         if setting_service_id is None:
-            setting_service_id = SettingsLowLevel.get_engine_id()
+            setting_service_id = SettingsLowLevel.get_engine_id_ll()
         internal_value: str = SettingsLowLevel.get_setting_str(self.setting_id,
                                                                setting_service_id,
                                                                ignore_cache=False,
                                                                default=default)
         if internal_value is None:
             internal_value = self._default
-        # module_logger.debug(f'setting_id: {self.setting_id}'
-        #                     f' setting_service_id: {setting_service_id} '
-        #                     f'internal: {internal_value} default: {default}')
+            # module_logger.debug(f'using default player: {internal_value} for '
+            #                     f'{setting_service_id} {self.setting_id}')
             return internal_value
 
-        #   module_logger.debug(f'internal: {internal_value}')
+        # module_logger.debug(f'internal: {internal_value}  for '
+        #                     f'{setting_service_id} {self.setting_id}')
         if (self.allowed_values is None) or (internal_value is None):
             valid = False
-            module_logger.debug(f'internal_value or allowed_values is None')
+            # module_logger.debug(f'internal_value or allowed_values is None')
         if (valid and (len(self.allowed_values) > 0)
                 and (internal_value not in self.allowed_values)):
             valid = False
@@ -513,7 +703,7 @@ class ConstraintsValidator(Validator):
         if default_value is None:
             default_value = self._default
         if setting_service_id is None:
-            setting_service_id = SettingsLowLevel.get_engine_id()
+            setting_service_id = SettingsLowLevel.get_engine_id_ll()
 
         tts_val: IValidator | ConstraintsValidator = self.get_tts_validator()
         tts_constraints: IConstraints = tts_val.get_constraints()
@@ -579,7 +769,7 @@ class ConstraintsValidator(Validator):
         # Translates from tts to self units
         value = tts_constraints.translate_value(constraints, tts_value,
                                                 as_decibels=as_decibels,
-                                                scale=limit)
+                                                limit=limit)
         if tts_constraints.integer:
             return int(round(value))
         else:
@@ -671,11 +861,15 @@ class ConstraintsValidator(Validator):
 class BoolValidator(Validator):
 
     def __init__(self, setting_id: str, service_id: str,
-                 default: bool) -> None:
-        super().__init__(setting_id, service_id)
+                 default: bool, const: bool = False) -> None:
+        super().__init__(setting_id, service_id, default=default, const=const)
         self.setting_id: str = setting_id
         self.service_id: str = service_id
         self._default: bool = default
+        self.const: bool = False  # Force set_tts_value to persist in settings
+        if const:
+            self.set_tts_value(default)
+            self.const = const
 
     def get_tts_value(self) -> bool:
         value = SettingsLowLevel.get_setting_bool(self.setting_id, self.service_id,
@@ -683,8 +877,17 @@ class BoolValidator(Validator):
                                                   default=self._default)
         return value
 
+    def is_const(self) -> bool:
+        return self.const
+
+    def get_const_value(self) -> Any:
+        if self.const:
+            return self.default_value
+        return None
+
     def set_tts_value(self, value: bool) -> None:
-        SettingsLowLevel.set_setting_bool(self.setting_id, value, self.service_id)
+        if not self.const:
+            SettingsLowLevel.set_setting_bool(self.setting_id, value, self.service_id)
 
     @property
     def default_value(self):

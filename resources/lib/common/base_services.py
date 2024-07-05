@@ -150,12 +150,14 @@ class BaseServices(IServices):
                                            SettingsProperties.USE_TEMPFS)
         return cache_validator.get_tts_value()
 
+    """
     @classmethod
     def is_auto_item_extra(cls) -> bool:
         auto_item_extra_val: BoolValidator | IValidator
         auto_item_extra_val = cls.getValidator(Services.TTS_SERVICE,
                                                SettingsProperties.AUTO_ITEM_EXTRA)
         return auto_item_extra_val.get_tts_value()
+    """
 
     @classmethod
     def is_speak_list_count(cls) -> bool:
@@ -206,12 +208,14 @@ class BaseServices(IServices):
                                                             SettingsProperties.BACKGROUND_PROGRESS_INTERVAL)
         return background_progress_interval_val.get_tts_value()
 
+    """
     @classmethod
     def get_auto_item_extra_delay(cls) -> int:
         extra_delay_val: IntValidator | IValidator
         extra_delay_val = cls.getValidator(Services.TTS_SERVICE,
                                            SettingsProperties.AUTO_ITEM_EXTRA_DELAY)
         return extra_delay_val.get_tts_value()
+    """
 
     # @classmethod
     # def getSoundCapabilities(cls, service_name: str) -> SoundCapabilities:
@@ -225,11 +229,13 @@ class BaseServices(IServices):
         Applies to multiple services
     '''
 
+    '''
     @classmethod
     def uses_pipe(cls, service_id: str) -> bool:
         pipe_validator: BoolValidator | IValidator
         pipe_validator = cls.getValidator(service_id, SettingsProperties.PIPE)
         return pipe_validator.get_tts_value()
+    '''
 
     """
     Adapter code for SettingsMap. Can't have SettingsMap and BaseServices

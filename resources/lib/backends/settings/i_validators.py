@@ -1,6 +1,9 @@
 from __future__ import annotations  # For union operator |
 
+import collections
 from enum import Enum
+from typing import NamedTuple
+
 try:
     from enum import StrEnum
 except ImportError:
@@ -10,6 +13,19 @@ from common import *
 
 from backends.settings.i_constraints import IConstraints
 from common.setting_constants import Channels, Genders
+
+
+class UIValues(NamedTuple):
+    minimum: int | float = 0
+    maximum: int | float = 0
+    default: int | float = 0
+    current: int | float = 0
+    increment: int | float = 0
+    is_integer: bool = True
+
+    def __repr__(self) -> str:
+        return (f'min: {self.minimum} max: {self.maximum} def: {self.default} '
+                f'cur: {self.current} inc: {self.increment} int: {self.is_integer}')
 
 
 class ValueType(Enum):
@@ -24,10 +40,11 @@ class INumericValidator:
                  minimum: int, maximum: int,
                  default: int | None = None,
                  is_decibels: bool = False,
-                 is_integer: bool = True) -> None:
+                 is_integer: bool = True,
+                 increment: int | float = 0.0) -> None:
        pass
 
-    def get_value(self) -> bool | int | float | str:
+    def get_value(self) -> int | float:
         pass
 
     def get_raw_value(self) -> int:
@@ -47,6 +64,17 @@ class INumericValidator:
 
     @classmethod
     def to_percent(cls, value: int | float) -> float:
+        pass
+
+    @classmethod
+    def to_decibels(cls, value) -> float:
+        pass
+
+    @property
+    def increment(self):
+        pass
+
+    def as_percent(self) -> int | float:
         """
         Converts the value from decibels to percent.
 
@@ -54,16 +82,35 @@ class INumericValidator:
         """
         pass
 
-    @classmethod
-    def to_decibels(cls, value) -> float:
+    def as_decibels(self) -> int | float:
 
+        pass
+
+    def get_tts_values(self) -> UIValues:
+        """
+           Gets values suitable for a UI to display and change.
+
+        :return: (min_value, max_value, current_value, minimum_increment,
+                 values_are_int: bool)
+        """
         pass
 
 
 class IValidator:
 
-    def __init__(self, setting_id: str, engine_id: str) -> None:
+    def __init__(self, setting_id: str, service_id: str,
+                 default: Any | None = None, const: bool = False) -> None:
         pass
+
+    def is_const(self) -> bool:
+        return None
+
+    def get_const_value(self) -> Any:
+        """
+        :return: None if this validator is not for a constant value, otherwise,
+                 the value is returned. Used immediately after loading from settings.xml
+        """
+        return None
 
     def validate(self, value: int | None) -> bool:
         raise NotImplementedError()
@@ -75,15 +122,12 @@ class IValidator:
     def default_value(self) -> bool | int | float | str:
         raise NotImplementedError()
 
-    def get_tts_values(self, default_value: int | float | str = None,
-                       setting_service_id: str = None) \
-            -> Tuple[int | float | str, int | float | str, int | float | str, \
-                     int | float | str]:
+    def get_tts_values(self) -> UIValues:
         """
+           Gets values suitable for a UI to display and change.
 
-        :param default_value:
-        :param setting_service_id:
-        :return: current_value, min_value, default_value, max_value
+        :return: (min_value, max_value, current_value, minimum_increment,
+                 values_are_int: bool)
         """
         raise NotImplementedError()
 
@@ -332,7 +376,6 @@ class IConstraintsValidator:
         raise NotImplementedError()
 
     def validate(self, value: int | float | None) -> Tuple[bool, int | float]:
-        constraints: IConstraints = self.constraints
         raise NotImplementedError()
 
     def getValue(self) -> int | float | str:
@@ -344,7 +387,7 @@ class IConstraintsValidator:
     def preValidate(self, ui_value: int) -> Tuple[bool, int]:
         raise NotImplementedError()
 
-    def get_constraints(self) -> IConstraints | IConstraints:
+    def get_constraints(self) -> IConstraints:
         raise NotImplementedError()
 
     @property

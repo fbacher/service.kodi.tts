@@ -7,6 +7,7 @@ from common import *
 
 class Services:
     TTS_SERVICE: Final[str] = 'tts'
+    PLAYER_SERVICE: Final[str] = 'player'  # Generic player
     AUTO_ENGINE_ID: Final[str] = 'auto'
     CACHE_WRITER_ID: Final[str] = 'cache_writer'
     CACHE_READER_ID: Final[str] = 'cache_reader'
@@ -26,7 +27,7 @@ class Services:
     PICO_TO_WAVE_ID: Final[str] = 'pico2wave'
     PIPER_ID: Final[str] = 'piper'
     RECITE_ID: Final[str] = 'Recite'
-    SAPI_ID: Final[str] = 'SAPI'
+    SAPI_ID: Final[str] = 'sapi'
     SERVICE_ID: Final[str] = 'id'  # Specifies the service's id (FLite is the current
     LAME_ID: Final[str] = 'lame'
     DEFAULT_ENGINE_ID: Final[str] = ESPEAK_ID

@@ -58,7 +58,7 @@ class SlaveCommunication:
         self.run_state: RunState = RunState.NOT_STARTED
         self.stop_on_play: bool = stop_on_play
         self.cmd_finished: bool = False
-        self.fifo_in = None;
+        self.fifo_in = None
         self.fifo_out = None
         self.fifo_initialized: bool = False
         self.fifo_reader_thread: threading.Thread | None = None
@@ -94,6 +94,7 @@ class SlaveCommunication:
         # fifo_file_in = os.open(self.slave_pipe_path, os.O_RDONLY | os.O_NONBLOCK)
         # fifo_file_out = os.open(self.slave_pipe_path, os.O_WRONLY)
 
+        # clz.logger.debug(f'Slave started, in callback')
         fifo_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         fifo_sock.settimeout(0.0)
         finished: bool = False
@@ -112,13 +113,13 @@ class SlaveCommunication:
                                        f'{self.slave_pipe_path}')
             except AbortException:
                 self.abort_listener()
-                break
+                return
             except Exception as e:
                 clz.logger.exception('')
                 break
             Monitor.exception_on_abort(timeout=0.1)
         try:
-            # os.unlink(self.slave_info.get_fifo_name())
+            self.slave_pipe_path.unlink(missing_ok=True)
             pass
         except Exception as e:
             self.logger.exception('')
@@ -132,7 +133,7 @@ class SlaveCommunication:
         self.fifo_reader_thread = threading.Thread(target=self.fifo_reader,
                                                    name=f'{self.thread_name}_fifo_reader')
         self.fifo_reader_thread.start()
-        sleep(0.25)
+        xbmc.sleep(250)
         self.send_speed()
         self.send_volume()
         # self.send_opt_channels()
@@ -141,7 +142,8 @@ class SlaveCommunication:
                    speed: float = None) -> None:
         clz = type(self)
         try:
-            if self.fifo_out is None:
+            if (self.run_state.value < RunState.RUNNING.value
+                    and self.fifo_out is None):
                 #
                 # Open FIFO for write AFTER starting reader (mpv). Otherwise,
                 # open will block until there is a writer.
@@ -176,6 +178,7 @@ class SlaveCommunication:
         if volume == -1:
             volume = 100
         self.volume = volume
+        # self.logger.debug(f'Sending FIFO volume {volume} to player')
         self.send_volume()
 
     def set_channels(self, channels: Channels):
@@ -199,7 +202,6 @@ class SlaveCommunication:
         volume_str: str = (f'{{ "command": ["set_property", "volume", {self.volume}],'
                            f' "request_id": "{self.fifo_sequence_number}" }}')
         self.send_line(volume_str)
-
     def send_opt_channels(self) -> None:
         return
 
@@ -230,7 +232,7 @@ class SlaveCommunication:
             self.send_line(stop_str)
         except Exception as e:
             clz.logger.exception('')
-        clz.logger.debug(f'Stop playing')
+        #  clz.logger.debug(f'Stop playing')
 
     def quit(self, now: bool):
         """
@@ -272,7 +274,8 @@ class SlaveCommunication:
         clz = type(self)
         try:
             if self.fifo_out is not None:
-                clz.logger.debug(f'FIFO_OUT: {text}')
+                if clz.logger.isEnabledFor(DEBUG_VERBOSE):
+                    clz.logger.debug_verbose(f'FIFO_OUT: {text}')
                 self.fifo_out.write(f'{text}\n')
                 self.fifo_out.flush()
         except Exception as e:
@@ -305,7 +308,11 @@ class SlaveCommunication:
         clz = type(self)
         clz.logger.debug(f'In destroy')
         self.quit(now=True)
-        if self.fifo_in is not None and self.fifo_in is not None:
+        if self.cmd_finished:
+            return
+
+        self.cmd_finished = True
+        if self.fifo_in is not None and self.fifo_out is not None:
             try:
                 self.fifo_in.close()
             except:
@@ -321,12 +328,12 @@ class SlaveCommunication:
     def kodi_player_status_listener(self, player_state: KodiPlayerState) -> bool:
         clz = type(self)
         clz.player_state = player_state
-        clz.logger.debug(f'PlayerStatus: {player_state} stop_on_play: '
-                         f'{self.stop_on_play} args: {self.args} '
-                         f'serial: {self.phrase_serial}')
+        # clz.logger.debug(f'PlayerStatus: {player_state} stop_on_play: '
+        #                  f'{self.stop_on_play} args: {self.args} '
+        #                 f'serial: {self.phrase_serial}')
         if player_state == KodiPlayerState.PLAYING and self.stop_on_play:
-            clz.logger.debug(f'Stop playing TTS while Kodi player doing something: '
-                             f'args: {self.args} ')
+            # clz.logger.debug(f'Stop playing TTS while Kodi player doing something: '
+            #                  f'args: {self.args} ')
             self.stop_playing()
         return False  # Don't unregister
 
@@ -352,9 +359,12 @@ class SlaveCommunication:
             finished: bool = False
             limit: int = 30
 
+            success: bool = False
             while limit > 0:
                 try:
                     fifo_sock.connect(str(self.slave_pipe_path))
+                    # self.logger.debug(f'Socket connected')
+                    success = True
                     break
                 except TimeoutError:
                     limit -= 1
@@ -371,14 +381,18 @@ class SlaveCommunication:
                     break
                 Monitor.exception_on_abort(timeout=0.1)
             try:
-                # os.unlink(self.slave_info.get_fifo_name())
+                self.slave_pipe_path.unlink(missing_ok=True)
                 pass
             except Exception as e:
                 self.logger.exception('')
 
+            if not success:
+                self.run_state = RunState.NOT_STARTED
+                self.logger.debug(f'NOT_STARTED')
+                return
             self.fifo_in = fifo_sock.makefile(mode='r', buffering=1,
                                               encoding='utf-8', errors=None,
-                                               newline=None)
+                                              newline=None)
             self.fifo_out = fifo_sock.makefile(mode='w', buffering=1,
                                                encoding='utf-8', errors=None,
                                                newline=None)
@@ -396,7 +410,7 @@ class SlaveCommunication:
             self.rc = 10
         if self.rc == 0:
             self.run_state = RunState.RUNNING
-        clz.logger.debug(f'Finished starting mpv')
+        # clz.logger.debug(f'Finished starting mpv')
         return
 
     def fifo_reader(self):
@@ -415,14 +429,15 @@ class SlaveCommunication:
                     line = self.fifo_in.readline()
                     if len(line) > 0:
                         self.fifo_initialized = True
-                        clz.logger.debug(f'FIFO_IN: {line}')
+                        if clz.logger.isEnabledFor(DEBUG_VERBOSE):
+                            clz.logger.debug_verbose(f'FIFO_IN: {line}')
                 except ValueError as e:
                     rc = self.slave.rc
                     if rc is not None:
                         self.rc = rc
                         # Command complete
                         finished = True
-                        #  clz.logger.debug(f'mpv process ended')
+                        clz.logger.debug(f'mpv process ended')
                         break
                     else:
                         clz.logger.exception('')
@@ -504,6 +519,7 @@ class SlaveCommunication:
                     clz.logger.exception('')
 
         except AbortException as e:
+            self.cmd_finished = True
             self.fifo_in.close()
             return
         except Exception as e:

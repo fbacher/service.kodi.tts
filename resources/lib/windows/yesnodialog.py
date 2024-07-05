@@ -4,25 +4,29 @@ from __future__ import annotations  # For union operator |
 import xbmc
 
 from common import *
+from common.logger import BasicLogger
+from common.phrases import Phrase, PhraseList
 
 from . import guitables
 from .base import WindowReaderBase
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class YesNoDialogReader(WindowReaderBase):
     ID = 'yesnodialog'
 
-    def getControlText(self, controlID):
+    def getControlText(self, control_id: int, phrases: PhraseList) -> bool:
+        clz = type(self)
         text = xbmc.getInfoLabel('System.CurrentControl')
-        return (text, text)
+        phrases.add_text(texts=text)
+        return True
 
-    def getHeading(self):
-        heading = guitables.convertTexts(10100, ('1',))
-        if heading:
-            return heading[0]
+    def getHeading(self, phrases: PhraseList) -> bool:
+        return guitables.convertTexts(10100, ('1',), phrases)
 
-    def getWindowTexts(self):
-        return self.getWindowExtraTexts()
+    def getWindowTexts(self, phrases: PhraseList) -> bool:
+        return self.getWindowExtraTexts(phrases)
 
-    def getWindowExtraTexts(self):
-        return guitables.convertTexts(10100, ('2', '3', '4', '9'))
+    def getWindowExtraTexts(self, phrases: PhraseList) -> bool:
+        return guitables.convertTexts(10100, ('2', '3', '4', '9'),
+                                      phrases)

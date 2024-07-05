@@ -14,13 +14,15 @@ from backends.audio.sound_capabilties import ServiceType, SoundCapabilities
 from backends.i_tts_backend_base import ITTSBackendBase
 from backends.players.iplayer import IPlayer
 from backends.settings.constraints import Constraints
-from backends.settings.i_validators import IValidator
+from backends.settings.i_validators import INumericValidator, IValidator, UIValues
 from backends.settings.settings_map import SettingsMap
-from backends.settings.validators import ConstraintsValidator
+from backends.settings.validators import (ConstraintsValidator, NumericValidator,
+                                          TTSNumericValidator)
 from backends.tts_backend_bridge import TTSBackendBridge
 from cache.voicecache import VoiceCache
 from common.base_services import BaseServices
 from common.constants import Constants
+from common.deprecated import deprecated
 from common.exceptions import ExpiredException
 from common.garbage_collector import GarbageCollector
 from common.kodi_player_monitor import KodiPlayerMonitor, KodiPlayerState
@@ -28,7 +30,7 @@ from common.logger import *
 from common.messages import Messages
 from common.monitor import Monitor
 from common.phrases import Phrase, PhraseList
-from common.setting_constants import Genders, Mode, Players
+from common.setting_constants import Genders, PlayerModes, Players
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
 
@@ -102,38 +104,46 @@ class EngineQueue:
         clz = type(self)
         if clz._logger.isEnabledFor(DEBUG):
             self._logger.debug(f'Threaded EngineQueue started')
-
-        while self.active_queue and not Monitor.wait_for_abort(timeout=0.1):
-            try:
-                item: EngineQueue.QueueItem = self.tts_queue.get(timeout=0.0)
-                self.tts_queue.task_done()  # TODO: Change this to use phrase delays
-                phrase: Phrase = item.phrase
-                if (clz.kodi_player_state == KodiPlayerState.PLAYING and not
-                        phrase.speak_while_playing):
-                    clz._logger.debug(f'skipping play of {phrase.debug_data()} '
-                                      f'speak while playing: '
-                                      f'{phrase.speak_while_playing}',
+        try:
+            while self.active_queue and not Monitor.wait_for_abort(timeout=0.1):
+                item: EngineQueue.QueueItem = None
+                try:
+                    item = self.tts_queue.get(timeout=0.0)
+                    self.tts_queue.task_done()  # TODO: Change this to use phrase delays
+                    phrase: Phrase = item.phrase
+                    if (clz.kodi_player_state == KodiPlayerState.PLAYING and not
+                            phrase.speak_while_playing):
+                        clz._logger.debug(f'skipping play of {phrase.debug_data()} '
+                                          f'speak while playing: '
+                                          f'{phrase.speak_while_playing}',
+                                          trace=Trace.TRACE_AUDIO_START_STOP)
+                        continue
+                    clz._logger.debug(f'Start play of {phrase.debug_data()} '
+                                      f'on {item.engine.service_ID}',
                                       trace=Trace.TRACE_AUDIO_START_STOP)
-                    continue
-                clz._logger.debug(f'Start play of {phrase.debug_data()} '
-                                  f'on {item.engine.service_ID}',
-                                  trace=Trace.TRACE_AUDIO_START_STOP)
-                self._threadedIsSpeaking = True
-                engine: 'SimpleTTSBackend' = item.engine
-                clz._logger.debug(f'queue.get {phrase.get_text()} '
-                                  f'engine: {item.engine.service_ID}')
-                engine.threadedSay(phrase)
-                clz._logger.debug(f'Return from threadedSay {phrase.debug_data()}',
-                                  trace=Trace.TRACE_AUDIO_START_STOP)
-                self._threadedIsSpeaking = False
-            except queue.Empty:
-                # self._logger.debug_verbose('queue empty')
-                pass
-            except ValueError as e:
-                clz._logger.exception('')
-            except ExpiredException:
-                clz._logger.debug(f'Expired {item.phrase.debug_data} ',
-                                  trace=Trace.TRACE_AUDIO_START_STOP)
+                    self._threadedIsSpeaking = True
+                    engine: 'SimpleTTSBackend' = item.engine
+                    # clz._logger.debug(f'queue.get {phrase.get_text()} '
+                    #                   f'engine: {item.engine.service_ID}')
+                    engine.threadedSay(phrase)
+                    #  clz._logger.debug(f'Return from threadedSay {phrase.debug_data()}',
+                    #                    trace=Trace.TRACE_AUDIO_START_STOP)
+                    self._threadedIsSpeaking = False
+                except queue.Empty:
+                    # self._logger.debug_verbose('queue empty')
+                    pass
+                except AbortException:
+                    return  # Let thread die
+                except ValueError as e:
+                    clz._logger.exception('')
+                except ExpiredException:
+                    clz._logger.debug(f'Expired {item.phrase.debug_data} ',
+                                      trace=Trace.TRACE_AUDIO_START_STOP)
+                except Exception:
+                    clz._logger.exception('')
+        except AbortException:
+            return  # Let thread die
+
         self.active_queue = False
 
     @classmethod
@@ -161,12 +171,14 @@ class EngineQueue:
             cls._logger.debug(f'phrase: {phrases[0].get_text()} '
                               f'Engine: {engine.service_ID} '
                               f'Interrupt: {phrases[0].get_interrupt()}')
+            cls._logger.debug(f'{phrases[0].debug_data()}')
         except ExpiredException:
             cls._logger.debug('EXPIRED')
         try:
             phrase: Phrase
             for phrase in phrases:
-                cls.say_phrase(phrase, engine)
+                if not phrase.is_empty():
+                    cls.say_phrase(phrase, engine)
         except ExpiredException:
             cls._logger.debug('EXPIRED')
 
@@ -183,10 +195,12 @@ class EngineQueue:
         """
         zelf = cls._instance
         try:
+            cls._logger.debug(f'{phrase.debug_data()}')
             interrupt: bool = phrase.get_interrupt()
             if interrupt:
                 cls._logger.debug(f'INTERRUPT: {phrase.get_text()}')
                 cls.empty_queue()
+            engine.stop_current_phrases()
 
             zelf.tts_queue.put_nowait(EngineQueue.QueueItem(phrase, engine))
             '''
@@ -410,41 +424,27 @@ class BaseEngineService(BaseServices):
 
     def volumeUp(self) -> str:
         clz = type(self)
-        if not self.settings or not SettingsProperties.VOLUME in self.settings:
-            return Messages.get_msg(Messages.CANNOT_ADJUST_VOLUME)
-        vol = clz.getSettingConstraints(SettingsProperties.VOLUME)
-        max_volume: int = self.volumeExternalEndpoints[1]
-        volume_step: int = self.volumeStep
+        volume_val: INumericValidator = SettingsMap.get_validator(
+                SettingsProperties.TTS_SERVICE, SettingsProperties.VOLUME)
+        volume_val: TTSNumericValidator
+        positive_increment: bool = True
+        new_value: int | float = volume_val.adjust(positive_increment)
+
         if clz._logger.isEnabledFor(DEBUG):
-            clz._logger.debug(f'Volume UP: {vol} Upper Limit: {max_volume} '
-                              f'step {self.volumeStep}')
-        vol += volume_step
-        if vol > max_volume:
-            volume_step = volume_step - (vol - max_volume)
-            vol = max_volume
-        self.setSetting(SettingsProperties.VOLUME, vol)
-        if clz._logger.isEnabledFor(DEBUG):
-            clz._logger.debug('Volume UP: {0}'.format(vol))
-        return f'Volume Up by {volume_step} now {vol} {self.volumeSuffix}'
+            clz._logger.debug(f'Volume UP: {new_value}')
+        return f'Volume Up now {new_value} {self.volumeSuffix}'
 
     def volumeDown(self) -> str:
         clz = type(self)
-        if not self.settings or not SettingsProperties.VOLUME in self.settings:
-            return Messages.get_msg(Messages.CANNOT_ADJUST_VOLUME)
-        min_volume: int = self.volumeExternalEndpoints[0]
-        volume_step: int = self.volumeStep
-        vol = clz.getSetting(SettingsProperties.VOLUME)
+        volume_val: INumericValidator = SettingsMap.get_validator(
+                SettingsProperties.TTS_SERVICE, SettingsProperties.VOLUME)
+        volume_val: TTSNumericValidator
+        positive_increment: bool = False
+        new_value: int | float = volume_val.adjust(positive_increment)
+
         if clz._logger.isEnabledFor(DEBUG):
-            clz._logger.debug(f'Volume Down: {vol} Lower Limit: {min_volume} '
-                              f'step {volume_step}')
-        vol -= volume_step
-        if vol < min_volume:
-            volume_step = volume_step - (min_volume - vol)
-            vol = min_volume
-        self.setSetting(SettingsProperties.VOLUME, vol)
-        if clz._logger.isEnabledFor(DEBUG):
-            clz._logger.debug('Volume DOWN: {0}'.format(vol))
-        return f'Volume Down by {volume_step} now {vol} {self.volumeSuffix}'
+            clz._logger.debug(f'Volume DOWN: {new_value}')
+        return f'Volume Down now {new_value} {self.volumeSuffix}'
 
     def flagAsDead(self, reason=''):
         self.dead = True
@@ -501,7 +501,7 @@ class BaseEngineService(BaseServices):
                                 player_pitch_adjustable: bool) -> Tuple[bool, bool, bool]:
         """
         Player is informing engine what it is capable of controlling
-        Engine replies what it is allowing engine to control
+        Engine replies what it is allowing player to control
         """
         return True, True, True
 
@@ -514,6 +514,7 @@ class BaseEngineService(BaseServices):
         return None
 
     @classmethod
+    @deprecated  # Use validator
     def setting(cls, setting):
 
         #  TODO: Replace with getSetting
@@ -522,23 +523,27 @@ class BaseEngineService(BaseServices):
         return cls.getSetting(setting, cls.get_setting_default(setting))
 
     @classmethod
+    @deprecated  # Use validator
     def getLanguage(cls):
         default_locale = Constants.LOCALE.lower().replace('_', '-')
         return cls.getSetting(SettingsProperties.LANGUAGE, default_locale)
 
     @classmethod
+    @deprecated  # Use validator
     def getGender(cls):
         gender = cls.getSetting(SettingsProperties.GENDER, Genders.UNKNOWN)
 
         return gender
 
     @classmethod
+    @deprecated  # Use validator
     def getVoice(cls):
         voice = cls.getSetting(SettingsProperties.VOICE, SettingsProperties.UNKNOWN_VALUE)
 
         return voice
 
     @classmethod
+    @deprecated  # ("Use validators instead")
     def getVolume(cls) -> float:
         engine_volume_validator: ConstraintsValidator
         engine_volume_validator = cls.get_validator(cls.service_ID,
@@ -583,29 +588,6 @@ class BaseEngineService(BaseServices):
                                              property_id=SettingsProperties.VOLUME)
         volume: str = volume_validator.getUIValue()
         return volume
-
-    @classmethod
-    def setPlayerSpeed(cls, speed: float) -> None:
-        # Native ResponsiveVoice speed is 1 .. 100, with default of 50,
-        # but this has been scaled to be a %, so we see 0.01 .. 1.00
-        # Therefore 0.5 is a speed of 1x
-        # Multiplying by 2 gives:
-        #   speed : 0.5 => player_speed of 1x
-        #   speed : 0.25 => player_speed of 1/2 x
-        #   speed : 0.1 => player_speed of 1/10 x
-        #   speed : .75 => player_seed of 1.5x
-        #
-        # Player_speed scale is 3 .. 30 where actual play speed is player_speed / 10
-
-        player_speed: float = float(speed * 2.0)
-        if player_speed < 0.30:
-            player_speed = 0.30  # 1/3 x
-        elif player_speed > 1.5:
-            player_speed = player_speed * 1.5  # 2 * 1.5 = 3.0
-
-        int_player_speed: int = int(player_speed * 10)
-        Settings.setSetting(SettingsProperties.PLAYER_SPEED, int_player_speed,
-                            cls.engine_id)
 
     @classmethod
     def getSetting(cls, key, default=None):
@@ -656,7 +638,7 @@ class BaseEngineService(BaseServices):
         Settings.setSetting(setting_id, value, cls.engine_id)
         return changed
         '''
-
+    '''
     @classmethod
     def set_player_setting(cls, value: str) -> bool:
         engine_id: str = cls.get_current_engine_id()
@@ -669,6 +651,7 @@ class BaseEngineService(BaseServices):
         changed = previous_value != value
         Settings.set_player(value, engine_id)
         return changed
+    '''
 
     @classmethod
     def get_current_engine_id(cls) -> str:
@@ -752,6 +735,9 @@ class BaseEngineService(BaseServices):
         Subclasses should override this to respond to requests to stop speech.
         Default implementation does nothing.
         """
+        pass
+
+    def stop_current_phrases(self):
         pass
 
     def close(self):
@@ -935,7 +921,7 @@ class SimpleTTSBackend(ThreadedTTSBackend):
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz._class_name)
         clz._simpleIsSpeaking = False
-        self.mode = None
+        self.player_mode: PlayerModes | None = None
         BaseServices.register(self)
 
     def init(self):
@@ -964,24 +950,24 @@ class SimpleTTSBackend(ThreadedTTSBackend):
     #    clz = type(self)
     #    return self.player_handler_instance
 
-    def setMode(self, mode: Mode) -> None:
+    def set_player_mode(self, player_mode: PlayerModes) -> None:
         """
 
-        @param mode:
+        @param player_mode:
         """
         clz = type(self)
-        assert isinstance(mode, int), 'Bad mode'
-        if mode == Mode.PIPE:
+        assert isinstance(player_mode, PlayerModes), 'Bad mode'
+        if player_mode == PlayerModes.PIPE:
             pass
-        if mode == Mode.FILEOUT:
+        if player_mode == PlayerModes.FILE:
             if clz._logger.isEnabledFor(DEBUG):
-                clz._logger.debug('Mode: FILEOUT')
-        elif mode == Mode.ENGINESPEAK:
+                clz._logger.debug(f'Mode: {player_mode.value()}')
+        elif player_mode == PlayerModes.ENGINE_SPEAK:
             audio.load_snd_bm2835()
             if clz._logger.isEnabledFor(DEBUG):
-                clz._logger.debug('Mode: ENGINESPEAK')
+                clz._logger.debug(f'Mode: {player_mode.value()}')
 
-        self.mode: Mode = mode
+        self.player_mode = player_mode
 
     def getVolumeDb(self) -> float:
         """
@@ -1009,27 +995,46 @@ class SimpleTTSBackend(ThreadedTTSBackend):
     def runCommand(self, phrase: Phrase):
         """Convert text to speech and output to a .wav file
 
-        If using FILEOUT mode, subclasses must override this method
-        and output a .wav file to outFile, returning True if a file was
+        If using PlayerModes.FILE, subclasses must override this method
+        and output a .wav or .mp3 file to outFile (depending upon player capability),
+         returning True if a file was
         successfully written and False otherwise.
         """
-        raise Exception('Not Implemented')
+        raise NotImplementedError()
+
+    def get_cached_voice_file(self, phrase: Phrase,
+                        generate_voice: bool = True) -> bool:
+        """
+        Assumes that cache is used. Normally missing voiced files is placed in
+        the cache by an earlier step, but can be initiated here as well.
+
+        Very similar to runCommand, except that the cached files are expected
+        to be sent to a slave player, or some other player than can play a sound
+        file.
+        :param phrase: Contains the text to be voiced as wll as the path that it
+                       is or will be located.
+        :param generate_voice: If true, then wait a bit to generate the speech
+                               file.
+        :return: True if the voice file was handed to a player, otherwise False
+        """
+        raise NotImplementedError()
 
     def runCommandAndSpeak(self, phrase: Phrase):
         """Convert text to speech and output directly
 
-        If using ENGINESPEAK mode, subclasses must override this method
+        If using PlayerModes.ENGINE_SPEAK, subclasses must override this method
         and speak text and should block until speech is complete.
         """
-        raise Exception('Not Implemented')
+        raise NotImplementedError()
 
     def runCommandAndPipe(self, phrase: Phrase) -> BinaryIO:
         """Convert text to speech and pipe to audio player
 
-        If using PIPE mode, subclasses must override this method
-        and return an open pipe to wav data
+        If using PlayersModes.PIPE, subclasses must override this method
+        and return an open pipe to wav or mp3 data, depending upon player
+        capability
         """
-        raise Exception('Not Implemented')
+        raise NotImplementedError()
 
     '''
     def getWavStream(self, text:str):
@@ -1046,23 +1051,23 @@ class SimpleTTSBackend(ThreadedTTSBackend):
         return open(fpath, 'rb')
     '''
 
-    def config_mode(self):
+    '''
+    def config_player_mode(self):
         """
 
         """
         clz = type(self)
-        clz._logger.debug(f'In base.config_mode')
-
+        clz._logger.debug(f'In base.config_player_mode')
         player_id: str = Settings.get_player_id(clz.engine_id)
-
         if player_id == Players.INTERNAL:
-            mode = Mode.ENGINESPEAK
+            mode = PlayerModes.ENGINE_SPEAK
         elif Settings.uses_pipe(clz.engine_id):
             mode = Mode.PIPE
         else:
             mode = Mode.FILEOUT
 
         self.setMode(mode)
+    '''
 
     def threadedSay(self, phrase: Phrase):
         """
@@ -1076,25 +1081,43 @@ class SimpleTTSBackend(ThreadedTTSBackend):
 
         try:
             self.initialize_player()
-            self.config_mode()
+            #  self.config_mode()
+            self.player_mode = Settings.get_player_mode()
             text: str = phrase.get_text()
             if phrase.get_interrupt():
                 self.stop_player(now=True)
 
-            clz._logger.debug(f'mode: {self.mode}')
-            if self.mode == Mode.FILEOUT:
-                outFile: str
-                exists: bool
-                use_cache: bool = Settings.is_use_cache(clz.engine_id)
-                VoiceCache.get_path_to_voice_file(phrase, use_cache=use_cache)
-                out_file: Path = phrase.get_cache_path()
+            clz._logger.debug(f'player_mode: {self.player_mode}')
+            if self.player_mode == PlayerModes.FILE:
+                # outFile: str
+                # exists: bool
+                # use_cache: bool = Settings.is_use_cache(clz.engine_id)
+                # VoiceCache.get_path_to_voice_file(phrase, use_cache=use_cache)
+                # out_file: Path = phrase.get_cache_path()
+
+                # phrase contains the text to voice as well as the path to
+                # write the voiced file to and whether the file already exists
+                # in a cache, etc.
+
                 if not self.runCommand(phrase):
                     return
 
                 player: IPlayer = self.get_player(self.engine_id)
                 if player:  # if None, then built-in
                     player.play(phrase)
-            elif self.mode == Mode.PIPE:
+            elif self.player_mode == PlayerModes.SLAVE_FILE:
+                # Typically used with caching. If the voiced file does not
+                # yet exist, then it is created using the path and other info
+                # in the Phrase. Then the Slave Player is given the phrase via
+                # pipe or other file so that it can play the file. Slaves avoid
+                # the cost of Python I/O on the voiced file as well as the cost
+                # of exec'ing the player.
+                if not self.get_cached_voice_file(phrase, generate_voice=True):
+                    return
+                player: IPlayer = self.get_player(self.engine_id)
+                player.slave_play(phrase)
+
+            elif self.player_mode == PlayerModes.PIPE:
                 source: BinaryIO = self.runCommandAndPipe(phrase)
                 if not source:
                     return

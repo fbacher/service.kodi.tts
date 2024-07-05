@@ -135,15 +135,6 @@ class AudioPlayer(IPlayer, BaseServices):
 
 class SubprocessAudioPlayer(AudioPlayer):
     _logger: BasicLogger = None
-    _start_slave_args: List[str] = []
-    _play_slave_args: List[str] = []
-    _availableArgs = None
-    _playArgs = None
-    _speedArgs = None
-    _speedMultiplier: int = 1
-    _volumeArgs = None
-    _volumeMultipler = 1
-    _pipeArgs = None
 
     def __init__(self):
         super().__init__()
@@ -155,6 +146,8 @@ class SubprocessAudioPlayer(AudioPlayer):
         self.speed: float = 0.0
         self.volume: float | None = None
         self.active = True
+        self._availableArgs = None
+        self._speedMultiplier: int = 1
         self._player_process: SimpleRunCommand | None = None
         self._post_play_pause_ms: int = 0
         #  HACK!
@@ -165,10 +158,6 @@ class SubprocessAudioPlayer(AudioPlayer):
         self.reason: str = ''
         self.failed: bool | None = None
         self.rc: int | None = None
-
-        # KodiPlayerMonitor.register_player_status_listener(
-        # self.kodi_player_status_listener,
-        #                                                   'Audio_Player_Monitor')
 
     '''
     def kodi_player_status_listener(self, kodi_player_state: KodiPlayerState) -> bool:
@@ -223,9 +212,9 @@ class SubprocessAudioPlayer(AudioPlayer):
         return f'{(speed * self._speedMultiplier):.2f}'
 
     def baseArgs(self, phrase: Phrase) -> List[str]:
+        # Broken
         # Can raise ExpiredException
         args = []
-        args.extend(self._playArgs)
         args[args.index(None)] = str(phrase.get_cache_path())
         return args
 
@@ -236,58 +225,11 @@ class SubprocessAudioPlayer(AudioPlayer):
         clz._logger.debug_verbose(f'args: {"|".join(base_args)}')
         return base_args
 
-    '''
-    def get_start_slave_args(self) -> List[str]:
-        # Can raise ExpiredException
-        clz = type(self)
-        args = []
-
-        return args
-    '''
-
-    def get_slave_play_args(self) -> List[str]:
-        clz = type(self)
-        args = []
-        return args
-
-    if Constants.PLATFORM_WINDOWS:
-        _availableArgs = (Constants.MPV_PATH, '--help')
-        _playArgs = (Constants.MPV_PATH, '--really-quiet', None)
-        _playArgsSlave = (Constants.MPV_PATH,
-                          '--input-ipc-server=', 'file=/tmp/tts_mplayer_slave_input')
-        _pipeArgs = (Constants.MPV_PATH, '-', '--really-quiet', '--cache', '8192')
-    else:
-        _availableArgs = (Constants.MPLAYER_PATH, '--help')
-        _playArgs = (Constants.MPLAYER_PATH, '-really-quiet', None)
-        _playArgsSlave = (Constants.MPV_PATH,
-                          '--input-ipc-server=', 'file=/tmp/tts_mplayer_slave_input')
-        _pipeArgs = (Constants.MPLAYER_PATH, '-', '-really-quiet', '-cache', '8192')
-
-    # _pipeArgs = (MPLAYER_PATH, '-', '-really-quiet', '-cache', '8192',
-    #              '-slave', '-input', 'file=/tmp/tts_mplayer_pipe')
-    # Send commands via named pipe (or stdin) to play files:
-    # mkpipe ./slave.input
-    #
-    # Note that speed, volume, etc. RESET between each file played. Example below
-    # resets speed/tempo before each play.
-    #
-    # mplayer  -af "scaletempo" -slave  -idle -input file=./slave.input
-    #
-    # From another shell:
-    # (echo "loadfile <audio_file> 0"; echo "speed_mult 1.5") >> ./slave.input
-    # To play another AFTER the previous completes
-    # (echo loadfile <audio_file2> 0; echo speed_mult 1.5) >> ./slave.input
-    # To stop playing current file and start playing another:
-    # (echo loadfile <audio_file3> 1; echo speed_mult 1.5) >>./slave.input
-
     def get_pipe_args(self):
-        clz = type(self)
-        base_args = self._pipeArgs
-        clz._logger.debug(f'playArgs: {self.playArgs("xxx")} pipeArgs: {self._pipeArgs}')
-        return base_args
+        raise NotImplementedError
 
     def canSetPipe(self) -> bool:
-        return bool(self._pipeArgs)
+        raise NotImplementedError
 
     def pipe(self, source: BinaryIO, phrase: Phrase) -> None:
         Monitor.exception_on_abort()
@@ -343,7 +285,7 @@ class SubprocessAudioPlayer(AudioPlayer):
 
     def getSpeed(self) -> float:
         speed: float | None = \
-            Settings.getSetting(SettingsProperties.SPEED, Settings.get_engine_id())
+            Settings.getSetting(SettingsProperties.SPEED, Settings.get_player_id())
         self.setSpeed(speed)
         return speed
 
@@ -468,6 +410,9 @@ class SubprocessAudioPlayer(AudioPlayer):
             self._time_of_previous_play_ended = datetime.now()
             self._simple_player_busy = False
 
+    def get_slave_play_args(self) -> List[str]:
+        raise NotImplementedError
+
     def slave_play(self, phrase: Phrase):
         """
         Uses a slave player (such as mpv in slave mode) to play all audio
@@ -495,7 +440,7 @@ class SubprocessAudioPlayer(AudioPlayer):
                                                                 slave_pipe_path=slave_pipe_path,
                                                                 speed=self.get_player_speed(),
                                                                 volume=volume)
-                    clz._logger.debug_verbose(
+                    clz._logger.debug(
                             f'START Running slave player to voice NOW args: {" ".join(args)}')
                     self.slave_player_process.start_service()
                 except subprocess.CalledProcessError:
@@ -518,6 +463,7 @@ class SubprocessAudioPlayer(AudioPlayer):
             self.slave_player_process.set_speed(speed)
             self.slave_player_process.set_channels(Channels.STEREO)
             self.slave_player_process.add_phrase(phrase, volume, speed)
+            clz._logger.debug(f'slave state: {self.slave_player_process.get_state()}')
         except AbortException:
             self.stop(now=True)
             reraise(*sys.exc_info())
@@ -542,6 +488,8 @@ class SubprocessAudioPlayer(AudioPlayer):
         :return:
         """
         clz = type(self)
+        clz._logger.debug(f'player stop')
+
         if not self.is_slave_player():
             self.destroy_player_process()
         else:
@@ -611,6 +559,7 @@ class SubprocessAudioPlayer(AudioPlayer):
         :return:
         """
         clz = type(self)
+        clz._logger.debug(f'destroy')
         self.destroy_player_process()
 
     def destroy_player_process(self):
@@ -622,6 +571,7 @@ class SubprocessAudioPlayer(AudioPlayer):
         :return:
         """
         clz = type(self)
+        clz._logger.debug(f'destroy_player_process')
         if self.is_slave_player():
             if self.slave_player_process is not None:
                 try:
@@ -690,10 +640,10 @@ class SubprocessAudioPlayer(AudioPlayer):
             else:
                 self._player_busy = True
 
-    @classmethod
-    def available(cls, ext=None) -> bool:
+    def available(self, ext=None) -> bool:
+        # This looks messed up bad
         try:
-            subprocess.call(cls._availableArgs, stdout=(open(os.path.devnull, 'w')),
+            subprocess.call(self._availableArgs, stdout=(open(os.path.devnull, 'w')),
                             stderr=subprocess.STDOUT, universal_newlines=True,
                             encoding='utf-8')
         except AbortException:

@@ -1,0 +1,190 @@
+Notes about improving accessibility of Kodi
+
+Random thoughts:
+ Java swing: tooltip text, AccessibleDescription, setAccessibleName
+     Buttons: setMneumonic
+     setLabelFor
+     Accessible labels for images: setAccessibleDescription, AccessibleValue,
+     AccessibleSelection. AccessibleContext has a number of fields to indicate various
+     state changes (colum header changed, selection, focus, decendent change...)
+     AccessibleRelation & AccessibleRelationSet provides a means to show relations
+     between objects. ex: FlowsFrom, FlowsTo
+
+     AccessibleRoles:
+     static AccessibleRole 	ALERT
+Object is used to alert the user about something.
+static AccessibleRole 	AWT_COMPONENT
+An AWT component, but nothing else is known about it.
+static AccessibleRole 	CANVAS
+Object that can be drawn into and is used to trap events.
+static AccessibleRole 	CHECK_BOX
+A choice that can be checked or unchecked and provides a separate indicator for the current state.
+static AccessibleRole 	COLOR_CHOOSER
+A specialized pane that lets the user choose a color.
+static AccessibleRole 	COLUMN_HEADER
+The header for a column of data.
+static AccessibleRole 	COMBO_BOX
+A list of choices the user can select from.
+static AccessibleRole 	DATE_EDITOR
+A DATE_EDITOR is a component that allows users to edit java.util.Date and java.util.Time objects
+static AccessibleRole 	DESKTOP_ICON
+An iconified internal frame in a DESKTOP_PANE.
+static AccessibleRole 	DESKTOP_PANE
+A pane that supports internal frames and iconified versions of those internal frames.
+static AccessibleRole 	DIALOG
+A top level window with title bar and a border.
+static AccessibleRole 	DIRECTORY_PANE
+A pane that allows the user to navigate through and select the contents of a directory.
+static AccessibleRole 	EDITBAR
+A role indicating the object acts as a formula for calculating a value.
+static AccessibleRole 	FILE_CHOOSER
+A specialized dialog that displays the files in the directory and lets the user select a file, browse a different directory, or specify a filename.
+static AccessibleRole 	FILLER
+An object that fills up space in a user interface.
+static AccessibleRole 	FONT_CHOOSER
+A FONT_CHOOSER is a component that lets the user pick various attributes for fonts.
+static AccessibleRole 	FOOTER
+A text footer
+static AccessibleRole 	FRAME
+A top level window with a title bar, border, menu bar, etc.
+static AccessibleRole 	GLASS_PANE
+A pane that is guaranteed to be painted on top of all panes beneath it.
+static AccessibleRole 	GROUP_BOX
+A GROUP_BOX is a simple container that contains a border around it and contains components inside it.
+static AccessibleRole 	HEADER
+A text header
+static AccessibleRole 	HTML_CONTAINER
+An object containing a collection of Accessibles that together represents HTML content.
+static AccessibleRole 	HYPERLINK
+A hypertext anchor
+static AccessibleRole 	ICON
+A small fixed size picture, typically used to decorate components.
+static AccessibleRole 	INTERNAL_FRAME
+A frame-like object that is clipped by a desktop pane.
+static AccessibleRole 	LABEL
+An object used to present an icon or short string in an interface.
+static AccessibleRole 	LAYERED_PANE
+A specialized pane that allows its children to be drawn in layers, providing a form of stacking order.
+static AccessibleRole 	LIST
+An object that presents a list of objects to the user and allows the user to select one or more of them.
+static AccessibleRole 	LIST_ITEM
+An object that presents an element in a list.
+static AccessibleRole 	MENU
+An object usually found inside a menu bar that contains a list of actions the user can choose from.
+static AccessibleRole 	MENU_BAR
+An object usually drawn at the top of the primary dialog box of an application that contains a list of menus the user can choose from.
+static AccessibleRole 	MENU_ITEM
+An object usually contained in a menu that presents an action the user can choose.
+static AccessibleRole 	OPTION_PANE
+A specialized pane whose primary use is inside a DIALOG
+static AccessibleRole 	PAGE_TAB
+An object that is a child of a page tab list.
+static AccessibleRole 	PAGE_TAB_LIST
+An object that presents a series of panels (or page tabs), one at a time, through some mechanism provided by the object.
+static AccessibleRole 	PANEL
+A generic container that is often used to group objects.
+static AccessibleRole 	PARAGRAPH
+A text paragraph
+static AccessibleRole 	PASSWORD_TEXT
+A text object used for passwords, or other places where the text contents is not shown visibly to the user
+static AccessibleRole 	POPUP_MENU
+A temporary window that is usually used to offer the user a list of choices, and then hides when the user selects one of those choices.
+static AccessibleRole 	PROGRESS_BAR
+An object used to indicate how much of a task has been completed.
+static AccessibleRole 	PROGRESS_MONITOR
+A role indicating the object monitors the progress of some operation.
+static AccessibleRole 	PUSH_BUTTON
+An object the user can manipulate to tell the application to do something.
+static AccessibleRole 	RADIO_BUTTON
+A specialized check box that will cause other radio buttons in the same group to become unchecked when this one is checked.
+static AccessibleRole 	ROOT_PANE
+A specialized pane that has a glass pane and a layered pane as its children.
+static AccessibleRole 	ROW_HEADER
+The header for a row of data.
+static AccessibleRole 	RULER
+A ruler is an object used to measure distance
+static AccessibleRole 	SCROLL_BAR
+An object usually used to allow a user to incrementally view a large amount of data.
+static AccessibleRole 	SCROLL_PANE
+An object that allows a user to incrementally view a large amount of information.
+static AccessibleRole 	SEPARATOR
+An object usually contained in a menu to provide a visual and logical separation of the contents in a menu.
+static AccessibleRole 	SLIDER
+An object that allows the user to select from a bounded range.
+static AccessibleRole 	SPIN_BOX
+A SPIN_BOX is a simple spinner component and its main use is for simple numbers.
+static AccessibleRole 	SPLIT_PANE
+A specialized panel that presents two other panels at the same time.
+static AccessibleRole 	STATUS_BAR
+A STATUS_BAR is an simple component that can contain multiple labels of status information to the user.
+static AccessibleRole 	SWING_COMPONENT
+A Swing component, but nothing else is known about it.
+static AccessibleRole 	TABLE
+An object used to present information in terms of rows and columns.
+static AccessibleRole 	TEXT
+An object that presents text to the user.
+static AccessibleRole 	TOGGLE_BUTTON
+A specialized push button that can be checked or unchecked, but does not provide a separate indicator for the current state.
+static AccessibleRole 	TOOL_BAR
+A bar or palette usually composed of push buttons or toggle buttons.
+static AccessibleRole 	TOOL_TIP
+An object that provides information about another object.
+static AccessibleRole 	TREE
+An object used to present hierarchical information to the user.
+static AccessibleRole 	UNKNOWN
+The object contains some Accessible information, but its role is not known.
+static AccessibleRole 	VIEWPORT
+An object usually used in a scroll pane.
+static AccessibleRole 	WINDOW
+A top level window with no title or border.
+
+AccessibleRelation
+
+static String 	CHILD_NODE_OF
+Indicates that an object is a child node of one or more objects.
+static String 	CHILD_NODE_OF_PROPERTY
+Indicates the CHILD_NODE_OF relation between two or more objects has changed.
+static String 	CONTROLLED_BY
+Indicates an object is controlled by one or more target objects.
+static String 	CONTROLLED_BY_PROPERTY
+Identifies that the target object that is doing the controlling has changed
+static String 	CONTROLLER_FOR
+Indicates an object is a controller for one or more target objects.
+static String 	CONTROLLER_FOR_PROPERTY
+Identifies that the controller for the target object has changed
+static String 	EMBEDDED_BY
+Indicates that an object is embedded in one or more objects.
+static String 	EMBEDDED_BY_PROPERTY
+Indicates the EMBEDDED_BY relation between two or more objects has changed.
+static String 	EMBEDS
+Indicates that an object has one or more objects embedded in it.
+static String 	EMBEDS_PROPERTY
+Indicates the EMBEDS relation between two or more objects has changed.
+static String 	FLOWS_FROM
+Indicates an object is logically contiguous with a second object where the second object occurs before the object.
+static String 	FLOWS_FROM_PROPERTY
+Indicates the FLOWS_FROM relation between two objects has changed.
+static String 	FLOWS_TO
+Indicates an object is logically contiguous with a second object where the second object occurs after the object.
+static String 	FLOWS_TO_PROPERTY
+Indicates the FLOWS_TO relation between two objects has changed.
+static String 	LABEL_FOR
+Indicates an object is a label for one or more target objects.
+static String 	LABEL_FOR_PROPERTY
+Identifies that the target group for a label has changed
+static String 	LABELED_BY
+Indicates an object is labeled by one or more target objects.
+static String 	LABELED_BY_PROPERTY
+Identifies that the objects that are doing the labeling have changed
+static String 	MEMBER_OF
+Indicates an object is a member of a group of one or more target objects.
+static String 	MEMBER_OF_PROPERTY
+Identifies that group membership has changed.
+static String 	PARENT_WINDOW_OF
+Indicates that an object is a parent window of one or more objects.
+static String 	PARENT_WINDOW_OF_PROPERTY
+Indicates the PARENT_WINDOW_OF relation between two or more objects has changed.
+static String 	SUBWINDOW_OF
+Indicates that an object is a subwindow of one or more objects.
+static String 	SUBWINDOW_OF_PROPERTY
+Indicates the SUBWINDOW_OF relation between two or more objects has changed.

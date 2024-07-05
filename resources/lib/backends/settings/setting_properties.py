@@ -65,12 +65,13 @@ class SettingsProperties:  # (ISettings):
     OUTPUT_VIA: Final[str] = 'output_via'
     OUTPUT_VISIBLE: Final[str] = 'output_visible'
     OVERRIDE_POLL_INTERVAL: Final[str] = 'override_poll_interval'
-    PIPE: Final[str] = 'pipe'  # Engine to pipe speech to a player
+    # PIPE: Final[str] = 'pipe'  # Engine to pipe speech to a player
+    PLAYER_MODE: Final[str] = 'player_mode'  # How the engine communicates with player
     PITCH: Final[str] = 'pitch'
     PLAYER: Final[str] = 'player'  # Specifies the player
     PLAYER_VOLUME: Final[str] = 'player_volume'
     PLAYER_PITCH: Final[str] = 'player_pitch'
-    PLAYER_SLAVE: Final[str] = 'player_slave'
+    # PLAYER_SLAVE: Final[str] = 'player_slave'
     PLAYER_SPEED: Final[str] = 'player_speed'
     POLL_INTERVAL: Final[str] = 'poll_interval'
     PUNCTUATION: Final[str] = 'punctuation'
@@ -81,7 +82,7 @@ class SettingsProperties:  # (ISettings):
     REMOTE_VOLUME: Final[str] = 'remote_volume'
     SETTINGS_BEING_CONFIGURED: Final[str] = 'settings_being_configured'
     SETTINGS_DIGEST: Final[str] = 'settings_digest'
-    # SETTINGS_LAST_CHANGED: Final[str] = 'settings_last_changed'
+    SETTINGS_LAST_CHANGED: Final[str] = 'settings_last_changed'
     SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA: Final[
         str] = 'speak_background_progress_during_media'
     SPEAK_BACKGROUND_PROGRESS: Final[str] = 'speak_background_progress'
@@ -133,24 +134,20 @@ class SettingsProperties:  # (ISettings):
         DISABLE_BROKEN_SERVICES,
         SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA,
         SPEAK_BACKGROUND_PROGRESS,
-        CACHE_PATH,   # Move to engine specific
-        CACHE_EXPIRATION_DAYS,  # Move to engine specific
         CACHE_VOICE_FILES,
         ADDONS_MD5,
-        # DEBUG_LOGGING,  # Boolean needed to toggle visibility
-        DEBUG_LOG_LEVEL,  # Merge into Logging, get rid of verbose_logging, etc
+        # DEBUG_LOGGING,    #  Boolean needed to toggle visibility
+        DEBUG_LOG_LEVEL,  #  Merge into Logging, get rid of verbose_logging, etc
         GENDER_VISIBLE,
         GUI,
-        #  SPEECH_DISPATCHER,
         OUTPUT_VIA,
         OUTPUT_VISIBLE,
         OVERRIDE_POLL_INTERVAL,
-        PLAYER_SLAVE,  # Probably not global (.tts)
         POLL_INTERVAL,
         READER_ON,
         SETTINGS_BEING_CONFIGURED,
         SETTINGS_DIGEST,
-        # SETTINGS_LAST_CHANGED,
+        SETTINGS_LAST_CHANGED,
         SPEAK_LIST_COUNT,
         SPEAK_VIA_KODI,
         SPEED_VISIBLE,
@@ -159,7 +156,10 @@ class SettingsProperties:  # (ISettings):
         USE_TEMPFS,
         VERSION,
         VOICE_VISIBLE,
-        VOLUME_VISIBLE
+        VOLUME_VISIBLE,
+
+        SPEED,
+        VOLUME
     ]
 
     # Logically, ENGINE_SPEAK and PIPE should be combined into an enum of
@@ -184,7 +184,7 @@ class SettingsProperties:  # (ISettings):
         ADDONS_MD5,
         API_KEY,
         AUTO_ITEM_EXTRA,
-        # int seconds Time to wait before saying something extra in seconds
+        #  int seconds Time to wait before saying something extra in seconds
         AUTO_ITEM_EXTRA_DELAY,
         BACKGROUND_PROGRESS_INTERVAL,
         CACHE_PATH,
@@ -194,7 +194,7 @@ class SettingsProperties:  # (ISettings):
         CAPITAL_RECOGNITION,
         CHANNELS,
         CONVERTER,
-        # DEBUG_LOGGING,
+        #  DEBUG_LOGGING,
         DEBUG_LOG_LEVEL,
         DELAY_VOICING,
         DISABLE_BROKEN_SERVICES,
@@ -206,12 +206,13 @@ class SettingsProperties:  # (ISettings):
         OUTPUT_VIA,
         OUTPUT_VISIBLE,
         OVERRIDE_POLL_INTERVAL,
-        PIPE,
+        # PIPE,
         PITCH,
         PLAYER,
         PLAYER_VOLUME,
         PLAYER_PITCH,
-        PLAYER_SLAVE,
+        # PLAYER_SLAVE,
+        PLAYER_MODE,
         PLAYER_SPEED,
         POLL_INTERVAL,
         PUNCTUATION,
@@ -221,7 +222,7 @@ class SettingsProperties:  # (ISettings):
         REMOTE_VOLUME,
         SETTINGS_DIGEST,
         SETTINGS_BEING_CONFIGURED,
-        # SETTINGS_LAST_CHANGED,
+        SETTINGS_LAST_CHANGED,
         SPEECH_DISPATCHER,
         SERVICE_ID,
         SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA,
@@ -274,12 +275,13 @@ class SettingsProperties:  # (ISettings):
             cls.OUTPUT_VIA                            : SettingType.STRING_TYPE,
             cls.OUTPUT_VISIBLE                        : SettingType.BOOLEAN_TYPE,
             cls.OVERRIDE_POLL_INTERVAL                : SettingType.BOOLEAN_TYPE,
-            cls.PIPE                                  : SettingType.BOOLEAN_TYPE,
+            # cls.PIPE                                  : SettingType.BOOLEAN_TYPE,
             cls.PITCH                                 : SettingType.INTEGER_TYPE,
             cls.PLAYER                                : SettingType.STRING_TYPE,
             cls.PLAYER_VOLUME                         : SettingType.INTEGER_TYPE,
             cls.PLAYER_PITCH                          : SettingType.INTEGER_TYPE,
-            cls.PLAYER_SLAVE                          : SettingType.BOOLEAN_TYPE,
+            # cls.PLAYER_SLAVE                          : SettingType.BOOLEAN_TYPE,
+            cls.PLAYER_MODE                           : SettingType.STRING_TYPE,
             cls.PLAYER_SPEED                          : SettingType.INTEGER_TYPE,
             cls.POLL_INTERVAL                         : SettingType.INTEGER_TYPE,
             cls.READER_ON                             : SettingType.BOOLEAN_TYPE,

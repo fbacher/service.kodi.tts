@@ -140,7 +140,7 @@ class SettingsMap:
 
     @classmethod
     def set_is_available(cls, service_id: str, reason: Reason) -> None:
-        cls._logger.debug(f'{service_id} is available reason: {reason}')
+        # cls._logger.debug(f'{service_id} is available reason: {reason}')
         cls.service_availability_map[service_id] = reason
 
     @classmethod
@@ -164,6 +164,8 @@ class SettingsMap:
         :param property_id: Specifies the property: volume, cache-path, etc.
         :param validator: If None, then the
         """
+        # cls._logger.debug(f'DEFINE settings for {service_id} property: {property_id} '
+        #                   f'validator: {type(validator)}')
         if property_id is None:
             property_id = ''
         assert isinstance(service_id, str), 'Service_id must be a str'
@@ -183,6 +185,7 @@ class SettingsMap:
             settings_for_service.pop(property_id, None)
         else:
             settings_for_service[property_id] = validator
+        # cls._logger.debug(f'settings_for_service {property_id} = {type(validator)}')
 
     @classmethod
     def is_setting_available(cls, service_id: str, property_id: str) -> bool:
@@ -192,6 +195,7 @@ class SettingsMap:
     def is_valid_property(cls, service_id: str, property_id: str) -> bool:
         if property_id is None:
             property_id = ''
+        # cls._logger.debug(f'service_id: {service_id} property_id: {property_id}')
         assert isinstance(service_id, str), 'Service_id must be a str'
         assert isinstance(property_id, str), 'property_id must be a str'
         if not service_id or len(service_id) == 0:
@@ -201,11 +205,35 @@ class SettingsMap:
         settings_for_service: Dict[str, IValidator]
         settings_for_service = cls.service_to_settings_map.get(service_id)
         if settings_for_service is None:
+            cls._logger.debug(f'No settings for {service_id}')
             return False
 
         if property_id not in settings_for_service.keys():
+            #  cls._logger.debug(f'{property_id} not in {service_id} settings: '
+            #                    f'{settings_for_service}')
             return False
         return True
+
+    @classmethod
+    def get_const_value(cls, service_id: str, property_id: str) -> Any | None:
+        """
+        Some settings are a fixed value, depeding upon service capabilities.
+        For example, services which download voice really need a cache to be
+        performant. Also, can't adjust volume (let player do it).
+
+        This method primarily needed during loading of raw settings from settings.xml.
+        The loading occurs AFTER settings are defined (which defines the constant values).
+        Therefor after loading the settings, this is called to correct any conflicts.
+
+        :param service_id:
+        :param property_id:
+        :return: None if the setting is not constant, otherwise the fixed value
+        """
+
+        val: IValidator = cls.get_validator(service_id, property_id)
+        if val is None:
+            return None
+        return val.get_const_value()  # Returns None if not constant
 
     @classmethod
     def get_validator(cls, service_id: str,
@@ -222,7 +250,8 @@ class SettingsMap:
         settings_for_service = cls.service_to_settings_map.get(service_id)
         if settings_for_service is None:
             return None
-        return settings_for_service.get(property_id)
+        validator = settings_for_service.get(property_id)
+        return validator
 
     @classmethod
     def get_constraints(cls, service_id: str, property_id: str) -> IConstraints:

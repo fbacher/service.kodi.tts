@@ -7,13 +7,15 @@ import subprocess
 import sys
 from pathlib import Path
 
+from backends.settings.validators import NumericValidator
+from cache.voicecache import VoiceCache
 from common import *
 
 from backends.audio.builtin_audio_player import BuiltInAudioPlayer
 # from backends.audio.player_handler import BasePlayerHandler, WavAudioPlayerHandler
 from backends.audio.sound_capabilties import ServiceType
-from backends.base import SimpleTTSBackend
-from backends.settings.i_validators import IValidator
+from backends.base import BaseEngineService, SimpleTTSBackend
+from backends.settings.i_validators import INumericValidator, IValidator
 from backends.settings.service_types import Services
 from backends.settings.settings_map import SettingsMap
 from common import utils
@@ -41,7 +43,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
     displayName: str = 'eSpeak'
     UTF_8: Final[str] = '1'
 
-    voice_map: Dict[str, Tuple[str, str, Genders]] = None
+    voice_map: Dict[str, List[Tuple[str, str, Genders]]] = None
     _logger: BasicLogger = None
     _class_name: str = None
     _initialized: bool = False
@@ -111,9 +113,9 @@ class ESpeakTTSBackend(SimpleTTSBackend):
 
             voice_name = fields[3]
             voice_id = fields[4]
-            entries: Tuple[str, str, Genders] | None = cls.voice_map.get(lang, None)
+            entries: List[Tuple[str, str, Genders]] | None = cls.voice_map.get(lang, None)
             if entries is None:
-                entries = ()
+                entries = []
                 cls.voice_map[lang] = entries
             entries.append((voice_name, voice_id, gender))
             cls.initialized_static = True
@@ -155,9 +157,13 @@ class ESpeakTTSBackend(SimpleTTSBackend):
     def runCommand(self, phrase: Phrase):
         clz = type(self)
         out_file: Path = phrase.get_cache_path()
+        if out_file is None:
+            out_file, exists = VoiceCache.get_path_to_voice_file(phrase)
         if clz._logger.isEnabledFor(DEBUG_VERBOSE):
             clz._logger.debug_verbose(f'espeak.runCommand outFile: {out_file}\n'
                                       f'text: {phrase.text}')
+        clz._logger.debug(f'espeak.runCommand outFile: {out_file}\n'
+                          f'text: {phrase.text}')
         env = os.environ.copy()
         args = ['espeak-ng', '-b', clz.UTF_8, '-w', out_file, '--stdin']
         self.addCommonArgs(args)
@@ -197,7 +203,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                                             encoding='utf-8',
                                             stdin=subprocess.PIPE)
             while (self.process is not None and self.process.poll() is None and
-                    clz.is_active_engine(engine=clz)):
+                    BaseEngineService.is_active_engine(engine=clz)):
                 Monitor.exception_on_abort(timeout=0.1)
             clz._logger.debug(f'args: {args}')
         except subprocess.SubprocessError as e:
@@ -268,7 +274,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
 
         if setting == SettingsProperties.VOICE:
             cls.init_voices()
-            current_lang = cls.getLanguage()
+            current_lang = BaseEngineService.getLanguage()
             current_lang = current_lang[0:2]
             langs = cls.voice_map.keys()  # Not locales
             voices = []
@@ -302,10 +308,10 @@ class ESpeakTTSBackend(SimpleTTSBackend):
 
         elif setting == SettingsProperties.PLAYER:
             # Get list of player ids. Id is same as is stored in settings.xml
-            default_player: str = cls.get_setting_default(SettingsProperties.PLAYER)
-            player_ids: List[str] = cls.get_player_ids(include_builtin=True)
-            return player_ids, default_player
 
+            default_player: str = BaseEngineService.get_setting_default(SettingsProperties.PLAYER)
+            player_ids: List[str] = []
+            return player_ids, default_player
         return None
 
     @classmethod
@@ -327,16 +333,18 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         # Constraints
         clz = type(self)
         if self.mode != Mode.ENGINESPEAK:
-            volume_val: IValidator = SettingsMap.get_validator(
+            volume_val: INumericValidator = SettingsMap.get_validator(
                     clz.service_ID, SettingsProperties.VOLUME)
-            volume: int = volume_val.tts_line_value
+            volume_val: NumericValidator
+            volume: int = volume_val.get_value()
             return volume
         else:
             # volume = Settings.get_volume(clz.service_ID)
-            volume_val: IValidator = SettingsMap.get_validator(
+            volume_val: INumericValidator = SettingsMap.get_validator(
                     clz.service_ID, SettingsProperties.VOLUME)
+            volume_val: NumericValidator
             # volume: int = volume_val.get_tts_value()
-            volume: int = volume_val.get_impl_value(clz.service_ID)
+            volume: int = volume_val.get_value()
 
         return volume
 
@@ -346,33 +354,44 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         # Constraints
         clz = type(self)
         if self.mode != Mode.ENGINESPEAK:
-            pitch_val: IValidator = SettingsMap.get_validator(
+            pitch_val: INumericValidator = SettingsMap.get_validator(
                     clz.service_ID, SettingsProperties.PITCH)
-            pitch: int = pitch_val.tts_line_value
+            pitch_val: NumericValidator
+            pitch: int = pitch_val.get_value()
             return pitch
         else:
             # volume = Settings.get_volume(clz.service_ID)
-            pitch_val: IValidator = SettingsMap.get_validator(
+            pitch_val: INumericValidator = SettingsMap.get_validator(
                     clz.service_ID, SettingsProperties.PITCH)
+            pitch_val: NumericValidator
             # volume: int = volume_val.get_tts_value()
-            pitch: int = pitch_val.get_impl_value(clz.service_ID)
+            pitch: int = pitch_val.get_value()
 
         return pitch
 
     def get_speed(self) -> int:
+        """
+            espeak's speed is measured in 'words/minute' with a default
+            of 175. Limits not specified, appears to be about min=60 with no
+            max. Linear
+
+            By contrast, mplayer linearly adjusts the 'speed' of play with
+            0.25 playing at 1/4th speed (or 4x the time)
+        :return:
+        """
         # All settings use a common TTS scale.
         # Conversions to/from the engine's or player's scale are done using
         # Constraints
         clz = type(self)
         if self.mode != Mode.ENGINESPEAK:
-            speed_val: IValidator = SettingsMap.get_validator(
-                    clz.service_ID, SettingsProperties.SPEED)
-            speed: int = speed_val.tts_line_value
+            # Let player decide speed
+            speed = 176  # Default espeak speed of 176 words per minute.
             return speed
         else:
-            speed_val: IValidator = SettingsMap.get_validator(
+            speed_val: INumericValidator = SettingsMap.get_validator(
                     clz.service_ID, SettingsProperties.SPEED)
-            speed: int = speed_val.get_impl_value(clz.service_ID)
+            speed_val: NumericValidator
+            speed: int = speed_val.get_value()
         return speed
 
 

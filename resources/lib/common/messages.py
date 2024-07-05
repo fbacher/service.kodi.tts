@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations  # For union operator |
 
+import xbmc
+
+from common.constants import Constants
+
 """
 Created on Feb 28, 2019
 
@@ -62,30 +66,32 @@ class Messages:
     DEFAULTS = Message('Defaults', 32222)
     ENGINE = Message('Engine', 32001)
     DEFAULT_TTS_ENGINE = Message('Default TTS Engine', 32002)
-    SELECT_LANGUAGE = Message('Select Language', 32227)
-    SELECT_VOICE = Message('Select Voice', 32308)
+    SELECT_LANGUAGE = Message('Language', 32227)
+    SELECT_VOICE = Message('Voice', 32308)
     SETTINGS = Message('Settings', 32219)
     OPTIONS = Message('Options', 32029)
     KEYMAP = Message('Keymap', 32030)
     ADVANCED = Message('Advanced', 32031)
-    SELECT_VOICE_GENDER = Message('Select Voice Gender', 32228)
-    SELECT_PITCH = Message('Select Pitch', 32229)
-    SELECT_PLAYER = Message('Select Player', 32230)
+    SELECT_VOICE_GENDER = Message('Voice Gender', 32228)
+    SELECT_PITCH = Message('Pitch', 32229)
+    SELECT_PLAYER = Message('Player', 32230)
     PIPE_AUDIO = Message('Pipe Audio', 32234)
-    SELECT_SPEED = Message('Select Speed', 32231)
-    SELECT_VOLUME_DB = Message('Select Volume (dB)', 32232)
+    SELECT_SPEED = Message('Speed: {0}', 32231)
+    VOLUME_DB = Message('Volume: {0}dB', 32232)
     API_KEY = Message('API Key', 32233)
-    SELECT_SPEECH_ENGINE = Message('Select Speech Engine', 32224)
+    SELECT_SPEECH_ENGINE = Message('Speech Engine', 32224)
     ENTER_API_KEY = Message('Enter API Key:  ', 32235)
     CACHE_SPEECH = Message('Cache Audio From Engine', 32312)
     DATABASE_SCAN_STARTED = Message('Database scan started.', 32100)
     DATABASE_SCAN_FINISHED = Message('Database scan finished.', 32101)
+    PLAYER_MODE = Message('Player Mode', 32336)
     SPEECH_ENGINE_FALLING_BACK_TO = Message('Notice... Speech engine falling back to {0}',
                                             32102)
     SELECT_MODULE = Message('Select Module', 32322)
+    SELECT_PLAYER_MODE = Message('Select Player Mode', 32337)
 
     Reason = Message('Reason', 32103)
-    NEW_TTS_VERSION = Message('New T T S Version', 32104)
+    NEW_TTS_VERSION = Message('New T.T.S. Version', 32104)
     WINDOW = Message('Window', 32105)
     SEASON = Message('Season', 32108)
     EPISODE = Message('Episode', 32109)
@@ -180,6 +186,8 @@ class Messages:
     WATCHED = Message('watched', 32198)
     RESUMABLE = Message('resumable', 32199)
     SELECTED = Message('selected', 32200)
+    ENABLED = Message('Enabled', 32338)
+    DISABLED = Message('Disabled', 32339)
 
     LOCALE_AF = Message('Afrikans', 32237)
     LOCALE_AF_ZA = Message('Afrikans (South Africa)', 32238)
@@ -278,6 +286,7 @@ class Messages:
     CONVERT_PICO_TO_WAV = Message('Pico to wave', 32328)
     BACKEND_PIPER = Message('Piper', 32331)
 
+
     # INTERNAL_ID: Messages.BACKEND_INTERNAL,
     # LOG_ONLY_ID: Messages.BACKEND_LOG_ONLY,
 
@@ -295,6 +304,21 @@ class Messages:
     MISC_CAPITAL_RECOGNITION = Message('Capital Recognition', 32321)
 
     # Last Msg 32322
+    # messages 32800 - 33000 reserved for UI elements (actual Kodi
+    # control/window processing)
+
+    UI_CONFIGURE_TTS_HINT = Message('Configure TTS Settings. Changes applied '
+                                    'immediately.', 32800)
+    UI_SELECT_CATEGORY_HINT = Message('Select the category that you wish to modify',
+                                      32801)
+    UI_SETTINGS_CATEGORIES = Message('Settings Categories', 32802)
+    UI_DISMISS_DIALOG_HINT = Message('Select to dismiss dialog', 32804)
+    UI_ITEMS = Message('{0} items', 32805)
+    UI_ITEM = Message('item {0}', 32806)
+
+    MSG_NOT_FOUND_ERROR: Final[int] = 32335
+    MSG_UNITS_DB: Final[int] = 32810
+    MSG_UNITS_PERCENT: Final[int] = 32811
 
     _instance = None
     _debug_dump = False
@@ -309,14 +333,17 @@ class Messages:
     @staticmethod
     def get_msg(msg_ref: Message | int) -> str:
         """
+        Gets a localized message via either it's int message number or
+        by a Message reference.
 
-        :param msg_ref:
-        :return:
+        :param msg_ref: if an int, then it is used as a Kodi message number
+                        Otherwise, it is interpreted as a Message reference
+        :return:  Translated message
         """
         if Messages._instance is None:
             Messages._instance = Messages()
         if isinstance(msg_ref, int):
-            msg_ref = Message.get_ref_by_id(msg_ref)
+            return Messages.get_msg_by_id(msg_ref)
 
         if isinstance(msg_ref, Enum):
             msg_ref = msg_ref.name
@@ -324,7 +351,151 @@ class Messages:
         return Messages._instance.get_formatted_msg(msg_ref)
 
     @staticmethod
-    def get_formatted_msg(msg_ref: Message | int, *args: Optional[List[str]]) -> str:
+    def add_msg_by_id(phrases: ForwardRef('PhraseList'), msg_id: int,
+                      empty_on_error: bool = False) -> bool:
+        from common.phrases import Phrase, PhraseList
+
+        phrases: PhraseList
+        success = True
+        text: str = Messages.get_msg_by_id(msg_id, empty_on_error=True)
+        if text == '' and not empty_on_error:
+            success = False
+            text = Messages.get_error_msg(msg_id)
+            module_logger.debug(f'msg empty and msg_id != 0 msg: {text}')
+        phrases.append(Phrase(text=text))
+        return success
+
+    @staticmethod
+    def add_formatted_msg_by_id(phrases: ForwardRef('PhraseList'), msg_id: int,
+                                *args: Optional[str, ...]) -> bool:
+        """
+
+        :param phrases:
+        :param msg_id:
+        :param args
+        :return:
+        """
+        from common.phrases import Phrase, PhraseList
+
+        success: bool = True
+        formatted_msg: str = ''
+        unformatted_msg = Messages.get_msg_by_id(msg_id, empty_on_error=True)
+        if unformatted_msg == '' or msg_id != 0:
+            unformatted_msg = (f"Can not find message from Kodi's nor ADDON's messages "
+                               f"msg_id: {0}")
+            formatted_msg = unformatted_msg.format(msg_id)
+            success = False
+        else:
+            formatted_msg = unformatted_msg.format(*args)
+
+        phrases.append(Phrase(text=formatted_msg))
+
+        return success
+
+    @staticmethod
+    def get_msg_by_id(msg_id: int, empty_on_error: bool = False) -> str:
+        msg: str = ''
+        #  module_logger.debug(f'{msg_id} {type(msg_id)}')
+        try:
+            msg = CriticalSettings.ADDON.getLocalizedString(msg_id)
+            #  module_logger.debug(f'msg: {msg} msg_id: {msg_id}')
+        except:
+            module_logger.exception(f'msg: {msg} msg_id: {msg_id}')
+            msg = ''
+        try:
+            if msg == '':
+                msg = xbmc.getLocalizedString(msg_id)
+                #  module_logger.debug(f'msg: {msg} msg_id: {msg_id}')
+        except:
+            module_logger.exception(f'msg: {msg} msg_id: {msg_id}')
+            msg = ''
+
+        if msg == '' and empty_on_error:
+            module_logger.debug(f'msg is empty and empty_on_error msg: {msg}')
+            return msg
+
+        if msg == '' or msg_id == 0:
+            msg = Messages.get_error_msg(msg_id)
+            module_logger.debug(f'msg empty and msg_id = 0 msg: {msg}')
+        # else:
+        #     module_logger.debug(f'Returning msg without error: {msg}')
+        return msg
+
+    @staticmethod
+    def get_error_msg(msg_id: int) -> str:
+        msg: str = f'Message {msg_id} not found in neither Kodi\'s nor '\
+                    'this addon\'s message catalog'
+        msg: str = Messages.get_formatted_msg_by_id(Messages.MSG_NOT_FOUND_ERROR,
+                                                    msg_id)
+        return msg
+
+    @staticmethod
+    def get_formatted_msg_by_id(msg_id: int, *args: Optional[str, ...]) -> str:
+        """
+
+        :param msg_id:
+        :param args
+        :return:
+        """
+        msg: str = ''
+        unformatted_msg = Messages.get_msg_by_id(msg_id, empty_on_error=True)
+        if unformatted_msg == '' or msg_id == 0:
+            unformatted_msg = "Can not find message from Kodi's nor ADDON's messages msg_id: {msg_id}"
+            return unformatted_msg.format(*args)
+
+        return unformatted_msg.format(*args)
+
+    @staticmethod
+    def add_formatted_msg(phrases: ForwardRef('PhraseList'), msg_ref: Message | int,
+                          *args: Optional[str, ...]) -> bool:
+        """
+
+        :param phrases:
+        :param msg_ref:
+        :param args
+        :return:
+        """
+        success: bool = True
+        if Messages._instance is None:
+            Messages._instance = Messages()
+
+        msg_id: int
+        unformatted_msg = ''
+        if isinstance(msg_ref, int):
+            msg_ref = Message.get_ref_by_id(msg_ref)
+
+        if isinstance(msg_ref, Enum):
+            msg_ref = msg_ref.name
+
+        msg_id: int = 0
+        try:
+            if isinstance(msg_ref, Message):
+                msg_id = msg_ref.get_msg_id()
+                unformatted_msg = CriticalSettings.ADDON.getLocalizedString(msg_id)
+            if unformatted_msg == '':
+                if msg_id != 0:
+                    unformatted_msg = f'Message not defined: {str(msg_id)}'
+                else:
+                    unformatted_msg = f'Message not defined: {msg_ref}'
+                if Messages._instance._logger.isEnabledFor(ERROR):
+                    Messages._instance._logger.error(
+                            f'Can not find message from strings for message id: '
+                            f'{str(msg_id)}')
+        except:
+            unformatted_msg = f"Invalid msg id: {str(msg_id)}"
+            module_logger.exception(unformatted_msg)
+            return False
+
+        try:
+            text: str = unformatted_msg.format(*args)
+            from common.phrases import Phrase, PhraseList
+            phrases.append(Phrase(text=text))
+        except:
+            success = False
+        return success
+
+    @staticmethod
+    def get_formatted_msg(msg_ref: Message | int, *args: Optional[str, ...]) -> str:
         """
 
         :param msg_ref:
@@ -361,3 +532,34 @@ class Messages:
             module_logger.exception(unformatted_msg)
 
         return unformatted_msg.format(*args)
+
+    @classmethod
+    def format_boolean(cls, text: str,
+                       enabled_msgid: int = ENABLED.get_msg_id(),
+                       disabled_msgid: int = DISABLED.get_msg_id()) -> ForwardRef('PhraseList') | None:
+        """
+        Used to format binary values from Kodi ListItems, etc. Kodi returns
+        a string with the True/False value coded as () for False and (*) for True.
+        Here we allow those strings to be replaced by others of the user's choosing.
+        Also, pauses are inserted into the strings.
+        :param text: Message that may have embedded markes for True/False
+        :param enabled_msgid: Message id to use instead of 'enabled'
+        :param disabled_msgid: Message id to use instead of 'disabled'
+        :return: None, if no substitutions need to be made.
+                 Otherwise, Phrase with the substitutions performed and pause embedded before
+                 the 'True'/'False' value
+        """
+        success: bool = False
+        new_text: str = text
+        if not text.endswith(')'):  # Skip this most of the time
+            return None
+
+        # For boolean settings
+        new_text: str = text.replace('( )',
+                                     f'{Constants.PAUSE_INSERT} '
+                                     f'{Messages.get_msg_by_id(disabled_msgid)}')
+        new_text = new_text.replace('(*)',
+                                    f'{Constants.PAUSE_INSERT} '
+                                    f'{Messages.get_msg_by_id(enabled_msgid)}')
+        from common.phrases import Phrase, PhraseList
+        return PhraseList.create(texts=new_text)

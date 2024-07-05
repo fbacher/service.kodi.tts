@@ -38,26 +38,26 @@ class AbortException(Exception):
 
 class LogicError(Exception):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, msg: str = ''):
+        super().__init__(msg)
 
 
 class DuplicateException(Exception):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, msg: str = ''):
+        super().__init__(msg)
 
 
 class NotReadyException(Exception):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, msg: str = ''):
+        super().__init__(msg)
 
 
 class ExpiredException(Exception):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, msg: str = ''):
+        super().__init__(msg)
 
 
 # Something went wrong trying to communicate. Could be network failure
@@ -66,5 +66,10 @@ class ExpiredException(Exception):
 
 class CommunicationException(Exception):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, msg: str = ''):
+        super().__init__(msg)
+
+class EmptyPhraseException(Exception):
+
+    def __init__(self, msg: str = ''):
+        super().__init__(msg)

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
 
 """
 Created on Feb 19, 2019
@@ -604,7 +605,7 @@ class Monitor(MinimalMonitor):
         requested have already been made, return immediately.
 
         :param timeout: [opt] float - timeout in seconds. Default: no timeout.
-        :return: True when abort have been requested,
+        :return: True when abort has been requested,
             False if a timeout is given and the operation times out.
 
         New function added.

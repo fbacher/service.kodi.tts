@@ -90,7 +90,7 @@ class PiperSettings(BaseServiceSettings):
         speed_validator: NumericValidator
         speed_validator = NumericValidator(SettingsProperties.SPEED,
                                            cls.service_ID,
-                                           minimum=.25, maximum=3,
+                                           minimum=.25, maximum=5,
                                            default=1,
                                            is_decibels=False,
                                            is_integer=False)
@@ -98,11 +98,14 @@ class PiperSettings(BaseServiceSettings):
                                    SettingsProperties.SPEED,
                                    speed_validator)
 
-        pitch_constraints: Constraints = Constraints(0, 50, 99, True, False, 50.0,
-                                                     SettingsProperties.PITCH)
-        pitch_constraints_validator = ConstraintsValidator(SettingsProperties.PITCH,
-                                                           cls.engine_id,
-                                                           pitch_constraints)
+        pitch_validator: NumericValidator
+        pitch_validator = NumericValidator(SettingsProperties.PITCH,
+                                           cls.service_ID,
+                                           minimum=0, maximum=99, default=50,
+                                           is_decibels=False, is_integer=True)
+        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PITCH,
+                                   pitch_validator)
+
         volume_validator: NumericValidator
         volume_validator = NumericValidator(SettingsProperties.VOLUME,
                                             cls.service_ID,
@@ -153,8 +156,6 @@ class PiperSettings(BaseServiceSettings):
                                    voice_validator)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PIPE,
                                    pipe_validator)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PITCH,
-                                   pitch_constraints_validator)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER,
                                    player_validator)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.CACHE_SPEECH,

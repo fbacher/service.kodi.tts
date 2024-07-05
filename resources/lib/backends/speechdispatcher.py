@@ -13,7 +13,7 @@ from backends.settings.constraints import Constraints
 from backends.settings.i_validators import IValidator
 from backends.settings.service_types import Services
 from backends.settings.settings_map import SettingsMap
-from backends.settings.validators import ConstraintsValidator
+from backends.settings.validators import ConstraintsValidator, NumericValidator
 from backends.speechd import Speaker, SSIPCommunicationError
 from common.constants import Constants
 from common.logger import *
@@ -69,31 +69,42 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
     service_TYPE: str = ServiceType.ENGINE
     displayName = 'Speech Dispatcher'
 
-    # pitchConstraints: Constraints = Constraints(0, 0, 100, True, 1.0,
-    # SettingsProperties.PITCH)
-    pitchConstraints: Constraints = Constraints(0, 50, 99, True, False, 1.0,
-                                                SettingsProperties.PITCH, None)
-    # volumeConstraints: Constraints = Constraints(-12, 8, 12, True, 1.0,
-    # SettingsProperties.VOLUME)
+    volume_validator: NumericValidator
+    volume_validator = NumericValidator(SettingsProperties.VOLUME,
+                                        service_ID,
+                                        minimum=-100, maximum=75,
+                                        default=0, is_decibels=False,
+                                        is_integer=True,
+                                        increment=10)
+    SettingsMap.define_setting(service_ID,
+                               SettingsProperties.VOLUME,
+                               volume_validator)
+    speed_validator: NumericValidator
+    speed_validator = NumericValidator(SettingsProperties.SPEED,
+                                       service_ID,
+                                       minimum=-100, maximum=100,
+                                       default=0,
+                                       is_decibels=False,
+                                       is_integer=True,
+                                       increment=10)
+    SettingsMap.define_setting(service_ID,
+                               SettingsProperties.SPEED,
+                               speed_validator)
 
-    SpeechDispatcherVolumeConstraints: Constraints = Constraints(-100, 0, 75,
-                                                                 True, False,
-                                                                 1.0,
-                                                                 SettingsProperties.VOLUME,
-                                                                 10)
-    SpeechDispatcherSpeedConstraints: Constraints = Constraints(-100, 0, 100, True, False,
-                                                                1.0,
-                                                                SettingsProperties.SPEED,
-                                                                0, 10)
     # Pitch -- integer value within the range from -100 to 100, with 0
     #    corresponding to the default pitch of the current speech synthesis
     #    output module, lower values meaning lower pitch and higher values
     #    meaning higher pitch.
-    SpeechDispatcherPitchConstraints: Constraints = Constraints(-100, 0, 100,
-                                                                True, False,
-                                                                1.0,
-                                                                SettingsProperties.PITCH,
-                                                                0, 10)
+
+    pitch_validator: NumericValidator
+    pitch_validator = NumericValidator(SettingsProperties.PITCH,
+                                       service_ID,
+                                       minimum=-100, maximum=100, default=0,
+                                       is_decibels=False, is_integer=True,
+                                       increment=10)
+    SettingsMap.define_setting(service_ID, SettingsProperties.PITCH,
+                               pitch_validator)
+
     _supported_input_formats: List[str] = []
     _supported_output_formats: List[str] = []
     _provides_services: List[ServiceType] = [ServiceType.ENGINE, ServiceType.PLAYER]
@@ -103,10 +114,6 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
     NONE: str = 'none'
     _class_name: str = None
     _logger: BasicLogger = None
-    volumeExternalEndpoints = (SpeechDispatcherVolumeConstraints.minimum,
-                               SpeechDispatcherVolumeConstraints.maximum)
-    volumeStep = SpeechDispatcherVolumeConstraints.increment
-    volumeSuffix = '%'
 
     settings = {
         SettingsProperties.MODULE: None  # More defined in init
@@ -132,11 +139,11 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
         clz.settings[SettingsProperties.VOICE] = None,
         clz.settings[SettingsProperties.PIPE] = False,
         clz.settings[
-            SettingsProperties.SPEED] = clz.SpeechDispatcherSpeedConstraints.default
+            SettingsProperties.SPEED] = clz.speed_validator.get_default()
         clz.settings[
-            SettingsProperties.PITCH] = clz.SpeechDispatcherPitchConstraints.default
+            SettingsProperties.PITCH] = clz.pitch_validator.default
         clz.settings[
-            SettingsProperties.VOLUME] = clz.SpeechDispatcherVolumeConstraints.default
+            SettingsProperties.VOLUME] = clz.volume_validator.default
 
     def init(self):
         super().init()

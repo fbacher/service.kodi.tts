@@ -87,7 +87,8 @@ class BasePlayerHandler(PlayerHandlerType):
     @classmethod
     def set_sound_dir(cls):
         tmpfs = utils.getTmpfs()
-        if Settings.getSetting(SettingsProperties.USE_TEMPFS, None, True) and tmpfs:
+        if Settings.getSetting(SettingsProperties.USE_TEMPFS,
+                               None, True) and tmpfs:
             cls._logger.debug_extra_verbose(f'Using tmpfs at: {tmpfs}')
             cls.sound_dir = os.path.join(tmpfs, 'kodi_speech')
         else:
@@ -297,7 +298,8 @@ class MP3AudioPlayerHandler(WavAudioPlayerHandler):
     @classmethod
     def set_sound_dir(cls):
         tmpfs = utils.getTmpfs()
-        if Settings.getSetting(SettingsProperties.USE_TEMPFS, None, True) and tmpfs:
+        if Settings.getSetting(SettingsProperties.USE_TEMPFS, None,
+                               True) and tmpfs:
             cls._logger.debug_extra_verbose(f'Using tmpfs at: {tmpfs}')
             cls.sound_dir = os.path.join(tmpfs, 'kodi_speech')
         else:

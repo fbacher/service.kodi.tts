@@ -242,13 +242,14 @@ class SimplePipeCommand:
         self.rc = 0
         GarbageCollector.add_thread(self.run_thread)
         env = os.environ.copy()
+        clz.logger.debug(f'args: {self.args}')
 
         try:
             if xbmc.getCondVisibility('System.Platform.Windows'):
                 # Prevent console for ffmpeg from opening
                 #
                 # Here, we keep stdout & stderr separate and combine the output in the
-                # log. Need to change to be configureable: separate, combined at
+                # log. Need to change to be configurable: separate, combined at
                 # process level (stderr = subprocess.STDOUT), devnull or pass through
                 # via pipe and don't log
 

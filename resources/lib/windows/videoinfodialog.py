@@ -4,15 +4,26 @@ from __future__ import annotations  # For union operator |
 import xbmc
 
 from common import *
+from common.logger import BasicLogger
+from common.phrases import Phrase, PhraseList
 
-from . import base
+from . import base, DefaultWindowReader
+
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class VideoInfoDialogReader(base.DefaultWindowReader):
     ID = 'videoinfodialog'
 
+    def __init__(self, win_id=None, service: ForwardRef('TTSService') = None) -> None:
+        cls = type(self)
+        super().__init__(win_id, service)
+        cls._logger = module_logger.getChild(cls.__class__.__name__)
+        self.listMap: Dict[int, str] = None
+
     def init(self):
-        self.listMap = {20376: xbmc.getInfoLabel('ListItem.OriginalTitle'),
+        self.listMap = {
+                        20376: xbmc.getInfoLabel('ListItem.OriginalTitle'),
                         20339: xbmc.getInfoLabel('ListItem.Director'),
                         20417: xbmc.getInfoLabel('ListItem.Writer'),
                         572  : xbmc.getInfoLabel('ListItem.Studio'),
@@ -42,39 +53,52 @@ class VideoInfoDialogReader(base.DefaultWindowReader):
                         558  : xbmc.getInfoLabel('ListItem.Album'),
                         }
 
-    def getHeading(self):
-        return xbmc.getInfoLabel('ListItem.Title') or ''
+    def getHeading(self, phrases: PhraseList) -> bool:
+        text = xbmc.getInfoLabel('ListItem.Title')
+        if text != '':
+            phrases.add_text(texts=text)
+            return True
+        return False
 
-    def getControlText(self, controlID):
-        if not controlID:
-            return ('', '')
-        text = ''
-        if controlID == 49:
-            text = xbmc.getInfoLabel('System.CurrentControl'.format(controlID)).strip(
+    def getControlText(self, control_id: int, phrases: PhraseList) -> bool:
+        clz = type(self)
+        if not control_id:
+            return False
+        text: str = ''
+        if control_id == 49:
+            text = xbmc.getInfoLabel('System.CurrentControl'.format(control_id)).strip(
                 ': ')
-            for k in list(self.listMap.keys()):
+            for k in self.listMap.keys():
                 if text == xbmc.getLocalizedString(k).strip(': '):
                     text = '{0}: {1}'.format(text, self.listMap[k])
                     break
-        elif controlID == 50:
+        elif control_id == 50:
             text = '{0}: {1}'.format(xbmc.getInfoLabel('Container(50).ListItem.Label'),
                                      xbmc.getInfoLabel('Container(50).ListItem.Label2'))
-        elif controlID == 61:
+        elif control_id == 61:
             text = '{0}: {1}'.format(xbmc.getLocalizedString(207),
                                      xbmc.getInfoLabel('ListItem.Plot'))
-        elif controlID == 138:
+        elif control_id == 138:
             text = xbmc.getInfoLabel('ListItem.Plot')
         else:
-            text = xbmc.getInfoLabel(f'Control.GetLabel({controlID})')
+            text = xbmc.getInfoLabel(f'Control.GetLabel({control_id})')
 
         if not text:
             text = xbmc.getInfoLabel('System.CurrentControl')
         if not text:
-            return ('', '')
-        return (text, text)
+            return False
+        clz._logger.debug(f'text: {text} control_id: {control_id}')
+        phrases.add_text(texts=text)
+        return True
 
-    def getControlPostfix(self, controlID):
+    def getControlPostfix(self, control_id: int | None, phrases: PhraseList) -> bool:
         cls = type(self)
-        post = base.DefaultWindowReader.getControlPostfix(self, self.service.controlID)
-        if self.service.controlID == 50:
-            return 'Cast: {0}'.format(post)
+        success: bool = False
+        if self.service.current_control_id == 50:
+            phrases.add_text(texts='Cast:')
+            DefaultWindowReader.getControlPostfix(self, self.service.current_control_id,
+                                                  phrases)
+            cls._logger.debug(f'TODO: Suspicious code. '
+                              f'control_id: {self.service.current_control_id}\n{phrases}')
+            return True
+        return False   # TODO: this looks wrong

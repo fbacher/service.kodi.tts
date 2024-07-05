@@ -30,16 +30,19 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         clz = type(self)
         self.exit_dialog: bool = False
         clz._logger = module_logger.getChild(self.__class__.__name__)
-        clz._logger.debug_verbose('SelectionDialog.__init__')
+        clz._logger.debug('SelectionDialog.__init__')
         self.initialized: bool = False
         empty_list_items: List[xbmcgui.ListItem] = []
         self.list_position: int = 0
         self.selection_index: int = -1
         self.title: str = kwargs.get('title', 'No Heading')
+        self._init_list_items: List[xbmcgui.ListItem]
         self._init_list_items = kwargs.get('choices', empty_list_items)
         self._initial_choice: int = kwargs.get('initial_choice', -1)
         if self._initial_choice < 0:
             self._initial_choice = 0
+        self._call_on_focus: Callable[[int], None] | None
+        self._call_on_focus = kwargs.get('call_on_focus', None)
 
         self.heading_control: ControlLabel | None = None
         self.choices_group: ControlGroup | None = None
@@ -53,7 +56,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         """
         # super().onInit()
         clz = type(self)
-        clz._logger.debug_verbose('SelectionDialog.onInit enter')
+        clz._logger.debug('SelectionDialog.onInit enter')
         # control 1 heading label
         # control 3 list of available options
         # control 5 radio_button OK
@@ -258,7 +261,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         :return:
         """
         clz = type(self)
-        clz._logger.debug_verbose('SelectionDialog.getFocus')
+        clz._logger.debug('SelectionDialog.getFocus')
         super().getFocus()
 
     def onAction(self, action: xbmcgui.Action) -> None:
@@ -269,12 +272,15 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         """
         clz = type(self)
         try:
+            if not self.initialized:
+                return
+
             action_id = action.getId()
             if action_id == 107:  # Mouse Move
                 return
 
             buttonCode: int = action.getButtonCode()
-            clz._logger.debug_verbose(
+            clz._logger.debug(
                     'SelectionDialog.onAction action_id: {} buttonCode: {}'.
                     format(action_id, buttonCode))
             if (action_id == xbmcgui.ACTION_PREVIOUS_MENU
@@ -369,8 +375,15 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
 
     def onFocus(self, controlId: int):
         clz = type(self)
-        clz._logger.debug_verbose(
-                f'SelectionDialog.onFocus controlId: {controlId:d}')
+        try:
+            if not self.initialized:
+                return
+            if self._call_on_focus is not None:
+                if (controlId > 100) and (controlId < (101 + len(self._init_list_items))):
+                    idx: int = controlId - 101
+                    self._call_on_focus(idx)
+        except Exception as e:
+            clz._logger.exception('')
 
     def setProperty(self, key, value):
         clz = type(self)

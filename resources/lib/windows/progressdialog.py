@@ -6,39 +6,51 @@ import time
 import xbmc
 
 from common import *
+from common.logger import BasicLogger
+from common.phrases import PhraseList
 
 from . import guitables
 from .base import WindowReaderBase
+
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class ProgressDialogReader(WindowReaderBase):
     ID = 'progressdialog'
 
+    def __init__(self):
+        self.last_progress_percent_unix_time: int = 0
+        self.progress_percent: int = -1
+
     def init(self):
-        self.lastProgressPercentUnixtime = 0
-        self.progressPercent = -1
+        self.last_progress_percent_unix_time = 0
+        self.progress_percent = -1
 
-    def getHeading(self):
-        return xbmc.getInfoLabel('Control.GetLabel(1)') or ''
+    def getHeading(self, phrases: PhraseList) -> bool:
+        text: str | None = xbmc.getInfoLabel('Control.GetLabel(1)')
+        if text is None:
+            return False
+        phrases.add_text(texts=text)
+        return True
 
-    def getWindowTexts(self):
+    def getWindowTexts(self, phrases: PhraseList) -> bool:
         return guitables.convertTexts(self.winID, (
-        '2', '3', '4', '9'))  # 1,2,3=Older Skins 9=Newer Skins
+            '2', '3', '4', '9'), phrases)  # 1,2,3=Older Skins 9=Newer Skins
 
-    def getWindowExtraTexts(self):
+    def getWindowExtraTexts(self, phrases: PhraseList) -> bool:
         return guitables.convertTexts(self.winID, (
-        '2', '3', '4', '9'))  # 1,2,3=Older Skins 9=Newer Skins
+            '2', '3', '4', '9'), phrases)  # 1,2,3=Older Skins 9=Newer Skins
 
-    def getMonitoredText(self, isSpeaking=False):
+    def getMonitoredText(self, isSpeaking=False) -> str | None:
         progress = xbmc.getInfoLabel('System.Progressbar')
-        if not progress or progress == self.progressPercent:
+        if not progress or progress == self.progress_percent:
             return None
         if isSpeaking is None:
             now = time.time()
-            if now - self.lastProgressPercentUnixtime < 2:
+            if now - self.last_progress_percent_unix_time < 2:
                 return None
-            self.lastProgressPercentUnixtime = now
+            self.last_progress_percent_unix_time = now
         elif isSpeaking:
-            return
-        self.progressPercent = progress
-        return '%s%%' % progress
+            return None
+        self.progress_percent = progress
+        return f'{progress}%'

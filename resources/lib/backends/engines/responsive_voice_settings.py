@@ -122,11 +122,13 @@ class ResponsiveVoiceSettings(BaseServiceSettings):
         # Need to define Conversion Constraints between the TTS 'standard'
         # constraints/settings to the engine's constraints/settings
 
-        pitch_constraints: Constraints = Constraints(0, 50, 99, True, False, 1.0,
-                                                     SettingsProperties.PITCH)
-        pitch_constraints_validator = ConstraintsValidator(SettingsProperties.PITCH,
-                                                           self.engine_id,
-                                                           pitch_constraints)
+        pitch_validator: NumericValidator
+        pitch_validator = NumericValidator(SettingsProperties.PITCH,
+                                           clz.service_ID,
+                                           minimum=0, maximum=99, default=50,
+                                           is_decibels=False, is_integer=True)
+        SettingsMap.define_setting(clz.service_ID, SettingsProperties.PITCH,
+                                   pitch_validator)
 
         speed_validator: NumericValidator
         speed_validator = NumericValidator(SettingsProperties.SPEED,
@@ -205,8 +207,6 @@ class ResponsiveVoiceSettings(BaseServiceSettings):
                                    voice_validator)
         SettingsMap.define_setting(self.service_ID, SettingsProperties.PIPE,
                                    pipe_validator)
-        SettingsMap.define_setting(self.service_ID, SettingsProperties.PITCH,
-                                   pitch_constraints_validator)
         SettingsMap.define_setting(self.service_ID, SettingsProperties.PLAYER,
                                    player_validator)
         SettingsMap.define_setting(self.service_ID, SettingsProperties.CACHE_SPEECH,

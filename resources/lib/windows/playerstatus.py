@@ -7,11 +7,19 @@ from common import *
 
 from common import utils
 from common.messages import Messages
+from common.logger import *
 from .base import WindowHandlerBase, WindowReaderBase
+
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class PlayerStatus(WindowHandlerBase):
     ID = 'playerstatus'
+
+    def __init__(self, win_id=None, service: ForwardRef('TTSService') = None) -> None:
+        cls = type(self)
+        super().__init__(win_id, service)
+        cls._logger = module_logger.getChild(cls.__class__.__name__)
 
     def init(self):
         self.mode = None

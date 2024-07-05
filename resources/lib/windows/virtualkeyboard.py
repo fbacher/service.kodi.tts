@@ -10,15 +10,18 @@ import xbmc
 from common import *
 
 from common.constants import Constants
+from common.logger import BasicLogger
 from common.messages import Messages
+from common.phrases import Phrase, PhraseList
 from .base import WindowReaderBase
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class VirtualKeyboardReader(WindowReaderBase):
     ID = 'virtualkeyboard'
     ip_re = re.compile('^[\d ]{3}\.[\d ]{3}\.[\d ]{3}.[\d ]{3}$')
 
-    def init(self):
+    def init(self) -> None:
         self.editID = None
         if self.winID == 10103:  # Keyboard
             if xbmc.getCondVisibility('Control.IsVisible(310)'):  # For Gotham
@@ -33,8 +36,12 @@ class VirtualKeyboardReader(WindowReaderBase):
         self.lastChange = time.time()
         self.lastRead = None
 
-    def getHeading(self):
-        return xbmc.getInfoLabel('Control.GetLabel(311)')
+    def getHeading(self, phrases: PhraseList) -> bool:
+        text = xbmc.getInfoLabel('Control.GetLabel(311)')
+        if text is not None:
+            phrases.add_text(texts=text)
+            return True
+        return False
 
     def isIP(self, text=None):
         text = text or self.getEditText()
@@ -112,7 +119,7 @@ class PVRSGuideSearchDialogReader(VirtualKeyboardReader):
         self.lastRead = None
         self.keyboardText = ''
 
-    def getControlText(self, controlID):
+    def getControlText(self, control_id: int, phrases: PhraseList) -> bool:
         cls = type(self)
         ID = self.window().getFocusId()
         if ID == 9:
@@ -126,7 +133,8 @@ class PVRSGuideSearchDialogReader(VirtualKeyboardReader):
             new_text = new_text.replace('(*)', f'{Constants.PAUSE_INSERT} '
                                                f'{Messages.get_msg(Messages.YES)}')
             cls._logger.debug(f'elipsis substitution orig text: {text} New: {new_text} ')
-        return new_text, new_text
+        phrases.add_text(texts=new_text)
+        return True
 
     def getMonitoredText(self, isSpeaking=False):
         ID = self.window().getFocusId()

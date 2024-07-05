@@ -12,10 +12,9 @@ from backends.settings.i_validators import (IBoolValidator, IGenderValidator,
 from backends.settings.service_types import Services
 from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import SettingsMap
-from backends.settings.validators import BoolValidator
 from common.exceptions import *
 from common.logger import *
-from common.setting_constants import Genders
+from common.setting_constants import Genders, PlayerModes
 from common.settings_bridge import SettingsBridge
 from common.settings_low_level import SettingsLowLevel
 
@@ -77,7 +76,7 @@ class Settings(SettingsLowLevel):
     @classmethod
     def get_api_key(cls, engine_id: str = None) -> str:
         if engine_id is None:
-            engine_id = cls._current_engine
+            engine_id = super()._current_engine
         # cls._logger.debug(f'getting api_key for engine_id: {engine_id}')
         engine_api_key_validator: IValidator
         engine_api_key_validator = SettingsMap.get_validator(engine_id,
@@ -89,7 +88,7 @@ class Settings(SettingsLowLevel):
     def set_api_key(cls, api_key: str, engine_id: str = None) -> None:
         # cls._logger.debug(f'setting api_key: {api_key}')
         if engine_id is None:
-            engine_id = cls._current_engine
+            engine_id = super()._current_engine
         engine_api_key_validator: IValidator
         engine_api_key_validator = SettingsMap.get_validator(engine_id,
                                                              property_id=SettingsProperties.API_KEY)
@@ -98,12 +97,14 @@ class Settings(SettingsLowLevel):
 
     @classmethod
     def get_engine_id(cls, bootstrap: bool = False) -> str | None:
+        #  cls._logger.debug(f'boostrap: {bootstrap}')
         if bootstrap:
-            return SettingsLowLevel.get_engine_id(default=None, bootstrap=bootstrap)
+            return SettingsLowLevel.get_engine_id_ll(default=None, bootstrap=bootstrap)
 
         engine_id: str = SettingsLowLevel.getSetting(SettingsProperties.ENGINE, None)
+        #  cls._logger.debug(f'engine_id: {engine_id}')
         if engine_id is None:
-            engine_id = SettingsLowLevel.get_engine_id(default=None, bootstrap=bootstrap)
+            engine_id = SettingsLowLevel.get_engine_id_ll(default=None, bootstrap=bootstrap)
         if engine_id is None:  # Not set, use default
             # Validator only helps with default and possible values
             engine_id_validator = SettingsMap.get_validator(SettingsProperties.ENGINE,
@@ -135,7 +136,7 @@ class Settings(SettingsLowLevel):
     @classmethod
     def get_gender(cls, engine_id: str = None) -> Genders:
         if engine_id is None:
-            engine_id = cls._current_engine
+            engine_id = super()._current_engine
         # cls._logger.debug(f'getting gender for engine_id: {engine_id}')
         gender_validator: IGenderValidator
         gender_validator = SettingsMap.get_validator(Services.TTS_SERVICE,
@@ -147,7 +148,7 @@ class Settings(SettingsLowLevel):
     def set_gender(cls, gender: int, engine_id: str = None) -> None:
         # cls._logger.debug(f'setting gender: {gender}')
         if engine_id is None:
-            engine_id = cls._current_engine
+            engine_id = super()._current_engine
         engine_gender_validator: IValidator
         engine_gender_validator = SettingsMap.get_validator(engine_id,
                                                             property_id=SettingsProperties.GENDER)
@@ -157,7 +158,7 @@ class Settings(SettingsLowLevel):
     @classmethod
     def get_language(cls, engine_id: str = None) -> str:
         if engine_id is None:
-            engine_id = cls._current_engine
+            engine_id = super()._current_engine
         language: str = None
         try:
             # cls._logger.debug(f'getting language for engine_id: {engine_id}')
@@ -177,7 +178,7 @@ class Settings(SettingsLowLevel):
     def set_language(cls, language: str, engine_id: str = None) -> None:
         # cls._logger.debug(f'setting language: {language}')
         if engine_id is None:
-            engine_id = cls._current_engine
+            engine_id = super()._current_engine
         engine_language_validator: IValidator
         engine_language_validator = SettingsMap.get_validator(engine_id,
                                                               property_id=SettingsProperties.LANGUAGE)
@@ -187,7 +188,7 @@ class Settings(SettingsLowLevel):
     @classmethod
     def get_voice_path(cls, service_id: str = None) -> str:
         if service_id is None:
-            service_id = cls._current_engine
+            service_id = super()._current_engine
         validator: IStringValidator
         property_id: str = SettingsProperties.VOICE_PATH
         validator = SettingsMap.get_validator(service_id,  property_id=property_id)
@@ -197,7 +198,7 @@ class Settings(SettingsLowLevel):
     @classmethod
     def set_voice_path(cls, voice_path: str = None, service_id: str = None) -> None:
         if service_id is None:
-            service_id = cls._current_engine
+            service_id = super()._current_engine
         engine_language_validator: IStringValidator
         property_id: str = SettingsProperties.VOICE_PATH
         validator: IStringValidator = SettingsMap.get_validator(service_id,
@@ -208,7 +209,7 @@ class Settings(SettingsLowLevel):
     @classmethod
     def get_volume(cls, engine_id: str = None) -> int:
         if engine_id is None:
-            engine_id = cls._current_engine
+            engine_id = super()._current_engine
         volume_val: INumericValidator = SettingsMap.get_validator(
             engine_id, SettingsProperties.VOLUME)
         return volume_val.get_value()
@@ -216,32 +217,30 @@ class Settings(SettingsLowLevel):
     @classmethod
     def set_volume(cls, volume: int, engine_id: str = None) -> None:
         if engine_id is None:
-            engine_id = cls._current_engine
+            engine_id = super()._current_engine
+        #  cls._logger.debug(f'{super()._current_engine} {SettingsLowLevel._current_engine}')
         volume_val: INumericValidator = SettingsMap.get_validator(
                 engine_id, SettingsProperties.VOLUME)
         volume_val.set_value(volume)
         return
 
-    def get_speed(cls, engine_id: str = None) -> float:
-        if engine_id is None:
-            engine_id = cls._current_engine
+    @classmethod
+    def get_speed(cls) -> float:
         speed_val: INumericValidator = SettingsMap.get_validator(
-                engine_id, SettingsProperties.SPEED)
+                SettingsProperties.TTS_SERVICE, SettingsProperties.SPEED)
         return speed_val.get_value()
 
     @classmethod
-    def set_speed(cls, speed: int, engine_id: str = None) -> None:
-        if engine_id is None:
-            engine_id = cls._current_engine
+    def set_speed(cls, speed: int) -> None:
         speed_val: INumericValidator = SettingsMap.get_validator(
-                engine_id, SettingsProperties.SPEED)
+                SettingsProperties.TTS_SERVICE, SettingsProperties.SPEED)
         speed_val.set_value(speed)
         return
 
     @classmethod
     def get_voice(cls, engine_id: str | None) -> int:
         if engine_id is None:
-            engine_id = cls._current_engine
+            engine_id = super()._current_engine
         voice_val: IValidator = SettingsMap.get_validator(
                 engine_id, SettingsProperties.VOICE)
         voice: int = voice_val.get_tts_value()
@@ -253,7 +252,7 @@ class Settings(SettingsLowLevel):
         try:
             if engine_id is None:
                 engine_id = cls.get_engine_id()
-            cache_validator: BoolValidator | IBoolValidator
+            cache_validator: IBoolValidator
             cache_validator = SettingsMap.get_validator(engine_id,
                                                         SettingsProperties.CACHE_SPEECH)
             if cache_validator is None:
@@ -292,10 +291,39 @@ class Settings(SettingsLowLevel):
         return
 
     @classmethod
+    def get_player_mode(cls, engine_id: str = None) -> PlayerModes:
+
+        val: IStringValidator
+        if engine_id is None:
+            engine_id = super()._current_engine
+        val = SettingsMap.get_validator(service_id=engine_id,
+                                        property_id=SettingsProperties.PLAYER_MODE)
+        if val is None:
+            raise NotImplemented()
+
+        player_mode_str: str = val.get_tts_value()
+        cls._logger.debug(f'player_mode: {player_mode_str}')
+        player_mode = PlayerModes(player_mode_str)
+        return player_mode
+
+    @classmethod
+    def set_player_mode(cls, player_mode: PlayerModes, engine_id: str = None) -> None:
+        val: IStringValidator
+        val = SettingsMap.get_validator(service_id=engine_id,
+                                        property_id=SettingsProperties.PLAYER_MODE)
+        val.set_tts_value(player_mode.name)
+        return
+
+    '''
+    @classmethod
     def get_pipe(cls, engine_id: str = None) -> bool:
+        return False
+
         pipe_validator: IBoolValidator
         pipe_validator = SettingsMap.get_validator(service_id=engine_id,
                                                    property_id=SettingsProperties.PIPE)
+        # cls._logger.debug(f'Boolvalidator value: {pipe_validator.get_tts_value()} '
+        #                   f'const: {pipe_validator.is_const()}')
         if pipe_validator is None:
             raise NotImplemented()
 
@@ -304,10 +332,13 @@ class Settings(SettingsLowLevel):
 
     @classmethod
     def set_pipe(cls, pipe: bool, engine_id: str = None) -> None:
+        return
+
         val: IValidator = SettingsMap.get_validator(engine_id,
                                                     SettingsProperties.PIPE)
         val.set_tts_value(pipe)
         return
+    '''
 
     @classmethod
     def get_auto_item_extra(cls, default_value: bool = False) -> bool:
@@ -380,26 +411,30 @@ class Settings(SettingsLowLevel):
                              SettingsProperties.TTS_SERVICE)
         return
 
+    '''
     @classmethod
     def uses_pipe(cls, service_id: str = None) -> bool:
         if service_id is None:
-            service_id = cls._current_engine
+            service_id = super()._current_engine
         pipe_validator: IValidator
         pipe_validator = SettingsMap.get_validator(service_id,
                                                    property_id=SettingsProperties.PIPE)
+        pipe_validator: BoolValidator
         use_pipe: bool = pipe_validator.get_tts_value()
-        # cls._logger.debug(f'uses_pipe.{service_id} = {use_pipe}')
+        #  cls._logger.debug(f'uses_pipe.{service_id} = {use_pipe}')
         return use_pipe
+    '''
 
     @classmethod
     def get_player_id(cls, engine_id: str = None) -> str:
         if engine_id is None:
-            engine_id = cls._current_engine
+            engine_id = super()._current_engine
         player_validator: IValidator
         player_validator = SettingsMap.get_validator(engine_id,
                                                      property_id=SettingsProperties.PLAYER)
         player_id: str = player_validator.get_tts_value()
-        cls._logger.debug(f'player.{engine_id} = {player_id}')
+        if cls._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
+            cls._logger.debug_extra_verbose(f'player.{engine_id} = {player_id}')
         return player_id
 
     @classmethod
@@ -437,9 +472,18 @@ class Settings(SettingsLowLevel):
 
     @classmethod
     def get_cache_base(cls) -> str:
-        return cls.getSetting(SettingsProperties.CACHE_PATH,
-                              SettingsProperties.TTS_SERVICE,
-                              SettingsProperties.CACHE_PATH_DEFAULT)
+        cache_base: str
+        cache_base = cls.getSetting(SettingsProperties.CACHE_PATH,
+                                    SettingsProperties.TTS_SERVICE,
+                                    SettingsProperties.CACHE_PATH_DEFAULT)
+        tmp: str = cache_base.strip()
+        if tmp != cache_base:
+            cls._logger.debug(f'cache_base changed old: {cache_base} new: {tmp}')
+            cache_base = tmp
+            cls.set_setting_str(SettingsProperties.CACHE_PATH,
+                                cache_base,
+                                SettingsProperties.TTS_SERVICE)
+        return cache_base
 
     @classmethod
     def configuring_settings(cls):

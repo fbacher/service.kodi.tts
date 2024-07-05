@@ -3,7 +3,6 @@ from __future__ import annotations  # For union operator |
 
 import os
 import pathlib
-import re
 import sys
 import tempfile
 
@@ -15,28 +14,26 @@ from backends import base
 from backends.audio.sound_capabilties import SoundCapabilities
 from backends.google_data import GoogleData
 from backends.players.iplayer import IPlayer
-from backends.settings.i_validators import IValidator
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import SettingsMap
-from backends.settings.validators import (ConstraintsValidator, NumericValidator,
-                                          StringValidator)
 from cache.voicecache import VoiceCache
 from common.base_services import BaseServices
 from common.constants import Constants, ReturnCode
 from common.exceptions import ExpiredException
 from common.kodi_player_monitor import KodiPlayerMonitor
+from common.lang_phrases import SampleLangPhrases
 from common.logger import *
-from common.logger import BasicLogger
+from common.messages import Message, Messages
 from common.monitor import Monitor
 from common.phrases import Phrase, PhraseList, PhraseUtils
-from common.setting_constants import Backends, Mode
+from common.setting_constants import Backends, Languages, Mode, PlayerModes
 from common.settings import Settings
 from gtts import gTTS, gTTSError, lang
 from utils.util import runInThread
+import xbmc
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
-PUNCTUATION_PATTERN = re.compile(r'([.,:])', re.DOTALL)
 
 
 class Results:
@@ -157,6 +154,11 @@ class GoogleSpeechGenerator(ISpeechGenerator):
         return self.download_results.is_finished()
 
     def generate_speech(self, phrase: Phrase, timeout=1.0) -> Results:
+        """
+        :param phrase:   Phrase to voice
+        :param timeout:  Max time to wait
+        :return:
+        """
         # Disable expiration checks. We are doing this in background. Results
         # are cached for next time
 
@@ -173,7 +175,8 @@ class GoogleSpeechGenerator(ISpeechGenerator):
         unchecked_phrase_chunks: PhraseList = phrase_chunks.clone(check_expired=False)
         runInThread(self._generate_speech, name='download_speech', delay=0.0,
                     phrase_chunks=unchecked_phrase_chunks, original_phrase=phrase,
-                    timeout=timeout)
+                    timeout=timeout, language=phrase.language, gender=phrase.gender)
+
         max_wait: int = int(timeout / 0.1)
         while max_wait > 0:
             Monitor.exception_on_abort(timeout=0.1)
@@ -195,6 +198,23 @@ class GoogleSpeechGenerator(ISpeechGenerator):
         text_file_path: pathlib.Path = None
         phrase_chunks: PhraseList | None = None
         original_phrase: Phrase = None
+        language: str = ''
+        gender: str = ''
+        try:
+            arg: str | None = kwargs.get('language', None)
+            if arg is None:
+                language = GoogleTTSEngine.getLanguage()
+            else:
+                language = arg
+            arg = kwargs.get('gender', None)
+            if arg is None:
+                gender: str = GoogleTTSEngine.getGender()
+            else:
+                gender = arg
+        except Exception as e:
+            clz._logger.exception('')
+            return
+
         try:
             # The passed in phrase_chunks, are actually chunks of a phrase. Therefore
             # we concatenate the voiced text from each chunk to produce one
@@ -237,18 +257,6 @@ class GoogleSpeechGenerator(ISpeechGenerator):
                 self.set_finished()
                 return
 
-            language: str = GoogleTTSEngine.getLanguage()
-            gender: str = GoogleTTSEngine.getGender()
-            pitch: str = GoogleTTSEngine.getPitch_str()  # hard coded. Let
-            # player decide
-            speed: str = GoogleTTSEngine.getApiSpeed()  # Also hard coded
-            # value for 1x speed
-            volume: str = GoogleTTSEngine.getEngineVolume_str()
-            service: str = GoogleTTSEngine.getVoice()
-            api_volume: str = volume  # volume
-            api_speed = speed
-            api_pitch: str = pitch
-            temp_file: pathlib.Path | None = None
             with tempfile.NamedTemporaryFile(mode='w+b', buffering=-1,
                                              suffix=cache_path.suffix,
                                              prefix=cache_path.stem,
@@ -418,21 +426,23 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         super().init()
         self.update()
 
-    def getMode(self) -> Mode:
+    def get_player_mode(self) -> PlayerModes:
         clz = type(self)
         player: IPlayer = self.get_player(self.service_ID)
-        if clz.getSetting(SettingsProperties.PIPE):
-            return Mode.PIPE
-        else:
-            return Mode.FILEOUT
+        player_mode: PlayerModes = Settings.get_player_mode(clz.service_ID)
+        return player_mode
 
     def runCommand(self, phrase: Phrase) -> bool:
         clz = type(self)
         # Caching is ALWAYS used here, otherwise the delay would be maddening.
-        # Therefore, this is only called when the voice file is NOT in the
-        # cache. It is also ONLY called by the background thread in SeedCache.
+        # Therefore, this is primarily called when the voice file is NOT in the
+        # cache. In this case it is also ONLY called by the background thread
+        # in SeedCache.
+        # It can also be called by the TTS engine during configuration. In this case
+        # it is okay if it is a little slow. -
+        #
         try:
-            attempts: int = 25
+            attempts: int = 25  # Waits up to about 2.5 seconds
             while (not phrase.exists() and phrase.is_download_pending() and
                    attempts > 0):
                 if phrase.exists():
@@ -453,6 +463,67 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
             return False
 
         return phrase.exists()
+
+    def get_cached_voice_file(self, phrase: Phrase,
+                        generate_voice: bool = True) -> bool:
+        """
+        Assumes that cache is used. Normally missing voiced files is placed in
+        the cache by an earlier step, but can be initiated here as well.
+
+        Very similar to runCommand, except that the cached files are expected
+        to be sent to a slave player, or some other player than can play a sound
+        file.
+        :param phrase: Contains the text to be voiced as wll as the path that it
+                       is or will be located.
+        :param generate_voice: If true, then wait a bit to generate the speech
+                               file.
+        :return: True if the voice file was handed to a player, otherwise False
+        """
+        clz = type(self)
+
+        # If caching disabled, then voice_file and byte_stream are always None.
+        # If caching is enabled, voice_file contains path of cached file,
+        # or path where to download to. byte_stream is None if cached file
+        # does not exist, otherwise it is the contents of the cached file
+
+        audio_pipe = None
+        byte_stream: BinaryIO | None = None
+        try:
+            VoiceCache.get_path_to_voice_file(phrase, use_cache=Settings.is_use_cache())
+            if not phrase.exists():
+                tmp_phrase: Phrase = phrase.clone(check_expired=False)
+                # espeak_engine: ESpeakTTSBackend =\
+                #     BaseServices.getService(SettingsProperties.ESPEAK_ID)
+                # if not espeak_engine.initialized:
+                #     espeak_engine.init()
+
+                # espeak_engine.say_phrase(phrase)
+                # generate voice in cache for the future.
+                # Ignore result, don't wait
+                generator: GoogleSpeechGenerator = GoogleSpeechGenerator()
+                generator.generate_speech(tmp_phrase, timeout=1.0)
+            try:
+                attempts: int = 10
+                while not phrase.get_cache_path().exists():
+                    attempts -= 1
+                    if attempts <= 0:
+                        break
+                    Monitor.exception_on_abort(timeout=0.5)
+                    # byte_stream = io.open(phrase.get_cache_path(), 'br')
+                if attempts >= 0:
+                    byte_stream = phrase.get_cache_path().open(mode='br')
+            except AbortException as e:
+                reraise(*sys.exc_info())
+            except FileNotFoundError:
+                clz._logger.debug(f'File not found: {phrase.get_cache_path()}')
+                byte_stream = None
+            except Exception:
+                clz._logger.exception('')
+                byte_stream = None
+
+        except ExpiredException:
+            pass
+        return byte_stream
 
     def runCommandAndPipe(self, phrase: Phrase) -> BinaryIO:
         clz = type(self)
@@ -490,16 +561,15 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
                     byte_stream = phrase.get_cache_path().open(mode='br')
             except AbortException as e:
                 reraise(*sys.exc_info())
+            except FileNotFoundError:
+                clz._logger.debug(f'File not found: {phrase.get_cache_path()}')
+                byte_stream = None
             except Exception:
                 clz._logger.exception('')
                 byte_stream = None
 
         except ExpiredException:
             pass
-        # the following a geared towards Mplayer. Assumption is that only adjust
-        # volume in player, other settings in engine.
-
-        # volume_db: float = clz.get_volume_db()  # -12 .. 12
         return byte_stream
 
     def seed_text_cache(self, phrases: PhraseList) -> None:
@@ -580,6 +650,24 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
     def has_speech_generator(cls) -> bool:
         return True
 
+    sample_phrases: Dict[str, int] = {
+        'de_de.would_you_like_to_switch_to_this_language': 24132,
+        'de_de.lang': 123,
+    }
+
+    @classmethod
+    def voice_native_name_of_lang(cls, iso_639_1: str,
+                                  gender: str | None = None) -> PhraseList:
+        phrases: PhraseList = PhraseList()
+        lang_info: List[str] = SampleLangPhrases.langs.get(iso_639_1)
+        if lang_info is not None:
+            phrase: Phrase = Phrase(text=lang_info[1], language=iso_639_1,
+                                    gender=gender, voice=None)
+            phrases.append(phrase)
+
+        return phrases
+
+
     @classmethod
     def settingList(cls, setting: str, *args) -> List[str] | List[Tuple[str, str]] | Tuple[
         List[str], str] | Tuple[List[Tuple[str, str]], str]:
@@ -599,30 +687,19 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
             if not LanguageInfo.initialized:
                 lang_map = gtts.lang.tts_langs()
                 '''
-                gtts.lang.tts_langs()[source]
-
                 Languages Google Text-to-Speech supports.
-        
                 Returns:
-        
-                A dictionary of the type { ‘<lang>’: ‘<name>’}
-        
-                Where <lang> is an IETF language tag such as en or zh-TW, and <name>
-                 is the full English name of the language, such as English or Chinese (
-                 Mandarin/Taiwan).
-                
-                Return type:
-                
-                dict
-                
-                The dictionary returned combines languages from two origins:
-                - Languages fetched from Google Translate (pre-generated in gtts.langs)
-                - Languages that are undocumented variations that were observed to work 
-                  and present different dialects or accents.
-                  
-                Also, experimental country-code 
+                    A dictionary of the type { ‘<lang>’: ‘<name>’}
+                     Where <lang> is an IETF language tag such as en or zh-TW, and <name>
+                     is the full English name of the language, such as English or Chinese (
+                     Mandarin/Taiwan).
+                    
+                    The dictionary returned combines languages from two origins:
+                    - Languages fetched from Google Translate (pre-generated in gtts.langs)
+                    - Languages that are undocumented variations that were observed to work 
+                      and present different dialects or accents.
                 '''
-                #                <locale>   <lang_id> <country_id>, <google_domain>
+                #             <locale>   (<lang_id> <country_id>, <google_domain>)
                 locale_map: Dict[str, Tuple[str, str, str]]
                 tmp_lang_ids = lang_map.keys()  # en, zh-TW, etc
                 lang_ids: List[str] = list(tmp_lang_ids)
@@ -647,8 +724,11 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
                     tld, country_name = result
                     lang_info: LanguageInfo
                     lang_info = LanguageInfo(locale_id, lang_code, country_code,
-                                             locale_id, country_name, tld, )
+                                             locale_id, f'{country_name}_X', tld, )
 
+            kodi_lang: str = xbmc.getLanguage(xbmc.ISO_639_2)
+            kodi_lang_2: str = xbmc.getLanguage(xbmc.ISO_639_1)
+            cls._logger.debug(f'lang: {kodi_lang} lang_2: {kodi_lang_2}')
             # LanguageInfo.initialized = True
             # Get current process' language_code i.e. en-us
             default_locale = Constants.LOCALE.lower().replace('_', '-')
@@ -675,16 +755,15 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
                 if longest_match == -1:
                     if lower_lang.startswith(default_lang):
                         longest_match = idx
-                # elif lower_lang.startswith(default_lang_country):
-                #     longest_match = idx
                 if lower_lang.startswith(default_locale):
                     longest_match = idx
 
-                lang_info: LanguageInfo = LanguageInfo.get(locale_id)
-                if lang_info is None:
+                # lang_info: LanguageInfo = LanguageInfo.get(locale_id)
+                locale_msg: Message = Languages.locale_msg_map.get(locale_id)
+                if locale_msg is None:
                     entry = (locale_id, locale_id)
                 else:
-                    entry = (lang_info.get_language_name(),
+                    entry = (Messages.get_msg(locale_msg),
                              locale_id)  # Display value, setting_value
                 languages.append(entry)
                 idx += 1
@@ -698,17 +777,6 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
             return languages, default_setting
 
             '''
-            elif setting == SettingsProperties.GENDER:
-                current_locale = cls.getLanguage()
-                voices = cls.voices_by_locale_map.get(current_locale)
-    
-                genders = set()
-                if voices is not None:
-                    for voice_name, voice_id, gender_id in voices:
-                        genders.add(gender_id)
-    
-                return list(genders)
-    
             elif setting == SettingsProperties.VOICE:
                 current_locale = cls.getLanguage()
                 voices = cls.voices_by_locale_map.get(current_locale)
@@ -739,28 +807,6 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         languages: List[Tuple[str, str]]  # lang_id, locale_id
         languages, default_lang = cls.settingList(SettingsProperties.LANGUAGE)
         return default_lang
-
-    # Intercept simply for testing purposes: to disable bypass
-    # of voicecache during config to avoid hammering remote
-    # vender service.
-    #
-    # TODO: Remove on ship
-
-    @classmethod
-    def setSetting(cls, key, value):
-        changed = super().setSetting(key, value)
-        VoiceCache.for_debug_setting_changed()
-        return changed
-
- 
-
-    @classmethod
-    def getEngineVolume_str(cls) -> str:
-        volume_validator: NumericValidator
-        volume_validator = cls.get_validator(cls.service_ID,
-                                             property_id=SettingsProperties.VOLUME)
-        volume: int = volume_validator.get_value()
-        return str(volume)
 
     @classmethod
     def getVoice(cls) -> str:
@@ -797,52 +843,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
 
         :return:
         """
-        # Range 0 .. 99, 50 default
-        # API 0.1 .. 1.0. 0.5 default
-        pitch_validator: ConstraintsValidator
-        pitch_validator = cls.get_validator(cls.service_ID,
-                                            property_id=SettingsProperties.PITCH)
-        if Settings.is_use_cache():
-            pitch = pitch_validator.default_value
-        else:
-            pitch: float = pitch_validator.get_tts_value()
-        return pitch
 
-    @classmethod
-    def getPitch_str(cls) -> str:
-        # Range 0 .. 99, 50 default
-        # API 0.1 .. 1.0. 0.5 default
-        # TODO: Solve this differently!!!!
-
-        # pitch: float = cls.getPitch()
-        # return '{:.2f}'.format(pitch)
-        return '50'
-
-    @classmethod
-    def getSpeed(cls) -> float:
-        # Native ResponsiveVoice speed is 1 .. 100, with default of 50,
-        # Since Responsive voice always requires a player, and caching is
-        # a practical necessity, a fixed setting of 50 is used with Responsive Voice
-        # and leave it to the player to adjust speed.
-        #
-        # Kodi TTS uses a speed of +0.25 .. 1 .. +4.0
-        # 0.25 is 1/4 speed and 4.0 is 4x speed
-        #
-        # This speed is represented as a setting as in integer by multiplying
-        # by 100.
-        #
-        speed_validator: NumericValidator
-        speed_validator = cls.get_validator(cls.service_ID,
-                                            property_id=SettingsProperties.SPEED)
-        speed: float
-        speed = speed_validator.get_value()
-        return speed
-
-    @classmethod
-    def getApiSpeed(cls) -> str:
-        speed: float = cls.getSpeed()
-        # Leave it to the player to adjust speed
-        return "50"
 
     @classmethod
     def getGender(cls) -> str:
@@ -852,10 +853,6 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
     @classmethod
     def getAPIKey(cls) -> str:
         return cls.getSetting(SettingsProperties.API_KEY)
-
-    # All voices are empty strings
-    # def setVoice(self, voice):
-    #    self.voice = voice
 
     @staticmethod
     def available() -> bool:

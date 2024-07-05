@@ -35,6 +35,7 @@ class CriticalSettings:
     NOTSET = 0  # logging.NOTSET  # 0
 
     DEFAULT_DEBUG_LEVEL = WARNING
+    DEBUG_LOG_LEVEL_SETTING: str = 'debug_log_level.tts'
 
     POLL_MONITOR_WAIT_FOR_ABORT: bool = True  # False  # If False, wait on abort_event
     SHORT_POLL_DELAY: float = 0.2  # Seconds
@@ -72,7 +73,7 @@ class CriticalSettings:
         if CriticalSettings.addon is None:
             return False
 
-        debug_enabled = True  # CriticalSettings.KODI_SETTINGS.getBool('do_debug')
+        debug_enabled = True  # CriticalSettings.KODI_SETTINGS.getBool(DEBUG_LOG_LEVEL_SETTING)
         return debug_enabled
 
     @staticmethod
@@ -129,8 +130,9 @@ class CriticalSettings:
                 level_setting = 0
                 python_logging_value = CriticalSettings.DEFAULT_DEBUG_LEVEL
             else:  # Debug is enabled in Random Trailers Config Experimental Tab
-                level_setting: int = 4  # CriticalSettings.KODI_SETTINGS.getInt(
-                # 'log_level')
+                level_setting: int = CriticalSettings.KODI_SETTINGS.getInt(
+                                                CriticalSettings.DEBUG_LOG_LEVEL_SETTING)
+                # level_setting = 4
                 if level_setting <= 0:  # Use DEFAULT value
                     python_logging_value = CriticalSettings.DEFAULT_DEBUG_LEVEL
                 elif level_setting == 1:  # Info
@@ -145,13 +147,25 @@ class CriticalSettings:
                 # prefix = '[Thread {!s} {!s}.{!s}:{!s}]'.format(
                 # record.threadName, record.name, record.funcName,
                 # record.lineno)
-                # msg = f'get_logging_level got level_setting: {python_logging_value}'
-                # xbmc.log(msg, level=xbmc.LOGDEBUG)
+                # xbmc.log(f'raw_level: {level_setting} '
+                #          f'python_logging_value: {python_logging_value}')
         except Exception:
             xbmc.log('Exception occurred in get_logging_level',
                      level=xbmc.LOGERROR)
 
         return python_logging_value
+
+    @classmethod
+    def get_log_level(cls) -> int:
+        level_setting: int = CriticalSettings.KODI_SETTINGS.getInt(
+                                                CriticalSettings.DEBUG_LOG_LEVEL_SETTING)
+        xbmc.log(f'log_level: {level_setting}')
+        return level_setting
+
+    @classmethod
+    def set_log_level(cls, level: int) -> None:
+        CriticalSettings.KODI_SETTINGS.setInt(CriticalSettings.DEBUG_LOG_LEVEL_SETTING,
+                                              level)
 
     @classmethod
     def set_plugin_name(cls, plugin_name: str):

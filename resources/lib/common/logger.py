@@ -43,7 +43,7 @@ ADDON: xbmcaddon = CriticalSettings.ADDON
 # If you have a setting that controls whether to log, then specify the
 # setting name here. Otherwise, define DEFAULT_INCLUDE_THREAD_INFO
 
-DEFAULT_LOG_LEVEL: Final[int] = CriticalSettings.get_logging_level()
+DEFAULT_LOG_LEVEL: int = CriticalSettings.get_logging_level()
 
 # Controls what is printed by logging formatter
 
@@ -202,10 +202,19 @@ class BasicLogger(Logger):
 
     @staticmethod
     def get_addon_logger() -> ForwardRef('BasicLogger'):
-        root_logger: BasicLogger = BasicLogger.getLogger()
+        root_logger: BasicLogger | Logger = getLogger()
         addon_logger: BasicLogger = root_logger.getChild(
             CriticalSettings.get_plugin_name())
         return addon_logger
+
+    @staticmethod
+    def set_log_level(log_level: int) -> None:
+        # root_logger: BasicLogger | Logger = getLogger()
+        # root_logger.setLevel(log_level)
+        addon_logger: BasicLogger = BasicLogger.get_addon_logger()
+        addon_logger.setLevel(log_level)
+        for my_handler in addon_logger.handlers:
+            my_handler.setLevel(log_level)
 
     @classmethod
     def get_module_logger(cls,
@@ -221,7 +230,7 @@ class BasicLogger(Logger):
         logger: BasicLogger = None
 
         root_logger = getLogger()
-        addon_logger: BasicLogger = root_logger.getChild(
+        addon_logger: BasicLogger | Logger = root_logger.getChild(
             CriticalSettings.get_plugin_name())
 
         # Calculate the module path relative to the TOP_PACKAGE_PATH
@@ -254,7 +263,6 @@ class BasicLogger(Logger):
 
         logger.debug("Houston, we have a %s", "thorny problem", exc_info=1)
         """
-        level: int = CriticalSettings.get_logging_level()
         if self.isEnabledFor(DEBUG):
             kwargs.setdefault('ignore_frames', 0)
             ignore_frames = kwargs['ignore_frames'] + 1
@@ -991,7 +999,7 @@ _STYLES = {
 
 
 def get_addon_logger() -> BasicLogger:
-    root_logger: BasicLogger = getLogger()
+    root_logger: BasicLogger | Logger = getLogger()
     addon_logger: BasicLogger = root_logger.getChild(CriticalSettings.get_plugin_name())
     return addon_logger
 

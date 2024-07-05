@@ -6,8 +6,10 @@ import time
 from common import *
 
 from common import utils
+from common.logger import BasicLogger
 from .base import WindowReaderBase
 
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 class BusyDialogReader(WindowReaderBase):
     ID = 'busydialog'
@@ -15,7 +17,7 @@ class BusyDialogReader(WindowReaderBase):
     def __init__(self, win_id: str = None,
                  service: ForwardRef('TTSService') = None) -> None:
         super().__init__(win_id, service)
-        pass
+        self.next: int = 0
 
     def init(self):
         self.next = 0

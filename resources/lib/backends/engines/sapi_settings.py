@@ -9,7 +9,7 @@ from backends.settings.i_validators import ValueType
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import SettingsMap
-from backends.settings.validators import ConstraintsValidator, StringValidator
+from backends.settings.validators import ConstraintsValidator, StringValidator, NumericValidator
 from common.constants import Constants
 from common.logger import BasicLogger
 from common.setting_constants import Backends, Players
@@ -25,38 +25,6 @@ class SAPI_Settings:
     displayName = 'SAPI'
     _logger: BasicLogger = None
 
-    class VolumeConstraintsValidator(ConstraintsValidator):
-
-        def __init__(self, setting_id: str, service_id: str,
-                     constraints: Constraints) -> None:
-            super().__init__(setting_id, service_id, constraints)
-            clz = type(self)
-
-        def set_tts_value(self, value: int | float | str,
-                          value_type: ValueType = ValueType.VALUE) -> None:
-            """
-            Keep value fixed at 1
-            :param value:
-            :param value_type:
-            """
-            constraints: Constraints = self.constraints
-            constraints.setSetting(1, self.service_id)
-
-        def get_tts_value(self, default_value=1.0,
-                          value_type: ValueType = ValueType.VALUE) -> int | float | str:
-            """
-            Keep value fixed at 1
-            :return:
-            """
-            return 1
-
-        def setUIValue(self, ui_value: str) -> None:
-            pass
-
-        def getUIValue(self) -> str:
-            value, _, _, _ = self.get_tts_values()
-            return str(value)
-
     def __init__(self, *args, **kwargs):
         clz = type(self)
         super().__init__(*args, **kwargs)
@@ -69,35 +37,46 @@ class SAPI_Settings:
             clz._logger = module_logger.getChild(clz.__name__)
         self.init_settings()
 
-    def init_settings(self):
-        clz = type(self)
-        service_properties = {Constants.NAME: clz.displayName}
-        SettingsMap.define_service(ServiceType.ENGINE, clz.service_ID,
+    @classmethod
+    def init_settings(cls):
+        service_properties = {Constants.NAME: cls.displayName}
+        SettingsMap.define_service(ServiceType.ENGINE, cls.service_ID,
                                    service_properties)
-        volumeConversionConstraints: Constraints = Constraints(minimum=0.1, default=1.0,
-                                                               maximum=2.0, integer=False,
-                                                               decibels=False, scale=1.0,
-                                                               property_name=SettingsProperties.VOLUME,
-                                                               midpoint=1, increment=0.1)
-        volume_constraints_validator = self.VolumeConstraintsValidator(
-                SettingsProperties.VOLUME, self.backend_id, volumeConversionConstraints)
+        volume_validator: NumericValidator
+        volume_validator = NumericValidator(SettingsProperties.VOLUME,
+                                            cls.service_ID,
+                                            minimum=0, maximum=200,
+                                            default=100, is_decibels=False,
+                                            is_integer=True)
+        SettingsMap.define_setting(cls.service_ID,
+                                   SettingsProperties.VOLUME,
+                                   volume_validator)
 
-        SettingsMap.define_setting(self.service_ID, SettingsProperties.VOLUME,
-                                   volume_constraints_validator)
+        speed_validator: NumericValidator
+        speed_validator = NumericValidator(SettingsProperties.SPEED,
+                                           cls.service_ID,
+                                           minimum=.25, maximum=5,
+                                           default=1,
+                                           is_decibels=False,
+                                           is_integer=False)
+        SettingsMap.define_setting(cls.service_ID,
+                                   SettingsProperties.SPEED,
+                                   speed_validator)
+
         _supported_input_formats: List[str] = []
         _supported_output_formats: List[str] = []
         _provides_services: List[ServiceType] = [ServiceType.ENGINE,
                                                  ServiceType.INTERNAL_PLAYER]
-        SoundCapabilities.add_service(clz.service_ID, _provides_services,
+        SoundCapabilities.add_service(cls.service_ID, _provides_services,
                                       _supported_input_formats,
                                       _supported_output_formats)
 
         valid_players: List[str] = [Players.INTERNAL]
         player_validator: StringValidator
-        player_validator = StringValidator(SettingsProperties.PLAYER, clz.service_ID,
+        player_validator = StringValidator(SettingsProperties.PLAYER, cls.service_ID,
                                            allowed_values=valid_players,
                                            default=Players.INTERNAL)
-        SettingsMap.define_setting(clz.service_ID, SettingsProperties.PLAYER,
+        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER,
                                    player_validator)
     @classmethod
     def available(cls) -> bool:

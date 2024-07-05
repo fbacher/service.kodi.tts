@@ -129,8 +129,17 @@ def startService():
     try:
         if preInstalledFirstRun():
             return
-        xbmc.log('starting service.startservice thread', xbmc.LOGDEBUG)
+        # Will crash with these lines
 
+        xbmc.log('starting service.startservice thread', xbmc.LOGDEBUG)
+        # Core dumps
+        # xbmcaddon.Addon().getSettings().setString('engine', 'google')
+        # setSettingString('engine', 'google')
+        # settings: xbmcaddon.Settings = xbmcaddon.Addon().getSettings()
+        # settings.setString('engine', 'zorgo')
+        # xbmcaddon.Addon().setSettingString('engine', 'google')
+        # xbmc.sleep(5000)
+        # xbmc.log(f'service.setting zorgo', xbmc.LOGDEBUG)
         #  Do NOT remove import!!
         from startup.bootstrap_engines import BootstrapEngines
         BootstrapEngines.init()

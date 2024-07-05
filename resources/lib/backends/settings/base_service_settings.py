@@ -1,16 +1,19 @@
 # coding=utf-8
 from __future__ import annotations  # For union operator |
 
+import xbmc
+
 from common import *
 
 from backends.settings.constraints import Constraints
 from backends.settings.service_types import Services
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
-                                          GenderValidator, IntValidator, StringValidator,
+                                          GenderValidator, IntValidator, NumericValidator,
+                                          StringValidator,
                                           TTSNumericValidator)
 from common.logger import BasicLogger
-from common.setting_constants import Backends, Genders
+from common.setting_constants import Backends, Genders, PlayerModes
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
 
@@ -27,19 +30,22 @@ class BaseServiceSettings:
     broken = False
     _logger: BasicLogger = None
     initialized: bool = False
-    ttsPitchConstraints: Constraints = Constraints(minimum=0, default=50,
-                                                   maximum=99, integer=True,
-                                                   decibels=False, scale=1.0,
-                                                   property_name=SettingsProperties.PITCH,
-                                                   midpoint=50, increment=1.0,
-                                                   tts_line_value=50)
+    tts_pitch_validator: TTSNumericValidator
+    tts_pitch_validator = TTSNumericValidator(SettingsProperties.PITCH,
+                                              minimum=0, maximum=99, default=50,
+                                              is_decibels=False, is_integer=True,
+                                              internal_scale_factor=1)
+    SettingsMap.define_setting(service_ID, SettingsProperties.PITCH,
+                               tts_pitch_validator)
+
     tts_volume_validator: TTSNumericValidator
     tts_volume_validator = TTSNumericValidator(SettingsProperties.VOLUME,
                                                minimum=-120, maximum=120,
                                                default=0, is_decibels=True,
                                                is_integer=True,
                                                internal_scale_factor=10)
-
+    SettingsMap.define_setting(service_ID, SettingsProperties.VOLUME,
+                               tts_volume_validator)
     tts_speed_validator: TTSNumericValidator
     tts_speed_validator = TTSNumericValidator(SettingsProperties.SPEED,
                                               minimum=25, maximum=300,
@@ -47,13 +53,15 @@ class BaseServiceSettings:
                                               is_decibels=False,
                                               is_integer=False,
                                               internal_scale_factor=100)
+    SettingsMap.define_setting(service_ID, SettingsProperties.SPEED,
+                               tts_speed_validator)
 
     # TODO: move to default settings map
-    TTSConstraints: Dict[str, Constraints] = {
-        SettingsProperties.SPEED: tts_speed_validator,
-        SettingsProperties.PITCH: ttsPitchConstraints,
-        SettingsProperties.VOLUME: tts_volume_validator
-    }
+    # TTSConstraints: Dict[str, Constraints] = {
+    #    SettingsProperties.SPEED: tts_speed_validator,
+    #    SettingsProperties.PITCH: tts_pitch_validator,
+    #    SettingsProperties.VOLUME: tts_volume_validator
+    #  }
     global_settings_initialized: bool = False
 
     # _supported_input_formats: List[str] = []
@@ -64,6 +72,7 @@ class BaseServiceSettings:
         # Allow parents to define settings first, so that they can be overriden here
         # and not the other way around
 
+        xbmc.log(f'In base_service_settings.__init__', xbmc.LOGDEBUG)
         # BaseServices()
         clz = type(self)
 
@@ -91,28 +100,33 @@ class BaseServiceSettings:
                                    SettingsProperties.VOLUME,
                                    cls.tts_volume_validator)
         SettingsMap.define_setting(Services.TTS_SERVICE,
-                                   SettingsProperties.SPEED,
-                                   cls.tts_speed_validator)
-
+                                   SettingsProperties.PITCH,
+                                   cls.tts_pitch_validator)
         SettingsMap.define_setting(BaseServiceSettings.service_ID,
                                    SettingsProperties.SPEED,
                                    BaseServiceSettings.tts_speed_validator)
 
-        pitch_constraints_validator: ConstraintsValidator
-        pitch_constraints_validator = ConstraintsValidator(SettingsProperties.PITCH,
-                                                           Services.TTS_SERVICE,
-                                                           BaseServiceSettings.ttsPitchConstraints)
-        SettingsMap.define_setting(BaseServiceSettings.service_ID,
-                                   SettingsProperties.PITCH,
-                                   pitch_constraints_validator)
-
     @classmethod
     def init_settings(cls):
+        cls._logger.debug(f'In init_settings')
+        '''
         pipe_validator: BoolValidator
         pipe_validator = BoolValidator(SettingsProperties.PIPE, cls.service_ID,
                                        default=False)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PIPE,
                                    pipe_validator)
+        '''
+        allowed_player_modes: List[str] = [
+            PlayerModes.SLAVE_FILE.value,
+            PlayerModes.FILE.value
+        ]
+        player_mode_validator: StringValidator
+        player_mode_validator = StringValidator(SettingsProperties.PLAYER_MODE,
+                                                cls.service_ID,
+                                                allowed_values=allowed_player_modes,
+                                                default=PlayerModes.SLAVE_FILE.value)
+        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER_MODE,
+                                   player_mode_validator)
 
         engine_id_validator = StringValidator(SettingsProperties.ENGINE,
                                               '',
@@ -131,6 +145,7 @@ class BaseServiceSettings:
                                    SettingsProperties.ADDONS_MD5,
                                    addon_md5_validator)
 
+        '''
         auto_item_extra_validator: BoolValidator
         auto_item_extra_validator = BoolValidator(SettingsProperties.AUTO_ITEM_EXTRA,
                                                   Services.TTS_SERVICE,
@@ -146,6 +161,8 @@ class BaseServiceSettings:
         SettingsMap.define_setting(Services.TTS_SERVICE,
                                    SettingsProperties.AUTO_ITEM_EXTRA_DELAY,
                                    auto_item_extra_delay_validator)
+        '''
+        '''
         background_progress_validator: IntValidator
         background_progress_validator = IntValidator(
                 SettingsProperties.BACKGROUND_PROGRESS_INTERVAL, Services.TTS_SERVICE,
@@ -154,6 +171,7 @@ class BaseServiceSettings:
         SettingsMap.define_setting(Services.TTS_SERVICE,
                                    SettingsProperties.BACKGROUND_PROGRESS_INTERVAL,
                                    background_progress_validator)
+        '''
         disable_broken_services: BoolValidator
         disable_broken_services = BoolValidator(
                 SettingsProperties.DISABLE_BROKEN_SERVICES, Services.TTS_SERVICE,
@@ -265,6 +283,7 @@ class BaseServiceSettings:
         SettingsMap.define_setting(Services.TTS_SERVICE, SettingsProperties.GENDER,
                                    gender_validator)
         gender_validator.set_tts_value(Genders.FEMALE)
+        cls._logger.debug(f'exiting init_settings')
 
 
         # def register(self, what: Type[ITTSBackendBase]) -> None:

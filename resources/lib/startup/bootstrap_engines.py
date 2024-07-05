@@ -4,6 +4,8 @@ from __future__ import annotations  # For union operator |
 # from backends.settings.service_types import Services
 import sys
 
+import xbmcaddon
+
 from common import *
 
 from backends.base import BaseEngineService
@@ -32,26 +34,48 @@ class BootstrapEngines:
         Backends.ESPEAK_ID,
         # JAWSTTSBackend(),
         # NVDATTSBackend(),
-        Backends.FLITE_ID,
-        Backends.PICO_TO_WAVE_ID,
-        Backends.PIPER_ID,
-        Backends.FESTIVAL_ID,
+        # Backends.FLITE_ID,
+        # Backends.PICO_TO_WAVE_ID,
+        # Backends.PIPER_ID,
+        # Backends.FESTIVAL_ID,
         # CepstralTTSBackend(),
         #            CepstralTTSOEBackend(),
-        Backends.SPEECH_DISPATCHER_ID,
+        # Backends.SPEECH_DISPATCHER_ID,
         #            VoiceOverBackend(),
         # SpeechServerBackend(),
         # ReciteTTSBackend(),
         # GoogleTTSBackend(),
         Backends.GOOGLE_ID,
-        Backends.RESPONSIVE_VOICE_ID,
-        Backends.EXPERIMENTAL_ENGINE_ID,
+        # Backends.RESPONSIVE_VOICE_ID,
+        # Backends.EXPERIMENTAL_ENGINE_ID,
         #   SpeechUtilComTTSBackend(),
         # ESpeakCtypesTTSBackend(),
-        Backends.SAPI_ID,
+        # Backends.SAPI_ID,
         Backends.LOG_ONLY_ID
     ]
     _initialized: bool = False
+    '''
+    @classmethod
+    def init(cls) -> None:
+        module_logger.debug(f'initializing')
+        cls._initialized = True
+        cls._logger = module_logger.getChild(cls.__class__.__name__)
+        addon = xbmcaddon.Addon(Constants.ADDON_ID)
+        all_settings: xbmcaddon.Settings = addon.getSettings()
+        # bval: bool = all_settings.getBool('gui.tts')
+        engine: str = all_settings.getString('engine')
+        debug_level: int = all_settings.getInt('debug_log_level.tts')
+        speed_tts: int = all_settings.getInt('speed.tts')
+        gender_eSpeak: str = all_settings.getString('gender.eSpeak')
+
+        cls._logger.debug(f'engine: {engine} debug_level: {debug_level} '
+                          f'speed_tts: {speed_tts} gender: {gender_eSpeak}')
+
+        all_settings.setString('engine', 'Trouble')
+        addon.openSettings()
+        exit(0)
+        return
+    '''
 
     @classmethod
     def init(cls) -> None:
@@ -73,7 +97,9 @@ class BootstrapEngines:
 
     @classmethod
     def load_base(cls):
+        cls._logger.debug(f'importing BaseServiceSettings')
         from backends.settings.base_service_settings import BaseServiceSettings
+        cls._logger.debug(f'imported BaseServiceSettings')
         BaseServiceSettings()
 
     @classmethod
@@ -92,7 +118,7 @@ class BootstrapEngines:
         except Exception as e:
             cls._logger.exception('')
             SettingsMap.set_is_available(Backends.ESPEAK_ID, Reason.BROKEN)
-
+        '''
         try:
             from backends.engines.festival_settings import FestivalSettings
             festival: FestivalSettings = FestivalSettings()
@@ -120,7 +146,7 @@ class BootstrapEngines:
         except Exception as e:
             cls._logger.exception('')
             SettingsMap.set_is_available(Backends.FLITE_ID, Reason.BROKEN)
-
+        '''
         try:
             from backends.engines.google_settings import GoogleSettings
             google_settings: GoogleSettings = GoogleSettings()
@@ -135,6 +161,7 @@ class BootstrapEngines:
             cls._logger.exception('')
             SettingsMap.set_is_available(Backends.GOOGLE_ID, Reason.BROKEN)
 
+        '''
         try:
             from backends.settings.Pico2WaveSettings import Pico2WaveSettings
             pico2Wave: Pico2WaveSettings = Pico2WaveSettings()
@@ -233,6 +260,7 @@ class BootstrapEngines:
             except Exception as e:
                 cls._logger.exception('')
                 SettingsMap.set_is_available(Backends.SAPI_ID, Reason.BROKEN)
+        '''
 
     @classmethod
     def load_current_backend(cls) -> str:
@@ -245,7 +273,7 @@ class BootstrapEngines:
         SettingsMap.define_setting(SettingsProperties.ENGINE, Services.TTS_SERVICE,
                                    engine_id_validator)
         """
-        engine_id: str = SettingsLowLevel.get_engine_id(bootstrap=True,
+        engine_id: str = SettingsLowLevel.get_engine_id_ll(bootstrap=True,
                                                         default=None)
         cls._logger.debug(f'engine_id: {engine_id}')
         if engine_id is None:
@@ -301,7 +329,6 @@ class BootstrapEngines:
                     cls._logger.exception('Loading SAPI')
             else:  # Catch all default
                 try:
-                    # engine_id = ESpeakSettings().service_ID
                     from backends.responsive_voice import ResponsiveVoiceTTSBackend
                     engine = ResponsiveVoiceTTSBackend()
                 except Exception as e:

@@ -1,39 +1,48 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations  # For union operator |
 
+from typing import TypeAlias
+
 import xbmc
 
 from common import *
-
+from common.logger import *
 from common.messages import Messages
+from common.phrases import Phrase, PhraseList
 from . import guitables
 from .base import WindowReaderBase
+
+str_or_int: TypeAlias = str | int
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class PVRWindowReaderBase(WindowReaderBase):
 
-    def controlIsOnView(self, controlID):
+    def controlIsOnView(self, control_id) -> bool:
         return not xbmc.getCondVisibility('ControlGroup(9000).HasFocus(0)')
 
     def init(self):
         self.mode = False
 
-    def updateMode(self, controlID):
-        if self.controlIsOnView(controlID):
+    def updateMode(self, control_id):
+        if self.controlIsOnView(control_id):
             self.mode = 'VIEW'
         else:
             self.mode = None
         return self.mode
 
-    def getControlDescription(self, controlID):
+    def getControlDescription(self, control_id, phrases: PhraseList) -> bool:
         old = self.mode
-        new = self.updateMode(controlID)
-        if new is None and old != None:
-            return 'View Options'
+        new = self.updateMode(control_id)
+        if new is None and old is not None:
+            phrases.add_text(texts='View Options')
+            return True
+        return False
 
 
 class PVRGuideWindowReader(PVRWindowReaderBase):
     ID = 'pvrguide'
+    timelineInfo: Tuple[str_or_int, ...]
     timelineInfo = (Messages.get_msg(Messages.CHANNEL),  # PVR
                     '$INFO[ListItem.ChannelNumber]',
                     '$INFO[ListItem.ChannelName]',
@@ -43,6 +52,7 @@ class PVRGuideWindowReader(PVRWindowReaderBase):
                     '$INFO[ListItem.Plot]'
                     )
 
+    nowNextInfo: Tuple[str_or_int, ...]
     nowNextInfo = (Messages.get_msg(Messages.CHANNEL),
                    '$INFO[ListItem.ChannelNumber]',
                    '$INFO[ListItem.ChannelName]',
@@ -50,36 +60,37 @@ class PVRGuideWindowReader(PVRWindowReaderBase):
                    '$INFO[ListItem.Plot]'
                    )
 
-    def getControlText(self, controlID):
+    def getControlText(self, control_id: int | None, phrases: PhraseList) -> bool:
         cls = type(self)
-        if not controlID:
-            return ('', '')
+        compare: str
+        text: str
+        if not control_id:
+            return False
         if self.slideoutHasFocus():
-            text = self.getSlideoutText(controlID)
-            cls._logger.debug(f' controlID: {controlID} slideoutHasFocus: {text}')
-            return text
+            return self.getSlideoutText(control_id, phrases)
         text = xbmc.getInfoLabel('System.CurrentControl')
         if not text:
-            return ('', '')
-        compare = text + xbmc.getInfoLabel('ListItem.StartTime') + xbmc.getInfoLabel(
-            'ListItem.EndTime')
-        cls._logger.debug(f'controlID: {controlID} text: {text} compare: {compare}')
-        return (text, compare)
+            return False
+        text_id: str = (f"{text}{xbmc.getInfoLabel('ListItem.StartTime')}"
+                        f"{xbmc.getInfoLabel('ListItem.EndTime')}")
+        phrases.add_text(texts=text, text_id=text_id)
+        return True
 
-    def getItemExtraTexts(self, controlID):
-        text = None
-        if self.controlIsOnView(controlID):
-            if controlID == 10:  # EPG: Timeline
-                text = guitables.convertTexts(self.winID, self.timelineInfo)
-            elif controlID == 11 or controlID == 12 or controlID == 13:  # EPG:
+    def getItemExtraTexts(self, control_id: int, phrases: PhraseList) -> bool:
+        success: bool = False
+        if self.controlIsOnView(control_id):
+            if control_id == 10:  # EPG: Timeline
+                success = guitables.convertTexts(self.winID, self.timelineInfo, phrases)
+            elif control_id == 11 or control_id == 12 or control_id == 13:  # EPG:
                 # Now/Next/Channel
-                info = list(self.nowNextInfo)
+                next_info = list(self.nowNextInfo)
                 if xbmc.getCondVisibility('ListItem.IsRecording'):
-                    info.append(19043)
+                    next_info.append(19043)
                 elif xbmc.getCondVisibility('ListItem.HasTimer'):
-                    info.append(31510)
-                text = guitables.convertTexts(self.winID, info)
-        return text
+                    next_info.append(31510)
+                success = guitables.convertTexts(self.winID, tuple(next_info), phrases)
+
+        return success
 
 
 class PVRChannelsWindowReader(PVRWindowReaderBase):
@@ -91,54 +102,56 @@ class PVRChannelsWindowReader(PVRWindowReaderBase):
                    '$INFO[ListItem.Plot]'
                    )
 
-    def getControlText(self, controlID):
+    def getControlText(self, control_id, phrases: PhraseList) -> bool:
         cls = type(self)
-        cls._logger.debug(f'controlID: {controlID}')
-        if not controlID:
-            return ('', '')
+        if cls._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
+            cls._logger.debug_extra_verbose(f'control_id: {control_id}')
+        compare: str
+        text: str
+        if not control_id:
+            return False
         if self.slideoutHasFocus():
-            text = self.getSlideoutText(controlID)
-            cls._logger.debug(f'slideoutText: {text}')
-            return text
+            return self.getSlideoutText(control_id, phrases)
         text = f'{xbmc.getInfoLabel("ListItem.ChannelNumber")}... ' \
                f'{xbmc.getInfoLabel("ListItem.Label")}... ' \
                f'{xbmc.getInfoLabel("ListItem.Title")}'
         if not text:
-            return ('', '')
-        compare = text + xbmc.getInfoLabel('ListItem.StartTime') + xbmc.getInfoLabel(
+            return False
+        text_id: str = text + xbmc.getInfoLabel('ListItem.StartTime') + xbmc.getInfoLabel(
             'ListItem.EndTime')
-        cls._logger.debug(f'text: {text} compare: {compare}')
-        return (text, compare)
+        phrases.add_text(texts=text, text_id=text_id)
+        return True
 
-    def getItemExtraTexts(self, controlID):
-        text = None
-        if self.controlIsOnView(controlID):
-            if controlID == 50:  # Channel (TV or Radio)
-                info = list(self.channelInfo)
+    def getItemExtraTexts(self, control_id: int, phrases: PhraseList) -> bool:
+        success: bool = False
+        if self.controlIsOnView(control_id):
+            if control_id == 50:  # Channel (TV or Radio)
+                info_text = list(self.channelInfo)
                 if xbmc.getCondVisibility('ListItem.IsRecording'):
-                    info.insert(0, 19043)
-                text = guitables.convertTexts(self.winID, info)
-        return text
+                    info_text.insert(0, 19043)
+                success = guitables.convertTexts(self.winID, info_text, phrases)
+        return success
 
 
 class PVRRecordingsWindowReader(PVRWindowReaderBase):
     ID = 'pvrrecordings'
 
-    def getControlText(self, controlID):
-        if not controlID:
-            return ('', '')
+    def getControlText(self, control_id, phrases: PhraseList) -> bool:
+        clz = type(self)
+        if not control_id:
+            return False
         if self.slideoutHasFocus():
-            return self.getSlideoutText(controlID)
+            return self.getSlideoutText(control_id, phrases)
         text = xbmc.getInfoLabel('System.CurrentControl')
         if not text:
-            return ('', '')
-        return (text, text)
+            return False
+        return True
 
-    def getItemExtraTexts(self, controlID):
-        text = None
-        if self.controlIsOnView(controlID):
-            text = text = guitables.convertTexts(self.winID, ('$INFO[ListItem.Plot]',))
-        return text
+    def getItemExtraTexts(self, control_id, phrases: PhraseList) -> bool:
+        if self.controlIsOnView(control_id):
+            return guitables.convertTexts(self.winID, ('$INFO[ListItem.Plot]',),
+                                          phrases)
+        return False
 
 
 class PVRTimersWindowReader(PVRWindowReaderBase):
@@ -150,23 +163,25 @@ class PVRTimersWindowReader(PVRWindowReaderBase):
                  '$INFO[ListItem.Comment]'
                  )
 
-    def getControlText(self, controlID):
-        if not controlID:
-            return ('', '')
+    def getControlText(self, control_id: int | None, phrases: PhraseList) -> bool:
+        clz = type(self)
+        text: str
+        compare: str
+        if not control_id:
+            return False
         if self.slideoutHasFocus():
-            return self.getSlideoutText(controlID)
+            return self.getSlideoutText(control_id, phrases)
         text = xbmc.getInfoLabel('System.CurrentControl')
         if not text:
-            return ('', '')
-        compare = text + xbmc.getInfoLabel('ListItem.StartTime') + xbmc.getInfoLabel(
+            return False
+        text_id: str = text + xbmc.getInfoLabel('ListItem.StartTime') + xbmc.getInfoLabel(
             'ListItem.EndTime')
-        return (text, compare)
+        phrases.add_text(texts=text, text_id=text_id)
+        return True
 
-    def getItemExtraTexts(self, controlID):
-        text = None
-        if self.controlIsOnView(controlID):
-            text = guitables.convertTexts(self.winID, self.timerInfo)
-        return text
+    def getItemExtraTexts(self, control_id: int| None, phrases: PhraseList) -> bool:
+        if self.controlIsOnView(control_id):
+            return guitables.convertTexts(self.winID, self.timerInfo, phrases)
 
 
 class PVRSearchWindowReader(PVRWindowReaderBase):
@@ -177,27 +192,28 @@ class PVRSearchWindowReader(PVRWindowReaderBase):
                   '$INFO[ListItem.Date]'
                   )
 
-    def getControlText(self, controlID):
-        if not controlID:
-            return ('', '')
+    def getControlText(self, control_id: int | None, phrases: PhraseList) -> bool:
+        clz = type(self)
+        if not control_id:
+            return False
         if self.slideoutHasFocus():
-            return self.getSlideoutText(controlID)
+            return self.getSlideoutText(control_id, phrases)
         text = xbmc.getInfoLabel('System.CurrentControl')
         if not text:
-            return ('', '')
-        compare = text + xbmc.getInfoLabel('ListItem.Date')
-        return (text, compare)
+            return False
+        text_id: str = text + xbmc.getInfoLabel('ListItem.Date')
+        phrases.add_text(texts=text, text_id=text_id)
+        return True
 
-    def getItemExtraTexts(self, controlID):
-        text = None
-        if self.controlIsOnView(controlID):
-            info = list(self.searchInfo)
+    def getItemExtraTexts(self, control_id: int | None, phrases: PhraseList) -> bool:
+        if self.controlIsOnView(control_id):
+            text_info = list(self.searchInfo)
             if xbmc.getCondVisibility('ListItem.IsRecording'):
-                info.append(19043)
+                text_info.append(19043)
             elif xbmc.getCondVisibility('ListItem.HasTimer'):
-                info.append(31510)
-            text = guitables.convertTexts(self.winID, info)
-        return text
+                text_info.append(31510)
+            return guitables.convertTexts(self.winID, tuple(text_info), phrases)
+        return False
 
 
 class PVRWindowReader(PVRWindowReaderBase):
@@ -224,32 +240,46 @@ class PVRWindowReader(PVRWindowReaderBase):
                    '$INFO[ListItem.Plot]'
                    )
 
-    def controlIsOnView(self, controlID):
-        return controlID > 9 and controlID < 18
+    def controlIsOnView(self, control_id: int) -> bool:
+        return 9 < control_id < 18
 
-    def getControlText(self, controlID):
-        if not controlID:
-            return ('', '')
-        text = None
-        if controlID == 11 or controlID == 12:  # Channel (TV or Radio)
-            text = '{0}... {1}... {2}'.format(xbmc.getInfoLabel('ListItem.ChannelNumber'),
-                                              xbmc.getInfoLabel('ListItem.Label'),
-                                              xbmc.getInfoLabel('ListItem.Title'))
+    def getControlText(self, control_id: int, phrases: PhraseList) -> bool:
+        clz = type(self)
+        phrases: PhraseList = PhraseList()
+        if not control_id:
+            return False
+        success: bool = False
+        text: str = ''
+        all_texts: str = ''
+        orig_phrase_count: int = len(phrases)
+        if control_id == 11 or control_id == 12:  # Channel (TV or Radio)
+            text = f"{xbmc.getInfoLabel('ListItem.ChannelNumber')}"
+            all_texts = text
+            phrases.add_text(texts=text,
+                             post_pause_ms=Phrase.PAUSE_SHORT)
+            text = "{xbmc.getInfoLabel('ListItem.Label')'}"
+            all_texts += text
+            phrases.add_text(texts=text,
+                             post_pause_ms=Phrase.PAUSE_SHORT)
+            text = "{xbmc.getInfoLabel('ListItem.Title')}"
+            all_texts += text
+            phrases.add_text(texts=text)
         else:
             text = xbmc.getInfoLabel('System.CurrentControl')
-        if not text:
-            return ('', '')
-        compare = text + xbmc.getInfoLabel('ListItem.StartTime') + xbmc.getInfoLabel(
-            'ListItem.EndTime')
-        return (text, compare)
+            all_texts = text
+            phrases.add_text(texts=text)
 
-    def getItemExtraTexts(self, controlID):
-        text = None
-        if self.controlIsOnView(controlID):
-            if controlID == 10:  # EPG: Timeline
-                text = guitables.convertTexts(self.winID, self.timelineInfo)
-            elif controlID == 11 or controlID == 12:  # Channel (TV or Radio)
-                text = guitables.convertTexts(self.winID, self.channelInfo)
-            elif controlID == 16:  # EPG: Now/Next
-                text = guitables.convertTexts(self.winID, self.nowNextInfo)
-        return text
+        text_id: str = (f"{all_texts} {xbmc.getInfoLabel('ListItem.StartTime')} "
+                        f"{xbmc.getInfoLabel('ListItem.EndTime')}")
+        phrases[orig_phrase_count].set_text_id(text_id)
+        return True
+
+    def getItemExtraTexts(self, control_id, phrases: PhraseList) -> bool:
+        if self.controlIsOnView(control_id):
+            if control_id == 10:  # EPG: Timeline
+                return guitables.convertTexts(self.winID, self.timelineInfo, phrases)
+            elif control_id == 11 or control_id == 12:  # Channel (TV or Radio)
+                return guitables.convertTexts(self.winID, self.channelInfo, phrases)
+            elif control_id == 16:  # EPG: Now/Next
+                return guitables.convertTexts(self.winID, self.nowNextInfo, phrases)
+        return False

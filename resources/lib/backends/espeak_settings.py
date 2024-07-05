@@ -19,7 +19,7 @@ from backends.settings.validators import (BoolValidator, ConstraintsValidator,
                                           StringValidator)
 from common.constants import Constants
 from common.logger import BasicLogger
-from common.setting_constants import Backends, Players
+from common.setting_constants import Backends, PlayerModes, Players
 from common.system_queries import SystemQueries
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -32,7 +32,6 @@ class ESpeakSettings(BaseServiceSettings):
     service_ID: str = Services.ESPEAK_ID
     displayName = 'eSpeak'
 
- 
     # Every setting from settings.xml must be listed here
     # SettingName, default value
 
@@ -67,17 +66,14 @@ class ESpeakSettings(BaseServiceSettings):
         # Need to define Conversion Constraints between the TTS 'standard'
         # constraints/settings to the engine's constraints/settings
 
-        pitch_constraints: Constraints = Constraints(minimum=0, default=50,
-                                                     maximum=99, integer=True,
-                                                     decibels=False, scale=1.0,
-                                                     property_name=SettingsProperties.PITCH,
-                                                     midpoint=50, increment=1.0,
-                                                     tts_line_value=50)
-
-        pitch_constraints_validator = ConstraintsValidator(SettingsProperties.PITCH,
-                                                           cls.engine_id,
-                                                           pitch_constraints)
-
+        pitch_validator: NumericValidator
+        pitch_validator = NumericValidator(SettingsProperties.PITCH,
+                                           cls.service_ID,
+                                           minimum=0, maximum=99, default=50,
+                                           is_decibels=False, is_integer=True,
+                                           increment=1)
+        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PITCH,
+                                   pitch_validator)
 
         volume_validator: NumericValidator
         volume_validator = NumericValidator(SettingsProperties.VOLUME,
@@ -97,9 +93,21 @@ class ESpeakSettings(BaseServiceSettings):
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.CONVERTER,
                                    audio_converter_validator)
 
-        pipe_validator: BoolValidator
-        pipe_validator = BoolValidator(SettingsProperties.PIPE, cls.engine_id,
-                                       default=False)
+        allowed_player_modes: List[str] = [
+            PlayerModes.SLAVE_FILE.value,
+            PlayerModes.FILE.value,
+            PlayerModes.PIPE.value
+        ]
+        player_mode_validator: StringValidator
+        player_mode_validator = StringValidator(SettingsProperties.PLAYER_MODE,
+                                                cls.service_ID,
+                                                allowed_values=allowed_player_modes,
+                                                default=PlayerModes.SLAVE_FILE.value)
+        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER_MODE,
+                                   player_mode_validator)
+        # pipe_validator: BoolValidator
+        # pipe_validator = BoolValidator(SettingsProperties.PIPE, cls.engine_id,
+        #                                default=False)
 
         #  TODO:  Need to eliminate un-available players
         #         Should do elimination in separate code
@@ -128,33 +136,37 @@ class ESpeakSettings(BaseServiceSettings):
 
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOICE,
                                    voice_validator)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PIPE,
-                                   pipe_validator)
+        # SettingsMap.define_setting(cls.service_ID, SettingsProperties.PIPE,
+        #                            pipe_validator)
 
-        # ttsPitchConstraints: Constraints = Constraints(0, 50, 99, True, False, 1.0,
-        #                                        SettingsProperties.PITCH, 50, 1.0)
+        # 'normal speed' is 175 words per minute.
+        # The slowest supported rate appears to be about 70, any slower doesn't
+        # seem to make any real difference. The maximum speed is unbounded, but
+        # 4x (4 * 175 = 700) is hard to listen to.
+        # TTS scale is based upon mpv/mplayer which is a multiplier which
+        # has 1 = no change in speed, 0.25 slows down by 4, and 4 speeds up by 4
+        #
+        # In other words espeak speed = 175 * mpv speed
 
-        speedConstraints: Constraints = Constraints(minimum=43, default=175,
-                                                    maximum=700, integer=True,
-                                                    decibels=False, scale=1.0,
-                                                    property_name=SettingsProperties.SPEED,
-                                                    midpoint=175, increment=45,
-                                                    tts_line_value=175)
+        speed_validator: NumericValidator
+        speed_validator = NumericValidator(SettingsProperties.SPEED,
+                                           cls.service_ID,
+                                           minimum=43, maximum=700,
+                                           default=176,
+                                           is_decibels=False,
+                                           is_integer=True, increment=45)
+        SettingsMap.define_setting(cls.service_ID,
+                                   SettingsProperties.SPEED,
+                                   speed_validator)
 
-        #  Speed in words per minute. Default 175
-        speed_constraints_validator = ConstraintsValidator(SettingsProperties.SPEED,
-                                                           cls.engine_id,
-                                                           speedConstraints)
-
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.SPEED,
-                                   speed_constraints_validator)
-
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PITCH,
-                                   pitch_constraints_validator)
-        # SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOLUME,
-        #                           volume_constraints_validator)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER,
                                    player_validator)
+        cache_validator: BoolValidator
+        cache_validator = BoolValidator(SettingsProperties.CACHE_SPEECH, cls.service_ID,
+                                        default=True)
+
+        SettingsMap.define_setting(cls.service_ID, SettingsProperties.CACHE_SPEECH,
+                                   cache_validator)
 
 
     @classmethod

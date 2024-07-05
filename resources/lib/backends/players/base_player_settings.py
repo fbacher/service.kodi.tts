@@ -1,5 +1,6 @@
 from __future__ import annotations  # For union operator |
 
+from backends.settings.service_types import Services
 from common import *
 
 from backends.i_tts_backend_base import ITTSBackendBase
@@ -7,55 +8,20 @@ from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.constraints import Constraints
 from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import SettingsMap
-from backends.settings.validators import (StringValidator,
+from backends.settings.validators import (NumericValidator, StringValidator,
                                           Validator)
 from common.base_services import BaseServices
 from common.setting_constants import Players
 
 
 class BasePlayerSettings(BaseServiceSettings):
-
+    service_ID: str = Services.PLAYER_SERVICE
     broken = False
 
-    # Define TTS native scales for volume, speed, etc
-    #
-    # Min, Default, Max, Integer_Only (no float)
-    ttsPitchConstraints: Constraints = Constraints(0, 50, 99, True, False, 1.0,
-                                                   SettingsProperties.PITCH, 50, 1.0)
-    ttsVolumeConstraints: Constraints = Constraints(minimum=-12, default=0, maximum=12,
-                                                    integer=True, decibels=True,
-                                                    scale=1.0,
-                                                    property_name=SettingsProperties.VOLUME,
-                                                    midpoint=0, increment=1.0)
-    ttsSpeedConstraints: Constraints = Constraints(25, 100, 400, False, False, 0.01,
-                                                   SettingsProperties.SPEED, 100, 0.25)
-
-    # TODO: move to default settings map
-    TTSConstraints: Dict[str, Constraints] = {
-        SettingsProperties.SPEED : ttsSpeedConstraints,
-        SettingsProperties.PITCH : ttsPitchConstraints,
-        SettingsProperties.VOLUME: ttsVolumeConstraints
-    }
-    # TODO: eliminate these
-    pitchConstraints: Constraints = ttsPitchConstraints
-    volumeConstraints: Constraints = ttsVolumeConstraints
-    speedConstraints: Constraints = ttsSpeedConstraints
-    # Volume scale as presented to the user
-
-    # volumeExternalEndpoints = (-12, 12)
-    # volumeStep = 1
-    # volumeSuffix = 'dB'
-    # speedInt = True
-    # _loadedSettings = {}
-    #  currentSettings = []
     settings: Dict[str, Validator] = {}
     constraints: Dict[str, Constraints] = {}
 
     initialized_settings: bool = False
-
-    # _supported_input_formats: List[str] = []
-    # _supported_output_formats: List[str] = []
-    # _provides_services: List[ServiceType] = [ServiceType.ENGINE]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

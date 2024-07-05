@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
 
 """
 Created on Feb 19, 2019

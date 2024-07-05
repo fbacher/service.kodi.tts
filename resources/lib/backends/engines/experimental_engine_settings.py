@@ -89,17 +89,6 @@ class ExperimentalSettings(BaseServiceSettings):
         # Need to define Conversion Constraints between the TTS 'standard'
         # constraints/settings to the engine's constraints/settings
 
-        speedConstraints: Constraints = Constraints(25, 100, 400, False, False, 0.01,
-                                                    SettingsProperties.SPEED, 125, 0.25)
-        speed_constraints_validator = ConstraintsValidator(SettingsProperties.SPEED,
-                                                           cls.engine_id,
-                                                           speedConstraints)
-
-        pitch_constraints: Constraints = Constraints(0, 50, 99, True, False, 50.0,
-                                                     SettingsProperties.PITCH)
-        pitch_constraints_validator = ConstraintsValidator(SettingsProperties.PITCH,
-                                                           cls.engine_id,
-                                                           pitch_constraints)
         volume_validator: NumericValidator
         volume_validator = NumericValidator(SettingsProperties.VOLUME,
                                             cls.service_ID,
@@ -109,6 +98,24 @@ class ExperimentalSettings(BaseServiceSettings):
         SettingsMap.define_setting(cls.service_ID,
                                    SettingsProperties.VOLUME,
                                    volume_validator)
+        speed_validator: NumericValidator
+        speed_validator = NumericValidator(SettingsProperties.SPEED,
+                                           cls.service_ID,
+                                           minimum=.25, maximum=5,
+                                           default=1,
+                                           is_decibels=False,
+                                           is_integer=False)
+        SettingsMap.define_setting(cls.service_ID,
+                                   SettingsProperties.SPEED,
+                                   speed_validator)
+
+        pitch_validator: NumericValidator
+        pitch_validator = NumericValidator(SettingsProperties.PITCH,
+                                           cls.service_ID,
+                                           minimum=0, maximum=99, default=50,
+                                           is_decibels=False, is_integer=True)
+        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PITCH,
+                                   pitch_validator)
         language_validator: StringValidator
         language_validator = StringValidator(SettingsProperties.LANGUAGE, cls.engine_id,
                                              allowed_values=[], min_length=2,
@@ -142,10 +149,6 @@ class ExperimentalSettings(BaseServiceSettings):
                                    voice_validator)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PIPE,
                                    pipe_validator)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.SPEED,
-                                   speed_constraints_validator)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PITCH,
-                                   pitch_constraints_validator)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER,
                                    player_validator)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.CACHE_SPEECH,

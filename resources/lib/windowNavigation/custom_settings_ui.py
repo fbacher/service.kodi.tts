@@ -1,5 +1,7 @@
 from __future__ import annotations  # For union operator |
 
+import xbmc
+
 '''
 Created on Jul 7, 2020
 
@@ -19,23 +21,29 @@ else:
     module_logger = BasicLogger.get_module_logger()
 
 
-class SettingsGUI(object):
+class SettingsGUI:
     '''
     classdocs
     '''
+
+    gui: SettingsDialog = None
 
     def __init__(self, params):
         '''
         Constructor
         '''
+        clz = type(self)
         self._logger = module_logger.getChild(self.__class__.__name__)
+        clz.gui: SettingsDialog = None
 
     @staticmethod
     def launch():
         threading.current_thread.name = 'SettingsGUI'
         script_path = Constants.ADDON_PATH
         # Settings.save_settings()
-        gui = SettingsDialog('script-tts-settings-dialog.xml',
+        SettingsGUI.gui = SettingsDialog('script-tts-settings-dialog.xml',
                              script_path,
                              'Default')
-        gui.doModal()
+        xbmc.log(f'SettingsGUI.gui.')
+        SettingsGUI.gui.doModal()
+        SettingsGUI.gui = None

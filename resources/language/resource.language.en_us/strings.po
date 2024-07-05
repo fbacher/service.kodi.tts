@@ -1,0 +1,1279 @@
+# XBMC Media Center language file
+msgid ""
+msgstr ""
+"Project-Id-Version: XBMC-Addons\n"
+"Report-Msgid-Bugs-To: alanwww1@xbmc.org\n"
+"POT-Creation-Date: 2013-12-12 22:56+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: en_gb\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: en_gb\n"
+"Plural-Forms: nplurals=2; plural=(n != 1)\n"
+
+msgctxt "#32001"
+msgid "Engine"
+msgstr "Engine"
+
+msgctxt "#32002"
+msgid "Default TTS Engine"
+msgstr "Default TTS Engine"
+
+msgctxt "#32003"
+msgid "Voice"
+msgstr "Voice"
+
+msgctxt "#32004"
+msgid "Rate"
+msgstr "Rate"
+
+msgctxt "#32005"
+msgid "Pitch"
+msgstr "Pitch"
+
+msgctxt "#32006"
+msgid "Speed"
+msgstr "Speed"
+
+msgctxt "#32007"
+msgid "Player"
+msgstr "Player"
+
+msgctxt "#32008"
+msgid "Play Speech Directly Via Flite"
+msgstr "Play Speech Directly Via Flite"
+
+msgctxt "#32009"
+msgid "Speed % (Needs SOX or MPlayer)"
+msgstr "Speed % (Needs SOX or MPlayer)"
+
+msgctxt "#32010"
+msgid "Volume dB"
+msgstr "Volume dB"
+
+msgctxt "#32011"
+msgid "Rate (WPM)"
+msgstr "Rate (WPM)"
+
+msgctxt "#32012"
+msgid "Play Speech Directly Via eSpeak"
+msgstr "Play Speech Directly Via eSpeak"
+
+msgctxt "#32013"
+msgid "Pipe Audio To Player"
+msgstr "Pipe Audio To Player"
+
+msgctxt "#32014"
+msgid "Volume"
+msgstr "Volume"
+
+msgctxt "#32015"
+msgid "Play Speech Via XBMC"
+msgstr "Play Speech Via XBMC"
+
+msgctxt "#32016"
+msgid "Language"
+msgstr "Language"
+
+msgctxt "#32017"
+msgid "Use aoss"
+msgstr "Use aoss"
+
+msgctxt "#32018"
+msgid "Module"
+msgstr "Module"
+
+msgctxt "#32019"
+msgid "Server"
+msgstr "Server"
+
+msgctxt "#32020"
+msgid "Perl Server"
+msgstr "Perl Server"
+
+msgctxt "#32021"
+msgid "Speak On Server"
+msgstr "Speak On Server"
+
+msgctxt "#32022"
+msgid "Server Speed (If Supported)"
+msgstr "Server Speed (If Supported)"
+
+msgctxt "#32023"
+msgid "Server Pitch (If Supported)"
+msgstr "Server Pitch (If Supported)"
+
+msgctxt "#32024"
+msgid "Server Volume dB (If Supported)"
+msgstr "Server Volume dB (If Supported)"
+
+msgctxt "#32025"
+msgid "Player Speed (If Supported)"
+msgstr "Player Speed (If Supported)"
+
+msgctxt "#32026"
+msgid "Player Volume dB (If Supported)"
+msgstr "Player Volume dB (If Supported)"
+
+msgctxt "#32027"
+msgid "IP Address"
+msgstr "IP Address"
+
+msgctxt "#32028"
+msgid "Port"
+msgstr "Port"
+
+msgctxt "#32029"
+msgid "Options"
+msgstr "Options"
+
+msgctxt "#32030"
+msgid "Keymap"
+msgstr "Keymap"
+
+msgctxt "#32031"
+msgid "Advanced"
+msgstr "Advanced"
+
+msgctxt "#32032"
+msgid "Disable Interface Reader"
+msgstr "Disable Interface Reader"
+
+msgctxt "#32033"
+msgid "Speak Extra Item Information Automatically"
+msgstr "Speak Extra Item Information Automatically"
+
+msgctxt "#32034"
+msgid "Delay (seconds)"
+msgstr "Delay (seconds)"
+
+msgctxt "#32035"
+msgid "Speak Number Of Items For Lists"
+msgstr "Speak Number Of Items For Lists"
+
+msgctxt "#32036"
+msgid "Speak Background Progress Updates"
+msgstr "Speak Background Progress Updates"
+
+msgctxt "#32037"
+msgid "Minimum Progress Update Interval (Seconds)"
+msgstr "Minimum Progress Update Interval (Seconds)"
+
+msgctxt "#32038"
+msgid "Speak When Media Playing"
+msgstr "Speak When Media Playing"
+
+msgctxt "#32039"
+msgid "Install Default Keymap"
+msgstr "Install Default Keymap"
+
+msgctxt "#32040"
+msgid "Install Custom Keymap"
+msgstr "Install Custom Keymap"
+
+msgctxt "#32041"
+msgid "Edit Custom Keymap"
+msgstr "Edit Custom Keymap"
+
+msgctxt "#32042"
+msgid "Reset Custom Keymap To Defaults"
+msgstr "Reset Custom Keymap To Defaults"
+
+msgctxt "#32043"
+msgid "Remove Installed Keymap"
+msgstr "Remove Installed Keymap"
+
+msgctxt "#32044"
+msgid "Output .wav Files To tmpfs"
+msgstr "Output .wav Files To tmpfs"
+
+msgctxt "#32045"
+msgid "Disable Broken TTS Engines"
+msgstr "Disable Broken TTS Engines"
+
+msgctxt "#32046"
+msgid "Enable Debug Logging"
+msgstr "Enable Debug Logging"
+
+msgctxt "#32047"
+msgid "Override Poll Interval"
+msgstr "Override Poll Interval"
+
+msgctxt "#32048"
+msgid "Poll Interval (ms)"
+msgstr "Poll Interval (ms)"
+
+msgctxt "#32049"
+msgid "Verbose"
+msgstr "Verbose"
+
+msgctxt "#32100"
+msgid "Database scan started."
+msgstr "Database scan started."
+
+msgctxt "#32101"
+msgid "Database scan finished."
+msgstr "Database scan finished."
+
+msgctxt "#32102"
+msgid "Notice... Speech engine falling back to {0}"
+msgstr "Notice... Speech engine falling back to {0}"
+
+msgctxt "#32103"
+msgid "Reason"
+msgstr "Reason"
+
+msgctxt "#32104"
+msgid "New T T S Version"
+msgstr "New T T S Version"
+
+msgctxt "#32105"
+msgid "Window"
+msgstr "Window"
+
+msgctxt "#32106"
+msgid "item"
+msgstr "item"
+
+msgctxt "#32107"
+msgid "items"
+msgstr "items"
+
+msgctxt "#32108"
+msgid "Season"
+msgstr "Season"
+
+msgctxt "#32109"
+msgid "Episode"
+msgstr "Episode"
+
+msgctxt "#32110"
+msgid "Parent Directory"
+msgstr "Parent Directory"
+
+msgctxt "#32111"
+msgid "Installed"
+msgstr "Installed"
+
+msgctxt "#32112"
+msgid "Updated"
+msgstr "Updated"
+
+msgctxt "#32113"
+msgid "Default keymap installed successfully!"
+msgstr "Default keymap installed successfully!"
+
+msgctxt "#32114"
+msgid "Custom keymap installed or updated successfully!"
+msgstr "Custom keymap installed or updated successfully!"
+
+msgctxt "#32115"
+msgid "Custom keymap reset to defaults."
+msgstr "Custom keymap reset to defaults."
+
+msgctxt "#32116"
+msgid "Removed"
+msgstr "Removed"
+
+msgctxt "#32117"
+msgid "Keymap removed."
+msgstr "Keymap removed."
+
+msgctxt "#32118"
+msgid "Press the key you want to assign now."
+msgstr "Press the key you want to assign now."
+
+msgctxt "#32119"
+msgid "Timeout in {0} seconds"
+msgstr "Timeout in {0} seconds"
+
+msgctxt "#32120"
+msgid "Importing P.V.R. E.P.G."
+msgstr "Importing P.V.R. E.P.G."
+
+msgctxt "#32121"
+msgid "Loading P.V.R. E.P.G."
+msgstr "Loading P.V.R. E.P.G."
+
+msgctxt "#32122"
+msgid "Background Progress Started"
+msgstr "Background Progress Started"
+
+msgctxt "#32123"
+msgid "Background Progress Done"
+msgstr "Background Progress Done"
+
+msgctxt "#32124"
+msgid "Press the key you want to assign now."
+msgstr "Press the key you want to assign now."
+
+msgctxt "#32125"
+msgid "Live TV Settings"
+msgstr "Live TV Settings"
+
+msgctxt "#32126"
+msgid "virtual keyboard"
+msgstr "virtual keyboard"
+
+msgctxt "#32127"
+msgid "volume bar"
+msgstr "volume bar"
+
+msgctxt "#32128"
+msgid "context menu"
+msgstr "context menu"
+
+msgctxt "#32129"
+msgid "info dialog"
+msgstr "info dialog"
+
+msgctxt "#32130"
+msgid "numeric input"
+msgstr "numeric input"
+
+msgctxt "#32131"
+msgid "shutdown menu"
+msgstr "shutdown menu"
+
+msgctxt "#32132"
+msgid "player controls"
+msgstr "player controls"
+
+msgctxt "#32133"
+msgid "seek bar"
+msgstr "seek bar"
+
+msgctxt "#32134"
+msgid "music OSD"
+msgstr "music OSD"
+
+msgctxt "#32135"
+msgid "visualisation preset list"
+msgstr "visualisation preset list"
+
+msgctxt "#32136"
+msgid "OSD video settings"
+msgstr "OSD video settings"
+
+msgctxt "#32137"
+msgid "OSD audio settings"
+msgstr "OSD audio settings"
+
+msgctxt "#32138"
+msgid "video bookmarks"
+msgstr "video bookmarks"
+
+msgctxt "#32139"
+msgid "file browser"
+msgstr "file browser"
+
+msgctxt "#32140"
+msgid "network setup"
+msgstr "network setup"
+
+msgctxt "#32141"
+msgid "media source"
+msgstr "media source"
+
+msgctxt "#32142"
+msgid "smart playlist editor"
+msgstr "smart playlist editor"
+
+msgctxt "#32143"
+msgid "busy dialog"
+msgstr "busy dialog"
+
+msgctxt "#32144"
+msgid "addon settings"
+msgstr "addon settings"
+
+msgctxt "#32145"
+msgid "fullscreen info"
+msgstr "fullscreen info"
+
+msgctxt "#32146"
+msgid "karaoke selector"
+msgstr "karaoke selector"
+
+msgctxt "#32147"
+msgid "karaoke large selector"
+msgstr "karaoke large selector"
+
+msgctxt "#32148"
+msgid "slider dialog"
+msgstr "slider dialog"
+
+msgctxt "#32149"
+msgid "addon information"
+msgstr "addon information"
+
+msgctxt "#32150"
+msgid "text viewer"
+msgstr "text viewer"
+
+msgctxt "#32151"
+msgid "peripheral settings"
+msgstr "peripheral settings"
+
+msgctxt "#32152"
+msgid "media filter"
+msgstr "media filter"
+
+msgctxt "#32153"
+msgid "pvr"
+msgstr "pvr"
+
+msgctxt "#32154"
+msgid "pvr guide info"
+msgstr "pvr guide info"
+
+msgctxt "#32155"
+msgid "pvr recording info"
+msgstr "pvr recording info"
+
+msgctxt "#32156"
+msgid "pvr timer setting"
+msgstr "pvr timer setting"
+
+msgctxt "#32157"
+msgid "pvr group manager"
+msgstr "pvr group manager"
+
+msgctxt "#32158"
+msgid "pvr channel manager"
+msgstr "pvr channel manager"
+
+msgctxt "#32159"
+msgid "pvr guide search"
+msgstr "pvr guide search"
+
+msgctxt "#32160"
+msgid "pvr OSD channels"
+msgstr "pvr OSD channels"
+
+msgctxt "#32161"
+msgid "pvr OSD guide"
+msgstr "pvr OSD guide"
+
+# duplicate msg with 32126
+msgctxt "#32162"
+msgid "virtual keyboard"
+msgstr "virtual keyboard"
+
+msgctxt "#32163"
+msgid "video menu"
+msgstr "video menu"
+
+msgctxt "#32164"
+msgid "PVR Client Specific Settings"
+msgstr "PVR Client Specific Settings"
+
+# Unknown setting value
+
+msgctxt "#32165"
+msgid "Unknown"
+msgstr "Unknown"
+
+msgctxt "#32166"
+msgid "Addons updated"
+msgstr "Addons updated"
+
+msgctxt "#32167"
+msgid "version"
+msgstr "version"
+
+msgctxt "#32168"
+msgid "Notice"
+msgstr "Notice"
+
+msgctxt "#32169"
+msgid "Rewind"
+msgstr "Rewind"
+
+msgctxt "#32170"
+msgid "Fast Forward"
+msgstr "Fast Forward"
+
+msgctxt "#32171"
+msgid "Channel"
+msgstr "Channel"
+
+msgctxt "#32172"
+msgid "Sub-setting"
+msgstr "Sub-setting"
+
+msgctxt "#32173"
+msgid "yes"
+msgstr "yes"
+
+msgctxt "#32174"
+msgid "no"
+msgstr "no"
+
+msgctxt "#32175"
+msgid "section"
+msgstr "section"
+
+msgctxt "#32176"
+msgid "area"
+msgstr "area"
+
+msgctxt "#32177"
+msgid "space"
+msgstr "space"
+
+msgctxt "#32178"
+msgid "No text"
+msgstr "No text"
+
+msgctxt "#32179"
+msgid "deleted"
+msgstr "deleted"
+
+msgctxt "#32180"
+msgid "Cannot adjust volume"
+msgstr "Cannot adjust volume"
+
+msgctxt "#32181"
+msgid "Choose Backend"
+msgstr "Choose Backend"
+
+msgctxt "#32182"
+msgid "Not Available"
+msgstr "Not Available"
+
+msgctxt "#32183"
+msgid "No players to select."
+msgstr "No players to select."
+
+msgctxt "#32184"
+msgid "Auto"
+msgstr "Auto"
+
+msgctxt "#32185"
+msgid "Choose Player"
+msgstr "Choose Player"
+
+msgctxt "#32186"
+msgid "No options to select."
+msgstr "No options to select."
+
+msgctxt "#32187"
+msgid "Choose Option"
+msgstr "Choose Option"
+
+msgctxt "#32188"
+msgid "PVR TV Channels"
+msgstr "PVR TV Channels"
+
+msgctxt "#32189"
+msgid "PVR TV Recordings"
+msgstr "PVR TV Recordings"
+
+msgctxt "#32190"
+msgid "PVR TV Guide"
+msgstr "PVR TV Guide"
+
+msgctxt "#32191"
+msgid "PVR TV Timers"
+msgstr "PVR TV Timers"
+
+msgctxt "#32192"
+msgid "PVR TV Search"
+msgstr "PVR TV Search"
+
+msgctxt "#32193"
+msgid "PVR Radio Channels"
+msgstr "PVR Radio Channels"
+
+msgctxt "#32194"
+msgid "PVR Radio Recordings"
+msgstr "PVR Radio Recordings"
+
+msgctxt "#32195"
+msgid "PVR Radio Guide"
+msgstr "PVR Radio Guide"
+
+msgctxt "#32196"
+msgid "PVR Radio Timers"
+msgstr "PVR Radio Timers"
+
+msgctxt "#32197"
+msgid "PVR Radio Search"
+msgstr "PVR Radio Search"
+
+msgctxt "#32198"
+msgid "watched"
+msgstr "watched"
+
+msgctxt "#32199"
+msgid "resumable"
+msgstr "resumable"
+
+msgctxt "#32200"
+msgid "selected"
+msgstr "selected"
+
+msgctxt "#32201"
+msgid "Subtitles dialog"
+msgstr "Subtitles dialog"
+
+msgctxt "#32202"
+msgid "Current Backend"
+msgstr "Current Backend"
+
+msgctxt "#32203"
+msgid "Current Voice"
+msgstr "Current Voice"
+
+msgctxt "#32204"
+msgid "Current Player"
+msgstr "Current Player"
+
+msgctxt "#32205"
+msgid "Connection"
+msgstr "Connection"
+
+msgctxt "#32206"
+msgid "Cache voiced text"
+msgstr "Cache voiced text"
+
+msgctxt "#32207"
+msgid "Cache voiced text"
+msgstr "Cache voiced text"
+
+msgctxt "#32208"
+msgid "Set path"
+msgstr "Set path"
+
+msgctxt "#32209"
+msgid "Days to keep cached files"
+msgstr "Days to keep cached files"
+
+msgctxt "#32210"
+msgid "Days"
+msgstr "Days"
+
+msgctxt "#32211"
+msgid "Gender"
+msgstr "Gender"
+
+msgctxt "#32212"
+msgid "Male"
+msgstr "Male"
+
+msgctxt "#32213"
+msgid "Female"
+msgstr "Female"
+
+msgctxt "#32214"
+msgid "Responsive Voice API Key"
+msgstr "Responsive Voice API Key"
+
+msgctxt "#32215"
+msgid "Key"
+msgstr "Key"
+
+msgctxt "#32216"
+msgid "Voice"
+msgstr "Voice"
+
+msgctxt "#32217"
+msgid "Choose a voice gender"
+msgstr "Choose a voice gender"
+
+msgctxt "#32218"
+msgid "Experimental"
+msgstr "Experimental"
+
+msgctxt "#32219"
+msgid "Settings"
+msgstr "Settings"
+
+msgctxt "#32220"
+msgid "OK"
+msgstr "OK"
+
+msgctxt "#32221"
+msgid "Cancel"
+msgstr "Cancel"
+
+msgctxt "#32222"
+msgid "Defaults"
+msgstr "Defaults"
+
+msgctxt "#32223"
+msgid "None"
+msgstr "None"
+
+msgctxt "#32224"
+msgid "Select Speech Engine"
+msgstr "Select Speech Engine"
+
+msgctxt "#32225"
+msgid "Cancel"
+msgstr "Cancel"
+
+msgctxt "#32226"
+msgid "OK"
+msgstr "OK"
+
+msgctxt "#32227"
+msgid "Select Language"
+msgstr "Select Language"
+
+msgctxt "#32228"
+msgid "Select Voice Gender"
+msgstr "Select Voice Gender"
+
+msgctxt "#32229"
+msgid "Select Pitch"
+msgstr "Select Pitch"
+
+msgctxt "#32230"
+msgid "Select Player"
+msgstr "Select Player"
+
+msgctxt "#32231"
+msgid "Speed {0}"
+msgstr "Speed {0}"
+
+msgctxt "#32232"
+msgid "Volume: {0}dB"
+msgstr "Volume: {0}dB"
+
+msgctxt "#32233"
+msgid "API Key"
+msgstr "API Key"
+
+msgctxt "#32234"
+msgid "Pipe Audio"
+msgstr "Pipe Audio"
+
+msgctxt "#32235"
+msgid "Enter API Key:  "
+msgstr "Enter API Key:  "
+
+msgctxt "#32236"
+msgid "Contact the vendor to get an API key"
+msgstr "Contact the vendor to get an API key"
+
+# Locales
+
+msgctxt "#32237"
+msgid "Afrikans"
+msgstr "Afrikans"
+
+msgctxt "#32238"
+msgid "Afrikans (South Africa)"
+msgstr "Afrikans (South Africa)"
+
+msgctxt "#32239"
+msgid "Arabic (Saudi Arabia)"
+msgstr "Arabic (Saudi Arabia)"
+
+msgctxt "#32240"
+msgid "Bosnian"
+msgstr "Bosnian"
+
+msgctxt "#32241"
+msgid "Catalan"
+msgstr "Catalan"
+
+msgctxt "#32242"
+msgid "Catalan (Spain)"
+msgstr "Catalan (Spain)"
+
+msgctxt "#32243"
+msgid "Czech"
+msgstr "Czech"
+
+msgctxt "#32244"
+msgid "Welsh"
+msgstr "Welsh"
+
+msgctxt "#32245"
+msgid "Danish (Denmark)"
+msgstr "Danish (Denmark)"
+
+msgctxt "#32246"
+msgid "German (Germany)"
+msgstr "German (Germany)"
+
+msgctxt "#32247"
+msgid "Greek (Greece)"
+msgstr "Greek (Greece)"
+
+msgctxt "#32248"
+msgid "English (Australia)"
+msgstr "English (Australia)"
+
+msgctxt "#32249"
+msgid "English (United Kingdom)"
+msgstr "English (United Kingdom)"
+
+msgctxt "#32250"
+msgid "English (Ireland)"
+msgstr "English (Ireland)"
+
+msgctxt "#32251"
+msgid "English (India)"
+msgstr "English (India)"
+
+msgctxt "#32252"
+msgid "English (United States)"
+msgstr "English (United States)"
+
+msgctxt "#32253"
+msgid "English (South Africa)"
+msgstr "English (South Africa)"
+
+msgctxt "#32254"
+msgid "Esperanto"
+msgstr "Esperanto"
+
+msgctxt "#32255"
+msgid "Spanish"
+msgstr "Spanish"
+
+msgctxt "#32256"
+msgid "Spanish (Castilian, Spain)"
+msgstr "Spanish (Castilian, Spain)"
+
+msgctxt "#32257"
+msgid "Spanish (Mexico)"
+msgstr "Spanish (Mexico)"
+
+msgctxt "#32258"
+msgid "Spanish (United States)"
+msgstr "Spanish (United States)"
+
+msgctxt "#32259"
+msgid "Finnish (Finland)"
+msgstr "Finnish (Finland)"
+
+msgctxt "#32260
+msgid "French"
+msgstr "French"
+
+msgctxt "#32261"
+msgid "French (Belgium)"
+msgstr "French (Belgium)"
+
+msgctxt "#32262"
+msgid "French (France)"
+msgstr "French (France)"
+
+msgctxt "#32263"
+msgid "French (Canada)"
+msgstr "French (Canada)"
+
+msgctxt "#32264"
+msgid "Hindi"
+msgstr "Hindi"
+
+msgctxt "#32265"
+msgid "Hindi (India)"
+msgstr "Hindi (India)"
+
+msgctxt "#32266"
+msgid "Croatian (Croatia)"
+msgstr "Croatian (Croatia)"
+
+msgctxt "#32267"
+msgid "Hungarian (Hungary)"
+msgstr "Hungarian (Hungary)"
+
+msgctxt "#32268"
+msgid "Armenian (Armenia)"
+msgstr "Armenian (Armenia)"
+
+msgctxt "#32269"
+msgid "Indonesian (Indonesia)"
+msgstr "Indonesian (Indonesia)"
+
+msgctxt "#32270"
+msgid "Icelandic (Iceland)"
+msgstr "Icelandic (Iceland)"
+
+msgctxt "#32271"
+msgid "Italian (Italy)"
+msgstr "Italian (Italy)"
+
+msgctxt "#32272"
+msgid "Japanese (Japan)"
+msgstr "Japanese (Japan)"
+
+msgctxt "#32273"
+msgid "Korean (Korea)"
+msgstr "Korean (Korea)"
+
+msgctxt "#32274"
+msgid "Latin"
+msgstr "Latin"
+
+msgctxt "#32275"
+msgid "Latvian (Latvia)"
+msgstr "Latvian (Latvia)"
+
+msgctxt "#32276"
+msgid "Norwegian (Norway)"
+msgstr "Norwegian (Norway)"
+
+msgctxt "#32277"
+msgid "Dutch (Belgium)"
+msgstr "Dutch (Belgium)"
+
+msgctxt "#32278"
+msgid "Dutch (Netherlands)"
+msgstr "Dutch (Netherlands)"
+
+msgctxt "#32279"
+msgid "Norwegian (Norway)"
+msgstr "Norwegian (Norway)"
+
+msgctxt "#32280"
+msgid "Polish (Poland)"
+msgstr "Polish (Poland)"
+
+msgctxt "#32281"
+msgid "Portuguese (Brazil)"
+msgstr "Portuguese (Brazil)"
+
+msgctxt "#32282"
+msgid "Portuguese (Portugal)"
+msgstr "Portuguese (Portugal)"
+
+msgctxt "#32283"
+msgid "Romanian (Romania)"
+msgstr "Romanian (Romania)"
+
+msgctxt "#32284"
+msgid "Russian (Russia)"
+msgstr "Russian (Russia)"
+
+msgctxt "#32285"
+msgid "Slovak (Slovakia)"
+msgstr "Slovak (Slovakia)"
+
+msgctxt "#32286"
+msgid "Albanian (Albania)"
+msgstr "Albanian (Albania)"
+
+msgctxt "#32287"
+msgid "Serbian (Montenegro)"
+msgstr "Serbian (Montenegro)"
+
+msgctxt "#32288"
+msgid "Serbian (Serbia)"
+msgstr "Serbian (Serbia)"
+
+msgctxt "#32289"
+msgid "Swahili (Kenya)"
+msgstr "Swahili (Kenya)"
+
+msgctxt "#32290"
+msgid "Tamil"
+msgstr "Tamil"
+
+msgctxt "#32291"
+msgid "Thai (Thailand)"
+msgstr "Thai (Thailand)"
+
+msgctxt "#32292"
+msgid "Turkish (Turkey)"
+msgstr "Turkish (Turkey)"
+
+msgctxt "#32293"
+msgid "Vietnamese (Viet Nam)"
+msgstr "Vietnamese (Viet Nam)"
+
+msgctxt "#32294"
+msgid "Chinese (S)"
+msgstr "Chinese (S)"
+
+msgctxt "#32295"
+msgid "Chinese (Hong Kong)"
+msgstr "Chinese (Hong Kong)"
+
+msgctxt "#32296"
+msgid "Chinese (T)"
+msgstr "Chinese (T)"
+
+# Audio Players. Translation may not apply to all
+
+msgctxt "#32297"
+msgid "Kodi PlaySFX"
+msgstr "Kodi PlaySFX"
+
+msgctxt "#32298"
+msgid "Windows Internal"
+msgstr "Windows Internal"
+
+msgctxt "#32299"
+msgid "aplay"
+msgstr "aplay"
+
+msgctxt "#32300"
+msgid "paplay"
+msgstr "paplay"
+
+msgctxt "#32301"
+msgid "afplay"
+msgstr "afplay"
+
+msgctxt "#32302"
+msgid "SOX"
+msgstr "SOX"
+
+msgctxt "#32303"
+msgid "MPlayer"
+msgstr "MPlayer"
+
+msgctxt "#32304"
+msgid "No Player"
+msgstr "No Player"
+
+msgctxt "#32305"
+msgid "mpg321"
+msgstr "mpg321"
+
+msgctxt "#32306"
+msgid "mpg123"
+msgstr "mpg123"
+
+msgctxt "#32307"
+msgid "mpg321 OE Pi"
+msgstr "mpg321 OE Pi"
+
+msgctxt "#32308"
+msgid "Select Voice"
+msgstr "Select Voice"
+
+msgctxt "#32309"
+msgid "Voice 1"
+msgstr "Voice 1"
+
+msgctxt "#32310"
+msgid "Voice 2"
+msgstr "Voice 2"
+
+msgctxt "#32311"
+msgid "Voice 3"
+msgstr "Voice 3"
+
+msgctxt "#32312"
+msgid "Cache Audio From Engine"
+msgstr "Cache Audio From Engine"
+
+msgctxt "#32313"
+msgid "Internal"
+msgstr "Internal"
+
+# Voice engine eSpeak
+msgctxt "#32314"
+msgid "eSpeak"
+msgstr "eSpeak"
+
+# Voice engine Festival
+msgctxt "#32315"
+msgid "Festival"
+msgstr "Festival"
+
+# Voice engine Flite
+msgctxt "#32316"
+msgid "Flite"
+msgstr "Flite"
+
+# Voice engine ResponsiveVoice
+msgctxt "#32317"
+msgid "ResponsiveVoice"
+msgstr "ResponsiveVoice"
+
+# Voice engine manager Speech Dispatcher
+msgctxt "#32318"
+msgid "Speech-Dispatcher"
+msgstr "Speech-Dispatcher"
+
+# Spelling
+msgctxt "#32319"
+msgid "Spelling"
+msgstr "Spelling"
+
+# Punctuation
+msgctxt "#32320"
+msgid "Punctuation"
+msgstr "Punctuation"
+
+# Capital Recognition
+msgctxt "#32321"
+msgid "Capital Recognition"
+msgstr "Capital Recognition"
+
+# Select Module
+msgctxt "#32322"
+msgid "Select Module"
+msgstr "Select Module"
+
+msgctxt "#32323"
+msgid "Experimental"
+msgstr "Experimental"
+
+msgctxt "#32324"
+msgid "Google TTS"
+msgstr "Google TTS"
+
+msgctxt "#32325"
+msgid "Recite"
+msgstr "Recite"
+
+msgctxt "#32326"
+msgid "Internal"
+msgstr "Internal"
+
+msgctxt "#32327"
+msgid "Recite"
+msgstr "Recite"
+
+msgctxt "#32328"
+msgid "Pico-Wave"
+msgstr "Pico-Wave"
+
+msgcdtxt "#32329"
+msgid "SAPI"
+msgstr "SAPI"
+
+msgctxt "#32330"
+msgid "mpv"
+msgstr "mpv"
+
+msgctxt "#32331"
+msgid "Piper"
+msgstr "Piper"
+
+msgctxt "#32332"
+msgid "Default"
+msgstr "Default"
+
+msgctxt "#32333"
+msgid "Mono"
+msgstr "Mono"
+
+msgctxt "#32334"
+msgid "Stereo"
+msgstr "Stereo"
+
+msgctxt "#32335"
+msgid "Can not find message from Kodi's nor ADDON's messages msg_id: {0}"
+msgstr "Can not find message from Kodi's nor ADDON's messages msg_id: {0}"
+
+msgctxt "#32336"
+msgid "Player Mode"
+msgstr "Player Mode"
+
+msgctxt "#32337"
+msgid "Select Player Mode"
+msgstr "Select Player Mode"
+
+msgctxt "#32338"
+msgid "Enabled"
+msgstr "Enabled"
+
+msgctxt "#32339"
+msgid "Disabled"
+msgstr "Disabled"
+
+
+# BEGIN MESSAGES USED IN UI (WINDOWS, CONTROLS, etc.)
+
+# Voiced control element types, including pseudo-types
+# (Kodi's control types don't always match what users may
+# be used to). Group, doesn't mean much to users.
+
+msgctxt "#32700"
+msgid "Unknown"
+msgstr "Unknown"
+
+msgctxt "#32701"
+msgid "Window"
+msgstr "Window"
+
+msgctxt "#32702"
+msgid "Button"
+msgstr "Button"
+
+msgctxt "#32703"
+msgid "Label"
+msgstr "Label"
+
+msgctxt "#32704"
+msgid "RadioButton"
+msgstr "RadioButton"
+
+msgctxt "#32705"
+msgid "TextBox"
+msgstr "TextBox"
+
+msgctxt "#32706"
+msgid "Slider"
+msgstr "Slider"
+
+msgctxt "#32707"
+msgid "Toggle"
+msgstr "Toggle"
+
+msgctxt "#32708"
+msgid "ButtonList"
+msgstr "ButtonList"
+
+msgctxt "#32709"
+msgid "Dialog"
+msgstr "Dialog"
+
+msgctxt "#32710"
+msgid "SPIN"
+msgstr "SPIN"
+
+msgctxt "#32711"
+msgid "Group"
+msgstr "Group"
+
+msgctxt "#32712"
+msgid "Group List"
+msgstr "Group List"
+
+msgctxt "#32713"
+msgid "Scroll Bar"
+msgstr "Scroll Bar"
+
+# Messages for Controls
+
+msgctxt "#32800"
+msgid "Configure TTS settings. Changes applied immediately. Commit by... Cancel by..."
+msgstr "Configure TTS settings. Changes applied immediately. Commit by... Cancel by..."
+
+msgctxt "#32801"
+msgid "Select the category that you wish to modify"
+msgstr "Select the category that you wish to modify"
+
+msgctxt "#32802"
+msgid "Settings Categories"
+msgstr "Settings Categories"
+
+msgctxt "#32803"
+msgid "Close window at top right of screen. Navigable?"
+msgstr "Close window at top right of screen. Navigable?"
+
+msgctxt "#32804"
+msgid "Select to dismiss dialog"
+msgstr "Select to dismiss dialog"
+
+msgctxt "#32805"
+msgid "{0} items"
+msgstr "{0} items"
+
+msgctxt "#32806"
+msgid "item {0}"
+msgstr "item {0}"
