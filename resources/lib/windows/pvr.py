@@ -245,7 +245,7 @@ class PVRWindowReader(PVRWindowReaderBase):
 
     def getControlText(self, control_id: int, phrases: PhraseList) -> bool:
         clz = type(self)
-        phrases: PhraseList = PhraseList()
+        phrases: PhraseList = PhraseList(check_expired=False)
         if not control_id:
             return False
         success: bool = False

@@ -60,7 +60,7 @@ class BaseEngineSettings:
                                               allowed_values=Backends.ALL_ENGINE_IDS,
                                               min_length=1,  # Size way to big
                                               max_length=32,
-                                              default=Backends.ESPEAK_ID)
+                                              default=Backends.DEFAULT_ENGINE_ID)
         SettingsMap.define_setting(Services.TTS_SERVICE, SettingsProperties.ENGINE,
                                    engine_id_validator)
         '''
@@ -124,12 +124,3 @@ class BaseEngineSettings:
         SettingsMap.define_setting(Services.TTS_SERVICE,
                                    SettingsProperties.USE_TEMPFS,
                                    use_tempfs_val)
-
-        '''
-        slave_validator: BoolValidator
-        slave_validator = BoolValidator(SettingsProperties.PLAYER_SLAVE,
-                                        Services.TTS_SERVICE, default=True)
-        SettingsMap.define_setting(Services.TTS_SERVICE,
-                                   SettingsProperties.PLAYER_SLAVE,
-                                   slave_validator)
-        '''

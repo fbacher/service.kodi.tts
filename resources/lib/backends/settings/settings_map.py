@@ -13,7 +13,8 @@ except ImportError:
 from common import *
 
 from backends.settings.i_constraints import IConstraints
-from backends.settings.i_validators import (IBoolValidator, IChannelValidator,
+from backends.settings.i_validators import (AllowedValue, IBoolValidator,
+                                            IChannelValidator,
                                             IConstraintsValidator,
                                             IGenderValidator, IIntValidator,
                                             INumericValidator, IStrEnumValidator,
@@ -54,7 +55,7 @@ class SettingsMap:
     # Maps a service ('eSpeak') to map of it's settings.
     # Service and setting ids are defined in settings_constants.
     #
-    # These maps are built by the services themselves. The are defined at startup.
+    # These maps are built by the services themselves. They are defined at startup.
     # Note that only settings of type string, integer and boolean are defined,
     # more can be added, as needed. More complex types such as float and lists of
     # the basic types are supported by Kodi, but since it complicates users from
@@ -66,7 +67,7 @@ class SettingsMap:
 
     service_to_properties_map: Dict[str, Dict[str, Any]] = {}
 
-    # Index to get all of the service_ids for a particular ServiceType.
+    # Index to get all the service_ids for a particular ServiceType.
     # Example: ServiceType.ENGINE, ServiceType.PLAYER, etc.
     #
     service_type_to_services_map: Dict[ServiceType, Dict[str, Dict[str, Any]]] = {}
@@ -84,6 +85,19 @@ class SettingsMap:
     @classmethod
     def define_service(cls, service_type: ServiceType, service_id: str,
                        service_properties: Dict[str, Any]):
+        """
+        Defines a service (ex. google engine) and a property-value map for it.
+        The map defines properties that the service itself has. It does NOT
+        specify what settings the service has (ex. an engine's player is NOT
+        a property of the service, it is a setting). Examples of service_properties
+        include the displayName of the service, maxium phrase length and the
+        cache suffix.
+
+        :param service_type: ServiceType.ENGINE, player, etc
+        :param service_id: engine-id, player-id, etc.
+        :param service_properties:
+        :return:
+        """
         try:
             props_for_service: Dict[str, Dict[str, Any]] | None
             props_for_service = cls.service_type_to_services_map.get(service_type)
@@ -98,11 +112,23 @@ class SettingsMap:
     @classmethod
     def get_services_for_service_type(cls, service_type: ServiceType) \
             -> List[Tuple[str, str]]:
+        """
+          Returns a list of services that have registered via
+          SettingsMap.define_service(ServiceType.xxx, serviceID, properties)
+
+          Useful for finding all of the engines that work with TTS, etc.
+        :param service_type:
+        :return: A Tuple [service_id, name] Where name is the value of
+                 any property named 'name' when this was defined, or
+                 with name having a message indicating the name was not specified.
+        """
         services: List[Tuple[str, str]] = []
         service_dict: Dict[str, Any] = cls.service_type_to_services_map.get(service_type,
                                                                             {})
         for service_id, name_dict in service_dict.items():
-            name: str = name_dict['name']
+            name: str = name_dict.get('name')
+            if name is None:
+                name = 'No name given'
             services.append((service_id, name))
 
         return services
@@ -140,15 +166,17 @@ class SettingsMap:
 
     @classmethod
     def set_is_available(cls, service_id: str, reason: Reason) -> None:
-        # cls._logger.debug(f'{service_id} is available reason: {reason}')
+        cls._logger.debug(f'{service_id} is available reason: {reason}')
         cls.service_availability_map[service_id] = reason
 
     @classmethod
     def is_available(cls, service_id) -> bool:
         reason: Reason = cls.service_availability_map.get(service_id, None)
         if reason is None:
-            cls.set_is_available(service_id, Reason.UNKNOWN)
-            return False
+            return True
+            # cls._logger.debug(f'{service_id} availability UNKNOWN')
+            # cls.set_is_available(service_id, Reason.UNKNOWN)
+            # return False
 
         if reason == Reason.AVAILABLE:
             return True
@@ -183,9 +211,10 @@ class SettingsMap:
 
         if validator is None:
             settings_for_service.pop(property_id, None)
+            cls._logger.debug(f'Undefining setting {property_id} from {service_id}')
         else:
             settings_for_service[property_id] = validator
-        # cls._logger.debug(f'settings_for_service {property_id} = {type(validator)}')
+            cls._logger.debug(f'Defining setting {property_id} for {service_id}')
 
     @classmethod
     def is_setting_available(cls, service_id: str, property_id: str) -> bool:
@@ -193,6 +222,15 @@ class SettingsMap:
 
     @classmethod
     def is_valid_property(cls, service_id: str, property_id: str) -> bool:
+        """
+        Note that this can give FALSE results during startup, when the settings
+        have not yet all been defined. This should be benign since things should
+        return to normal after the settngs are defined, which should be quick.
+
+        :param service_id:
+        :param property_id:
+        :return:
+        """
         if property_id is None:
             property_id = ''
         # cls._logger.debug(f'service_id: {service_id} property_id: {property_id}')
@@ -209,8 +247,8 @@ class SettingsMap:
             return False
 
         if property_id not in settings_for_service.keys():
-            #  cls._logger.debug(f'{property_id} not in {service_id} settings: '
-            #                    f'{settings_for_service}')
+            cls._logger.debug(f'{property_id} not in {service_id} settings: '
+                              f'{settings_for_service.keys()}')
             return False
         return True
 
@@ -275,7 +313,7 @@ class SettingsMap:
 
     @classmethod
     def get_allowed_values(cls, service_id: str,
-                           property_id: str) -> List[str] | None:
+                           property_id: str) -> List[AllowedValue] | None:
         if property_id is None:
             property_id = ''
         assert isinstance(service_id, str), 'Service_id must be a str'

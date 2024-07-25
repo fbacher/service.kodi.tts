@@ -2,6 +2,7 @@
 from __future__ import annotations  # For union operator |
 
 import xbmc
+import xbmcaddon
 
 from common.constants import Constants
 
@@ -66,7 +67,7 @@ class Messages:
     DEFAULTS = Message('Defaults', 32222)
     ENGINE = Message('Engine', 32001)
     DEFAULT_TTS_ENGINE = Message('Default TTS Engine', 32002)
-    SELECT_LANGUAGE = Message('Language', 32227)
+    SELECT_LANGUAGE = Message('Available Voices for', 32227)
     SELECT_VOICE = Message('Voice', 32308)
     SETTINGS = Message('Settings', 32219)
     OPTIONS = Message('Options', 32029)
@@ -228,8 +229,6 @@ class Messages:
     LOCALE_KO_KR = Message('Korean (Korea)', 32273)
     LOCALE_LA = Message('Latin', 32274)
     LOCALE_LV_LV = Message('Latvian (Latvia)', 32275)
-    # LOCALE_MK_MK = Message('FYRO Macedonian (Former Yugoslav Republic of Macedonia)')
-    # LOCALE_MO = Message('Moldovan (Deprecated)')
     LOCALE_NB_NO = Message('Norwegian (Norway)', 32276)
     LOCALE_NL_BE = Message('Dutch (Belgium)', 32277)
     LOCALE_NL_NL = Message('Dutch (Netherlands)', 32278)
@@ -239,10 +238,9 @@ class Messages:
     LOCALE_PT_PT = Message('Portuguese (Portugal)', 32282)
     LOCALE_RO_RO = Message('Romanian (Romania)', 32283)
     LOCALE_RU_RU = Message('Russian (Russia)', 32284)
-    # LOCALE_SH = Message('Serbo-Croation (Deprecated)')
     LOCALE_SK_SK = Message('Slovak (Slovakia)', 32285)
     LOCALE_SQ_AL = Message('Albanian (Albania)', 32286)
-    LOCAL_SR_ME = Message('Serbian (Montenegro)', 32287)
+    LOCALE_SR_ME = Message('Serbian (Montenegro)', 32287)
     LOCALE_SR_RS = Message('Serbian (Serbia)', 32288)
     LOCALE_SW_KE = Message('Swahili (Kenya)', 32289)
     LOCALE_TA = Message('Tamil', 32290)
@@ -251,7 +249,95 @@ class Messages:
     LOCALE_VI_VN = Message('Vietnamese (Viet Nam)', 32293)
     LOCALE_ZH_CN = Message('Chinese (S)', 32294)
     LOCALE_ZH_HK = Message('Chinese (Hong Kong)', 32295)
-    LOCALE_ZH_TW = Message('Chinese (T)', 32296)
+    LOCALE_ZH_TW = Message('Chinese (Taiwan)', 32296)
+
+    COUNTRY_AL = Message('Albania',         32340)
+    COUNTRY_AM = Message('Armenia',         32341)
+    COUNTRY_AU = Message('Australia',       32342)
+    COUNTRY_BE = Message('Belgium',         32343)
+    COUNTRY_BR = Message('Brazil',          32344)
+    COUNTRY_CA = Message('Canada',          32345)
+    COUNTRY_CN = Message('China',           32346)
+    COUNTRY_DE = Message('Germany',         32347)
+    COUNTRY_DK = Message('Denmark',         32348)
+    COUNTRY_EO = Message('Esperanto',       32349)
+    COUNTRY_ES = Message('Spain',           32350)
+    COUNTRY_FI = Message('Finland',         32351)
+    COUNTRY_FR = Message('France',          32352)
+    COUNTRY_GB = Message('United Kingdom',  32353)
+    COUNTRY_GR = Message('Greece',          32354)
+    COUNTRY_HK = Message('Hong Kong',       32355)
+    COUNTRY_HR = Message('Croatia',         32356)
+    COUNTRY_HU = Message('Hungary',         32357)
+    COUNTRY_ID = Message('Indonesia',       32358)
+    COUNTRY_IE = Message('Ireland',         32359)
+    COUNTRY_IN = Message('India',           32360)
+    COUNTRY_IS = Message('Iceland',         32361)
+    COUNTRY_IT = Message('Italy',           32362)
+    COUNTRY_JA = Message('Japan',           32363)
+    COUNTRY_KE = Message('Kenya',           32364)
+    COUNTRY_KR = Message('Korea',           32365)
+    COUNTRY_LV = Message('Latvia',          32366)
+    COUNTRY_ME = Message('Montenegro',      32367)
+    COUNTRY_MX = Message('Mexico',          32368)
+    COUNTRY_NL = Message('Netherlands',     32369)
+    COUNTRY_NO = Message('Norway',          32370)
+    COUNTRY_PL = Message('Poland',          32371)
+    COUNTRY_PT = Message('Portugal',        32372)
+    COUNTRY_RO = Message('Romania',         32373)
+    COUNTRY_RS = Message('Serbia',          32374)
+    COUNTRY_RU = Message('Russia',          32375)
+    COUNTRY_SA = Message('Saudi Arabia',    32376)
+    COUNTRY_SK = Message('Slovakia',        32377)
+    COUNTRY_TA = Message('Tamil',           32378)
+    COUNTRY_TH = Message('Thailand',        32379)
+    COUNTRY_TR = Message('Turkey',          32380)
+    COUNTRY_TW = Message('Taiwan',          32381)
+    COUNTRY_US = Message('United States',   32382)
+    COUNTRY_VN = Message('Viet Nam',        32383)
+    COUNTRY_ZA = Message('South Africa',    32384)
+
+    LANG_AF = Message('Afrikans',32384)
+    LANG_AR = Message('Arabic',32385)
+    LANG_BS = Message('Bosnian',32386)
+    LANG_CA = Message('Catalan',32387)
+    LANG_CS = Message('Czech',32388)
+    LANG_CY = Message('Welsh',32389)
+    LANG_DA = Message('Danish',32390)
+    LANG_DE = Message('German',32391)
+    LANG_EL = Message('Greek',32392)
+    LANG_EN = Message('English',32393)
+    LANG_EO = Message('Esperanto',32394)
+    LANG_ES = Message('Spanish',32395)
+    LANG_FI = Message('Finnish',32396)
+    LANG_FR = Message('French',32397)
+    LANG_HI = Message('Hindi',32398)
+    LANG_HR = Message('Croatian',32399)
+    LANG_HU = Message('Hungarian',32400)
+    LANG_HY = Message('Armenian',32401)
+    LANG_ID = Message('Indonesian',32402)
+    LANG_IS = Message('Icelandic',32403)
+    LANG_IT = Message('Italian',32404)
+    LANG_JA = Message('Japanese',32405)
+    LANG_KO = Message('Korean',32406)
+    LANG_LA = Message('Latin',32407)
+    LANG_LV = Message('Latvian',32408)
+    LANG_NB = Message('Norwegian',32409)
+    LANG_NL = Message('Dutch',32410)
+    LANG_NO = Message('Norwegian',32411)
+    LANG_PL = Message('Polish',32412)
+    LANG_PT = Message('Portuguese',32413)
+    LANG_RO = Message('Romanian',32414)
+    LANG_RU = Message('Russian',32415)
+    LANG_SK = Message('Slovak',32416)
+    LANG_SQ = Message('Albanian',32417)
+    LANG_SR = Message('Serbian',32418)
+    LANG_SW = Message('Swahili',32419)
+    LANG_TA = Message('Tamil',32420)
+    LANG_TH = Message('Thai',32421)
+    LANG_TR = Message('Turkish',32422)
+    LANG_VI = Message('Vietnamese',32423)
+    LANG_ZH = Message('Chinese',32424)
 
     # Audio Players
 
@@ -276,7 +362,7 @@ class Messages:
     BACKEND_FESTIVAL = Message('Festival', 32315)
     BACKEND_FLITE = Message('Flite', 32316)
     BACKEND_EXPERIMENTAL = Message('Experimental', 32323)
-    BACKEND_GOOGLE = Message('Google TTS', 32324)
+    BACKEND_GOOGLE = Message('gtts', 32324)
     BACKEND_RECITE = Message('Recite', 32325)
     BACKEND_RESPONSIVE_VOICE = Message('ResponsiveVoice', 32317)
     BACKEND_SAPI = Message('SAPI', 32329)
@@ -317,6 +403,7 @@ class Messages:
     UI_ITEM = Message('item {0}', 32806)
 
     MSG_NOT_FOUND_ERROR: Final[int] = 32335
+    MSG_ITEMS = 32805  # '{0} items'
     MSG_UNITS_DB: Final[int] = 32810
     MSG_UNITS_PERCENT: Final[int] = 32811
 
@@ -351,61 +438,19 @@ class Messages:
         return Messages._instance.get_formatted_msg(msg_ref)
 
     @staticmethod
-    def add_msg_by_id(phrases: ForwardRef('PhraseList'), msg_id: int,
-                      empty_on_error: bool = False) -> bool:
-        from common.phrases import Phrase, PhraseList
-
-        phrases: PhraseList
-        success = True
-        text: str = Messages.get_msg_by_id(msg_id, empty_on_error=True)
-        if text == '' and not empty_on_error:
-            success = False
-            text = Messages.get_error_msg(msg_id)
-            module_logger.debug(f'msg empty and msg_id != 0 msg: {text}')
-        phrases.append(Phrase(text=text))
-        return success
-
-    @staticmethod
-    def add_formatted_msg_by_id(phrases: ForwardRef('PhraseList'), msg_id: int,
-                                *args: Optional[str, ...]) -> bool:
-        """
-
-        :param phrases:
-        :param msg_id:
-        :param args
-        :return:
-        """
-        from common.phrases import Phrase, PhraseList
-
-        success: bool = True
-        formatted_msg: str = ''
-        unformatted_msg = Messages.get_msg_by_id(msg_id, empty_on_error=True)
-        if unformatted_msg == '' or msg_id != 0:
-            unformatted_msg = (f"Can not find message from Kodi's nor ADDON's messages "
-                               f"msg_id: {0}")
-            formatted_msg = unformatted_msg.format(msg_id)
-            success = False
-        else:
-            formatted_msg = unformatted_msg.format(*args)
-
-        phrases.append(Phrase(text=formatted_msg))
-
-        return success
-
-    @staticmethod
     def get_msg_by_id(msg_id: int, empty_on_error: bool = False) -> str:
         msg: str = ''
-        #  module_logger.debug(f'{msg_id} {type(msg_id)}')
+        # module_logger.debug(f'{msg_id} {type(msg_id)}')
         try:
-            msg = CriticalSettings.ADDON.getLocalizedString(msg_id)
-            #  module_logger.debug(f'msg: {msg} msg_id: {msg_id}')
+            msg = xbmcaddon.Addon().getLocalizedString(msg_id)
+            # module_logger.debug(f'ADDON msg: {msg} msg_id: {msg_id}')
         except:
-            module_logger.exception(f'msg: {msg} msg_id: {msg_id}')
+            module_logger.exception(f'ADDON msg: {msg} msg_id: {msg_id}')
             msg = ''
         try:
             if msg == '':
                 msg = xbmc.getLocalizedString(msg_id)
-                #  module_logger.debug(f'msg: {msg} msg_id: {msg_id}')
+                # module_logger.debug(f'msg: {msg} msg_id: {msg_id}')
         except:
             module_logger.exception(f'msg: {msg} msg_id: {msg_id}')
             msg = ''
@@ -444,55 +489,6 @@ class Messages:
             return unformatted_msg.format(*args)
 
         return unformatted_msg.format(*args)
-
-    @staticmethod
-    def add_formatted_msg(phrases: ForwardRef('PhraseList'), msg_ref: Message | int,
-                          *args: Optional[str, ...]) -> bool:
-        """
-
-        :param phrases:
-        :param msg_ref:
-        :param args
-        :return:
-        """
-        success: bool = True
-        if Messages._instance is None:
-            Messages._instance = Messages()
-
-        msg_id: int
-        unformatted_msg = ''
-        if isinstance(msg_ref, int):
-            msg_ref = Message.get_ref_by_id(msg_ref)
-
-        if isinstance(msg_ref, Enum):
-            msg_ref = msg_ref.name
-
-        msg_id: int = 0
-        try:
-            if isinstance(msg_ref, Message):
-                msg_id = msg_ref.get_msg_id()
-                unformatted_msg = CriticalSettings.ADDON.getLocalizedString(msg_id)
-            if unformatted_msg == '':
-                if msg_id != 0:
-                    unformatted_msg = f'Message not defined: {str(msg_id)}'
-                else:
-                    unformatted_msg = f'Message not defined: {msg_ref}'
-                if Messages._instance._logger.isEnabledFor(ERROR):
-                    Messages._instance._logger.error(
-                            f'Can not find message from strings for message id: '
-                            f'{str(msg_id)}')
-        except:
-            unformatted_msg = f"Invalid msg id: {str(msg_id)}"
-            module_logger.exception(unformatted_msg)
-            return False
-
-        try:
-            text: str = unformatted_msg.format(*args)
-            from common.phrases import Phrase, PhraseList
-            phrases.append(Phrase(text=text))
-        except:
-            success = False
-        return success
 
     @staticmethod
     def get_formatted_msg(msg_ref: Message | int, *args: Optional[str, ...]) -> str:
@@ -536,7 +532,7 @@ class Messages:
     @classmethod
     def format_boolean(cls, text: str,
                        enabled_msgid: int = ENABLED.get_msg_id(),
-                       disabled_msgid: int = DISABLED.get_msg_id()) -> ForwardRef('PhraseList') | None:
+                       disabled_msgid: int = DISABLED.get_msg_id()) -> str:
         """
         Used to format binary values from Kodi ListItems, etc. Kodi returns
         a string with the True/False value coded as () for False and (*) for True.
@@ -546,13 +542,13 @@ class Messages:
         :param enabled_msgid: Message id to use instead of 'enabled'
         :param disabled_msgid: Message id to use instead of 'disabled'
         :return: None, if no substitutions need to be made.
-                 Otherwise, Phrase with the substitutions performed and pause embedded before
-                 the 'True'/'False' value
+                 Otherwise, string with the substitutions performed and pause
+                 (...) embedded before the 'True'/'False' value
         """
         success: bool = False
         new_text: str = text
         if not text.endswith(')'):  # Skip this most of the time
-            return None
+            return ''
 
         # For boolean settings
         new_text: str = text.replace('( )',
@@ -561,5 +557,4 @@ class Messages:
         new_text = new_text.replace('(*)',
                                     f'{Constants.PAUSE_INSERT} '
                                     f'{Messages.get_msg_by_id(enabled_msgid)}')
-        from common.phrases import Phrase, PhraseList
-        return PhraseList.create(texts=new_text)
+        return new_text

@@ -23,17 +23,18 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 class RunState(Enum):
     NOT_STARTED = 0
-    RUNNING = 1
-    COMPLETE = 2
-    KILLED = 3
-    TERMINATED = 4
+    PIPES_CONNECTED = 1
+    RUNNING = 2
+    COMPLETE = 3
+    KILLED = 4
+    TERMINATED = 5
 
 
 class SimpleRunCommand:
     """
 
     """
-    player_state: str = KodiPlayerState.PLAYING_STOPPED
+    player_state: str = KodiPlayerState.VIDEO_PLAYER_IDLE
     logger: BasicLogger = None
 
     def __init__(self, args: List[str], phrase_serial: int = 0, name: str = '',
@@ -50,6 +51,7 @@ class SimpleRunCommand:
         self.rc = 0
         self.run_state: RunState = RunState.NOT_STARTED
         self.stop_on_play: bool = stop_on_play
+        self.play_interrupted: bool = False  # True when video playing and idle_on_play_video
         self.delete_after_run: Path | None = delete_after_run
         self.cmd_finished: bool = False
         self.process: Popen = None
@@ -62,7 +64,7 @@ class SimpleRunCommand:
         Monitor.register_abort_listener(self.abort_listener, name=name)
 
         if self.stop_on_play:
-            if KodiPlayerMonitor.player_status == KodiPlayerState.PLAYING:
+            if KodiPlayerMonitor.player_status == KodiPlayerState.PLAYING_VIDEO:
                 self.cleanup()
                 return
 
@@ -101,7 +103,7 @@ class SimpleRunCommand:
         clz.logger.debug(f'KodiPlayerState: {kodi_player_state} stop_on_play: '
                          f'{self.stop_on_play} args: {self.args} '
                          f'serial: {self.phrase_serial}')
-        if kodi_player_state == KodiPlayerState.PLAYING and self.stop_on_play:
+        if kodi_player_state == KodiPlayerState.PLAYING_VIDEO and self.stop_on_play:
             clz.logger.debug(f'KODI_PLAYING terminating command: '
                              f'args: {self.args} ')
             self.terminate()

@@ -2,6 +2,7 @@
 from __future__ import annotations  # For union operator |
 
 import sys
+from enum import StrEnum
 
 from xbmc import Player
 
@@ -13,7 +14,7 @@ from utils.util import runInThread
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
-class KodiPlayerState:
+class KodiPlayerState(StrEnum):
     '''
     Possible states of interest for Kodi movie/audio player
     '''
@@ -21,9 +22,9 @@ class KodiPlayerState:
     UNINITALIZED = 'uninitialized'  # Indicates monitoring code yet to start
     # initialization
     INITIALIZING = 'initializing'  # Initialization of monitor in progress
-    PLAYING = 'playing'  # Actively playing audio/video/picture
+    PLAYING_VIDEO = 'playing_video'  # Actively playing audio/video/picture
     #  PLAYING_STARTED = 'started'
-    PLAYING_STOPPED = 'stopped'  # Kodi player is idle
+    VIDEO_PLAYER_IDLE = 'video_player_idle'  # Kodi player is idle
 
 
 class KodiPlayerMonitorListener:
@@ -36,7 +37,7 @@ class KodiPlayerMonitorListener:
 class KodiPlayerMonitor(Player):
     _player_status_listeners: Dict[str, KodiPlayerMonitorListener] = {}
     _player_status_lock: threading.RLock = threading.RLock()
-    _player_state: KodiPlayerState = KodiPlayerState.PLAYING_STOPPED
+    _player_state: KodiPlayerState = KodiPlayerState.VIDEO_PLAYER_IDLE
     _logger: BasicLogger = None
     _instance: 'KodiPlayerMonitor' = None
 
@@ -61,21 +62,21 @@ class KodiPlayerMonitor(Player):
         was_playing: bool | None = None
         while not Monitor.wait_for_abort(0.2):
             try:
-                playing = self.isPlaying()
+                playing: bool = self.isPlaying()
                 if playing != was_playing:
-                    player_state: KodiPlayerState
+                    video_player_state: KodiPlayerState
                     if playing:
-                        player_state = KodiPlayerState.PLAYING
+                        video_player_state = KodiPlayerState.PLAYING_VIDEO
                     else:
-                        player_state = KodiPlayerState.PLAYING_STOPPED
-                    clz._inform_player_status_listeners(player_state)
+                        video_player_state = KodiPlayerState.VIDEO_PLAYER_IDLE
+                    clz._inform_player_status_listeners(video_player_state)
                     was_playing = playing
             except AbortException:
                 break  # Let thread die
 
     @classmethod
     def stop_audio(cls):
-        cls._inform_player_status_listeners(KodiPlayerState.PLAYING_STOPPED)
+        cls._inform_player_status_listeners(KodiPlayerState.VIDEO_PLAYER_IDLE)
 
     @classmethod
     def register_player_status_listener(cls, listener: Callable[[KodiPlayerState], bool],
@@ -190,7 +191,7 @@ class KodiPlayerMonitor(Player):
         """
         clz = type(self)
         clz._logger.debug(f'onAVStarted')
-        clz._inform_player_status_listeners(KodiPlayerState.PLAYING)
+        clz._inform_player_status_listeners(KodiPlayerState.PLAYING_VIDEO)
 
     def onAVChange(self) -> None:
         """
@@ -203,7 +204,7 @@ class KodiPlayerMonitor(Player):
         """
         clz = type(self)
         clz._logger.debug(f'onAVChange')
-        clz._inform_player_status_listeners(KodiPlayerState.PLAYING)
+        clz._inform_player_status_listeners(KodiPlayerState.PLAYING_VIDEO)
 
 
 instance: KodiPlayerMonitor = KodiPlayerMonitor.instance()

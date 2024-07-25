@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 
 from enum import Enum
+
+from common.logger import BasicLogger
+
 try:
     from enum import StrEnum
 except ImportError:
@@ -10,6 +13,8 @@ from common import *
 from backends.settings.service_types import Services
 from backends.settings.setting_properties import SettingsProperties
 from common.messages import Message, Messages
+
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class BaseSettingsConstants:
@@ -47,18 +52,18 @@ class Backends(BaseSettingsConstants):
     ALL_ENGINE_IDS: List[str] = [
         AUTO_ID,
         ESPEAK_ID,
-        EXPERIMENTAL_ENGINE_ID,
-        FESTIVAL_ID,
-        FLITE_ID,
+        # EXPERIMENTAL_ENGINE_ID,
+        # FESTIVAL_ID,
+        # FLITE_ID,
         GOOGLE_ID,
-        INTERNAL_ID,
+        # INTERNAL_ID,
         LOG_ONLY_ID,
-        PICO_TO_WAVE_ID,
-        PIPER_ID,
-        RECITE_ID,
-        RESPONSIVE_VOICE_ID,
-        SAPI_ID,
-        SPEECH_DISPATCHER_ID
+        # PICO_TO_WAVE_ID,
+        # PIPER_ID,
+        # RECITE_ID,
+        # RESPONSIVE_VOICE_ID,
+        # SAPI_ID,
+        # SPEECH_DISPATCHER_ID
     ]
     settings_map: Dict[str, Message] = {
         AUTO_ID             : Messages.AUTO,
@@ -92,15 +97,24 @@ class Backends(BaseSettingsConstants):
 
 
 class Languages(BaseSettingsConstants):
+    _logger: BasicLogger = None
 
-    LOCALE_AF: Final[str]    = 'af'
+    # Msg for generic locale display
+    # Msg 32425 in strings.po is: "{0} ({1})"
+    # {0} is for Language
+    # {1} is for Country/region
+    # Example "English (United States)"
+    LOCALE_GENERIC: Final[int] = 32425
+
+
+    LOCALE_AF: Final[str] = 'af'
     LOCALE_AF_ZA: Final[str] = 'af-za'
     LOCALE_AR_SA: Final[str] = 'ar-sa'
-    LOCALE_BS: Final[str]    = 'bs'
-    LOCALE_CA: Final[str]    = 'ca'
+    LOCALE_BS: Final[str] = 'bs'
+    LOCALE_CA: Final[str] = 'ca'
     LOCALE_CA_ES: Final[str] = 'ca-es'
-    LOCALE_CS: Final[str]    = 'cs'
-    LOCALE_CY: Final[str]    = 'cy'
+    LOCALE_CS: Final[str] = 'cs'
+    LOCALE_CY: Final[str] = 'cy'
     LOCALE_DA_DK: Final[str] = 'da-dk'
     LOCALE_DE_DE: Final[str] = 'de-de'
     LOCALE_EL_GR: Final[str] = 'el-gr'
@@ -110,17 +124,17 @@ class Languages(BaseSettingsConstants):
     LOCALE_EN_IN: Final[str] = 'en-in'
     LOCALE_EN_US: Final[str] = 'en-us'
     LOCALE_EN_ZA: Final[str] = 'en-za'
-    LOCALE_EO: Final[str]    = 'eo'
+    LOCALE_EO: Final[str] = 'eo'
     LOCALE_ES_ES: Final[str] = 'es-es'
-    LOCALE_ES: Final[str]    = 'es'
+    LOCALE_ES: Final[str] = 'es'
     LOCALE_ES_MX: Final[str] = 'es-mx'
     LOCALE_ES_US: Final[str] = 'es-us'
     LOCALE_FI_FI: Final[str] = 'fi-fi'
     LOCALE_FR_BE: Final[str] = 'fr-be'
     LOCALE_FR_FR: Final[str] = 'fr-fr'
     LOCALE_FR_CA: Final[str] = 'fr-ca'
-    LOCALE_FR: Final[str]    = 'fr'
-    LOCALE_HI: Final[str]    = 'hi'
+    LOCALE_FR: Final[str] = 'fr'
+    LOCALE_HI: Final[str] = 'hi'
     LOCALE_HI_IN: Final[str] = 'hi-in'
     LOCALE_HR_HR: Final[str] = 'hr-hr'
     LOCALE_HU_HU: Final[str] = 'hu-hu'
@@ -130,7 +144,7 @@ class Languages(BaseSettingsConstants):
     LOCALE_IT_IT: Final[str] = 'it-it'
     LOCALE_JA_JP: Final[str] = 'ja-jp'
     LOCALE_KO_KR: Final[str] = 'ko-kr'
-    LOCALE_LA: Final[str]    = 'la'
+    LOCALE_LA: Final[str] = 'la'
     LOCALE_LV_LV: Final[str] = 'lv-lv'
     LOCALE_NB_NO: Final[str] = 'nb-no'
     LOCALE_NL_BE: Final[str] = 'nl-be'
@@ -143,10 +157,10 @@ class Languages(BaseSettingsConstants):
     LOCALE_RU_RU: Final[str] = 'ru-ru'
     LOCALE_SK_SK: Final[str] = 'sk-sk'
     LOCALE_SQ_AL: Final[str] = 'sq-al'
-    LOCAL_SR_ME: Final[str]  = 'sr-me'
+    LOCAL_SR_ME: Final[str] = 'sr-me'
     LOCALE_SR_RS: Final[str] = 'sr-rs'
     LOCALE_SW_KE: Final[str] = 'sw-ke'
-    LOCALE_TA: Final[str]    = 'ta'
+    LOCALE_TA: Final[str] = 'ta'
     LOCALE_TH_TH: Final[str] = 'th-th'
     LOCALE_TR_TR: Final[str] = 'tr-tr'
     LOCALE_VI_VN: Final[str] = 'vi-vn'
@@ -205,7 +219,7 @@ class Languages(BaseSettingsConstants):
         LOCALE_RU_RU: Messages.LOCALE_RU_RU,
         LOCALE_SK_SK: Messages.LOCALE_SK_SK,
         LOCALE_SQ_AL: Messages.LOCALE_SQ_AL,
-        LOCAL_SR_ME : Messages.LOCAL_SR_ME,
+        LOCAL_SR_ME : Messages.LOCALE_SR_ME,
         LOCALE_SR_RS: Messages.LOCALE_SR_RS,
         LOCALE_SW_KE: Messages.LOCALE_SW_KE,
         LOCALE_TA   : Messages.LOCALE_TA,
@@ -215,6 +229,185 @@ class Languages(BaseSettingsConstants):
         LOCALE_ZH_CN: Messages.LOCALE_ZH_CN,
         LOCALE_ZH_HK: Messages.LOCALE_ZH_HK,
         LOCALE_ZH_TW: Messages.LOCALE_ZH_TW
+    }
+
+    COUNTRY_AL: Final[str] = 'al'
+    COUNTRY_AM: Final[str] = 'am'
+    COUNTRY_AU: Final[str] = 'au'
+    COUNTRY_BE: Final[str] = 'be'
+    COUNTRY_BR: Final[str] = 'br'
+    COUNTRY_CA: Final[str] = 'ca'
+    COUNTRY_CN: Final[str] = 'cn'
+    COUNTRY_DE: Final[str] = 'de'
+    COUNTRY_DK: Final[str] = 'dk'
+    COUNTRY_EO: Final[str] = 'eo'
+    COUNTRY_ES: Final[str] = 'es'
+    COUNTRY_FI: Final[str] = 'fi'
+    COUNTRY_FR: Final[str] = 'fr'
+    COUNTRY_GB: Final[str] = 'gb'
+    COUNTRY_GR: Final[str] = 'gr'
+    COUNTRY_HK: Final[str] = 'hk'
+    COUNTRY_HR: Final[str] = 'hr'
+    COUNTRY_HU: Final[str] = 'hu'
+    COUNTRY_ID: Final[str] = 'id'
+    COUNTRY_IE: Final[str] = 'ie'
+    COUNTRY_IN: Final[str] = 'in'
+    COUNTRY_IS: Final[str] = 'is'
+    COUNTRY_IT: Final[str] = 'it'
+    COUNTRY_JA: Final[str] = 'ja'
+    COUNTRY_KE: Final[str] = 'ke'
+    COUNTRY_KR: Final[str] = 'kr'
+    COUNTRY_LV: Final[str] = 'lv'
+    COUNTRY_ME: Final[str] = 'me'
+    COUNTRY_MX: Final[str] = 'mx'
+    COUNTRY_NL: Final[str] = 'nl'
+    COUNTRY_NO: Final[str] = 'no'
+    COUNTRY_PL: Final[str] = 'pl'
+    COUNTRY_PT: Final[str] = 'pt'
+    COUNTRY_RO: Final[str] = 'ro'
+    COUNTRY_RS: Final[str] = 'rs'
+    COUNTRY_RU: Final[str] = 'ru'
+    COUNTRY_SA: Final[str] = 'sa'
+    COUNTRY_SK: Final[str] = 'sk'
+    COUNTRY_TA: Final[str] = 'ta'
+    COUNTRY_TH: Final[str] = 'th'
+    COUNTRY_TR: Final[str] = 'tr'
+    COUNTRY_TW: Final[str] = 'tw'
+    COUNTRY_US: Final[str] = 'us'
+    COUNTRY_VN: Final[str] = 'vn'
+    COUNTRY_ZA: Final[str] = 'za'
+
+    country_msg_map: Dict[str, int] = {
+        COUNTRY_AL: 32340,
+        COUNTRY_AM: 32341,
+        COUNTRY_AU: 32342,
+        COUNTRY_BE: 32343,
+        COUNTRY_BR: 32344,
+        COUNTRY_CA: 32345,
+        COUNTRY_CN: 32346,
+        COUNTRY_DE: 32347,
+        COUNTRY_DK: 32348,
+        COUNTRY_EO: 32349,
+        COUNTRY_ES: 32350,
+        COUNTRY_FI: 32351,
+        COUNTRY_FR: 32352,
+        COUNTRY_GB: 32353,
+        COUNTRY_GR: 32354,
+        COUNTRY_HK: 32355,
+        COUNTRY_HR: 32356,
+        COUNTRY_HU: 32357,
+        COUNTRY_ID: 32358,
+        COUNTRY_IE: 32359,
+        COUNTRY_IN: 32360,
+        COUNTRY_IS: 32361,
+        COUNTRY_IT: 32362,
+        COUNTRY_JA: 32363,
+        COUNTRY_KE: 32364,
+        COUNTRY_KR: 32365,
+        COUNTRY_LV: 32366,
+        COUNTRY_ME: 32367,
+        COUNTRY_MX: 32368,
+        COUNTRY_NL: 32369,
+        COUNTRY_NO: 32370,
+        COUNTRY_PL: 32371,
+        COUNTRY_PT: 32372,
+        COUNTRY_RO: 32373,
+        COUNTRY_RS: 32374,
+        COUNTRY_RU: 32375,
+        COUNTRY_SA: 32376,
+        COUNTRY_SK: 32377,
+        COUNTRY_TA: 32378,
+        COUNTRY_TH: 32379,
+        COUNTRY_TR: 32380,
+        COUNTRY_US: 32381,
+        COUNTRY_VN: 32382,
+        COUNTRY_ZA: 32383
+    }
+
+    LANG_AF: Final[str] = 'af'
+    LANG_AR: Final[str] = 'ar'
+    LANG_BS: Final[str] = 'bo'
+    LANG_CA: Final[str] = 'ca'
+    LANG_CS: Final[str] = 'cz'
+    LANG_CY: Final[str] = 'we'
+    LANG_DA: Final[str] = 'da'
+    LANG_DE: Final[str] = 'de'
+    LANG_EL: Final[str] = 'gr'
+    LANG_EN: Final[str] = 'en'
+    LANG_EO: Final[str] = 'es'
+    LANG_ES: Final[str] = 'sp'
+    LANG_FI: Final[str] = 'fi'
+    LANG_FR: Final[str] = 'fr'
+    LANG_HI: Final[str] = 'hi'
+    LANG_HR: Final[str] = 'cr'
+    LANG_HU: Final[str] = 'hu'
+    LANG_HY: Final[str] = 'ar'
+    LANG_ID: Final[str] = 'in'
+    LANG_IS: Final[str] = 'ic'
+    LANG_IT: Final[str] = 'it'
+    LANG_JA: Final[str] = 'ja'
+    LANG_KO: Final[str] = 'ko'
+    LANG_LA: Final[str] = 'la'
+    LANG_LV: Final[str] = 'la'
+    LANG_NB: Final[str] = 'no'
+    LANG_NL: Final[str] = 'du'
+    LANG_NO: Final[str] = 'no'
+    LANG_PL: Final[str] = 'po'
+    LANG_PT: Final[str] = 'po'
+    LANG_RO: Final[str] = 'ro'
+    LANG_RU: Final[str] = 'ru'
+    LANG_SK: Final[str] = 'sl'
+    LANG_SQ: Final[str] = 'al'
+    LANG_SR: Final[str] = 'se'
+    LANG_SW: Final[str] = 'sw'
+    LANG_TA: Final[str] = 'ta'
+    LANG_TH: Final[str] = 'th'
+    LANG_TR: Final[str] = 'tu'
+    LANG_VI: Final[str] = 'vi'
+    LANG_ZH: Final[str] = 'ch'
+
+    lang_msg_map: Dict[str, int] = {
+        LANG_AF: 32384,
+        LANG_AR: 32385,
+        LANG_BS: 32386,
+        LANG_CA: 32387,
+        LANG_CS: 32388,
+        LANG_CY: 32389,
+        LANG_DA: 32390,
+        LANG_DE: 32391,
+        LANG_EL: 32392,
+        LANG_EN: 32393,
+        LANG_EO: 32394,
+        LANG_ES: 32395,
+        LANG_FI: 32396,
+        LANG_FR: 32397,
+        LANG_HI: 32398,
+        LANG_HR: 32399,
+        LANG_HU: 32400,
+        LANG_HY: 32401,
+        LANG_ID: 32402,
+        LANG_IS: 32403,
+        LANG_IT: 32404,
+        LANG_JA: 32405,
+        LANG_KO: 32406,
+        LANG_LA: 32407,
+        LANG_LV: 32408,
+        LANG_NB: 32409,
+        LANG_NL: 32410,
+        LANG_NO: 32411,
+        LANG_PL: 32412,
+        LANG_PT: 32413,
+        LANG_RO: 32414,
+        LANG_RU: 32415,
+        LANG_SK: 32416,
+        LANG_SQ: 32417,
+        LANG_SR: 32418,
+        LANG_SW: 32419,
+        LANG_TA: 32420,
+        LANG_TH: 32421,
+        LANG_TR: 32422,
+        LANG_VI: 32423,
+        LANG_ZH: 32424
     }
 
 
@@ -265,7 +458,7 @@ class Players(BaseSettingsConstants):
     }
 
 
-class PlayerModes(StrEnum):
+class PlayerMode(StrEnum):
     SLAVE_FILE = 'slave_file'
     SLAVE_PIPE = 'slave_pipe'
     FILE = 'file'
@@ -307,9 +500,13 @@ class Genders(StrEnum):
     FEMALE = 'female'
     UNKNOWN = 'unknown'
 
+    def get_label(self) -> str:
+        msg_id: Message = GenderSettingsMap[self]
+        label: str = Messages.get_msg(msg_id)
+        return label
 
 class GenderSettingsMap(BaseSettingsConstants):
-    settings_map = {
+    settings_map: Dict[Genders, Message] = {
         Genders.MALE   : Messages.GENDER_MALE,
         Genders.FEMALE : Messages.GENDER_FEMALE,
         Genders.UNKNOWN: Messages.GENDER_UNKNOWN
@@ -324,9 +521,9 @@ class Channels(StrEnum):
 
 class ChannelSettingsMap(BaseSettingsConstants):
     settings_map = {
-        Channels.NO_PREF   : Messages.CHANNEL_NO_PREF,
-        Channels.MONO      : Messages.CHANNEL_MONO,
-        Channels.STEREO    : Messages.CHANNEL_STEREO
+        Channels.NO_PREF: Messages.CHANNEL_NO_PREF,
+        Channels.MONO   : Messages.CHANNEL_MONO,
+        Channels.STEREO : Messages.CHANNEL_STEREO
     }
 
 

@@ -14,6 +14,7 @@ from common.logger import *
 from common.setting_constants import Backends
 from common.settings_bridge import SettingsBridge
 from common.system_queries import SystemQueries
+from windowNavigation.choice import Choice
 
 
 class BackendInfo(IBackendInfo):
@@ -54,7 +55,8 @@ class BackendInfo(IBackendInfo):
         return False
 
     @classmethod
-    def getAvailableBackends(cls, can_stream_wav: bool = False) -> List[ITTSBackendBase]:
+    def getAvailableBackends(cls,
+                             can_stream_wav: bool = False) -> List[ITTSBackendBase]:
         available: List[ITTSBackendBase] = []
         cls._logger.debug_verbose(
                 f'backends.__init__.getAvailableBackends can_stream_wav: '
@@ -89,6 +91,7 @@ class BackendInfo(IBackendInfo):
                 return b
         return None
 
+    #  TODO: getBackendByProvider appears broke, never initialized
     # TODO: Looks like a HACK. Only applies to several engines/backends and there
     # is no definition in TTSBackend for voices() so it could blow up
     @classmethod
@@ -109,10 +112,13 @@ class BackendInfo(IBackendInfo):
         return languages
 
     @classmethod
-    def getSettingsList(cls, backend_id, setting, *args):
+    def getSettingsList(cls, backend_id, setting,
+                        *args) -> List[Choice]:
+        settings: List[Choice]
         settings = None
         bClass: Callable | ITTSBackendBase = cls.getBackendByProvider(backend_id)
         if bClass:
+            cls._logger.debug(f'bClass: {type(bClass)}')
             settings = bClass.settingList(setting, *args)
         return settings
 
@@ -150,9 +156,12 @@ class BackendInfo(IBackendInfo):
     @classmethod
     def getBackendByProvider(cls, provider_id: str = None) \
             -> Callable | Type[ITTSBackendBase] | None:
+        cls._logger.debug(f'provider_id: {provider_id}')
         if provider_id == 'auto':
             return None
         for b in cls.backendsByPriority:
+            cls._logger.debug(f'backend {b.backend_id}')
+            cls._logger.debug(f'available: {b._available()}')
             if b.backend_id == provider_id and b._available():
                 return b
         return None

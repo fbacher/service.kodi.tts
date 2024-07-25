@@ -373,6 +373,17 @@
                     </control>
                     <visible>true</visible>
                 </setting>
+                <setting help="" id="api_key.google" label="32178" type="string">
+                    <level>4</level>
+                      <constraints>
+                        <allowempty>false</allowempty>
+                    </constraints>
+                    <default>abc</default>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>true</visible>
+                </setting>
                  <setting help="" id="player_mode.google" label="32178" type="string">
                     <level>4</level>
                       <constraints>

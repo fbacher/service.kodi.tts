@@ -139,7 +139,7 @@ class CustomTTSReader(WindowReaderBase):
         clz = type(self)
         # clz._logger.debug(f'entering')
         success: bool = True
-        phrases: PhraseList = PhraseList()
+        phrases: PhraseList = PhraseList(check_expired=False)
         for topic in topics_to_voice:
             if GuiWorkerQueue.canceled_sequence_number >= sequence_number:
                 return
@@ -154,8 +154,7 @@ class CustomTTSReader(WindowReaderBase):
         # on how much 'topic chain' is altered.
 
         if not phrases.is_empty():
-            phrase: Phrase = phrases[0]
-            phrase.set_interrupt(True)
+            phrases.set_interrupt(True)
             self.service.sayText(phrases)
 
     """
@@ -206,8 +205,10 @@ class CustomTTSReader(WindowReaderBase):
         if topic.alt_label_expr != '':
             try:
                 alt_msg_number: int = int(topic.alt_label_expr)
-                success = Messages.add_msg_by_id(phrases, alt_msg_number,
-                                                 empty_on_error=False)
+                text: str = Messages.get_msg_by_id(alt_msg_number,
+                                                   empty_on_error=False)
+                phrases.append(Phrase(text))
+                success = True
             except:
                 success = False
             if not success:
@@ -244,7 +245,7 @@ class CustomTTSReader(WindowReaderBase):
         """
 
         clz = type(self)
-        phrases: PhraseList = PhraseList()
+        phrases: PhraseList = PhraseList(check_expired=False)
         phrase: Phrase = None
         success: bool = AltCtrlType.get_message(topic.alt_type, phrases)
         if not success:
@@ -361,7 +362,7 @@ class CustomTTSReader(WindowReaderBase):
 
     def get_hint_text(self) -> PhraseList:
         clz = type(self)
-        phrases: PhraseList = PhraseList()
+        phrases: PhraseList = PhraseList(check_expired=False)
         topic: TopicModel = self.window_model.topic
         if topic is None:
             pass
@@ -685,11 +686,11 @@ class CustomTTSReader(WindowReaderBase):
             #     self.rank: int = parsed_topic.rank
         return phrases
         '''
-        return PhraseList()
+        return PhraseList(check_expired=False)
 
     def all_controls_speak(self) -> PhraseList:
         clz = type(self)
-        phrases: PhraseList = PhraseList()
+        phrases: PhraseList = PhraseList(check_expired=False)
         phrase: Phrase
         current_item: int = 0
         """
@@ -781,7 +782,7 @@ class CustomTTSReader(WindowReaderBase):
     """
 
     def getControlDescription(self, control_id) -> PhraseList:
-        return PhraseList()
+        return PhraseList(check_expired=False)
         '''
         clz = type(self)
         phrases: PhraseList
@@ -799,7 +800,7 @@ class CustomTTSReader(WindowReaderBase):
           return self.getSlideoutText(control_id)
         
         if control_id is not None:
-          return PhraseList()
+          return PhraseList(check_expired=False)
         text: str | None = xbmc.getInfoLabel('ListItem.Title')
         text2: str | None = None
         if text and clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
@@ -818,7 +819,7 @@ class CustomTTSReader(WindowReaderBase):
           if text and clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
               clz._logger.debug_extra_verbose(f'text: {text}')
         if not text:
-          return PhraseList()
+          return PhraseList(check_expired=False)
         text_id: str = text + xbmc.getInfoLabel('ListItem.StartTime') + xbmc.getInfoLabel(
               'ListItem.EndTime')
         texts: List[str] = [text]
@@ -844,7 +845,7 @@ class CustomTTSReader(WindowReaderBase):
         pvr does special stuff
         ... other specialized stuff
         """
-        return PhraseList()
+        return PhraseList(check_expired=False)
         '''
         clz = type(self)
         clz._logger.debug(f'In getControlText')
@@ -862,7 +863,7 @@ class CustomTTSReader(WindowReaderBase):
         From Default Reader
     def getSecondaryText(self) -> PhraseList:
         clz = type(self)
-        phrases: PhraseList = PhraseList()
+        phrases: PhraseList = PhraseList(check_expired=False)
         phrase: Phrase = guitables.getListItemProperty(self.winID)
         if not phrase.is_empty():
             phrases.append(phrase)
@@ -875,11 +876,11 @@ class CustomTTSReader(WindowReaderBase):
 
         :return:
         """
-        return PhraseList()
+        return PhraseList(check_expired=False)
         '''
         clz = type(self)
         clz._logger.debug(f'In getSecondaryText')
-        phrases: PhraseList = PhraseList()
+        phrases: PhraseList = PhraseList(check_expired=False)
         text: str = xbmc.getInfoLabel(f'Control.GetLabel(ListItem.Property(Addon.Status))')
         phrase: Phrase = Phrase(text=f'{text}')
         phrases.append(phrase)
@@ -887,7 +888,7 @@ class CustomTTSReader(WindowReaderBase):
         '''
 
     def getItemExtraTexts(self, control_id) -> PhraseList:
-        return PhraseList()
+        return PhraseList(check_expired=False)
         '''
         clz = type(self)
         clz._logger.debug(f'getItemExtraTexts')

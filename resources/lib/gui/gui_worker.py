@@ -452,7 +452,7 @@ class GuiWorker:
         # on how much 'topic chain' is altered.
 
         if not phrases.is_empty():
-            phrases[0].set_interrupt(True)
+            phrases.set_interrupt(True)
             self.service.sayText(phrases)
 
 

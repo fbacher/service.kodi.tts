@@ -1,9 +1,8 @@
 from __future__ import annotations  # For union operator |
 
-from common import *
-
 from backends.players.iplayer import IPlayer
 from backends.settings.setting_properties import SettingsProperties
+from common import *
 from common.logger import *
 from common.settings import Settings
 

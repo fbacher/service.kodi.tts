@@ -2,14 +2,17 @@ from ctypes import c_buffer, windll
 
 ID_COUNTER = 0
 
+
 def idCounter():
     global ID_COUNTER
     ID_COUNTER += 1
-    if ID_COUNTER > 65535: ID_COUNTER = 1
+    if ID_COUNTER > 65535:
+        ID_COUNTER = 1
     return ID_COUNTER
 
 
 class _mci:
+
     def __init__(self):
         self.w32mci = windll.winmm.mciSendStringA
         self.w32mcierror = windll.winmm.mciGetErrorStringA
@@ -37,6 +40,7 @@ class _mci:
 
 # TODO: detect errors in all mci calls
 class AudioClip:
+
     def __init__(self, filename):
         filename = filename.replace('/', '\\')
         self.filename = filename
@@ -44,22 +48,22 @@ class AudioClip:
 
         self._mci = _mci()
 
-        self._mci.directsend(r'open "%s" alias %s' % (filename, self._alias ))
+        self._mci.directsend(r'open "%s" alias %s' % (filename, self._alias))
         self._mci.directsend('set %s time format milliseconds' % self._alias)
 
-        err, buf=self._mci.directsend('status %s length' % self._alias)
+        err, buf = self._mci.directsend('status %s length' % self._alias)
         self._length_ms = int(buf)
 
     def volume(self, level):
         """Sets the volume between 0 and 100."""
         self._mci.directsend('setaudio %s volume to %d' %
-                (self._alias, level * 10) )
+                             (self._alias, level * 10))
 
     def play(self, start_ms=None, end_ms=None):
         start_ms = 0 if not start_ms else start_ms
         end_ms = self.milliseconds() if not end_ms else end_ms
-        err,buf=self._mci.directsend('play %s from %d to %d'
-                % (self._alias, start_ms, end_ms) )
+        err, buf = self._mci.directsend('play %s from %d to %d'
+                                        % (self._alias, start_ms, end_ms))
 
     def isplaying(self):
         return self._mode() == 'playing'

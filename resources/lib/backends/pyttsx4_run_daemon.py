@@ -26,7 +26,7 @@ class Pyttsx4RunDaemon:
     PYTHON_PATH: Final[Path] = Path(os.environ.get('PYTHON_PATH')) / 'python.exe'
     DAEMON_PATH: Final[Path] = (Path(Constants.PYTHON_ROOT_PATH) / 'backends' /
                                 'pyttsx4_daemon' / 'daemon.py')
-    player_state: str = KodiPlayerState.PLAYING_STOPPED
+    player_state: str = KodiPlayerState.VIDEO_PLAYER_IDLE
     logger: BasicLogger = None
 
     def __init__(self) -> None:

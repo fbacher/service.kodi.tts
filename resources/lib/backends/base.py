@@ -30,7 +30,7 @@ from common.logger import *
 from common.messages import Messages
 from common.monitor import Monitor
 from common.phrases import Phrase, PhraseList
-from common.setting_constants import Genders, PlayerModes, Players
+from common.setting_constants import Genders, PlayerMode, Players
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
 
@@ -38,11 +38,11 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class EngineQueue:
-    '''
+    """
     There is a single EngineQueue which all voiced text must flow through.
     The queue can be purged when text expires (when a movie starts to play or
     due to user input, etc.).
-    '''
+    """
 
     class QueueItem:
 
@@ -111,11 +111,11 @@ class EngineQueue:
                     item = self.tts_queue.get(timeout=0.0)
                     self.tts_queue.task_done()  # TODO: Change this to use phrase delays
                     phrase: Phrase = item.phrase
-                    if (clz.kodi_player_state == KodiPlayerState.PLAYING and not
-                            phrase.speak_while_playing):
+                    if (clz.kodi_player_state == KodiPlayerState.PLAYING_VIDEO and not
+                            phrase.speak_over_kodi):
                         clz._logger.debug(f'skipping play of {phrase.debug_data()} '
                                           f'speak while playing: '
-                                          f'{phrase.speak_while_playing}',
+                                          f'{phrase.speak_over_kodi}',
                                           trace=Trace.TRACE_AUDIO_START_STOP)
                         continue
                     clz._logger.debug(f'Start play of {phrase.debug_data()} '
@@ -165,8 +165,8 @@ class EngineQueue:
         :param engine:
         """
         zelf = cls._instance
-        if not engine.is_active_engine():
-            return
+        # if not engine.is_active_engine():
+        #     return
         try:
             cls._logger.debug(f'phrase: {phrases[0].get_text()} '
                               f'Engine: {engine.service_ID} '
@@ -538,9 +538,14 @@ class BaseEngineService(BaseServices):
     @classmethod
     @deprecated  # Use validator
     def getVoice(cls):
-        voice = cls.getSetting(SettingsProperties.VOICE, SettingsProperties.UNKNOWN_VALUE)
-
+        voice = cls.getSetting(SettingsProperties.VOICE, '')
         return voice
+
+    def get_voice_cache(self) -> VoiceCache:
+        raise NotImplementedError()
+
+    def update_voice_path(cls, phrase: Phrase) -> None:
+        raise NotImplementedError()
 
     @classmethod
     @deprecated  # ("Use validators instead")
@@ -684,9 +689,6 @@ class BaseEngineService(BaseServices):
     def is_active_engine(cls, engine: ForwardRef('BaseEngineService')) -> bool:
         return cls.is_current_engine(engine) or cls.is_alternate_engine(engine)
 
-    def is_current_engine(self) -> bool:
-        clz = type(self)
-        return clz.is_current_engine(self)
 
     def is_alternate_engine(self) -> bool:
         clz = type(self)
@@ -812,7 +814,7 @@ class ThreadedTTSBackend(BaseEngineService):
     The say() method is not meant to be overridden.
     """
     _class_name: str = None
-    kodi_player_state: KodiPlayerState = KodiPlayerState.PLAYING_STOPPED
+    kodi_player_state: KodiPlayerState = KodiPlayerState.VIDEO_PLAYER_IDLE
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -849,7 +851,7 @@ class ThreadedTTSBackend(BaseEngineService):
         clz = type(self)
         clz.kodi_player_state = kodi_player_state
         clz._logger.debug(f'KODI_PLAYER_STATE: {kodi_player_state}')
-        if kodi_player_state == KodiPlayerState.PLAYING:
+        if kodi_player_state == KodiPlayerState.PLAYING_VIDEO:
             self._stop()
 
     def say(self, phrases: PhraseList):
@@ -921,7 +923,6 @@ class SimpleTTSBackend(ThreadedTTSBackend):
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz._class_name)
         clz._simpleIsSpeaking = False
-        self.player_mode: PlayerModes | None = None
         BaseServices.register(self)
 
     def init(self):
@@ -950,24 +951,29 @@ class SimpleTTSBackend(ThreadedTTSBackend):
     #    clz = type(self)
     #    return self.player_handler_instance
 
-    def set_player_mode(self, player_mode: PlayerModes) -> None:
+    '''
+    def set_player_mode(self, player_mode: PlayerMode) -> None:
         """
 
         @param player_mode:
         """
         clz = type(self)
-        assert isinstance(player_mode, PlayerModes), 'Bad mode'
-        if player_mode == PlayerModes.PIPE:
+        assert isinstance(player_mode, PlayerMode), 'Bad mode'
+        if player_mode == PlayerMode.PIPE:
             pass
-        if player_mode == PlayerModes.FILE:
+        if player_mode == PlayerMode.FILE:
             if clz._logger.isEnabledFor(DEBUG):
                 clz._logger.debug(f'Mode: {player_mode.value()}')
-        elif player_mode == PlayerModes.ENGINE_SPEAK:
+        elif player_mode == PlayerMode.ENGINE_SPEAK:
             audio.load_snd_bm2835()
             if clz._logger.isEnabledFor(DEBUG):
                 clz._logger.debug(f'Mode: {player_mode.value()}')
 
         self.player_mode = player_mode
+    '''
+
+    def get_voice_cache(self) -> VoiceCache:
+        raise NotImplementedError
 
     def getVolumeDb(self) -> float:
         """
@@ -995,7 +1001,7 @@ class SimpleTTSBackend(ThreadedTTSBackend):
     def runCommand(self, phrase: Phrase):
         """Convert text to speech and output to a .wav file
 
-        If using PlayerModes.FILE, subclasses must override this method
+        If using PlayerMode.FILE, subclasses must override this method
         and output a .wav or .mp3 file to outFile (depending upon player capability),
          returning True if a file was
         successfully written and False otherwise.
@@ -1022,7 +1028,7 @@ class SimpleTTSBackend(ThreadedTTSBackend):
     def runCommandAndSpeak(self, phrase: Phrase):
         """Convert text to speech and output directly
 
-        If using PlayerModes.ENGINE_SPEAK, subclasses must override this method
+        If using PlayerMode.ENGINE_SPEAK, subclasses must override this method
         and speak text and should block until speech is complete.
         """
         raise NotImplementedError()
@@ -1060,7 +1066,7 @@ class SimpleTTSBackend(ThreadedTTSBackend):
         clz._logger.debug(f'In base.config_player_mode')
         player_id: str = Settings.get_player_id(clz.engine_id)
         if player_id == Players.INTERNAL:
-            mode = PlayerModes.ENGINE_SPEAK
+            mode = PlayerMode.ENGINE_SPEAK
         elif Settings.uses_pipe(clz.engine_id):
             mode = Mode.PIPE
         else:
@@ -1082,13 +1088,12 @@ class SimpleTTSBackend(ThreadedTTSBackend):
         try:
             self.initialize_player()
             #  self.config_mode()
-            self.player_mode = Settings.get_player_mode()
-            text: str = phrase.get_text()
+            player_mode: PlayerMode = Settings.get_player_mode()
             if phrase.get_interrupt():
                 self.stop_player(now=True)
 
-            clz._logger.debug(f'player_mode: {self.player_mode}')
-            if self.player_mode == PlayerModes.FILE:
+            clz._logger.debug(f'player_mode: {player_mode}')
+            if player_mode == PlayerMode.FILE:
                 # outFile: str
                 # exists: bool
                 # use_cache: bool = Settings.is_use_cache(clz.engine_id)
@@ -1105,7 +1110,7 @@ class SimpleTTSBackend(ThreadedTTSBackend):
                 player: IPlayer = self.get_player(self.engine_id)
                 if player:  # if None, then built-in
                     player.play(phrase)
-            elif self.player_mode == PlayerModes.SLAVE_FILE:
+            elif player_mode == PlayerMode.SLAVE_FILE:
                 # Typically used with caching. If the voiced file does not
                 # yet exist, then it is created using the path and other info
                 # in the Phrase. Then the Slave Player is given the phrase via
@@ -1117,7 +1122,7 @@ class SimpleTTSBackend(ThreadedTTSBackend):
                 player: IPlayer = self.get_player(self.engine_id)
                 player.slave_play(phrase)
 
-            elif self.player_mode == PlayerModes.PIPE:
+            elif player_mode == PlayerMode.PIPE:
                 source: BinaryIO = self.runCommandAndPipe(phrase)
                 if not source:
                     return
@@ -1161,7 +1166,7 @@ class SimpleTTSBackend(ThreadedTTSBackend):
         try:
             player: IPlayer = self.get_player(self.engine_id)
             if player:
-                player.stop(now=now)
+                player.abort_voicing(purge=True, future=False)
         except Exception as e:
             clz._logger.exception('')
 

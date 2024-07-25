@@ -150,7 +150,9 @@ class Driver(BaseServices):
                     '''
 
                     if Settings.is_use_cache():
-                        VoiceCache.get_path_to_voice_file(phrase, use_cache=True)
+                        active_engine. update_voice_path(phrase)
+                        VoiceCache.get_path_to_voice_file(active_engine.get_voice_cache(),
+                                                          phrase, use_cache=True)
                     '''
                         if phrase.exists():
                             clz._logger.debug(f'{phrase.get_text()} is in cache: {
@@ -303,7 +305,6 @@ class Driver(BaseServices):
         try:
             player_id: str = SettingsMap.get_value(active_engine.service_ID,
                                                    SettingsProperties.PLAYER)
-
             # Forces initialization and populates capabilities, settings, etc.
 
             player: IPlayer = PlayerIndex.get_player(player_id)

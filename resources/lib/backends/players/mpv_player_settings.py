@@ -9,7 +9,8 @@ from backends.settings.service_types import Services, ServiceType
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
                                           NumericValidator, StringValidator, Validator)
-from common.setting_constants import PlayerModes, Players
+from common.constants import Constants
+from common.setting_constants import PlayerMode, Players
 from common.settings_low_level import SettingsProperties
 
 
@@ -44,6 +45,8 @@ class MPVPlayerSettings:
                                   _supported_input_formats,
                                   _supported_output_formats)
 
+    _availableArgs = (Constants.MPV_PATH, '--help')
+
     # Every setting from settings.xml must be listed here
     # SettingName, default value
 
@@ -59,6 +62,10 @@ class MPVPlayerSettings:
 
     @classmethod
     def init(cls):
+        service_properties = {Constants.NAME: cls.displayName}
+        SettingsMap.define_service(ServiceType.PLAYER, cls.service_ID,
+                                   service_properties)
+
         # Not supporting Pitch changes with MPV_Player at this time
 
         # TTS Speed constraints defined as linear from 0.25 to 4 with 1 being 100%
@@ -120,14 +127,14 @@ class MPVPlayerSettings:
                                    cache_validator)
 
         allowed_player_modes: List[str] = [
-            PlayerModes.SLAVE_FILE.value,
-            PlayerModes.FILE.value
+            PlayerMode.SLAVE_FILE.value,
+            PlayerMode.FILE.value
         ]
         player_mode_validator: StringValidator
         player_mode_validator = StringValidator(SettingsProperties.PLAYER_MODE,
                                                 cls.service_ID,
                                                 allowed_values=allowed_player_modes,
-                                                default=PlayerModes.SLAVE_FILE.value)
+                                                default=PlayerMode.SLAVE_FILE.value)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER_MODE,
                                    player_mode_validator)
         '''

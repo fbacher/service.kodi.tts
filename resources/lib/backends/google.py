@@ -8,6 +8,8 @@ import tempfile
 
 import gtts
 from backends.ispeech_generator import ISpeechGenerator
+from backends.settings.language_info import LanguageInfo
+from backends.settings.settings_helper import SettingsHelper
 from common import *
 
 from backends import base
@@ -27,11 +29,15 @@ from common.logger import *
 from common.messages import Message, Messages
 from common.monitor import Monitor
 from common.phrases import Phrase, PhraseList, PhraseUtils
-from common.setting_constants import Backends, Languages, Mode, PlayerModes
+from common.setting_constants import Backends, Genders, Languages, Mode, PlayerMode
 from common.settings import Settings
+import langcodes
 from gtts import gTTS, gTTSError, lang
+from langcodes import LanguageTagError
 from utils.util import runInThread
 import xbmc
+
+from windowNavigation.choice import Choice
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -79,52 +85,8 @@ class Results:
         self.phrase = phrase
 
 
-class LanguageInfo:
-
-    lang_info_map: Dict[str, 'LanguageInfo'] = {}
-    initialized: bool = False
-
-    def __init__(self, locale_id: str, language_code: str, country_code: str,
-                 language_name: str, country_name: str, google_tld: str) -> None:
-        clz = type(self)
-        self.locale_id: str = locale_id
-        self.language_code: str = language_code
-        self.country_code: str = country_code
-        self.language_name: str = language_name
-        self.country_name: str = country_name
-        self.google_tld: str = google_tld
-        clz.lang_info_map[locale_id] = self
-
-    @classmethod
-    def get(cls, locale_id: str) -> 'LanguageInfo':
-        return cls.lang_info_map.get(locale_id)
-
-    def get_locale_id(self) -> str:
-        return self.locale_id
-
-    def get_language_code(self) -> str:
-        return self.language_code
-
-    def get_country_code(self) -> str:
-        return self.country_code
-
-    def get_language_name(self) -> str:
-        return self.language_name
-
-    def get_country_name(self) -> str:
-        return self.country_name
-
-    def get_google_tld(self) -> str:
-        return self.google_tld
-
-    @classmethod
-    def get_locales(cls) -> List[str]:
-        return list(cls.lang_info_map.keys())
-
-
 class GoogleSpeechGenerator(ISpeechGenerator):
-    RESPONSIVE_VOICE_URL: Final[
-        str] = "http://responsivevoice.org/responsivevoice/getvoice.php"
+
     MAXIMUM_PHRASE_LENGTH: Final[int] = 200
 
     _logger: BasicLogger = None
@@ -134,6 +96,7 @@ class GoogleSpeechGenerator(ISpeechGenerator):
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz.__name__)
         self.download_results: Results = Results()
+        self.voice_cache: VoiceCache = VoiceCache()
 
     def set_rc(self, rc: ReturnCode) -> None:
         self.download_results.set_rc(rc)
@@ -164,6 +127,7 @@ class GoogleSpeechGenerator(ISpeechGenerator):
 
         clz = type(self)
         Monitor.exception_on_abort(timeout=0.0)
+        GoogleTTSEngine.update_voice_path(phrase)
         max_phrase_length: int | None
         max_phrase_length = SettingsMap.get_service_property(GoogleTTSEngine.service_ID,
                                                              Constants.MAX_PHRASE_LENGTH)
@@ -175,7 +139,7 @@ class GoogleSpeechGenerator(ISpeechGenerator):
         unchecked_phrase_chunks: PhraseList = phrase_chunks.clone(check_expired=False)
         runInThread(self._generate_speech, name='download_speech', delay=0.0,
                     phrase_chunks=unchecked_phrase_chunks, original_phrase=phrase,
-                    timeout=timeout, language=phrase.language, gender=phrase.gender)
+                    timeout=timeout, gender=phrase.gender)
 
         max_wait: int = int(timeout / 0.1)
         while max_wait > 0:
@@ -198,14 +162,16 @@ class GoogleSpeechGenerator(ISpeechGenerator):
         text_file_path: pathlib.Path = None
         phrase_chunks: PhraseList | None = None
         original_phrase: Phrase = None
-        language: str = ''
+        lang_code: str = ''
+        country_code: str = ''
         gender: str = ''
         try:
-            arg: str | None = kwargs.get('language', None)
-            if arg is None:
-                language = GoogleTTSEngine.getLanguage()
-            else:
-                language = arg
+            lang_code = kwargs.get('lang_code', None)
+            if lang_code is None:
+                lang_code = GoogleTTSEngine.getLanguage()
+
+            country_code = kwargs.get('country_code', 'us')
+
             arg = kwargs.get('gender', None)
             if arg is None:
                 gender: str = GoogleTTSEngine.getGender()
@@ -247,7 +213,7 @@ class GoogleSpeechGenerator(ISpeechGenerator):
         try:
             cache_path = original_phrase.get_cache_path()
             rc2: int
-            rc2, _ = VoiceCache.create_sound_file(cache_path,
+            rc2, _ = self.voice_cache.create_sound_file(cache_path,
                                                   create_dir_only=True)
             if rc2 != 0:
                 if clz._logger.isEnabledFor(ERROR):
@@ -266,15 +232,16 @@ class GoogleSpeechGenerator(ISpeechGenerator):
                 # are small enough for gTTS to handle. We concatenate the results
                 # from the phrase_chunks to the same file.
                 temp_file = pathlib.Path(sound_file.name)
-                phrase_chunk: Phrase = None
                 for phrase_chunk in phrase_chunks:
+                    phrase_chunk: Phrase
                     try:
                         Monitor.exception_on_abort()
-                        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                            clz._logger.debug_verbose(f'phrase: '
+                        if clz._logger.isEnabledFor(DEBUG):
+                            clz._logger.debug(f'phrase: '
                                                       f'{phrase_chunk.get_text()}')
 
-                        my_gtts: MyGTTS = MyGTTS(phrase_chunk, lang=language)
+                        my_gtts: MyGTTS = MyGTTS(phrase_chunk, lang_code=lang_code,
+                                                 country_code=country_code)
                         # gtts.save(phrase.get_cache_path())
                         #     gTTSError – When there’s an error with the API request.
                         # gtts.stream() # Streams bytes
@@ -308,7 +275,7 @@ class GoogleSpeechGenerator(ISpeechGenerator):
                         self.set_rc(ReturnCode.DOWNLOAD)
                         self.set_finished()
                 clz._logger.debug(f'Finished with loop writing temp file: '
-                                  f'{str(temp_file)}')
+                                  f'{str(temp_file)} size: {temp_file.stat().st_size}')
             if self.get_rc() == ReturnCode.OK:
                 try:
                     if temp_file.exists() and temp_file.stat().st_size > 0:
@@ -346,10 +313,13 @@ class GoogleSpeechGenerator(ISpeechGenerator):
 
 class MyGTTS(gTTS):
 
-    def __init__(self, phrase: Phrase, lang: str = 'en-gb') -> None:
+    def __init__(self, phrase: Phrase, lang_code: str = 'en',
+                 country_code: str = 'us') -> None:
         """
         :param self:
         :param phrase:
+        :param lang_code:  2-char language code
+        :param country_code:  country code
         :return:
 
         Raises:
@@ -362,19 +332,12 @@ class MyGTTS(gTTS):
         country_code_country_tld: Dict[str, Tuple[str, str]] = {
                                 ISO3166-1, <google tld>, <country name>
         """
-        lang_country = lang.split('-')
-        country_code: str = ''
-        lang_code = 'en'
-        if len(lang_country) == 2:
-            lang_code = lang_country[0]
-            country_code = lang_country[1]
 
-        tld: Tuple[str, str]
-        tld = GoogleData.country_code_country_tld[country_code]
-        if tld is not None and len(tld) == 2:
-            tld = tld[0]
-        else:
-            tld = ''
+        data: Tuple[str, str]
+        data = GoogleData.country_code_country_tld[country_code]
+        tld: str = 'com'
+        if data is not None and len(data) == 2:
+            tld = data[0]
         super().__init__(phrase.get_text(),
                          lang=lang_code,
                          slow=False,
@@ -409,6 +372,134 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
     # lang_map: Dict[str, str] = None # IETF_lang_name: display_name
     _initialized: bool = False
 
+    class LangInfo:
+        _logger: BasicLogger = None
+
+        lang_info_map: Dict[str, ForwardRef('LangInfo')] = {}
+        initialized: bool = False
+        global_lang_initalized: bool = False
+
+        def __init__(self, locale_id: str, language_code: str, country_code: str,
+                     language_name: str, country_name: str, google_tld: str) -> None:
+            clz = type(self)
+            self.locale_id: str = locale_id
+            self.language_code: str = language_code
+            self.country_code: str = country_code
+            self.language_name: str = language_name
+            self.country_name: str = country_name
+            self.google_tld: str = google_tld
+            clz.lang_info_map[locale_id] = self
+
+        @classmethod
+        def get(cls, locale_id: str) -> ForwardRef('LangInfo'):
+            return cls.lang_info_map.get(locale_id)
+
+        def get_locale_id(self) -> str:
+            return self.locale_id
+
+        def get_language_code(self) -> str:
+            return self.language_code
+
+        def get_country_code(self) -> str:
+            return self.country_code
+
+        def get_language_name(self) -> str:
+            return self.language_name
+
+        def get_country_name(self) -> str:
+            return self.country_name
+
+        def get_google_tld(self) -> str:
+            return self.google_tld
+
+        @classmethod
+        def get_locales(cls) -> List[str]:
+            return list(cls.lang_info_map.keys())
+
+        @classmethod
+        def load_lang_info(cls):
+            if not cls.initialized:
+                if cls._logger is None:
+                    cls._logger = module_logger.getChild(cls.__name__)
+                cls.initialized = True
+                lang_map = gtts.lang.tts_langs()
+
+                '''
+                Languages Google Text-to-Speech supports.
+                Returns:
+                    A dictionary of the type { ‘<lang>’: ‘<name>’}
+                     Where <lang> is an IETF language tag such as en or zh-TW, and <name>
+                     is the full English name of the language, such as English or Chinese (
+                     Mandarin/Taiwan).
+        
+                    The dictionary returned combines languages from two origins:
+                    - Languages fetched from Google Translate (pre-generated in gtts.langs)
+                    - Languages that are undocumented variations that were observed to work 
+                      and present different dialects or accents.
+                #             <locale>   (<lang_id> <country_id>, <google_domain>)
+                locale_map: Dict[str, Tuple[str, str, str]]
+                tmp_lang_ids = lang_map.keys()  # en, zh-TW, etc
+                
+                lang_ids: List[str] = list(tmp_lang_ids)
+                '''
+
+                extra_locales = sorted(GoogleData.get_locales())
+                for locale_id in extra_locales:
+                    lang_country = locale_id.split('-')
+                    if len(lang_country) == 2:
+                        lang_code = lang_country[0]
+                        country_code = lang_country[1]
+                    else:
+                        lang_code = lang_country
+                        country_code = lang_country
+                    lang_name: str = lang_map.get(lang_code, locale_id)
+                    result = GoogleData.country_code_country_tld.get(country_code)
+                    if result is None:
+                        cls._logger.debug(f'No TLD for {country_code}.')
+                        result = 'com', country_code
+                    if len(result) != 2:
+                        cls._logger.debug(
+                                f'Missing TLD/country code info: result: {result}')
+                        result = 'com', country_code
+                    tld, country_name = result
+                    lang_info: GoogleTTSEngine.LangInfo
+                    lang_info = GoogleTTSEngine.LangInfo(locale_id,
+                                                         lang_code,
+                                                         country_code,
+                                                         locale_id,
+                                                         f'{country_name}_X',
+                                                         tld)
+
+
+        @classmethod
+        def load_global_lang_info(cls):
+            if cls.global_lang_initalized:
+                return
+            cls.global_lang_initialized = True
+            entry: Dict[str, ForwardRef('LangInfo')]
+            for locale_id, entry in cls.lang_info_map.items():
+                locale_id: str
+                entry: GoogleTTSEngine.LangInfo
+
+                lang: langcodes.Language = None
+                try:
+                    lang = langcodes.Language.get(locale_id)
+                except LanguageTagError:
+                    cls._logger.exception('')
+
+                LanguageInfo.add_language(engine_id=GoogleTTSEngine.engine_id,
+                             language_id=entry.language_code,
+                             country_id=entry.country_code,
+                             ietf=lang,
+                             region_id='',  # Not used by Google
+                             gender=Genders.UNKNOWN,
+                             voice=entry.locale_id,
+                             engine_lang_id=locale_id,
+                             engine_voice_id=entry.locale_id,
+                             engine_name_msg_id=Messages.BACKEND_GOOGLE.get_msg_id(),
+                             engine_quality=4,
+                             voice_quality=-1)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         clz = type(self)
@@ -417,6 +508,8 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
 
         # self.simple_cmd: SimpleRunCommand = None
         self.f = False
+        self.voice_cache: VoiceCache = VoiceCache()
+
         if not clz._initialized:
             BaseServices().register(self)
             clz._initialized = True
@@ -426,11 +519,27 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         super().init()
         self.update()
 
-    def get_player_mode(self) -> PlayerModes:
+    def get_voice_cache(self) -> VoiceCache:
+        return self.voice_cache
+
+    def get_player_mode(self) -> PlayerMode:
         clz = type(self)
         player: IPlayer = self.get_player(self.service_ID)
-        player_mode: PlayerModes = Settings.get_player_mode(clz.service_ID)
+        player_mode: PlayerMode = Settings.get_player_mode(clz.service_ID)
         return player_mode
+
+    @classmethod
+    def update_voice_path(cls, phrase: Phrase) -> None:
+        if not phrase.is_lang_territory_set():
+            locale: str = phrase.language  # IETF format
+            if locale is None:
+                # locale = Settings.get_voice
+                _, locale, _ = SettingsHelper.get_kodi_locale_info()
+            cls._logger.debug(f'locale: {locale}')
+            ietf_lang = langcodes.Language.get(locale)
+            phrase.set_lang_dir(ietf_lang.language)
+            phrase.set_territory_dir(ietf_lang.territory.lower())
+        return
 
     def runCommand(self, phrase: Phrase) -> bool:
         clz = type(self)
@@ -442,6 +551,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         # it is okay if it is a little slow. -
         #
         try:
+            clz.update_voice_path(phrase)
             attempts: int = 25  # Waits up to about 2.5 seconds
             while (not phrase.exists() and phrase.is_download_pending() and
                    attempts > 0):
@@ -465,7 +575,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         return phrase.exists()
 
     def get_cached_voice_file(self, phrase: Phrase,
-                        generate_voice: bool = True) -> bool:
+                              generate_voice: bool = True) -> bool:
         """
         Assumes that cache is used. Normally missing voiced files is placed in
         the cache by an earlier step, but can be initiated here as well.
@@ -489,7 +599,8 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         audio_pipe = None
         byte_stream: BinaryIO | None = None
         try:
-            VoiceCache.get_path_to_voice_file(phrase, use_cache=Settings.is_use_cache())
+            self.get_voice_cache().get_path_to_voice_file(phrase,
+                                                          use_cache=Settings.is_use_cache())
             if not phrase.exists():
                 tmp_phrase: Phrase = phrase.clone(check_expired=False)
                 # espeak_engine: ESpeakTTSBackend =\
@@ -536,7 +647,9 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         audio_pipe = None
         byte_stream: BinaryIO | None = None
         try:
-            VoiceCache.get_path_to_voice_file(phrase, use_cache=Settings.is_use_cache())
+            clz.update_voice_path(phrase)
+            self.get_voice_cache().get_path_to_voice_file(phrase,
+                                                          use_cache=Settings.is_use_cache())
             if not phrase.exists():
                 tmp_phrase: Phrase = phrase.clone(check_expired=False)
                 # espeak_engine: ESpeakTTSBackend =\
@@ -585,7 +698,8 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
             phrases = phrases.clone(check_expired=False)
             for phrase in phrases:
                 if Settings.is_use_cache():
-                    VoiceCache.get_path_to_voice_file(phrase, use_cache=True)
+                    GoogleTTSEngine.update_voice_path(phrase)
+                    self.voice_cache.get_path_to_voice_file(phrase, use_cache=True)
                     if not phrase.exists():
                         text_to_voice: str = phrase.get_text()
                         voice_file_path: pathlib.Path = phrase.get_cache_path()
@@ -667,10 +781,9 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
 
         return phrases
 
-
     @classmethod
-    def settingList(cls, setting: str, *args) -> List[str] | List[Tuple[str, str]] | Tuple[
-        List[str], str] | Tuple[List[Tuple[str, str]], str]:
+    def settingList(cls, setting: str,
+                    *args) -> Tuple[List[Choice], str]:
         """
         Gets the possible specified setting values in same representation
         as stored in settings.xml (not translated). Sorting/translating done
@@ -683,62 +796,23 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         if setting == SettingsProperties.LANGUAGE:
             # Returns list of languages and value of closest match to current
             # locale
-
-            if not LanguageInfo.initialized:
-                lang_map = gtts.lang.tts_langs()
-                '''
-                Languages Google Text-to-Speech supports.
-                Returns:
-                    A dictionary of the type { ‘<lang>’: ‘<name>’}
-                     Where <lang> is an IETF language tag such as en or zh-TW, and <name>
-                     is the full English name of the language, such as English or Chinese (
-                     Mandarin/Taiwan).
-                    
-                    The dictionary returned combines languages from two origins:
-                    - Languages fetched from Google Translate (pre-generated in gtts.langs)
-                    - Languages that are undocumented variations that were observed to work 
-                      and present different dialects or accents.
-                '''
-                #             <locale>   (<lang_id> <country_id>, <google_domain>)
-                locale_map: Dict[str, Tuple[str, str, str]]
-                tmp_lang_ids = lang_map.keys()  # en, zh-TW, etc
-                lang_ids: List[str] = list(tmp_lang_ids)
-                extra_locales = sorted(GoogleData.get_locales())
-                for locale_id in extra_locales:
-                    lang_country = locale_id.split('-')
-                    if len(lang_country) == 2:
-                        lang_code = lang_country[0]
-                        country_code = lang_country[1]
-                    else:
-                        lang_code = lang_country
-                        country_code = lang_country
-                    lang_name: str = lang_map.get(lang_code, locale_id)
-                    result = GoogleData.country_code_country_tld.get(country_code)
-                    if result is None:
-                        cls._logger.debug(f'No TLD for {country_code}.')
-                        result = 'com', country_code
-                    if len(result) != 2:
-                        cls._logger.debug(
-                            f'Missing TLD/country code info: result: {result}')
-                        result = 'com', country_code
-                    tld, country_name = result
-                    lang_info: LanguageInfo
-                    lang_info = LanguageInfo(locale_id, lang_code, country_code,
-                                             locale_id, f'{country_name}_X', tld, )
+            cls.LangInfo.load_lang_info()
+            # Make language info for this engine known to settings.
+            cls.LangInfo.load_global_lang_info()
 
             kodi_lang: str = xbmc.getLanguage(xbmc.ISO_639_2)
             kodi_lang_2: str = xbmc.getLanguage(xbmc.ISO_639_1)
             cls._logger.debug(f'lang: {kodi_lang} lang_2: {kodi_lang_2}')
-            # LanguageInfo.initialized = True
+            # LangInfo.initialized = True
             # Get current process' language_code i.e. en-us
             default_locale = Constants.LOCALE.lower().replace('_', '-')
 
             # GoogleData.country_code_country_tld # Dict[str, Tuple[str, str]]
             #                          ISO3166-1, <google tld>, <country name>
             """
-            The lang_variants table returns the different country codes that support 
+            The lang_variants table returns the different country codes that support
             a given language. The country codes are 3166-1 two letter codes and the
-            language codes are ISO 639-1 
+            language codes are ISO 639-1
             """
 
             # GoogleData.lang_variants # Dict[str, List[str]]
@@ -746,9 +820,9 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
             longest_match = -1
             default_lang = default_locale[0:2]
             idx = 0
-            languages: List[Tuple[str, str]] = []
-            locale_ids: List[str] = LanguageInfo.get_locales()
-            # Sort by locale so that we have shortest locales listed first
+            languages: List[Choice] = []
+            locale_ids: List[str] = cls.LangInfo.get_locales()
+            # Sort by locale so that we have the shortest locales listed first
             # i.e. 'en" before 'en-us'
             for locale_id in sorted(locale_ids):
                 lower_lang = locale_id.lower()
@@ -757,47 +831,30 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
                         longest_match = idx
                 if lower_lang.startswith(default_locale):
                     longest_match = idx
-
-                # lang_info: LanguageInfo = LanguageInfo.get(locale_id)
+                choice: Choice
+                # lang_info: LangInfo = LangInfo.get(locale_id)
                 locale_msg: Message = Languages.locale_msg_map.get(locale_id)
                 if locale_msg is None:
-                    entry = (locale_id, locale_id)
+                    choice = Choice(locale_id, locale_id, choice_index=idx)
                 else:
-                    entry = (Messages.get_msg(locale_msg),
-                             locale_id)  # Display value, setting_value
-                languages.append(entry)
+                    choice = Choice(Messages.get_msg(locale_msg),
+                                    locale_id, choice_index=idx)
+                languages.append(choice)
                 idx += 1
 
             # Now, convert index to index of default_setting
 
             default_setting = ''
             if longest_match > 0:
-                default_setting = languages[longest_match][1]
+                default_setting = languages[longest_match].value
 
             return languages, default_setting
-
-            '''
-            elif setting == SettingsProperties.VOICE:
-                current_locale = cls.getLanguage()
-                voices = cls.voices_by_locale_map.get(current_locale)
-    
-                voice_ids: List[Tuple[str, str]] = list()
-                if voices is not None:
-                    for voice_name, voice_id, gender_id in voices:
-                        voice_name: str
-                        voice_id: str
-    
-                        # TODO: translate voice_id
-                        voice_ids.append((voice_name, voice_id))
-    
-                return list(voice_ids)
-            '''
 
         elif setting == SettingsProperties.PLAYER:
             # Get list of player ids. Id is same as is stored in settings.xml
 
             default_player: str = cls.get_setting_default(SettingsProperties.PLAYER)
-            player_ids: List[str] = []
+            player_ids: List[Choice] = []
             return player_ids, default_player
 
     @classmethod
@@ -809,24 +866,13 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         return default_lang
 
     @classmethod
-    def getVoice(cls) -> str:
-        voice = cls.getSetting(SettingsProperties.VOICE)
-        return ''
-
-        if voice is None:
-            lang = cls.voices_by_locale_map.get(cls.getLanguage())
-            if lang is not None:
-                voice = lang[0][1]
-        voice = ''
-        return voice
-
-    @classmethod
     def getLanguage(cls) -> str:
         """
         Gets the current locale ex: en-us
 
         :return:
         """
+        language: str = Settings.get_language(cls.engine_id)
         languages: List[Tuple[str, str]]  # lang_id, locale_id
         languages, default_lang = cls.settingList(SettingsProperties.LANGUAGE)
         language = default_lang
@@ -856,6 +902,13 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
 
     @staticmethod
     def available() -> bool:
+        available: bool = True
+        try:
+            default_lang: str = GoogleTTSEngine.get_default_language()
+            GoogleTTSEngine._logger.debug(f'default_lang: {default_lang}')
+        except Exception:
+            available = False
+
         engine_output_formats: List[str]
         engine_output_formats = SoundCapabilities.get_output_formats(
                 GoogleTTSEngine.service_ID)
@@ -863,5 +916,6 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         candidates = SoundCapabilities.get_capable_services(
                 service_type=ServiceType.PLAYER, consumer_formats=[SoundCapabilities.MP3],
                 producer_formats=[])
-        if len(candidates) > 0:
-            return True
+        if len(candidates) == 0:
+            available = False
+        return available

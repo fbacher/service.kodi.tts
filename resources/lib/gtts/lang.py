@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from common.logger import BasicLogger
 from gtts.langs import _main_langs
 from warnings import warn
 import logging
@@ -7,10 +6,8 @@ import logging
 __all__ = ["tts_langs"]
 
 # Logger
-log = BasicLogger.get_module_logger(module_path=__file__)
-
-# log = logging.getLogger(__name__)
-# log.addHandler(logging.NullHandler())
+log = logging.getLogger(__name__)
+log.addHandler(logging.NullHandler())
 
 
 def tts_langs():
@@ -33,7 +30,7 @@ def tts_langs():
     langs = dict()
     langs.update(_main_langs())
     langs.update(_extra_langs())
-    #  log.debug("langs: {}".format(langs))
+    log.debug("langs: {}".format(langs))
     return langs
 
 
@@ -41,7 +38,7 @@ def _extra_langs():
     """Define extra languages.
 
     Returns:
-        dict: A dictionnary of extra languages manually defined.
+        dict: A dictionary of extra languages manually defined.
 
             Variations of the ones generated in `_main_langs`,
             observed to provide different dialects or accents or
@@ -67,7 +64,7 @@ def _fallback_deprecated_lang(lang):
 
     Returns:
         string: The language tag, as-is if not deprecated,
-            or a fallack if it exits.
+            or a fallback if it exits.
 
     Example:
         ``en-GB`` returns ``en``.

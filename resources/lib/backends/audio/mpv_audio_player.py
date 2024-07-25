@@ -1,21 +1,19 @@
 from __future__ import annotations  # For union operator |
 
-import os
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
-from backends.settings.i_validators import IChannelValidator, INumericValidator
-from backends.settings.settings_map import SettingsMap
-from common import *
-
 from backends.audio.base_audio import SubprocessAudioPlayer
 from backends.audio.sound_capabilties import SoundCapabilities
 from backends.players.player_index import PlayerIndex
+from backends.settings.i_validators import IChannelValidator, INumericValidator
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.setting_properties import SettingsProperties
-from backends.settings.validators import (ChannelValidator, ConstraintsValidator,
-                                          NumericValidator)
+from backends.settings.settings_map import SettingsMap
+from backends.settings.validators import (ChannelValidator, NumericValidator)
+from common import *
 from common.base_services import BaseServices
 from common.constants import Constants
 from common.exceptions import ExpiredException
@@ -50,7 +48,7 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
                                   _supported_input_formats,
                                   _supported_output_formats)
 
-    _availableArgs = (Constants.MPV_PATH, '--help')
+    _availableArgs: Tuple[str, str] = (Constants.MPV_PATH, '--help')
 
     """
     There are many, many features. But what we are most interested in are:
@@ -80,7 +78,7 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
 
     MPV_PLAY_ARGS = (Constants.MPV_PATH, '--really-quiet')
     MPV_PIPE_ARGS = (Constants.MPV_PATH, '-', '--really-quiet', '--cache', '8192')
-    SLAVE_ARGS: Tuple[str] = (Constants.MPV_PATH, '--really-quiet',  '--idle')
+    SLAVE_ARGS: Tuple[str] = (Constants.MPV_PATH, '--really-quiet', '--idle')
 
     '''
      Send commands via named pipe (or stdin) to play files:
@@ -107,7 +105,8 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
      Then the volume is in decibels, otherwise it is a percentage as in:
       mpv --really-quiet --idle --volume=200.0 525d04b81883fcc53188d624bb389e79.mp3
      Or even
-     mpv --really-quiet --af=scaletempo=scale=1.50:speed=none --volume=200 525d04b81883fcc53188d624bb389e79.mp3
+     mpv --really-quiet --af=scaletempo=scale=1.50:speed=none --volume=200 
+     525d04b81883fcc53188d624bb389e79.mp3
     
     mpv plays mono on only one channel by default. To force playing on stereo 
     speakers use:
@@ -164,6 +163,7 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
                 args.append(f'--volume={volume}')
             if int(abs(round(speed * 10))) != 0:
                 args.append(f'--speed={speed}')
+                args.append(f'{phrase.get_cache_path()}')
         except ExpiredException:
             reraise(*sys.exc_info())
         self._logger.debug_verbose(f'args: {" ".join(args)}')
@@ -174,7 +174,7 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
 
     def get_slave_play_args(self) -> List[str]:
         """
-        mpv is used for PlayerModes.SLAVE_FILE & SLAVE_PIPE since it has a much better
+        mpv is used for PlayerMode.SLAVE_FILE & SLAVE_PIPE since it has a much better
         implementation than mplayer.
 
         In slave mode you have to set volume, speed, etc. for EVERY item
@@ -318,3 +318,14 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
     def register(cls, what):
         PlayerIndex.register(MPVAudioPlayer.ID, what)
         BaseServices.register(what)
+
+    @classmethod
+    def available(cls, ext=None) -> bool:
+        try:
+            subprocess.run(cls._availableArgs, stdout=subprocess.DEVNULL,
+                           universal_newlines=True, stderr=subprocess.STDOUT)
+        except AbortException:
+            reraise(*sys.exc_info())
+        except:
+            return False
+        return True

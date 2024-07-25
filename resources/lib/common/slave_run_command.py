@@ -32,11 +32,11 @@ class SlaveRunCommand:
     """
 
     """
-    player_state: str = KodiPlayerState.PLAYING_STOPPED
+    #  player_state: str = KodiPlayerState.VIDEO_PLAYER_IDLE
     logger: BasicLogger = None
 
     def __init__(self, args, thread_name: str = '',
-                 post_start_callback: Callable[[None], None] = None) -> None:
+                 post_start_callback: Callable[[None], bool] = None) -> None:
         """
 
         :param args: arguments to be passed to exec command
@@ -48,6 +48,7 @@ class SlaveRunCommand:
         # self.phrase_serial: int = phrase_serial
         self.thread_name = thread_name
         self.rc = 0
+        # clz.logger.debug(f'Setting runstate to NOT_STARTED')
         self.run_state: RunState = RunState.NOT_STARTED
         self.cmd_finished: bool = False
         self._thread: threading.Thread | None = None
@@ -64,23 +65,9 @@ class SlaveRunCommand:
         self.stdout_thread: threading.Thread | None = None
         #  self.stdout_lines: List[str] = []
         #  self.play_count: int = 0
-        self.post_start_callback: Callable[[None], None] = post_start_callback
+        self.post_start_callback: Callable[[None], bool] = post_start_callback
 
         Monitor.register_abort_listener(self.abort_listener, name=thread_name)
-
-    def quit(self, now: bool):
-        """
-        Quit the player
-        :param now: if True, then quit the player immediately
-                    if False, then stop accepting items for playlist and quit
-                    once playlist is empty
-        """
-        clz = type(self)
-        try:
-            self.cmd_finished = True
-        except Exception as e:
-            clz.logger.exception('')
-        clz.logger.debug(f'Quit')
 
     def terminate(self):
         if self.process is not None and self.run_state.value <= RunState.RUNNING.value:
@@ -92,6 +79,8 @@ class SlaveRunCommand:
         pass
 
     def get_state(self) -> RunState:
+        clz = type(self)
+        # clz.logger.debug(f'run_state: {self.run_state}')
         return self.run_state
 
     def abort_listener(self) -> None:
@@ -108,7 +97,7 @@ class SlaveRunCommand:
         """
         clz = type(self)
         clz.logger.debug(f'In destroy')
-        self.quit(now=True)
+        self.cmd_finished = True
         self.process.kill()
         try:
             self.process.stdout.close()
@@ -120,8 +109,8 @@ class SlaveRunCommand:
             self.process.stdin = None
         except:
             pass
-        self.process.wait(0.5)
-        clz.logger.debug('Destroyed')
+        self.process.wait(0.1)
+        clz.logger.debug('Slave Destroyed')
 
     def start_service(self) -> int:
         """
@@ -140,11 +129,13 @@ class SlaveRunCommand:
 
             # First, wait until process has started. Should be very quick
             attempts: int = 300  # Approx one second
-            while not Monitor.wait_for_abort(timeout=0.01):
-                if self.run_state != RunState.NOT_STARTED or attempts < 0:
+            while not Monitor.wait_for_abort(timeout=0.02):
+                if self.run_state == RunState.PIPES_CONNECTED or attempts < 0:
                     # clz.logger.debug(f'attempts: {attempts} state: {self.run_state}')
+                    self.run_state = RunState.RUNNING
                     break
                 attempts -= 1
+
 
         except AbortException:
             # abort_listener will do the kill
@@ -171,6 +162,7 @@ class SlaveRunCommand:
                 # process level (stderr = subprocess.STDOUT), devnull or pass through
                 # via pipe and don't log
 
+                # self.args.append('/home/fbacher/.kodi/userdata/addon_data/service.kodi.tts/cache/goo/df/df16f1fee15ac535aed684fab4a54fd4.mp3')
                 clz.logger.debug(f'Cond_Visibility: '
                                  f'{xbmc.getCondVisibility("System.Platform.Windows")} '
                                  f'mpv_path: {Constants.MPV_PATH} '
@@ -194,7 +186,10 @@ class SlaveRunCommand:
             Monitor.exception_on_abort()
             #  self.stdout_thread.start()
             if self.post_start_callback:
-                self.post_start_callback()
+                if self.post_start_callback():
+                    self.run_state = RunState.PIPES_CONNECTED
+
+            # self.player_state = KodiPlayerState.
 
             #  self.stderr_thread = threading.Thread(target=self.stderr_reader,
             #                                        name=f'{
@@ -219,9 +214,10 @@ class SlaveRunCommand:
                     line: str
                     line, _ = self.process.communicate(input='',
                                                        timeout=0.0)
+                    # clz.logger.debug(f'Setting run_state RUNNING')
                     self.run_state = RunState.RUNNING
-                    if len(line) > 0:
-                        clz.logger.debug_verbose(f'STDOUT: {line}')
+                    # if len(line) > 0:
+                    #     clz.logger.debug(f'STDOUT: {line}')
                 except subprocess.TimeoutExpired:
                     Monitor.exception_on_abort(timeout=0.1)
                 except ValueError as e:

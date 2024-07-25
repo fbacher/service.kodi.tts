@@ -10,13 +10,13 @@
            topicleft="" topicright="" topicup="header"
            topicdown="" rank="1">header</topic>
     <defaultcontrol always="true">101</defaultcontrol>
-    <depth>0.50</depth>
+    <!-- <depth>0.50</depth> -->
     <animation effect="fade" time="200">WindowOpen</animation>
     <animation effect="fade" time="200">WindowClose</animation>
     <controls>
         <control type="group">
             <visible>true</visible>
-            <control type="image">
+           <control type="image">
                 <description>Full window background black</description>
                 <left>0</left>
                 <top>0</top>
@@ -67,13 +67,12 @@
                 <topic name="X_dismiss_dialog"
                         alt_type="BUTTON"
                         alt_label="32803"
-                        hinttext="32804"
+                        hinttext="Select to close window"
                         innertopic="engine_settings"
                         outertopic=""
                         topicleft=""
                         topicright="engine_settings" topicup=""
                         topicdown="" rank="1"> </topic>
-                <hinttext>Select to close window</hinttext>
                 <left>760</left>
                 <top>15</top>
                 <width>64</width>
@@ -144,7 +143,6 @@
                             topicright="category_options"
                             topicup=""
                             topicdown="engine_settings" rank="1"> </topic>
-                    <hinttext>Configures Speech Engine</hinttext>
                     <height>40</height>
                     <width>186</width>
                     <align>center</align>
@@ -182,7 +180,6 @@
                             topicleft="category_engine"
                             topicright="category_keymap" topicup=""
                             topicdown="" rank="1">header</topic>
-                    <hinttext>Configures Options of some sort</hinttext>
                     <height>40</height>
                     <width>186</width>
                     <align>center</align>
@@ -205,7 +202,6 @@
                             topicleft="category_options"
                            topicright="category_advanced" topicup=""
                             topicdown="" rank="1">header</topic>
-                    <hinttext>Configure Keyboard Mapping</hinttext>
                     <height>40</height>
                     <width>186</width>
                     <align>center</align>
@@ -222,13 +218,12 @@
                 <control type="button" id="400" >
                     <description>Advanced Tab</description>
                      <topic name="category_advanced"
-                            labeled_by="1" hinttext=""
+                            labeled_by="1" hinttext="Configure Advanced Options"
                             outertopic="choose_category"
                             innertopic=""
                             topicleft="category_keymap"
                             topicright="" topicup=""
                             topicdown="" rank="1">header</topic>
-                    <hinttext>Configure Advanced Options</hinttext>
                     <height>40</height>
                     <width>186</width>
                     <align>center</align>
@@ -260,7 +255,7 @@
                     <width>759</width>
                     <!-- Engine -->
                     <control type="group">
-                        <defaultcontrol>101</defaultcontrol>
+                        <defaultcontrol>104</defaultcontrol>
                         <control type="grouplist" id="101">
                             <topic name="engine_settings"
                                    label="32807"
@@ -367,7 +362,6 @@
                                     <description>Language</description>
                                     <width>400</width>
                                     <label>$LOCALIZE[32227]</label>
-                                    <hinttext>Select to choose language</hinttext>
                                     <visible>true</visible>
                                     <alignx>left</alignx>
                                     <aligny>center</aligny>
@@ -406,7 +400,7 @@
                                 <control type="button" id="106">
                                      <topic name="voice" labeled_by=""
                                            flowsto="107"
-                                        hinttext="Select to choose voice"
+                                        hinttext="Select to choose a voice"
                                         outertopic="engine_settings"
                                         topicleft=""
                                         topicright=""
@@ -414,7 +408,6 @@
                                         topicdown=""
                                         rank="3"> </topic>
                                     <description>Voice</description>
-                                    <hinttext>Select to choose a voice</hinttext>
                                     <width>400</width>
                                     <label>$LOCALIZE[32308]</label>
                                     <visible>false</visible>
@@ -465,7 +458,6 @@
                                         rank="3"> </topic>
                                     <width>400</width>
                                     <label>$LOCALIZE[32228]</label>
-                                    <hinttext>Select to choose a Gender</hinttext>
                                     <visible>true</visible>
                                     <alignx>left</alignx>
                                     <aligny>center</aligny>
@@ -515,7 +507,6 @@
                                         rank="3"> </topic>
                                     <width>400</width>
                                     <label>$LOCALIZE[32230]</label>
-                                    <hinttext>Select to choose an audio player</hinttext>
                                     <visible>true</visible>
                                     <alignx>left</alignx>
                                     <aligny>center</aligny>
@@ -772,7 +763,7 @@
                                 <height>34</height>
                                 <defaultcontrol>120</defaultcontrol>
                                 <control type="button" id="120">
-                                    <topic name="player_mode" labeled_by="120"
+                                    <topic name="player_mode"
                                            flowsto="121"
                                         hinttext="Select to choose player mode"
                                         outertopic="engine_settings"
@@ -784,6 +775,7 @@
                                     <description>Player Mode</description>
                                     <width>400</width>
                                     <label>$LOCALIZE[32336]</label>
+                                    <enable>true</enable>
                                     <visible>true</visible>
                                     <alignx>left</alignx>
                                     <aligny>center</aligny>
@@ -807,6 +799,7 @@
                                     <width>325</width>
                                     <right>0</right>
                                     <align>left</align>
+                                    <label></label>
                                     <visible>true</visible>
                                     <font>font13</font>
                                     <textcolor>white</textcolor>
@@ -818,7 +811,7 @@
                                 <visible>true</visible>
                                 <defaultcontrol>123</defaultcontrol>
 
-                                 <control type="label" id="122">
+                                 <!-- <control type="label" id="122">
                                     <description>Api Key</description>
                                       <topic name="api_key"
                                         outertopic="engine_settings"
@@ -830,12 +823,13 @@
                                         rank="3"> </topic>
                                     <width>100</width>
                                     <label>$LOCALIZE[32233]</label>
+                                     <hinttext>hint</hinttext>
                                     <visible>true</visible>
                                     <alignx>left</alignx>
                                     <aligny>center</aligny>
                                     <font>font12_title</font>
                                     <texturefocus border="5">button-focus2.png</texturefocus>
-                                </control>
+                                </control> -->
 
                                 <control type="edit" id="123">
                                     <description>Api Key value</description>
@@ -849,16 +843,22 @@
                                         rank="3"> </topic>
                                     <top>0</top>
                                     <left>0</left>
-                                    <width>100%</width>
+                                    <width>75%</width>
                                     <align>left</align>
                                     <aligny>center</aligny>
+                                    <alignx>top</alignx>
                                     <visible>true</visible>
-                                    <label>$LOCALIZE[32233]</label>
-                                    <hinttext>$LOCALIZE[32236]</hinttext>
+                                    <label></label>
+                                    <hinttext>Hint hint</hinttext>
                                     <textwidth>400</textwidth>
-                                    <textoffsetx>4</textoffsetx>
+                                    <textoffsetx>20</textoffsetx>
+                                    <textoffsety>5</textoffsety>
                                     <font>font13</font>
-                                    <textcolor>white</textcolor>
+                                    <textcolor>FFB2D4F5</textcolor>
+                                    <disabledcolor>FF000000</disabledcolor>
+	                                <invalidcolor>FFFFFFFF</invalidcolor>
+	                                <texturefocus>button-focus.png</texturefocus>
+	                                <texturenofocus>button-nofocus.png</texturenofocus>
                                     <shadowcolor>black</shadowcolor>
                                     <texturefocus border="5">button-focus2.png</texturefocus>
                                     <onup>120</onup>
@@ -952,9 +952,10 @@
                 </control>
             </control>
             <control type="grouplist" id="9001">
-                <top>535</top>
+                <top>500</top>
                 <left>95</left>
                 <width>660</width>
+                <height>85</height>
                 <align>center</align>
                 <itemgap>10</itemgap>
                 <orientation>horizontal</orientation>
@@ -970,7 +971,8 @@
                             rank="3"> </topic>
                     <top>0</top>
                     <width>200</width>
-                    <height>40</height>
+                    <height>75</height>
+                    <hitrect x="0" y="0" w="150" h="50" />
                     <align>center</align>
                     <aligny>center</aligny>
                     <font>font12_title</font>
@@ -991,7 +993,7 @@
                                         rank="3"> </topic>
                     <top>0</top>
                     <width>200</width>
-                    <height>40</height>
+                    <height>75</height>
                     <align>center</align>
                     <aligny>center</aligny>
                     <font>font12_title</font>
@@ -1013,7 +1015,7 @@
                                         rank="3"> </topic>
                     <top>0</top>
                     <width>200</width>
-                    <height>40</height>
+                    <height>75</height>
                     <align>center</align>
                     <aligny>center</aligny>
                     <font>font12_title</font>

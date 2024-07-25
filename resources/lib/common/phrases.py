@@ -83,11 +83,13 @@ class Phrase:
                  preload_cache: bool = False,
                  serial_number: int | None = None,
                  check_expired: bool = True,
-                 speak_while_playing: bool = True,
+                 speak_over_kodi: bool = True,
                  text_id: str | None = None,
                  language: str | None = None,
                  gender: str | None = None,
                  voice: str | None = None,
+                 lang_dir: str | None = None,
+                 territory_dir: str | None = None,
                  debug_info: str | None = None,
                  debug_context: int = 1):
         """
@@ -106,7 +108,7 @@ class Phrase:
         :param check_expired: Controls whether a check for interrupted or otherwise
                               expired messages are made. Typically used when voice is
                               to be generated and cached even if not spoken.
-        :param speak_while_playing: If True, then voice text even if video is playing
+        :param speak_over_kodi: If True, then voice text even if video is playing
         :param text_id:
         :param language: When None, then use current language, otherwise voice
                          phrase in specified language. One use is during language
@@ -118,9 +120,13 @@ class Phrase:
                        using specified voice. One us is during language configuration.
                        Voice values are engine specific, so only applies to current
                        engine
+        :param lang_dir: Part of the cache path is the 2-3 char IETF language
+                        code ('en'). Required for engines that use the cache
+        :param territory_dir: Part of the cache path is the 2-3 char IETF
+                              territory code (ex. 'us').
         :param debug_info:
         :param debug_context: A debug string can be associated with a phrase to
-                             aid in tracking down where originally generated0
+                             aid in tracking down where originally generated
         """
         clz = type(self)
         Monitor.exception_on_abort()
@@ -142,11 +148,11 @@ class Phrase:
         self.post_pause_ms: int = post_pause_ms
         self.preload_cache: bool = preload_cache
         self.serial_number: int
-        if serial_number:
+        if serial_number is not None:
             self.serial_number = serial_number
         else:
             self.serial_number = PhraseList.global_serial_number
-        self._speak_while_playing: bool = speak_while_playing
+        self._speak_over_kodi: bool = speak_over_kodi
         self.download_pending: bool = False
 
         # PhraseList can disable expiration checking when you explicitly
@@ -156,6 +162,8 @@ class Phrase:
         self.language: str | None = language
         self.gender: str | None = gender
         self.voice: str | None = voice
+        self.lang_dir: str | None = lang_dir
+        self.territory_dir: str | None = territory_dir
         if debug_info is None:
             debug_info = ''
         self.debug_info: str | None = debug_info
@@ -174,6 +182,7 @@ class Phrase:
             post_pause_str = f' post_pause: {self.post_pause_ms}'
         return f'Phrase: {self.text} {pre_pause_str}{post_pause_str}'
 
+    '''
     @classmethod
     def new_instance(cls, text: str = '', interrupt: bool = False,
                      pre_pause_ms: int = None,
@@ -182,7 +191,7 @@ class Phrase:
                      temp: bool = False,
                      preload_cache: bool = False,
                      serial_number: int = None,
-                     speak_while_playing: bool = False,
+                     speak_over_kodi: bool = False,
                      check_expired: bool = True,
                      text_id: str | None = None,
                      debug_info: str | None = None) -> ForwardRef('Phrase'):
@@ -196,23 +205,32 @@ class Phrase:
                       exists=exists, temp=temp,
                       preload_cache=preload_cache,
                       serial_number=serial_number,
-                      speak_while_playing=speak_while_playing,
+                      speak_over_kodi=speak_over_kodi,
                       check_expired=check_expired,
                       text_id=text_id,
                       debug_info=debug_info,
                       debug_context=2)
+        '''
 
     def clone(self, check_expired: bool = True) -> 'Phrase':
         phrase: Phrase
-        phrase = Phrase(text=self.text, interrupt=self.interrupt,
+        phrase = Phrase(text=self.text,
+                        interrupt=self.interrupt,
                         pre_pause_ms=self.pre_pause_ms,
                         post_pause_ms=self.post_pause_ms,
                         cache_path=self.cache_path,
-                        exists=self._exists, temp=self._temp,
+                        exists=self._exists,
+                        temp=self._temp,
                         preload_cache=self.preload_cache,
-                        speak_while_playing=self._speak_while_playing,
+                        speak_over_kodi=self._speak_over_kodi,
                         check_expired=check_expired,
-                        debug_info=self.debug_info)
+                        debug_info=self.debug_info,
+                        # text_id=self.text_id,
+                        language=self.language,
+                        gender=self.gender,
+                        voice=self.voice,
+                        lang_dir=self.lang_dir,
+                        territory_dir=self.territory_dir)
         phrase.text_id = self.text_id
         return phrase
 
@@ -235,7 +253,7 @@ class Phrase:
             'exists'             : self._exists,
             'temp'               : self._temp,
             'preload_cache'      : self.preload_cache,
-            'speak_while_playing': self._speak_while_playing,
+            'speak_over_kodi'    : self._speak_over_kodi,
             'check_expired'      : self.check_expired,
             'text_id'            : self.text_id,
             'debug_info'         : self.debug_info
@@ -252,11 +270,16 @@ class Phrase:
                                 exists=params.get('exists'),
                                 temp=params.get('temp'),
                                 preload_cache=params.get('preload_cache'),
-                                speak_while_playing=params.get('speak_while_playing',
+                                speak_over_kodi=params.get('speak_over_kodi',
                                                                False),
                                 check_expired=params.get('check_expired', True),
                                 text_id=params.get('text_id'),
-                                debug_info=params.get('debug_info'))
+                                debug_info=params.get('debug_info'),
+                                language=params.get('language'),
+                                gender=params.get('gender'),
+                                voice=params.get('voice'),
+                                lang_dir=params.get('lang_dir'),
+                                territory_dir=params.get('territory_dir'))
         return phrase
 
     def get_text(self) -> str:
@@ -332,7 +355,7 @@ class Phrase:
         self.test_expired()
         return self.interrupt
 
-    def set_interrupt(self, interrupt: bool) -> None:
+    def _set_interrupt(self, interrupt: bool) -> None:
         self.test_expired()
         self.interrupt = interrupt
 
@@ -401,6 +424,26 @@ class Phrase:
     def is_empty(self) -> bool:
         return self.text == ''
 
+    def is_lang_territory_set(self) -> bool:
+        if ((self.territory_dir is None or self.territory_dir == '')
+                or (self.lang_dir is None or self.lang_dir == '')):
+            return False
+        return True
+
+    def get_lang_dir(self) -> str:
+        return self.lang_dir
+
+    def get_territory_dir(self) -> str:
+        return self.territory_dir
+
+    def set_lang_dir(self, lang_dir: str, override: bool = False) -> None:
+        if override or self.lang_dir is None:
+            self.lang_dir = lang_dir
+
+    def set_territory_dir(self, territory_dir: str, override: bool = False) -> None:
+        if override or self.territory_dir is None:
+            self.territory_dir = territory_dir
+
     @classmethod
     def clean_phrase_text(cls, text: str) -> str:
         text = text.strip()
@@ -412,19 +455,14 @@ class Phrase:
 
         # getLabel() on lists wrapped in [] and some speech engines have
         # problems with text starting with -
-        text = regex.sub(cls._hyphen_prefix, '\g<2>', text)
-        text = text.replace('XBMC', 'Kodi')
+        text = regex.sub(cls._hyphen_prefix, r'\g<2>', text)
+        text = text.replace('XBMC', r'Kodi')
         if text == '..':
             text = Messages.get_msg(Messages.PARENT_DIRECTORY)
         if text.endswith(')'):  # Skip this most of the time
             # For boolean settings
-            result: PhraseList
-            result = Messages.format_boolean(text, enabled_msgid=Messages.ENABLED.get_msg_id(),
+            text = Messages.format_boolean(text, enabled_msgid=Messages.ENABLED.get_msg_id(),
                                              disabled_msgid= Messages.DISABLED.get_msg_id())
-            # The result will have embedded PAUSE_INSERTs in it that will be
-            # handled later in
-            text = result.get_aggregate_text()  # Should be just one Phrase
-
         return text
 
     @classmethod
@@ -477,11 +515,11 @@ class Phrase:
             raise ExpiredException()
 
     @property
-    def speak_while_playing(self) -> bool:
-        return self._speak_while_playing
+    def speak_over_kodi(self) -> bool:
+        return self._speak_over_kodi
 
-    def set_speak_while_playing(self, speak_while_playing: bool) -> None:
-        self._speak_while_playing = speak_while_playing
+    def _set_speak_over_kodi(self, speak_over_kodi: bool) -> None:
+        self._speak_over_kodi = speak_over_kodi
 
     def text_equals(self, other: Phrase | str) -> bool:
         if other is None:
@@ -495,12 +533,12 @@ class Phrase:
 # Python 3.8 does not support (Windows)
 # class PhraseList(UserList[Phrase]):
 class PhraseList(UserList):
-
-    # To aid in throwing away text which is no longer relevant due to the
-    # changing UI, every PhraseList has a serial number. Each Phrase in that
-    # PhraseList is assigned the PhraseList's serial number. This makes it
-    # easy to say "reject every phrase before this serial number"
-
+    """
+      To aid in throwing away text which is no longer relevant due to the
+      changing UI, every PhraseList has a serial number. Each Phrase in that
+      PhraseList is assigned the PhraseList's serial number. This makes it
+      easy to say "reject every phrase before this serial number"
+    """
     global_serial_number: int = 1
     expired_serial_number: int = 0
     _logger: BasicLogger = None
@@ -519,7 +557,13 @@ class PhraseList(UserList):
     @classmethod
     def create(cls, texts: str | List[str], interrupt: bool = False,
                preload_cache: bool = False, check_expired: bool = True,
-               text_id: str | None = None) -> 'PhraseList':
+               text_id: str | None = None,
+               language: str | None = None,
+               gender: str | None = None,
+               voice: str | None = None,
+               lang_dir: str | None = None,
+               territory_dir: str | None = None
+        ) -> 'PhraseList':
         """
 
         :param texts: One or more strings to create Phrases from
@@ -533,6 +577,20 @@ class PhraseList(UserList):
                               Default True
         :param text_id: Sets the text_id of the FIRST Phrase created. Defaults
                         to the first value in texts
+        :param language: When None, then use current language, otherwise voice
+                         phrase in specified language. One use is during language
+                         configuration. Lang spec is engine specific, so only
+                         applies to current engine
+        :param gender: When None, then use current gender, otherwise voice phrase in
+                       specified gender. One use is during language configuration.
+        :param voice:  When None, then use current voice. Otherwse, voice phrase
+                       using specified voice. One us is during language configuration.
+                       Voice values are engine specific, so only applies to current
+                       engine
+        :param lang_dir: Part of the cache path is the 2-3 char IETF language
+                        code ('en'). Required for engines that use the cache
+        :param territory_dir: Part of the cache path is the 2-3 char IETF
+                              territory code (ex. 'us').
         :return:
         """
         if not isinstance(texts, list):
@@ -541,14 +599,19 @@ class PhraseList(UserList):
         cls.convert_str_to_phrases(texts, phrases=phrases, preload_cache=preload_cache)
         if len(phrases) == 0:
             phrases.append(Phrase(text='', preload_cache=False,
-                                  pre_pause_ms=0))
+                                  pre_pause_ms=0,
+                                  language=language,
+                                  gender=gender,
+                                  voice=voice,
+                                  lang_dir=lang_dir,
+                                  territory_dir=territory_dir
+                                  ))
         else:
             if text_id is None:
                 text_id = texts[0]
             phrases[0].set_text_id(text_id)
 
-        phrase: Phrase = phrases[0]
-        phrase.set_interrupt(interrupt)
+        phrases.set_interrupt(interrupt)
         return phrases
 
     @classmethod
@@ -683,7 +746,7 @@ class PhraseList(UserList):
                 text: str = f'{compact_phrase.get_text()} ' \
                             f'{current_phrase.get_text()}'
                 compact_phrase.set_text(text, preserve_debug_info=True)
-                compact_phrase.set_interrupt(current_phrase.get_interrupt())
+                compact_phrase._set_interrupt(current_phrase.get_interrupt())
 
             compact_phrase.set_post_pause(current_phrase.get_post_pause())
             if compact_phrase.get_post_pause() > Phrase.PAUSE_NORMAL:
@@ -704,6 +767,31 @@ class PhraseList(UserList):
             phrase = next_phrase
 
         return new_list
+
+    def enable_check_expired(self) -> None:
+        """
+        Changes a PhraseList created to not check expiration to be one that
+        does check.
+        Typically, when xml is being scrapped to generate the text to voice you
+        don't want to enable expiration checking since it is possible that
+        during the voicing (after the scraping) that new phrases will be
+        created to address certain situations (deal with a contraction or
+        expand an embedded pause symbol ('...') into an actual pause. These
+        new phrases will be NEWER than whatever is being scraped at the time.
+        Thefore, you can have something voiced that is marked as newer than
+        something still being constructed. This can result in phrases
+        being expired (and throwing Expired exceptions) before they are
+        even ready to voice.
+
+        This is a very long way of saying that by disabling checking during
+        the construction of the phrases and then enabling the checking once
+        it is put into the voicing pipeline avoids this problem.
+        :return:
+        """
+        p: Phrase
+        for p in self.data:
+            p.check_expired = True
+        self.check_expired = True
 
     def set_all_preload_cache(self, preload: bool) -> None:
         p: Phrase
@@ -741,6 +829,14 @@ class PhraseList(UserList):
         if not self.check_expired:
             return False
         return clz.expired_serial_number >= self.serial_number
+
+    def set_speak_over_kodi(self, speak_over_kodi: bool) -> None:
+        if len(self.data) > 0:
+            self.data[0]._set_speak_over_kodi(speak_over_kodi)
+
+    def set_interrupt(self, interrupt: bool) -> None:
+        if len(self.data) > 0:
+            self.data[0]._set_interrupt(interrupt)
 
     def equal_text(self, other: PhraseList) -> bool:
         if other is None:
@@ -1054,6 +1150,7 @@ class PhraseUtils:
                 phrases: PhraseList[Phrase] = PhraseList()
                 # Force these phrases have the same serial # as the original
                 phrases.serial_number = phrase.serial_number
+
                 first: bool = True
                 for chunk in out_chunks:
                     if first:
@@ -1062,10 +1159,16 @@ class PhraseUtils:
                                                       phrase.get_post_pause(),
                                                       phrase.get_cache_path(), False,
                                                       phrase.is_preload_cache(),
-                                                      check_expired=False)
+                                                      check_expired=False,
+                                                      lang_dir=phrase.lang_dir,
+                                                      territory_dir=phrase.territory_dir
+                        )
                         first = False
                     else:
-                        chunk_phrase: Phrase = Phrase(chunk, check_expired=False)
+                        chunk_phrase: Phrase = Phrase(chunk, check_expired=False,
+                                                      lang_dir=phrase.lang_dir,
+                                                      territory_dir=phrase.territory_dir
+                                                      )
                     phrases.append(chunk_phrase)
                     chunk_phrase.serial_number = phrase.serial_number
         except AbortException:

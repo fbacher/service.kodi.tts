@@ -3,10 +3,9 @@ from __future__ import annotations  # For union operator |
 from queue import Empty as EmptyQueue, Full as FullQueue, Queue
 from threading import Thread
 
-from common import *
-
 from backends.players.iplayer import IPlayer
 from backends.players.player_index import PlayerIndex
+from common import *
 from common.base_services import BaseServices, IServices
 from common.logger import *
 from common.monitor import Monitor

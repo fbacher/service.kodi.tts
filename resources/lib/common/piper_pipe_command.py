@@ -93,7 +93,7 @@ class PiperPipeCommand:
     the length.
 
     """
-    player_state: str = KodiPlayerState.PLAYING_STOPPED
+    player_state: str = KodiPlayerState.VIDEO_PLAYER_IDLE
     logger: BasicLogger = None
     DEFAULT_MODEL: Final[str] = 'en_US-ryan-high.onnx'
 

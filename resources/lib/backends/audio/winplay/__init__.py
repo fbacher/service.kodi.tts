@@ -5,6 +5,7 @@ if os.name == 'nt':
 else:
     raise Exception("mp3play can't run on your operating system.")
 
+
 def load(filename):
     """Return an AudioClip for the given filename."""
     return AudioClip(filename)
@@ -31,7 +32,7 @@ class AudioClip:
 
     def volume(self, level):
         """Sets the volume between 0 and 100."""
-        assert level >=0 and level <= 100
+        assert level >= 0 and level <= 100
         return self._clip.volume(level)
 
     def isplaying(self):

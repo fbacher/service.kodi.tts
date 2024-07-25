@@ -2,9 +2,8 @@ from __future__ import annotations  # For union operator |
 
 import sys
 
-from common import *
-
 from backends.settings.settings_map import Reason, SettingsMap
+from common import *
 from common.constants import Constants
 from common.logger import BasicLogger
 from common.setting_constants import Players
@@ -18,20 +17,20 @@ class BootstrapPlayers:
     player_ids: List[str] = [
         Players.MPV,
         Players.MPLAYER,
-        Players.SFX,
-        Players.WINDOWS,
-        Players.APLAY,
-        Players.PAPLAY,
-        Players.AFPLAY,
-        Players.SOX,
-        Players.MPG321,
-        Players.MPG123,
-        Players.MPG321_OE_PI,
-        Players.INTERNAL,
-        Players.NONE,
-        Players.WavAudioPlayerHandler,
-        Players.MP3AudioPlayerHandler,
-        Players.BuiltInAudioPlayerHandler
+        # Players.SFX,
+        # Players.WINDOWS,
+        # Players.APLAY,
+        # Players.PAPLAY,
+        # Players.AFPLAY,
+        # Players.SOX,
+        # Players.MPG321,
+        # Players.MPG123,
+        # Players.MPG321_OE_PI,
+        # Players.INTERNAL,
+        # Players.NONE,
+        # Players.WavAudioPlayerHandler,
+        # Players.MP3AudioPlayerHandler,
+        # Players.BuiltInAudioPlayerHandler
     ]
     _initialized: bool = False
     _logger: BasicLogger = None
@@ -52,49 +51,57 @@ class BootstrapPlayers:
             cls.load_player(player_id)
         # Add all settings
         SettingsLowLevel.load_settings()
-        SettingsLowLevel.commit_settings()
+        # SettingsLowLevel.commit_settings()
 
     @classmethod
     def load_player(cls, player_id: str) -> None:
         try:
+            available: bool = True
+            if not SettingsMap.is_available(player_id):
+                cls._logger.debug(f'{player_id} NOT SettingsMap.is_available')
+                return
+
             if player_id == Players.MPLAYER:
                 from backends.players.mplayer_settings import MPlayerSettings
                 MPlayerSettings()
                 from backends.audio.mplayer_audio_player import MPlayerAudioPlayer
-                MPlayerAudioPlayer()
+                available = MPlayerAudioPlayer().available()
             if player_id == Players.MPV:
                 from backends.players.mpv_player_settings import MPVPlayerSettings
                 MPVPlayerSettings()
                 from backends.audio.mpv_audio_player import MPVAudioPlayer
-                MPVAudioPlayer()
+                available = MPVAudioPlayer().available()
             elif player_id == Players.SFX:
                 from backends.audio.sfx_audio_player import PlaySFXAudioPlayer
-                PlaySFXAudioPlayer()
-            elif player_id == Players.WINDOWS and SystemQueries.isWindows():
-                from backends.audio.windows_audio_player import WindowsAudioPlayer
-                WindowsAudioPlayer()
+                available = PlaySFXAudioPlayer().available()
+            elif player_id == Players.WINDOWS:
+                if SystemQueries.isWindows():
+                    from backends.audio.windows_audio_player import WindowsAudioPlayer
+                    available = WindowsAudioPlayer().available()
+                else:
+                    available = False
             elif player_id == Players.APLAY:
                 from backends.audio.aplay_audio_player import AplayAudioPlayer
-                AplayAudioPlayer()
+                available = AplayAudioPlayer().available()
             # elif player_id == Players.RECITE_ID:
             elif player_id == Players.PAPLAY:
                 from backends.audio.paplay_audio_player import PaplayAudioPlayer
-                PaplayAudioPlayer()
+                available = PaplayAudioPlayer().available()
             elif player_id == Players.AFPLAY:
                 from backends.audio.afplay_audio_player import AfplayPlayer
-                AfplayPlayer()
+                available = AfplayPlayer().available()
             elif player_id == Players.SOX:
                 from backends.audio.sfx_audio_player import PlaySFXAudioPlayer
-                PlaySFXAudioPlayer()
+                available = PlaySFXAudioPlayer().available()
             elif player_id == Players.MPG321:
                 from backends.audio.mpg321_audio_player import Mpg321AudioPlayer
-                Mpg321AudioPlayer()
+                available = Mpg321AudioPlayer().available()
             elif player_id == Players.MPG123:
                 from backends.audio.mpg123_audio_player import Mpg123AudioPlayer
-                Mpg123AudioPlayer()
+                available = Mpg123AudioPlayer().available()
             elif player_id == Players.MPG321_OE_PI:
                 from backends.audio.mpg321oep_audio_player import Mpg321OEPiAudioPlayer
-                Mpg321OEPiAudioPlayer()
+                available = Mpg321OEPiAudioPlayer().available()
             elif player_id == Players.INTERNAL:
                 pass
             elif player_id == Players.NONE:
@@ -107,6 +114,15 @@ class BootstrapPlayers:
             #     MP3AudioPlayerHandler()
             # elif player_id == Players.BuiltInAudioPlayerHandler:
             #     pass
+            try:
+                if available:
+                    SettingsMap.set_is_available(player_id, Reason.AVAILABLE)
+                else:
+                    cls._logger.debug(f'{player_id} returns NOT available')
+                    SettingsMap.set_is_available(player_id, Reason.NOT_AVAILABLE)
+            except Exception:
+                cls._logger.exception('')
+                SettingsMap.set_is_available(player_id, Reason.NOT_AVAILABLE)
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:

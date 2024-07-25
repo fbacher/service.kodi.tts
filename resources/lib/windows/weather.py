@@ -22,7 +22,7 @@ class WeatherReader(WindowReaderBase):
         return windowparser.getWindowParser().getWindowTexts(phrases)
 
     def getItemExtraTexts(self, control_id: int, phrases: PhraseList) -> bool:
-        excludes: PhraseList = PhraseList()
+        excludes: PhraseList = PhraseList(check_expired=False)
         self.getControlText(control_id, excludes)
         return parseItemExtra(control_id, excludes, phrases)
 

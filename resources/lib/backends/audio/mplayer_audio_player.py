@@ -1,19 +1,16 @@
 from __future__ import annotations  # For union operator |
 
-import os
+import subprocess
 import sys
-import tempfile
-from pathlib import Path
-
-from backends.settings.settings_map import SettingsMap
-from common import *
 
 from backends.audio.base_audio import SubprocessAudioPlayer
 from backends.audio.sound_capabilties import SoundCapabilities
 from backends.players.player_index import PlayerIndex
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.setting_properties import SettingsProperties
-from backends.settings.validators import ConstraintsValidator, NumericValidator
+from backends.settings.settings_map import SettingsMap
+from backends.settings.validators import NumericValidator
+from common import *
 from common.base_services import BaseServices
 from common.constants import Constants
 from common.exceptions import ExpiredException
@@ -27,6 +24,9 @@ module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
     """
      name = 'MPlayer'
+     MPlayer supports slave mode, however mpv's implementation is much
+     better, so it is not used here.
+
      MPlayer supports -idle and -slave which keeps player from exiting
      after files played. When in slave mode, commands are read from stdin.
     """
@@ -53,7 +53,7 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
       than mpv.
     """
     MPLAYER_AUDIO_FILTER: str = '-af'
-    MPLAYER_PLAY_ARGS = (Constants.MPLAYER_PATH, '-really-quiet', None)
+    MPLAYER_PLAY_ARGS = (Constants.MPLAYER_PATH, '-really-quiet')
     MPLAYER_PIPE_ARGS = (Constants.MPLAYER_PATH, '-', '-really-quiet', '-cache', '8192')
     MPLAYER_SPEED_ARGS = 'scaletempo=scale={0}:speed=none'
 
@@ -92,10 +92,8 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
     def playArgs(self, phrase: Phrase) -> List[str]:
         clz = type(self)
         args: List[str] = []
-        try:
-            args.append(phrase.get_text())
-        except ExpiredException:
-            reraise(*sys.exc_info())
+        args.extend(clz.MPLAYER_PLAY_ARGS)
+
         #
         # None is returned if engine can not control speed, etc.
         #
@@ -116,11 +114,16 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
                 filters.append(clz.MPLAYER_SPEED_ARGS.format(self.speedArg(speed)))
             if self.configVolume:
                 filters.append(self._volumeArgs.format(volume))
-            audio_filter: List[str] = []
-            audio_filter.append(MPlayerAudioPlayer.MPLAYER_AUDIO_FILTER)
-            audio_filter.append(",".join(filters))
+            audio_filter: List[str] = [MPlayerAudioPlayer.MPLAYER_AUDIO_FILTER,
+                                       ",".join(filters)]
             clz._logger.debug(f'audio_filter: {audio_filter}')
             args.extend(audio_filter)
+            try:
+                args.append(f'{phrase.get_cache_path()}')
+                self._logger.debug(f'phrase: {phrase} path: {phrase.get_cache_path()}')
+                self._logger.debug(f'args: {args}')
+            except ExpiredException:
+                reraise(*sys.exc_info())
         self._logger.debug_verbose(f'args: {" ".join(args)}')
         return args
 
@@ -210,3 +213,19 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
     def register(cls, what):
         PlayerIndex.register(MPlayerAudioPlayer.ID, what)
         BaseServices.register(what)
+
+    @classmethod
+    def available(cls, ext=None) -> bool:
+        if Constants.PLATFORM_WINDOWS:
+            cls._logger.debug(f'mplayer not supported on Windows')
+            return False
+        try:
+            subprocess.run(cls._availableArgs, stdout=subprocess.DEVNULL,
+                           universal_newlines=True, stderr=subprocess.STDOUT)
+            cls._logger.debug(f'mplayer ran ok')
+        except AbortException:
+            reraise(*sys.exc_info())
+        except:
+            cls._logger.debug(f'mplayer failed to start')
+            return False
+        return True

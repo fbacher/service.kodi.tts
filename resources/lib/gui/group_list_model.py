@@ -252,8 +252,13 @@ class GroupListModel(BaseModel):
         if hasattr(self, 'item_count'):
             visible_items: int = self.visible_item_count()
             if visible_items > 0:
-                success = Messages.add_formatted_msg(phrases, Messages.UI_ITEMS,
-                                                    f'{visible_items}')
+                text: str = Messages.get_formatted_msg_by_id(Messages.UI_ITEMS.msg_id,
+                                                       f'{visible_items}')
+                if text != '':
+                    phrases.add_text(text)
+                    success = True
+                else:
+                    success = False
         return success
 
     def voice_active_item(self, phrases: PhraseList) -> bool:

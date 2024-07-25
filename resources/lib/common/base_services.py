@@ -74,7 +74,8 @@ class BaseServices(IServices):
 
     @classmethod
     def getService(cls, service_name: str) -> ForwardRef('BaseServices'):
-        service: BaseServices | None = BaseServices.service_index.get(service_name, None)
+        service: BaseServices | None
+        service = BaseServices.service_index.get(service_name, None)
         return service
 
     @classmethod
@@ -322,7 +323,7 @@ class BaseServices(IServices):
                                 player_pitch_adjustable: bool) -> Tuple[bool, bool, bool]:
         """
         Player is informing engine what it is capable of controlling
-        Engine replies what it is allowing engine to control
+        Engine replies what it is allowing player to control
         """
         pass
 

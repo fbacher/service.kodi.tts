@@ -35,7 +35,7 @@ class SlaveCommunication:
 
     """
 
-    player_state: str = KodiPlayerState.PLAYING_STOPPED
+    video_player_state: str = KodiPlayerState.VIDEO_PLAYER_IDLE
     logger: BasicLogger = None
 
     def __init__(self, args: List[str], phrase_serial: int = 0, thread_name: str = '',
@@ -45,6 +45,15 @@ class SlaveCommunication:
         """
 
         :param args: arguments to be passed to exec command
+        :param phrase_serial: Serial Number of the initial phrase
+        :param thread_name: What to name the worker thread
+        :param stop_on_play: True if voicing is to stop when video is playing
+        :param slave_pipe_path: Path to use for FIFO pipe (if available) to
+               communicate with mpv command
+        :param speed: The speed (tempo) which to play the audio, in %
+        :param volume: Expressed in % to play. 100% is the recorded audio level
+        :param channels: The number of audio channels to use for play
+
         """
         clz = type(self)
         SlaveCommunication.logger = module_logger.getChild(clz.__name__)
@@ -56,7 +65,10 @@ class SlaveCommunication:
         self.thread_name = thread_name
         self.rc = 0
         self.run_state: RunState = RunState.NOT_STARTED
-        self.stop_on_play: bool = stop_on_play
+        clz.logger.debug(f'run_state now NOT_STARTED')
+        self.idle_on_play_video: bool = stop_on_play
+        # This player is inactive due to Kodi exclusive access (ex: playing movie)
+        self.tts_player_idle: bool = False
         self.cmd_finished: bool = False
         self.fifo_in = None
         self.fifo_out = None
@@ -74,8 +86,8 @@ class SlaveCommunication:
         self.play_count: int = 0
 
         Monitor.register_abort_listener(self.abort_listener, name=thread_name)
-
-        if self.stop_on_play:
+        clz.logger.debug(f'Starting slave player args: {args}')
+        if self.idle_on_play_video:
             KodiPlayerMonitor.register_player_status_listener(
                     self.kodi_player_status_listener,
                     f'{self.thread_name}_Kodi_Player_Monitor')
@@ -84,17 +96,19 @@ class SlaveCommunication:
         except OSError as e:
             clz.logger.exception(f'Failed to create FIFO: {slave_pipe_path}')
 
+        clz.logger.debug(f'Starting SlaveRunCommand')
         self.slave = SlaveRunCommand(args, thread_name='name',
                                      post_start_callback=self.create_slave_pipe)
+        clz.logger.debug(f'Returned from SlaveRunCommand')
 
-    def create_slave_pipe(self):
+    def create_slave_pipe(self) -> bool:
         clz = type(self)
         Monitor.exception_on_abort(timeout=1.0)
 
         # fifo_file_in = os.open(self.slave_pipe_path, os.O_RDONLY | os.O_NONBLOCK)
         # fifo_file_out = os.open(self.slave_pipe_path, os.O_WRONLY)
 
-        # clz.logger.debug(f'Slave started, in callback')
+        clz.logger.debug(f'Slave started, in callback')
         fifo_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         fifo_sock.settimeout(0.0)
         finished: bool = False
@@ -102,7 +116,9 @@ class SlaveCommunication:
 
         while limit > 0:
             try:
+                clz.logger.debug(f'fifo_sock.connect path: {self.slave_pipe_path}')
                 fifo_sock.connect(str(self.slave_pipe_path))
+                clz.logger.debug(f'Connected')
                 break
             except TimeoutError:
                 limit -= 1
@@ -113,12 +129,13 @@ class SlaveCommunication:
                                        f'{self.slave_pipe_path}')
             except AbortException:
                 self.abort_listener()
-                return
+                return False
             except Exception as e:
                 clz.logger.exception('')
                 break
             Monitor.exception_on_abort(timeout=0.1)
         try:
+            clz.logger.debug(f'Unlinking {self.slave_pipe_path}')
             self.slave_pipe_path.unlink(missing_ok=True)
             pass
         except Exception as e:
@@ -137,11 +154,18 @@ class SlaveCommunication:
         self.send_speed()
         self.send_volume()
         # self.send_opt_channels()
+        return True
 
     def add_phrase(self, phrase: Phrase, volume: float = None,
                    speed: float = None) -> None:
         clz = type(self)
         try:
+            # Ignore while kodi owns audio
+            if self.tts_player_idle and not phrase.speak_over_kodi:
+                clz.logger.debug(f'player is idle')
+                return
+            clz.logger.debug(f'run_state.value: {self.run_state.value}'
+                             f' < RUNNING.value: {RunState.RUNNING.value}')
             if (self.run_state.value < RunState.RUNNING.value
                     and self.fifo_out is None):
                 #
@@ -202,6 +226,7 @@ class SlaveCommunication:
         volume_str: str = (f'{{ "command": ["set_property", "volume", {self.volume}],'
                            f' "request_id": "{self.fifo_sequence_number}" }}')
         self.send_line(volume_str)
+
     def send_opt_channels(self) -> None:
         return
 
@@ -219,38 +244,29 @@ class SlaveCommunication:
                                      f' "request_id": "{self.fifo_sequence_number}" }}')
                 self.send_line(channels_str)
 
-    def stop_playing(self):
+    def abort_voicing(self, purge: bool = True, future: bool = False) -> None:
         """
-        Tell mpv to abort the playing of currently queued files. --q options
-        prevents mpv from exiting
-        :return:
-        """
-        clz = type(self)
-        try:
-            # stop[<flags>]
-            stop_str: str = f'stop'
-            self.send_line(stop_str)
-        except Exception as e:
-            clz.logger.exception('')
-        #  clz.logger.debug(f'Stop playing')
+        Stop voicing pending speech and/or future speech.
 
-    def quit(self, now: bool):
-        """
-        Quit the player
-        :param now: if True, then quit the player immediately
-                    if False, then stop accepting items for playlist and quit
-                    once playlist is empty
+        Vocing can be resumed using resume_voicing
+
+        :param purge: if True, then abandon playing all pending speech
+        :param future: if True, then ignore future voicings.
+        :return: None
         """
         clz = type(self)
         try:
-            # quit[<keep-playlist>]
-            code: str = '0'
-            quit_str: str = f'quit {code}'
-            self.send_line(quit_str)
-            self.slave.quit(now)
+            clz.logger.debug(f'purge: {purge} future: {future}')
+            if future:
+                self.tts_player_idle = True
+            if purge:
+                stop_str: str = f'stop'
+                self.send_line(stop_str)
         except Exception as e:
             clz.logger.exception('')
-        clz.logger.debug(f'Quit')
+
+    def resume_voicing(self) -> None:
+        self.tts_player_idle = False
 
     def config_observers(self) -> None:
         self.fifo_sequence_number += 1
@@ -274,8 +290,8 @@ class SlaveCommunication:
         clz = type(self)
         try:
             if self.fifo_out is not None:
-                if clz.logger.isEnabledFor(DEBUG_VERBOSE):
-                    clz.logger.debug_verbose(f'FIFO_OUT: {text}')
+                # if clz.logger.isEnabledFor(DEBUG):
+                #     clz.logger.debug(f'FIFO_OUT: {text}')
                 self.fifo_out.write(f'{text}\n')
                 self.fifo_out.flush()
         except Exception as e:
@@ -307,34 +323,47 @@ class SlaveCommunication:
         """
         clz = type(self)
         clz.logger.debug(f'In destroy')
-        self.quit(now=True)
         if self.cmd_finished:
             return
+        try:
+            # quit[<keep-playlist>]
+            code: str = '0'
+            quit_str: str = f'quit {code}'
+            self.send_line(quit_str)
+            self.slave.destroy()
+        except Exception as e:
+            clz.logger.exception('')
 
-        self.cmd_finished = True
-        if self.fifo_in is not None and self.fifo_out is not None:
-            try:
-                self.fifo_in.close()
-            except:
-                pass
-            self.fifo_in = None
-        if self.fifo_out is not None:
-            try:
-                self.fifo_out.close()
-            except:
-                pass
-            self.fifo_out = None
+        try:
+            self.cmd_finished = True
+            if self.fifo_in is not None:
+                try:
+                    self.fifo_in.close()
+                except:
+                    pass
+                self.fifo_in = None
+            if self.fifo_out is not None:
+                try:
+                    self.fifo_out.close()
+                except:
+                    pass
+                self.fifo_out = None
+        except Exception as e:
+            clz.logger.exception('')
 
-    def kodi_player_status_listener(self, player_state: KodiPlayerState) -> bool:
+    def kodi_player_status_listener(self, video_player_state: KodiPlayerState) -> bool:
         clz = type(self)
-        clz.player_state = player_state
-        # clz.logger.debug(f'PlayerStatus: {player_state} stop_on_play: '
-        #                  f'{self.stop_on_play} args: {self.args} '
+        clz.video_player_state = video_player_state
+        # clz.logger.debug(f'PlayerStatus: {video_player_state} idle_tts_player: '
+        #                  f'{self.idle_tts_player} args: {self.args} '
         #                 f'serial: {self.phrase_serial}')
-        if player_state == KodiPlayerState.PLAYING and self.stop_on_play:
-            # clz.logger.debug(f'Stop playing TTS while Kodi player doing something: '
-            #                  f'args: {self.args} ')
-            self.stop_playing()
+        if self.idle_on_play_video:
+            if video_player_state == KodiPlayerState.PLAYING_VIDEO:
+                clz.logger.debug(f'Stop playing TTS while Kodi player active')
+                self.abort_voicing(purge=True, future=True)
+            elif video_player_state != KodiPlayerState.PLAYING_VIDEO:
+                self.resume_voicing()  # Resume playing TTS content
+                clz.logger.debug(f'Start playing TTS (Kodi not playing)')
         return False  # Don't unregister
 
     def start_service(self) -> int:
@@ -381,14 +410,15 @@ class SlaveCommunication:
                     break
                 Monitor.exception_on_abort(timeout=0.1)
             try:
-                self.slave_pipe_path.unlink(missing_ok=True)
+                # self.slave_pipe_path.unlink(missing_ok=True)
                 pass
             except Exception as e:
                 self.logger.exception('')
 
             if not success:
+                self.logger.debug(f'Runstate was: {self.run_state}')
                 self.run_state = RunState.NOT_STARTED
-                self.logger.debug(f'NOT_STARTED')
+                self.logger.debug(f'set to NOT_STARTED DEAD')
                 return
             self.fifo_in = fifo_sock.makefile(mode='r', buffering=1,
                                               encoding='utf-8', errors=None,
@@ -409,8 +439,8 @@ class SlaveCommunication:
             clz.logger.exception('')
             self.rc = 10
         if self.rc == 0:
-            self.run_state = RunState.RUNNING
-        # clz.logger.debug(f'Finished starting mpv')
+            self.run_state = RunState.PIPES_CONNECTED
+            clz.logger.debug(f'Set run_state PIPES_CONNECTED')
         return
 
     def fifo_reader(self):

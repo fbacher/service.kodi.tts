@@ -399,7 +399,7 @@ class BaseModel:
         window: xbmcgui.Window | xbmcgui.WindowDialog = self.window_model.win_or_dialog
         clz._logger.debug(f'control_id: {control_id}')
         control: xbmcgui.Control = window.getControl(control_id)
-        clz._logger.debug(f'control: {control}')
+        # clz._logger.debug(f'control: {control}')
         return control
 
     def get_label_control(self, control_id: int) -> xbmcgui.ControlLabel:

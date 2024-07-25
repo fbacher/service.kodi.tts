@@ -3,8 +3,6 @@ from __future__ import annotations  # For union operator |
 import os
 import sys
 
-from common import *
-
 from backends.audio import load_snd_bm2835
 from backends.audio.afplay_audio_player import AfplayPlayer
 from backends.audio.aplay_audio_player import AplayAudioPlayer
@@ -22,6 +20,7 @@ from backends.audio.windows_audio_player import WindowsAudioPlayer
 from backends.players.player_index import PlayerIndex
 from backends.settings.service_types import Services
 from backends.settings.setting_properties import SettingsProperties
+from common import *
 from common import utils
 from common.base_services import BaseServices
 from common.constants import Constants

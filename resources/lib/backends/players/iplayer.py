@@ -70,7 +70,16 @@ class IPlayer:
     def isPlaying(self) -> bool:
         raise NotImplementedError
 
-    def stop(self, now: bool = True) -> None:
+    def abort_voicing(self, purge: bool = True, future: bool = False) -> None:
+        """
+        Stop voicing pending speech and/or future speech.
+
+        Vocing can be resumed using resume_voicing
+
+        :param purge: if True, then abandon playing all pending speech
+        :param future: if True, then ignore future voicings.
+        :return: None
+        """
         raise NotImplementedError
 
     def close(self) -> None:

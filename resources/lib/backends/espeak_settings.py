@@ -9,7 +9,6 @@ from common import *
 from backends.audio.sound_capabilties import SoundCapabilities
 from backends.engines.base_engine_settings import (BaseEngineSettings)
 from backends.settings.base_service_settings import BaseServiceSettings
-from backends.settings.constraints import Constraints
 from backends.settings.i_validators import INumericValidator, ValueType
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.setting_properties import SettingsProperties
@@ -19,7 +18,7 @@ from backends.settings.validators import (BoolValidator, ConstraintsValidator,
                                           StringValidator)
 from common.constants import Constants
 from common.logger import BasicLogger
-from common.setting_constants import Backends, PlayerModes, Players
+from common.setting_constants import Backends, PlayerMode, Players
 from common.system_queries import SystemQueries
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -30,6 +29,7 @@ class ESpeakSettings(BaseServiceSettings):
     ID: str = Backends.ESPEAK_ID
     engine_id = Backends.ESPEAK_ID
     service_ID: str = Services.ESPEAK_ID
+    service_TYPE: str = ServiceType.ENGINE_SETTINGS
     displayName = 'eSpeak'
 
     # Every setting from settings.xml must be listed here
@@ -59,9 +59,13 @@ class ESpeakSettings(BaseServiceSettings):
 
     @classmethod
     def init_settings(cls):
+        cls._logger.debug(f'Adding eSpeak to engine service')
         service_properties = {Constants.NAME: cls.displayName}
         SettingsMap.define_service(ServiceType.ENGINE, cls.service_ID,
                                    service_properties)
+        x = SettingsMap.get_services_for_service_type(ServiceType.ENGINE)
+        cls._logger.debug(f'Got back {len(x)} services')
+
         #
         # Need to define Conversion Constraints between the TTS 'standard'
         # constraints/settings to the engine's constraints/settings
@@ -94,15 +98,15 @@ class ESpeakSettings(BaseServiceSettings):
                                    audio_converter_validator)
 
         allowed_player_modes: List[str] = [
-            PlayerModes.SLAVE_FILE.value,
-            PlayerModes.FILE.value,
-            PlayerModes.PIPE.value
+            PlayerMode.SLAVE_FILE.value,
+            PlayerMode.FILE.value,
+            PlayerMode.PIPE.value
         ]
         player_mode_validator: StringValidator
         player_mode_validator = StringValidator(SettingsProperties.PLAYER_MODE,
                                                 cls.service_ID,
                                                 allowed_values=allowed_player_modes,
-                                                default=PlayerModes.SLAVE_FILE.value)
+                                                default=PlayerMode.SLAVE_FILE.value)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER_MODE,
                                    player_mode_validator)
         # pipe_validator: BoolValidator
@@ -125,13 +129,13 @@ class ESpeakSettings(BaseServiceSettings):
         language_validator: StringValidator
         language_validator = StringValidator(SettingsProperties.LANGUAGE, cls.engine_id,
                                              allowed_values=[], min_length=2,
-                                             max_length=5)
+                                             max_length=10)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.LANGUAGE,
                                    language_validator)
 
         voice_validator: StringValidator
         voice_validator = StringValidator(SettingsProperties.VOICE, cls.engine_id,
-                                          allowed_values=[], min_length=1, max_length=10,
+                                          allowed_values=[], min_length=1, max_length=20,
                                           default=None)
 
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOICE,
@@ -163,7 +167,7 @@ class ESpeakSettings(BaseServiceSettings):
                                    player_validator)
         cache_validator: BoolValidator
         cache_validator = BoolValidator(SettingsProperties.CACHE_SPEECH, cls.service_ID,
-                                        default=True)
+                                        default=False)
 
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.CACHE_SPEECH,
                                    cache_validator)

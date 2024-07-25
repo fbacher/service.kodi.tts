@@ -5,8 +5,12 @@ import ctypes.util
 import os
 import subprocess
 import sys
+import langcodes
+
 from pathlib import Path
 
+from backends.players.iplayer import IPlayer
+from backends.settings.language_info import LanguageInfo
 from backends.settings.validators import NumericValidator
 from cache.voicecache import VoiceCache
 from common import *
@@ -15,18 +19,22 @@ from backends.audio.builtin_audio_player import BuiltInAudioPlayer
 # from backends.audio.player_handler import BasePlayerHandler, WavAudioPlayerHandler
 from backends.audio.sound_capabilties import ServiceType
 from backends.base import BaseEngineService, SimpleTTSBackend
-from backends.settings.i_validators import INumericValidator, IValidator
+from backends.settings.i_validators import AllowedValue, INumericValidator, IValidator
 from backends.settings.service_types import Services
 from backends.settings.settings_map import SettingsMap
 from common import utils
 from common.base_services import BaseServices
 from common.constants import Constants
 from common.logger import *
+from common.message_ids import MessageUtils
+from common.messages import Messages
 from common.monitor import Monitor
 from common.phrases import Phrase
-from common.setting_constants import Backends, Genders, Mode
+from common.setting_constants import Backends, Genders, Mode, PlayerMode
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
+from langcodes import LanguageTagError
+from windowNavigation.choice import Choice
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -48,6 +56,23 @@ class ESpeakTTSBackend(SimpleTTSBackend):
     _class_name: str = None
     _initialized: bool = False
 
+    class LangInfo:
+        _logger: BasicLogger = None
+
+        lang_info_map: Dict[str, ForwardRef('LangInfo')] = {}
+        initialized: bool = False
+
+        def __init__(self, locale_id: str, language_code: str, country_code: str,
+                     language_name: str, country_name: str, google_tld: str) -> None:
+            clz = type(self)
+            self.locale_id: str = locale_id
+            self.language_code: str = language_code
+            self.country_code: str = country_code
+            self.language_name: str = language_name
+            self.country_name: str = country_name
+            self.google_tld: str = google_tld
+            clz.lang_info_map[locale_id] = self
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         clz = type(self)
@@ -55,6 +80,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz._class_name)
         self.process: subprocess.Popen = None
+        self.voice_cache: VoiceCache = VoiceCache()
 
         if not clz._initialized:
             clz._initialized = True
@@ -83,13 +109,67 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             return
 
         cls.voice_map = {}
-        cmd_path = 'espeak'
+        cmd_path = 'espeak-ng'
         args = [cmd_path, '--voices']
         voices = []
         try:
             process = subprocess.run(args, stdin=None, stdout=subprocess.PIPE,
                                      universal_newlines=True,
                                      stderr=None, shell=False, check=True)
+            """
+             Sample output:
+             Pty Language       Age/Gender VoiceName          File                 Other Languages
+             5  af              --/M      Afrikaans          gmw/af               
+             5  am              --/M      Amharic            sem/am                       
+             5  bpy             --/M      Bishnupriya_Manipuri inc/bpy                
+             5  chr-US-Qaaa-x-west --/M      Cherokee_          iro/chr              
+             5  cmn             --/M      Chinese_(Mandarin,_latin_as_English) sit/cmn              (zh-cmn 5)(zh 5)
+             5  cmn-latn-pinyin --/M      Chinese_(Mandarin,_latin_as_Pinyin) sit/cmn-Latn-pinyin  (zh-cmn 5)(zh 5)
+
+            Each line is of the form:
+            <priority: int> <language> <age/gender> <voicename> <file> <other_langs>...
+            spaces are seperaators. Language tags are based upon BCP-47. In particular,
+            iso639-1 and 639-3 are used (among others).
+            
+            These language tags are used to specify the language, such as:
+
+                fr (French) -- The ISO 639-1 2-letter language code for the language.
+            
+                NOTE: BCP 47 uses ISO 639-1 codes for languages that are allocated 
+                2-letter codes (e.g. using en instead of eng).
+            
+                yue (Cantonese) -- The ISO 639-3 3-letter language codes for the language.
+            
+                ta-Arab (Tamil written in the Arabic alphabet) -- The ISO 15924
+                 4-letter script code.
+            
+                NOTE: Where the script is the primary script for the language, the 
+                script tag should be omitted.
+            
+            Language Family
+            
+                The languages are grouped by the closest language family the language 
+                belongs. These language families are defined in ISO 639-5. See also
+                 Wikipedia's List of language families for more details.
+                
+                For example, the Celtic languages (Welsh, Irish Gaelic, Scottish Gaelic,
+                 etc.) are listed under the cel language family code.
+                Accent (optional)
+                
+                If necessary, the language tags are also used to specify the accent or 
+                dialect of a language, such as:
+                
+                    es-419 (Spanish (Latin America)) -- The UN M.49 3-number region codes.
+                
+                    fr-CA (French (Canada)) -- Using the ISO 3166-2 2-letter region codes.
+                
+                    en-GB-scotland (English (Scotland)) -- This is using the BCP 47
+                     variant tags.
+                
+                 en-GB-x-rp (English (Received Pronunciation)) -- This is using the
+                  bcp47-extensions language tags for accents that cannot be described 
+                  using the available BCP 47 language tags.
+            """
             for line in process.stdout.split('\n'):
                 if len(line) > 0:
                     voices.append(line)
@@ -101,9 +181,32 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         # Read lines of voices, ignoring header
 
         for voice in voices:
-            fields = voice.split()
-            lang = fields[1]
-            gender = fields[2].split('/')[1]
+            fields = voice.split(maxsplit=5)
+            priority_str: str = fields[0]
+            priority: int = int(priority_str)
+
+            lang_str: str = fields[1]
+            if lang_str == 'chr-US-Qaaa-x-west':  # IETF will not parse
+                lang_str = 'chr-Qaaa-x-west'
+            if lang_str == 'en-us-nyc':
+                lang_str = 'en-us'
+            # locale: str = langcodes.standardize_tag(lang_str)
+            lang: langcodes.Language = None
+            try:
+                lang = langcodes.Language.get(lang_str)
+                cls._logger.debug(f'orig: {lang_str} '
+                                  f'language: {lang.language} '
+                                  f'script: {lang.script} '
+                                  f'territory: {lang.territory} '
+                                  f'extlangs: {lang.extlangs} '
+                                  f'variants: {lang.variants} '
+                                  f'extensions: {lang.extensions} '
+                                  f'private: {lang.private} '
+                                  f'display: {lang.display_name(lang.language)}')
+            except LanguageTagError:
+                cls._logger.exception('')
+
+            age, gender = fields[2].split('/')
             if gender == 'M':
                 gender = Genders.MALE
             elif gender == 'F':
@@ -112,13 +215,50 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                 gender = Genders.UNKNOWN
 
             voice_name = fields[3]
-            voice_id = fields[4]
-            entries: List[Tuple[str, str, Genders]] | None = cls.voice_map.get(lang, None)
+            voice_id = fields[4]  # File
+            other_langs: str = ''
+            if len(fields) > 5:
+                other_langs = fields[5]  # Fields 5 -> eol
+            entries: List[Tuple[str, str, Genders]] | None
+            entries = cls.voice_map.get(lang.language, None)
             if entries is None:
                 entries = []
-                cls.voice_map[lang] = entries
+                cls.voice_map[lang.language] = entries
             entries.append((voice_name, voice_id, gender))
-            cls.initialized_static = True
+            LanguageInfo.add_language(engine_id=ESpeakTTSBackend.engine_id,
+                         language_id=lang.language,
+                         country_id=lang.territory,
+                         ietf=lang,
+                         region_id='',
+                         gender=Genders.UNKNOWN,
+                         voice=voice_name,
+                         engine_lang_id=lang_str,
+                         engine_voice_id=voice_id,
+                         engine_name_msg_id=Messages.BACKEND_ESPEAK.get_msg_id(),
+                         engine_quality=3,
+                         voice_quality=-1)
+        cls.initialized_static = True
+
+    '''
+    @classmethod
+    def load_global_lang_info(cls):
+        entry: Dict[str, ForwardRef('LangInfo')]
+        for locale_id, entry in cls.lang_info_map.items():
+            locale_id: str
+            entry: GoogleTTSEngine.LangInfo
+
+            LanguageInfo(engine_id=GoogleTTSEngine.engine_id,
+                         language_id=entry.language_code,
+                         country_id=entry.country_code,
+                         region_id='',  # Not used by Google
+                         gender=Genders.UNKNOWN,
+                         voice='',
+                         engine_lang_id=locale_id,
+                         engine_voice_id='',
+                         engine_name_msg_id=Messages.BACKEND_GOOGLE.get_msg_id(),
+                         engine_quality=4,
+                         voice_quality=-1)
+    '''
 
     def addCommonArgs(self, args, phrase: Phrase | None = None):
         clz = type(self)
@@ -141,24 +281,26 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         if phrase:
             args.append(phrase.get_text())
 
-    def update(self) -> None:
-        self.setMode(self.getMode())
-
-    def getMode(self):
+    def get_player_mode(self) -> PlayerMode:
         clz = type(self)
-        player_id: str = Settings.get_player_id(clz.service_ID)
-        if player_id == BuiltInAudioPlayer.ID:
-            return Mode.ENGINESPEAK
-        elif Settings.get_pipe(clz.service_ID):
-            return Mode.PIPE
-        else:
-            return Mode.FILEOUT
+        player: IPlayer = self.get_player(self.service_ID)
+        player_mode: PlayerMode = Settings.get_player_mode(clz.service_ID)
+        return player_mode
 
     def runCommand(self, phrase: Phrase):
+        """
+        Run command to generate speech and save voice to a file (mp3 or wave).
+        A player will then be scheduled to play the file. Note that there is
+        delay in starting speech generator, speech generation, starting player
+        up and playing. Consider using caching of speech files as well as
+        using PlayerMode.SLAVE_FILE.
+        :param phrase:
+        :return:
+        """
         clz = type(self)
         out_file: Path = phrase.get_cache_path()
         if out_file is None:
-            out_file, exists = VoiceCache.get_path_to_voice_file(phrase)
+            out_file, exists = self.voice_cache.get_path_to_voice_file(phrase)
         if clz._logger.isEnabledFor(DEBUG_VERBOSE):
             clz._logger.debug_verbose(f'espeak.runCommand outFile: {out_file}\n'
                                       f'text: {phrase.text}')
@@ -231,7 +373,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             clz._logger.exception("")
 
     @classmethod
-    def settingList(cls, setting, *args):
+    def settingList(cls, setting, *args) -> Tuple[List[Choice], str]:
         if setting == SettingsProperties.LANGUAGE:
             # Returns list of languages and index to the closest match to current
             # locale
@@ -248,7 +390,8 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             if len(default_locale) >= 5:
                 default_lang_country = default_locale[0:5]
 
-            idx = 0
+            idx: int = 0
+            languages: List[Choice]
             languages = []
             for lang in sorted(langs):
                 lower_lang = lang.lower()
@@ -260,15 +403,15 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                 elif lower_lang.startswith(default_locale):
                     longest_match = idx
 
-                entry = (lang, lang)  # Display value, setting_value
-                languages.append(entry)
+                choice: Choice = Choice(lang, lang, choice_index=idx)
+                languages.append(choice)
                 idx += 1
 
             # Now, convert index to default_setting
 
             default_setting = ''
             if longest_match > 0:
-                default_setting = languages[longest_match][1]
+                default_setting = languages[longest_match].value
 
             return languages, default_setting
 
@@ -277,7 +420,8 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             current_lang = BaseEngineService.getLanguage()
             current_lang = current_lang[0:2]
             langs = cls.voice_map.keys()  # Not locales
-            voices = []
+            voices: List[Choice] = []
+            idx: int = 0
             for lang in langs:
                 if lang.startswith(current_lang):
                     voice_list = cls.voice_map.get(lang, [])
@@ -286,15 +430,22 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                         # Voice_name is from command and not translatable?
 
                         # display_value, setting_value
-                        voices.append((voice_name, voice_id))
-
-            return voices
+                        voices.append(Choice(voice_name, voice_id, choice_index=idx))
+                        idx += 1
+            return voices, ''
 
         elif setting == SettingsProperties.GENDER:
+            # Currently does not meet the needs of the GUI and is
+            # probably not that useful at this stage.
+            # The main issue, is that this returns language as either
+            # the 2-3 char IETF lang code, or as the traditional
+            # locale (2-3 char lang and 2-3 char territory + extra).
+            # This can be fixed, but not until it proves useful and then
+            # figure out what format is preferred.
             cls.init_voices()
             current_lang = Settings.get_language(cls.service_ID)
             voice_list = cls.voice_map.get(current_lang, [])
-            genders = []
+            genders: List[Choice] = []
             for voice_name, voice_id, gender_id in voice_list:
                 # TODO: verify
                 # Voice_name is from command and not translatable?
@@ -302,16 +453,32 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                 # Unlike voices and languages, we just return gender ids
                 # translation is handled by SettingsDialog
 
-                genders.append(gender_id)
+                genders.append(Choice(value=gender_id))
 
-            return genders
+            return genders, ''
 
         elif setting == SettingsProperties.PLAYER:
             # Get list of player ids. Id is same as is stored in settings.xml
+            supported_players: List[AllowedValue]
+            supported_players = SettingsMap.get_allowed_values(cls.engine_id,
+                                                               SettingsProperties.PLAYER)
+            choices: List[Choice] = []
+            for player in supported_players:
+                player: AllowedValue
+                player_label = MessageUtils.get_msg(player.value)
+                choices.append(Choice(label=player_label, value=player.value,
+                                      choice_index=-1, enabled=player.enabled))
 
-            default_player: str = BaseEngineService.get_setting_default(SettingsProperties.PLAYER)
-            player_ids: List[str] = []
-            return player_ids, default_player
+            choices = sorted(choices, key=lambda entry: entry.label)
+            idx: int = 0
+            for choice in choices:
+                choice.choice_index = idx
+                idx += 1
+
+            default_player: str
+            default_player = SettingsMap.get_default_value(cls.engine_id,
+                                                           SettingsProperties.PLAYER)
+            return choices, default_player
         return None
 
     @classmethod
@@ -332,7 +499,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         # Conversions to/from the engine's or player's scale are done using
         # Constraints
         clz = type(self)
-        if self.mode != Mode.ENGINESPEAK:
+        if self.get_player_mode() != PlayerMode.ENGINE_SPEAK:
             volume_val: INumericValidator = SettingsMap.get_validator(
                     clz.service_ID, SettingsProperties.VOLUME)
             volume_val: NumericValidator
@@ -353,7 +520,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         # Conversions to/from the engine's or player's scale are done using
         # Constraints
         clz = type(self)
-        if self.mode != Mode.ENGINESPEAK:
+        if self.get_player_mode != PlayerMode.ENGINE_SPEAK:
             pitch_val: INumericValidator = SettingsMap.get_validator(
                     clz.service_ID, SettingsProperties.PITCH)
             pitch_val: NumericValidator
@@ -383,7 +550,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         # Conversions to/from the engine's or player's scale are done using
         # Constraints
         clz = type(self)
-        if self.mode != Mode.ENGINESPEAK:
+        if self.get_player_mode != PlayerMode.ENGINE_SPEAK:
             # Let player decide speed
             speed = 176  # Default espeak speed of 176 words per minute.
             return speed
@@ -394,7 +561,34 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             speed: int = speed_val.get_value()
         return speed
 
+    @staticmethod
+    def available() -> bool:
+        available: bool = True
+        try:
+            cmd_path = 'espeak-ng'
+            args = [cmd_path, '--version']
+            try:
+                process = subprocess.run(args, stdin=None, stdout=subprocess.PIPE,
+                                         universal_newlines=True,
+                                         stderr=None, shell=False, check=True)
 
+                found: bool = False
+                for line in process.stdout.split('\n'):
+                    if len(line) > 0:
+                        if line.find('eSpeak NG text_to_speech'):
+                            found = True
+                            break
+                if not found:
+                    available = False
+            except ProcessLookupError:
+                available = False
+        except Exception:
+            available = False
+
+        # eSpeak has built-in player
+        return available
+
+'''
 class espeak_VOICE(ctypes.Structure):
     _fields_ = [
         ('name', ctypes.c_char_p),
@@ -409,7 +603,7 @@ class espeak_VOICE(ctypes.Structure):
     ]
 
 
-'''
+
 ######### BROKEN ctypes method ############
 class ESpeakCtypesTTSBackend(base.BaseEngineService):
     backend_id = 'eSpeak-ctypes'

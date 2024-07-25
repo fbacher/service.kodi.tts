@@ -9,14 +9,20 @@ from backends.settings.service_types import Services, ServiceType
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
                                           NumericValidator, StringValidator, Validator)
-from common.setting_constants import PlayerModes, Players
+from common.constants import Constants
+from common.logger import BasicLogger
+from common.setting_constants import PlayerMode, Players
 from common.settings_low_level import SettingsProperties
+
+module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class MPlayerSettings:
     ID = Players.MPLAYER
     service_ID: str = Services.MPLAYER_ID
     displayName = 'MPlayer'
+
+    _logger: BasicLogger = None
 
     """
     In an attempt to bring some consistency between the various players, engines and 
@@ -68,6 +74,12 @@ class MPlayerSettings:
         # for a human to work with, we save it as an int by scaling it by 100 when it
         # it is saved.
         #
+        if MPlayerSettings._logger is None:
+            MPlayerSettings._logger = module_logger.getChild(MPlayerSettings.__name__)
+
+        service_properties = {Constants.NAME: cls.displayName}
+        SettingsMap.define_service(ServiceType.PLAYER, cls.service_ID,
+                                   service_properties)
 
         speed_validator: NumericValidator
         speed_validator = NumericValidator(SettingsProperties.SPEED,
@@ -113,13 +125,18 @@ class MPlayerSettings:
                                    pipe_validator)
        '''
         allowed_player_modes: List[str] = [
-            PlayerModes.SLAVE_FILE.value,
-            PlayerModes.FILE.value
+            PlayerMode.FILE.value
         ]
+        cls._logger.debug(f'About to import mplayer PLAYER_MODE')
         player_mode_validator: StringValidator
         player_mode_validator = StringValidator(SettingsProperties.PLAYER_MODE,
                                                 cls.service_ID,
                                                 allowed_values=allowed_player_modes,
-                                                default=PlayerModes.SLAVE_FILE.value)
+                                                default=PlayerMode.FILE.value)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER_MODE,
                                    player_mode_validator)
+
+        x = SettingsMap.get_services_for_service_type(ServiceType.PLAYER)
+        cls._logger.debug(f'PLAYERS len: {len(x)}')
+        for service_id, label in x:
+            cls._logger.debug(f'{service_id} {label}')

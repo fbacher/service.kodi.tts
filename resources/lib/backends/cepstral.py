@@ -10,7 +10,7 @@ from common import *
 from backends import base
 from backends.settings.setting_properties import SettingsProperties
 from common.logger import *
-from common.setting_constants import Mode
+from common.setting_constants import Mode, PlayerMode
 from common.system_queries import SystemQueries
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -57,7 +57,7 @@ class CepstralTTSOEBackend(base.SimpleTTSBackend):
 
         self.process = None
         self.aplayProcess = None
-        self.setMode(Mode.ENGINESPEAK)
+        self.set_player_mode(PlayerMode.ENGINE_SPEAK)
         self.restartProcess()
 
     def runCommand(self, text, outFile):
@@ -146,7 +146,7 @@ class CepstralTTSBackend(base.SimpleTTSBackend):
         if type(self)._logger is None:
             type(self)._logger = module_logger.getChild(type(self)._class_name)
 
-        self.setMode(Mode.ENGINESPEAK)
+        self.set_player_mode(PlayerMode.ENGINE_SPEAK)
         self.startupinfo = getStartupInfo()
         self.update()
         self.process = None

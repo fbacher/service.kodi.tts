@@ -5,7 +5,8 @@ import sys
 
 from common import *
 
-from backends.settings.i_validators import (IBoolValidator, IGenderValidator,
+from backends.settings.i_validators import (AllowedValue, IBoolValidator,
+                                            IGenderValidator,
                                             IIntValidator,
                                             INumericValidator, IStringValidator,
                                             IValidator)
@@ -14,7 +15,7 @@ from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import SettingsMap
 from common.exceptions import *
 from common.logger import *
-from common.setting_constants import Genders, PlayerModes
+from common.setting_constants import Genders, PlayerMode
 from common.settings_bridge import SettingsBridge
 from common.settings_low_level import SettingsLowLevel
 
@@ -115,7 +116,8 @@ class Settings(SettingsLowLevel):
 
     @classmethod
     def set_engine_id(cls, engine_id: str) -> None:
-        engine_id_validator = SettingsMap.get_validator(SettingsProperties.ENGINE, '')
+        engine_id_validator = SettingsMap.get_validator(SettingsProperties.ENGINE,
+                                                        '')
         engine_id_validator.set_tts_value(engine_id)
         return
 
@@ -207,20 +209,16 @@ class Settings(SettingsLowLevel):
         return
 
     @classmethod
-    def get_volume(cls, engine_id: str = None) -> int:
-        if engine_id is None:
-            engine_id = super()._current_engine
+    def get_volume(cls, engine_id: str = None) -> float:
         volume_val: INumericValidator = SettingsMap.get_validator(
-            engine_id, SettingsProperties.VOLUME)
+            SettingsProperties.TTS_SERVICE, SettingsProperties.VOLUME)
         return volume_val.get_value()
 
     @classmethod
-    def set_volume(cls, volume: int, engine_id: str = None) -> None:
-        if engine_id is None:
-            engine_id = super()._current_engine
+    def set_volume(cls, volume: float, engine_id: str = None) -> None:
         #  cls._logger.debug(f'{super()._current_engine} {SettingsLowLevel._current_engine}')
         volume_val: INumericValidator = SettingsMap.get_validator(
-                engine_id, SettingsProperties.VOLUME)
+                SettingsProperties.TTS_SERVICE, SettingsProperties.VOLUME)
         volume_val.set_value(volume)
         return
 
@@ -231,20 +229,29 @@ class Settings(SettingsLowLevel):
         return speed_val.get_value()
 
     @classmethod
-    def set_speed(cls, speed: int) -> None:
+    def set_speed(cls, speed: float) -> None:
         speed_val: INumericValidator = SettingsMap.get_validator(
                 SettingsProperties.TTS_SERVICE, SettingsProperties.SPEED)
         speed_val.set_value(speed)
         return
 
     @classmethod
-    def get_voice(cls, engine_id: str | None) -> int:
+    def get_voice(cls, engine_id: str | None) -> str:
         if engine_id is None:
             engine_id = super()._current_engine
         voice_val: IValidator = SettingsMap.get_validator(
                 engine_id, SettingsProperties.VOICE)
-        voice: int = voice_val.get_tts_value()
+        voice: str = voice_val.get_tts_value()
         return voice
+
+    @classmethod
+    def set_voice(cls, voice: str, engine_id: str | None) -> None:
+        if engine_id is None:
+            engine_id = super()._current_engine
+        voice_val: IValidator = SettingsMap.get_validator(
+                engine_id, SettingsProperties.VOICE)
+        voice_val.set_tts_value(voice)
+        return None
 
     @classmethod
     def is_use_cache(cls, engine_id: str = None) -> bool | None:
@@ -264,6 +271,22 @@ class Settings(SettingsLowLevel):
         except Exception as e:
             cls._logger.exception('')
         return result
+
+    @classmethod
+    def set_use_cache(cls, use_cache: bool, engine_id: str = None) -> None:
+        result: bool = None
+        try:
+            if engine_id is None:
+                engine_id = cls.get_engine_id()
+            cache_validator: IBoolValidator
+            cache_validator = SettingsMap.get_validator(engine_id,
+                                                        SettingsProperties.CACHE_SPEECH)
+            cache_validator.set_tts_value(use_cache)
+        except NotImplementedError:
+            reraise(*sys.exc_info())
+        except Exception as e:
+            cls._logger.exception('')
+        return
 
     @classmethod
     def get_pitch(cls, engine_id: str = None) -> float | int:
@@ -291,7 +314,7 @@ class Settings(SettingsLowLevel):
         return
 
     @classmethod
-    def get_player_mode(cls, engine_id: str = None) -> PlayerModes:
+    def get_player_mode(cls, engine_id: str = None) -> PlayerMode:
 
         val: IStringValidator
         if engine_id is None:
@@ -302,16 +325,32 @@ class Settings(SettingsLowLevel):
             raise NotImplemented()
 
         player_mode_str: str = val.get_tts_value()
-        cls._logger.debug(f'player_mode: {player_mode_str}')
-        player_mode = PlayerModes(player_mode_str)
+        allowed_values: List[AllowedValue] = val.get_allowed_values()
+        allowed: bool = False
+        for allowed_value in allowed_values:
+            allowed_value: AllowedValue
+            enabled: bool
+            if allowed_value.value == player_mode_str:
+                allowed = allowed_value.enabled
+                break
+        if not allowed:
+            cls._logger.debug(f'Invalid player_mode {player_mode_str} for this '
+                              f'engine: {engine_id}. Setting to default.')
+            for allowed_value in allowed_values:
+                cls._logger.debug(f'Allowed_value: {allowed_value}')
+            cls._logger.debug(f'player_mode: {player_mode_str}')
+        player_mode = PlayerMode(player_mode_str)
         return player_mode
 
     @classmethod
-    def set_player_mode(cls, player_mode: PlayerModes, engine_id: str = None) -> None:
+    def set_player_mode(cls, player_mode: PlayerMode, engine_id: str = None) -> None:
         val: IStringValidator
         val = SettingsMap.get_validator(service_id=engine_id,
                                         property_id=SettingsProperties.PLAYER_MODE)
-        val.set_tts_value(player_mode.name)
+
+        val.set_tts_value(player_mode.value)
+        Settings._logger.debug(f'Setting {engine_id} player_mode to '
+                               f'{player_mode.value}')
         return
 
     '''

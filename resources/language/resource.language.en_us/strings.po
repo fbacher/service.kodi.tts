@@ -225,9 +225,11 @@ msgctxt "#32103"
 msgid "Reason"
 msgstr "Reason"
 
+# T T S spelled for pronunciation
+
 msgctxt "#32104"
-msgid "New T T S Version"
-msgstr "New T T S Version"
+msgid "New T.T.S. Version"
+msgstr "New T.T.S. Version"
 
 msgctxt "#32105"
 msgid "Window"
@@ -689,8 +691,8 @@ msgid "Experimental"
 msgstr "Experimental"
 
 msgctxt "#32219"
-msgid "Settings"
-msgstr "Settings"
+msgid "Configure Settings"
+msgstr "Configure Settings"
 
 msgctxt "#32220"
 msgid "OK"
@@ -709,8 +711,8 @@ msgid "None"
 msgstr "None"
 
 msgctxt "#32224"
-msgid "Select Speech Engine"
-msgstr "Select Speech Engine"
+msgid "Speech Engine"
+msgstr "Speech Engine"
 
 msgctxt "#32225"
 msgid "Cancel"
@@ -721,20 +723,20 @@ msgid "OK"
 msgstr "OK"
 
 msgctxt "#32227"
-msgid "Select Language"
-msgstr "Select Language"
+msgid "Language"
+msgstr "Language"
 
 msgctxt "#32228"
-msgid "Select Voice Gender"
-msgstr "Select Voice Gender"
+msgid "Voice Gender"
+msgstr "Voice Gender"
 
 msgctxt "#32229"
-msgid "Select Pitch"
-msgstr "Select Pitch"
+msgid "Pitch"
+msgstr "Pitch"
 
 msgctxt "#32230"
-msgid "Select Player"
-msgstr "Select Player"
+msgid "Player"
+msgstr "Player"
 
 msgctxt "#32231"
 msgid "Speed {0}"
@@ -1169,6 +1171,9 @@ msgctxt "#32335"
 msgid "Can not find message from Kodi's nor ADDON's messages msg_id: {0}"
 msgstr "Can not find message from Kodi's nor ADDON's messages msg_id: {0}"
 
+# Used to indicate state of a RadioButton or similar:
+#  ex: Pipe Audo. Enabled
+
 msgctxt "#32336"
 msgid "Player Mode"
 msgstr "Player Mode"
@@ -1181,16 +1186,368 @@ msgctxt "#32338"
 msgid "Enabled"
 msgstr "Enabled"
 
+# Used to indicate state of a RadioButton or similar:
+#  ex: Pipe Audo. Disabled
+
 msgctxt "#32339"
 msgid "Disabled"
 msgstr "Disabled"
 
+msgctxt "#32340"
+msgid "Albania"
+msgstr "Albania"
 
+msgctxt "#32341"
+msgid "Armenia"
+msgstr "Armenia"
+
+msgctxt "#32342"
+msgid "Australia"
+msgstr "Australia"
+
+msgctxt "#32343"
+msgid "Belgium"
+msgstr "Belgium"
+
+msgctxt "#32344"
+msgid "Brazil"
+msgstr "Brazil"
+
+msgctxt "#32345"
+msgid "Canada"
+msgstr "Canada"
+
+msgctxt "#32346"
+msgid "China"
+msgstr "China"
+
+msgctxt "#32347"
+msgid "Germany"
+msgstr "Germany"
+
+msgctxt "#32348"
+msgid "Denmark"
+msgstr "Denmark"
+
+msgctxt "#32349"
+msgid "Esperanto"
+msgstr "Esperanto"
+
+msgctxt "#32350"
+msgid "Spain"
+msgstr "Spain"
+
+msgctxt "#32351"
+msgid "Finland"
+msgstr "Finland"
+
+msgctxt "#32352"
+msgid "France"
+msgstr "France"
+
+msgctxt "#32353"
+msgid "United Kingdom"
+msgstr "United Kingdom"
+
+msgctxt "#32354"
+msgid "Greece"
+msgstr "Greece"
+
+msgctxt "#32355"
+msgid "Hong Kong"
+msgstr "Hong Kong"
+
+msgctxt "#32356"
+msgid "Croatia"
+msgstr "Croatia"
+
+msgctxt "#32357"
+msgid "Hungary"
+msgstr "Hungary"
+
+msgctxt "#32358"
+msgid "Indonesia"
+msgstr "Indonesia"
+
+msgctxt "#32359"
+msgid "Ireland"
+msgstr "Ireland"
+
+msgctxt "#32360"
+msgid "India"
+msgstr "India"
+
+msgctxt "#32361"
+msgid "Iceland"
+msgstr "Iceland"
+
+msgctxt "#32362"
+msgid "Italy"
+msgstr "Italy"
+
+msgctxt "#32363"
+msgid "Japan"
+msgstr "Japan"
+
+msgctxt "#32364"
+msgid "Kenya"
+msgstr "Kenya"
+
+msgctxt "#32365"
+msgid "Korea"
+msgstr "Korea"
+
+msgctxt "#32366"
+msgid "Latvia"
+msgstr "Latvia"
+
+msgctxt "#32367"
+msgid "Montenegro"
+msgstr "Montenegro"
+
+msgctxt "#32368"
+msgid "Mexico"
+msgstr "Mexico"
+
+msgctxt "#32369"
+msgid "Netherlands"
+msgstr "Netherlands"
+
+msgctxt "#32370"
+msgid "Norway"
+msgstr "Norway"
+
+msgctxt "#32371"
+msgid "Poland"
+msgstr "Poland"
+
+msgctxt "#32372"
+msgid "Portugal"
+msgstr "Portugal"
+
+msgctxt "#32373"
+msgid "Romania"
+msgstr "Romania"
+
+msgctxt "#32374"
+msgid "Serbia"
+msgstr "Serbia"
+
+msgctxt "#32375"
+msgid "Russia"
+msgstr "Russia"
+
+msgctxt "#32376"
+msgid "Saudi Arabia"
+msgstr "Saudi Arabia"
+
+msgctxt "#32377"
+msgid "Slovakia"
+msgstr "Slovakia"
+
+msgctxt "#32378"
+msgid "Tamil"
+msgstr "Tamil"
+
+msgctxt "#32379"
+msgid "Thailand"
+msgstr "Thailand"
+
+msgctxt "#32380"
+msgid "Turkey"
+msgstr "Turkey"
+
+msgctxt "#32381"
+msgid "United States"
+msgstr "United States"
+
+msgctxt "#32382"
+msgid "Viet Nam"
+msgstr "Viet Nam"
+
+msgctxt "#32383"
+msgid "South Africa"
+msgstr "South Africa"
+
+msgctxt "#32384"
+msgid "Afrikans"
+msgstr "Afrikans"
+
+msgctxt "#32385"
+msgid "Arabic"
+msgstr "Arabic"
+
+msgctxt "#32386"
+msgid "Bosnian"
+msgstr "Bosnian"
+
+msgctxt "#32387"
+msgid "Catalan"
+msgstr "Catalan"
+
+msgctxt "#32388"
+msgid "Czech"
+msgstr "Czech"
+
+msgctxt "#32389"
+msgid "Welsh"
+msgstr "Welsh"
+
+msgctxt "#32390"
+msgid "Danish"
+msgstr "Danish"
+
+msgctxt "#32391"
+msgid "German"
+msgstr "German"
+
+msgctxt "#32392"
+msgid "Greek"
+msgstr "Greek"
+
+msgctxt "#32393"
+msgid "English"
+msgstr "English"
+
+msgctxt "#32394"
+msgid "Esperanto"
+msgstr "Esperanto"
+
+msgctxt "#32395"
+msgid "Spanish"
+msgstr "Spanish"
+
+msgctxt "#32396"
+msgid "Finnish"
+msgstr "Finnish"
+
+msgctxt "#32397"
+msgid "French"
+msgstr "French"
+
+msgctxt "#32398"
+msgid "Hindi"
+msgstr "Hindi"
+
+msgctxt "#32399"
+msgid "Croatian"
+msgstr "Croatian"
+
+msgctxt "#32400"
+msgid "Hungarian"
+msgstr "Hungarian"
+
+msgctxt "#32401"
+msgid "Armenian"
+msgstr "Armenian"
+
+msgctxt "#32402"
+msgid "Indonesian"
+msgstr "Indonesian"
+
+msgctxt "#32403"
+msgid "Icelandic"
+msgstr "Icelandic"
+
+msgctxt "#32404"
+msgid "Italian"
+msgstr "Italian"
+
+msgctxt "#32405"
+msgid "Japanese"
+msgstr "Japanese"
+
+msgctxt "#32406"
+msgid "Korean"
+msgstr "Korean"
+
+msgctxt "#32407"
+msgid "Latin"
+msgstr "Latin"
+
+msgctxt "#32408"
+msgid "Latvian"
+msgstr "Latvian"
+
+msgctxt "#32409"
+msgid "Norwegian"
+msgstr "Norwegian"
+
+msgctxt "#32410"
+msgid "Dutch"
+msgstr "Dutch"
+
+msgctxt "#32411"
+msgid "Norwegian"
+msgstr "Norwegian"
+
+msgctxt "#32412"
+msgid "Polish"
+msgstr "Polish"
+
+msgctxt "#32413"
+msgid "Portuguese"
+msgstr "Portuguese"
+
+msgctxt "#32414"
+msgid "Romanian"
+msgstr "Romanian"
+
+msgctxt "#32415"
+msgid "Russian"
+msgstr "Russian"
+
+msgctxt "#32416"
+msgid "Slovak"
+msgstr "Slovak"
+
+msgctxt "#32417"
+msgid "Albanian"
+msgstr "Albanian"
+
+msgctxt "#32418"
+msgid "Serbian"
+msgstr "Serbian"
+
+msgctxt "#32419"
+msgid "Swahili"
+msgstr "Swahili"
+
+msgctxt "#32420"
+msgid "Tamil"
+msgstr "Tamil"
+
+msgctxt "#32421"
+msgid "Thai"
+msgstr "Thai"
+
+msgctxt "#32422"
+msgid "Turkish"
+msgstr "Turkish"
+
+msgctxt "#32423"
+msgid "Vietnamese"
+msgstr "Vietnamese"
+
+msgctxt "#32424"
+msgid "Chinese"
+msgstr "Chinese"
+
+# Used for Locale
+# ex. English (United States)
+# {0} is the language
+# {1} is the country
+msgctxt "#32425"
+msgid "{0} ({1})"
+msgstr "{0} ({1})"
+"
 # BEGIN MESSAGES USED IN UI (WINDOWS, CONTROLS, etc.)
 
 # Voiced control element types, including pseudo-types
 # (Kodi's control types don't always match what users may
 # be used to). Group, doesn't mean much to users.
+#
+# Added punctation is intentional to help voicing
 
 msgctxt "#32700"
 msgid "Unknown"
@@ -1209,12 +1566,12 @@ msgid "Label"
 msgstr "Label"
 
 msgctxt "#32704"
-msgid "RadioButton"
-msgstr "RadioButton"
+msgid "Radio Button."
+msgstr "Radio Button."
 
 msgctxt "#32705"
-msgid "TextBox"
-msgstr "TextBox"
+msgid "Text Box"
+msgstr "Text Box"
 
 msgctxt "#32706"
 msgid "Slider"
@@ -1225,16 +1582,16 @@ msgid "Toggle"
 msgstr "Toggle"
 
 msgctxt "#32708"
-msgid "ButtonList"
-msgstr "ButtonList"
+msgid "Button List"
+msgstr "Button List"
 
 msgctxt "#32709"
 msgid "Dialog"
 msgstr "Dialog"
 
 msgctxt "#32710"
-msgid "SPIN"
-msgstr "SPIN"
+msgid "Spin"
+msgstr "Spin"
 
 msgctxt "#32711"
 msgid "Group"
@@ -1255,12 +1612,12 @@ msgid "Configure TTS settings. Changes applied immediately. Commit by... Cancel 
 msgstr "Configure TTS settings. Changes applied immediately. Commit by... Cancel by..."
 
 msgctxt "#32801"
-msgid "Select the category that you wish to modify"
-msgstr "Select the category that you wish to modify"
+msgid "Select the category that you wish to modify."
+msgstr "Select the category that you wish to modify."
 
 msgctxt "#32802"
-msgid "Settings Categories"
-msgstr "Settings Categories"
+msgid "Settings Categories."
+msgstr "Settings Categories."
 
 msgctxt "#32803"
 msgid "Close window at top right of screen. Navigable?"
@@ -1270,10 +1627,39 @@ msgctxt "#32804"
 msgid "Select to dismiss dialog"
 msgstr "Select to dismiss dialog"
 
+# Example "15 Vertical items." Can also be Horizontal
+
 msgctxt "#32805"
-msgid "{0} items"
-msgstr "{0} items"
+msgid "{0} items."
+msgstr "{0} items."
 
 msgctxt "#32806"
 msgid "item {0}"
 msgstr "item {0}"
+
+msgctxt "#32807"
+msgid "Engine Settings."
+msgstr "Engine Settings."
+
+# TODO:
+msgctxt "#32808"
+msgid "Vertical"
+msgstr "Vertical"
+
+# TODO:
+# Used to construct sentence: "15 Horizontal Items"
+msgctxt "#32809"
+msgid "Horizontal"
+msgstr "Horizontal"
+
+# Used to voice a value in decibels: "Volume 32 dB"
+# Here, {0} is the numeric value (i.e. '32').
+msgctxt "#32810"
+msgid "{0} dB"
+msgstr "{0} dB"
+
+# Used to voice a value as a percent: "Volume 45%"
+# Here, {0} is the numeric value (i.e. '45').
+msgctxt "#32811"
+msgid "{0}%"
+msgstr "{0}%"

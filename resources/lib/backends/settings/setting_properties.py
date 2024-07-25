@@ -1,7 +1,7 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
 from enum import Enum
-from pathlib import Path
 
 import xbmcvfs
 
@@ -71,7 +71,6 @@ class SettingsProperties:  # (ISettings):
     PLAYER: Final[str] = 'player'  # Specifies the player
     PLAYER_VOLUME: Final[str] = 'player_volume'
     PLAYER_PITCH: Final[str] = 'player_pitch'
-    # PLAYER_SLAVE: Final[str] = 'player_slave'
     PLAYER_SPEED: Final[str] = 'player_speed'
     POLL_INTERVAL: Final[str] = 'poll_interval'
     PUNCTUATION: Final[str] = 'punctuation'
@@ -211,7 +210,6 @@ class SettingsProperties:  # (ISettings):
         PLAYER,
         PLAYER_VOLUME,
         PLAYER_PITCH,
-        # PLAYER_SLAVE,
         PLAYER_MODE,
         PLAYER_SPEED,
         POLL_INTERVAL,
@@ -280,7 +278,6 @@ class SettingsProperties:  # (ISettings):
             cls.PLAYER                                : SettingType.STRING_TYPE,
             cls.PLAYER_VOLUME                         : SettingType.INTEGER_TYPE,
             cls.PLAYER_PITCH                          : SettingType.INTEGER_TYPE,
-            # cls.PLAYER_SLAVE                          : SettingType.BOOLEAN_TYPE,
             cls.PLAYER_MODE                           : SettingType.STRING_TYPE,
             cls.PLAYER_SPEED                          : SettingType.INTEGER_TYPE,
             cls.POLL_INTERVAL                         : SettingType.INTEGER_TYPE,

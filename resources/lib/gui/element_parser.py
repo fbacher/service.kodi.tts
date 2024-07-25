@@ -262,6 +262,15 @@ class ElementParser:
         return on_focus_value
 
     @classmethod
+    def parse_enable(cls, parent: BaseParser | None = None,
+                     el_enable: ET.Element = None) -> str | None:
+        enable_value: str = el_enable.text
+        if enable_value is None:
+            cls._logger.debug(f'enable value not specified')
+        parent.enable_value_expr = enable_value
+        return enable_value
+
+    @classmethod
     def parse_on_unfocus(cls, parent: BaseParser | None = None,
                          el_on_unfocus: ET.Element = None) -> str | None:
         on_unfocus_expr: str = ''
@@ -531,6 +540,7 @@ class ElementHandler:
         cls.add_handler(EK.ORIENTATION.value, ElementParser.parse_orientation)
         cls.add_handler(EK.DEFAULT_CONTROL.value, ElementParser.parse_default_control)
         cls.add_handler(EK.ON_FOCUS.value, ElementParser.parse_on_focus)
+        cls.add_handler(EK.ENABLE.value, ElementParser.parse_enable)
         cls.add_handler(EK.ON_UNFOCUS.value, ElementParser.parse_on_unfocus)
         cls.add_handler(EK.VISIBLE.value, ElementParser.parse_visible)
         cls.add_handler(EK.LABEL.value, ElementParser.parse_label)

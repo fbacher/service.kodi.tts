@@ -4,12 +4,11 @@ import os
 import subprocess
 import sys
 
-from common import *
-
 from backends.audio.base_audio import SubprocessAudioPlayer
 from backends.audio.sound_capabilties import SoundCapabilities
 from backends.players.player_index import PlayerIndex
 from backends.settings.service_types import ServiceType
+from common import *
 from common.base_services import BaseServices
 from common.logger import BasicLogger
 from common.setting_constants import Players

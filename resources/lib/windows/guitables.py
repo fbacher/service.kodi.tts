@@ -605,7 +605,7 @@ def getItemExtraTexts(winID: int, phrases: PhraseList) -> bool:
 
 
 def getListItemProperty(winID: int, phrases: PhraseList) -> bool:
-    tmp_phrases: PhraseList = PhraseList()
+    tmp_phrases: PhraseList = PhraseList(check_expired=False)
     success: bool = getWindowTexts(winID, tmp_phrases,
                                    table=winListItemProperties)
     texts: List[str] = []

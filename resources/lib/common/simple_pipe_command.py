@@ -34,7 +34,7 @@ class SimplePipeCommand:
     """
 
     """
-    player_state: str = KodiPlayerState.PLAYING_STOPPED
+    player_state: str = KodiPlayerState.VIDEO_PLAYER_IDLE
     logger: BasicLogger = None
 
     def __init__(self, args: List[str],
@@ -93,7 +93,7 @@ class SimplePipeCommand:
         clz.logger.debug(f'PlayerStatus: {player_state} stop_on_play: '
                          f'{self.stop_on_play} args: {self.args} '
                          f'serial: {self.phrase_serial}')
-        if player_state == KodiPlayerState.PLAYING and self.stop_on_play:
+        if player_state == KodiPlayerState.PLAYING_VIDEO and self.stop_on_play:
             clz.logger.debug(f'PLAYING terminating command: '
                              f'args: {self.args} ')
             self.terminate()

@@ -5,6 +5,7 @@ from common import *
 from backends.i_backend import IBackend
 from backends.settings.constraints import Constraints
 from common.phrases import PhraseList
+from windowNavigation.choice import Choice
 
 
 class ITTSBackendBase(IBackend):
@@ -140,7 +141,7 @@ class ITTSBackendBase(IBackend):
         raise Exception('Not Implemented')
 
     @classmethod
-    def settingList(cls, setting, *args):
+    def settingList(cls, setting, *args) -> List[Choice]:
         raise Exception('Not Implemented')
 
     @classmethod

@@ -598,6 +598,7 @@ control_items_list: List[Item] = [
     # tmp: List[Item] = [
     # The only ones we care about
     Item('action'),
+    Item('enable'),
     #  Item('label'),
     Item('orientation'),
     Item('wrapmultiline'),

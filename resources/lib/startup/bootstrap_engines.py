@@ -6,6 +6,7 @@ import sys
 
 import xbmcaddon
 
+from backends.settings.i_validators import AllowedValue
 from common import *
 
 from backends.base import BaseEngineService
@@ -15,11 +16,12 @@ from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import Reason, SettingsMap
 from common.constants import Constants
 from common.logger import BasicLogger
-from common.setting_constants import Backends
+from common.setting_constants import Backends, PlayerMode
 from common.settings import Settings
 # from voiceover import VoiceOverBackend #Can't test
 from common.settings_low_level import SettingsLowLevel
 from utils import util
+from windowNavigation.choice import Choice
 
 # from speechutil import SpeechUtilComTTSBackend
 
@@ -51,7 +53,7 @@ class BootstrapEngines:
         #   SpeechUtilComTTSBackend(),
         # ESpeakCtypesTTSBackend(),
         # Backends.SAPI_ID,
-        Backends.LOG_ONLY_ID
+        # Backends.LOG_ONLY_ID
     ]
     _initialized: bool = False
     '''
@@ -79,6 +81,11 @@ class BootstrapEngines:
 
     @classmethod
     def init(cls) -> None:
+        # Initialize the players since engine availability depends upon player
+        # availability). Further, Players don't have such dependencies on engines.
+
+        from backends.audio.bootstrap_players import BootstrapPlayers
+        BootstrapPlayers.init()
         module_logger.debug(f'Initialized: {cls._initialized}')
         if not cls._initialized:
             module_logger.debug(f'initializing')
@@ -150,7 +157,8 @@ class BootstrapEngines:
         try:
             from backends.engines.google_settings import GoogleSettings
             google_settings: GoogleSettings = GoogleSettings()
-            is_available: bool = google_settings.isInstalled()
+            is_available: bool = google_settings.available()
+            cls._logger.debug(f'google available: {is_available}')
             if is_available:
                 SettingsMap.set_is_available(Backends.GOOGLE_ID, Reason.AVAILABLE)
             else:
@@ -263,7 +271,7 @@ class BootstrapEngines:
         '''
 
     @classmethod
-    def load_current_backend(cls) -> str:
+    def load_current_backend(cls) -> None:
         """
         engine_id_validator = StringValidator(SettingsProperties.ENGINE, '',
                                               allowed_values=Backends.ALL_ENGINE_IDS,
@@ -274,19 +282,21 @@ class BootstrapEngines:
                                    engine_id_validator)
         """
         engine_id: str = SettingsLowLevel.get_engine_id_ll(bootstrap=True,
-                                                        default=None)
+                                                           default=None)
         cls._logger.debug(f'engine_id: {engine_id}')
         if engine_id is None:
             engine_id = SettingsProperties.ENGINE_DEFAULT
         cls._logger.debug(f'Trying to load engine: {engine_id}')
         Settings.set_engine_id(engine_id)
-        engine_id = BootstrapEngines.load_engine(engine_id)
+        BootstrapEngines.load_engine(engine_id)
         cls._logger.debug(f'Loaded:{engine_id}')
 
     @classmethod
     def load_engine(cls, engine_id: str) -> None:
         try:
+            available: bool = True
             if not SettingsMap.is_available(engine_id):
+                cls._logger.debug(f'{engine_id} NOT SettingsMap.is_available')
                 return
 
             engine: BaseEngineService | None = None
@@ -322,18 +332,33 @@ class BootstrapEngines:
             elif engine_id == Backends.SAPI_ID:
                 try:
                     from backends.sapi import SAPIBackend
-                    cls._logger.debug(f'Loading {Backends.SAPI_ID}')
+                    cls._logger.debug(f'Loading {engine_id}')
                     engine = SAPIBackend()
-                    cls._logger.debug(f'Finished loading {Backends.SAPI_ID}')
+                    cls._logger.debug(f'Finished loading {engine_id}')
                 except Exception as e:
                     cls._logger.exception('Loading SAPI')
+                    available = False
             else:  # Catch all default
+                pass
+                '''
                 try:
                     from backends.responsive_voice import ResponsiveVoiceTTSBackend
                     engine = ResponsiveVoiceTTSBackend()
                 except Exception as e:
                     cls._logger.exception('Loading DEFAULT engine')
-                # engine.destroy()
+                    available = False
+                '''
+            try:
+                if available:
+                    available: bool = engine.available()
+                    cls._logger.debug(f'{engine_id} returns available {available}')
+                if available:
+                    SettingsMap.set_is_available(engine_id, Reason.AVAILABLE)
+                else:
+                    SettingsMap.set_is_available(engine_id, Reason.NOT_AVAILABLE)
+            except Exception:
+                cls._logger.exception('')
+                SettingsMap.set_is_available(engine_id, Reason.NOT_AVAILABLE)
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
@@ -351,7 +376,7 @@ class BootstrapEngines:
                 cls._logger.debug(f'Loaded engine: {engine_id}')
 
         # Include settings for other engines
-        Settings.load_settings()
+        # Settings.load_settings()
 
 
 # BootstrapEngines.init()

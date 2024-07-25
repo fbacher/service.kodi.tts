@@ -8,7 +8,8 @@ from common import *
 
 from backends.settings.constraints import Constraints
 from backends.settings.i_constraints import IConstraints
-from backends.settings.i_validators import (IChannelValidator, IGenderValidator,
+from backends.settings.i_validators import (AllowedValue, IChannelValidator,
+                                            IGenderValidator,
                                             IStringValidator, IValidator, UIValues)
 from backends.settings.service_types import Services
 from backends.settings.settings_map import SettingsMap
@@ -516,7 +517,11 @@ class StringValidator(IStringValidator):
                          max_length, default)
         self.setting_id: str = setting_id
         self.service_id: str = service_id
-        self.allowed_values: List[str] = allowed_values
+        self.allowed_values: List[AllowedValue] = []
+        for p in allowed_values:
+            p: str
+            allowed_value: AllowedValue = AllowedValue(p)
+            self.allowed_values.append(allowed_value)
         if min_length is None:
             min_length = 0
         if max_length is None:
@@ -533,54 +538,76 @@ class StringValidator(IStringValidator):
             default = self._default
         if setting_service_id is None:
             setting_service_id = SettingsLowLevel.get_engine_id_ll()
-        internal_value: str = SettingsLowLevel.get_setting_str(self.setting_id,
-                                                               setting_service_id,
-                                                               ignore_cache=False,
-                                                               default=default)
-        if internal_value is None:
+        value: str = SettingsLowLevel.get_setting_str(self.setting_id,
+                                                      setting_service_id,
+                                                      ignore_cache=False,
+                                                      default=default)
+        if value is None:
             internal_value = self._default
-            # module_logger.debug(f'using default player: {internal_value} for '
-            #                     f'{setting_service_id} {self.setting_id}')
             return internal_value
 
-        # module_logger.debug(f'internal: {internal_value}  for '
-        #                     f'{setting_service_id} {self.setting_id}')
-        if (self.allowed_values is None) or (internal_value is None):
+        allowed_value: AllowedValue | None = self.get_allowed_value(value)
+        if allowed_value is not None:
+            if not allowed_value.enabled:
+                module_logger.debug(f'{value} is NOT enabled.')
+                valid = False
+
+        if valid and not ( self.min_value <= len(value) <= self.max_value):
             valid = False
-            # module_logger.debug(f'internal_value or allowed_values is None')
-        if (valid and (len(self.allowed_values) > 0)
-                and (internal_value not in self.allowed_values)):
-            valid = False
-            module_logger.debug(f'internal not allowed value')
-        if valid and len(internal_value) < self.min_value:
-            valid = False
-        if valid and len(internal_value) > self.max_value:
-            valid = False
-        if not valid:
-            internal_value = self._default
-        value: str = internal_value
+            value = default
+
         return value
 
     def set_tts_value(self, value: str) -> None:
         valid: bool = True
         internal_value: str = value
-        if (self.allowed_values is not None) and (len(self.allowed_values) > 0):
-            if internal_value not in self.allowed_values:
-                valid = False
+        allowed: bool = True
+        allowed_value: AllowedValue | None = self.get_allowed_value(value)
+        if allowed_value is not None:
+            allowed = allowed_value.enabled
+        if not allowed:
+            value = False
         if valid and len(internal_value) < self.min_value:
             valid = False
         if valid and len(internal_value) > self.max_value:
             valid = False
+
         if not valid:
+            module_logger.debug(f'INVALID setting {self.service_id} {self.setting_id} '
+                                f'value: {value} '
+                                f'using {self._default} instead.')
             internal_value = self._default
         SettingsLowLevel.set_setting_str(self.setting_id, internal_value, self.service_id)
 
     @property
     def default_value(self) -> str:
+        module_logger.debug(f'ZORBO self._default')
         return self._default
 
-    def get_allowed_values(self) -> List[str] | None:
-        return self.allowed_values
+    def get_allowed_values(self, enabled: bool | None = None) -> List[AllowedValue]:
+        """
+        Determine which values are allowed and which normally allowed values
+        are disabled, due to other settings. For example, while an engine
+        may support PlayerMode.SLAVE_FILE an already chosen player may not,
+        therefore blocking you from changing the PlayerMode
+
+        :param enabled: If specified, then only return values which have the
+                 enabled field == enabled param
+        :return: A list of Tuple[<setting>, <enabled | disabled> for every
+                 supported value. Those settings which are in conflict with
+                 a current setting will be marked disabled (False)
+        """
+        allowed: List[AllowedValue] = []
+        for setting in self.allowed_values:
+            if enabled is None or setting.enabled == enabled:
+                allowed.append(setting)
+            # Check with each allowed player to determine if setting is
+        return allowed
+
+    def get_allowed_value(self, value: str) -> AllowedValue | None:
+        for p in self.allowed_values:
+            if p.value == value:
+                return p
 
     def setUIValue(self, ui_value: str) -> None:
         pass
@@ -600,23 +627,42 @@ class StringValidator(IStringValidator):
     def getUnits(self) -> str:
         pass
 
-    def validate(self, value: str | None) -> Tuple[bool, str]:
+    def validate(self, value: str | AllowedValue | None,
+                 debug: bool = False) -> Tuple[bool, str]:
         valid: bool = True
         internal_value: str = SettingsLowLevel.get_setting_str(self.setting_id,
                                                                self.service_id,
                                                                ignore_cache=False,
                                                                default=None)
+        if debug:
+            module_logger.debug(f'{self.service_id} {self.setting_id} value: {value} '
+                                f'internal_value: {internal_value}')
         if value is None:
             value = internal_value
         if (self.allowed_values is not None) and (len(self.allowed_values) > 0):
-            if value not in self.allowed_values:
+            found_value: AllowedValue = self.get_allowed_value(value)
+            if found_value is None or not found_value.enabled:
                 valid = False
+
+        if debug:
+            module_logger.debug(f'value: {value} valid: {valid} ')
         if valid and len(value) < self.min_value:
             valid = False
         if valid and len(value) > self.max_value:
             valid = False
+        if debug:
+            module_logger.debug(f'valid: {valid} len(value): {len(value)} '
+                                f'min: {self.min_value} max: {self.max_value}')
+            module_logger.debug(f'allowed values: {self.allowed_values}')
 
         return valid, value
+
+    def is_value_valid(self, value: str | None) -> bool:
+        for allowed_value in self.get_allowed_values():
+            allowed_value: AllowedValue
+            if value == allowed_value.value and allowed_value.enabled:
+                return True
+        return False
 
     def preValidate(self, ui_value: str) -> Tuple[bool, str]:
         pass

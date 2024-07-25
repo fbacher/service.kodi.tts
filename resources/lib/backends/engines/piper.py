@@ -46,7 +46,6 @@ from common.simple_run_command import SimpleRunCommand
 from utils.util import runInThread
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
-PUNCTUATION_PATTERN = regex.compile(r'([.,:])', regex.DOTALL)
 DEFAULT_MODEL: Final[str] = 'en_US-ryan-medium.onnx'
 #  'en_US-lessac-medium.onnx'
 

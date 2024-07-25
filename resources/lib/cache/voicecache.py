@@ -46,12 +46,15 @@ class VoiceCache:
     cache_change_listener: Callable = None
 
     def __init__(self):
+        """
+        Creates a VoiceCache instance meant to be used by a particular TTS engine.
+        """
         clz = type(self)
         VoiceCache._logger = module_logger.getChild(
                 self.__class__.__name__)
 
-    @classmethod
-    def get_cache_directory(cls) -> pathlib.Path:
+    def get_cache_directory(self) -> pathlib.Path:
+        clz = type(self)
         cache_directory: str = None
         try:
             cache_path: str = Settings.get_cache_base()
@@ -64,11 +67,10 @@ class VoiceCache:
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            cls._logger.exception('')
+            clz._logger.exception('')
         return pathlib.Path(cache_directory)
 
-    @classmethod
-    def get_path_to_voice_file(cls, phrase: Phrase,
+    def get_path_to_voice_file(self, phrase: Phrase,
                                use_cache: bool = False) -> Tuple[str, bool]:
         """
         If results of the speech engine are cached, then this function
@@ -82,10 +84,13 @@ class VoiceCache:
         or consuming, as well as the order of preference.
 
         @param phrase:
-        @param use_cache:
+        @param use_cache: True a path in the cache is to be created, otherwise
+                        a path to a temp-file will be created
+
         @return: path, exists: Path is the path to the voiced text. exists
         is True when the voiced text is already in the cache at the path location
         """
+        clz = type(self)
         voice_file: str = ''
         exists: bool = False
         try:
@@ -96,8 +101,8 @@ class VoiceCache:
             input_formats: List[str] = SoundCapabilities.get_input_formats(player_id)
             file_type: str = None
             if use_cache:
-                paths: Tuple[str, bool, str] = VoiceCache.get_best_path(phrase,
-                                                                        input_formats)
+                paths: Tuple[str, bool, str] = self.get_best_path(phrase,
+                                                                   input_formats)
                 voice_file, exists, file_type = paths
             else:
                 file_type: str = input_formats[0]
@@ -115,11 +120,10 @@ class VoiceCache:
         except ExpiredException as e:
             reraise(*sys.exc_info())
         except Exception as e:
-            cls._logger.exception('')
+            clz._logger.exception('')
         return voice_file, exists
 
-    @classmethod
-    def get_best_path(cls, phrase: Phrase,
+    def get_best_path(self, phrase: Phrase,
                       sound_file_types: List[str]) -> Tuple[str, bool, str]:
         """
         Finds the best voiced version of the given text in the cache, according
@@ -135,17 +139,18 @@ class VoiceCache:
         Note that if no voiced file for the text is found, the path to the
         preferred file type is returned, exists is false.
         """
+        clz = type(self)
         best_voice_file: str = ''
         best_sound_file_type: str = ''
         best_exists: bool = False
         try:
             engine_id: str = Settings.get_engine_id()
             engine = BaseServices.getService(engine_id)
-            if not cls.is_cache_sound_files(engine):
+            if not self.is_cache_sound_files(engine):
                 return '', False, ''
 
             results: Dict[str, Tuple[str, bool]]
-            results = VoiceCache.get_paths(phrase, sound_file_types)
+            results = self.get_paths(phrase, sound_file_types)
             for suffix in results.keys():
                 path: str
                 exists: bool
@@ -159,7 +164,7 @@ class VoiceCache:
         except ExpiredException:
             reraise(*sys.exc_info())
         except Exception as e:
-            cls._logger.exception('')
+            clz._logger.exception('')
         phrase.set_cache_path(Path(best_voice_file), best_exists)
         return best_voice_file, best_exists, best_sound_file_type
 
@@ -194,13 +199,12 @@ class VoiceCache:
             cls._logger.exception('')
         return use_cache
 
-    @classmethod
-    def get_sound_file_paths(cls, phrase: Phrase,
+    def get_sound_file_paths(self, phrase: Phrase,
                              suffixes: List[str]) -> Dict[str, Tuple[str, bool]]:
         """
         Checks to see if the given text is in the cache as already voiced
 
-        :param phrase: The text go be voiced
+        :param phrase: The text to be voiced
         :param suffixes: Sound file suffixes (.mp3, .wav) to look for, in order of
         preference
         :return: A dictionary, indexed by one of the suffixes. The value is a
@@ -209,6 +213,7 @@ class VoiceCache:
         Note that even if the voiced text is not in the cache, the paths for
         where it should be located will be returned.
         """
+        clz = type(self)
         results: Dict[str, Tuple[str, bool]] = {}
         try:
             for suffix in suffixes:
@@ -216,8 +221,7 @@ class VoiceCache:
                 path_found: bool
                 msg: str
                 path: str
-                text_to_voice: str = phrase.get_text()
-                path_found, msg, path = cls._get_path(text_to_voice, suffix)
+                path_found, msg, path = self._get_path(phrase, suffix)
                 exception_occurred = False
                 if path_found:
                     delete = False
@@ -230,13 +234,13 @@ class VoiceCache:
                                                       SettingsProperties.CACHE_EXPIRATION_DEFAULT)).total_seconds()
 
                             if os.stat(path).st_mtime < expiration_time:
-                                cls._logger.debug_verbose(
+                                clz._logger.debug_verbose(
                                         f'Expired sound file: {path}')
                                 delete = True
                         except Exception as e:
                             msg: str = f'Exception accessing voice file: {path}'
-                            cls._logger.warning(msg)
-                            cls._logger.showNotification(msg)
+                            clz._logger.warning(msg)
+                            clz._logger.showNotification(msg)
                             exception_occurred = True
                             delete = True
 
@@ -247,7 +251,7 @@ class VoiceCache:
                                 if exception_occurred and path is not None:
                                     os.remove(path)
                             except Exception as e:
-                                cls._logger.warning(
+                                clz._logger.warning(
                                         'Trying to delete bad cache file.')
 
                 results[suffix] = (path, path_found)
@@ -256,18 +260,18 @@ class VoiceCache:
         except ExpiredException:
             reraise(*sys.exc_info())
         except Exception as e:
-            cls._logger.exception('')
+            clz._logger.exception('')
         return results
 
-    @classmethod
-    def get_paths(cls, phrase: Phrase, suffixes: List[str]) \
+    def get_paths(self, phrase: Phrase, suffixes: List[str]) \
             -> Dict[str, Tuple[str, bool]]:
+        clz = type(self)
         results: Dict[str, Tuple[str, bool]] = {}
         try:
             path: str | None
             exists: bool
             path_info: Dict[str, Tuple[str, bool]]
-            path_info = cls.get_sound_file_paths(phrase, suffixes)
+            path_info = self.get_sound_file_paths(phrase, suffixes)
             for suffix in suffixes:
                 exception_occurred: bool = False
                 exists = False
@@ -283,14 +287,14 @@ class VoiceCache:
                             io.open(path, mode='rb')
                         except IOError as e:
                             msg: str = f'IOError reading voice file: {path}'
-                            cls._logger.error(msg)
-                            cls._logger.showNotification(msg)
+                            clz._logger.error(msg)
+                            clz._logger.showNotification(msg)
                             exception_occurred = True
                             delete = True
                         except Exception as e:
                             msg: str = f'Exception reading voice file: {path}'
-                            cls._logger.error(msg)
-                            cls._logger.showNotification(msg)
+                            clz._logger.error(msg)
+                            clz._logger.showNotification(msg)
                             exception_occurred = True
                             delete = True
                         if exception_occurred or delete \
@@ -300,8 +304,8 @@ class VoiceCache:
                                 os.remove(path)
                             except Exception as e:
                                 msg: str = f'Error deleting bad cache file{path}'
-                                cls._logger.error(msg)
-                                cls._logger.showNotification(msg)
+                                clz._logger.error(msg)
+                                clz._logger.showNotification(msg)
                 if path and not exception_occurred:
                     results[suffix] = path, exists
         except AbortException:
@@ -309,25 +313,27 @@ class VoiceCache:
         except ExpiredException:
             reraise(*sys.exc_info())
         except Exception as e:
-            cls._logger.exception('')
+            clz._logger.exception('')
         return results
 
-    @classmethod
-    def _get_path(cls, text_to_voice: str, suffix: str) -> Tuple[bool, str, str]:
+    def _get_path(self, phrase: Phrase, suffix: str) -> Tuple[bool, str, str]:
+        clz = type(self)
         path: Path = None
         path_found: bool = True
         msg: str = ''
         try:
-            filename: str = VoiceCache.get_hash(text_to_voice)
-            filename = cls.sound_file_base.format(filename=filename, suffix=suffix)
+            filename: str = self.get_hash(phrase.text)
+            filename = clz.sound_file_base.format(filename=filename, suffix=suffix)
             subdir: str = filename[0:2]
-            path = Path(cls.get_cache_directory(), subdir)
+            path = Path(self.get_cache_directory(), phrase.lang_dir,
+                        phrase.territory_dir, subdir)
             path.mkdir(mode=0o777, exist_ok=True, parents=True)
             path = path.joinpath(filename)
+            clz._logger.debug(f'NORB: cache_path: {path}')
             if path.is_dir():
                 msg = f'Ignoring cached voice file: {path}. It is a directory.'
                 path_found = False
-                cls._logger.showNotification(msg)
+                clz._logger.showNotification(msg)
             elif not path.exists():
                 msg = f'Ignoring cached voice file: {path}. Not found.'
                 path_found = False
@@ -335,91 +341,16 @@ class VoiceCache:
                 if not os.access(str(path), os.R_OK):
                     msg = f'Ignoring cached voice file: {str(path)}. No read access.'
                     path_found = False
-                    cls._logger.showNotification(msg)
+                    clz._logger.showNotification(msg)
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            cls._logger.exception('')
+            clz._logger.exception('')
             path_found: bool = False
             msg: str = repr(e)
             path = None
         # Extract any volume, pitch, speed information embedded in name
         return path_found, msg, str(path)
-
-    '''
-    @classmethod
-    def get_path_to_write_voice_file(cls, text_to_voice: str,
-                                     suffix: str) -> Tuple[bool, str, bool, bool, str]:
-        preferred_directory = Settings.getSetting(SettingsProperties.CACHE_PATH, None)
-        preferred_directory = xbmcvfs.translatePath(preferred_directory)
-        default_directory: str = Constants.DEFAULT_CACHE_DIRECTORY
-        status, good_path, created, alternate_used, msg = cls.check_directory(
-            preferred_directory,
-            default_directory)
-        filename: str = VoiceCache.get_hash(text_to_voice)
-        filename = cls.sound_file_base.format(filename=filename, suffix=suffix)
-        path = str(Path(good_path, filename))
-        return status, path, created, alternate_used, msg
-
-    @classmethod
-    def check_directory(cls, preferred_path: str, alternate_path: str,
-                        create_dir: bool = True) -> Tuple[bool, str, bool, bool, str]:
-        """
-        :return: (ok, good_path, created, alternate_used)
-                  ok == True means returned path is writeable by user
-                        False means neither preferred or alternate path exists
-                        nor created with the correct permissions
-                  good_path = Either preferred_path or alternate_path, whichever
-                        was found to work first. Empty if ok = False
-                  created = True when good_path was created
-                  alternate_used = Only meaninguful if ok = True
-                                   True when preferred_path was not useable, but
-                                   the alternate was.
-                  msg = message explaining failure
-        """
-        ok: bool = True
-        good_path: str = ""
-        created_dir: bool = False
-        alternate_used: bool = False
-        msg: str = ""
-        same_path: bool = preferred_path == alternate_path
-        paths: Tuple[str, str]
-        if same_path:
-            paths = tuple(preferred_path)
-        else:
-            paths = (preferred_path, alternate_path)
-
-        for path in paths:
-            if not os.path.exists(path) and create_dir:
-                cachePath: Path = Path(preferred_path)
-                try:
-                    if not os.access(cachePath, os.O_RDWR):
-                        alternate_used = True
-                        break
-
-                    cachePath.mkdir(mode=0o777, parents=True, exist_ok=True)
-                    created_dir = True
-                    good_path = path
-                    break
-                except:
-                    pass
-
-                alternate_used = True
-
-        if not good_path:
-            ok = False
-            alternate_used = False
-            if same_path:
-                msg = f'Can not use or create TTS cache directory: {preferred_path}. ' \
-                      f'No caching will occur.'
-            else:
-                msg = f'Neither the specified TTS cache directory: {preferred_path} ' \
-                      f'nor the default cache directory: {alternate_path} were useable. 
-                      ' \
-                      f'' \
-                      f'No caching will occur.'
-        return ok, good_path, created_dir, alternate_used, msg
-    '''
 
     @classmethod
     def get_hash(cls, text_to_voice: str) -> str:
@@ -461,61 +392,11 @@ class VoiceCache:
             cls._logger.exception('')
         return rc, cache_file
 
-    '''
-    @classmethod
-    def save_sound_file(cls, text_to_voice: str,
-                        suffix: str,
-                        voiced_text: bytes
-                        ) -> int:
-        """
-            Write the given voiced text to the cache
-        """
-        """
-        (ok, good_path, created, alternate_used)
-        ok == True means returned path is writeable by user
-        False means neither preferred nor alternate path exists
-        nor created with the correct permissions
-        good_path = Either preferred_path or alternate_path, whichever
-        was found to work first. Empty if ok = False
-        created = True when good_path was created
-        alternate_used = Only meaninguful if ok = True
-        True when preferred_path was not useable, but
-        the alternate was.
-        msg = message explaining failure
-        """
-        ok: bool  # True if everything normal
-        good_path: str  # either preferred, or alternate path. Invalid if ok = false
-        created: bool  # True if directory created
-        alternate_used: bool  # True if default cache path used
-        msg: str  # Error text for logging/display
-        rc: int
-
-        ok, good_path, created, alternate_used, msg = \
-            VoiceCache.get_path_to_write_voice_file(text_to_voice, suffix)
-        if not ok:
-            rc = 2
-        elif alternate_used:
-            rc = 3
-        if ok:
-            try:
-                with io.open(good_path, mode='wb') as cacheFile:
-                    cacheFile.write(voiced_text)
-                    cacheFile.flush()
-            except Exception as e:
-                rc = 1
-                cls._logger.error(
-                    'Can not write cache file: {}'.format(good_path))
-        if not ok or alternate_used:
-            cls._logger.info(msg)
-            #  TODO: Add popup
-        return rc
-    '''
-
-    @classmethod
-    def clean_cache(cls, purge: bool = False) -> None:
+    def clean_cache(self, purge: bool = False) -> None:
+        clz = type(self)
         return
         try:
-            dummy_cached_file: str = VoiceCache.get_path_to_voice_file('', '')
+            dummy_cached_file: str = self.get_path_to_voice_file('', '')
             cache_directory, _ = os.path.split(dummy_cached_file)
             expiration_time = time.time() - \
                               Settings.getSetting(
@@ -535,22 +416,22 @@ class VoiceCache:
         except Exception as e:
             cls._logger.exception('')
 
-    @classmethod
-    def seed_text_cache(cls, phrases: PhraseList) -> None:
+    def seed_text_cache(self, phrases: PhraseList) -> None:
         # For engines that are expensive, it can be beneficial to cache the voice
         # files. In addition, by saving text to the cache that is not yet
         # voiced, then a background process can generate speech so the cache
         # gets built more quickly
 
+        clz = type(self)
         try:
             phrases = phrases.clone(check_expired=False)
             for phrase in phrases:
                 if Settings.is_use_cache():
-                    VoiceCache.get_path_to_voice_file(phrase, use_cache=True)
+                    self.get_path_to_voice_file(phrase, use_cache=True)
                     if not phrase.exists():
                         text: str = phrase.get_text()
                         voice_file_path: pathlib.Path = phrase.get_cache_path()
-                        cls._logger.debug_extra_verbose(f'PHRASE Text {text}')
+                        clz._logger.debug_extra_verbose(f'PHRASE Text {text}')
                         rc: int = 0
                         try:
                             text_file: pathlib.Path | None
@@ -562,32 +443,34 @@ class VoiceCache:
                                 with open(text_file, 'wt', encoding='utf-8') as f:
                                     f.write(text)
                             except Exception as e:
-                                if cls._logger.isEnabledFor(ERROR):
-                                    cls._logger.error(
+                                if clz._logger.isEnabledFor(ERROR):
+                                    clz._logger.error(
                                             f'Failed to save text file: '
                                             f'{text_file} Exception: {str(e)}')
                         except Exception as e:
-                            if cls._logger.isEnabledFor(ERROR):
-                                cls._logger.error(
+                            if clz._logger.isEnabledFor(ERROR):
+                                clz._logger.error(
                                         'Failed to save text: {}'.format(str(e)))
         except Exception as e:
-            cls._logger.exception('')
+            clz._logger.exception('')
 
-        cls.text_referenced(phrase)
+        self.text_referenced(phrase)
 
-    @classmethod
-    def text_referenced(cls, phrase: Phrase) -> None:
+    def text_referenced(self, phrase: Phrase) -> None:
         """
          cache files are organized:
-          <cache_path>/<engine_code>/<first-two-chars-of-cache-file-name
+          <cache_path>/<engine_code>/<lang/<voice>/<first-two-chars-of-cache-file-name
           >/<cache_file_name>.<suffix>
 
           Example: cache_path =  ~/.kodi/userdata/addon_data/service.kodi.tts/cache
                    engine_code = goo (for google)
+                   lang = 'en'
+                   voice='us'  # For gtts
                    first-two-chars-of-cache-file-name = d4
                    hash of text  = cache_file_name = d4562ab3243c84746a670e47dbdc61a2
                    suffix = .mp3 or .txt
         """
+        clz = type(self)
         try:
             cache_path: str = Settings.get_cache_base()
             engine_id: str = Settings.get_engine_id()
@@ -598,14 +481,14 @@ class VoiceCache:
             cache_directory = xbmcvfs.translatePath(f'{cache_path}/{engine_code}')
 
             cache_file_path = phrase.get_cache_path()
-            phrase_engine_code: str = str(cache_file_path.parent.name)
+            phrase_engine_code: str = str(cache_file_path.parent.parent.parent.name)
             if phrase_engine_code == engine_code:
-                cache_dir: str = str(cache_file_path.parent.parent.name)
-                cls.referenced_cache_dirs[cache_dir] = cache_dir
+                cache_dir: str = str(cache_file_path.parent.parent.parent.parent.name)
+                clz.referenced_cache_dirs[cache_dir] = cache_dir
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            cls._logger.exception('')
+            clz._logger.exception('')
         return
 
     @classmethod
@@ -637,4 +520,4 @@ class VoiceCache:
         return False
 
 
-instance = VoiceCache()
+#  instance = VoiceCache()

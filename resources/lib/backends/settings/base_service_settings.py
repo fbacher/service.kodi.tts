@@ -13,7 +13,7 @@ from backends.settings.validators import (BoolValidator, ConstraintsValidator,
                                           StringValidator,
                                           TTSNumericValidator)
 from common.logger import BasicLogger
-from common.setting_constants import Backends, Genders, PlayerModes
+from common.setting_constants import Backends, Genders, PlayerMode
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
 
@@ -117,14 +117,14 @@ class BaseServiceSettings:
                                    pipe_validator)
         '''
         allowed_player_modes: List[str] = [
-            PlayerModes.SLAVE_FILE.value,
-            PlayerModes.FILE.value
+            PlayerMode.SLAVE_FILE.value,
+            PlayerMode.FILE.value
         ]
         player_mode_validator: StringValidator
         player_mode_validator = StringValidator(SettingsProperties.PLAYER_MODE,
                                                 cls.service_ID,
                                                 allowed_values=allowed_player_modes,
-                                                default=PlayerModes.SLAVE_FILE.value)
+                                                default=PlayerMode.SLAVE_FILE.value)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER_MODE,
                                    player_mode_validator)
 

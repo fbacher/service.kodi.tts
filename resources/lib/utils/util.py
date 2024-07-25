@@ -14,6 +14,7 @@ from common import *
 from backends.settings.setting_properties import SettingsProperties
 from common import utils
 from common.constants import Constants
+from common.critical_settings import CriticalSettings
 from common.garbage_collector import GarbageCollector
 from common.logger import *
 from common.monitor import Monitor
@@ -23,7 +24,7 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 ADDON_ID = 'service.kodi.tts'
 ADDON = xbmcaddon.Addon(ADDON_ID)
-T = xbmcaddon.Addon(ADDON_ID).getLocalizedString
+T = CriticalSettings.ADDON.getLocalizedString
 XT = xbmc.getLocalizedString
 ADDON_PATH = xbmcaddon.Addon(ADDON_ID).getAddonInfo('path')
 

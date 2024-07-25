@@ -4,6 +4,9 @@ import collections
 from enum import Enum
 from typing import NamedTuple
 
+from common.constants import Constants
+from common.logger import BasicLogger
+
 try:
     from enum import StrEnum
 except ImportError:
@@ -12,7 +15,12 @@ except ImportError:
 from common import *
 
 from backends.settings.i_constraints import IConstraints
-from common.setting_constants import Channels, Genders
+from common.setting_constants import Channels, Genders, PlayerMode
+
+if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
+    module_logger = BasicLogger.get_module_logger(module_path=__file__)
+else:
+    module_logger = BasicLogger.get_module_logger()
 
 
 class UIValues(NamedTuple):
@@ -42,7 +50,7 @@ class INumericValidator:
                  is_decibels: bool = False,
                  is_integer: bool = True,
                  increment: int | float = 0.0) -> None:
-       pass
+        pass
 
     def get_value(self) -> int | float:
         pass
@@ -83,7 +91,6 @@ class INumericValidator:
         pass
 
     def as_decibels(self) -> int | float:
-
         pass
 
     def get_tts_values(self) -> UIValues:
@@ -209,6 +216,199 @@ class IIntValidator(IValidator):
         raise NotImplementedError()
 
 
+class AllowedValue:
+
+    def __init__(self, value: str, enabled: bool = True):
+        self._value: str = value
+        self._enabled: bool = enabled
+
+    @property
+    def enabled(self) -> bool:
+        return self._enabled
+
+    @property
+    def value(self) -> str:
+        return self._value
+
+    def set_enabled(self, enabled: bool) -> None:
+        self._enabled = enabled
+
+    @classmethod
+    def find_value(cls, value: AllowedValue | str,
+                   values: List[AllowedValue]) -> AllowedValue | None:
+        str_value: str
+        if isinstance(value, str):
+            str_value = value
+        else:
+            str_value = value.value
+
+        for av in values:
+            av: AllowedValue
+            if av.value == str_value:
+                return av
+        return None
+
+    @classmethod
+    def update_enabled_state(cls, engine_values: List[AllowedValue],
+                             player_values: List[AllowedValue] |
+                                            List[List[AllowedValue]]
+                             ) -> List[AllowedValue]:
+        """
+        The UI displays the AllowedValues for the ENGINE. For any values
+        that are not supported on the possible players, mark them as Disabled
+        so that they are not selectable.
+
+        :param engine_values: AllowedValues of engine
+        :param player_values: The AllowedValues from one or more players
+        :return : engine_values with values marked appropriately as enabled
+        """
+        #
+        # Mark all AllowedValues in engine_values that are not available in
+        # one or more player_values as disabled. The list elements should all
+        # be sorted by label. TODO: Change to use enums
+        if isinstance(player_values[0], AllowedValue):
+            players_values = [player_values]
+        else:
+            players_values = player_values
+
+        for engine_value in engine_values:
+            engine_value: AllowedValue
+            engine_value.set_enabled(True)  # Unmark previous work
+            for player in players_values:
+                player: List[AllowedValue]
+                if not engine_value.enabled:
+                    break  # Advance to next engine_value
+                for player_value in player:
+                    player_value: AllowedValue
+                    found: bool = False
+                    if player_value == engine_value:
+                        # Found, no impact on engine values
+                        found = True
+                        break
+                    if not found:
+                        engine_value.set_enabled(False)
+
+        return engine_values
+
+    def _eq_(self, other) -> bool:
+        module_logger.debug(f'{self.value} {self.enabled} other: {other}')
+        if isinstance(other, str):
+            return self._value == other
+        if not isinstance(other, type(self)):
+            return False
+        if not self._enabled:
+            return False
+        return self._value == other._value
+
+    def __repr__(self) -> str:
+        if self._enabled:
+            return f'{self._value} enabled'
+        return f'{self._value} disabled'
+
+    def __lt__(self, other: object) -> bool:
+        if isinstance(other, str):
+            return self._value < other
+        if not isinstance(other, AllowedValue):
+            raise TypeError('Must be AllowedValue')
+        other: AllowedValue
+        return self.value < other.value
+
+    def __le__(self, other: object) -> bool:
+        if isinstance(other, str):
+            return self._value <= other
+        if not isinstance(other, AllowedValue):
+            raise TypeError('Must be AllowedValue')
+        other: AllowedValue
+        return self.value <= other.value
+
+    def __gt__(self, other: object) -> bool:
+        if isinstance(other, str):
+            return self._value > other
+        if not isinstance(other, AllowedValue):
+            raise TypeError('Must be AllowedValue')
+        other: AllowedValue
+        return self.value > other.value
+
+    def __ge__(self, other: object) -> bool:
+        if isinstance(other, str):
+            return self._value >= other
+        if not isinstance(other, AllowedValue):
+            raise TypeError('Must be AllowedValue')
+        other: AllowedValue
+
+        return self.value >= other.value
+
+    def __contains__(self, item: object) -> bool:
+        if isinstance(item, str):
+            return item in self._value
+        if not isinstance(item, AllowedValue):
+            raise TypeError('Must be AllowedValue')
+        item: AllowedValue
+
+        # TODO Not sure what to do here
+        return item.value in self.value
+
+    def __len__(self) -> int:
+        return len(self.value)
+
+    def __getitem__(self: 'AllowedValue', i: slice | int) -> str:
+        return self.value[i]
+
+    def __setitem__(self, i: slice | int, o: str | Iterable[str]) -> None:
+        raise NotImplementedError
+
+    def __delitem__(self, i: int | slice) -> None:
+        raise NotImplementedError
+
+    def __add__(self, other: Iterable[str]) -> AllowedValue:
+        raise NotImplementedError
+
+    def __iadd__(self, other: Iterable[str]) -> AllowedValue:
+        raise NotImplementedError
+
+    def __mul__(self, n: int):
+        raise NotImplementedError
+
+    def __imul__(self, n: int):
+        raise NotImplementedError
+
+    def append(self, item: str) -> None:
+        raise NotImplementedError
+
+    def insert(self, i: int, item: str) -> None:
+        raise NotImplementedError
+
+    def pop(self, i: int = ...) -> AllowedValue:
+        raise NotImplementedError
+
+    def remove(self, item: str) -> None:
+        raise NotImplementedError
+
+    def clear(self) -> None:
+        raise NotImplementedError
+
+    def copy(self) -> 'AllowedValue':
+        raise NotImplementedError
+
+    def count(self, item: str) -> int:
+        raise NotImplementedError
+
+    def index(self, item: str, *args: Any) -> int:
+        raise NotImplementedError
+
+    def reverse(self) -> None:
+        raise NotImplementedError
+
+    def sort(self, *args: Any, **kwds: Any) -> None:
+        raise NotImplementedError
+
+    def extend(self, other: Iterable[str], no_check: bool = False) -> None:
+        raise NotImplementedError
+
+    def is_empty(self) -> bool:
+        return len(self.value) == 0
+
+
 class IStringValidator(IValidator):
 
     def __init__(self, setting_id: str, service_id: str,
@@ -227,7 +427,19 @@ class IStringValidator(IValidator):
     def default_value(self) -> str:
         raise NotImplementedError()
 
-    def get_allowed_values(self) -> List[str] | None:
+    def get_allowed_values(self, enabled: bool | None) -> List[AllowedValue] | None:
+        """
+        Determine which values are allowed and which normally allowed values
+        are disabled, due to other settings. For example, while an engine
+        may support PlayerMode.SLAVE_FILE an already chosen player may not,
+        therefore blocking you from changing the PlayerMode
+
+        :param enabled: If specified, then only return values which have the
+                 enabled field == enabled param
+        :return: A list of Tuple[<setting>, <enabled | disabled> for every
+                 supported value. Those settings which are in conflict with
+                 a current setting will be marked disabled (False)
+        """
         raise NotImplementedError()
 
     def setUIValue(self, ui_value: str) -> None:

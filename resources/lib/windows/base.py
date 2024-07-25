@@ -276,7 +276,7 @@ class DefaultWindowReader(WindowReaderBase):
                 phrases.add_text(texts=text)
                 success = True
             else:
-                tmp_phrases: PhraseList = PhraseList()
+                tmp_phrases: PhraseList = PhraseList(check_expired=False)
                 self.getControlText(control_id, tmp_phrases)
                 tmp_item_extras: PhraseList
                 success = parseItemExtra(control_id, excludes=tmp_phrases,

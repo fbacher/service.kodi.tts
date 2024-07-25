@@ -162,10 +162,9 @@ class RadioButtonModel(BaseLabelModel):
                     query: str = f'Control.GetLabel({self.control_id}).index(0)'
                     text: str = xbmc.getInfoLabel(query)
                     # None is returned when no substitutions have been done on text
-                    yes_no: PhraseList = Messages.format_boolean(text=text)
-                    new_text: str = ''
-                    if yes_no is not None:
-                        new_text: str = yes_no.get_aggregate_text()
+                    new_text: str = Messages.format_boolean(text=text)
+                    if new_text is None:
+                        new_text = ''
                     clz._logger.debug(f'text: {new_text} focus_changed: {focus_changed} '
                                       f'previous_text: {self.previous_text_value}')
                     if new_text != '' and (
@@ -186,10 +185,7 @@ class RadioButtonModel(BaseLabelModel):
                 query: str = f'Control.GetLabel({self.control_id}).index(0)'
                 text: str = xbmc.getInfoLabel(query)
                 # None is returned with no substitutions needed
-                yes_no: PhraseList = Messages.format_boolean(text=text)
-                new_text: str = ''
-                if yes_no is not None:
-                    new_text: str = yes_no.get_aggregate_text()
+                new_text: str = Messages.format_boolean(text=text)
                 clz._logger.debug(f'text: {new_text} focus_changed: {focus_changed} '
                                   f'previous_text: {self.previous_text_value}')
                 if new_text != '' and (focus_changed or new_text != self.previous_text_value):

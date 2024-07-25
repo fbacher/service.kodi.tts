@@ -71,6 +71,7 @@ class ButtonModel(BaseLabelModel):
         self.description = parsed_button.description
         self.hint_text_expr = parsed_button.hint_text_expr
         self.alt_label_expr = parsed_button.alt_label_expr
+        self.enable_expr = parsed_button.enable_expr
 
         if parsed_button.topic is not None:
             model_handler: Callable[[BaseModel, BaseModel, BaseParser], BaseModel]

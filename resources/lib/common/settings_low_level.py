@@ -23,64 +23,107 @@ from kutils.kodiaddon import Addon
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
-class CurrentCachedSettings:
-    _current_settings: Dict[str, Union[Any, None]] = {}
-    _current_settings_changed: bool = False
-    _current_settings_update_begin: float = None
-    _logger: BasicLogger
-    _logger = module_logger.getChild("CurrentCachedSettings")
+class CachedSettings:
+    settings: Dict[str, Union[Any, None]] = {}
+    settings_changed: bool = False
+    settings_update_begin: float = None
+
+    def __init__(self, settings_to_copy: Dict[str, int | bool | str | None]) -> None:
+        self.settings = copy.deepcopy(settings_to_copy)
+        self.settings_changed = True
+        if self.settings_update_begin is None:
+            self.settings_update_begin = time.time()
+
+
+class SettingsManager:
+
+    # Initialize with one frame
+
+    _settings_stack: List[CachedSettings] = [CachedSettings(settings_to_copy={})]
 
     @classmethod
-    def set_setting(cls, setting_id: str, value: Any = None) -> bool:
+    def set_setting(cls, setting_id: str,
+                    value: int | bool | str | None = None) -> bool:
+        """
+        Backup a single setting to the top frome of save settings
+        :param setting_id: full setting name ex. speed.google
+        :param value: value of the setting
+        :return:
+        """
         changed: bool = False
-        if cls._current_settings.get(setting_id) != value:
+        if cls._settings_stack[-1].settings.get(setting_id) != value:
             changed = True
-            cls._current_settings_changed = True
-            if cls._current_settings_update_begin is None:
-                cls._current_settings_update_begin = time.time()
-            cls._current_settings[setting_id] = value
+            cls._settings_stack[-1].settings_changed = True
+            if cls._settings_stack[-1].settings_update_begin is None:
+                cls._settings_stack[-1].settings_update_begin = time.time()
+            cls._settings_stack[-1].settings[setting_id] = value
         return changed
 
     @classmethod
-    def set_settings(cls, settings_to_backup: Dict[str, Any]) -> None:
-        cls._current_settings = copy.deepcopy(settings_to_backup)
+    def load_settings(cls,
+                      settings_to_backup: Dict[str, int | str | bool | None]) -> None:
+        """
+        Creates a new CachedSettings 'frame' from the given settings. The copy
+        becomes the new top frame
+
+        :param settings_to_backup: deep_copy is used to copy
+        :return:
+        """
+        new_frame: CachedSettings = CachedSettings(settings_to_backup)
+        cls._settings_stack.append(new_frame)
         if SettingsLowLevel._logger.isEnabledFor(DEBUG):
-            SettingsLowLevel._logger.debug(f'settings_to_backup len: {len(settings_to_backup)}'
-                              f' current_settings len: {len(cls._current_settings)}')
-        cls._current_settings_changed = True
-        if cls._current_settings_update_begin is None:
-            cls._current_settings_update_begin = time.time()
+            SettingsLowLevel._logger.debug(
+                f'settings_to_backup len: {len(settings_to_backup)}'
+                f' current_settings len: {len(cls._settings_stack[-1].settings)}')
 
     @classmethod
-    def backup(cls) -> None:
-        PreviousCachedSettings.backup(cls._current_settings,
-                                      cls._current_settings_changed,
-                                      cls._current_settings_update_begin)
+    def push_settings(cls) -> None:
+        """
+         Creates a new CachedSettings 'frame' from the current top frame. This
+         saves the previous version of settings so that it can be restored if
+         needed.
 
+         :return:
+         """
+        current_settings: Dict[str, int | str | bool | None]
+        current_settings = cls._settings_stack[-1].settings
+        new_frame: CachedSettings = CachedSettings(current_settings)
+        cls._settings_stack.append(new_frame)
+        if SettingsLowLevel._logger.isEnabledFor(DEBUG):
+            SettingsLowLevel._logger.debug(
+                    f'settings_to_backup len: {len(current_settings)}'
+                    f' current_settings len: {len(cls._settings_stack[-1].settings)}')
     @classmethod
     def restore_settings(cls) -> None:
-        previous_settings: Dict[str, Any]
-        previous_settings_changed: bool
-        previous_settings_update_begin: float
-        previous_settings, previous_settings_changed, previous_settings_update_begin = \
-            PreviousCachedSettings.get_settings()
-        cls._current_settings = copy.deepcopy(previous_settings)
-        if SettingsLowLevel._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-            SettingsLowLevel._logger.debug_extra_verbose(f'previous_settings len: {len(previous_settings)}'
-                          f' current_settings len: {len(cls._current_settings)}')
-        cls._current_settings_changed = previous_settings_changed
-        cls._current_settings_update_begin = previous_settings_update_begin
+        cls._settings_stack.pop()
 
     @classmethod
     def get_settings(cls) -> Dict[str, Any]:
-        return cls._current_settings
+        return cls._settings_stack[-1].settings
 
     @classmethod
     def get_setting(cls, setting_id: str, default_value: Any) -> Any:
         """
         throws KeyError
         """
-        value = cls._current_settings.get(setting_id)
+        value = cls._settings_stack[-1].settings.get(setting_id)
+        if value is None or (isinstance(value, str) and value == ''):
+            # cls._logger.debug(f'Using default value {setting_id} {default_value}')
+            value = default_value
+            if setting_id == 'converter':
+                SettingsLowLevel._logger.dump_stack('Converter problem')
+        #  SettingsLowLevel._logger.debug(f'setting_id: {setting_id} value: {value}')
+        return value
+
+
+    @classmethod
+    def get_previous_setting(cls, setting_id: str, default_value: Any) -> Any:
+        """
+        throws KeyError
+        """
+        if len(cls._settings_stack) < 2:
+            return None
+        value = cls._settings_stack[-2].settings.get(setting_id)
         if value is None or (isinstance(value, str) and value == ''):
             # cls._logger.debug(f'Using default value {setting_id} {default_value}')
             value = default_value
@@ -91,40 +134,7 @@ class CurrentCachedSettings:
 
     @classmethod
     def is_empty(cls) -> bool:
-        return not cls._current_settings
-
-
-class PreviousCachedSettings:
-
-    # Backup copy of settings while _current_settings is being changed
-
-    _previous_settings: Dict[str, Union[Any, None]] = {}
-    _previous_settings_changed: bool = False
-    _previous_settings_update_begin: float |  None = None
-
-    @classmethod
-    def backup(cls, settings_to_backup: Dict[str, Any],
-               settings_changed: bool,
-               settings_update_begin: float) -> None:
-        cls.clear()
-        cls._previous_settings = copy.deepcopy(settings_to_backup)
-        cls._previous_settings_update_begin = settings_update_begin
-        cls._previous_settings_changed = settings_changed
-
-    @classmethod
-    def clear(cls) -> None:
-        cls._previous_settings.clear()
-        cls._previous_settings_changed: bool = False
-        cls._previous_settings_update_begin = None
-
-    @classmethod
-    def get_settings(cls) -> Tuple[Dict[str, Any], bool, float]:
-        return (cls._previous_settings, cls._previous_settings_changed,
-                cls._previous_settings_update_begin)
-
-    @classmethod
-    def get_setting(cls, setting_id: str, default_value: Any) -> Any:
-        return cls._previous_settings.get(setting_id, default_value)
+        return not cls._settings_stack[-1].settings
 
 
 class SettingsContext(AbstractContextManager):
@@ -241,10 +251,10 @@ class SettingsWrapper:
 
     def getString(self, id: str) -> str:
         """
-        Returns the value of a setting as a unicode string.
+        Returns the value of a setting as a tring.
 
         :param id: string - id of the setting that the module needs to access.
-        :return: string - Setting as a unicode string
+        :return: string - Setting as a string
 
         @python_v20 New function added.
 
@@ -571,17 +581,17 @@ class SettingsLowLevel:
         :return:
         """
         try:
-            CurrentCachedSettings.backup()
+            SettingsManager.push_settings()
             #  SettingsLowLevel._logger.debug('Backed up settings')
         except Exception:
             SettingsLowLevel._logger.exception("")
 
     @classmethod
-    def cancel_changes(cls) -> None:
+    def restore_settings(cls) -> None:
         # get lock
         # set SETTINGS_BEING_CONFIGURED, SETTINGS_LAST_CHANGED
         #
-        CurrentCachedSettings.restore_settings()
+        SettingsManager.restore_settings()
         SettingsLowLevel._logger.debug('TRACE Cancel changes')
 
     @staticmethod
@@ -594,7 +604,7 @@ class SettingsLowLevel:
         # SettingsLowLevel._logger.debug('entered')
         changed_settings = []
         for setting_id in settings_to_check:
-            previous_value = PreviousCachedSettings.get_setting(setting_id, None)
+            previous_value = SettingsManager.get_previous_setting(setting_id, None)
             try:
                 current_value = SettingsLowLevel.get_addon().setting(setting_id)
             except Exception:
@@ -625,13 +635,16 @@ class SettingsLowLevel:
         type_error: bool = False
         expected_type: str = ''
         if SettingsLowLevel._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-            SettingsLowLevel._logger.debug_extra_verbose(f'full_setting_id: {full_setting_id} value: {value}')
+            SettingsLowLevel._logger.debug_extra_verbose(f'full_setting_id:'
+                                                         f' {full_setting_id} '
+                                                         f'value: {value}')
         engine_id, setting_id = cls.splitSettingId(full_setting_id)
         if full_setting_id in SettingsProperties.TTS_SETTINGS:
             engine_id = Services.TTS_SERVICE
 
         if SettingsLowLevel._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-            SettingsLowLevel._logger.debug_extra_verbose(f'setting_id: {setting_id} engine_id: {engine_id}')
+            SettingsLowLevel._logger.debug_extra_verbose(f'setting_id: {setting_id}'
+                                                         f' engine_id: {engine_id}')
         if not SettingsMap.is_valid_property(engine_id, setting_id):
             if SettingsLowLevel._logger.isEnabledFor(DEBUG_VERBOSE):
                 SettingsLowLevel._logger.debug_verbose(
@@ -731,7 +744,7 @@ class SettingsLowLevel:
             SettingsLowLevel._current_engine = engine_id
 
             # validate new_settings
-            CurrentCachedSettings.set_settings(new_settings)
+            SettingsManager.load_settings(new_settings)
             # release lock
             # Notify
         finally:
@@ -742,7 +755,7 @@ class SettingsLowLevel:
         'addons_MD5.google',
         'addons_MD5.tts',
         # 'api_key.Cepstral',
-        'api-key.eSpeak',
+        'api_key.google',
         'api_key.eSpeak',
         # 'api_key.ResponsiveVoice',
         'api_key.tts',
@@ -794,7 +807,7 @@ class SettingsLowLevel:
         # 'debug_log_level.tts',
         'delay_voicing.eSpeak',
         # 'delay_voicing.experimental',
-        # 'delay_voicing.google',
+        'delay_voicing.google',
         # 'delay_voicing.piper',
         # 'delay_voicing.sapi',
         'delay_voicing.tts',
@@ -809,7 +822,7 @@ class SettingsLowLevel:
         'gender.eSpeak',
         # 'gender.experimental',
         # 'gender.Flite',
-        # 'gender.google',
+        'gender.google',
         # 'gender.OSXSay',
         # 'gender.pico2wave',
         # 'gender.piper',
@@ -830,7 +843,7 @@ class SettingsLowLevel:
         'id.tts',
         'language',
         # 'language.Cepstral',
-        'language.eSpeak',
+        # 'language.eSpeak',
         # 'language.experimental',
         # 'language.Festival',
         # 'language.Flite',
@@ -841,7 +854,6 @@ class SettingsLowLevel:
         # 'language.ResponsiveVoice',
         # 'language.sapi',
         # 'language.Speech-Dispatcher',
-        # 'language.tts',
         'language.tts',
         # 'lastnotified_stable',
         # 'lastnotified_version',
@@ -892,7 +904,7 @@ class SettingsLowLevel:
         # 'player.Flite',
         # 'player.google',
         # 'player_mode.google',
-        'player_mode.tts'
+        'player_mode.tts',
         # 'player.OSXSay',
         # 'player.pico2wave',
         # 'player.piper',
@@ -903,9 +915,6 @@ class SettingsLowLevel:
         'player_pitch.tts',
         # 'player.ResponsiveVoice',
         # 'player.sapi',
-        'player_slave.eSpeak',
-        'player_slave.google',
-        'player_slave.tts',
         # 'player.Speech-Dispatcher',
         'player_speed.eSpeak',
         'player_speed.google',
@@ -998,11 +1007,11 @@ class SettingsLowLevel:
         'version.eSpeak',
         'version.tts',
         'voice.Cepstral',
-        'voice.eSpeak',
+        # 'voice.eSpeak',
         'voice.experimental',
         'voice.Festival',
         'voice.Flite',
-        'voice.google',
+        # 'voice.google',
         'voice.OSXSay',
         'voice_path.eSpeak',
         'voice_path.piper',
@@ -1276,10 +1285,19 @@ class SettingsLowLevel:
 
     @classmethod
     def commit_settings(cls):
+        """
+        Persist all settings from the top frame SettingsManager to settings.xml.
+
+        All settings in Settings and SettingsLowLevel are stored in this top frame.
+        Therefore, the most up-to-date version of the settings is persisted
+        to settings.xml
+
+        :return:
+        """
         #  SettingsLowLevel._logger.debug('TRACE commit_settings')
         addon: xbmcaddon = xbmcaddon.Addon(Constants.ADDON_ID)
 
-        for full_setting_id, value in CurrentCachedSettings.get_settings().items():
+        for full_setting_id, value in SettingsManager.get_settings().items():
             full_setting_id: str
             value: Any
             value_type: SettingType | None = None
@@ -1384,7 +1402,7 @@ class SettingsLowLevel:
         real_key = cls.getExpandedSettingId(setting_id, engine_id)
         success, found_type = cls.type_and_validate_settings(real_key, value)
         try:
-            success: bool = CurrentCachedSettings.set_setting(real_key, value)
+            success: bool = SettingsManager.set_setting(real_key, value)
             return success
         except:
             SettingsLowLevel._logger.exception('')
@@ -1392,7 +1410,7 @@ class SettingsLowLevel:
 
     @classmethod
     def check_reload(cls):
-        if CurrentCachedSettings.is_empty():
+        if SettingsManager.is_empty():
             cls.load_settings()
 
     @classmethod
@@ -1413,7 +1431,7 @@ class SettingsLowLevel:
         full_setting_id = cls.getExpandedSettingId(setting_id, service_id)
         try:
             cls.check_reload()
-            value: Any = CurrentCachedSettings.get_setting(full_setting_id, default_value)
+            value: Any = SettingsManager.get_setting(full_setting_id, default_value)
             # cls._logger.debug(f'full_setting_id: {full_setting_id} '
             #                   f'default: {default_value} value: {value}')
         except KeyError:
@@ -1421,7 +1439,7 @@ class SettingsLowLevel:
                               f' {service_id} {default_value}')
             value = SettingsLowLevel.getRealSetting(setting_id, service_id, default_value)
             cls._logger.debug(f'value: {value}')
-            CurrentCachedSettings.set_setting(full_setting_id, value)
+            SettingsManager.set_setting(full_setting_id, value)
         # SettingsLowLevel._logger.debug(f'setting_id: {full_setting_id} value: {value}')
         return value
 
@@ -1430,10 +1448,12 @@ class SettingsLowLevel:
         real_key = cls.getExpandedSettingId(setting_id, engine_id)
         if setting_id == SettingsProperties.ENGINE:
             if SettingsLowLevel._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                SettingsLowLevel._logger.debug_extra_verbose(f'TRACE engine_id: {value} real_key:'
-                                                f' {real_key} value: {value}')
+                SettingsLowLevel._logger.debug_extra_verbose(f'TRACE engine_id: '
+                                                             f'{value} real_key: '
+                                                             f'{real_key} '
+                                                             f'value: {value}')
         success, found_type = cls.type_and_validate_settings(real_key, value)
-        passed: bool = CurrentCachedSettings.set_setting(real_key, value)
+        passed: bool = SettingsManager.set_setting(real_key, value)
         return passed
 
     @classmethod
@@ -1445,7 +1465,8 @@ class SettingsLowLevel:
         if ignore_cache and setting_id == SettingsProperties.ENGINE:
             if SettingsLowLevel._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
                 SettingsLowLevel._logger.debug_extra_verbose(
-                    f'TRACE get_setting_str IGNORING CACHE id: {setting_id} {engine_id} -> {real_key}')
+                    f'TRACE get_setting_str IGNORING CACHE id: {setting_id}'
+                    f' {engine_id} -> {real_key}')
         if ignore_cache:
             try:
                 value: str = cls.settings_wrapper.getString(real_key)
@@ -1465,7 +1486,8 @@ class SettingsLowLevel:
         """
         if ignore_cache and setting_id == SettingsProperties.ENGINE:
             if SettingsLowLevel._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                SettingsLowLevel._logger.debug_extra_verbose(f'TRACE get_setting_str IGNORING CACHE id: {setting_id}')
+                SettingsLowLevel._logger.debug_extra_verbose(
+                        f'TRACE get_setting_str IGNORING CACHE id: {setting_id}')
         real_key = cls.getExpandedSettingId(setting_id, engine_id)
         value: bool = None
         if ignore_cache:
@@ -1485,7 +1507,7 @@ class SettingsLowLevel:
         """
         real_key = cls.getExpandedSettingId(setting_id, backend_id)
         success, found_type = cls.type_and_validate_settings(real_key, value)
-        return_value = CurrentCachedSettings.set_setting(real_key, value)
+        return_value = SettingsManager.set_setting(real_key, value)
         current_value: bool = cls.get_setting_bool(setting_id, backend_id)
         return return_value
 
@@ -1507,7 +1529,7 @@ class SettingsLowLevel:
         """
         cls.check_reload()
         real_key = cls.getExpandedSettingId(setting_id, service_id)
-        value: int = CurrentCachedSettings.get_setting(real_key, default_value)
+        value: int = SettingsManager.get_setting(real_key, default_value)
         # cls._logger.debug(f'real_key: {real_key} value: {value}')
         return value
 
@@ -1519,13 +1541,13 @@ class SettingsLowLevel:
         """
         real_key = cls.getExpandedSettingId(setting_id, backend_id)
         success, found_type = cls.type_and_validate_settings(real_key, value)
-        return CurrentCachedSettings.set_setting(real_key, value)
+        return SettingsManager.set_setting(real_key, value)
 
     @classmethod
     def update_cached_setting(cls, setting_id: str, value: Any,
                               backend_id: str = None) -> None:
         real_key = cls.getExpandedSettingId(setting_id, backend_id)
-        CurrentCachedSettings.set_setting(real_key, value)
+        SettingsManager.set_setting(real_key, value)
 
     '''
     def getBoolList(self, id: str) -> List[bool]:

@@ -6,13 +6,12 @@ import wave
 
 import xbmc
 
-from common import *
-
 from backends.audio import PLAYSFX_HAS_USECACHED
 from backends.audio.base_audio import AudioPlayer
 from backends.audio.sound_capabilties import SoundCapabilities
 from backends.players.player_index import PlayerIndex
 from backends.settings.service_types import ServiceType
+from common import *
 from common.base_services import BaseServices
 from common.logger import BasicLogger
 from common.setting_constants import Players
@@ -21,6 +20,10 @@ module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class PlaySFXAudioPlayer(AudioPlayer):
+    """
+    SFX player simply utilzies Kodi's built-in playSFX service. It is a basic
+    player. You can't change speed or other parameters.
+    """
     ID = Players.SFX
     service_ID = ID
     # name = 'XBMC PlaySFX'

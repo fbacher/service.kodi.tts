@@ -29,13 +29,13 @@ class SoundCapabilities:
     # _all_service_capabilites keeps a map of the capabilities of all services
 
     _capabilities_by_service: Dict[str, Tuple[List[str], List[str]]] = {}
-    _services_by_service_type: Dict[ServiceType, List[str]] = {}
+    _services_by_service_type: Dict[ServiceType, Dict[str, str]] = {}
 
-    def __init__(self):
-        cls = type(self)
-        cls._class_name = self.__class__.__name__
+    @classmethod
+    def init_class(cls):
+        class_name = cls.__class__.__name__
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls._class_name)
+            cls._logger = module_logger.getChild(class_name)
 
     @classmethod
     def add_service(cls, service_id: str, service_types: List[ServiceType],
@@ -53,12 +53,12 @@ class SoundCapabilities:
         # a player can also be a converter.
         # So, mplayer can be a player or converter service type
         for service_type in service_types:
-            services_in_type: List[str]
+            services_in_type: Dict[str, str]
             services_in_type = cls._services_by_service_type.get(service_type)
             if services_in_type is None:
-                services_in_type = []
+                services_in_type = {}
                 cls._services_by_service_type[service_type] = services_in_type
-            services_in_type.append(service_id)
+            services_in_type[service_id] = service_id
 
         if cls._capabilities_by_service.get(service_id) is None:
             cls._capabilities_by_service[service_id] = \
@@ -113,24 +113,27 @@ class SoundCapabilities:
         then mp3 is required (much smaller files). Otherwise, may as well do everything
         in wave since it requires less cpu.
         """
-        services_of_this_type: List[str] = cls._services_by_service_type.get(service_type)
+        services_of_this_type: Dict[str, str]
+        services_of_this_type = cls._services_by_service_type.get(service_type)
         if services_of_this_type is None:
-            services_of_this_type = []
+            services_of_this_type = {}
         # Now, narrow down this list to the ones that can fulfill consumer/producer
         # requirements
 
         eligible_services: List[str] = []
-        for service_id in services_of_this_type:
+        cls._logger.debug(f'services_of_this_type: {services_of_this_type.keys()}')
+        for service_id in services_of_this_type.keys():
             input_formats: List[str]
             output_formats: List[str]
 
             input_formats, output_formats = cls._capabilities_by_service[service_id]
+            cls._logger.debug(f'service_id: {service_id} input_formats: {input_formats}')
             supports_consumer: bool = False
             if len(consumer_formats) == 0:
                 supports_consumer = True
             else:
-                for format in consumer_formats:
-                    if format in input_formats:
+                for audio_format in consumer_formats:
+                    if audio_format in input_formats:
                         supports_consumer = True
                         break
 
@@ -138,10 +141,13 @@ class SoundCapabilities:
             if len(producer_formats) == 0:
                 supports_producer = True
             else:
-                for format in producer_formats:
-                    if format in output_formats:
+                for audio_format in producer_formats:
+                    if audio_format in output_formats:
                         supports_producer = True
             if supports_consumer and supports_producer:
                 eligible_services.append(service_id)
 
         return eligible_services
+
+
+SoundCapabilities.init_class()
