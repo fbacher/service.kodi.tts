@@ -571,7 +571,7 @@ def convertTexts(winID: int,
     for sid in data_list:
         if isinstance(sid, int):
             sid = xbmc.getLocalizedString(sid)
-        elif sid.isdigit():  # Single digit?
+        elif sid.isdigit():  # All digits
             sid = xbmc.getInfoLabel(f'Control.GetLabel({sid})')
         elif sid.startswith('$INFO['):
             info = sid[6:-1]

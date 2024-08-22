@@ -1,0 +1,1147 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<window type="dialog" tts="TTS-READER" heading="window_header">
+   <coordinates>
+      <!-- Resolution 1920 x 1080 -->
+      <left>0</left>
+      <top>0</top>
+   </coordinates>
+   <topic name="window_header" rank="1">
+      <topic_type>heading</topic_type>
+      <heading_labeled_by>1</heading_labeled_by>
+      <hint_text>32814</hint_text>
+      <alt_type>DIALOG</alt_type>
+      <inner_topic>engine_settings</inner_topic>
+      <topic_left/>
+      <topic_right/>
+      <topic_up>default_button</topic_up>
+      <topic_down>header_group</topic_down>
+   </topic>
+   <defaultcontrol always="true">101</defaultcontrol>
+   <!-- <depth>0.50</depth> -->
+   <animation effect="fade" time="200">WindowOpen</animation>
+   <animation effect="fade" time="200">WindowClose</animation>
+   <controls>
+      <control type="group">
+         <topic name="header_group" rank="2">
+            <outer_topic>window_header</outer_topic>
+            <inner_topic>Header_Label</inner_topic>
+         </topic>
+         <visible>true</visible>
+         <control type="image">
+            <description>Full window background black</description>
+            <left>0</left>
+            <top>0</top>
+            <width>1920</width>
+            <height>1080</height>
+            <texture border="5">solid-black.png</texture>
+            <visible>true</visible>
+         </control>
+         <control type="image">
+            <description>black screen if video starts</description>
+            <left>0</left>
+            <top>0</top>
+            <width>1920</width>
+            <height>1080</height>
+            <texture border="40">floor_buttonFO.png</texture>
+            <!--<texture border="40">DialogBack2.png</texture> -->
+            <visible>Window.IsVisible(FullscreenVideo) |
+               Window.IsVisible(Visualisation)
+            </visible>
+         </control>
+         <control type="image">
+            <description>Dialog Header image</description>
+            <left>40</left>
+            <top>60</top>
+            <width>1700</width>
+            <height>100</height>
+            <texture>dialogheader.png</texture>
+         </control>
+         <control type="label" id="1" label_for="window_header">
+            <topic name="Header_Label" rank="3">
+               <heading_label>Control.GetLabel(1).index(0)</heading_label>
+               <hint_text>Changes are applied as you make them. Cancel reverts changes. OK commits changes
+               </hint_text>
+               <outer_topic>header_group</outer_topic>
+            </topic>
+            <description>header label</description>
+            <left>40</left>
+            <top>60</top>
+            <width>1650</width>
+            <height>100</height>
+            <font>font13_title</font>
+            <label/>
+            <align>center</align>
+            <aligny>center</aligny>
+            <textcolor>blue</textcolor>
+            <shadowcolor>black</shadowcolor>
+         </control>
+         <control type="button">
+            <description>Close Window button (X at top right of screen)
+               Can NOT navigate to with keyboard
+            </description>
+            <topic name="X_dismiss_dialog" rank="3">
+               <alt_type>BUTTON</alt_type>
+               <alt_label>32803</alt_label>
+               <hint_text>Select to close window</hint_text>
+               <inner_topic>engine_settings</inner_topic>
+               <outer_topic>header_group</outer_topic>
+               <topic_left/>
+               <topic_right>engine_settings</topic_right>
+               <topic_up/>
+               <topic_down/>
+            </topic>
+            <left>1800</left>
+            <top>20</top>
+            <width>94</width>
+            <height>62</height>
+            <label/>
+            <font/>
+            <onclick>PreviousMenu</onclick>
+            <texturefocus>DialogCloseButton-focus.png</texturefocus>
+            <texturenofocus>DialogCloseButton.png</texturenofocus>
+            <onleft/>
+            <onright/>
+            <onup/>
+            <ondown/>
+            <visible>system.getbool(input.enablemouse)</visible>
+         </control>
+         <!--
+         <control type="grouplist" id="3">
+             <description>Categories Area</description>
+              <topic name="choose_category" rank="1">
+                     <hint_text>32801</hint_text> <topic_left/>
+                     <inner_topic>category_engine</inner_topic>
+                     <outer_topic>header</outer_topic>
+                     <topic_right/> <topic_up/>
+                    <topic_down/> <alt_type>BUTTON_LIST</alt_type>
+                     <alt_label>32802</alt_label> </topic>
+             <left>45</left>
+             <top>70</top>
+             <width>759</width>
+             <height>40</height>
+             <itemgap>5</itemgap>
+             <defaultcontrol>100</defaultcontrol>
+             <align>center</align>
+             <orientation>horizontal</orientation>
+             <!- - <onleft>300</onleft>
+             <onright>102</onright> - ->
+             <onup>9001</onup>
+             <ondown>100</ondown>
+
+             <!- - place your controls here - ->
+
+             <!- -
+             <control type="button" id="100">
+                 <description>Engines Tab</description>
+                 <height>40</height>
+                 <width>186</width>
+                 <align>center</align>
+                 <aligny>center</aligny>
+                 <font>font12_title</font>
+                 <onfocus>Skin.SetString(category,engine)</onfocus>
+                 <onclick></onclick>
+                 <onleft>400</onleft>
+                 <onright>200</onright>
+                 <onup>9001</onup>
+                 <ondown>101</ondown>
+                 <texturefocus border="5">button-selected.png</texturefocus>
+                 <texturenofocus border="5">button-nofocus.png</texturenofocus>
+             </control> -->
+         <!--
+         <control type="radiobutton" id="100">
+             <description>Engines Tab</description>
+             <topic name="category_engine" rank="1">
+                    <alt_label>32001</alt_label>
+                     <hint_text/>>
+                     <outer_topic>choose_category</outer_topic>
+                     <inner_topic>engine_settings</inner_topic>
+                     <topic_left/>
+                     <topic_right>category_options</topic_right>
+                     <topic_up/>
+                     <topic_down>engine_settings</topic_down> </topic>
+             <height>40</height>
+             <width>186</width>
+             <align>center</align>
+             <aligny>center</aligny>
+             <font>font12_title</font>
+             <onfocus>Skin.SetString(category,engine)</onfocus>
+             <onclick></onclick>
+             <label>32001</label>
+             <onleft>400</onleft>
+             <onright>200</onright>
+             <onup>9001</onup>
+             <ondown>101</ondown>
+             <textoffsetx>10</textoffsetx>
+             <texturefocus border="5">button-selected32.png</texturefocus>
+             <texturenofocus border="5">button-nofocus.png</texturenofocus>
+             <textureradioonfocus>button-selected32.png</textureradioonfocus>
+             <textureradioonnofocus>button-selected32.png</textureradioonnofocus>
+             <textureradioofffocus>button-nofocus.png</textureradioofffocus>
+             <textureradiooffnofocus>button-nofocus.png</textureradiooffnofocus>
+             <textureradioondisabled colordiffuse="40FFFFFF">button-focus.png</textureradioondisabled>
+             <textureradiooffdisabled colordiffuse="40FFFFFF">button-nofocus.png</textureradiooffdisabled>
+             <radiowidth></radiowidth>
+             <radiowheight></radiowheight>
+             <shadowcolor>00FFFFFF</shadowcolor>
+             <radioposx></radioposx>
+             <radioposy></radioposy>
+             <focusedcolor>white</focusedcolor>
+         </control>
+         <control type="button" id="200">
+             <description>Options Tab</description>
+              <topic name="category_options" rank="1"> <hint_text/>>
+                     label="Skin.String(category)"
+                     <outer_topic>choose_category</outer_topic>
+                     <inner_topic></inner_topic>
+                     <topic_left>category_engine</topic_left>
+                     <topic_right>category_keymap</topic_right> <topic_up/>
+                    <topic_down/></topic>
+             <height>40</height>
+             <width>186</width>
+             <align>center</align>
+             <aligny>center</aligny>
+             <font>font12_title</font>
+             <onfocus>Skin.SetString(category,options)</onfocus>
+             <onleft>100</onleft>
+             <onright>300</onright>
+             <onup>9001</onup>
+             <ondown>201</ondown>
+             <texturefocus border="5">button-selected.png</texturefocus>
+             <texturenofocus border="5">button-nofocus.png</texturenofocus>
+         </control> -->
+         <!--
+         <control type="button" id="300">
+             <description>Keymap Tab</description>
+             <topic name="category_keymap" rank="3">
+                    <labeled_by>1</labeled_by> <hint_text/>>
+                    <outer_topic>choose_category</outer_topic>
+                     <topic_left>category_options</topic_left>
+                    <topic_right>category_advanced</topic_right> <topic_up/>
+                    <topic_down/> rank="1">header</topic>
+             <height>40</height>
+             <width>186</width>
+             <align>center</align>
+             <aligny>center</aligny>
+             <font>font12_title</font>
+             <onfocus>Skin.SetString(category,keymap)</onfocus>
+             <onleft>200</onleft>
+             <onright>400</onright>
+             <onup>9001</onup>
+             <ondown>301</ondown>
+             <texturefocus border="5">button-selected.png</texturefocus>
+             <texturenofocus border="5">button-nofocus.png</texturenofocus>
+         </control>
+         <control type="button" id="400" >
+             <description>Advanced Tab</description>
+              <topic name="category_advanced" rank="3">
+                     <labeled_by>1</labeled_by> <hint_text>Configure Advanced Options</hint_text>
+                     <outer_topic>choose_category</outer_topic>
+                     <inner_topic></inner_topic>
+                     <topic_left>category_keymap</topic_left>
+                     <topic_right/> <topic_up/>
+                    <topic_down/> </topic>
+             <height>40</height>
+             <width>186</width>
+             <align>center</align>
+             <aligny>center</aligny>
+             <font>font12_title</font>
+             <onfocus>Skin.SetString(category,advanced)</onfocus>
+             <onleft>300</onleft>
+             <onright>100</onright>
+             <onup>9001</onup>
+             <ondown>401</ondown>
+             <texturefocus border="5">button-selected.png</texturefocus>
+             <texturenofocus border="5">button-nofocus.png</texturenofocus>
+         </control> -->
+         <!--
+         </control> --> <!-- End Category Selection GroupList -->
+
+         <!-- Settings area, including scrollbar for grouplist -->
+         <control type="group">
+            <topic name="Settings_top" rank="3">
+               <outer_topic>header_group</outer_topic>
+            </topic>
+
+            <top>220</top>
+            <left>95</left>
+            <width>1800</width>
+            <height>680</height>
+            <defaultcontrol>101</defaultcontrol>
+            <!-- <right>523</right> -->
+
+            <!-- Settings area, excluding scrollbar for grouplist -->
+            <control type="group">
+               <topic name="Settings_middle" rank="4">
+                  <outer_topic>Settings_top</outer_topic>
+               </topic>
+               <width>1730</width>
+               <!-- Engine -->
+               <control type="group">
+                  <defaultcontrol>101</defaultcontrol>
+                  <control type="grouplist" id="101">
+                     <topic name="engine_settings" rank="5">
+                        <topic_type>heading</topic_type>
+                        <label>32807</label>
+                        <heading_label>32807</heading_label>
+                        <hint_text>32815</hint_text>
+                        <outer_topic>Settings_middle</outer_topic>
+                        <topic_left/>
+                        <topic_right/>
+                        <topic_up>header</topic_up>
+                        <topic_down>speech_engine</topic_down>
+                     </topic>
+                     <description>Engine Tab group list</description>
+                     <itemgap>30</itemgap>
+                     <onup>28</onup>
+                     <ondown>102</ondown>
+                     <onleft>61</onleft>
+                     <onright>61</onright>
+                     <pagecontrol>61</pagecontrol>
+                     <orientation>vertical</orientation>
+                     <scrolltime>0</scrolltime>
+                     <defaultcontrol>102</defaultcontrol>
+                     <visible>Skin.String(category,engine)</visible>
+
+                     <!--
+                            1           Window Header label
+                                         default -> 101
+                           10 unknown
+                           90 unknown
+                           9  unknown
+                           28 OK
+                           29 cancel
+                           30 Default / Reset
+                          102           select backend (engine)
+                          104           select language
+                          106           select_voice
+                          108           select gender
+                          110           select player
+                          112           select pitch
+                          114           select speed
+                          116           select volume
+                          118           select cache
+                          120           select pipe
+                                        if engine is responsive voice, responsive voice api key
+                                        Pipe Audio to Player
+                         -->
+                     <control type="group">
+                        <topic name="speech_group" rank="6">
+                           <topic_type>none</topic_type>
+                           <outer_topic>engine_settings</outer_topic>
+                        </topic>
+                        <height>34</height>
+                        <defaultcontrol>102</defaultcontrol>
+                        <control type="button" id="102">
+                           <topic name="speech_engine" rank="7">
+                              <topic_type>heading</topic_type>
+                              <flows_to>speech_engine_value</flows_to>
+                              <hint_text>32816</hint_text>
+                              <outer_topic>engine_settings</outer_topic>
+                              <container_topic>engine_settings</container_topic>
+                              <topic_left/>
+                              <topic_right/>
+                              <topic_up>speech_group</topic_up>
+                              <topic_down/>
+                           </topic>
+                           <description>Speech Engine</description>
+                           <width>850</width>
+                           <label>$LOCALIZE[32002]</label>
+                           <visible>true</visible>
+                           <alignx>left</alignx>
+                           <aligny>center</aligny>
+                           <font>font12_title</font>
+                           <onleft>61</onleft>
+                           <onright>61</onright>
+                           <onup>28</onup>
+                           <ondown>1104</ondown>
+                           <!-- <onclick>NotifyAll(service.kodi.tts,SETTINGS.BACKEND_DIALOG)</onclick> -->
+                           <texturefocus border="5">button-focus2.png</texturefocus>
+                        </control>
+                        <control type="label" id="103">
+                           <description>Engine value</description>
+                           <topic name="speech_engine_value" rank="7">
+                              <labeled_by/>
+                              <flows_from>speech_engine</flows_from>
+                              <hint_text/>>
+                              <outer_topic>engine_settings</outer_topic>
+                              <container_topic>engine_settings</container_topic>
+                              <topic_left/>
+                              <topic_right/>
+                              <topic_up>engine_settings</topic_up>
+                              <topic_down/>
+                           </topic>
+                           <width>730</width>
+                           <right>0</right>
+                           <align>left</align>
+                           <visible>true</visible>
+                           <font>font13</font>
+                           <textcolor>white</textcolor>
+                           <shadowcolor>black</shadowcolor>
+                        </control>
+                     </control>
+                     <control type="group" id="1104">
+                        <topic name="language_group" rank="6">
+                           <outer_topic>engine_settings</outer_topic>
+                        </topic>
+                        <height>34</height>
+                        <defaultcontrol>104</defaultcontrol>
+                        <visible>true</visible>
+
+                        <control type="button" id="104">
+                           <topic name="language" rank="7">
+                              <topic_type>heading</topic_type>
+                              <labeled_by>104</labeled_by>
+                              <flows_to>105</flows_to>
+                              <hint_text>language</hint_text>
+                              <outer_topic>language_group</outer_topic>
+                              <container_topic>engine_settings</container_topic>
+                              <topic_left/>
+                              <topic_right/>
+                              <topic_up>speech_engine</topic_up>
+                              <topic_down/>
+                           </topic>
+                           <description>Language</description>
+                           <width>850</width>
+                           <label>$LOCALIZE[32227]</label>
+                           <visible>true</visible>
+                           <alignx>left</alignx>
+                           <aligny>center</aligny>
+                           <font>font12_title</font>
+                           <onleft>61</onleft>
+                           <onright>61</onright>
+                           <onup>102</onup>
+                           <ondown>106</ondown>
+                           <texturefocus border="5">button-focus2.png</texturefocus>
+                        </control>
+
+                        <control type="label" id="105">
+                           <topic name="language_value" rank="7">
+                              <labeled_by/>
+                              <flows_from>104</flows_from>
+                              <hint_text>Select to choose language</hint_text>
+                              <outer_topic>language_group</outer_topic>
+                              <topic_left/>
+                              <topic_right/>
+                              <topic_up>speech_engine</topic_up>
+                              <topic_down/>
+                           </topic>
+                           <description>Language value</description>
+                           <width>730</width>
+                           <right>0</right>
+                           <align>left</align>
+                           <visible>true</visible>
+                           <font>font13</font>
+                           <textcolor>white</textcolor>
+                           <shadowcolor>black</shadowcolor>
+                        </control>
+                     </control>
+                     <control type="group" id="1106">
+                        <topic name="voice_group" rank="6">
+                           <outer_topic>engine_settings</outer_topic>
+                        </topic>
+                        <height>34</height>
+                        <visible>false</visible>
+                        <defaultcontrol>106</defaultcontrol>
+                        <control type="button" id="106">
+                           <topic name="voice" rank="7">
+                              <topic_type>heading</topic_type>
+                              <labeled_by/>
+                              <flows_to>107</flows_to>
+                              <hint_text>32817</hint_text>
+                              <outer_topic>voice_group</outer_topic>
+                              <container_topic>engine_settings</container_topic>
+                              <topic_left/>
+                              <topic_right/>
+                              <topic_up>language</topic_up>
+                              <topic_down/>
+                           </topic>
+                           <description>Voice</description>
+                           <width>850</width>
+                           <label>$LOCALIZE[32308]</label>
+                           <visible>false</visible>
+                           <alignx>left</alignx>
+                           <aligny>center</aligny>
+                           <font>font12_title</font>
+                           <onleft>61</onleft>
+                           <onright>61</onright>
+                           <onup>104</onup>
+                           <ondown>108</ondown>
+                           <texturefocus border="5">button-focus2.png</texturefocus>
+                        </control>
+
+                        <control type="label" id="107">
+                           <topic name="voice_value" rank="7">
+                              <labeled_by/>
+                              <flows_from>106</flows_from>
+                              <outer_topic>voice_goup</outer_topic>
+                              <topic_left/>
+                              <topic_right/>
+                              <topic_up>language</topic_up>
+                              <topic_down/>
+                           </topic>
+                           <description>Voice value</description>
+                           <width>730</width>
+                           <right>0</right>
+                           <align>left</align>
+                           <visible>false</visible>
+                           <font>font13</font>
+                           <textcolor>white</textcolor>
+                           <shadowcolor>black</shadowcolor>
+                        </control>
+                     </control>
+                     <control type="group" id="1108">
+                        <topic name="gender_group" rank="6">
+                           <outer_topic>engine_settings</outer_topic>
+                        </topic>
+                        <height>34</height>
+                        <visible>true</visible>
+                        <defaultcontrol>108</defaultcontrol>
+
+                        <control type="button" id="108">
+                           <description>Gender</description>
+                           <topic name="gender" rank="7">
+                              <topic_type>heading</topic_type>
+                              <labeled_by/>
+                              <flows_to>109</flows_to>
+                              <hint_text>Select to choose voice gender</hint_text>
+                              <outer_topic>gender_group</outer_topic>
+                              <container_topic>engine_settings</container_topic>
+                              <topic_left/>
+                              <topic_right/>
+                              <topic_up>voice</topic_up>
+                              <topic_down>gender_value</topic_down>
+                           </topic>
+                           <width>850</width>
+                           <label>$LOCALIZE[32228]</label>
+                           <visible>true</visible>
+                           <alignx>left</alignx>
+                           <aligny>center</aligny>
+                           <font>font12_title</font>
+                           <!-- <onleft>100</onleft>
+                           <onright>300</onright> -->
+                           <onup>106</onup>
+                           <ondown>110</ondown>
+                           <texturefocus border="5">button-focus2.png</texturefocus>
+                        </control>
+
+                        <control type="label" id="109">
+                           <topic name="gender_value" rank="7">
+                              <labeled_by/>
+                              <flows_from>108</flows_from>
+                              <hint_text>Select to choose voice gender</hint_text>
+                              <outer_topic>gener_group</outer_topic>
+                              <topic_left/>
+                              <topic_right/>
+                              <topic_up>voice</topic_up>
+                              <topic_down>player</topic_down>
+                           </topic>
+                           <description>Gender value</description>
+                           <width>730</width>
+                           <right>0</right>
+                           <align>left</align>
+                           <visible>true</visible>
+                           <font>font13</font>
+                           <textcolor>white</textcolor>
+                           <shadowcolor>black</shadowcolor>
+                        </control>
+                     </control>
+
+                     <!-- Player -->
+                     <control type="group" id="1110">
+                        <topic name="player_group" rank="6">
+                           <outer_topic>engine_settings</outer_topic>
+                        </topic>
+                        <height>34</height>
+                        <defaultcontrol>110</defaultcontrol>
+                        <control type="button" id="110">
+                           <description>Player</description>
+                           <topic name="player" rank="7">
+                              <topic_type>heading</topic_type>
+                              <labeled_by/>
+                              <flows_to>111</flows_to>
+                              <hint_text>Select to choose audio player</hint_text>
+                              <outer_topic>player_group</outer_topic>
+                              <container_topic>engine_settings</container_topic>
+                              <topic_left/>
+                              <topic_right/>
+                              <topic_up>gender</topic_up>
+                              <topic_down>player_value</topic_down>
+                           </topic>
+                           <width>850</width>
+                           <label>$LOCALIZE[32230]</label>
+                           <visible>true</visible>
+                           <alignx>left</alignx>
+                           <aligny>center</aligny>
+                           <font>font12_title</font>
+                           <!-- <onleft>100</onleft>
+                           <onright>300</onright> -->
+                           <onup>104</onup> <!-- Avail langs (says Voices) -->
+                           <ondown>113</ondown>
+                           <texturefocus border="5">button-focus2.png</texturefocus>
+                        </control>
+
+                        <control type="label" id="111">
+                           <description>Player value</description>
+                           <topic name="player_value" rank="7">
+                              <labeled_by/>
+                              <flows_from>110</flows_from>
+                              <outer_topic>player_group</outer_topic>
+                              <topic_left/>
+                              <topic_right/>
+                              <topic_up>player</topic_up>
+                              <topic_down>volume</topic_down>
+                           </topic>
+                           <width>730</width>
+                           <right>0</right>
+                           <align>left</align>
+                           <visible>true</visible>
+                           <font>font13</font>
+                           <textcolor>white</textcolor>
+                           <shadowcolor>black</shadowcolor>
+                        </control>
+                     </control>
+
+                     <control type="group" id="1112">
+                        <topic name="volume_group" rank="6">
+                           <topic_type>heading</topic_type>
+                           <alt_label/>
+                           <alt_type>slider</alt_type>
+                           <outer_topic>engine_settings</outer_topic>
+                        </topic>
+                        <height>34</height>
+                        <visible>true</visible>
+                        <defaultcontrol>113</defaultcontrol>
+
+                        <control type="label" id="112">
+                           <description>Volume Label</description>
+                           <topic name="volume" rank="7">label_for="113"
+                              <!-- <flows_from>113</flows_from> -->
+                              <hint_text>Select to choose volume</hint_text>
+                              <outer_topic>volume_group</outer_topic>
+                              <topic_left/>
+                              <topic_right/>
+                              <topic_up>player</topic_up>
+                              <topic_down>volume_value</topic_down>
+                           </topic>
+                           <width>850</width>
+                           <label>$LOCALIZE[32232]</label>
+                           <visible>true</visible>
+                           <alignx>left</alignx>
+                           <aligny>center</aligny>
+                           <font>font12_title</font>
+                           <textcolor>white</textcolor>
+                           <shadowcolor>black</shadowcolor>
+                        </control>
+                        <control type="slider" id="113">
+                           <topic name="volume_value" rank="7">
+                              <topic_type>heading</topic_type>
+                              <topic_heading>volume_group</topic_heading>
+                              <labeled_by>112</labeled_by>
+                              <value_from>internal</value_from>
+                              <value_format/>
+                              <flows_to>112</flows_to>
+                              <units unit="db" type="float" decimal_digits="1"/>
+                              <outer_topic>volume_group</outer_topic>
+                              <container_topic>engine_settings</container_topic>
+                              <hint_text>Select and use cursor left or right to adjust value</hint_text>
+                              <topic_left/>
+                              <topic_right/>
+                              <topic_up>player</topic_up>
+                              <topic_down/>
+                           </topic>
+                           <description>Volume</description>
+                           <width>730</width>
+                           <right>0</right>
+                           <action/>
+                           <oninfo/>
+                           <orientation>horizontal</orientation>
+                           <!-- Doesn't help much
+                           <onfocus>SetProperty(SliderLabel,112)</onfocus>
+                           <onunfocus>ClearProperty(SliderLabel)</onunfocus>
+                           -->
+                           <visible>true</visible>
+                           <alignx>left</alignx>
+                           <aligny>center</aligny>
+                           <font>font12_title</font>
+                           <!-- <onleft>100</onleft>
+                           <onright>300</onright> -->
+                           <onup>110</onup>
+                           <ondown>115</ondown>
+                           <texturesliderbar>osd_slider_bg_2.png</texturesliderbar>
+                           <textureslidernib>osd_slider_nibNF.png</textureslidernib>
+                           <textureslidernibfocus>osd_slider_nib.png</textureslidernibfocus>
+                           <controloffsetx/>
+                           <controloffsety/>
+                           <info>Control.GetLabel(112)</info>
+                        </control>
+                     </control>
+                     -->
+
+                     <!-- Pitch -->
+                     <control type="group" id="1114">
+                        <topic name="pitch_group" rank="6">
+                           <outer_topic>engine_settings</outer_topic>
+                        </topic>
+                        <height>34</height>
+                        <visible>true</visible>
+                        <defaultcontrol>115</defaultcontrol>
+                        <control type="label" id="114">
+                           <topic name="pitch" rank="7">
+                              <flows_from>115</flows_from>
+                              <outer_topic>pitch_group</outer_topic>
+                              <hint_text>Select and use cursor left or right to adjust value</hint_text>
+                              <topic_left/>
+                              <topic_right/>
+                              <topic_up>volume</topic_up>
+                              <topic_down>speed_value</topic_down>
+                           </topic>
+                           <description>Pitch Label</description>
+                           <width>850</width>
+                           <label>$LOCALIZE[32229]</label>
+                           <visible>true</visible>
+                           <alignx>left</alignx>
+                           <aligny>center</aligny>
+                           <font>font12_title</font>
+                           <textcolor>white</textcolor>
+                           <shadowcolor>black</shadowcolor>
+                        </control>
+
+                        <control type="slider" id="115">
+                           <description>Pitch</description>
+                           <topic name="pitch_value" rank="7">
+                              <topic_type>heading</topic_type>
+                              <labeled_by>114</labeled_by>
+                              <flows_to>114</flows_to>
+                              <value_from>internal</value_from>
+                              <units unit="" type="float" decimal_digits="2"/>
+                              <outer_topic>pitch_group</outer_topic>
+                              <container_topic>engine_settings</container_topic>
+                              <hint_text>Select and use cursor left or right to adjust value</hint_text>
+                              <topic_left/>
+                              <topic_right/>
+                              <topic_up>volume</topic_up>
+                              <topic_down>speed_value</topic_down>
+                           </topic>
+                           <width>730</width>
+                           <right>0</right>
+                           <orientation>horizontal</orientation>
+                           <visible>true</visible>
+                           <alignx>left</alignx>
+                           <aligny>center</aligny>
+                           <font>font12_title</font>
+                           <!-- <onleft>100</onleft>
+                           <onright>300</onright> -->
+                           <onup>113</onup>
+                           <ondown>117</ondown>
+                           <texturesliderbar>osd_slider_bg_2.png</texturesliderbar>
+                           <textureslidernib>osd_slider_nibNF.png</textureslidernib>
+                           <textureslidernibfocus>osd_slider_nib.png</textureslidernibfocus>
+                           <!-- <texturenofocus/>
+                           <texturefocus border="5">button-focus2.png</texturefocus>
+                           <texturesliderbar>mybackgroundtexture.png</texturesliderbar>
+                           <textureslidernib>mydowntexture.png</textureslidernib>
+                           <textureslidernibfocus>mydownfocustexture.png</textureslidernibfocus> -->
+                           <controloffsetx/>
+                           <controloffsety/>
+                        </control>
+                     </control>
+                     <control type="group" id="1116">
+                        <topic name="speed_group" rank="6">
+                           <outer_topic>engine_settings</outer_topic>
+                        </topic>
+                        <height>34</height>
+                        <defaultcontrol>117</defaultcontrol>
+
+                        <control type="label" id="116">
+                           <description>Speed Label</description>
+                           <topic name="speed_label" rank="7">
+                              <flows_from>117</flows_from>
+                              <outer_topic>speed_group</outer_topic>
+                              <hint_text>Select to choose speed</hint_text>
+                              <topic_left/>
+                              <topic_right/>
+                              <topic_up>pitch_value</topic_up>
+                              <topic_down/>
+                           </topic>
+                           <width>850</width>
+                           <label>$LOCALIZE[32231]</label>
+                           <visible>true</visible>
+                           <alignx>left</alignx>
+                           <aligny>center</aligny>
+                           <font>font12_title</font>
+                           <textcolor>white</textcolor>
+                           <shadowcolor>black</shadowcolor>
+                        </control>
+
+                        <control type="slider" id="117">
+                           <description>Speed</description>
+                           <topic name="speed_value" rank="7">
+                              <topic_type>heading</topic_type>
+                              <labeled_by>116</labeled_by>
+                              <value_from>internal</value_from>
+                              <flows_to>116</flows_to>
+                              <outer_topic>speed_group</outer_topic>
+                              <container_topic>engine_settings</container_topic>
+                              <hint_text>Select to choose speed</hint_text>
+                              <units unit="" type="float" decimal_digits="1"/>
+                              <topic_left/>
+                              <topic_right/>
+                              <topic_up>pitch_value</topic_up>
+                              <topic_down/>
+                           </topic>
+                           <width>730</width>
+                           <right>0</right>
+                           <!--<left>405r</left> -->
+                           <visible>true</visible>
+                           <alignx>left</alignx>
+                           <aligny>center</aligny>
+                           <font>font12_title</font>
+                           <!-- <onleft>100</onleft>
+                           <onright>300</onright> -->
+                           <onup>115</onup>
+                           <ondown>118</ondown>
+                           <orientation>horizontal</orientation>
+                           <texturesliderbar>osd_slider_bg_2.png</texturesliderbar>
+                           <textureslidernib>osd_slider_nibNF.png</textureslidernib>
+                           <textureslidernibfocus>osd_slider_nib.png</textureslidernibfocus>
+                           <!-- <texturenofocus/>
+                           <texturefocus border="5">button-focus2.png</texturefocus>
+                           <texturesliderbar>mybackgroundtexture.png</texturesliderbar>
+                           <textureslidernib>mydowntexture.png</textureslidernib>
+                           <textureslidernibfocus>mydownfocustexture.png</textureslidernibfocus> -->
+                           <controloffsetx/>
+                           <controloffsety/>
+                        </control>
+                     </control>
+                     <control type="group" id="1118">
+                        <topic name="cache_group" rank="6">
+                           <outer_topic>engine_settings</outer_topic>
+                        </topic>
+                        <height>34</height>
+                        <defaultcontrol>118</defaultcontrol>
+
+                        <!-- cache_audio -->
+
+                        <control type="radiobutton" id="118">
+                           <description>Cache Audio From Engine</description>
+                           <topic name="cache_audio" rank="7">
+                              <topic_type>heading</topic_type>
+                              <outer_topic>cache_group</outer_topic>
+                              <container_topic>engine_settings</container_topic>
+                              <hint_text>Caching reduces response time</hint_text>
+                              <true_msg_id>yes</true_msg_id>
+                              <false_msg_id>no</false_msg_id>
+                              <topic_left/>
+                              <topic_right/>
+                              <topic_up>speed_value</topic_up>
+                              <topic_down>player_mode</topic_down>
+                           </topic>
+                           <top>0</top>
+                           <left>0</left>
+                           <width>100%</width>
+                           <!-- <width>1080</width> -->
+                           <label>$LOCALIZE[32312]</label>
+                           <visible>true</visible>
+                           <align>left</align>
+                           <aligny>center</aligny>
+                           <font>font12_title</font>
+                           <textwidth>850</textwidth>
+                           <textoffsetx>4</textoffsetx>
+                           <!-- <onleft>100</onleft>
+                           <onright>300</onright> -->
+                           <onup>117</onup>
+                           <ondown>120</ondown>
+                           <texturefocus border="5">button-focus2.png</texturefocus>
+                        </control>
+                     </control>
+
+                     <control type="group" id="1120">
+                        <topic name="player_mode_group" rank="6">
+                           <outer_topic>engine_settings</outer_topic>
+                        </topic>
+                        <height>34</height>
+                        <defaultcontrol>120</defaultcontrol>
+                        <control type="button" id="120">
+                           <topic name="player_mode" rank="7">
+                              <topic_type>heading</topic_type>
+                              <flows_to>121</flows_to>
+                              <hint_text>Select to choose player mode</hint_text>
+                              <outer_topic>player_mode_group</outer_topic>
+                              <container_topic>engine_settings</container_topic>
+                              <topic_left/>
+                              <topic_right/>
+                              <topic_up>cache_audio</topic_up>
+                              <topic_down>api_key_value</topic_down>
+                           </topic>
+                           <description>Player Mode</description>
+                           <width>850</width>
+                           <label>$LOCALIZE[32336]</label>
+                           <enable>true</enable>
+                           <visible>true</visible>
+                           <alignx>left</alignx>
+                           <aligny>center</aligny>
+                           <font>font12_title</font>
+                           <onup>118</onup>
+                           <ondown>123</ondown>
+                           <texturefocus border="5">button-focus2.png</texturefocus>
+                        </control>
+
+                        <control type="label" id="121">
+                           <topic name="player_mode_value" rank="7">
+                              <labeled_by/>
+                              <flows_from>120</flows_from>
+                              <hint_text>Select to choose player mod</hint_text>
+                              <outer_topic>player_mode_group</outer_topic>
+                              <topic_left/>
+                              <topic_right/>
+                              <topic_up>speech_engine</topic_up>
+                              <topic_down>api_key</topic_down>
+                           </topic>
+                           <description>Player Mode value</description>
+                           <width>730</width>
+                           <right>0</right>
+                           <align>left</align>
+                           <label/>
+                           <visible>true</visible>
+                           <font>font13</font>
+                           <textcolor>white</textcolor>
+                           <shadowcolor>black</shadowcolor>
+                        </control>
+                     </control>
+                     <control type="group" id="1122">
+                        <topic name="api_key_group" rank="6">
+                           <outer_topic>engine_settings</outer_topic>
+                        </topic>
+                        <height>50</height>
+                        <visible>true</visible>
+                        <defaultcontrol>123</defaultcontrol>
+
+                        <!-- <control type="label" id="122">
+                           <description>Api Key</description>
+                             <topic name="api_key" rank="3">
+                               <outer_topic>engine_settings</outer_topic>
+                               <hint_text>Some third party engines require an API key</hint_text>
+                               <topic_left/>
+                               <topic_right/>
+                               <topic_up>player_mode</topic_up>
+                              <topic_down/>
+                               </topic>
+                           <width>100</width>
+                           <label>$LOCALIZE[32233]</label>
+                            <hint_text>hint</hint_text>
+                           <visible>true</visible>
+                           <alignx>left</alignx>
+                           <aligny>center</aligny>
+                           <font>font12_title</font>
+                           <texturefocus border="5">button-focus2.png</texturefocus>
+                       </control> -->
+
+                        <control type="edit" id="123">
+                           <description>Api Key value</description>
+                           <topic name="api_key_value" rank="7">
+                              <topic_type>heading</topic_type>
+                              <outer_topic>api_key_group</outer_topic>
+                              <container_topic>engine_settings</container_topic>
+                              <hint_text>Enter API key for the current engin</hint_text>
+                              <topic_left/>
+                              <topic_right/>
+                              <topic_up>player_mode</topic_up>
+                              <topic_down>9001</topic_down>
+                           </topic>
+                           <top>0</top>
+                           <left>0</left>
+                           <width>75%</width>
+                           <align>left</align>
+                           <aligny>center</aligny>
+                           <alignx>top</alignx>
+                           <visible>true</visible>
+                           <label/>
+                           <hint_text>Hint hint</hint_text>
+                           <textwidth>1000</textwidth>
+                           <textoffsetx>20</textoffsetx>
+                           <textoffsety>5</textoffsety>
+                           <font>font13</font>
+                           <textcolor>FFB2D4F5</textcolor>
+                           <disabledcolor>FF000000</disabledcolor>
+                           <invalidcolor>FFFFFFFF</invalidcolor>
+                           <texturefocus>button-focus.png</texturefocus>
+                           <texturenofocus>button-nofocus.png</texturenofocus>
+                           <shadowcolor>black</shadowcolor>
+                           <texturefocus border="5">button-focus2.png</texturefocus>
+                           <onup>120</onup>
+                           <ondown>9001</ondown>
+                        </control>
+                     </control>
+
+                  </control> <!-- End engine settings grouplist -->
+               </control> <!-- End some useless? group -->
+
+               <!-- Options -->
+               <!--
+               <control type="group" id="201">
+                   <visible>Skin.String(category,options)</visible>
+                   <defaultcontrol always="true">202</defaultcontrol>
+
+                   <control type="label" id="202">
+                       <description>Options Category</description>
+                       <width>200</width>
+                       <!- -  <aligny>center</aligny> - ->
+                       <label>$LOCALIZE[32029]</label>
+                       <!- -  <visible>Skin.String(category,Engine)</visible> - - >
+                       <scroll>false</scroll>
+                       <haspath>false</haspath>
+                       <wrapmultiline>false</wrapmultiline>
+                       <font>font14</font>
+                       <textcolor>FFFFFFFF</textcolor>
+                       <visible>Skin.String(category,options)</visible>
+                   </control>
+                   <! - - Keymap - ->
+               </control>
+               <control type="group" id="301">
+                   <visible>Skin.String(category,keymap)</visible>
+                   <defaultcontrol always="true">302</defaultcontrol>
+                   <control type="label" id="302">
+                       <description>Keymap Category</description>
+                       <width>200</width>
+                       <!- -  <aligny>center</aligny> - ->
+                       <label>$LOCALIZE[32029]</label>
+                       <!- -  <visible>Skin.String(category,Engine)</visible> - ->
+                       <scroll>false</scroll>
+                       <haspath>false</haspath>
+                       <wrapmultiline>false</wrapmultiline>
+                       <font>font14</font>
+                       <textcolor>FFFFFFFF</textcolor>
+                       <visible>Skin.String(category,keymap)</visible>
+                   </control>
+               </control> -->
+
+               <!-- Advanced -->
+
+               <!--
+               <control type="group" id="401">
+                   <visible>Skin.String(category,advanced)</visible>
+                   <defaultcontrol always="true">402</defaultcontrol>
+                   <control type="label" id="402">
+                       <description>Advanced Category</description>
+                       <width>200</width>
+                       <!- -  <aligny>center</aligny> - ->
+                       <label>$LOCALIZE[32029]</label>
+                       <!- -  <visible>Skin.String(category,Engine)</visible> - ->
+                       <scroll>false</scroll>
+                       <haspath>false</haspath>
+                       <wrapmultiline>false</wrapmultiline>
+                       <font>font14</font>
+                       <textcolor>FFFFFFFF</textcolor>
+                       <visible>Skin.String(category,advanced)</visible>
+                   </control>
+               </control> -->
+            </control> <!-- Settings area, excluding scrollbar for grouplist -->
+
+            <control type="scrollbar" id="61">
+               <left>35r</left>
+               <width>35</width>
+               <texturesliderbackground border="0,14,0,14">ScrollBarV.png</texturesliderbackground>
+               <texturesliderbar border="0,14,0,14">ScrollBarV_bar.png</texturesliderbar>
+               <texturesliderbarfocus border="0,14,0,14">ScrollBarV_bar_focus.png</texturesliderbarfocus>
+               <textureslidernib>ScrollBarNib.png</textureslidernib>
+               <textureslidernibfocus>ScrollBarNib.png</textureslidernibfocus>
+               <onleft condition="Control.IsVisible(101)">101</onleft>
+               <!-- <onleft condition="Control.IsVisible(201)">201</onleft>
+               <onleft condition="Control.IsVisible(301)">301</onleft>
+               <onleft condition="Control.IsVisible(401)">401</onleft> -->
+
+               <onright/>
+               <ondown>61</ondown>
+               <onup>61</onup>
+               <showonepage>true</showonepage>
+               <orientation>vertical</orientation>
+               <visible>true</visible>
+            </control>
+         </control>
+         <control type="grouplist" id="9001">
+            <topic name="ok_cancel_group" rank="3">
+               <outer_topic>header_group</outer_topic>
+            </topic>
+            <top>950</top>
+            <left>120</left>
+            <width>1600</width>
+            <height>85</height>
+            <align>center</align>
+            <itemgap>85</itemgap>
+            <orientation>horizontal</orientation>
+            <defaultcontrol>28</defaultcontrol>
+            <control type="button" id="28">
+               <description>OK Button</description>
+               <topic name="ok_button" rank="4">
+                  <topic_type>heading</topic_type>
+                  <outer_topic>ok_cancel_group</outer_topic>
+                  <container_topic>ok_cancel_group</container_topic>
+                  <hint_text>Select to save settings and exit dialog</hint_text>
+                  <topic_left/>
+                  <topic_right/>
+                  <topic_up>api_key_value</topic_up>
+                  <topic_down/>
+               </topic>
+               <top>0</top>
+               <width>200</width>
+               <height>75</height>
+               <hitrect x="0" y="0" w="150" h="50"/>
+               <align>center</align>
+               <aligny>center</aligny>
+               <font>font12_title</font>
+               <onleft>30</onleft>
+               <onright>29</onright>
+               <onup>123</onup>
+               <ondown>102</ondown>
+            </control>
+            <control type="button" id="29">
+               <description>Cancel Button</description>
+               <topic name="cancel_button" rank="4">
+                  <topic_type>heading</topic_type>
+                  <outer_topic>ok_cancel_group</outer_topic>
+                  <container_topic>ok_cancel_group</container_topic>
+                  <hint_text>Select to exit dialog without saving changes</hint_text>
+                  <topic_left>okay_button</topic_left>
+                  <topic_right>default_button</topic_right>
+                  <topic_up/>
+                  <topic_down/>
+               </topic>
+               <top>0</top>
+               <width>200</width>
+               <height>75</height>
+               <align>center</align>
+               <aligny>center</aligny>
+               <font>font12_title</font>
+               <label/>
+               <onleft>28</onleft>
+               <onright>30</onright>
+               <onup>123</onup>
+               <ondown>102</ondown>
+            </control>
+            <control type="button" id="30">
+               <description>Default Settings Button</description>
+               <topic name="default_button" rank="4">
+                  <outer_topic>ok_cancel_group</outer_topic>
+                  <container_topic>ok_cancel_group</container_topic>
+                  <topic_type>heading</topic_type>
+                  <hint_text>Select to set current engine settings to default values</hint_text>
+                  <topic_left>cancel_button</topic_left>
+                  <topic_right>ok_button</topic_right>
+                  <topic_up/>
+                  <topic_down>engine_settings</topic_down>
+               </topic>
+               <top>0</top>
+               <width>200</width>
+               <height>75</height>
+               <align>center</align>
+               <aligny>center</aligny>
+               <font>font12_title</font>
+               <onleft>29</onleft>
+               <onright>28</onright>
+               <onup>123</onup>
+               <ondown>102</ondown>
+            </control>
+         </control>
+      </control>
+   </controls>
+</window>

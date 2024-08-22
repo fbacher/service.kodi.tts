@@ -53,7 +53,7 @@ class ParseLabel(ParseControl):
     scrollspeed 	Scroll speed of text in pixels per second. Defaults to 60.
 
     """
-    item: Item = control_elements[ControlType.LABEL_CONTROL.name]
+    item: Item = control_elements[ControlType.LABEL.name]
     label = BasicLogger = None
 
     @classmethod
@@ -63,7 +63,7 @@ class ParseLabel(ParseControl):
 
     def __init__(self, parent: BaseParser) -> None:
         super().__init__(parent)
-        self.control_type = ControlType.LABEL_CONTROL
+        self.control_type = ControlType.LABEL
         self.topic: ParseTopic | None = None
         self.scroll: bool = False
         self.scroll_suffix: str = '|'

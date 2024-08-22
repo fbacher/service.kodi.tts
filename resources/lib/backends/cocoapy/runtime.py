@@ -430,7 +430,7 @@ def x86_should_use_stret(restype):
 
 # http://www.sealiesoftware.com/blog/archive/2008/11/16/objc_explain_objc_msgSend_fpret.html
 def should_use_fpret(restype):
-    """Determine if objc_msgSend_fpret is required to return a floating point type."""
+    """Determine if objc_msgSend_fpret is is_required to return a floating point type."""
     if not __i386__:
         # Unneeded on non-intel processors
         return False

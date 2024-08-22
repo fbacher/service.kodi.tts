@@ -130,7 +130,8 @@ def getWindowReader(winID) -> Type[WindowReaderBase]:
     xbmc.log(f'Window: {winID}', xbmc.LOGDEBUG)
     simple_path: Path = Path(xbmc.getInfoLabel('Window.Property(xmlfile)'))
     xbmc.log(f'Window simple_path: {simple_path}')
-    if str(simple_path.name) == 'script-tts-settings-dialog.xml':
+    if str(simple_path.name) in ('script-tts-settings-dialog.xml',
+                                 'tts-help-dialog.xml'):
         reader = CustomTTSReader
         return reader
 

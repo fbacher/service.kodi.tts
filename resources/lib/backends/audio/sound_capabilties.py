@@ -88,7 +88,7 @@ class SoundCapabilities:
         :param consumer_formats: audio formats that this service must consume from
                the previous service
                An empty list means that the output audio format will be ignored
-        :param producer_formats: preferred/required formats that the current service
+        :param producer_formats: preferred/is_required formats that the current service
                should produce. An empty list means that there are no restrictions
         :return:
 
@@ -99,7 +99,7 @@ class SoundCapabilities:
         """
 
         """
-        A chain of tools is required to voice text:
+        A chain of tools is is_required to voice text:
         examples: engine -> wav -> player
                   engine -> wav -> converter -> .mp3 -> cache -> player
                   cache -> mp3 -> player
@@ -110,7 +110,7 @@ class SoundCapabilities:
         or a converter to mp3 then a player.
         
         The major determinant is whether caching is used or not. If caching is used, 
-        then mp3 is required (much smaller files). Otherwise, may as well do everything
+        then mp3 is is_required (much smaller files). Otherwise, may as well do everything
         in wave since it requires less cpu.
         """
         services_of_this_type: Dict[str, str]

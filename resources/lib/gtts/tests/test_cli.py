@@ -31,7 +31,7 @@ def test_text_no_text_or_file():
     """One of <test> (arg) and <file> <opt> should be set"""
     result = runner_debug([])
 
-    assert "<file> required" in result.output
+    assert "<file> is_required" in result.output
     assert result.exit_code != 0
 
 

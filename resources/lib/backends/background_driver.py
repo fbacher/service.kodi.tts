@@ -1,10 +1,10 @@
 # coding=utf-8
 
-'''
+"""
  Some speech engines may produce high quality voices, but at an unacceptably slow
  rate. This driver converts text to speech in the background and pupulates the
  cache.
- '''
+"""
 from pathlib import Path
 
 import xbmcvfs

@@ -1,18 +1,13 @@
-
 # coding=utf-8
 
 import xml.etree.ElementTree as ET
 from collections import namedtuple
-from enum import auto, Enum
-from typing import Callable, Dict, ForwardRef, List, Tuple, Union
+from typing import ForwardRef, List, Union
 
 from common.logger import BasicLogger
-from gui.base_control import BaseControl
 from gui.base_parser import BaseParser
-from gui.base_tags import (control_elements, control_elements, ControlType,
-                           ElementKeywords, ElementType, Item, Items, Tag)
-from gui.base_tags import BaseAttributeType as BAT
-from gui.base_tags import ElementKeywords as EK
+from gui.base_tags import (control_elements, ControlType,
+                           Item, Tag)
 from gui.element_parser import BaseElementParser, ElementHandler
 from gui.exceptions import ParseError
 from gui.parse_controls import ParseControls
@@ -20,7 +15,7 @@ from gui.parse_controls import ParseControls
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 AttribInfo = namedtuple('attrib_info', ['attrib_name', 'attrib_value',
-                                         'status'])
+                                        'status'])
 
 
 class ParseControl(BaseParser):

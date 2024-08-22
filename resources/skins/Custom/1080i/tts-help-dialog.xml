@@ -1,0 +1,629 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<window type="dialog">
+   <!-- Resolution 1920 x 1080 -->
+   <defaultcontrol always="true">8</defaultcontrol>
+   <!-- <include>dialogeffect</include> -->
+   <depth>DepthDialog+</depth>
+   <topic name="header">
+      <topic_type>heading</topic_type>
+      <heading_label>1</heading_label>
+      <heading_next></heading_next>
+      <hint_text>33100</hint_text>
+      <alt_type>DIALOG</alt_type>
+      <inner_topic>Header_Label</inner_topic>
+      <topic_down>header_group</topic_down>>
+      <read_next></read_next>
+   </topic>
+   <controls>
+      <control type="group" id="50">
+         <description>Entire window</description>
+         <left>50</left>
+         <top>25</top>
+         <width>1680</width>
+         <height>980</height>
+         <visible>true</visible>
+         <control type="group">
+            <description>Group for window inset</description>
+            <left>0</left>
+            <top>0</top>
+            <width>1680</width>
+            <height>1160</height>
+            <control type="image">
+               <description>background image</description>
+               <left>0</left>
+               <top>0</top>
+               <width>1680</width>
+               <height>980</height>
+               <texture border="40">solid-black.png</texture>
+               <visible>true</visible>
+            </control>
+            <control type="group" id="1001">
+               <description>Group for Header and sub-Header</description>
+               <topic name="header_group" rank="2">
+                  <hint_text>Select to choose header_group</hint_text>
+                  <outer_topic>header</outer_topic>
+                  <topic_down>Header_Label</topic_down>
+                  <topic_up>header</topic_up>
+               </topic>
+               <left>20</left>
+               <top>25</top>
+               <width>1300</width>
+               <height>150</height>
+               <control type="image">
+                  <description>Dialog Header image</description>
+                  <left>10</left>
+                  <top>10</top>
+                  <width>1300</width>
+                  <height>100</height>
+                  <texture>dialogheader.png</texture>
+               </control>
+               <control type="label" id="1">
+                  <description>header label</description>
+                  <topic name="Header_Label" rank="3">
+                     <label>1</label>
+                     <hint_text>blah blah</hint_text>
+                     <outer_topic>header_group</outer_topic>
+                     <topic_down>sub_header</topic_down>
+                     <label_for>header</label_for>
+                     <read_next>sub_header</read_next>
+                  </topic>
+                  <left>20</left>
+                  <top>20</top>
+                  <width>1300</width>
+                  <height>40</height>
+                  <font>font12_title</font>
+                  <aligny>center</aligny>
+                  <align>center</align>
+                  <textcolor>blue</textcolor>
+                  <shadowcolor>black</shadowcolor>
+               </control>
+               <control type="label" id="4">
+                  <description>Sub Heading Label</description>
+                  <topic name="sub_header" rank="3">
+                     <label>4</label>
+                     <hint_text>Narf!</hint_text>
+                     <outer_topic>header_group</outer_topic>
+                     <topic_left></topic_left>
+                     <topic_right></topic_right>
+                     <topic_up>Header_Label</topic_up>
+                     <topic_down>help_group</topic_down>
+                  </topic>
+                  <top>60</top>
+                  <left>20</left>
+                  <width>1300</width>
+                  <height>40</height>
+                  <align>center</align>
+                  <font>font12_title</font>
+                  <textcolor>blue</textcolor>
+                  <shadowcolor>black</shadowcolor>
+               </control>
+            </control>
+            <control type="group">
+               <description>Group Just for close window X icon</description>
+               <left>1600</left>
+               <top>5</top>
+               <width>350></width>
+               <control type="button">
+                  <description>Close Window icon button</description>
+                  <left>0</left>
+                  <top>40</top>
+                  <width>64</width>
+                  <height>40</height>
+                  <label/>
+                  <font/>
+                  <onclick>PreviousMenu</onclick>
+                  <texturefocus>DialogCloseButton-focus.png</texturefocus>
+                  <texturenofocus>DialogCloseButton.png</texturenofocus>
+                  <visible>system.getbool(input.enablemouse)</visible>
+               </control>
+            </control>
+            <control type="group" id="1003">
+               <topic name="help_group" rank="3">
+                  <alt_type>None</alt_type>
+                  <labeled_by>$PROP[help_title]</labeled_by>
+                  <hint_text>Select to choose help_group</hint_text>
+                  <outer_topic>header_group</outer_topic>
+                  <topic_left></topic_left>
+                  <topic_right></topic_right>
+                  <topic_up>header_group</topic_up>
+                  <topic_down>help_text</topic_down>
+               </topic>
+               <left>50</left>
+               <top>200</top>
+               <width>1300</width>
+               <height>800</height>
+               <control type="button" id="8">
+                  <description>Help Content</description>
+                  <topic name="help_text" rank="4">
+                     <alt_type>None</alt_type>
+                     <hint_text>sample hint text</hint_text>
+                     <topic_up>header_group</topic_up>
+                     <topic_down>main_list</topic_down>
+                     <outer_topic>help_group</outer_topic>
+                     <inner_topic></inner_topic>
+                  </topic>
+                  <top>0</top>
+                  <left>0</left>
+                  <scroll>false></scroll>
+                  <font>font14</font>
+                  <!-- Supports hinttext -->
+                  <textcolor>grey</textcolor>
+                  <wrapmultiline>true</wrapmultiline>
+                  <width>1230</width>
+                  <textwidth>1200</textwidth>
+                  <height>500</height>
+                  <alignx>left</alignx>
+                  <aligny>top</aligny>
+                  <font>font12_title</font>
+                  <!-- <texturefocus border="5">button-focus2.png</texturefocus> -->
+                  <textoffsetx>30</textoffsetx>
+                  <textoffsety>30</textoffsety>
+                  <!--<texturenofocus border="5">button-nofocus.png</texturenofocus> -->
+                  <shadowcolor>black</shadowcolor>
+                  <focusedcolor>white</focusedcolor>
+                  <textcolor>white</textcolor>
+                  <hitrect x="0" y="0" w="1230" h="500"/>
+                  <!-- <hitrectcolor>royalblue</hitrectcolor> -->
+                  <disabledcolor>blue</disabledcolor>
+                  <invalidcolor>red</invalidcolor>
+               </control>
+            </control>
+            <control type="group" id="1000">
+               <description>Wraps main list and scrollbar</description>
+               <topic name="main_list_group" rank="3">
+                  <hint_text>Select to choose main list</hint_text>
+                  <outer_topic>header_group</outer_topic>
+                  <topic_left></topic_left>
+                  <topic_right></topic_right>
+                  <topic_up>help_text</topic_up>
+                  <topic_down>main_list</topic_down>
+               </topic>
+               <left>50</left>
+               <top>200</top>
+               <width>1300</width>
+               <height>800</height>
+
+               <control type="grouplist" id="3">
+                  <description>Main Single-select list</description>
+                  <topic name="main_list" rank="4">
+                     <hint_text>Select to choose main list</hint_text>
+                     <outer_topic>main_list_group</outer_topic>
+                     <topic_left></topic_left>
+                     <topic_right></topic_right>
+                     <topic_up>help_text</topic_up>
+                     <topic_down>item_1</topic_down>
+                  </topic>
+                  <left>20</left>
+                  <top>0</top>
+                  <width>1300</width>
+                  <height>800</height>
+                  <itemgap>20</itemgap>
+                  <onup>3</onup>
+                  <ondown>3</ondown>
+                  <onleft>7</onleft>
+                  <onright>61</onright>
+                  <visible>condition="Control.IsVisible(1000)"</visible>
+                  <pagecontrol>61</pagecontrol>
+                  <scrolltime>0</scrolltime>
+                  <defaultcontrol>101</defaultcontrol>
+                  <control type="button" id="101">
+                     <topic name="item_1" rank="5">
+                        <hint_text>Select to configure item 1</hint_text>
+                        <outer_topic>main_list</outer_topic>
+                        <inner_topic>ok_button</inner_topic>
+                        <topic_left></topic_left>
+                        <topic_right></topic_right>
+                        <topic_up>main_list</topic_up>
+                        <topic_down>item_2</topic_down>
+                     </topic>
+                     <description>Item 1</description>
+                     <width>1230</width>
+                     <wrapmultiline>false</wrapmultiline>
+                     <textwidth>1200</textwidth>
+                     <height>35</height>
+                     <label></label>
+                     <visible></visible>
+                     <alignx>left</alignx>
+                     <aligny>center</aligny>
+                     <font>font12_title</font>
+                     <texturefocus border="5">button-focus2.png</texturefocus>
+                     <textoffsetx>30</textoffsetx>
+                     <texturenofocus border="5">button-nofocus.png</texturenofocus>
+                     <shadowcolor>black</shadowcolor>
+                     <focusedcolor>white</focusedcolor>
+                     <textcolor>azure</textcolor>
+                     <hitrect x="0" y="0" w="780" h="35"/>
+                     <!-- <hitrectcolor>royalblue</hitrectcolor> -->
+                     <disabledcolor>blue</disabledcolor>
+                     <invalidcolor>red</invalidcolor>
+                  </control>
+                  <control type="button" id="102">
+                     <topic name="item_2" rank="5">
+                        <hint_text>Select to configure item 2</hint_text>
+                        <outer_topic>main_list</outer_topic>
+                        <topic_left></topic_left>
+                        <topic_right></topic_right>
+                        <topic_up>item_1</topic_up>
+                        <topic_down>item_3</topic_down>
+                     </topic>
+                     <description>Speech Engine</description>
+                     <width>1230</width>
+                     <wrapmultiline>false</wrapmultiline>
+                     <textwidth>1200</textwidth>
+                     <height>35</height>
+                     <label></label>
+                     <visible></visible>
+                     <alignx>left</alignx>
+                     <aligny>center</aligny>
+                     <font>font12_title</font>
+                     <texturefocus border="5">button-focus2.png</texturefocus>
+                     <textoffsetx>30</textoffsetx>
+                     <texturenofocus border="5">button-nofocus.png</texturenofocus>
+                     <shadowcolor>black</shadowcolor>
+                     <focusedcolor>white</focusedcolor>
+                     <textcolor>grey</textcolor>
+                     <hitrect x="0" y="0" w="780" h="35"/>
+                     <!-- <hitrectcolor>royalblue</hitrectcolor> -->
+                     <disabledcolor>blue</disabledcolor>
+                     <invalidcolor>red</invalidcolor>
+                  </control>
+                  <control type="button" id="103">
+                     <topic name="item_3" rank="5">
+                        <hint_text>Select to configure item 3</hint_text>
+                        <outer_topic>main_list</outer_topic>
+                        <topic_left></topic_left>
+                        <topic_right></topic_right>
+                        <topic_up>item_2</topic_up>
+                        <topic_down>item_4</topic_down>
+                     </topic>
+                     <description>Speech Engine</description>
+                     <width>1230</width>
+                     <wrapmultiline>false</wrapmultiline>
+                     <textwidth>1200</textwidth>
+                     <height>35</height>
+                     <label></label>
+                     <visible></visible>
+                     <alignx>left</alignx>
+                     <aligny>center</aligny>
+                     <font>font12_title</font>
+                     <texturefocus border="5">button-focus2.png</texturefocus>
+                     <textoffsetx>30</textoffsetx>
+                     <texturenofocus border="5">button-nofocus.png</texturenofocus>
+                     <shadowcolor>black</shadowcolor>
+                     <focusedcolor>white</focusedcolor>
+                     <textcolor>grey</textcolor>
+                     <hitrect x="0" y="0" w="780" h="35"/>
+                     <!-- <hitrectcolor>royalblue</hitrectcolor> -->
+                     <disabledcolor>blue</disabledcolor>
+                     <invalidcolor>red</invalidcolor>
+                  </control>
+                  <control type="button" id="104">
+                     <topic name="item_4" rank="5">
+                        <hint_text>Select to configure item 4</hint_text>
+                        <outer_topic>main_list</outer_topic>
+                        <topic_left></topic_left>
+                        <topic_right></topic_right>
+                        <topic_up>item_3</topic_up>
+                        <topic_down>item_5</topic_down>
+                     </topic>
+                     <description>Speech Engine</description>
+                     <width>1230</width>
+                     <wrapmultiline>false</wrapmultiline>
+                     <textwidth>1200</textwidth>
+                     <height>35</height>
+                     <label></label>
+                     <visible></visible>
+                     <alignx>left</alignx>
+                     <aligny>center</aligny>
+                     <font>font12_title</font>
+                     <texturefocus border="5">button-focus2.png</texturefocus>
+                     <textoffsetx>30</textoffsetx>
+                     <texturenofocus border="5">button-nofocus.png</texturenofocus>
+                     <shadowcolor>black</shadowcolor>
+                     <focusedcolor>white</focusedcolor>
+                     <textcolor>grey</textcolor>
+                     <hitrect x="0" y="0" w="780" h="35"/>
+                     <!-- <hitrectcolor>royalblue</hitrectcolor> -->
+                     <disabledcolor>blue</disabledcolor>
+                     <invalidcolor>red</invalidcolor>
+
+                  </control>
+                  <control type="button" id="105">
+                     <topic name="item_5" rank="5">
+                        <hint_text>Select to configure item 5</hint_text>
+                        <outer_topic>main_list</outer_topic>
+                        <topic_left></topic_left>
+                        <topic_right></topic_right>
+                        <topic_up>item_4</topic_up>
+                        <topic_down>item_6</topic_down>
+                     </topic>
+                     <description>Speech Engine</description>
+                     <width>1230</width>
+                     <wrapmultiline>false</wrapmultiline>
+                     <textwidth>1200</textwidth>
+                     <height>35</height>
+                     <label></label>
+                     <visible></visible>
+                     <alignx>left</alignx>
+                     <aligny>center</aligny>
+                     <font>font12_title</font>
+                     <texturefocus border="5">button-focus2.png</texturefocus>
+                     <textoffsetx>30</textoffsetx>
+                     <texturenofocus border="5">button-nofocus.png</texturenofocus>
+                     <shadowcolor>black</shadowcolor>
+                     <focusedcolor>white</focusedcolor>
+                     <textcolor>grey</textcolor>
+                     <hitrect x="0" y="0" w="780" h="35"/>
+                     <!-- <hitrectcolor>royalblue</hitrectcolor> -->
+                     <disabledcolor>blue</disabledcolor>
+                     <invalidcolor>red</invalidcolor>
+                  </control>
+                  <control type="button" id="106">
+                     <topic name="item_6" rank="5">
+                        <hint_text>Select to configure item 6</hint_text>
+                        <outer_topic>main_list</outer_topic>
+                        <topic_left></topic_left>
+                        <topic_right></topic_right>
+                        <topic_up>item_5</topic_up>
+                        <topic_down>item_7</topic_down>
+                     </topic>
+                     <description>Speech Engine</description>
+                     <width>1230</width>
+                     <wrapmultiline>false</wrapmultiline>
+                     <textwidth>1200</textwidth>
+                     <height>35</height>
+                     <label></label>
+                     <visible></visible>
+                     <alignx>left</alignx>
+                     <aligny>center</aligny>
+                     <font>font12_title</font>
+                     <texturefocus border="5">button-focus2.png</texturefocus>
+                     <textoffsetx>30</textoffsetx>
+                     <texturenofocus border="5">button-nofocus.png</texturenofocus>
+                     <shadowcolor>black</shadowcolor>
+                     <focusedcolor>white</focusedcolor>
+                     <textcolor>grey</textcolor>
+                     <hitrect x="0" y="0" w="780" h="35"/>
+                     <!-- <hitrectcolor>royalblue</hitrectcolor> -->
+                     <disabledcolor>blue</disabledcolor>
+                     <invalidcolor>red</invalidcolor>
+                  </control>
+                  <control type="button" id="107">
+                     <topic name="item_7" rank="5">
+                        <hint_text>Select to configure item 7</hint_text>
+                        <outer_topic>main_list</outer_topic>
+                        <topic_left></topic_left>
+                        <topic_right></topic_right>
+                        <topic_up>item_6</topic_up>
+                        <topic_down>item_8</topic_down>
+                     </topic>
+                     <description>Speech Engine</description>
+                     <width>1230</width>
+                     <wrapmultiline>false</wrapmultiline>
+                     <textwidth>1200</textwidth>
+                     <height>35</height>
+                     <label></label>
+                     <visible></visible>
+                     <alignx>left</alignx>
+                     <aligny>center</aligny>
+                     <font>font12_title</font>
+                     <texturefocus border="5">button-focus2.png</texturefocus>
+                     <textoffsetx>30</textoffsetx>
+                     <texturenofocus border="5">button-nofocus.png</texturenofocus>
+                     <shadowcolor>black</shadowcolor>
+                     <focusedcolor>white</focusedcolor>
+                     <textcolor>grey</textcolor>
+                     <hitrect x="0" y="0" w="780" h="35"/>
+                     <!-- <hitrectcolor>royalblue</hitrectcolor> -->
+                     <disabledcolor>blue</disabledcolor>
+                     <invalidcolor>red</invalidcolor>
+                  </control>
+                  <control type="button" id="108">
+                     <topic name="item_8" rank="5">
+                        <hint_text>Select to configure item 8</hint_text>
+                        <outer_topic>main_list</outer_topic>
+                        <topic_left></topic_left>
+                        <topic_right></topic_right>
+                        <topic_up>item_7</topic_up>
+                        <topic_down>item_9</topic_down>
+                     </topic>
+                     <description>Speech Engine</description>
+                     <width>1230</width>
+                     <wrapmultiline>false</wrapmultiline>
+                     <textwidth>1200</textwidth>
+                     <height>35</height>
+                     <label></label>
+                     <visible></visible>
+                     <alignx>left</alignx>
+                     <aligny>center</aligny>
+                     <font>font12_title</font>
+                     <texturefocus border="5">button-focus2.png</texturefocus>
+                     <textoffsetx>30</textoffsetx>
+                     <texturenofocus border="5">button-nofocus.png</texturenofocus>
+                     <shadowcolor>black</shadowcolor>
+                     <focusedcolor>white</focusedcolor>
+                     <textcolor>grey</textcolor>
+                     <hitrect x="0" y="0" w="780" h="35"/>
+                     <!-- <hitrectcolor>royalblue</hitrectcolor> -->
+                     <disabledcolor>blue</disabledcolor>
+                     <invalidcolor>red</invalidcolor>
+                  </control>
+                  <control type="button" id="109">
+                     <topic name="item_9" rank="5">
+                        <hint_text>Select to configure item 9</hint_text>
+                        <outer_topic>main_list</outer_topic>
+                        <topic_left></topic_left>
+                        <topic_right></topic_right>
+                        <topic_up>item_8</topic_up>
+                        <topic_down>item_10</topic_down>
+                     </topic>
+                     <description>Speech Engine</description>
+                     <width>1230</width>
+                     <wrapmultiline>false</wrapmultiline>
+                     <textwidth>1200</textwidth>
+                     <height>35</height>
+                     <label></label>
+                     <visible></visible>
+                     <alignx>left</alignx>
+                     <aligny>center</aligny>
+                     <font>font12_title</font>
+                     <texturefocus border="5">button-focus2.png</texturefocus>
+                     <textoffsetx>30</textoffsetx>
+                     <texturenofocus border="5">button-nofocus.png</texturenofocus>
+                     <shadowcolor>black</shadowcolor>
+                     <focusedcolor>white</focusedcolor>
+                     <textcolor>grey</textcolor>
+                     <hitrect x="0" y="0" w="780" h="35"/>
+                     <!-- <hitrectcolor>royalblue</hitrectcolor> -->
+                     <disabledcolor>blue</disabledcolor>
+                     <invalidcolor>red</invalidcolor>
+                  </control>
+                  <control type="button" id="110">
+                     <topic name="item_10" rank="5">
+                        <hint_text>Select to configure item 10</hint_text>
+                        <outer_topic>main_list</outer_topic>
+                        <topic_left></topic_left>
+                        <topic_right></topic_right>
+                        <topic_up>item_9</topic_up>
+                        <topic_down>ok_cancel</topic_down>
+                     </topic>
+                     <description>Item 10</description>
+                     <width>1230</width>
+                     <wrapmultiline>false</wrapmultiline>
+                     <textwidth>1200</textwidth>
+                     <height>35</height>
+                     <label></label>
+                     <visible></visible>
+                     <alignx>left</alignx>
+                     <aligny>center</aligny>
+                     <font>font12_title</font>
+                     <texturefocus border="5">button-focus2.png</texturefocus>
+                     <textoffsetx>30</textoffsetx>
+                     <texturenofocus border="5">button-nofocus.png</texturenofocus>
+                     <shadowcolor>black</shadowcolor>
+                     <focusedcolor>white</focusedcolor>
+                     <textcolor>grey</textcolor>
+                     <hitrect x="0" y="0" w="780" h="35"/>
+                     <!-- <hitrectcolor>royalblue</hitrectcolor> -->
+                     <disabledcolor>blue</disabledcolor>
+                     <invalidcolor>red</invalidcolor>
+                  </control>
+               </control>
+               <control type="group">
+                  <left>1300</left>
+                  <top>0</top>
+                  <height>850</height>
+                  <control type="scrollbar" id="61">
+                     <left>0</left>
+                     <top>0</top>
+                     <width>35</width>
+                     <height>800</height>
+                     <texturesliderbackground border="0,14,0,14">ScrollBarV.png</texturesliderbackground>
+                     <texturesliderbar border="0,14,0,14">ScrollBarV_bar.png</texturesliderbar>
+                     <texturesliderbarfocus border="0,14,0,14">ScrollBarV_bar_focus.png
+                     </texturesliderbarfocus>
+                     <textureslidernib>ScrollBarNib.png</textureslidernib>
+                     <textureslidernibfocus>ScrollBarNib.png</textureslidernibfocus>
+                     <onleft condition="Control.IsVisible(3)">3</onleft>
+                     <onright>90</onright>
+                     <ondown>61</ondown>
+                     <onup>61</onup>
+                     <showonepage>false</showonepage>
+                     <orientation>vertical</orientation>
+                     <visible>true</visible>
+                  </control>
+               </control>
+            </control> <!-- End group 1000 -->
+            <control type="group" id="1002">
+               <description>OK, Cancel</description>
+               <topic name="ok_cancel" rank="3">
+                  <hint_text>OK Cancel group</hint_text>
+                  <outer_topic>main_list_group</outer_topic>
+                  <topic_down>ok_cancel_grouplist</topic_down>
+                  <topic_up>item_10</topic_up>
+               </topic>
+               <left>50</left>
+               <top>810</top>
+               <width>1300</width>
+               <height>100</height>
+               <control type="grouplist" id="90">
+                  <topic name="ok_cancel_grouplist" rank="4">
+                     <hint_text>OK Cancel grouplist</hint_text>
+                     <outer_topic>ok_cancel</outer_topic>
+                     <topic_down>ok_button</topic_down>
+                     <topic_up>item_10</topic_up>
+                  </topic>
+                  <left>0</left>
+                  <top>0</top>
+                  <width>1300</width>
+                  <height>100</height>
+                  <itemgap>100</itemgap>
+                  <align>center</align>
+                  <orientation>horizontal</orientation>
+                  <onleft condition="Control.IsVisible(3)">3</onleft>
+                  <onleft condition="Control.IsVisible(6)">6</onleft>
+                  <onright condition="Control.IsVisible(3)">3</onright>
+                  <onright condition="Control.IsVisible(6)">6</onright>
+                  <control type="button" id="5">
+                     <description>OK</description>
+                     <topic name="ok_button" rank="5">
+                        <hint_text>OK Button</hint_text>
+                        <outer_topic>ok_cancel_grouplist</outer_topic>
+                        <topic_left></topic_left>
+                        <topic_right>cancel_button</topic_right>
+                        <topic_up>item_10</topic_up>
+                        <topic_down>cancel_button</topic_down>
+                     </topic>
+                     <left>200</left>
+                     <width>200</width>
+                     <height>100</height>
+                     <align>center</align>
+                     <label/>
+                     <font>font12_title</font>
+                     <textcolor>white</textcolor>
+                     <focusedcolor>white</focusedcolor>
+                     <!--<hitrect x="0" y="10" w="200" h="45"/> -->
+                     <!--<hitrectcolor>yellow</hitrectcolor> -->
+                     <align>center</align>
+                  </control>
+                  <control type="button" id="7">
+                     <description>Cancel button</description>
+                     <topic name="cancel_button" rank="5">
+                        <hint_text>Cancel Button</hint_text>
+                        <outer_topic>ok_cancel_grouplist</outer_topic>
+                        <topic_left>ok_button</topic_left>
+                        <topic_right></topic_right>
+                        <topic_up>item_10</topic_up>
+                        <topic_down></topic_down>
+                     </topic>
+                     <right>200</right>
+                     <width>200</width>
+                     <height>100</height>
+                     <align>center</align>
+                     <label/>
+                     <font>font12_title</font>
+                     <textcolor>white</textcolor>
+                     <focusedcolor>white</focusedcolor>
+                     <!-- <hitrect x="0" y="10" w="150" h="50"/>
+                     <hitrectcolor>blue</hitrectcolor> -->
+                     <align>center</align>
+                  </control>
+               </control>
+            </control>
+            <control type="label" id="42">
+               <description>number of files/pages in list text label</description>
+               <left>1400</left>
+               <top>800</top>
+               <width>200</width>
+               <width>240</width>
+               <height>45</height>
+               <font>font12-title</font>
+               <align>center</align>
+               <aligny>center</aligny>
+               <textcolor>grey</textcolor>
+               <label></label>
+            </control>
+         </control>
+      </control>
+   </controls>
+</window>

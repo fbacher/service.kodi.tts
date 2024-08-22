@@ -11,11 +11,11 @@ from gui.base_label_model import BaseLabelModel
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
 from gui.base_tags import control_elements, ControlType, Item
+from gui.button_no_topic_model import NoButtonTopicModel
+from gui.button_topic_model import ButtonTopicModel
 from gui.element_parser import ElementHandler
 from gui.parse_button import ParseButton
-from gui.parse_topic import ParseTopic
 from gui.topic_model import TopicModel
-from gui.window import Window
 from windows.window_state_monitor import WinDialog, WinDialogState
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -27,13 +27,10 @@ class ButtonModel(BaseLabelModel):
     item: Item = control_elements[ControlType.BUTTON.name]
 
     def __init__(self, parent: BaseModel, parsed_button: ParseButton) -> None:
-        clz = type(self)
+        clz = ButtonModel
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz.__class__.__name__)
         super().__init__(window_model=parent.window_model, parser=parsed_button)
-        self.parent = parent
-        self.children: List[BaseModel] = []
-        self.parent: BaseModel = None
         self.attributes_with_values: List[str] = clz.item.attributes_with_values
         self.attributes: List[str] = clz.item.attributes
         self.visible_expr: str = ''
@@ -47,9 +44,6 @@ class ButtonModel(BaseLabelModel):
         self.enable_expr: str = ''
         self.hint_text_expr: str = ''
 
-        self.previous_heading: PhraseList = PhraseList()
-        self.previous_value: PhraseList = PhraseList()
-
         self.convert(parsed_button)
 
     def convert(self, parsed_button: ParseButton) -> None:
@@ -60,9 +54,7 @@ class ButtonModel(BaseLabelModel):
                needs to be converted to a ButtonModel
         :return:
         """
-        clz = type(self)
-        self.topic: TopicModel | None = None  # Will get filled in by TopicModel
-        self.control_type = parsed_button.control_type
+        clz = ButtonModel
         self.visible_expr = parsed_button.visible_expr
         self.wrap_multiline = parsed_button.wrap_multiline
         # self.attributes_with_values: List[str]
@@ -75,38 +67,63 @@ class ButtonModel(BaseLabelModel):
 
         if parsed_button.topic is not None:
             model_handler: Callable[[BaseModel, BaseModel, BaseParser], BaseModel]
-            model_handler = ElementHandler.get_model_handler(ParseTopic.item)
-            self.topic = model_handler(self, parsed_button.topic)
+            self.topic = ButtonTopicModel(self, parsed_button.topic)
+        else:
+            self.topic = NoButtonTopicModel(self)
 
         clz._logger.debug(f'# parsed children: {len(parsed_button.get_children())}')
 
         for child in parsed_button.children:
             child: BaseParser
-            # clz._logger.debug(f'child: {child}')
+            clz._logger.debug(f'child: {child}')
             model_handler:  Callable[[BaseModel, BaseParser], BaseModel]
-            # clz._logger.debug(f'About to create model from {type(child).item}')
+            clz._logger.debug(f'About to create model from {type(child).item}')
             model_handler = ElementHandler.get_model_handler(child.item)
             child_model: BaseModel = model_handler(self, child)
             self.children.append(child_model)
 
-    def clear_history(self) -> None:
-        self.previous_heading.clear()
-        self.previous_value.clear()
+    @property
+    def supports_label(self) -> bool:
+        # ControlCapabilities.LABEL
+        return True
+
+    @property
+    def supports_label2(self) -> bool:
+        #  ControlCapabilities.LABEL2
+        return False
+
+    @property
+    def supports_value(self) -> bool:
+        """
+        This control is unable to provide a value. I.E. it can't give any
+        indication of what happens when pressed. If the topic for this
+        control or another provides flows_from/flows_to or similar, then a
+        value can be determined that way, but not using this method.
+        :return:
+        """
+        return False
 
     def voice_control(self, phrases: PhraseList,
-                      focus_changed: bool) -> bool:
+                      focus_changed: bool,
+                      windialog_state: WinDialogState) -> bool:
         """
 
         :param phrases: PhraseList to append to
         :param focus_changed: If True, then voice changed heading, labels and all
                               If False, then only voice a change in value.
+        :param windialog_state: contains some useful state information
         :return: True if anything appended to phrases, otherwise False
 
         Note that focus_changed = False can occur even when a value has changed.
         One example is when user users cursor to select different values in a
         slider, but never leaves the control's focus.
         """
-        clz = type(self)
+        clz = ButtonModel
+        if self.control_id is not None:
+            if not self.is_visible():
+                clz._logger.debug(f'not visible, exiting')
+                return False
+
         success: bool = True
         if self.topic is not None:
             topic: TopicModel = self.topic
@@ -119,7 +136,7 @@ class ButtonModel(BaseLabelModel):
 
                 # Voice either focused control, or label/text
                 #temp_phrases.clear()
-            temp_phrases: PhraseList = PhraseList()
+            temp_phrases: PhraseList = PhraseList(check_expired=False)
             success = topic.voice_value(temp_phrases)
             if focus_changed or not self.previous_value.equal_text(temp_phrases):
                 phrases.extend(temp_phrases)
@@ -139,11 +156,11 @@ class ButtonModel(BaseLabelModel):
         return False
 
     def voice_heading(self, phrases: PhraseList) -> bool:
-        clz = type(self)
+        clz = ButtonModel
         success: bool = False
         success = self.voice_control_name(phrases)
         if self.topic is None:
-            return self.get_heading_without_topic(phrases)
+            return self.voice_heading_without_topic(phrases)
 
         success = self.voice_labeled_by(phrases)
         clz._logger.debug(f'voice_labeled_by: {success}')
@@ -159,12 +176,12 @@ class ButtonModel(BaseLabelModel):
         return success
 
     def voice_button_label(self, phrases, control_id_expr: int | str | None = None) -> bool:
-        clz = type(self)
+        clz = ButtonModel
         # Control ID should be an integer
         success: bool = False
         control_id: int = -1
         if control_id_expr is not None:
-            control_id = self.get_non_negative_int(control_id_expr)
+            control_id = BaseModel.get_non_negative_int(control_id_expr)
         else:
             control_id = self.control_id
 
@@ -195,8 +212,11 @@ class ButtonModel(BaseLabelModel):
         return success
 
     def __repr__(self) -> str:
-        clz = type(self)
-        clz = type(self)
+        return self.to_string(include_children=False)
+
+    def to_string(self, include_children: bool = False):
+        clz = ButtonModel
+        clz = ButtonModel
         description_str: str = ''
 
         if self.description != '':
@@ -246,9 +266,10 @@ class ButtonModel(BaseLabelModel):
                        f'\n #children: {len(self.children)}')
         results.append(result)
 
-        for child in self.children:
-            child: BaseParser
-            results.append(str(child))
+        if include_children:
+            for child in self.children:
+                child: BaseParser
+                results.append(str(child))
         results.append(f'END ButtonModel')
 
         return '\n'.join(results)

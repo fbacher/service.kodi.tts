@@ -173,7 +173,7 @@ class Driver(BaseServices):
                         phrases_new: PhraseList = PhraseList(check_expired=False)
                         phrase_new: Phrase = phrase.clone(check_expired=False)
                         phrases_new.append(phrase_new)
-                        self.seed_text_cache(active_engine, phrases_new)
+                        self._seed_text_cache(active_engine, phrases_new)
                         # Mark original phrase as being downloaded
                         phrase.set_download_pending()
                         generator: ISpeechGenerator = active_engine.get_speech_generator()
@@ -281,8 +281,8 @@ class Driver(BaseServices):
             clz._logger.exception('')
         return False
 
-    def seed_text_cache(self, active_engine: BaseEngineService,
-                        phrases_arg: PhraseList) -> None:
+    def _seed_text_cache(self, active_engine: BaseEngineService,
+                         phrases_arg: PhraseList) -> None:
         clz = type(self)
         Monitor.exception_on_abort(timeout=0.01)
         try:

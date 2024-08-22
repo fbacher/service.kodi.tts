@@ -11,6 +11,8 @@ from gui.element_parser import (BaseElementParser,
 from gui.parse_group import ParseGroup
 from gui.parse_scrollbar import ScrollbarParser
 from gui.parse_topic import ParseTopic
+from gui.scrollbar_no_topic_model import NoScrollbarTopicModel
+from gui.scrollbar_topic_model import ScrollbarTopicModel
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -37,7 +39,12 @@ class ScrollbarModel(BaseModel):
         self.on_focus_expr: str = parsed_scrollbar.on_focus_expr
         # self.on_info_expr: str = ''
         self.on_unfocus_expr: str = parsed_scrollbar.on_unfocus_expr
-        self.children: List[BaseModel] = []
+
+        if parsed_scrollbar.topic is not None:
+            model_handler: Callable[[BaseModel, BaseModel, BaseParser], BaseModel]
+            self.topic = ScrollbarTopicModel(self, parsed_scrollbar.topic)
+        else:
+            self.topic = NoScrollbarTopicModel(self)
 
         self.convert_children(parsed_scrollbar)
 
@@ -52,9 +59,9 @@ class ScrollbarModel(BaseModel):
         clz = type(self)
 
         if parsed_scrollbar.topic is not None:
-            model_handler: Callable[[BaseModel, BaseModel, BaseParser], BaseModel]
-            model_handler = ElementHandler.get_model_handler(ParseTopic.item)
-            self.topic = model_handler(self, parsed_scrollbar.topic)
+            self.topic = ScrollbarTopicModel(self, parsed_scrollbar.topic)
+        else:
+            self.topic = NoScrollbarTopicModel(self)
 
         clz._logger.debug(f'# parsed children: {len(parsed_scrollbar.get_children())}')
         parsers: List[BaseParser] = parsed_scrollbar.get_children()
@@ -62,13 +69,22 @@ class ScrollbarModel(BaseModel):
         for parser in parsers:
             parser: BaseParser
             # clz._logger.debug(f'parser: {parser}')
-            model_handler:  Callable[[BaseModel, BaseParser], BaseModel]
+            model_handler:  Callable[[BaseModel, BaseModel, BaseParser], BaseModel]
             # clz._logger.debug(f'About to create model from {parser.item}')
             model_handler = ElementHandler.get_model_handler(parser.item)
             child_model: BaseModel = model_handler(self, parser)
             self.children.append(child_model)
 
     def __repr__(self) -> str:
+        return self.to_string(include_children=False)
+
+    def to_string(self, include_children: bool = False) -> str:
+        """
+        Convert self to a string.
+
+        :param include_children:
+        :return:
+        """
         clz = type(self)
         # Remove:  has_path, label, scroll, action
         # Verify removal: onfocus, onup, enable etc.
@@ -124,8 +140,9 @@ class ScrollbarModel(BaseModel):
                        )
         results.append(result)
 
-        for child in self.children:
-            child: BaseModel
-            results.append(str(child))
+        if include_children:
+            for child in self.children:
+                child: BaseModel
+                results.append(str(child))
 
         return '\n'.join(results)

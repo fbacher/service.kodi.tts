@@ -44,11 +44,12 @@ class SettingsProperties:  # (ISettings):
     AUTO_ITEM_EXTRA_DELAY: Final[str] = 'auto_item_extra_delay'
     ENGINE: Final[str] = 'engine'
     ENGINE_DEFAULT: Final[str] = AUTO_ID
+    EXTENDED_HELP_ON_STARTUP: Final[str] = 'extended_help_on_startup'
     BACKGROUND_PROGRESS_INTERVAL: Final[str] = 'background_progress_interval'
     CACHE_PATH: Final[str] = 'cache_path'
     CACHE_EXPIRATION_DAYS: Final[str] = 'cache_expiration_days'
     CACHE_SPEECH: Final[str] = 'cache_speech'
-    CACHE_VOICE_FILES: Final[str] = 'cache_voice_files'
+    #  CACHE_VOICE_FILES: Final[str] = 'cache_voice_files'
     CAPITAL_RECOGNITION: Final[str] = 'capital_recognition'
     CHANNELS: Final[str] = 'channels'
     CONVERTER: Final[str] = 'converter'
@@ -60,6 +61,7 @@ class SettingsProperties:  # (ISettings):
     GENDER: Final[str] = 'gender'
     GENDER_VISIBLE: Final[str] = 'gender_visible'
     GUI: Final[str] = 'gui'
+    HINT_TEXT_ON_STARTUP: Final[str] = 'hint_text_on_startup'
     LANGUAGE: Final[str] = 'language'
     MODULE: Final[str] = 'module'
     OUTPUT_VIA: Final[str] = 'output_via'
@@ -133,12 +135,14 @@ class SettingsProperties:  # (ISettings):
         DISABLE_BROKEN_SERVICES,
         SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA,
         SPEAK_BACKGROUND_PROGRESS,
-        CACHE_VOICE_FILES,
+        #  CACHE_VOICE_FILES,
         ADDONS_MD5,
         # DEBUG_LOGGING,    #  Boolean needed to toggle visibility
         DEBUG_LOG_LEVEL,  #  Merge into Logging, get rid of verbose_logging, etc
+        EXTENDED_HELP_ON_STARTUP,
         GENDER_VISIBLE,
         GUI,
+        HINT_TEXT_ON_STARTUP,
         OUTPUT_VIA,
         OUTPUT_VISIBLE,
         OVERRIDE_POLL_INTERVAL,
@@ -189,7 +193,7 @@ class SettingsProperties:  # (ISettings):
         CACHE_PATH,
         CACHE_EXPIRATION_DAYS,
         CACHE_SPEECH,
-        CACHE_VOICE_FILES,
+        #  CACHE_VOICE_FILES, Not used
         CAPITAL_RECOGNITION,
         CHANNELS,
         CONVERTER,
@@ -197,9 +201,11 @@ class SettingsProperties:  # (ISettings):
         DEBUG_LOG_LEVEL,
         DELAY_VOICING,
         DISABLE_BROKEN_SERVICES,
+        EXTENDED_HELP_ON_STARTUP,
         GENDER,
         GENDER_VISIBLE,
         GUI,
+        HINT_TEXT_ON_STARTUP,
         LANGUAGE,
         MODULE,
         OUTPUT_VIA,
@@ -254,11 +260,12 @@ class SettingsProperties:  # (ISettings):
             cls.AUTO_ITEM_EXTRA                       : SettingType.BOOLEAN_TYPE,
             cls.AUTO_ITEM_EXTRA_DELAY                 : SettingType.INTEGER_TYPE,
             cls.ENGINE                                : SettingType.STRING_TYPE,
+            cls.EXTENDED_HELP_ON_STARTUP              : SettingType.BOOLEAN_TYPE,
             cls.BACKGROUND_PROGRESS_INTERVAL          : SettingType.INTEGER_TYPE,
             cls.CACHE_PATH                            : SettingType.STRING_TYPE,
             cls.CACHE_EXPIRATION_DAYS                 : SettingType.INTEGER_TYPE,
             cls.CACHE_SPEECH                          : SettingType.BOOLEAN_TYPE,
-            cls.CACHE_VOICE_FILES                     : SettingType.BOOLEAN_TYPE,
+            #  cls.CACHE_VOICE_FILES                     : SettingType.BOOLEAN_TYPE,
             cls.CAPITAL_RECOGNITION                   : SettingType.BOOLEAN_TYPE,
             cls.CHANNELS                              : SettingType.STRING_TYPE,
             cls.CONVERTER                             : SettingType.STRING_TYPE,
@@ -268,6 +275,7 @@ class SettingsProperties:  # (ISettings):
             cls.GENDER                                : SettingType.STRING_TYPE,
             cls.GENDER_VISIBLE                        : SettingType.BOOLEAN_TYPE,
             cls.GUI                                   : SettingType.BOOLEAN_TYPE,
+            cls.HINT_TEXT_ON_STARTUP                  : SettingType.BOOLEAN_TYPE,
             cls.LANGUAGE                              : SettingType.STRING_TYPE,
             cls.MODULE                                : SettingType.STRING_TYPE,
             cls.OUTPUT_VIA                            : SettingType.STRING_TYPE,

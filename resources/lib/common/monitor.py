@@ -608,7 +608,6 @@ class Monitor(MinimalMonitor):
         :return: True when abort has been requested,
             False if a timeout is given and the operation times out.
 
-        New function added.
         """
         FOREVER = 24 * 60 * 60 * 365  # A year
         if timeout is None or timeout < 0.0:

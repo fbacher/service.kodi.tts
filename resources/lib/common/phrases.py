@@ -9,6 +9,7 @@ import pathlib
 import re
 import sys
 from collections import UserList
+from os import stat_result
 from pathlib import Path
 
 try:
@@ -40,13 +41,15 @@ class Phrase:
     When caching is not used, then phrases be merged with other non-interrupting
     phrases.
     """
-    PAUSE_NORMAL: int = 50
     PAUSE_DEFAULT: int = 0
     PAUSE_WORD: int = 0
     PAUSE_SENTENCE: int = 0
     PAUSE_PARAGRAPH: int = 0
-    PAUSE_SHORT: int = 45
+    PAUSE_SHORT: int = 10
+    PAUSE_NORMAL: int = 20
     PAUSE_LONG: int = 145
+    PAUSE_PRE_HINT: int = 145
+    PAUSE_POST_HINT: int = 145
 
     available_pauses: List[int] = [
         45,
@@ -343,8 +346,29 @@ class Phrase:
         self.test_expired()
         return self.cache_path
 
-    def exists(self) -> bool:
+    def cache_path_exists(self) -> bool:
+        """
+        Convenience method that tests for empty path as well as existance
+
+        :return:
+        """
         self.test_expired()
+        return self.cache_path.exists()
+
+    def exists(self) -> bool:
+        clz = type(self)
+        self.test_expired()
+        text: str = self.get_text()
+        voice_file_path: pathlib.Path = self.get_cache_path()
+        try:
+            text_file: pathlib.Path | None
+            text_file = voice_file_path.with_suffix('.txt')
+            exists: bool = text_file.is_file()
+            size: int = text_file.stat().st_size
+            clz._logger.debug(f'path: {text_file} exists: {exists} size: {size} '
+                              f'text: {text}')
+        except:
+            clz._logger.exception('')
         return self._exists
 
     def set_exists(self, exists: bool) -> None:
@@ -462,7 +486,7 @@ class Phrase:
         if text.endswith(')'):  # Skip this most of the time
             # For boolean settings
             text = Messages.format_boolean(text, enabled_msgid=Messages.ENABLED.get_msg_id(),
-                                             disabled_msgid= Messages.DISABLED.get_msg_id())
+                                           disabled_msgid=Messages.DISABLED.get_msg_id())
         return text
 
     @classmethod
@@ -646,7 +670,8 @@ class PhraseList(UserList):
                         cls._logger.debug_extra_verbose(
                                 f'# fragment: {fragment} pre_pause: {pre_pause}')
                     phrase: Phrase = Phrase(text=fragment, preload_cache=preload_cache,
-                                            pre_pause_ms=pre_pause)
+                                            pre_pause_ms=pre_pause,
+                                            check_expired=phrases.check_expired)
 
                     # Every fragment indicates a pause for next fragment
                     pre_pause = Phrase.PAUSE_NORMAL
@@ -788,10 +813,18 @@ class PhraseList(UserList):
         it is put into the voicing pipeline avoids this problem.
         :return:
         """
+        self.set_check_expired(True)
+
+    def set_check_expired(self, check_expired: bool):
         p: Phrase
         for p in self.data:
-            p.check_expired = True
-        self.check_expired = True
+            p.check_expired = check_expired
+        self.check_expired = check_expired
+
+    def _reset_serial_number(self) -> None:
+        clz = type(self)
+        clz.global_serial_number += 1
+        self.serial_number: int = clz.global_serial_number
 
     def set_all_preload_cache(self, preload: bool) -> None:
         p: Phrase
@@ -839,16 +872,30 @@ class PhraseList(UserList):
             self.data[0]._set_interrupt(interrupt)
 
     def equal_text(self, other: PhraseList) -> bool:
-        if other is None:
-            return False
-
-        if not isinstance(other, PhraseList):
-            return False
-        if len(self) != len(other):
-            return False
-        for p in range(0, len(self)):
-            if not self[p].get_text() == other[p].get_text():
+        clz = PhraseList
+        try:
+            if other is None:
                 return False
+
+            if not isinstance(other, PhraseList):
+                return False
+            if len(self) != len(other):
+                return False
+            for p in range(0, len(self)):
+                try:
+                    if not self[p].get_text() == other[p].get_text():
+                        return False
+                except ExpiredException:
+                    clz._logger.debug(f'check_expired_p: {self[p].check_expired}\n'
+                                      f'other_check_expired_p {other[p].check_expired} ')
+                    reraise(*sys.exc_info())
+        except ExpiredException:
+            clz._logger.debug(f'check_expired: {self.check_expired} '
+                              f'global: {clz.global_serial_number} '
+                              f'serial: {self.serial_number} '
+                              f'other check: {other.check_expired} '
+                              f'other serial: {other.serial_number}')
+            reraise(*sys.exc_info())
         return True
 
     def contains(self, other: str | Phrase | PhraseList) -> bool:
@@ -1021,6 +1068,8 @@ class PhraseList(UserList):
             raise ExpiredException()
         if item.is_expired():
             raise ExpiredException()
+        item.check_expired = self.check_expired
+        item.serial_number = self.serial_number
         return self.data.append(item)
 
     def insert(self, i: int, item: Phrase) -> None:
@@ -1028,6 +1077,8 @@ class PhraseList(UserList):
             raise TypeError('Expected a Phrase')
         if self.is_expired() and self.check_expired:
             raise ExpiredException()
+        item.check_expired = self.check_expired
+        item.serial_number = self.serial_number
         return super().insert(i, item)
 
     def pop(self, i: int = ...) -> Phrase:
@@ -1070,9 +1121,27 @@ class PhraseList(UserList):
             raise ExpiredException()
         return super().sort(*args, **kwds)
 
-    def extend(self, other: Iterable[Phrase], no_check: bool = False) -> None:
-        if not no_check and self.is_expired() and self.check_expired:
+    def extend(self, other: Iterable[Phrase], check: bool = False,
+               copy: bool = True) -> None:
+        """
+            Append all Phrases in other to this PhraseList.
+
+            All phrases added will have their expiration and
+            serial numbers reset to this PhraseList
+        :param other:  The PhraseList to append to this list
+        :param check: Do not check for expiration during copy
+        :param copy: Append copies of each phrase instead of copying
+                     (Ensures that two lists don't share the same phrases
+                      and clobber each other's serial_numbers and expiration
+                      checks).
+        :return:
+        """
+        if check and self.is_expired() and self.check_expired:
             raise ExpiredException()
+        for phrase in other:
+            new_phrase: Phrase = phrase.clone(self.check_expired)
+            phrase.check_expired = self.check_expired
+            phrase.serial_number = self.serial_number
         return self.data.extend(other)
 
     def is_empty(self) -> bool:

@@ -9,7 +9,7 @@ from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
                                           IntValidator, NumericValidator, StringValidator)
 from common.logger import BasicLogger
-from common.phrases import PhraseList
+from common.phrases import Phrase, PhraseList
 from common.settings import Settings
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -29,14 +29,16 @@ class IServices:
 
     # Few engines implement
 
-    def seed_text_cache(self, active_engine: ForwardRef("BaseServices"),
-                        phrases_arg: PhraseList) -> None:
+    def seed_text_cache(self, phrases: PhraseList) -> None:
         raise NotImplementedError()
 
     def getVolumeDb(self) -> float:
         raise NotImplementedError()
 
     def getVolume(self) -> float:
+        raise NotImplementedError()
+
+    def say_phrase(self, phrase: Phrase) -> None:
         raise NotImplementedError()
 
 

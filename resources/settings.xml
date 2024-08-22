@@ -21,6 +21,16 @@
                     <default>true</default>
                     <control type="toggle"/>
                 </setting>
+                 <setting help="" id="hint_text_on_startup.tts" label="32812" type="boolean">
+                    <level>4</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                </setting>
+                <setting help="" id="extended_help_on_startup.tts" label="32813" type="boolean">
+                    <level>4</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                </setting>
                 <setting help="" id="disable_broken_services.tts" label="32045"
                          type="boolean">
                     <level>4</level>
@@ -44,11 +54,6 @@
                     <control format="integer" type="slider">
                         <popup>false</popup>
                     </control>
-                </setting>
-                <setting help="" id="cache_voice_files.tts" label="32206" type="boolean">
-                    <level>4</level>
-                    <default>true</default>
-                    <control type="toggle"/>
                 </setting>
                 <setting help="" id="cache_path.tts" label="32207"
                          type="path">
@@ -211,6 +216,17 @@
                     </control>
                     <visible>true</visible>
                 </setting>
+                  <setting help="" id="player_mode.eSpeak" label="32178" type="string">
+                    <level>4</level>
+                      <constraints>
+                        <allowempty>false</allowempty>
+                    </constraints>
+                    <default>slave_file</default>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>true</visible>
+                </setting>
                 <setting help="" id="voice.eSpeak" label="32178" type="string">
                     <level>4</level>
                     <constraints>
@@ -219,6 +235,13 @@
                     <control type="edit" format="string">
                         <heading>32178</heading>
                     </control>
+                    <visible>true</visible>
+                </setting>
+                <setting help="" id="cache_speech.eSpeak" label="32178"
+                         type="boolean">
+                    <level>4</level>
+                    <default>true</default>
+                    <control type="toggle"/>
                     <visible>true</visible>
                 </setting>
                 <setting help="" id="debug_log_level.tts" label="32178" type="integer">
@@ -398,9 +421,9 @@
                 <setting help="" id="voice.google" label="32178" type="string">
                     <level>4</level>
                     <constraints>
-                        <allowempty>false</allowempty>
+                        <allowempty>true</allowempty>
                     </constraints>
-                    <default>mildred</default>
+                    <default>un-gb</default>
                     <control type="edit" format="string">
                         <heading>32178</heading>
                     </control>

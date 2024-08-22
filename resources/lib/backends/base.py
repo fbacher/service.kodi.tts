@@ -70,7 +70,7 @@ class EngineQueue:
         # active_queue is True as long as there is a configured active_queue engine
 
         self.active_queue: bool = False
-        self.tts_queue = queue.Queue(50)
+        self.tts_queue: queue.Queue = queue.Queue(50)
         self._threadedIsSpeaking = False  # True if engine is ThreadedTTSBackend
         self.queue_processor: threading.Thread | None = None
 
@@ -148,7 +148,7 @@ class EngineQueue:
 
     @classmethod
     def empty_queue(cls):
-        cls._logger.debug(f'empty_queue')
+        # cls._logger.debug(f'empty_queue')
         try:
             while True:
                 cls._instance.tts_queue.get_nowait()
@@ -170,8 +170,8 @@ class EngineQueue:
         try:
             cls._logger.debug(f'phrase: {phrases[0].get_text()} '
                               f'Engine: {engine.service_ID} '
-                              f'Interrupt: {phrases[0].get_interrupt()}')
-            cls._logger.debug(f'{phrases[0].debug_data()}')
+                              f'Interrupt: {phrases[0].get_interrupt()}'
+                              f' debug: {phrases[0].debug_data()}')
         except ExpiredException:
             cls._logger.debug('EXPIRED')
         try:
@@ -1008,8 +1008,11 @@ class SimpleTTSBackend(ThreadedTTSBackend):
         """
         raise NotImplementedError()
 
+    def say_phrase(self, phrase: Phrase) -> None:
+        return super().say_phrase(phrase)
+
     def get_cached_voice_file(self, phrase: Phrase,
-                        generate_voice: bool = True) -> bool:
+                              generate_voice: bool = True) -> bool:
         """
         Assumes that cache is used. Normally missing voiced files is placed in
         the cache by an earlier step, but can be initiated here as well.

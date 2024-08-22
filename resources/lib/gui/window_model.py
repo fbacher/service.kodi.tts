@@ -6,11 +6,11 @@ import xbmc
 import xbmcgui
 
 from common.logger import BasicLogger, DEBUG_VERBOSE
-from common.messages import Messages
-from common.phrases import Phrase, PhraseList
+from common.phrases import PhraseList
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
-from gui.base_tags import control_elements, ControlType, ElementType, Item, WindowType
+from gui.base_tags import control_elements, ControlType, Item, WindowType
+from gui.base_topic_model import BaseTopicModel
 from gui.button_model import ButtonModel
 from gui.controls_model import ControlsModel
 from gui.edit_model import EditModel
@@ -18,15 +18,15 @@ from gui.element_parser import (ElementHandler)
 from gui.group_list_model import GroupListModel
 from gui.group_model import GroupModel
 from gui.label_model import LabelModel
-from gui.parse_topic import ParseTopic
 from gui.parse_window import ParseWindow
-from gui.base_tags import ElementKeywords as EK
 from gui.radio_button_model import RadioButtonModel
 from gui.scrollbar_model import ScrollbarModel
 from gui.slider_model import SliderModel
+from gui.statements import Statements
 from gui.topic_model import TopicModel
-from windows.ui_constants import AltCtrlType
-from windows.window_state_monitor import WinDialog, WinDialogState, WindowStateMonitor
+from gui.window_no_topic_model import NoWindowTopicModel
+from gui.window_topic_model import WindowTopicModel
+from windows.window_state_monitor import WinDialogState, WindowStateMonitor
 
 ElementHandler.add_model_handler(ControlsModel.item, ControlsModel)
 ElementHandler.add_model_handler(GroupModel.item, GroupModel)
@@ -37,7 +37,7 @@ ElementHandler.add_model_handler(GroupListModel.item, GroupListModel)
 ElementHandler.add_model_handler(ScrollbarModel.item, ScrollbarModel)
 ElementHandler.add_model_handler(EditModel.item, EditModel)
 ElementHandler.add_model_handler(SliderModel.item, SliderModel)
-ElementHandler.add_model_handler(TopicModel.item, TopicModel)
+# ElementHandler.add_model_handler(OldTopicModel.item, OldTopicModel)
 
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -49,7 +49,7 @@ class WindowModel(BaseModel):
     item: Item = control_elements[ControlType.WINDOW.name]
 
     def __init__(self, parsed_window: ParseWindow) -> None:
-        clz = type(self)
+        clz = WindowModel
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz.__class__.__name__)
         super().__init__(window_model=self, parser=parsed_window)
@@ -60,35 +60,18 @@ class WindowModel(BaseModel):
         # has changed.
 
         self.changed: bool = True
-        self.focused_topic_id: str = ""
-        self.focus_id: int = -1
+        self._windialog_state: WinDialogState = WinDialogState()
 
         self.window_type: WindowType = parsed_window.window_type
         self.win_or_dialog: xbmcgui.Window | xbmcgui.WindowDialog
-        self.win_dialog_id: int = -1
-        if WinDialogState.current_windialog == WinDialog.WINDOW:
-            self.win_or_dialog_id = WinDialogState.current_window_id
-            self.win_or_dialog = WinDialogState.current_window_instance
-        else:
-            self.win_or_dialog_id = WinDialogState.current_dialog_id
-            self.win_or_dialog = WinDialogState.current_dialog_instance
-
+        self.win_dialog_id: int = WindowStateMonitor.previous_chosen_state.window_id
+        self.win_or_dialog = WindowStateMonitor.previous_chosen_state.window_instance
         self.window_title_id: int = parsed_window.window_title_id
         self.default_control_id: str = parsed_window.default_control_id
-        self.window_modality: str = parsed_window.window_modality   # Only dialogs
+        self.window_modality: str = parsed_window.window_modality  # Only dialogs
         self.menu_control: int = parsed_window.menu_control
         self.visible_expr: str = parsed_window.visible_expr
         self.tts: str = parsed_window.tts
-        self.children: List[BaseModel] = []
-
-        '''
-          Track what we have voiced so we don't repeat unless the context has
-          changed. The window basically just has a window heading to track.
-        '''
-        self.previous_heading: PhraseList = PhraseList()
-
-        # Each control can have one Topic
-        # self.topic: TopicModel = None
 
         """
             All Topics in this window. The first one is for this control
@@ -109,7 +92,7 @@ class WindowModel(BaseModel):
             Map of all Controls in Window, which have a control_id
             Many controls don't have a control_id
         """
-        self.control_id_map: Dict[int, BaseModel] = {}
+        self.model_for_control_id: Dict[int, BaseModel] = {}
 
         self.best_alt_label: str = ''
         self.best_hint_text: str = ''
@@ -122,7 +105,13 @@ class WindowModel(BaseModel):
         # control = window.getControl(100)
         # clz._logger.debug(f'control label: {control.getLabel()}')
 
+        # Now, covert all controls that have been previously parsed into models.
+        # Uses depth-first search though the controls
+
         self.convert_controls(parsed_window)
+
+        # Now, build the dictionary for the tree of controls.
+
         self.build_control_tree(window=self, level=0)
         parents: List[BaseModel] = [self]
         self.build_parent_list_map(self, parents)
@@ -135,13 +124,16 @@ class WindowModel(BaseModel):
         #  parsed_window.parsers: List[BaseElementParser] = []
 
     def convert_controls(self, parsed_window: ParseWindow) -> None:
-        clz = type(self)
+        clz = WindowModel
         children: List[BaseParser] = []
         # parsers: List[BaseParser] = parsed_window.parsers
         # clz._logger.debug(f'# children: {len(parsed_window.children)}')
 
         if parsed_window.topic is not None:
-            self.topic = TopicModel(self, parsed_window.topic)
+            self.topic = WindowTopicModel(parent=self, parsed_topic=parsed_window.topic)
+        else:
+            self.topic = NoWindowTopicModel(self)
+
         for child in parsed_window.children:
             child: BaseParser
             #  clz._logger.debug(f'About to create model from window{child}')
@@ -180,7 +172,7 @@ class WindowModel(BaseModel):
         """
          Every control has a list of all it's direct children. In addition, every
          control has a link to its parent. Assign a unique ID to every control 
-         Controls are NOT required to have ids. Ids are ultimately positive integers,
+         Controls are NOT is_required to have ids. Ids are ultimately positive integers,
          but names can be used. For those without an assigned ID, label them 
          according to their tree depth and their index in the list of children 
          for their parent. In other words, if a Node is contained in a group
@@ -190,7 +182,7 @@ class WindowModel(BaseModel):
          the tree_id: str field. For controls which already have ids, the 
          control_id will be copied to tree_id.
         """
-        clz = type(self)
+        clz = WindowModel
         # Window control ALWAYS has an ID. Tree_id assigned in constructor
         level: int = 0
         if self.control_id >= 0:
@@ -208,22 +200,38 @@ class WindowModel(BaseModel):
             #  clz._logger.debug(f'child: {type(child)} tree_id: {child.tree_id}')
             child.build_control_tree(self, level=level)
             child_idx += 1
-            clz._logger.debug(f'isinstance of TopicModel: {isinstance(child, TopicModel)} '
+            clz._logger.debug(f'isinstance of TopicModel: {isinstance(child, 
+            TopicModel)} '
                               f'type: {type(child)} parent: {type(self)}')
             if isinstance(child, TopicModel):
                 self.topics.append(child)
     '''
 
-    def set_changed(self, changed: int, focused_topic_id: str, focus_id: str) -> None:
+    @property
+    def window_model(self) -> ForwardRef('WindowModel'):
+        return self
+
+    @property
+    def windialog_state(self) -> WinDialogState:
+        return self._windialog_state
+
+    @property
+    def focus_changed(self) -> bool:
+        return self._windialog_state.focus_changed
+
+    @property
+    def root_topic(self) -> TopicModel | None:
+        if len(self.topics) == 0:
+            return None
+        return self.topics[0]
+
+    def set_changed(self, changed: int, windialog_state: WinDialogState) -> None:
         self.changed: int = changed
-        self.focused_topic_id: str = focused_topic_id
-        self.focus_id: str = focus_id
+        self._windialog_state: WinDialogState = windialog_state
 
-    def clear_history(self) -> None:
-        self.previous_heading.clear()
-
-    def voice_control(self, phrases: PhraseList,
-                      focus_changed: bool) -> bool:
+    def voice_control(self, stmts: Statements,
+                      focus_changed: bool,
+                      windialog_state: WinDialogState) -> bool:
         """
         Generate the speech for the window itself. Takes into account
         whether this was previously voiced.
@@ -239,64 +247,54 @@ class WindowModel(BaseModel):
         In the case of a Window/Dialog, the voiced content comes from the
         Window's 'header'. Other controls have other logical sections.
 
-        :param phrases:
+        :param stmts: Statements to append to
         :param focus_changed: If True, then voice changed heading, labels and all
                               If False, then only voice a change in value.
-        :return:
+        :param windialog_state: contains some useful state information
+        :return: True if anything appended to stmts, otherwise False
         """
-        clz = type(self)
+        clz = WindowModel
         success: bool = False
         # Only voice when window is newly changed
         # TODO: improve by taking into account when window voicing fails to occur
         # such as when there is an interruption (focus change occurs before this
         # window info is announced, causing the window not being announced when
         # focus change announced).
-        clz._logger.debug(f'changed: {self.changed}')
-        if not (self.changed & (WindowStateMonitor.DIALOG_CHANGED or
-                                WindowStateMonitor.WINDOW_CHANGED)):
-            return True
-
-        if self.topic is not None:
-            topic: TopicModel = self.topic
-            clz._logger.debug(f'topic: {topic.alt_type}')
-            if topic.alt_type in (AltCtrlType.DIALOG, AltCtrlType.WINDOW):
-                temp_phrases: PhraseList = PhraseList()
-                success = self.voice_heading(temp_phrases)
-                if not self.previous_heading.equal_text(temp_phrases):
-                    self.previous_heading.clear()
-                    self.previous_heading.extend(temp_phrases)
-                    phrases.extend(temp_phrases)
+        clz._logger.debug(f'changed: {windialog_state.changed}')
+        if not windialog_state.window_changed:
+            return False
         # TODO, incomplete
         return success
 
-    def voice_heading(self, phrases: PhraseList) -> bool:
+    def voice_heading(self, stmts: Statements) -> bool:
         """
         Generate the speech for the window header. Takes into account
         whether this header was previously voiced.
-        :param phrases:
+        :param stmts:
         :return:
         """
-        clz = type(self)
+        clz = WindowModel
         success: bool = False
         control_name: str = ''
         topic: TopicModel = self.topic
-        success = self.voice_control_name(phrases)
+        success = self.voice_control_name(stmts)
         if topic is not None:
-            success = self.voice_labeled_by(phrases)
+            clz._logger.debug(f'topic: {topic.name} real: {topic.is_real_topic} '
+                              f'new: {topic.is_new_topic} type: {type(topic)}')
+            if topic.is_real_topic and topic.is_new_topic:
+                topic: BaseTopicModel
+                success = topic.voice_topic_heading(stmts)
+            #  success = topic.voice_labeled_by(stmts)
         if not success:
-            success = self.voice_heading_without_topic(phrases)
+            success = self.voice_control_heading(stmts)
         return success
-
-    def voice_heading_without_topic(self, phrases: PhraseList) -> bool:
-        phrases.append(Phrase(text='get_heading_without_text not implemented'))
-        return True
 
     def build_parent_list_map(self, parent: BaseModel, parents: List[BaseModel]):
         """
         This time, record the parent chain for each child
         """
 
-        clz = type(self)
+        clz = WindowModel
         self.control_stack_map[parent.tree_id] = parents
         #  clz._logger.debug(f'parents: # {len(parents)}')
         for child in parent.children:
@@ -312,10 +310,13 @@ class WindowModel(BaseModel):
         :param control_id_expr:
         :return:
         """
-        control_id: int = self.get_non_negative_int(control_id_expr)
+        clz = WindowModel
+        control_id: int = BaseModel.get_non_negative_int(control_id_expr)
         if control_id < 0:
             return None
-        return self.control_id_map.get(control_id)
+        clz._logger.debug(f'control_id: {control_id}')
+        result = self.model_for_control_id.get(control_id)
+        return result
 
     def get_control_model_by_tree_id(self, tree_id: str) -> BaseModel | None:
         return self.window_id_map.get(tree_id)
@@ -337,7 +338,10 @@ class WindowModel(BaseModel):
         previously_voiced: BaseModel = None
 
     def __repr__(self) -> str:
-        clz = type(self)
+        return self.to_string(include_children=False)
+
+    def to_string(self, include_children: bool = False) -> str:
+        clz = WindowModel
         result: str = ''
 
         #  Start with this window
@@ -368,10 +372,11 @@ class WindowModel(BaseModel):
         results.append(f'{topic_str}')
 
         results.append(f' # children: {len(self.children)}')
-        for control in self.children:
-            control: BaseModel
-            result: str = str(control)
-            results.append(result)
+        if include_children:
+            for control in self.children:
+                control: BaseModel
+                result: str = control.to_string(include_children)
+                results.append(result)
 
         results.append('\nFinete')
         return '\n'.join(results)

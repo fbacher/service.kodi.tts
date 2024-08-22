@@ -152,26 +152,19 @@ class SimpleRunCommand:
                         self.run_state = next_state
                         break
                     # Are we trying to kill it?
-                    if (
-                            check_serial and self.phrase_serial <
+                    if (check_serial and self.phrase_serial <
                             PhraseList.expired_serial_number):
                         # Yes, initiate terminate/kill of process
                         check_serial = False
                         countdown = True
-                        clz.logger.debug(f'Expired, terminating {self.phrase_serial} '
+                        clz.logger.debug(f'Expired, kill {self.phrase_serial} '
                                          f'{self.args[0]}',
                                          trace=Trace.TRACE_AUDIO_START_STOP)
-                        self.process.terminate()
-                        next_state = RunState.TERMINATED
-                    if countdown and kill_countdown > 0:
-                        kill_countdown -= 1
-                    elif kill_countdown == 0:
+                        try:
+                            self.process.kill()
+                        except Exception:
+                            pass
                         next_state = RunState.KILLED
-                        clz.logger.debug(
-                            f'Terminate not working, Killing {self.phrase_serial} '
-                            f'{self.args[0]}',
-                            trace=Trace.TRACE_AUDIO_START_STOP)
-                        self.process.kill()
                         break
                 except subprocess.TimeoutExpired:
                     #  Only indicates the timeout is expired, not the run state
@@ -197,22 +190,11 @@ class SimpleRunCommand:
 
             if not self.cmd_finished:
                 # Shutdown in process
-                clz.logger.debug(f'SHUTDOWN, START KILL COMMAND {self.phrase_serial} '
-                                 f'{self.args[0]}',
-                                 trace=Trace.TRACE_SHUTDOWN)
-                self.process.kill()  # SIGKILL. Should cause stderr & stdout to exit
-                while not Monitor.wait_for_abort(timeout=0.1):
-                    try:
-                        rc = self.process.poll()
-                        if rc is not None:
-                            self.rc = rc
-                            self.cmd_finished = True
-                            clz.logger.debug(f'KILLED COMMAND {self.phrase_serial} '
-                                             f'{self.args[0]} rc: {rc}',
-                                             trace=Trace.TRACE_AUDIO_START_STOP)
-                            break  # Complete
-                    except subprocess.TimeoutExpired:
-                        pass
+                try:
+                    self.process.kill()
+                except Exception:
+                    pass
+                next_state = RunState.KILLED
                 self.rc = 99
 
             self.cleanup()
@@ -229,6 +211,10 @@ class SimpleRunCommand:
             if self.rc is None or self.rc != 0:
                 self.log_output()
         except AbortException:
+            try:
+                self.process.kill()  # SIGKILL. Should cause stderr & stdout to exit
+            except Exception:
+                pass
             self.rc = 99  # Thread will exit very soon
         finally:
             Monitor.unregister_abort_listener(self.abort_listener)
@@ -287,8 +273,10 @@ class SimpleRunCommand:
     def stderr_reader(self):
         GarbageCollector.add_thread(self.stderr_thread)
         if Monitor.is_abort_requested():
-            self.process.kill()
-
+            try:
+                self.process.kill()
+            except Exception:
+                pass
         clz = type(self)
         finished = False
         try:
@@ -315,6 +303,12 @@ class SimpleRunCommand:
         except Exception as e:
             clz.logger.exception('')
             return
+
+        try:
+            if self.process.stderr is not None:
+                self.process.stderr.close()
+        except Exception:
+            pass
 
     def stdout_reader(self):
         clz = type(self)
@@ -343,6 +337,11 @@ class SimpleRunCommand:
             return
         except Exception as e:
             clz.logger.exception('')
+        try:
+            if self.process.stdout is not None:
+                self.process.stdout.close()
+        except Exception:
+            pass
         return
 
     def log_output(self):

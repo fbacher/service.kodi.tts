@@ -79,11 +79,7 @@ class Window:
         """
         # win = xbmcgui.Window(xbmcgui.getCurrentWindowId())
         #  win: xbmcgui.Window = xbmcgui.Window(xbmcgui.getCurrentWindowId())
-        win = None
-        if WinDialogState.current_windialog == WinDialog.WINDOW:
-            win: xbmcgui.Window = WinDialogState.current_window_instance
-        else:
-            win: xbmcgui.WindowDialog = WinDialogState.current_dialog_instance
+        win: xbmcgui.Window = WindowStateMonitor.previous_chosen_state.window_instance
         property_value: str = win.getProperty(property_id)
         return property_value
 
@@ -113,7 +109,7 @@ class Window:
 
         :return: The currently active window Id
         """
-        return WinDialogState.current_win_dialog_id
+        return WindowStateMonitor.previous_chosen_state.window_id
 
     @staticmethod
     def get_current_active_dialog_id() -> int:
@@ -122,7 +118,7 @@ class Window:
 
         :return: The currently active dialog Id
         """
-        return WinDialogState.current_window_dialog_id
+        return WindowStateMonitor.previous_chosen_state.window_id
 
     @staticmethod
     def is_visible(win_dialog_id: int | str) -> bool:

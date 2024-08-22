@@ -65,7 +65,7 @@ class SlaveCommunication:
         self.thread_name = thread_name
         self.rc = 0
         self.run_state: RunState = RunState.NOT_STARTED
-        clz.logger.debug(f'run_state now NOT_STARTED')
+        # clz.logger.debug(f'run_state now NOT_STARTED')
         self.idle_on_play_video: bool = stop_on_play
         # This player is inactive due to Kodi exclusive access (ex: playing movie)
         self.tts_player_idle: bool = False
@@ -86,7 +86,7 @@ class SlaveCommunication:
         self.play_count: int = 0
 
         Monitor.register_abort_listener(self.abort_listener, name=thread_name)
-        clz.logger.debug(f'Starting slave player args: {args}')
+        # clz.logger.debug(f'Starting slave player args: {args}')
         if self.idle_on_play_video:
             KodiPlayerMonitor.register_player_status_listener(
                     self.kodi_player_status_listener,

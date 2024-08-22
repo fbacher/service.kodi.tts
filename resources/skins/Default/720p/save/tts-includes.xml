@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<includes>
+    <include name="goober">
+        <textcolor>ffffffff</textcolor>
+    </include>
+    <include file="Includes_Buttonsxx.xml" />
+    <include file="Includes_Buttonsxx.xml" />
+	<include name="TTSRadioSettingButton">
+        <param name="id"/>
+        <param name="height">70</param>
+		<param name="textoffsetx">40</param>
+        <definition>
+            <control type="radiobutton" id="$PARAM[id]">
+                <description>Default RadioButton</description>
+                <!-- <include content ="DefaultSettingButton" >-->
+                <height>$PARAM[height]</height>
+                <textoffsetx>$PARAM[textoffsetx]</textoffsetx>
+            </control>
+        </definition>
+    </include>
+</includes>

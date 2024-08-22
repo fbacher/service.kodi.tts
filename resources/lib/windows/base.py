@@ -57,9 +57,6 @@ class WindowHandlerBase:
     def service(self) -> ForwardRef('TTSService'):
         from service_worker import TTSService
         self.service_prop = TTSService.instance
-        module_logger.debug(f'TTSService engine:'
-                            f' {self.service_prop.active_backend.backend_id} '
-                            f'instance: {self.service_prop} ')
         return self.service_prop
 
     def _reset(self, win_id):

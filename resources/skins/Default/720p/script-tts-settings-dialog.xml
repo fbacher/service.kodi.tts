@@ -2,8 +2,8 @@
 <window type="dialog" tts="TTS-READER" labeled_by="1">
     <coordinates>
         <!-- window smaller than screen: 850 x 600 -->
-        <left>215</left>
-        <top>60</top>
+        <left>0</left>
+        <top>0</top>
     </coordinates>
     <topic name="header" labeled_by="1" hinttext="33100"
            alttype="DIALOG" innertopic="engine_settings"

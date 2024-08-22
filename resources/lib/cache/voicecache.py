@@ -329,7 +329,6 @@ class VoiceCache:
                         phrase.territory_dir, subdir)
             path.mkdir(mode=0o777, exist_ok=True, parents=True)
             path = path.joinpath(filename)
-            clz._logger.debug(f'NORB: cache_path: {path}')
             if path.is_dir():
                 msg = f'Ignoring cached voice file: {path}. It is a directory.'
                 path_found = False
@@ -361,16 +360,16 @@ class VoiceCache:
     @classmethod
     def create_sound_file(cls, voice_file_path: Path,
                           create_dir_only: bool = False) \
-            -> Tuple[int, IO[io.BufferedWriter] | None]:
+            -> Tuple[int, BinaryIO | None]:
         """
             Create given voice_file_path and return file handle to it
         """
 
         rc: int = 0
-        cache_file: IO[io.BufferedWriter] | None = None
+        cache_file: BinaryIO | None = None
         try:
             p = voice_file_path
-            if not os.path.exists(p.parent):
+            if not p.parent.is_dir():
                 try:
                     p.parent.mkdir(mode=0o777, parents=True, exist_ok=True)
                 except:
@@ -382,7 +381,7 @@ class VoiceCache:
                 return rc, None
 
             try:
-                cache_file = io.open(voice_file_path, mode='wb')
+                cache_file = voice_file_path.open(mode='wb')
             except Exception as e:
                 rc = 2
                 cls._logger.error(f'Can not create cache file: {voice_file_path}')
@@ -395,6 +394,7 @@ class VoiceCache:
     def clean_cache(self, purge: bool = False) -> None:
         clz = type(self)
         return
+    '''
         try:
             dummy_cached_file: str = self.get_path_to_voice_file('', '')
             cache_directory, _ = os.path.split(dummy_cached_file)
@@ -415,13 +415,17 @@ class VoiceCache:
             reraise(*sys.exc_info())
         except Exception as e:
             cls._logger.exception('')
+    '''
 
     def seed_text_cache(self, phrases: PhraseList) -> None:
-        # For engines that are expensive, it can be beneficial to cache the voice
-        # files. In addition, by saving text to the cache that is not yet
-        # voiced, then a background process can generate speech so the cache
-        # gets built more quickly
+        """
+         For engines that are expensive, it can be beneficial to cache the voice
+         files. In addition, by saving text to the cache that is not yet
+         voiced, then a background process can generate speech so the cache
+         gets built more quickly
 
+         :param phrases: phrases to have voiced in background
+        """
         clz = type(self)
         try:
             phrases = phrases.clone(check_expired=False)
@@ -431,14 +435,14 @@ class VoiceCache:
                     if not phrase.exists():
                         text: str = phrase.get_text()
                         voice_file_path: pathlib.Path = phrase.get_cache_path()
-                        clz._logger.debug_extra_verbose(f'PHRASE Text {text}')
+                        clz._logger.debug(f'PHRASE Text {text}')
                         rc: int = 0
                         try:
                             text_file: pathlib.Path | None
                             text_file = voice_file_path.with_suffix('.txt')
                             try:
-                                if os.path.isfile(text_file):
-                                    os.unlink(text_file)
+                                if text_file.is_file():
+                                    text_file.unlink()
 
                                 with open(text_file, 'wt', encoding='utf-8') as f:
                                     f.write(text)
@@ -454,7 +458,7 @@ class VoiceCache:
         except Exception as e:
             clz._logger.exception('')
 
-        self.text_referenced(phrase)
+        #  self.text_referenced(phrase)
 
     def text_referenced(self, phrase: Phrase) -> None:
         """
@@ -478,7 +482,7 @@ class VoiceCache:
                                                                 Constants.CACHE_SUFFIX)
             assert engine_code is not None, \
                 f'Can not find voice-cache dir for engine: {engine_id}'
-            cache_directory = xbmcvfs.translatePath(f'{cache_path}/{engine_code}')
+            # cache_directory = xbmcvfs.translatePath(f'{cache_path}/{engine_code}')
 
             cache_file_path = phrase.get_cache_path()
             phrase_engine_code: str = str(cache_file_path.parent.parent.parent.name)

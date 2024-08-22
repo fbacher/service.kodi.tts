@@ -16,10 +16,18 @@ from gui.base_tags import control_elements, ControlType, Item
 from gui.element_parser import (ElementHandler)
 from gui.parse_radio_button import ParseRadioButton
 from gui.parse_topic import ParseTopic
+from gui.radio_button_no_topic_model import NoRadioButtonTopicModel
+from gui.radio_button_topic_model import RadioButtonTopicModel
+from gui.statements import Statements
 from gui.topic_model import TopicModel
 from gui.window import Window
+from windows.window_state_monitor import WinDialogState
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
+
+
+class NoRadioButonTopicModel:
+    pass
 
 
 class RadioButtonModel(BaseLabelModel):
@@ -47,10 +55,7 @@ class RadioButtonModel(BaseLabelModel):
         self.alt_label_expr: str = ''
         self.hint_text_expr: str = ''
         self.on_info_expr: str = ''
-        self.children: List[BaseModel] = []
-
-        self.previous_heading: PhraseList = PhraseList()
-        self.previous_text_value: str = ''
+        self._children: List[BaseModel] = []
 
         self.convert(parsed_radio_button)
 
@@ -63,8 +68,7 @@ class RadioButtonModel(BaseLabelModel):
         :return:
         """
         clz = type(self)
-        self.control_type = parsed_radio_button.control_type
-        self.control_id = parsed_radio_button.control_id
+        self._control_type = parsed_radio_button.control_type
         self.description = parsed_radio_button.description
         self.enable_expr = parsed_radio_button.enable_expr
         self.label2_expr = parsed_radio_button.label2_expr
@@ -82,12 +86,13 @@ class RadioButtonModel(BaseLabelModel):
 
         if parsed_radio_button.topic is not None:
             model_handler: Callable[[BaseModel, BaseModel, BaseParser], BaseModel]
-            model_handler = ElementHandler.get_model_handler(ParseTopic.item)
-            self.topic = model_handler(self, parsed_radio_button.topic)
+            self.topic = RadioButtonTopicModel(self, parsed_radio_button.topic)
+        else:
+            self.topic = NoRadioButtonTopicModel(self)
+            clz._logger.debug(f'# parsed children: '
+                              f'{len(parsed_radio_button.get_children())}')
 
-
-        clz._logger.debug(f'# parsed children: {len(parsed_radio_button.get_children())}')
-
+        clz._logger.debug(f'children: {parsed_radio_button.children}')
         for child in parsed_radio_button.children:
             child: BaseParser
             # clz._logger.debug(f'child: {child}')
@@ -97,64 +102,82 @@ class RadioButtonModel(BaseLabelModel):
             child_model: BaseModel = model_handler(self, child)
             self.children.append(child_model)
 
-    def clear_history(self) -> None:
-        clz = type(self)
-        clz._logger.debug(f'clear_history')
-        self.previous_heading.clear()
-        self.previous_text_value = ''
+    @property
+    def supports_label(self) -> bool:
+        # ControlCapabilities.LABEL
+        return True
 
-    def voice_control(self, phrases: PhraseList,
-                      focus_changed: bool) -> bool:
+    @property
+    def supports_label2(self) -> bool:
+        """
+               RadioButton supports label2 dependent on its config. Will have to
+               write code to determine at run time. True only with RadioButton having
+               empty radiowidth and radioheight.
+         """
+        #  ControlCapabilities.LABEL2
+        return False
+
+    @property
+    def supports_value(self) -> bool:
+        """
+        Some controls, such as a button, radio button or label are unable to provide a value.
+        I.E. it can't give any indication of what happens when pressed. If the
+        topic for this control or another provides flows_from/flows_to or similar,
+        then a value can be determined that way, but not using this method.
+        :return:
+        """
+        return False
+
+    def voice_control(self, stmts: Statements,
+                      focus_changed: bool,
+                      windialog_state: WinDialogState) -> bool:
         """
 
-        :param phrases: PhraseList to append to
+        :param stmts: Statements to append to
         :param focus_changed: If True, then voice changed heading, labels and all
                               If False, then only voice a change in value.
-        :return: True if anything appended to phrases, otherwise False
+        :param windialog_state: contains some useful state information
+        :return: True if anything appended to stmts, otherwise False
 
-        Note that focus_changed = False can occur even when a value has changed.
-        One example is when user users cursor to select different values in a
-        slider, but never leaves the control's focus.
-        """
+
+     Note that focus_changed = False can occur even when a value has changed.
+     One example is when user users cursor to select different values in a
+     slider, but never leaves the control's focus.
+     """
         clz = type(self)
         success: bool = True
         if self.topic is not None:
             topic: TopicModel = self.topic
             if not focus_changed:
-                success = self.voice_radio_button_value(phrases, focus_changed)
+                success = self.voice_radio_button_value(stmts, focus_changed)
                 return success
             clz._logger.debug(f'topic: {topic.alt_type}')
-            temp_phrases: PhraseList = PhraseList()
-            heading_success: bool = self.voice_heading(temp_phrases)
-            if heading_success and not self.previous_heading.equal_text(temp_phrases):
-                self.previous_heading.clear()
-                self.previous_heading.extend(temp_phrases)
-                phrases.extend(temp_phrases)
-            success = self.voice_radio_button_label(phrases, focus_changed)
+            success = self.voice_heading(stmts)
+            success = self.voice_radio_button_label(stmts, focus_changed)
 
         # TODO, incomplete
         return success
 
-    def voice_heading(self, phrases: PhraseList) -> bool:
+    def voice_heading(self, stmts: Statements) -> bool:
         """
 
-        :param phrases:
-        :return: True if heading was appended to phrases, otherwise False
+        :param stmts:
+        :return: True if heading was appended to stmts, otherwise False
         """
         clz = type(self)
         success: bool = False
-        success = self.voice_control_name(phrases)
+        success = self.voice_control_name(stmts)
         topic: TopicModel | None = self.topic
         return success
 
-    def voice_radio_button_label(self, phrases: PhraseList, focus_changed) -> bool:
+    def voice_radio_button_label(self, stmts: Statements, focus_changed) -> bool:
         clz = type(self)
-        success = self.voice_labeled_by(phrases)
+        success = self.voice_labeled_by(stmts)
         clz._logger.debug(f'voice_labeled_by: {success}')
         if not success:
-            success = self.topic.voice_alt_label(phrases)
+            success = self.topic.voice_alt_label(stmts)
         if not success:
-            success = self.topic.voice_label_expr(phrases)
+            success = self.topic.voice_label_expr(stmts)
             clz._logger.debug(f'voice_label_expr: {success}')
         if not success:
             if self.control_id != -1:
@@ -165,18 +188,15 @@ class RadioButtonModel(BaseLabelModel):
                     new_text: str = Messages.format_boolean(text=text)
                     if new_text is None:
                         new_text = ''
-                    clz._logger.debug(f'text: {new_text} focus_changed: {focus_changed} '
-                                      f'previous_text: {self.previous_text_value}')
-                    if new_text != '' and (
-                            focus_changed or new_text != self.previous_text_value):
-                        phrases.append(Phrase(text=new_text))
-                    self.previous_text_value = new_text
+                    clz._logger.debug(f'text: {new_text} focus_changed: {focus_changed}')
+                    if new_text != '' and focus_changed:
+                        stmts.last.phrases.append(Phrase(text=new_text))
                 except ValueError as e:
                     clz._logger.exception('')
                     pass
         return success
 
-    def voice_radio_button_value(self, phrases, focus_changed: bool) -> bool:
+    def voice_radio_button_value(self, stmts, focus_changed: bool) -> bool:
         # Control ID should be an integer
         clz = type(self)
         success: bool = False
@@ -186,11 +206,9 @@ class RadioButtonModel(BaseLabelModel):
                 text: str = xbmc.getInfoLabel(query)
                 # None is returned with no substitutions needed
                 new_text: str = Messages.format_boolean(text=text)
-                clz._logger.debug(f'text: {new_text} focus_changed: {focus_changed} '
-                                  f'previous_text: {self.previous_text_value}')
-                if new_text != '' and (focus_changed or new_text != self.previous_text_value):
-                    phrases.append(Phrase(text=new_text))
-                self.previous_text_value = new_text
+                clz._logger.debug(f'text: {new_text} focus_changed: {focus_changed}')
+                if new_text != '' and focus_changed:
+                    stmts.last.phrases.append(Phrase(text=new_text))
             except ValueError as e:
                 pass
         return success

@@ -146,11 +146,6 @@ def get_language_code() -> str:
         module_logger.debug_verbose('locale: ' + language_code)
         module_logger.debug_verbose('System.Language:' + language)
     return language_code
-    #  awk '/locale.language/{ lang=$3; sub(".*resource.language.", "", lang); sub(
-    #  "</setting>.*$", "", lang); print lang }' ../userdata/gui*.xml
-    # json_query = json_call('Settings.GetSettingValue',
-    #                       params={'setting': '%s' % setting}
-    #                       )
 
 
 def configuring_settings():

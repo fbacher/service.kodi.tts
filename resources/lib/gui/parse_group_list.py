@@ -2,7 +2,7 @@
 
 from typing import Callable, List, Tuple
 import xml.etree.ElementTree as ET
-from gui.base_tags import ElementKeywords as EK
+from gui.base_tags import ElementKeywords as EK, TopicElement as TE
 
 from common.logger import BasicLogger, DEBUG_VERBOSE
 from gui import ControlType
@@ -108,14 +108,14 @@ class ParseGroupList(ParseControl):
         DEFAULT_TAGS: Tuple[str, ...] = (EK.DESCRIPTION, EK.VISIBLE)
         DEFAULT_FOCUS_TAGS: Tuple[str, ...] = (EK.ENABLE, EK.ON_FOCUS, EK.ON_UNFOCUS,
                                                EK.ON_INFO)
-        GROUP_LIST_CONTROL_TAGS: Tuple[str, ...] = (EK.HINT_TEXT,
+        GROUP_LIST_CONTROL_TAGS: Tuple[str, ...] = (TE.HINT_TEXT,
                                                     EK.PAGE_CONTROL,
                                                     EK.ORIENTATION,
                                                     EK.SCROLL_TIME,
-                                                    EK.ALT_LABEL,
+                                                    TE.ALT_LABEL,
                                                     EK.DEFAULT_CONTROL,
                                                     EK.CONTROL)
-        tags_to_parse: Tuple[str, ...] = ((EK.TOPIC,) + DEFAULT_FOCUS_TAGS +
+        tags_to_parse: Tuple[str, ...] = ((TE.TOPIC,) + DEFAULT_FOCUS_TAGS +
                                           DEFAULT_TAGS + GROUP_LIST_CONTROL_TAGS)
 
         children: [ET.Element] = el_group_list.findall(f'./*')

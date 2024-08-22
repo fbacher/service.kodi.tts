@@ -700,7 +700,7 @@ class PiperTTSBackend(SimpleTTSBackend):
                 List[Tuple[str, str]], str]:
         """
         Gets the possible specified setting values in same representation
-        as stored in settings.xml (not translated). Sorting/translating done
+        as stored in settings.xml (not translate). Sorting/translating done
         in UI.
 
         :param setting:

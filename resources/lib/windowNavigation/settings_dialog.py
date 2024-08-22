@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations  # For union operator |
 
-import datetime
-
 import langcodes
 import xbmc
 import xbmcaddon
@@ -101,34 +99,36 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         # xbmc.executebuiltin('Skin.ToggleDebug')
 
         self._logger: BasicLogger = module_logger.getChild(self.__class__.__name__)
+        Monitor.register_abort_listener(self.on_abort_requested)
+
         self.closing = False
         self._initialized: bool = False
+        self.is_modal: bool = False
+        # Tracks duplicate calls to onInit. Reset in doModal
+        self.init_count: int = 0
         self.exit_dialog: bool = False
         super().__init__(*args)
-        self.api_key = None
-        self.engine_id: str | None = None
-        self.engine_instance: ITTSBackendBase | None = None
-        self.backend_changed: bool = False
-        self.gender_id: int | None = None
-        self.language: str | None = None
-        self.pitch: float | None = None
-        self.player: str | None = None
-        self.player_mode: str | None = None
-        self.module: str | None = None
-        self.speed: float | None = None
-        self.volume: int | None = None
-        self.settings_changed: bool = False
-        self.previous_engine: str | None = None
+        #  self.api_key = None
+        # self.engine_instance: ITTSBackendBase | None = None
+        # self.backend_changed: bool = False
+        # self.gender_id: int | None = None
+        # self.language: str | None = None
+        # elf.pitch: float | None = None
+        # elf.player: str | None = None
+        # elf.player_mode: str | None = None
+        # self.module: str | None = None
+        # self.speed: float | None = None
+        # self.volume: int | None = None
+        # self.settings_changed: bool = False
+        # self.previous_engine: str | None = None
         # self.previous_player_mode: PlayerMode | None = None
-        initial_backend = Settings.getSetting(SettingsProperties.ENGINE,
-                                              self.engine_id,
-                                              SettingsProperties.ENGINE_DEFAULT)
+        initial_backend = SettingsLowLevel.getSetting(SettingsProperties.ENGINE,
+                                                      None,
+                                                      SettingsProperties.ENGINE_DEFAULT)
 
         if initial_backend == SettingsProperties.ENGINE_DEFAULT:  # 'auto'
             initial_backend = BackendInfo.getAvailableBackends()[0].backend_id
-            self.set_engine_id(initial_backend)
-        else:
-            self.getEngineClass(engine_id=initial_backend)
+        self.getEngineInstance(engine_id=initial_backend)
 
         self._logger.debug_extra_verbose('SettingsDialog.__init__')
         self.header: ControlLabel | None = None
@@ -166,20 +166,116 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         self.engine_module_value = None  # share button and real-estate
         self.engine_pipe_audio_group: ControlGroup | None = None
         self.engine_player_mode_group: ControlGroup | None = None
-        self.engine_pipe_audio_radio_button: ControlRadioButton | None  = None
+        self.engine_pipe_audio_radio_button: ControlRadioButton | None = None
         self.engine_player_mode_button: ControlButton | None = None
         self.engine_player_mode_label: ControlLabel | None = None
         self.engine_speed_group: ControlGroup | None = None
         self.engine_speed_slider: ControlSlider | None = None
         self.engine_speed_label: ControlLabel | None = None
         self.engine_cache_speech_group: ControlGroup | None = None
-        self.engine_cache_speech_radio_button: ControlRadioButton | None  = None
+        self.engine_cache_speech_radio_button: ControlRadioButton | None = None
         self.engine_volume_group: ControlGroup | None = None
         self.engine_volume_slider: ControlSlider | None = None
         self.engine_volume_label: ControlLabel | None = None
         # self.options_dummy_button: ControlButton | None = None
         # self.keymap_dummy_button: ControlButton | None = None
         # self.advanced_dummy_button: ControlButton | None = None
+        self.saved_choices: List[Choice] | None = None
+        self.saved_selection_index: int | None = None
+
+        # Ensure some structures are built before we need them.
+        self._selection_dialog: SelectionDialog = None
+        SettingsHelper.build_allowed_player_modes()
+
+    def re_init(self) -> None:
+        self._logger.debug(f'In re-init')
+        self.init_count += 1  # There can be multiple onInit calls before show
+        self.closing = False
+        self._initialized = False
+        self.exit_dialog = False
+        # self.api_key = None
+        self.engine_instance = None
+        # self.backend_changed = False
+        # self.gender_id = None
+        # self.language = None
+        # self.pitch = None
+        # self.player = None
+        # self.player_mode = None
+        # self.module = None
+        # self.speed = None
+        # self.volume = None
+        # self.settings_changed = False
+        # self.previous_engine = None
+        # self.previous_player_mode: PlayerMode | None = None
+        """
+        initial_backend = Settings.getSetting(SettingsProperties.ENGINE,
+                                              self.engine_id,
+                                              SettingsProperties.ENGINE_DEFAULT)
+
+        if initial_backend == SettingsProperties.ENGINE_DEFAULT:  # 'auto'
+            initial_backend = BackendInfo.getAvailableBackends()[0].backend_id
+            self.set_engine_id(initial_backend)
+        else:
+            self.getEngineInstance(engine_id=initial_backend)
+        """
+
+        self._logger.debug_extra_verbose('SettingsDialog.__init__')
+        self.header = None
+        # self.engine_tab: ControlRadioButton | None = None
+        # self.options_tab: ControlButton | None = None
+        # self.keymap_tab: ControlButton | None = None
+        # self.advanced_tab: ControlButton | None = None
+        # self.engine_group: ControlGroup | None = None
+        # self.options_group: ControlGroup | None = None
+        # self.keymap_group: ControlGroup | None = None
+        # self.advanced_group: ControlGroup | None = None
+        self.ok_button = None
+        self.cancel_button = None
+        self.defaults_button = None
+        self.engine_api_key_group = None
+        self.engine_api_key_edit = None
+        self.engine_api_key_label = None
+        self.engine_engine_button = None
+        self.engine_engine_value = None
+        self.engine_language_group = None
+        self.engine_language_button = None
+        self.engine_language_value = None
+        self.engine_voice_group = None
+        self.engine_voice_button = None
+        self.engine_voice_value = None
+        self.engine_gender_group = None
+        self.engine_gender_button = None
+        self.engine_gender_value = None
+        self.engine_pitch_group = None
+        self.engine_pitch_slider = None
+        self.engine_pitch_label = None
+        self.engine_player_group = None
+        self.engine_player_button = None
+        self.engine_player_value = None
+        self.engine_module_value = None
+        self.engine_pipe_audio_group = None
+        self.engine_player_mode_group = None
+        self.engine_pipe_audio_radio_button = None
+        self.engine_player_mode_button = None
+        self.engine_player_mode_label = None
+        self.engine_speed_group = None
+        self.engine_speed_slider = None
+        self.engine_speed_label = None
+        self.engine_cache_speech_group = None
+        self.engine_cache_speech_radio_button = None
+        self.engine_volume_group = None
+        self.engine_volume_slider = None
+        self.engine_volume_label = None
+        # self.options_dummy_button = None
+        # self.keymap_dummy_button = None
+        # self.advanced_dummy_button = None
+        self.saved_choices = None
+        self.saved_selection_index = None
+        if self.is_modal:  # About to go modal
+            # Save ALL settings on settings stack,
+            # They will be discarded on exit at doModal
+            # User can explicitly commit them at any time
+            self.save_settings()
 
         # Ensure some structures are built before we need them.
         self._selection_dialog: SelectionDialog = None
@@ -190,9 +286,11 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
         :return:
         """
-        # super().onInit()
+        #  super().onInit()
         clz = type(self)
         self._logger.debug_verbose('SettingsDialog.onInit')
+        self.re_init()
+
         try:
             if not self._initialized:
                 self.header = self.get_control_label(clz.HEADER_LABEL)
@@ -240,24 +338,34 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
                 self.engine_engine_button = self.get_control_button(
                         clz.SELECT_ENGINE_BUTTON)
-                self.engine_engine_button.setLabel(
-                        f'{Messages.get_msg(Messages.ENGINE)}')
 
                 self.engine_engine_value = self.get_control_label(
                         clz.SELECT_ENGINE_VALUE_LABEL)
-                engine_label: str = Backends.get_label(self.get_engine_id(init=True))
+                engine_label: str = Backends.get_label(self.engine_id)
                 self.engine_engine_value.setLabel(engine_label)
 
+                engine_voice_id: str = Settings.get_voice(self.engine_id)
+                self._logger.debug(f'engine_id: {self.engine_id} '
+                                   f'engine_voice_id: {engine_voice_id}')
+                lang_info = SettingsHelper.get_language_for_id(self.engine_id,
+                                                               engine_voice_id)
+                self._logger.debug(f'lang_info: {lang_info}')
+                lang_info: LanguageInfo
+                voice_str: str
+                voice_str = SettingsHelper.get_formatted_label(lang_info,
+                                                               'display_name')
+                self.engine_engine_button.setLabel(
+                        f'{Messages.get_msg(Messages.ENGINE)}')
                 self.engine_language_group = self.get_control_group(
                         clz.SELECT_LANGUAGE_GROUP)
                 self.engine_language_button: ControlButton = self.get_control_button(
                         clz.SELECT_LANGUAGE_BUTTON)
                 self.engine_language_button.setLabel(
-                        Messages.get_msg(Messages.SELECT_LANGUAGE))
+                        Messages.get_msg(Messages.SELECT_VOICE))
 
                 self.engine_language_value = self.get_control_label(
                         clz.SELECT_LANGUAGE_VALUE_LABEL)
-                self.engine_language_value.setLabel(self.get_language())
+                self.engine_language_value.setLabel(self.get_language(label=True))
 
                 self.engine_voice_group = self.get_control_group(
                         clz.SELECT_VOICE_GROUP)
@@ -278,7 +386,9 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                     self.engine_voice_value = self.get_control_label(
                             clz.SELECT_VOICE_VALUE_LABEL)
                     self.engine_voice_group.setVisible(True)
-                    self.engine_voice_value.setLabel(self.get_language())
+                    self.engine_voice_value.setLabel(self.get_language(label=True))
+                    self._logger.debug(f'engine_voice_value: '
+                                       f'{self.engine_voice_value.getLabel()}')
 
                 self.engine_gender_group = self.get_control_group(
                         clz.SELECT_GENDER_GROUP)
@@ -334,7 +444,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                             Messages.get_msg(Messages.SELECT_PLAYER))
                     self.engine_player_value = self.get_control_button(
                             clz.SELECT_PLAYER_VALUE_LABEL)
-                    self.engine_player_value.setLabel(self.get_player())
+                    self.engine_player_value.setLabel( Settings.get_player_id())
                     self.engine_player_value.setVisible(True)
                 else:
                     self.engine_player_button.setLabel(
@@ -389,7 +499,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                         clz.SELECT_SPEED_LABEL)
                 speed: float = Settings.get_speed()
                 self.engine_speed_label.setLabel(
-                        Messages.get_formatted_msg(Messages.SELECT_SPEED, speed))
+                    Messages.get_formatted_msg(Messages.SELECT_SPEED,
+                                               f'{speed:.1f}'))
                 self.engine_speed_slider = self.get_control_slider(
                         clz.SELECT_SPEED_SLIDER)
 
@@ -399,7 +510,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                         clz.SELECT_VOLUME_LABEL)
                 result: UIValues = self.get_volume_range()
                 self.engine_volume_label.setLabel(
-                        Messages.get_formatted_msg(Messages.VOLUME_DB, result.current))
+                        Messages.get_formatted_msg(Messages.VOLUME_DB,
+                                                   result.current))
                 self.engine_volume_slider = self.get_control_slider(
                         clz.SELECT_VOLUME_SLIDER)
 
@@ -429,7 +541,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 self.update_engine_values()
 
                 self._initialized = True
-                self.settings_changed = False
+                self.setFocus(self.engine_engine_button)
         except Exception as e:
             self._logger.exception('')
 
@@ -528,8 +640,6 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             self.set_api_field()
             # self.set_pipe_audio_field()
             self.set_cache_speech_field()
-            self.settings_changed = False
-            self.backend_changed = False
             # TTSService.onSettingsChanged()
         except Exception as e:
             self._logger.exception('')
@@ -539,8 +649,12 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
         :return:
         """
-        self.show()
+        #  self.show()
+        self.is_modal = True
         super().doModal()
+        self.is_modal = False
+        # All changes discarded unless explicitly committed sooner
+        self.restore_settings()
         return
 
     def show(self) -> None:
@@ -548,7 +662,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
         :return:
         """
-        self._logger.debug('SettingsDialog.show')
+        #  self._logger.debug('SettingsDialog.show')
         super().show()
 
     def close(self) -> None:
@@ -581,7 +695,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             if action_id == xbmcgui.ACTION_MOUSE_MOVE:
                 return
 
-            if self._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
+            if self._logger.isEnabledFor(DEBUG):
                 action_mapper = Action.get_instance()
                 matches = action_mapper.getKeyIDInfo(action)
 
@@ -607,10 +721,10 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                     key_codes.append(remote_key_id)
                 if len(key_codes) == 0:
                     key_codes.append(str(action_button))
-                # self._logger.debug_extra_verbose(
+                #  self._logger.debug(
                 #         f'Key found: {",".join(key_codes)}')
 
-            #  self._logger.debug_verbose(f'action_id: {action_id}')
+            self._logger.debug(f'action_id: {action_id}')
             if (action_id == xbmcgui.ACTION_PREVIOUS_MENU
                     or action_id == xbmcgui.ACTION_NAV_BACK):
                 exit_dialog = True
@@ -624,16 +738,15 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         :param controlId:
         :return:
         """
+       #   self._logger.debug(f'onClick:{controlId} closing: {self.closing}')
         if self.closing:
             return
 
         try:
-            self._logger.debug_verbose(
-                    'SettingsDialog.onClick id: {:d}'.format(controlId))
+            '''
             focus_id = self.getFocusId()
-            self._logger.debug_verbose('FocusId: ' + str(focus_id))
             if controlId == 100:
-                self._logger.debug_verbose('Button 100 pressed')
+                # self._logger.debug_verbose('Button 100 pressed')
                 # self.engine_tab.setSelected(True)
                 # self.options_group.setVisible(False)
                 # self.keymap_group.setVisible(False)
@@ -641,7 +754,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 # self.engine_group.setVisible(True)
 
             elif controlId == 200:
-                self._logger.debug_verbose('Button 200 pressed')
+                # self._logger.debug_verbose('Button 200 pressed')
                 # self.engine_tab.setSelected(False)
                 # self.engine_group.setVisible(False)
                 # self.keymap_group.setVisible(False)
@@ -649,7 +762,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 # self.options_group.setVisible(True)
 
             elif controlId == 300:
-                self._logger.debug_verbose('Button 300 pressed')
+                # self._logger.debug_verbose('Button 300 pressed')
                 # self.engine_tab.setSelected(False)
                 # self.engine_group.setVisible(False)
                 # self.options_group.setVisible(False)
@@ -657,31 +770,44 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 # self.keymap_group.setVisible(True)
 
             elif controlId == 400:
-                self._logger.debug_verbose('Button 400 pressed')
+                # self._logger.debug_verbose('Button 400 pressed')
                 # self.engine_tab.setSelected(False)
                 # self.engine_group.setVisible(False)
                 # self.options_group.setVisible(False)
                 # self.keymap_group.setVisible(False)
                 # self.advanced_group.setVisible(True)
-
-            elif controlId in range(self.FIRST_SELECT_ID, self.LAST_SELECT_ID):
+            '''
+            if controlId in range(self.FIRST_SELECT_ID, self.LAST_SELECT_ID):
                 self.handle_engine_tab(controlId)
 
             elif controlId == 28:
                 # OK button
                 self.closing = True
                 self.commit_settings()
-                self._logger.info(f'closing')
+                # self._logger.info(f'ok button closing')
                 self.close()
 
             elif controlId == 29:
                 # Cancel button
+                # self._logger.debug(f'cancel button')
                 self.closing = True
-                self.restore_settings()
+                #  self.restore_settings()
                 self.close()
+
+            elif controlId == self.DEFAULTS_BUTTON:
+                self._logger.debug(f'defaults button')
+                # TODO: complete
 
         except Exception as e:
             self._logger.exception('')
+
+    def on_abort_requested(self):
+        try:
+            self.closing = True
+            #  xbmc.log('Received AbortRequested', xbmc.LOGINFO)
+            self.close()
+        except Exception:
+            pass
 
     def handle_engine_tab(self, controlId: int) -> None:
         """
@@ -718,14 +844,18 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             elif controlId == clz.SELECT_API_KEY_EDIT:
                 self.select_api_key()
 
-            if self.backend_changed:
-                self.update_engine_values()
+            # if self.backend_changed:
+            #     self.update_engine_values()
         except Exception as e:
             self._logger.exception('')
 
+    '''
     def set_engine(self):
         """
+            NOT CURRENTLY CALLED.
 
+            Meant to be called when any setting changes so that any is_required
+            changes (perhaps conflicts) can be fixed here.
         """
         try:
             choices: List[Choice]
@@ -741,35 +871,70 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             self.set_engine_id(choice.value)
         except Exception as e:
             self._logger.exception('')
+    '''
 
     def get_engine_choices(self) -> Tuple[List[Choice], int]:
         """
             Generates a list of choices for TTS engine that
             can be used by select_engine.
+
+            The choices will be based on all of the engines which are
+            capable of voicing the current Kodi locale and sorted by
+            the best langauge match score for each engine.
+
         :return: A list of all the choices as well as an index to the
                  current engine
         """
         try:
+            current_engine_idx: int = -1
             choices: List[Choice]
-            choices, _ = SettingsHelper.get_engines_supporting_lang()
-            self._logger.debug_verbose('get_engine_choices')
-            auto_choice_label: str = Messages.get_msg(Messages.AUTO)
-            idx: int = 0
-            choices.insert(0, Choice(label=auto_choice_label,
-                                             value=SettingsProperties.AUTO_ID,
-                                     choice_index=idx)
-                           )
-            current_value = self.getSetting(
-                    SettingsProperties.ENGINE, SettingsProperties.ENGINE_DEFAULT)
-            current_choice_index: int = 0
-            return choices, current_choice_index
+            choices, current_engine_idx = SettingsHelper.get_engines_supporting_lang(
+                    self.engine_id)
+            for choice in choices:
+                choice: Choice
+                choice.label = SettingsHelper.get_formatted_label(choice.lang_info,
+                                                                  'short')
+
+            if self._logger.isEnabledFor(DEBUG_VERBOSE):
+                self._logger.debug_verbose(f'get_engine_choices: {choices}')
+            self.save_current_choices(choices, current_engine_idx)
+            # auto_choice_label: str = Messages.get_msg(Messages.AUTO)
+            # current_value = Settings.get_engine_id()
+            return choices, current_engine_idx
         except Exception as e:
             self._logger.exception('')
+
+    def save_current_choices(self, choices: List[Choice], selection_index: int) -> None:
+        """
+        Simple mechanism to save SelectionDialog's list of choices as well
+        as selected index. Used to save results beteween calls. Should change
+        to something a bit less crude.
+
+        Use retrieve_current_choices to, um, retrieve the values
+
+        :param choices: List[Choice] choices presented to user
+        :param selection_index: Index into choices indicating what user chose
+        :return:
+        """
+        self.saved_choices = choices
+        self.saved_selection_index = selection_index
+
+    def retrieve_current_choices(self) -> Tuple[List[Choice], int]:
+        """
+           Simple mechanism to retrieve SelectionDialog's list of choices as well
+           as selected index. Used to save results beteween calls. Should change
+           to something a bit less crude.
+
+           Use save_current_choices to, um, retrieve the values
+           :return:
+           """
+        return self.saved_choices, self.saved_selection_index
 
     def select_engine(self):
         """
             Displays the SelectionDialog for the user to choose the desired
-            engine.
+            engine. Also makes the needed changes if the user modifies and saves
+            their changes
 
         :return:
         """
@@ -778,176 +943,48 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             choices: List[Choice]
             if current_choice_index < 0:
                 current_choice_index = 0
-            script_path = Constants.ADDON_PATH
-            self._logger.debug_verbose(
-                    f'SettingsDialog ADDON_PATH: {Constants.ADDON_PATH}')
+            self.save_settings()
             dialog: SelectionDialog
             dialog = self.selection_dialog(title=Messages.get_msg(
                                                         Messages.SELECT_SPEECH_ENGINE),
                                            choices=choices,
-                                           initial_choice=current_choice_index)
-            dialog.doModal()
-            idx = dialog.getCurrentListPosition()
-            self._logger.debug_verbose(f'SelectionDialog value: '
-                                       f'{Messages.get_msg(Messages.CHOOSE_BACKEND)} '
-                                       f'idx: {str(idx)}')
-            if idx < 0:
-                return None
-
-            choice: Choice = choices[idx]
-            engine_label: str = choice.label
-            engine_id: str = choice.value
-            self._logger.debug_verbose(
-                f'select_engine label: {engine_label} id: {engine_id} '
-                f'idx: {str(idx)}')
-            if engine_id == SettingsProperties.ENGINE_DEFAULT:
-                default_engine = BackendInfo.getAvailableBackends()[0]
-                engine_label = default_engine.displayName
-                engine_id = default_engine.backend_id
-            self.engine_engine_value.setLabel(engine_label)
-            self._logger.debug(f'new_engine: {engine_id} '
-                               f'previous: {self.previous_engine}')
-
-            # When engine changes, immediately switch to it since almost every
-            # other setting will be impacted by the change.
-
-            if engine_id != self.previous_engine:
-
-                # Update PlayerMode while switching engine to prevent incompatibility
-                allowed_values: List[AllowedValue]
-                player_id: str = self.get_player()
-                player_mode: PlayerMode
-                player_mode = Settings.get_player_mode(self.engine_id)
-                player_mode, allowed_values = SettingsHelper.update_player_mode(engine_id,
-                                                                              player_id,
-                                                                              player_mode)
-                SettingsHelper.update_enabled_state(engine_id=self.engine_id,
-                                                    player_id=player_id)
-                Settings.set_backend_id(engine_id)
-                self.set_engine_id(engine_id)
-                from service_worker import TTSService
-                self._logger.debug(f'Setting player_mode: {player_mode}'
-                                   f' for {self.engine_id}')
-                self.set_player_mode_field(player_mode)
-                TTSService.get_instance().initTTS(self.engine_id)
-                # cmd ='XBMC.NotifyAll({},RELOAD_ENGINE)'.format(Constants.ADDON_ID)
-                # xbmc.executebuiltin(cmd)
-        except Exception as e:
-            self._logger.exception('')
-
-    def set_language_field(self):
-        """
-            User chooses a language (not a region country or varient, just lang).
-            As each is focused it is voiced in both current language and in
-            language being set to. After choosing language, SettingsDialog
-            should change to a more detailed country/voice/engine selection screen.
-        :return: Selected language
-        """
-        try:
-            self._logger.debug(f'In set_language_field')
-            choices: List[Choice]
-            choices, current_choice_index = SettingsHelper.get_language_choices()
-            self._logger.debug(f'# choices: {len(choices)} current_choice_index: '
-                               f'{current_choice_index}')
-            if current_choice_index < 0:
-                current_choice_index = 0
-
-            if current_choice_index < 0 or current_choice_index > len(choices) - 1:
-                self.setSetting(SettingsProperties.LANGUAGE,
-                                SettingsProperties.UNKNOWN_VALUE)
-                self.engine_language_group.setVisible(False)
-                self.engine_language_value.setEnabled(False)
-                self.engine_language_value.setLabel(
-                        Messages.get_msg(Messages.UNKNOWN))
-                return
-            else:
-                self.engine_language_group.setVisible(True)
-                self.engine_language_value.setEnabled(True)
-
-            choice: Choice = choices[current_choice_index]
-            language = choice.lang_info.language_id
-            lang_id: str = choice.lang_info.voice
-            self._logger.debug(f'language: {language} # choices {len(choices)}')
-            self.engine_language_value.setLabel(language)
-            if len(choices) < 2:
-                self.engine_language_value.setEnabled(False)
-            else:
-                self.engine_language_value.setEnabled(True)
-            self.setSetting(SettingsProperties.LANGUAGE, lang_id)
-        except Exception as e:
-            self._logger.exception('')
-
-    def select_language(self):
-        """
-
-        :return:
-        """
-        try:
-            choices: List[Choice]
-            choices, current_choice_index = SettingsHelper.get_language_choices()
-            self._logger.debug(f'In select_language # choices: {len(choices)}')
-            if len(choices) == 0:
-                self.setSetting(SettingsProperties.LANGUAGE,
-                                SettingsProperties.UNKNOWN_VALUE)
-                self.engine_language_group.setVisible(False)
-                self.engine_language_value.setEnabled(False)
-                self.engine_language_value.setLabel(
-                        Messages.get_msg(Messages.UNKNOWN))
-                return
-            else:
-                self.engine_language_group.setVisible(True)
-
-            current_locale: str
-            self._logger.debug(f'Calling SelectionDialog')
-            kodi_lang, kodi_locale, locale_name = SettingsHelper.get_kodi_locale_info()
-            kodi_lang: str
-            kodi_locale: str
-            locale_name: str
-            lang_name: str = langcodes.Language(kodi_lang).language_name()
-            title: str
-            title = MessageUtils.get_formatted_msg_by_id(MessageId.AVAIL_VOICES_FOR_LANG,
-                                                         lang_name)
-            sub_title: str
-            sub_title = MessageUtils.get_msg_by_id(MessageId.DIALOG_LANG_SUB_HEADING)
-
-            self.save_settings()
-
-            dialog: SelectionDialog
-            dialog = self.selection_dialog(title=title,
-                                           sub_title=sub_title,
-                                           choices=choices,
                                            initial_choice=current_choice_index,
-                                           call_on_select=self.voice_language)
+                                           call_on_focus=self.voice_engine)
             dialog.doModal()
             self.restore_settings()  # resets settings prior to SelectionDialog
-
-            # Now, apply any desired changes
+            previous_engine_id: str = self.engine_id
             idx = dialog.close_selected_idx
             self._logger.debug_verbose(f'SelectionDialog value: '
-                                       f'{Messages.get_msg(Messages.SELECT_LANGUAGE)} '
+                                       f'{Messages.get_msg(Messages.CHOOSE_BACKEND)} '
                                        f'idx: {str(idx)}')
             if idx < 0:  # No selection made or CANCELED
                 return
 
             choice: Choice = choices[idx]
-            self._logger.debug_verbose(f'select_language value: '
-                                       f'{choice.lang_info.language_id} setting: '
-                                       f'{choice.lang_info.locale_label} idx: {idx:d}')
-
+            if self._logger.isEnabledFor(DEBUG_VERBOSE):
+                self._logger.debug_verbose(f'select_language value: '
+                                           f'{choice.lang_info.language_id} setting: '
+                                           f'{choice.lang_info.locale_label} idx: {idx:d}')
             # From setLanguage:
 
             if choice is not None:
                 lang_info: LanguageInfo = choice.lang_info
-                self._logger.debug(f'lang_info: {lang_info}')
+                if self._logger.isEnabledFor(DEBUG):
+                    self._logger.debug(f'lang_info: {lang_info}')
                 #  gender: Genders = Settings.get_gender(self.engine_id)
                 if lang_info is not None:
-                    current_lang: LanguageInfo
+                    # current_lang: LanguageInfo
                     #   TODO: this is pretty crude.
-                    current_lang = SettingsHelper.current_language_choices[idx]
+                    # choices, _ = self.retrieve_current_choices()
+                    # selection_idx: int = 0
+                    # choices: List[Choice]
+                    # current_selection_idx: int
+                    # current_choice: Choice = choices[selection_idx]
+                    # current_lang = current_choice.lang_info
                     # phrases: PhraseList = PhraseList()
                     # engine_name: str = current_lang.translated_engine_name
                     # language: str = lang_info.ietf.autonym()
-                    voice: str = current_lang.engine_voice_id
+                    # voice: str = current_lang.engine_voice_id
                     # text: str = (f'{engine_name} speaking in {language} using voice '
                     #             f'{voice}')
                     # self._logger.debug(f'Sample voice text: {text}')
@@ -966,9 +1003,254 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                     from service_worker import TTSService
                     # self._logger.debug(f'{phrases}')
                     engine_id: str = choice.engine_id
-                    Settings.set_language(current_lang.engine_lang_id,
+                    Settings.set_language(lang_info.engine_lang_id,
                                           engine_id=engine_id)
-                    self._logger.debug(f'engine: {engine_id} voice: {voice}')
+                    language: str = lang_info.ietf.autonym()
+                    voice: str = lang_info.engine_voice_id
+                    engine_name: str = lang_info.translated_engine_name
+                    #  text: str = (f'{engine_name} speaking in {language} using voice '
+                    #               f'{voice}')
+                    if self._logger.isEnabledFor(DEBUG):
+                        self._logger.debug(f'engine: {engine_id} voice: {voice}')
+                    Settings.set_voice(voice, engine_id=engine_id)
+                    '''
+                    if self.engine_id != engine_id:
+                        # Engine changed, pick player and PlayerMode
+                        # If player and playermode already set for this player,
+                        # then use it.
+                        player_id: str = Settings.get_player_id(engine_id)
+                        if player_id is None or player_id == '':
+                            # Try using player from another engine
+                            pass
+
+                    # cacheing
+                    # Does engine support caching? Is it already set?
+                    Settings.set_use_cache(False, engine_id)
+                    # PlayerMode
+                    Settings.set_player_mode(PlayerMode.FILE, engine_id)
+                    # Player
+                    Settings.set_player(Players.MPV, engine_id)
+                    '''
+                    if self.engine_id != engine_id:
+                        # Settings.set_engine_id(engine_id)
+                        # Expensive
+                        # TTSService.get_instance().initTTS(
+                        #         self.engine_id)
+
+                        # Engine changed, pick player and PlayerMode
+                        # If player and PlayerMode already set for this player,
+                        # then use it.
+                        player_id: str = Settings.get_player_id(engine_id)
+                        if player_id is None or player_id == '':
+                            # Try using player from another engine
+                            pass
+
+                        # TODO FIX THIS NOW!!!
+                        # cacheing
+                        # Does engine support caching? Is it already set?
+
+                        use_cache: bool = Settings.is_use_cache(previous_engine_id)
+                        Settings.set_use_cache(use_cache, engine_id)
+                        Settings.set_player_mode(PlayerMode.FILE, engine_id)
+                        # Player
+                        Settings.set_player(Players.MPV, engine_id)
+                        Settings.set_engine_id(engine_id)
+
+                        # Expensive
+                        TTSService.get_instance().initTTS(
+                                self.engine_id)
+
+            self.engine_language_value.setLabel(choice.lang_info.locale_label)
+            self.engine_engine_value.setLabel(choice.lang_info.translated_engine_name)
+            if self._logger.isEnabledFor(DEBUG):
+                self._logger.debug(f'engine_language_value: '
+                                   f'{self.engine_language_value.getLabel()}')
+            Settings.set_language(choice.lang_info.locale)
+        except Exception as e:
+            self._logger.exception('')
+
+    def voice_engine(self, choice: Choice,
+                     selection_idx: int) -> None:
+        """
+        Used during engine selection to voice which engine is in focus.
+
+        Uses the voice/dialect closet to the currently configured Kodi locale
+
+        :param choice: Choice for instance of engine to be voiced
+        :param selection_idx: index of Choice from Choices list. Redundant
+        :return:
+        """
+        if choice is not None:
+            engine_id: str = choice.engine_id
+            # Get an appropriate voice for this engine
+            if engine_id is not None:
+                lang_info: LanguageInfo = choice.lang_info
+                #  self._logger.debug(f'lang_info: {lang_info}')
+                if lang_info is not None:
+                    new_lang: LanguageInfo
+                    #   TODO: this is pretty crude.
+                    choices, new_selection_idx = self.retrieve_current_choices()
+                    choices: List[Choice]
+                    new_selection_idx: int
+                    new_choice: Choice = choices[new_selection_idx]
+                    new_lang = new_choice.lang_info
+                    # phrases: PhraseList = PhraseList()
+                    # engine_name: str = current_lang.translated_engine_name
+                    # language: str = lang_info.ietf.autonym()
+                    voice: str = new_lang.engine_voice_id
+
+                    from service_worker import TTSService
+
+                    # self._logger.debug(f'engine: {engine_id} voice: {voice} '
+                    #                    f'new_lang: {new_lang.engine_lang_id}')
+                    Settings.set_language(new_lang.engine_lang_id,
+                                          engine_id=engine_id)
+                    Settings.set_voice(voice, engine_id=engine_id)
+                    # cacheing
+                    # Settings.set_use_cache(False, engine_id)
+                    # PlayerMode
+                    Settings.set_player_mode(PlayerMode.FILE, engine_id)
+                    # Player
+                    Settings.set_player(Players.MPLAYER, engine_id)
+                    # Speed
+                    Settings.set_speed(speed=1.0)  # Speed of 1x
+                    try:
+                        current_engine_id: str =  TTSService.get_instance().tts.backend_id
+                        if current_engine_id != engine_id:
+                            Settings.set_engine_id(engine_id)
+                            # Expensive
+                            TTSService.get_instance().initTTS(self.engine_id)
+                    except Exception:
+                        self._logger.exception('')
+
+    def set_language_field(self):
+        """
+           Sets the language setting and resolves any incompatibility issues
+           in other settings.
+
+        :return: Selected language
+        """
+        try:
+            #  self._logger.debug(f'In set_language_field')
+            choices: List[Choice]
+            # Get closet match to current lang setting, not Kodi's locale
+            choices, current_choice_index = SettingsHelper.get_language_choices(
+                    get_best_match=False)
+            self.save_current_choices(choices, current_choice_index)
+            #  self._logger.debug(f'# choices: {len(choices)} current_choice_index: '
+            #                     f'{current_choice_index}')
+            if current_choice_index < 0:
+                current_choice_index = 0
+
+            if current_choice_index < 0 or current_choice_index > len(choices) - 1:
+                Settings.set_language(SettingsProperties.UNKNOWN_VALUE)
+                self.engine_language_group.setVisible(False)
+                self.engine_language_value.setEnabled(False)
+                self.engine_language_value.setLabel(
+                        Messages.get_msg(Messages.UNKNOWN))
+                return
+            else:
+                self.engine_language_group.setVisible(True)
+                self.engine_language_value.setEnabled(True)
+
+            choice: Choice = choices[current_choice_index]
+            language = choice.lang_info.translated_language_name
+            lang_id: str = choice.lang_info.locale
+            #  self._logger.debug(f'language: {language} # choices {len(choices)}')
+            self.engine_language_value.setLabel(language)
+            if len(choices) < 2:
+                self.engine_language_value.setEnabled(False)
+            else:
+                self.engine_language_value.setEnabled(True)
+            Settings.set_language(lang_id)
+        except Exception as e:
+            self._logger.exception('')
+
+    def select_language(self):
+        """
+        TODO: Switch this over to select_voice.
+        :return:
+        """
+        try:
+            choices: List[Choice]
+            # Get Closet match to current lang-setting not kodi's locale
+            choices, current_choice_index = SettingsHelper.get_language_choices(
+                    get_best_match=False)
+            self.save_current_choices(choices, current_choice_index)
+            #  self._logger.debug(f'In select_language # choices: {len(choices)} '
+            #                     f'current_choice_idx {current_choice_index} '
+            #                     f'current_choice: {choices[current_choice_index]}')
+            if len(choices) == 0:
+                Settings.set_language(SettingsProperties.UNKNOWN_VALUE)
+                self.engine_language_group.setVisible(False)
+                self.engine_language_value.setEnabled(False)
+                self.engine_language_value.setLabel(
+                        Messages.get_msg(Messages.UNKNOWN))
+                return
+            else:
+                self.engine_language_group.setVisible(True)
+
+            current_locale: str
+            kodi_lang, kodi_locale, kodi_friendly_locale, kodi_language = \
+                SettingsHelper.get_kodi_locale_info()
+            kodi_lang: str
+            kodi_locale: str
+            locale_name: str
+            kodi_language: langcodes.Language
+            lang_name: str = kodi_language.language_name()
+            title: str
+            title = MessageUtils.get_formatted_msg_by_id(MessageId.AVAIL_VOICES_FOR_LANG,
+                                                         lang_name)
+            sub_title: str
+            sub_title = MessageUtils.get_msg_by_id(MessageId.DIALOG_LANG_SUB_HEADING)
+            previous_engine_id: str = self.engine_id
+            self.save_settings()
+
+            dialog: SelectionDialog
+            dialog = self.selection_dialog(title=title,
+                                           sub_title=sub_title,
+                                           choices=choices,
+                                           initial_choice=current_choice_index,
+                                           call_on_focus=self.voice_language,
+                                           disable_tts=True)
+            dialog.doModal()
+            self.restore_settings()  # resets settings prior to SelectionDialog
+
+            # Now, apply any desired changes
+            idx = dialog.close_selected_idx
+            #  self._logger.debug(f'SelectionDialog value: '
+            #                             f'{Messages.get_msg(Messages.SELECT_VOICE)} '
+            #                             f'idx: {str(idx)}')
+            if idx < 0:  # No selection made or CANCELED
+                return
+
+            choice: Choice = choices[idx]
+            if self._logger.isEnabledFor(DEBUG):
+                self._logger.debug(f'select_language value: '
+                                           f'{choice.lang_info.language_id} setting: '
+                                           f'{choice.lang_info.locale_label} idx: {idx:d}')
+            # From setLanguage:
+
+            if choice is not None:
+                lang_info: LanguageInfo = choice.lang_info
+                #  self._logger.debug(f'choice: {choice}')
+                #  gender: Genders = Settings.get_gender(self.engine_id)
+                if lang_info is not None:
+                    voice: str = choice.lang_info.engine_voice_id
+                    # Change settings to simple configuration
+                    #   engine
+                    #   voice
+                    #   cache
+                    #   player mode
+                    #   player
+
+                    from service_worker import TTSService
+                    # self._logger.debug(f'{phrases}')
+                    engine_id: str = choice.engine_id
+                    Settings.set_language(choice.lang_info.engine_lang_id,
+                                          engine_id=engine_id)
+                    #  self._logger.debug(f'language: {choice.lang_info.engine_lang_id}')
+                    #  self._logger.debug(f'engine: {engine_id} voice: {voice}')
                     Settings.set_voice(voice, engine_id=engine_id)
                     if self.engine_id != engine_id:
                         # Engine changed, pick player and PlayerMode
@@ -979,24 +1261,25 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                             # Try using player from another engine
                             pass
 
+                        # TODO FIX THIS NOW!!!
+                        # cacheing
+                        # Does engine support caching? Is it already set?
 
-                    # cacheing
-                    # Does engine support caching? Is it already set?
-                    Settings.set_use_cache(False, engine_id)
-                    # PlayerMode
-                    Settings.set_player_mode(PlayerMode.FILE, engine_id)
-                    # Player
-                    Settings.set_player(Players.MPV, engine_id)
-
-                    if self.engine_id != engine_id:
-                        self.set_engine_id(engine_id)
+                        use_cache: bool = Settings.is_use_cache(previous_engine_id)
+                        Settings.set_use_cache(use_cache, engine_id)
+                        # PlayerMode
+                        Settings.set_player_mode(PlayerMode.FILE, engine_id)
+                        # Player
+                        Settings.set_player(Players.MPV, engine_id)
+                        Settings.set_engine_id(engine_id)
                         # Expensive
                         TTSService.get_instance().initTTS(
                             self.engine_id)  # .sayText(phrases)
 
             self.engine_language_value.setLabel(choice.lang_info.locale_label)
-            self.setSetting(SettingsProperties.LANGUAGE, choice.lang_info.locale)
-            #  self.update_engine_values()
+            if self._logger.isEnabledFor(DEBUG):
+                self._logger.debug(f'Set engine_language_value to '
+                                   f'{self.engine_language_value.getLabel()}')
         except Exception as e:
             self._logger.exception('')
 
@@ -1013,26 +1296,30 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
         # gets the language_id, a unique id for the focused language
         # and the matching engine.
-        self._logger.debug(f'choice: {choice}')
+        #  self._logger.debug(f'choice: {choice}')
         if choice is not None:
             lang_info: LanguageInfo = choice.lang_info
-            self._logger.debug(f'lang_info: {lang_info}')
-            gender: Genders = Settings.get_gender(self.engine_id)
+            # self._logger.debug(f'lang_info: {lang_info}')
+            # gender: Genders = Settings.get_gender(self.engine_id)
             if lang_info is not None:
                 current_lang: LanguageInfo
                 #   TODO: this is pretty crude.
-                current_lang = SettingsHelper.current_language_choices[selection_idx]
-                phrases: PhraseList = PhraseList()
-                engine_name: str = current_lang.translated_engine_name
-                language: str = lang_info.ietf.autonym()
+                choices, current_selection_idx = self.retrieve_current_choices()
+                choices: List[Choice]
+                current_selection_idx: int
+                current_choice: Choice = choices[selection_idx]
+                current_lang = current_choice.lang_info
+                # phrases: PhraseList = PhraseList()
+                # engine_name: str = current_lang.translated_engine_name
+                # language: str = lang_info.ietf.autonym()
                 voice: str = current_lang.engine_voice_id
-                text: str = (f'{engine_name} speaking in {language} using voice '
-                             f'{voice}')
-                self._logger.debug(f'Sample voice text: {text}')
-                phrase: Phrase = Phrase(text=text, interrupt=True,
-                                        language=choice.lang_info.locale,
-                                        gender=gender.value)
-                phrases.append(phrase)
+                # text: str = (f'{engine_name} speaking in {language} using voice '
+                #              f'{voice}')
+                # self._logger.debug(f'Sample voice text: {text}')
+                # phrase: Phrase = Phrase(text=text, interrupt=True,
+                #                         language=choice.lang_info.locale,
+                #                         gender=gender.value)
+                # phrases.append(phrase)
 
                 # Change settings to simple configuration
                 #   engine
@@ -1042,14 +1329,14 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 #   player
 
                 from service_worker import TTSService
-                self._logger.debug(f'{phrases}')
+                # self._logger.debug(f'{phrases}')
                 engine_id: str = choice.engine_id
                 Settings.set_language(current_lang.engine_lang_id,
                                       engine_id=engine_id)
-                self._logger.debug(f'engine: {engine_id} voice: {voice}')
+                #  self._logger.debug(f'engine: {engine_id} voice: {voice}')
                 Settings.set_voice(voice, engine_id=engine_id)
                 # cacheing
-                Settings.set_use_cache(False, engine_id)
+                # Settings.set_use_cache(False, engine_id)
                 # PlayerMode
                 Settings.set_player_mode(PlayerMode.FILE, engine_id)
                 # Player
@@ -1057,7 +1344,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 # Speed
                 Settings.set_speed(speed=1.0)  # Speed of 1x
                 if self.engine_id != engine_id:
-                    self.set_engine_id(engine_id)
+                    Settings.set_engine_id(engine_id)
                     # Expensive
                     TTSService.get_instance().initTTS(self.engine_id)  # .sayText(phrases)
 
@@ -1069,39 +1356,45 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         clz = type(self)
         try:
             avail: bool
-            avail = SettingsMap.is_setting_available(self.engine_id,
+            engine_id: str = self.engine_id
+            avail = SettingsMap.is_setting_available(engine_id,
                                                      SettingsProperties.VOICE)
-            self._logger.debug(f'is voice available: {avail}')
-            valid: bool = SettingsMap.is_valid_property(self.engine_id,
+            # self._logger.debug(f'is voice available: {avail}')
+            valid: bool = SettingsMap.is_valid_property(engine_id,
                                                         SettingsProperties.VOICE)
-            self._logger.debug(f'is voice valid: {valid}')
-            if not SettingsMap.is_setting_available(self.engine_id,
+            # self._logger.debug(f'is voice valid: {valid}')
+            if not SettingsMap.is_setting_available(engine_id,
                                                     SettingsProperties.VOICE):
-                self._logger.debug(f'setting voice_group invisible')
+                #  self._logger.debug(f'setting voice_group invisible')
                 self.engine_voice_group.setVisible(False)
                 return
             choices: List[Choice]
             choices, current_choice_index = self.get_voice_choices()
             if current_choice_index < 0:
-                self._logger.debug(f'choice out of range: {current_choice_index} '
-                                   f'# choices: {len(choices)}')
+                if self._logger.isEnabledFor(DEBUG):
+                    self._logger.debug(f'choice out of range: {current_choice_index} '
+                                       f'# choices: {len(choices)}')
                 current_choice_index = 0
 
             if current_choice_index < 0 or current_choice_index > len(choices) - 1:
-                self._logger.debug(f'setting voice disabled: {self.engine_voice_value}')
+                if self._logger.isEnabledFor(DEBUG):
+                   self._logger.debug(f'setting voice disabled: {self.engine_voice_value}')
                 self.engine_voice_value.setEnabled(False)
                 self.engine_voice_value.setLabel(
                         Messages.get_msg(Messages.UNKNOWN))
                 return
 
             choice: Choice = choices[current_choice_index]
+            #  self._logger.debug(f'voice label: {choice.label}')
             self.engine_voice_value.setLabel(choice.label)
             if len(choices) < 2:
                 self.engine_voice_value.setEnabled(False)
             else:
                 self.engine_voice_value.setEnabled(True)
 
-            self.setSetting(SettingsProperties.VOICE, choice.lang_info.engine_voice_id)
+            Settings.set_voice(choice.lang_info.engine_voice_id, engine_id)
+            if self._logger.isEnabledFor(DEBUG):
+                self._logger.debug(f'Setting voice to: {choice.lang_info.engine_voice_id}')
             self.engine_voice_group.setVisible(True)
         except Exception as e:
             self._logger.exception('')
@@ -1114,25 +1407,24 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         choices: List[Choice] = []
         current_choice_index: int = -1
         try:
-            current_value: str = self.getSetting(SettingsProperties.VOICE)
-            self._logger.debug(f'engine: {self.engine_id} voice: {current_value}')
+            # current_value: str = self.getSetting(SettingsProperties.VOICE)
+            # self._logger.debug(f'engine: {self.engine_id} voice: {current_value}')
             voices: List[Choice]
-            voices = BackendInfo.getSettingsList(
-                    self.get_engine_id(), SettingsProperties.VOICE)
-            self._logger.debug(f'voices: {voices}')
+            # Request match closet to current lang settings, not kodi_locale
+            voices, current_choice_index = SettingsHelper.get_language_choices(
+                                                           self.engine_id,
+                                                           get_best_match=False)
+            # voices = BackendInfo.getSettingsList(
+            #         self.engine_id, SettingsProperties.VOICE)
+            #  self._logger.debug(f'voices: {voices}')
             if voices is None:
                 voices = []
 
-            voices = sorted(voices, key=lambda entry: entry.label)
+            # voices = sorted(voices, key=lambda entry: entry.label)
             voices: List[Choice]
-            idx: int = 0
             for choice in voices:
                 choice: Choice
-                choice.choice_index = idx
                 choices.append(choice)
-                if choice.value == current_value:
-                    current_choice_index = len(choices) - 1
-                idx += 1
         except Exception as e:
             self._logger.exception('')
 
@@ -1147,24 +1439,27 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             choices: List[Choice]
             choices, current_choice_index = self.get_voice_choices()
             title: str = Messages.get_msg(Messages.SELECT_VOICE)
+            self.save_settings()
             dialog: SelectionDialog
             dialog = self.selection_dialog(title=title,
                                            choices=choices,
                                            initial_choice=current_choice_index,
                                            call_on_focus=None)
             dialog.doModal()
-            idx = dialog.getCurrentListPosition()
-            self._logger.debug_verbose(
-                    'SelectionDialog voice idx: {}'.format(str(idx)))
+            self.restore_settings()  # resets settings prior to SelectionDialog
+            idx = dialog.close_selected_idx
+            #  self._logger.debug_verbose(
+            #         'SelectionDialog voice idx: {}'.format(str(idx)))
             if idx < 0:
                 return
 
-            choice: Choice= choices[idx]
-            self._logger.debug_verbose('select_voice value: {} setting: {} idx: {:d}'
-                                       .format(choice.label, choice.value, idx))
+            choice: Choice = choices[idx]
+            if self._logger.isEnabledFor(DEBUG_VERBOSE):
+                self._logger.debug_verbose(f'select_voice value: {choice.label} '
+                                           f'setting: {choice.value} idx: {idx:d}')
 
             self.engine_voice_value.setLabel(choice.label)
-            self.setSetting(SettingsProperties.VOICE, choice.choice_index)
+            Settings.set_voice(choice.choice_index)
             # self.update_engine_values()
         except Exception as e:
             self._logger.exception('')
@@ -1235,7 +1530,9 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             choices: List[Choice]
             if not SettingsMap.is_valid_property(self.engine_id,
                                                  SettingsProperties.GENDER):
-                self._logger.debug(f'Gender is not a valid property for {self.engine_id}')
+                if self._logger.isEnabledFor(DEBUG):
+                    self._logger.debug(f'Gender is not a valid property for '
+                                       f'{self.engine_id}')
                 self.engine_gender_group.setVisible(False)
             else:
                 choices, current_choice_index = self.get_gender_choices()
@@ -1267,20 +1564,22 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         :return:
         """
         current_value: Genders = Settings.get_gender(self.engine_id)
-        self._logger.debug(f'gender: {current_value}')
+        if self._logger.isEnabledFor(DEBUG):
+            self._logger.debug(f'gender: {current_value}')
         current_choice_index = -1
         choices: List[Choice] = []
         try:
             # Fetch settings on every access because it can change
 
-            engine_id = self.get_engine_id()
-            self._logger.debug(f'Calling getSettingsList engine: {engine_id}')
-            engine: ITTSBackendBase = self.getEngineClass(engine_id)
+            engine_id = self.engine_id
+            #  self._logger.debug(f'Calling getSettingsList engine: {engine_id}')
+            engine: ITTSBackendBase = self.getEngineInstance(engine_id)
             gender_choices, _ = engine.settingList(SettingsProperties.GENDER)
             gender_choices: List[Choice]
             #supported_genders = BackendInfo.getSettingsList(engine,
             #                                               SettingsProperties.GENDER)
-            self._logger.debug(f'genders: {gender_choices}')
+            if self._logger.isEnabledFor(DEBUG):
+                self._logger.debug(f'genders: {gender_choices}')
             genders: List[Choice] = []
 
             if gender_choices is None:
@@ -1288,11 +1587,13 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             idx: int = 0
             for choice in gender_choices:
                 choice: Choice
-                self._logger.debug(f'choice: {choice.value}')
+                if self._logger.isEnabledFor(DEBUG):
+                    self._logger.debug(f'choice: {choice.value}')
                 display_value = GenderSettingsMap.get_label(choice.value)
                 choices.append(Choice(label=display_value, value=choice.value,
                                       choice_index=idx))
-                self._logger.debug(f'Gender choice: {choices[-1]}')
+                if self._logger.isEnabledFor(DEBUG):
+                    self._logger.debug(f'Gender choice: {choices[-1]}')
                 if choice.value == current_value:
                     current_choice_index = len(choices) - 1
                 idx += 1
@@ -1311,117 +1612,86 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             choices, current_choice_index = self.get_gender_choices()
             # xbmc.executebuiltin('Skin.ToggleDebug')
             title: str = Messages.get_msg(Messages.SELECT_VOICE_GENDER)
+            self.save_settings()
             dialog: SelectionDialog
             dialog = self.selection_dialog(title=title,
                                            choices=choices,
                                            initial_choice=current_choice_index,
                                            call_on_focus=None)
             dialog.doModal()
-            idx = dialog.getCurrentListPosition()
+            self.restore_settings()  # resets settings prior to SelectionDialog
+            idx = dialog.close_selected_idx
             if idx < 0:
                 return
 
             choice: Choice = choices[idx]
             gender: Genders = Genders(choice.value)
-            self._logger.debug_verbose(f'select_gender label: {choice.label} '
-                                       f'setting: {choice.value} idx: {idx:d}')
+            if self._logger.isEnabledFor(DEBUG_VERBOSE):
+                self._logger.debug_verbose(f'select_gender label: {choice.label} '
+                                           f'setting: {choice.value} idx: {idx:d}')
             self.engine_gender_value.setLabel(choice.label)
-            self.setSetting(SettingsProperties.GENDER, choice.value)
+            Settings.set_gender(gender)
             # self.update_engine_values()
         except Exception as e:
             self._logger.exception('')
 
     def get_player_choices(self) -> Tuple[List[Choice], int]:
         """
+            Get players which are compatible with the engine as well as player_Mode.
+            The 'ranking' of players may influence the suggested player.
 
-        :return:
+            The player_mode should be checked to see if it requires changing
+
+        :return: List of compatible players and an index referencing the current
+                 or suggested player.
         """
         choices: List[Choice] = []
         current_choice_index = -1
         '''
-        try:
             # We want the players which can handle what our TTS engine produces
-            current_engine_id: str = self.get_engine_id()
-            engine_output_formats = SoundCapabilities.get_output_formats(
-                                                                    current_engine_id)
-            self._logger.debug(f'engine: {current_engine_id} output_formats: '
-                               f'{engine_output_formats}')
-            current_player_id: str = self.get_player()
-            candidates: List[str]
-            candidates = SoundCapabilities.get_capable_services(ServiceType.PLAYER,
-                                                                engine_output_formats,
-                                                                [])
-            self._logger.debug(f'candidate_players: {candidates}')
-            if not SettingsMap.is_valid_property(self.engine_id,
-                                                 SettingsProperties.PLAYER):
-                # Broken, should try to fix. Pick a default player. But default
-                # may be broken. Perhaps candidates should be in preference order
-                # and first valid one should be used. If still broken, pick a
-                # new engine? Must do something if TTS is broken
-                self._logger.debug(f'No player is valid')
-                return [], -1
-
-            supported_players: List[AllowedValue]
-            supported_players = SettingsMap.get_allowed_values(self.engine_id,
-                                                               SettingsProperties.PLAYER)
-            self._logger.debug(f'supported players for engine: {supported_players}')
-            default_player: str
-            default_player = SettingsMap.get_default_value(self.engine_id,
-                                                           SettingsProperties.PLAYER)
-            self._logger.debug(f'default_player: {default_player}')
-            if supported_players is None:
-                supported_players = [AllowedValue(default_player, True)]  # bogus
-
-            self._logger.debug(f'supported_players: {supported_players}')
-            default_choice_index = -1
-            idx: int = 0
-            player_id: AllowedValue
-            enabled: bool
-            for player_id in supported_players:
-                self._logger.debug(f'player_id: {player_id.value}'
-                                   f' enabled: {player_id.enabled}')
-                player_label = MessageUtils.get_msg(player_id.value)
-
-                #  TODO looks wrong
-                choices.append(Choice(label=player_label, value=player_id.value,
-                                      choice_index=idx, enabled=player_id.enabled))
-                if player_id == current_player_id:
-                    current_choice_index = len(choices) - 1
-                if player_id == default_player:
-                    default_choice_index = len(choices) - 1
-                idx += 1
-
-            if current_choice_index < 0:
-                current_choice_index = default_choice_index
-        except Exception as e:
-            self._logger.exception('')
-
-        return choices, current_choice_index
         '''
+        return self.get_compatible_players(self.engine_id)
 
+    def get_compatible_players(self, current_engine_id: str | None = None
+                               ) -> Tuple[List[Choice], int]:
+        """
+               Get players which are compatible with the engine as well as player_Mode.
+               The 'ranking' of players may influence the suggested player.
+
+               The player_mode should be checked to see if it requires changing
+
+           :return: List of compatible players and an index referencing the current
+                 or suggested player.
+        """
+        choices: List[Choice] = []
+        current_choice_index: int = -1
         try:
-            if not SettingsMap.is_valid_property(self.engine_id,
+            if not SettingsMap.is_valid_property(current_engine_id,
                                                  SettingsProperties.PLAYER):
-                self._logger.info(f'There are no PLAYER for {self.engine_id}')
+                if self._logger.isEnabledFor(INFO):
+                    self._logger.info(f'There is no PLAYER for {current_engine_id}')
                 return choices, current_choice_index
 
             # Make sure that any player complies with the engine's player
             # validator
 
             val: IStringValidator
-            val = SettingsMap.get_validator(self.engine_id,
+            val = SettingsMap.get_validator(current_engine_id,
                                             SettingsProperties.PLAYER)
             current_choice: str
-            current_choice = Settings.get_player_id(self.engine_id)
-            self._logger.debug(f'current player: {current_choice} '
-                               f'engine: {self.engine_id} ')
+            current_choice = Settings.get_player_id(current_engine_id)
+            if self._logger.isEnabledFor(DEBUG):
+                self._logger.debug(f'current player: {current_choice} '
+                                   f'engine: {current_engine_id} ')
 
             supported_players_with_enable: List[AllowedValue]
             supported_players_with_enable = val.get_allowed_values()
-            self._logger.debug(f'supported_players_with_enable:'
-                               f' {supported_players_with_enable}')
+            if self._logger.isEnabledFor(DEBUG):
+                self._logger.debug(f'supported_players_with_enable:'
+                                   f' {supported_players_with_enable}')
             default_choice_str: str = val.default_value
-            self._logger.debug(f'default_value: {val.default_value}')
+            if self._logger.isEnabledFor(DEBUG):
+                self._logger.debug(f'default_value: {val.default_value}')
 
             if supported_players_with_enable is None:
                 supported_players_with_enable = []
@@ -1432,8 +1702,9 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             default_enabled: bool = True
             for supported_player in supported_players_with_enable:
                 supported_player: AllowedValue
-                self._logger.debug(f'player_str: {supported_player.value} '
-                                   f'enabled: {supported_player.enabled}')
+                if self._logger.isEnabledFor(DEBUG):
+                    self._logger.debug(f'player_str: {supported_player.value} '
+                                       f'enabled: {supported_player.enabled}')
                 player: str = supported_player.value
                 supported_players.append((player, supported_player.enabled))
                 if player == current_choice:
@@ -1452,13 +1723,12 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             idx: int = 0
             for player_id, enabled in supported_players:
                 player_id: str
-                label: str = player_id   # TODO FIXME
+                label: str = MessageUtils.get_msg(player_id)
                 choices.append(Choice(label=label, value=player_id,
                                       choice_index=idx, enabled=enabled))
         except Exception as e:
             self._logger.exception('')
         return choices, current_choice_index
-
 
     def select_player(self):
         """
@@ -1475,13 +1745,15 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             choices: List[Choice]
             (choices, current_choice_index) = self.get_player_choices()
             title: str = Messages.get_msg(Messages.SELECT_PLAYER)
+            self.save_settings()
             dialog: SelectionDialog
             dialog = self.selection_dialog(title=title,
                                            choices=choices,
                                            initial_choice=current_choice_index,
                                            call_on_focus=None)
             dialog.doModal()
-            idx = dialog.getCurrentListPosition()
+            self.restore_settings()  # resets settings prior to SelectionDialog
+            idx = dialog.close_selected_idx
             if idx < 0:
                 return
 
@@ -1489,10 +1761,11 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             player_id: str = choice.value
             enabled: bool = choice.enabled
             player_label: str = choice.label
-            self._logger.debug_verbose(f'select_player value: {player_label} '
-                                       f'setting: {player_id} idx: {idx:d} '
-                                       f'enabled: {enabled}')
-            engine_id: str = self.get_engine_id()
+            if self._logger.isEnabledFor(DEBUG_VERBOSE):
+                self._logger.debug_verbose(f'select_player value: {player_label} '
+                                           f'setting: {player_id} idx: {idx:d} '
+                                           f'enabled: {enabled}')
+            engine_id: str = self.engine_id
             player_mode: PlayerMode
             player_mode = Settings.get_player_mode(self.engine_id)
             player_mode, allowed_values = SettingsHelper.update_player_mode(engine_id,
@@ -1500,7 +1773,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                                                                             player_mode)
             self.set_player_mode_field(player_mode, self.engine_id)
             self.engine_player_value.setLabel(player_label)
-            self.set_player(player_id)
+            Settings.set_player(player_id, engine_id)
             # self.update_engine_values()
         except Exception as e:
             self._logger.exception('')
@@ -1525,16 +1798,13 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             player_id: str = choice.value
             enabled: bool = choice.enabled
             player_label: str = choice.label
-            self._logger.debug(f'ZORBO label: {choice.label} id: {choice.value} '
-                               f'enabled: {choice.enabled}')
-
             self.engine_player_value.setLabel(choice.label)
             if len(choices) < 2:
                 self.engine_player_value.setEnabled(False)
             else:
                 self.engine_player_value.setEnabled(True)
 
-            self.set_player(choice.value)
+            Settings.set_player(choice.value)
         except Exception as e:
             self._logger.exception('')
 
@@ -1561,7 +1831,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             else:
                 self.engine_module_value.setEnabled(True)
 
-            self.set_module(choice.value)
+            #  self.set_module(choice.value)
         except Exception as e:
             self._logger.exception('')
 
@@ -1576,12 +1846,12 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             current_value = self.get_module()
             if not SettingsMap.is_valid_property(self.engine_id,
                                                  SettingsProperties.MODULE):
-                return ([], -1)
+                return [], -1
 
             supported_modules: List[Choice]
             default_module: str
             supported_modules, default_module = BackendInfo.getSettingsList(
-                    self.get_engine_id(), SettingsProperties.MODULE)
+                    self.engine_id, SettingsProperties.MODULE)
             if supported_modules is None:
                 supported_modules = []
 
@@ -1612,22 +1882,24 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             choices: List[Choice]
             (choices, current_choice_index) = self.get_module_choices()
             title: str = Messages.get_msg(Messages.SELECT_MODULE)
+            self.save_settings()
             dialog: SelectionDialog
             dialog = self.selection_dialog(title=title,
                                            choices=choices,
                                            initial_choice=current_choice_index,
                                            call_on_focus=None)
             dialog.doModal()
-            idx = dialog.getCurrentListPosition()
+            self.restore_settings()  # resets settings prior to SelectionDialog
+            idx = dialog.close_selected_idx
             if idx < 0:
                 return
 
             choice: Choice= choices[idx]
-            self._logger.debug_verbose('value: {} setting: {} idx: {:d}'
-                                       .format(choice.label, choice.value, idx))
-
+            if self._logger.isEnabledFor(DEBUG_VERBOSE):
+                self._logger.debug_verbose(f'value: {choice.label} '
+                                           f'setting: {choice.value} idx: {idx:d}')
             self.engine_module_value.setLabel(choice.label)
-            self.set_module(choice.value)
+            Settings.set_module(choice.value)
             # self.update_engine_values()
         except Exception as e:
             self._logger.exception('')
@@ -1642,9 +1914,9 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                                                    SettingsProperties.VOLUME)
             if volume_val is None:
                 raise NotImplementedError
-
             volume: float = self.engine_volume_slider.getFloat()
-            self._logger.debug(f'Setting volume to {volume}')
+            if self._logger.isEnabledFor(DEBUG):
+                self._logger.debug(f'Setting volume to {volume}')
             volume_val.set_value(volume)
             self.engine_volume_label.setLabel(label=f'Volume: {volume}dB')
         except Exception as e:
@@ -1657,23 +1929,27 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         try:
             if not SettingsMap.is_valid_property(SettingsProperties.TTS_SERVICE,
                                                  SettingsProperties.VOLUME):
-                self._logger.debug(f'Volume is NOT valid property')
+                if self._logger.isEnabledFor(DEBUG):
+                    self._logger.debug(f'Volume is NOT valid property')
                 self.engine_volume_group.setVisible(False)
             else:
                 volume_val: NumericValidator
                 result: UIValues = self.get_volume_range()
                 if result.minimum == result.maximum:
-                    self._logger.debug(f'Volume min == max. NOT visible')
+                    if self._logger.isEnabledFor(DEBUG):
+                        self._logger.debug(f'Volume min == max. NOT visible')
                     self.engine_volume_group.setVisible(False)
                 else:
                     self.engine_volume_slider.setFloat(
                             result.current, result.minimum, result.increment,
                             result.maximum)
-                    self._logger.debug(f'set volume range current: {result.current} '
-                                       f'min: {result.minimum} inc: {result.increment} '
-                                       f'max: {result.maximum}')
+                    if self._logger.isEnabledFor(DEBUG):
+                        self._logger.debug(f'set volume range current: {result.current} '
+                                           f'min: {result.minimum} inc: {result.increment} '
+                                           f'max: {result.maximum}')
                     volume: float = Settings.get_volume(self.engine_id)
-                    self._logger.debug(f'Setting volume to {volume}')
+                    if self._logger.isEnabledFor(DEBUG):
+                        self._logger.debug(f'Setting volume to {volume}')
                     self.engine_volume_label.setLabel(label=
                                                       Messages.get_formatted_msg(
                                                           Messages.VOLUME_DB,
@@ -1713,10 +1989,12 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 raise NotImplementedError
 
             speed: float = self.engine_speed_slider.getFloat()
-            self._logger.debug(f'speed: {speed}')
-            speed_val.set_value(speed)
+            if self._logger.isEnabledFor(DEBUG):
+                self._logger.debug(f'speed: {speed}')
+            Settings.set_speed(speed)
             self.engine_speed_label.setLabel(
-                    Messages.get_formatted_msg(Messages.SELECT_SPEED, speed))
+                    Messages.get_formatted_msg(Messages.SELECT_SPEED,
+                                               f'{speed:.1f}'))
             self.engine_speed_group.setVisible(True)
         except Exception as e:
             self._logger.exception('')
@@ -1732,8 +2010,9 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             else:
                 speed_val: NumericValidator
                 result: UIValues = self.get_speed_range()
-                self._logger.debug(f'min: {result.minimum} max: {result.maximum} '
-                                   f'inc: {result.increment} current: {result.current}')
+                if self._logger.isEnabledFor(DEBUG):
+                    self._logger.debug(f'min: {result.minimum} max: {result.maximum} '
+                                       f'inc: {result.increment} current: {result.current}')
                 if result.minimum == result.maximum:
                     self.engine_speed_group.setVisible(False)
                 else:
@@ -1741,9 +2020,11 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                             result.current, result.minimum, result.increment,
                             result.maximum)
                     speed: float = Settings.get_speed()
-                    self._logger.debug(f'Setting speed to {speed}')
+                    if self._logger.isEnabledFor(DEBUG):
+                        self._logger.debug(f'Setting speed to {speed}')
                     self.engine_speed_label.setLabel(
-                            Messages.get_formatted_msg(Messages.SELECT_SPEED, speed))
+                            Messages.get_formatted_msg(Messages.SELECT_SPEED,
+                                                       f'{speed:.2f}'))
                     self.engine_speed_group.setVisible(True)
         except Exception as e:
             self._logger.exception('')
@@ -1770,8 +2051,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
         """
         try:
-            cache_speech = self.engine_cache_speech_radio_button.isSelected()
-            self.setSetting(SettingsProperties.CACHE_SPEECH, cache_speech)
+            cache_speech: bool = self.engine_cache_speech_radio_button.isSelected()
+            Settings.set_use_cache(cache_speech)
             self.engine_cache_speech_group.setVisible(True)
             # self.update_engine_values()
         except NotImplementedError:
@@ -1804,14 +2085,17 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             if current_choice_index < 0:
                 current_choice_index = 0
             title: str = Messages.get_msg(Messages.SELECT_PLAYER_MODE)
+            self.save_settings()
             dialog: SelectionDialog
             dialog = self.selection_dialog(title=title,
                                            choices=choices,
                                            initial_choice=current_choice_index,
                                            call_on_focus=None)
             dialog.doModal()
-            idx = dialog.getCurrentListPosition()
-            self._logger.debug_verbose(f'SelectionDialog value: '
+            self.restore_settings()  # resets settings prior to SelectionDialog
+            idx = dialog.close_selected_idx
+            if self._logger.isEnabledFor(DEBUG_VERBOSE):
+                self._logger.debug_verbose(f'SelectionDialog value: '
                                        f'{Messages.get_msg(Messages.SELECT_PLAYER_MODE)} '
                                        f'idx: {str(idx)}')
             if idx < 0:
@@ -1819,9 +2103,9 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
             choice: Choice = choices[idx]
             prev_choice: Choice = choices[current_choice_index]
-            self._logger.debug(
-                f'new player mode: {choice.label}'
-                f' previous: {prev_choice.label} ')
+            if self._logger.isEnabledFor(DEBUG):
+                self._logger.debug(f'new player mode: {choice.label}'
+                                   f' previous: {prev_choice.label} ')
             new_player_mode: PlayerMode = PlayerMode[choice.label]
             previous_player_mode: PlayerMode
             previous_player_mode = PlayerMode[prev_choice.label]
@@ -1834,7 +2118,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
     def set_player_mode_field(self, player_mode: PlayerMode | None = None,
                               engine_id: str | None = None):
         """
-
+            Initializes and displays the Player Mode control
         """
         try:
             val = SettingsMap.get_validator(self.engine_id,
@@ -1848,7 +2132,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             else:
                 val.set_tts_value(player_mode.value)
 
-            self._logger.debug(f'Setting player mode to {player_mode.value}')
+            if self._logger.isEnabledFor(DEBUG):
+                self._logger.debug(f'Setting player mode to {player_mode.value}')
             self.engine_player_mode_label.setLabel(player_mode.name)
             self.engine_player_mode_button.setVisible(True)
             self.engine_player_mode_label.setVisible(True)
@@ -1877,16 +2162,19 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             val: IStringValidator
             val = SettingsMap.get_validator(self.engine_id,
                                             SettingsProperties.PLAYER_MODE)
-            self._logger.debug(f'player_mode setting static: {val.is_const()}')
+            if self._logger.isEnabledFor(DEBUG):
+                self._logger.debug(f'player_mode setting static: {val.is_const()}')
             current_choice: PlayerMode
             current_choice = Settings.get_player_mode(self.engine_id)
-            self._logger.debug(f'current player_mode: {current_choice} '
-                               f'engine: {self.engine_id} ')
+            if self._logger.isEnabledFor(DEBUG):
+                self._logger.debug(f'current player_mode: {current_choice} '
+                                   f'engine: {self.engine_id} ')
 
             supported_modes_with_enable: List[AllowedValue]
             supported_modes_with_enable = val.get_allowed_values()
             default_choice_str: str = val.default_value
-            self._logger.debug(f'default_value: {val.default_value}')
+            if self._logger.isEnabledFor(DEBUG):
+                self._logger.debug(f'default_value: {val.default_value}')
 
             if supported_modes_with_enable is None:
                 supported_modes_with_enable = []
@@ -1897,8 +2185,9 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             default_enabled: bool = True
             for supported_mode in supported_modes_with_enable:
                 supported_mode: AllowedValue
-                self._logger.debug(f'player_mode_str: {supported_mode.value} '
-                                   f'enabled: {supported_mode.enabled}')
+                if self._logger.isEnabledFor(DEBUG):
+                    self._logger.debug(f'player_mode_str: {supported_mode.value} '
+                                       f'enabled: {supported_mode.enabled}')
                 player_mode: PlayerMode = PlayerMode(supported_mode.value)
                 supported_modes.append((player_mode, supported_mode.enabled))
                 if player_mode == current_choice:
@@ -1932,7 +2221,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         """
         try:
             api_key = self.engine_api_key_edit.getText()
-            self.setSetting(SettingsProperties.API_KEY, api_key)
+            Settings.set_api_key(api_key)
         except Exception as e:
             self._logger.exception('')
 
@@ -1962,7 +2251,9 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
     def selection_dialog(self, title: str,
                          choices: List[Choice], initial_choice: int,
                          sub_title: str | None = None,
-                         call_on_focus: Callable[Choice, None] | None = None
+                         call_on_focus: Callable[Choice, None] | None = None,
+                         call_on_select: Callable[Choice, None] | None = None,
+                         disable_tts: bool = False
                          ) -> SelectionDialog:
         """
         Wraps the SelectionDialog so that the single instance can be shared.
@@ -1975,6 +2266,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                                useful for hearing the difference immediately
         :param call_on_select: Optional call-back function for on-click events
                                useful for voicing the selected item immediately
+        :param disable_tts: When True TTS screen-scraping is disabled until this
+                            dialog exists. See Notes
         :return: Returns the underlying SelectionDialog so that methods can be
                  called such as doModal
 
@@ -1982,65 +2275,62 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         on exit. OK commits the changes in Settings to settings.xml.
         Cancel reverts all changes in Settings from a backup-copy.
 
+        Note: disable_tts is used when the language and engine need to be switched
+        while voicing the dialog.
+
         Reverting live changes without Cancelling SettingsDialog requires care.
         """
         if self._selection_dialog is None:
             script_path = Constants.ADDON_PATH
-            self._logger.debug_verbose(
-                    f'SettingsDialog ADDON_PATH: {Constants.ADDON_PATH}')
+            if self._logger.isEnabledFor(DEBUG):
+                self._logger.debug(
+                        f'SelectionDialog ADDON_PATH: {Constants.ADDON_PATH}')
             self._selection_dialog = SelectionDialog('selection-dialog.xml',
-                                                     script_path, 'Default',
+                                                     script_path, 'Custom',
+                                                     defaultRes='1080i',
                                                      title=title,
                                                      choices=choices,
                                                      initial_choice=initial_choice,
                                                      sub_title=sub_title,
-                                                     call_on_focus=call_on_focus)
+                                                     call_on_focus=call_on_focus,
+                                                     call_on_select=call_on_select)
         else:
             self._selection_dialog.update_choices(title=title,
                                                   choices=choices,
                                                   initial_choice=initial_choice,
                                                   sub_title=None,
-                                                  call_on_focus=call_on_focus)
+                                                  call_on_focus=call_on_focus,
+                                                  call_on_select=call_on_select)
         return self._selection_dialog
 
-    def get_engine_id(self, init: bool = False) -> str:
-        """
 
-        :param init:
+    @property
+    def engine_id(self) -> str:
+        """
+            Gets the engine_id from Settings. If the value is invalid, substitutes
+            with one designated as 'good'. If a substitution is performed, the
+            substitute is stored in Settings
+
         :return:
         """
-        # Deliberately using Settings.getSetting here
-        self._logger.debug(f'engine_id: {self.engine_id}'
-                           f' settings_changed: {self.settings_changed}')
-        if self.engine_id is None or self.settings_changed:
-            self.engine_id = Settings.getSetting(SettingsProperties.ENGINE, None,
-                                                 SettingsProperties.ENGINE_DEFAULT)
-        self._logger.debug(f'engine_id: {self.engine_id}')
-        valid_engine: bool = False
-
-        if self.engine_id != SettingsProperties.ENGINE_DEFAULT:
-            valid_engine = SettingsMap.is_available(self.engine_id)
+        engine_id: str = SettingsLowLevel.getSetting(SettingsProperties.ENGINE,
+                                                     None,
+                                                     SettingsProperties.ENGINE_DEFAULT)
+        valid_engine: bool
+        valid_engine = SettingsMap.is_available(engine_id)
         if not valid_engine:
-            self.engine_id = BackendInfo.getAvailableBackends()[0].backend_id
-            self.set_engine_id(self.engine_id)
-        if init:
-            self.previous_engine = self.engine_id
-        self._logger.debug(f'final engine_id: {self.engine_id} init: {init} '
-                           f'previous: {self.previous_engine}')
-        from common.settings_low_level import SettingsLowLevel
-        self._logger.debug(f'Settings._current_engine: {Settings._current_engine} '
-                           f'SettingsLowLevel: {SettingsLowLevel._current_engine}')
-        return self.engine_id
+            engine_id = BackendInfo.getAvailableBackends()[0].backend_id
+            Settings.set_engine_id(engine_id)
+        return engine_id
 
-    def get_language(self):
+    def get_language(self, label=False):
         """
 
         :return:
         """
         clz = type(self)
         try:
-            if self.settings_changed:
-                self.language = Settings.get_language(self.engine_id)
+            self.language = Settings.get_language(self.engine_id)
             if self.language is None:
                 self._logger.debug(f'Getting language from old call')
                 _, default_setting = self.getEngineInstance().settingList(
@@ -2049,225 +2339,46 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         except Exception as e:
             self._logger.exception('')
             self.language = get_language_code()
-        return self.language
+        lang: str = self.language
+        if label:
+            lang = SettingsHelper.get_formatted_lang(lang)
+        return lang
 
-    def get_pitch(self):
+    def get_module(self) -> str:
         """
 
         :return:
         """
-        try:
-            if self.settings_changed:
-                pitch: float = Settings.get_pitch(self.engine_id)
-                self.pitch = pitch
-        except Exception as e:
-            self._logger.exception('')
-        return self.pitch
-
-    def get_player(self):
-        """
-
-        :return:
-        """
-        try:
-            player: str | None = self.get_player_setting()
-            self.player = player
-        except AbortException:
-            reraise(*sys.exc_info())
-        except Exception as e:
-            self._logger.exception('')
-
-        return self.player
-
-    def get_player_mode(self) -> PlayerMode:
-        """
-
-        :return:
-        """
-        try:
-            player_mode: PlayerMode = Settings.get_player_mode(self.engine_id)
-        except Exception as e:
-            self._logger.exception('')
-        return player_mode
-
-    def set_player(self, player_id):
-        """
-
-        :param player_id:
-        """
-        try:
-            self.player = player_id
-            self.setSetting(SettingsProperties.PLAYER, player_id)
-        except AbortException:
-            reraise(*sys.exc_info())
-        except Exception as e:
-            self._logger.exception('')
-
-    def set_player_mode(self, player_mode: PlayerMode | None = None):
-        """
-
-        """
-        try:
-            self.player_mode = player_mode
-            Settings.set_player_mode(player_mode, self.engine_id)
-        except Exception as e:
-            self._logger.exception('')
-
-    def get_module(self):
-        """
-
-        :return:
-        """
+        module = 'bad'
         try:
             module: str | None = self.get_module_setting()
             if module is None:
                 engine: ITTSBackendBase = BackendInfo.getBackend(self.engine_id)
                 module = engine.get_setting_default(SettingsProperties.PLAYER)
-            self.module = module
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
             self._logger.exception('')
-        return self.module
+        return module
 
-    def set_module(self, module_id):
-        """
-
-        :param module_id:
-        """
-        self.module = module_id
-        self.setSetting(SettingsProperties.MODULE, module_id)
-        #  self.getEngineInstance().setPlayer(preferred=player_id)
-
-    def get_speed(self):
-        """
-
-        :return:
-        """
-        if self.settings_changed:
-            Settings.get_speed()
-
-        return self.speed
-
-    def get_volume(self) -> int:
-        """
-
-        :return:
-        """
-        clz = type(self)
-        if self.settings_changed:
-            volume = Settings.get_volume(Services.TTS_SERVICE)
-            self.volume = volume
-        self._logger.debug(f'volume: {self.volume}')
-        return self.volume
-
-    def get_api_key(self) -> str:
-        """
-
-        :return:
-        """
-        if self.settings_changed:
-            self.api_key: str = Settings.get_api_key(self.engine_id)
-        return self.api_key
-
-    def set_engine_id(self, engine_id):
-        """
-
-        :param engine_id:
-        """
-        try:
-            if self.previous_engine != engine_id:
-                self.engine_instance: ITTSBackendBase = self.getEngineClass(
-                    engine_id=engine_id)
-                self._logger.debug(f'engine_instance: {self.engine_instance}')
-
-                # Throw away all changes and switch to the current
-                # settings for a new backend.
-
-                self.engine_id = engine_id
-                if self.previous_engine is not None:  # first time don't count
-                    self.backend_changed = True
-
-                self.previous_engine = engine_id
-                self.settings_changed = True
-        except Exception as e:
-            self._logger.exception('')
-
-    def getEngineClass(self, engine_id=None) -> ITTSBackendBase:
+    def getEngineInstance(self, engine_id=None) -> ITTSBackendBase:
         """
         :param engine_id:
         :return:
         """
         if engine_id is None:
             engine_id = self.engine_id
-        if self.engine_instance is None or self.engine_instance.backend_id != engine_id:
-            backend_id: str = None
-            if self.engine_instance is not None:
-                backend_id = self.engine_instance.backend_id
-            self._logger.debug(f'engine_id changed: {engine_id} was {backend_id}')
-
-            self.engine_instance = BaseServices.getService(engine_id)
-        return self.engine_instance
-
-    def getEngineInstance(self) -> ITTSBackendBase:
-        """
-
-        :return:
-        """
-        if self.engine_instance is None or self.engine_instance.backend_id != \
-                self.engine_id:
-            self.engine_instance: ITTSBackendBase = self.getEngineClass()
-
-        return self.engine_instance
-
-    def getSetting(self, setting_id, default=None):
-        """
-
-        :param setting_id:
-        :param default:
-        :return:
-        """
-        engine: ITTSBackendBase = self.getEngineClass(self.engine_id)
-        value = None
-        try:
-            if default is None:
-                default = engine.get_setting_default(setting_id)
-            value = engine.getSetting(setting_id, default)
-        except AttributeError:
-            value = None
-        return value
-
-    def setSetting(self, key: str, value: int | str | float | bool | None) -> None:
-        """
-
-        :param key:
-        :param value:
-        """
-        try:
-            #  engine: ITTSBackendBase = self.getEngineClass(self.engine_id)
-            changed: bool = Settings.setSetting(key, value, self.engine_id)
-
-            # changed = self.getEngineClass().setSetting(key, value)
-            if changed:
-                self.settings_changed = True
-        except Exception as e:
-            self._logger.exception('')
-
-    def get_player_setting(self):
-        """
-
-        :return:
-        """
-        player: str = Settings.get_player_id(self.engine_id)
-        return player
+        engine_instance: ITTSBackendBase = BaseServices.getService(engine_id)
+        return engine_instance
 
     def get_module_setting(self, default: str | None = None):
         """
-
+            TODO: Almost certainly broken. Used by AudiDispatcher.
+            Fix at that time. Don't share with Player setting anymore.
         :param default:
         :return:
         """
-        engine: ITTSBackendBase = self.getEngineClass(self.engine_id)
+        engine: ITTSBackendBase = self.getEngineInstance(self.engine_id)
         if default is None:
             default = engine.get_setting_default(SettingsProperties.MODULE)
         value = engine.getSetting(SettingsProperties.MODULE, default)
@@ -2289,6 +2400,11 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
         :return:
         """
+        try:
+            SettingsLowLevel.save_settings()
+        except Exception as e:
+            self._logger.exception('')
+
     def restore_settings(self) -> None:
         """
         Pops the current stack frame of settings so that all settings are restored

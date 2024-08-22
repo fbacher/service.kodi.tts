@@ -4,6 +4,7 @@ from __future__ import annotations  # For union operator |
 import xbmc
 import xbmcaddon
 
+from backends.settings.service_types import Services
 from common.constants import Constants
 
 """
@@ -47,7 +48,7 @@ class Message:
 
 class Messages:
     """
-    Provides methods, message tags and default messages for accessing translated messages.
+    Provides methods, message tags and default messages for accessing translate messages.
     """
     # Msg key       Default msg, Strings.po #
 
@@ -67,7 +68,7 @@ class Messages:
     DEFAULTS = Message('Defaults', 32222)
     ENGINE = Message('Engine', 32001)
     DEFAULT_TTS_ENGINE = Message('Default TTS Engine', 32002)
-    SELECT_LANGUAGE = Message('Available Voices for', 32227)
+    # SELECT_LANGUAGE = Message('Available Voices for', 32227)
     SELECT_VOICE = Message('Voice', 32308)
     SETTINGS = Message('Settings', 32219)
     OPTIONS = Message('Options', 32029)
@@ -358,19 +359,19 @@ class Messages:
 
     PLAYER_INTERNAL = Message('internal', 32313)
 
-    BACKEND_ESPEAK = Message('eSpeak', 32314)
-    BACKEND_FESTIVAL = Message('Festival', 32315)
-    BACKEND_FLITE = Message('Flite', 32316)
-    BACKEND_EXPERIMENTAL = Message('Experimental', 32323)
-    BACKEND_GOOGLE = Message('gtts', 32324)
-    BACKEND_RECITE = Message('Recite', 32325)
-    BACKEND_RESPONSIVE_VOICE = Message('ResponsiveVoice', 32317)
-    BACKEND_SAPI = Message('SAPI', 32329)
-    BACKEND_SPEECH_DISPATCHER = Message('Speech Dispatcher', 32318)
-    BACKEND_INTERNAL = Message('Internal', 32326)
-    BACKEND_LOG_ONLY = Message('Logging Only', 32327)
-    CONVERT_PICO_TO_WAV = Message('Pico to wave', 32328)
-    BACKEND_PIPER = Message('Piper', 32331)
+    BACKEND_ESPEAK = Message(Services.ESPEAK_ID, 32314)
+    BACKEND_FESTIVAL = Message(Services.FESTIVAL_ID, 32315)
+    BACKEND_FLITE = Message(Services.FLITE_ID, 32316)
+    BACKEND_EXPERIMENTAL = Message(Services.EXPERIMENTAL_ENGINE_ID, 32323)
+    BACKEND_GOOGLE = Message(Services.GOOGLE_ID, 32324)
+    BACKEND_RECITE = Message(Services.RECITE_ID, 32325)
+    BACKEND_RESPONSIVE_VOICE = Message(Services.RESPONSIVE_VOICE_ID, 32317)
+    BACKEND_SAPI = Message(Services.SAPI_ID, 32329)
+    BACKEND_SPEECH_DISPATCHER = Message(Services.SPEECH_DISPATCHER_ID, 32318)
+    BACKEND_INTERNAL = Message(Services.INTERNAL_PLAYER_ID, 32326)
+    BACKEND_LOG_ONLY = Message(Services.LOG_ONLY_ID, 32327)
+    CONVERT_PICO_TO_WAV = Message(Services.PICO_TO_WAVE_ID, 32328)
+    BACKEND_PIPER = Message(Services.PIPER_ID, 32331)
 
 
     # INTERNAL_ID: Messages.BACKEND_INTERNAL,
@@ -399,8 +400,10 @@ class Messages:
                                       32801)
     UI_SETTINGS_CATEGORIES = Message('Settings Categories', 32802)
     UI_DISMISS_DIALOG_HINT = Message('Select to dismiss dialog', 32804)
-    UI_ITEMS = Message('{0} items', 32805)
+    #  control_name, orientation, visible_items
+    UI_ITEMS = Message('{0} {1} {2} items', 32805)
     UI_ITEM = Message('item {0}', 32806)
+    UN_NO_ITEMS = Message('{0} {1}', 328)
 
     MSG_NOT_FOUND_ERROR: Final[int] = 32335
     MSG_ITEMS = 32805  # '{0} items'

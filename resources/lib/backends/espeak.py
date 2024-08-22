@@ -194,15 +194,17 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             lang: langcodes.Language = None
             try:
                 lang = langcodes.Language.get(lang_str)
-                cls._logger.debug(f'orig: {lang_str} '
-                                  f'language: {lang.language} '
-                                  f'script: {lang.script} '
-                                  f'territory: {lang.territory} '
-                                  f'extlangs: {lang.extlangs} '
-                                  f'variants: {lang.variants} '
-                                  f'extensions: {lang.extensions} '
-                                  f'private: {lang.private} '
-                                  f'display: {lang.display_name(lang.language)}')
+                if cls._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
+                    cls._logger.debug_extra_verbose(f'orig: {lang_str} '
+                                                    f'language: {lang.language} '
+                                                    f'script: {lang.script} '
+                                                    f'territory: {lang.territory} '
+                                                    f'extlangs: {lang.extlangs} '
+                                                    f'variants: {lang.variants} '
+                                                    f'extensions: {lang.extensions} '
+                                                    f'private: {lang.private} '
+                                                    f'display: '
+                                                    f'{lang.display_name(lang.language)}')
             except LanguageTagError:
                 cls._logger.exception('')
 
@@ -226,39 +228,18 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                 cls.voice_map[lang.language] = entries
             entries.append((voice_name, voice_id, gender))
             LanguageInfo.add_language(engine_id=ESpeakTTSBackend.engine_id,
-                         language_id=lang.language,
-                         country_id=lang.territory,
-                         ietf=lang,
-                         region_id='',
-                         gender=Genders.UNKNOWN,
-                         voice=voice_name,
-                         engine_lang_id=lang_str,
-                         engine_voice_id=voice_id,
-                         engine_name_msg_id=Messages.BACKEND_ESPEAK.get_msg_id(),
-                         engine_quality=3,
-                         voice_quality=-1)
+                                      language_id=lang.language,
+                                      country_id=lang.territory,
+                                      ietf=lang,
+                                      region_id='',
+                                      gender=Genders.UNKNOWN,
+                                      voice=voice_name,
+                                      engine_lang_id=lang_str,
+                                      engine_voice_id=voice_id,
+                                      engine_name_msg_id=Messages.BACKEND_ESPEAK.get_msg_id(),
+                                      engine_quality=3,
+                                      voice_quality=-1)
         cls.initialized_static = True
-
-    '''
-    @classmethod
-    def load_global_lang_info(cls):
-        entry: Dict[str, ForwardRef('LangInfo')]
-        for locale_id, entry in cls.lang_info_map.items():
-            locale_id: str
-            entry: GoogleTTSEngine.LangInfo
-
-            LanguageInfo(engine_id=GoogleTTSEngine.engine_id,
-                         language_id=entry.language_code,
-                         country_id=entry.country_code,
-                         region_id='',  # Not used by Google
-                         gender=Genders.UNKNOWN,
-                         voice='',
-                         engine_lang_id=locale_id,
-                         engine_voice_id='',
-                         engine_name_msg_id=Messages.BACKEND_GOOGLE.get_msg_id(),
-                         engine_quality=4,
-                         voice_quality=-1)
-    '''
 
     def addCommonArgs(self, args, phrase: Phrase | None = None):
         clz = type(self)

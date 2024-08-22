@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<default type="button">
+                  <!-- <topic name="item_1"
+                         hinttext="Select to choose speech engine"
+                         outertopic="engine_settings"
+                         topicleft=""
+                         topicright=""
+                         topicup="engine_settings"
+                         topicdown=""
+                         rank="3"></topic> -->
+                  <description>Speech Engine</description>
+                  <!-- <width>750</width> -->
+      <width>auto</width>
+      <wrapmultiline>false</wrapmultiline>
+      <textwidth>650</textwidth>
+                  <height>25</height>
+                  <label></label>
+                  <visible></visible>
+                  <alignx>left</alignx>
+                  <aligny>center</aligny>
+                  <font>font12_title</font>
+                  <texturefocus border="5">button-focus2.png</texturefocus>
+                  <textoffsetx>30</textoffsetx>
+                  <texturenofocus border="5">button-nofocus.png</texturenofocus>
+                  <shadowcolor>purple</shadowcolor>
+                  <focusedcolor>green</focusedcolor>
+                  <hitrect x="0" y="0" w="780" h="25" />
+      <hitrectcolor>yellow</hitrectcolor>
+      <disabledcolor>blue</disabledcolor>
+      <invalidcolor>red</invalidcolor>
+   </default>

@@ -10,7 +10,6 @@ from gui.element_parser import (BaseElementParser,
                                 ElementHandler)
 from gui.parse_control import ParseControl
 from gui.parse_controls import ParseControls
-from gui.topic_model import TopicModel
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -28,7 +27,6 @@ class ControlsModel(BaseModel):
         self.parent: BaseModel = parent
         # self.topic: TopicModel = None
         # self.control_id: int = parsed_controls.control_id
-        self.children: List[BaseModel] = []
 
         self.convert_children(parsed_controls.children)
 
@@ -61,7 +59,7 @@ class ControlsModel(BaseModel):
         clz = type(self)
         for parser in parsed_controls:
             parser: BaseParser
-            model_handler:  Callable[[BaseModel, BaseParser], BaseModel]
+            model_handler:  Callable[[BaseModel, BaseModel, BaseParser], BaseModel]
             model_handler = ElementHandler.get_model_handler(parser.item)
             #  clz._logger.debug(f'About to create model from {parser.item}')
             child_model = model_handler(self, parser)

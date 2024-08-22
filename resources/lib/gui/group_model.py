@@ -7,11 +7,10 @@ from gui.base_label_model import BaseLabelModel
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
 from gui.base_tags import control_elements, ControlType, Item
-from gui.element_parser import (BaseElementParser,
-                                ElementHandler)
+from gui.element_parser import (ElementHandler)
+from gui.group_no_topic_model import NoGroupTopicModel
+from gui.group_topic_model import GroupTopicModel
 from gui.parse_group import ParseGroup
-from gui.parse_topic import ParseTopic
-from gui.topic_model import TopicModel
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -22,9 +21,10 @@ class GroupModel(BaseLabelModel):
     item: Item = control_elements[ControlType.GROUP.name]
 
     def __init__(self, parent: BaseLabelModel, parsed_group: ParseGroup) -> None:
-        clz = type(self)
+        clz = GroupModel
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz.__class__.__name__)
+
         super().__init__(window_model=parent.window_model, parser=parsed_group)
 
         self.parent = parent
@@ -43,9 +43,31 @@ class GroupModel(BaseLabelModel):
         self.best_hint_text: str = ''
         self.best_info_expr: str = ''
 
-        self.children: List[BaseModel] = []
-
         self.convert_children(parsed_group)
+
+    @property
+    def supports_heading_label(self) -> bool:
+        """
+        Indicates whether this control provides a label which explains what it
+        is for. For example, a button's label almost certainly is to explain
+        why you should press it. On the other hand a label control does not.
+        A label control may be displaying a date or the result of an action.
+        More information is needed for controls like labels in order to know
+        what to do with them.
+
+        :return:
+        """
+        return False
+
+    @property
+    def supports_label(self) -> bool:
+        # ControlCapabilities.LABEL
+        return False
+
+    @property
+    def supports_label2(self) -> bool:
+        #  ControlCapabilities.LABEL2
+        return False
 
     def convert_children(self, parsed_group: ParseGroup) -> None:
         """
@@ -73,12 +95,13 @@ class GroupModel(BaseLabelModel):
         onunfocus 	
         enable 	 
         '''
-        clz = type(self)
+        clz = GroupModel
 
         if parsed_group.topic is not None:
             model_handler: Callable[[BaseModel, BaseModel, BaseParser], BaseModel]
-            model_handler = ElementHandler.get_model_handler(ParseTopic.item)
-            self.topic = model_handler(self, parsed_group.topic)
+            self.topic = GroupTopicModel(self, parsed_group.topic)
+        else:
+            self.topic = NoGroupTopicModel(self)
 
         # clz._logger.debug(f'# parsed children: {len(parsed_group.get_children())}')
         parsers: List[BaseParser] = parsed_group.get_children()
@@ -86,14 +109,17 @@ class GroupModel(BaseLabelModel):
         for parser in parsers:
             parser: BaseParser
             # clz._logger.debug(f'parser: {parser}')
-            model_handler:  Callable[[BaseModel, BaseParser], BaseModel]
+            model_handler: Callable[[BaseModel, BaseParser], BaseModel]
             # clz._logger.debug(f'About to create model from {parser.item}')
             model_handler = ElementHandler.get_model_handler(parser.item)
             child_model: BaseModel = model_handler(self, parser)
             self.children.append(child_model)
 
     def __repr__(self) -> str:
-        clz = type(self)
+        return self.to_string(include_children=False)
+
+    def to_string(self, include_children: bool = False) -> str:
+        clz = GroupModel
 
         alt_type_str: str = ''
         if self.alt_type_expr != '':
@@ -149,9 +175,10 @@ class GroupModel(BaseLabelModel):
                        )
         results.append(result)
 
-        for control in self.children:
-            control: BaseModel
-            results.append(f'{control}')
+        if include_children:
+            for control in self.children:
+                control: BaseModel
+                results.append(f'{control, control.to_string(include_children)}')
         results.append(f'END GroupModel\n')
 
         return '\n'.join(results)

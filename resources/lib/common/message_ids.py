@@ -5,6 +5,7 @@ from typing import Dict, Optional
 import xbmc
 import xbmcaddon
 
+from backends.settings.service_types import Services
 from common.logger import BasicLogger
 from common.setting_constants import Players
 
@@ -56,23 +57,40 @@ class MessageId(Enum):
     # Ex. Available Voices for English
     AVAIL_VOICES_FOR_LANG = 32716
 
+    # Enabled on new install
+    READ_HINT_TEXT_ON_STARTUP = 32812
+    EXTENDED_HELP_ON_STARTUP = 32813
 class MessageUtils:
 
     msg_id_lookup: Dict[str, int] = {
         # TTS :
-        Players.NONE        : MessageId.PLAYER_NONE,
-        Players.SFX         : MessageId.PLAYER_SFX,
-        Players.WINDOWS     : MessageId.PLAYER_WINDOWS,
-        Players.APLAY       : MessageId.PLAYER_APLAY,
-        Players.PAPLAY      : MessageId.PLAYER_PAPLAY,
-        Players.AFPLAY      : MessageId.PLAYER_AFPLAY,
-        Players.SOX         : MessageId.PLAYER_SOX,
-        Players.MPLAYER     : MessageId.PLAYER_MPLAYER,
-        Players.MPV         : MessageId.PLAYER_MPV,
-        Players.MPG321      : MessageId.PLAYER_MPG321,
-        Players.MPG123      : MessageId.PLAYER_MPG123,
-        Players.MPG321_OE_PI: MessageId.PLAYER_MPG321_OE_PI,
-        Players.INTERNAL:   MessageId.PLAYER_INTERNAL
+        Services.AUTO_ENGINE_ID        : MessageId.ENGINE_AUTO_ID,
+        Services.ESPEAK_ID             : MessageId.ENGINE_ESPEAK_ID,
+        Services.FESTIVAL_ID           : MessageId.ENGINE_FESTIVAL,
+        Services.FLITE_ID              : MessageId.ENGINE_FLITE,
+        Services.EXPERIMENTAL_ENGINE_ID: MessageId.ENGINE_EXPERIMENTAL,
+        Services.GOOGLE_ID             : MessageId.ENGINE_GOOGLE,
+        Services.RECITE_ID             : MessageId.ENGINE_RECITE,
+        Services.RESPONSIVE_VOICE_ID   : MessageId.ENGINE_RESPONSIVE_VOICE,
+        Services.SAPI_ID               : MessageId.ENGINE_SAPI,
+        Services.SPEECH_DISPATCHER_ID  : MessageId.ENGINE_SPEECH_DISPATCHER,
+        Services.INTERNAL_PLAYER_ID    : MessageId.ENGINE_INTERNAL,
+        Services.LOG_ONLY_ID           : MessageId.ENGINE_LOG_ONLY,
+        Services.PICO_TO_WAVE_ID       : MessageId.CONVERT_PICO_TO_WAV,
+        Services.PIPER_ID              : MessageId.ENGINE_PIPER,
+        Players.NONE                   : MessageId.PLAYER_NONE,
+        Players.SFX                    : MessageId.PLAYER_SFX,
+        Players.WINDOWS                : MessageId.PLAYER_WINDOWS,
+        Players.APLAY                  : MessageId.PLAYER_APLAY,
+        Players.PAPLAY                 : MessageId.PLAYER_PAPLAY,
+        Players.AFPLAY                 : MessageId.PLAYER_AFPLAY,
+        Players.SOX                    : MessageId.PLAYER_SOX,
+        Players.MPLAYER                : MessageId.PLAYER_MPLAYER,
+        Players.MPV                    : MessageId.PLAYER_MPV,
+        Players.MPG321                 : MessageId.PLAYER_MPG321,
+        Players.MPG123                 : MessageId.PLAYER_MPG123,
+        Players.MPG321_OE_PI           : MessageId.PLAYER_MPG321_OE_PI,
+        Players.INTERNAL               : MessageId.PLAYER_INTERNAL
         # Players.WavAudioPlayerHandler : MessageId.PLAYER_WAVE_HANDLER,
         # Players.MP3AudioPlayerHandler : MessageId.PLAYER_MP3_AUDIO_PLAYER_HANDLER,
         # Players.BuiltInAudioPlayerHandler : MessageId.PLAYER_INTERNAL
@@ -81,17 +99,21 @@ class MessageUtils:
     @classmethod
     def get_msg(cls, msg_id: str | int | MessageId) -> str:
         msg: str = ''
-        if isinstance(msg_id, str):
+        msg_num: int = -1
+
+        if isinstance(msg_id, str) and msg_id.isdigit():
+            msg_id = int(msg_id)
+        if isinstance(msg_id, int):
+            msg_num = msg_id
+            try:
+                msg: str = cls.get_msg_by_id(msg_num)
+            except Exception as e:
+                module_logger.exception('')
+        elif isinstance(msg_id, str):
             try:
                 msg_id_str: str = msg_id
                 new_msg_id: int = cls.msg_id_lookup[msg_id_str]
                 msg: str = cls.get_msg_by_id(new_msg_id)
-            except Exception as e:
-                module_logger.exception('')
-        elif isinstance(msg_id, int):
-            try:
-                msg_num: int = msg_id
-                msg: str = cls.get_msg_by_id(msg_num)
             except Exception as e:
                 module_logger.exception('')
         else:
@@ -110,20 +132,22 @@ class MessageUtils:
         try:
             if isinstance(msg_id, int):
                 msg_num = msg_id
+            elif isinstance(msg_id, str) and msg_id.isdigit():
+                msg_num = int(msg_id)
             else:
                 message_id: MessageId = msg_id
                 msg_num = message_id.value
             msg = xbmcaddon.Addon().getLocalizedString(msg_num)
-            # module_logger.debug(f'ADDON msg: {msg} msg_id: {msg_id}')
+            module_logger.debug(f'ADDON msg: {msg} msg_id: {msg_id} msg_num {msg_num}')
         except:
-            module_logger.exception(f'ADDON msg: {msg} msg_id: {msg_num}')
+            module_logger.exception(f'ADDON msg: {msg} msg_id: {msg_id} msg_num: {msg_num}')
             msg = ''
         try:
             if msg == '':
                 msg = xbmc.getLocalizedString(msg_num)
-                # module_logger.debug(f'msg: {msg} msg_id: {msg_id}')
+                module_logger.debug(f'msg: {msg} msg_id: {msg_id} msg_num: {msg_num}')
         except:
-            module_logger.exception(f'msg: {msg} msg_id: {msg_num}')
+            module_logger.exception(f'msg: {msg} msg_id: {msg_id} msg_num: {msg_num}')
             msg = ''
 
         if msg == '' and empty_on_error:

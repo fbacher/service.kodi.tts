@@ -55,10 +55,11 @@ class BaseEngineSettings:
                                    gender_validator)
         # gender_validator.set_tts_value(Genders.FEMALE)
 
+        # TODO: Change to use allowed_values  BackendInfo.getAvailableBackends()
         engine_id_validator = StringValidator(SettingsProperties.ENGINE,
                                               Services.TTS_SERVICE,
                                               allowed_values=Backends.ALL_ENGINE_IDS,
-                                              min_length=1,  # Size way to big
+                                              min_length=1,  # Size way too big
                                               max_length=32,
                                               default=Backends.DEFAULT_ENGINE_ID)
         SettingsMap.define_setting(Services.TTS_SERVICE, SettingsProperties.ENGINE,

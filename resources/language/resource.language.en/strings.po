@@ -691,8 +691,8 @@ msgid "Experimental"
 msgstr "Experimental"
 
 msgctxt "#32219"
-msgid "Configure Settings"
-msgstr "Configure Settings"
+msgid "Configure TTS Settings"
+msgstr "Configure TTS Settings"
 
 msgctxt "#32220"
 msgid "OK"
@@ -1533,40 +1533,13 @@ msgctxt "#32424"
 msgid "Chinese"
 msgstr "Chinese"
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# Used for Locale
+# ex. English (United States)
+# {0} is the language
+# {1} is the country
+msgctxt "#32425"
+msgid "{0} ({1})"
+msgstr "{0} ({1})"
 "
 # BEGIN MESSAGES USED IN UI (WINDOWS, CONTROLS, etc.)
 
@@ -1632,6 +1605,21 @@ msgctxt "#32713"
 msgid "Scroll Bar"
 msgstr "Scroll Bar"
 
+msgctxt "#32714"
+msgid "{0} of {1} items"
+msgstr "{0} of {1} items"
+
+# Sub-heading for menu to select engine/voice
+msgctxt "#32715"
+msgid "Begins with the closest match"
+msgstr "Begins with the closest match"
+
+# Used as a Menu Heading to select a TTS engine and voice
+# Ex. Available Voices for English
+msgctxt "#32716"
+msgid "Available Voices for {0}"
+msgstr "Available Voices for {0}"
+
 # Messages for Controls
 
 msgctxt "#32800"
@@ -1656,17 +1644,22 @@ msgstr "Select to dismiss dialog"
 
 # Example "15 Vertical items." Can also be Horizontal
 
+# control_name, visible_items, orientation
+# Example: orientation = "Vertical"
+#          control_name = 'GroupList'
+#          visible_items = "15"
+# English result: "Vertical GroupList, 15 items."
 msgctxt "#32805"
-msgid "{0} items."
-msgstr "{0} items."
+msgid "{0} {1} {2} items."
+msgstr "{0} {1} {2} items."
 
 msgctxt "#32806"
 msgid "item {0}"
 msgstr "item {0}"
 
 msgctxt "#32807"
-msgid "Engine Settings."
-msgstr "Engine Settings."
+msgid "Engine Settings"
+msgstr "Engine Settings"
 
 # TODO:
 msgctxt "#32808"
@@ -1690,3 +1683,51 @@ msgstr "{0} dB"
 msgctxt "#32811"
 msgid "{0}%"
 msgstr "{0}%"
+
+msgctxt "#32812"
+msgid "Read hint-text on startup"
+msgstr "Read hint-text on startup"
+
+msgctxt "#32813"
+msgid "Enable extended help on startup"
+msgstr "Enable extended help on startup"
+
+msgctxt "#32814"
+msgid "Kodi Text To Speech is configured in this dialog. For general help press control-F1. Changes are made instantly but are not saved until you request it."
+msgstr "Kodi Text To Speech is configured in this dialog. For general help press control-F1. Changes are made instantly but are not saved until you request it."
+
+msgctxt "#32815"
+msgid "Use cursor-down and cursor-up to navigate to the next or previous item. Press escape or backspace to exit without saving changes. Advance the cursor to the bottom to save your settings."
+msgstr "Use cursor-down and cursor-up to navigate to the next or previous item. Press escape or backspace to exit without saving changes. Advance the cursor to the bottom to save your settings."
+
+msgctxt "#32816"
+msgid "Configures basic TTS engine settings. Press enter to view and hear the choices."
+msgstr "Configures basic TTS engine settings. Press enter to view and hear the choices."
+
+msgctxt "#32817"
+msgid "Configures the voice that the engine uses. Press enter to view the choices."
+msgstr "Configures the voice that the engine uses. Press enter to view the choices."
+
+msgctxt "#32818"
+msgid "on"
+msgstr "on"
+
+msgctxt "#32819"
+msgid "off"
+msgstr "off"
+
+msgctxt "#32820"
+msgid "true"
+msgstr "true"
+
+msgctxt "#32821"
+msgid "false"
+msgstr "false"
+
+msgctxt "#32822"
+msgid "fast"
+msgstr "fast"
+
+msgctxt "#32823"
+msgid "slow"
+msgstr "slow"

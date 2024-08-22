@@ -16,7 +16,7 @@ from common.monitor import Monitor
 from common.phrases import PhraseList
 from gui.base_tags import WindowType
 from windows.ui_constants import UIConstants
-from windows.window_state_monitor import WinDialog, WinDialogState
+from windows.window_state_monitor import WinDialog, WinDialogState, WindowStateMonitor
 
 USE_LXML: bool = False
 try:
@@ -235,7 +235,7 @@ class WindowParser:
         self.xml_path = xml_path
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz.__class__.__name__)
-        clz._logger.debug(f'Parsing: {xml_path}')
+        # clz._logger.debug(f'Parsing: {xml_path}')
         self.current_window_path: Path = xml_path
         if USE_OLD_FUNCTIONS:
             self.xml = minidom.parse(str(xml_path))
@@ -1151,11 +1151,8 @@ class WindowParser:
                     break
                 elif type_attr == 'slider':
                     #  win: xbmcgui.Window = xbmcgui.Window(xbmcgui.getCurrentWindowId())
-                    win = None
-                    if WinDialogState.current_windialog == WinDialog.WINDOW:
-                        win: xbmcgui.Window = WinDialogState.current_window_instance
-                    else:
-                        win: xbmcgui.WindowDialog = WinDialogState.current_dialog_instance
+                    win: xbmcgui.Window
+                    win = WindowStateMonitor.previous_chosen_state.window_instance
                     #  win = xbmcgui.Window(xbmcgui.getCurrentWindowId())
                     label_id = win.getProperty('SliderLabel')
                     new_text = xbmc.getInfoLabel(f'Control.GetLabel({label_id})')
@@ -1371,7 +1368,7 @@ class Includes:
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz.__class__.__name__)
         path = get_xbmc_skin_path('Includes.xml')
-        clz._logger.debug(f'includes path: {path}')
+        clz._logger.debug_verbose(f'includes path: {path}')
         self.xml = minidom.parse(str(path))
         if USE_LXML:
             self.lxml_includes_xml: lxml_ET.ElementTree = lxml_ET.parse(path)

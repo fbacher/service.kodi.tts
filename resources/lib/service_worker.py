@@ -16,6 +16,7 @@ from common.kodi_player_monitor import KodiPlayerMonitor, KodiPlayerState
 from common.logger import *
 from common.phrases import Phrase, PhraseList
 from utils.util import runInThread
+from windowNavigation.help_manager import HelpManager
 from windows.notice import NoticeDialog
 from windows.ui_constants import UIConstants
 from windows.window_state_monitor import WinDialog, WinDialogState, WindowStateMonitor
@@ -94,7 +95,7 @@ class Commands:
     TOGGLE_ON_OFF: Final[str] = 'TOGGLE_ON_OFF'
     CYCLE_DEBUG: Final[str] = 'CYCLE_DEBUG'
     VOICE_HINT: Final[str] = 'VOICE_HINT'
-    HELP: Final[str] = 'HELP'
+    HELP_DIALOG: Final[str] = 'HELP_DIALOG'
     INTRODUCTION: Final[str] = 'INTRODUCTION'
     HELP_CONFIG: Final[str] = 'HELP_CONFIG'
     RESET: Final[str] = 'RESET'
@@ -120,6 +121,7 @@ class TTSService:
     instance_count: int = 0
     instance: ForwardRef('TTSService') = None
     _is_configuring: bool = False
+    _help_running: bool = False
     _logger: BasicLogger = None
     msg_timestamp: datetime.datetime = None
     _initialized: bool = False
@@ -268,7 +270,8 @@ class TTSService:
         elif command == Commands.RESET:
             pass
         elif command == Commands.REPEAT:
-            cls.repeatText()
+            #  cls.repeatText()
+            WindowStateMonitor.revoice_current_focus()
         elif command == Commands.EXTRA:
             cls.sayExtra()
         elif command == Commands.ITEM_EXTRA:  # What is this?
@@ -285,7 +288,7 @@ class TTSService:
             cls.cycle_debug()
         elif command == Commands.VOICE_HINT:
             cls.voice_hint()
-        elif command == Commands.HELP:
+        elif command == Commands.HELP_DIALOG:
             cls.help()
         elif command == Commands.INTRODUCTION:
             cls.introduction()
@@ -334,6 +337,7 @@ class TTSService:
             except ExpiredException:
                 cls._logger.debug(f'incoming text expired on arrival')
         elif command == Commands.SETTINGS_BACKEND_GUI:
+
             if cls._is_configuring:
                 if cls._logger.isEnabledFor(DEBUG_VERBOSE):
                     cls._logger.debug_verbose("Ignoring Duplicate SETTINGS_BACKEND_GUI")
@@ -341,8 +345,7 @@ class TTSService:
                 try:
                     cls._is_configuring = True
                     cls._logger.debug('Starting Backend_GUI')
-                    util.runInThread(SettingsGUI.launch,
-                                     name=Commands.SETTINGS_BACKEND_GUI)
+                    cls.config_settings()
                 except AbortException:
                     reraise(*sys.exc_info())
                 except Exception:
@@ -383,10 +386,20 @@ class TTSService:
         :return:
         """
         Globals.voice_hint = not Globals.voice_hint
+        WindowStateMonitor.revoice_current_focus()
+
+    @classmethod
+    def config_settings(cls):
+        from utils import util
+        cls._logger.debug(f'enter config_settings')
+        SettingsGUI.notify(cmd=SettingsGUI.START)
 
     @classmethod
     def help(cls):
-        pass
+        from utils import util
+        cls._logger.debug(f'enter help')
+        HelpManager.notify(cmd=HelpManager.HELP, text='Daddy')
+        cls._logger.debug(f'ext help')
 
     @classmethod
     def introduction(cls):
@@ -562,18 +575,20 @@ class TTSService:
                                                           "main")
 
     @classmethod
-    def handle_window_changes(cls, changed: int) -> bool:
+    def handle_window_changes(cls, changed: int, window_state: WinDialogState) -> bool:
+        """
+
+        :param changed: Indicates what has changed. See WindowStateMonitor
+        :param window_state: Contains information about the window at the time
+                             of the check for state (window_id, control_id, etc.)
+        :return:
+        """
         # cls._logger.debug(f'TTSService initialized. Now waiting for events'
         #                   f'stop: {cls.stop} readerOn: {cls.readerOn}')
         try:
-            current_windialog_id: int
-            if WinDialogState.current_windialog == WinDialog.WINDOW:
-                current_windialog_id = WinDialogState.current_window_id
-            else:
-                current_windialog_id = WinDialogState.current_dialog_id
-
-            # cls._logger.debug(f'current_windialog_id: {current_windialog_id}')
-            # focus_id: str = f'{WinDialogState.current_dialog_focus_id}'
+            current_window_id: int = window_state.window_id
+            # cls._logger.debug(f'current_window_id: {current_window_id}')
+            # focus_id: str = f'{window_state.window_focus_id}'
             # if focus_id == '0':  # No control on dialog has focus (Kodi may not have focus)
             #     return False
 
@@ -581,7 +596,10 @@ class TTSService:
                 pass
             # if cls.readerOn:
             #    try:
-            cls.checkForText()
+            if window_state.revoice:
+                cls.repeatText()
+            else:
+                cls.checkForText()
             return True
 
         except RuntimeError:
@@ -590,6 +608,8 @@ class TTSService:
             module_logger.info('SystemExit: Quitting')
         except TTSClosedException:
             module_logger.info('TTSCLOSED')
+        except AbortException:
+            reraise(*sys.exc_info())
         except Exception as e:
             # Because we don't want to kill speech on an error
             cls._logger.exception("")
@@ -737,7 +757,7 @@ class TTSService:
     def checkForText(cls):
         #  cls._logger.debug(f'In checkForText')
         cls.checkAutoRead()  # Readers seem to flag text that they want read after the
-                             # the current reading. Perhaps more cpu required?
+                             # the current reading. Perhaps more cpu is_required?
                              # Perhaps to give user a chance to skip? Also seems
                              # to be able to be triggered externally.
         newN = cls.checkNoticeQueue()  # Any incoming notifications from cmd line or addon?
@@ -754,8 +774,8 @@ class TTSService:
         if not success or phrases.is_empty():
             compare = ''
         else:
-            cls._logger.debug(f'CHECK getControlText: {phrases}'
-                              f' reader: {cls.windowReader.__class__.__name__}')
+            # cls._logger.debug(f'CHECK getControlText: {phrases}'
+            #                   f' reader: {cls.windowReader.__class__.__name__}')
             compare: str = phrases[0].get_text()
         # Secondary text is typically some detail (like progress status) that
         # is not related to the focused text. Therefore, you don't want it to
@@ -1080,7 +1100,7 @@ class TTSService:
 
         :param newW: True if anything else has changed requiring reading
                      prior to this. (window, control, etc.)
-        :return:   True if anything required voicing here, or prior to
+        :return:   True if anything is_required voicing here, or prior to
                    this call (window, control, control's description, etc.)
         """
         #  cls._logger.debug(f'windowReader: {cls.windowReader}')
@@ -1196,6 +1216,7 @@ class TTSService:
         text = text.replace('XBMC', 'Kodi')
         if text == '..':
             text = Messages.get_msg(Messages.PARENT_DIRECTORY)
+        text = text.strip()
         return text
 
     @classmethod

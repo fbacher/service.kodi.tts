@@ -8,3 +8,4 @@ class Globals:
 
     # Used to control the voicing of hint-text for controls
     voice_hint: bool = False
+    voice_silent: bool = False

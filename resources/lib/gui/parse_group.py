@@ -5,7 +5,7 @@ from typing import Callable, List, Tuple
 from common.logger import BasicLogger
 from gui.base_parser import BaseParser
 from gui.base_tags import (BaseAttributeType as BAT, control_elements, ControlType,
-                           ElementKeywords as EK, Item)
+                           ElementKeywords as EK, TopicElement as TE, Item)
 from gui.element_parser import ElementHandler
 from gui.parse_control import ParseControl
 from gui.parse_topic import ParseTopic
@@ -107,8 +107,8 @@ class ParseGroup(ParseControl):
         DEFAULT_TAGS: Tuple[str, ...] = (EK.DESCRIPTION, EK.VISIBLE)
         # DEFAULT_FOCUS_TAGS: Tuple[str, ...] = (EK.ENABLE, EK.ON_FOCUS, EK.ON_UNFOCUS,
         #                                        EK.ON_INFO)
-        GROUP_CONTROL_TAGS: Tuple[str, ...] = (EK.TOPIC, EK.HINT_TEXT,
-                                               EK.ALT_LABEL,
+        GROUP_CONTROL_TAGS: Tuple[str, ...] = (TE.TOPIC, TE.HINT_TEXT,
+                                               TE.ALT_LABEL,
                                                EK.DEFAULT_CONTROL,
                                                EK.CONTROL,
                                                EK.CONTROLS)

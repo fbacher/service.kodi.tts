@@ -1,3 +1,4 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
 from queue import Empty as EmptyQueue, Full as FullQueue, Queue
@@ -84,7 +85,7 @@ class WorkerThread:
 
     def process_queue(self):
         clz = type(self)
-        data: TTSQueueData = None
+        data: TTSQueueData | None = None
         try:
             delay: float = 0.05
             while not Monitor.wait_for_abort(delay):

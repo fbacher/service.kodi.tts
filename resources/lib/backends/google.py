@@ -134,6 +134,12 @@ class GoogleSpeechGenerator(ISpeechGenerator):
         if max_phrase_length is None:
             max_phrase_length = 10000  # Essentially no limit
         self.set_phrase(phrase)
+        if phrase.is_empty():
+            clz._logger.debug(f'Phrase empty')
+            self.set_rc(ReturnCode.OK)
+            self.set_finished()
+            return self.download_results
+
         phrase_chunks: PhraseList = PhraseUtils.split_into_chunks(phrase,
                                                                   max_phrase_length)
         unchecked_phrase_chunks: PhraseList = phrase_chunks.clone(check_expired=False)
@@ -162,27 +168,44 @@ class GoogleSpeechGenerator(ISpeechGenerator):
         text_file_path: pathlib.Path = None
         phrase_chunks: PhraseList | None = None
         original_phrase: Phrase = None
-        lang_code: str = ''
-        country_code: str = ''
+        lang_code: str = None
+        country_code: str = None
         gender: str = ''
-        try:
-            lang_code = kwargs.get('lang_code', None)
+        tld: str = ''
+        tld_arg: str = kwargs.get('tld', None)
+        if tld_arg is not None:
+            tld = tld_arg
+        '''
+        lang_code_arg: str = kwargs.get('lang_code', None)
+        if lang_code_arg is not None:
+            lang_code = lang_code_arg
+
+        country_code_arg: str = kwargs.get('country_code', 'us')
+        if country_code_arg is not None:
+            country_code = country_code_arg
+        
+        if lang_code is None or country_code is None:
+            locale_id: str = GoogleTTSEngine.get_voice()
             if lang_code is None:
-                lang_code = GoogleTTSEngine.getLanguage()
+                lang_code = langcodes.Language.get(locale_id).language
+            if country_code is None:
+                country_code = langcodes.Language.get(locale_id).territory
+        '''
+        locale_id: str = GoogleTTSEngine.get_voice()
+        lang_code = langcodes.Language.get(locale_id).language
+        country_code = langcodes.Language.get(locale_id).territory.lower()
+        # self._logger.debug(f'voice: {locale_id} lang_code: {lang_code} '
+        #                    f'territory: {country_code}')
 
-            country_code = kwargs.get('country_code', 'us')
-
-            arg = kwargs.get('gender', None)
-            if arg is None:
-                gender: str = GoogleTTSEngine.getGender()
-            else:
-                gender = arg
-        except Exception as e:
-            clz._logger.exception('')
-            return
+        # Google don't care about gender
+        # arg = kwargs.get('gender', None)
+        # if arg is None:
+        #     gender: str = GoogleTTSEngine.getGender()
+        # else:
+        #     gender = arg
 
         try:
-            # The passed in phrase_chunks, are actually chunks of a phrase. Therefore
+            # The passed in phrase_chunks, are actually chunks of a phrase. Therefor
             # we concatenate the voiced text from each chunk to produce one
             # sound file. This phrase list has expiration disabled.
 
@@ -193,6 +216,8 @@ class GoogleSpeechGenerator(ISpeechGenerator):
                 return
 
             original_phrase = kwargs.get('original_phrase', None)
+            clz._logger.debug(f'phrase to download: {original_phrase} '
+                              f'path: {original_phrase.get_cache_path()}')
             Monitor.exception_on_abort()
             if original_phrase.exists():
                 self.set_rc(ReturnCode.OK)
@@ -214,7 +239,7 @@ class GoogleSpeechGenerator(ISpeechGenerator):
             cache_path = original_phrase.get_cache_path()
             rc2: int
             rc2, _ = self.voice_cache.create_sound_file(cache_path,
-                                                  create_dir_only=True)
+                                                        create_dir_only=True)
             if rc2 != 0:
                 if clz._logger.isEnabledFor(ERROR):
                     clz._logger.error(f'Failed to create cache directory '
@@ -238,16 +263,21 @@ class GoogleSpeechGenerator(ISpeechGenerator):
                         Monitor.exception_on_abort()
                         if clz._logger.isEnabledFor(DEBUG):
                             clz._logger.debug(f'phrase: '
-                                                      f'{phrase_chunk.get_text()}')
+                                              f'{phrase_chunk.get_text()}')
 
+                        clz._logger.debug(f'GTTS lang: {lang_code} '
+                                          f'terr: {country_code} tld: {tld}')
                         my_gtts: MyGTTS = MyGTTS(phrase_chunk, lang_code=lang_code,
-                                                 country_code=country_code)
+                                                 country_code=country_code,
+                                                 tld=tld)
                         # gtts.save(phrase.get_cache_path())
                         #     gTTSError – When there’s an error with the API request.
                         # gtts.stream() # Streams bytes
                         my_gtts.write_to_fp(sound_file)
                         clz._logger.debug(f'Wrote cache_file fragment')
                     except AbortException:
+                        sound_file.close()
+                        pathlib.Path(sound_file.name).unlink(missing_ok=True)
                         self.set_rc(ReturnCode.ABORT)
                         self.set_finished()
                         reraise(*sys.exc_info())
@@ -278,11 +308,13 @@ class GoogleSpeechGenerator(ISpeechGenerator):
                                   f'{str(temp_file)} size: {temp_file.stat().st_size}')
             if self.get_rc() == ReturnCode.OK:
                 try:
-                    if temp_file.exists() and temp_file.stat().st_size > 0:
+                    if temp_file.exists() and temp_file.stat().st_size > 100:
                         temp_file.rename(cache_path)
                         original_phrase.set_exists(True)
                         clz._logger.debug(f'cache_file is: {str(cache_path)}')
                     else:
+                        if temp_file.exists():
+                            temp_file.unlink(True)
                         self.set_rc(ReturnCode.DOWNLOAD)
                         self.set_finished()
                 except Exception as e:
@@ -314,12 +346,14 @@ class GoogleSpeechGenerator(ISpeechGenerator):
 class MyGTTS(gTTS):
 
     def __init__(self, phrase: Phrase, lang_code: str = 'en',
-                 country_code: str = 'us') -> None:
+                 country_code: str = 'us', tld: str = 'com',
+                 lang_check: bool = False) -> None:
         """
         :param self:
         :param phrase:
         :param lang_code:  2-char language code
         :param country_code:  country code
+        :param lang_check: True more error detection, but a bit slower to check
         :return:
 
         Raises:
@@ -332,16 +366,16 @@ class MyGTTS(gTTS):
         country_code_country_tld: Dict[str, Tuple[str, str]] = {
                                 ISO3166-1, <google tld>, <country name>
         """
-
         data: Tuple[str, str]
         data = GoogleData.country_code_country_tld[country_code]
-        tld: str = 'com'
+        module_logger.debug(f'lang: {lang_code} country: {country_code} '
+                            f'data: {data} tld: {tld}' )
         if data is not None and len(data) == 2:
             tld = data[0]
         super().__init__(phrase.get_text(),
                          lang=lang_code,
                          slow=False,
-                         lang_check=True,
+                         lang_check=lang_check,
                          tld=tld
                          #  pre_processor_funcs=[
                          #     pre_processors.tone_marks,
@@ -467,9 +501,8 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
                                                          lang_code,
                                                          country_code,
                                                          locale_id,
-                                                         f'{country_name}_X',
+                                                         f'{country_name}',
                                                          tld)
-
 
         @classmethod
         def load_global_lang_info(cls):
@@ -486,19 +519,26 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
                     lang = langcodes.Language.get(locale_id)
                 except LanguageTagError:
                     cls._logger.exception('')
+                voice: str = ''
+                try:
+                    voice = langcodes.Language.get(locale_id).display_name()
+                except:
+                    voice = locale_id
 
+                voice_id: str = entry.locale_id.lower()
+                engine_name_msg_id: str = Messages.BACKEND_GOOGLE.get_msg_id()
                 LanguageInfo.add_language(engine_id=GoogleTTSEngine.engine_id,
-                             language_id=entry.language_code,
-                             country_id=entry.country_code,
-                             ietf=lang,
-                             region_id='',  # Not used by Google
-                             gender=Genders.UNKNOWN,
-                             voice=entry.locale_id,
-                             engine_lang_id=locale_id,
-                             engine_voice_id=entry.locale_id,
-                             engine_name_msg_id=Messages.BACKEND_GOOGLE.get_msg_id(),
-                             engine_quality=4,
-                             voice_quality=-1)
+                                          language_id=entry.language_code,
+                                          country_id=entry.country_code,
+                                          ietf=lang,
+                                          region_id='',  # Not used by Google
+                                          gender=Genders.UNKNOWN,
+                                          voice=voice,
+                                          engine_lang_id=locale_id,
+                                          engine_voice_id=voice_id,
+                                          engine_name_msg_id=engine_name_msg_id,
+                                          engine_quality=4,
+                                          voice_quality=-1)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -532,11 +572,17 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
     def update_voice_path(cls, phrase: Phrase) -> None:
         if not phrase.is_lang_territory_set():
             locale: str = phrase.language  # IETF format
+            _, kodi_locale, _, ietf_lang = SettingsHelper.get_kodi_locale_info()
+            voice: str = Settings.get_voice(cls.service_ID)
+            if voice is None or voice == '':
+                voice = kodi_locale
+            else:
+                ietf_lang: langcodes.Language = langcodes.get(voice)
+            # cls._logger.debug(f'orig Phrase locale: {locale}')
             if locale is None:
-                # locale = Settings.get_voice
-                _, locale, _ = SettingsHelper.get_kodi_locale_info()
-            cls._logger.debug(f'locale: {locale}')
-            ietf_lang = langcodes.Language.get(locale)
+                locale = kodi_locale
+            # cls._logger.debug(f'locale: {locale}')
+            ietf_lang: langcodes.Language
             phrase.set_lang_dir(ietf_lang.language)
             phrase.set_territory_dir(ietf_lang.territory.lower())
         return
@@ -553,17 +599,17 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         try:
             clz.update_voice_path(phrase)
             attempts: int = 25  # Waits up to about 2.5 seconds
-            while (not phrase.exists() and phrase.is_download_pending() and
+            while (not phrase.cache_path_exists() and phrase.is_download_pending() and
                    attempts > 0):
-                if phrase.exists():
+                if phrase.cache_path_exists():
                     break
                 Monitor.exception_on_abort(timeout=0.1)
                 attempts -= 1
 
-            if not phrase.exists():
+            if not phrase.cache_path_exists():
                 clz._logger.debug(f'Phrase: {phrase.get_text()} not yet downloaded')
 
-            if not phrase.is_download_pending and not phrase.exists():
+            if not phrase.is_download_pending and not phrase.cache_path_exists():
                 tmp_phrase: Phrase = phrase.clone(check_expired=False)
                 # generate voice in cache for the future.
                 # Ignore result, don't wait
@@ -572,7 +618,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         except ExpiredException:
             return False
 
-        return phrase.exists()
+        return phrase.cache_path_exists()
 
     def get_cached_voice_file(self, phrase: Phrase,
                               generate_voice: bool = True) -> bool:
@@ -596,45 +642,32 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         # or path where to download to. byte_stream is None if cached file
         # does not exist, otherwise it is the contents of the cached file
 
-        audio_pipe = None
-        byte_stream: BinaryIO | None = None
         try:
             self.get_voice_cache().get_path_to_voice_file(phrase,
                                                           use_cache=Settings.is_use_cache())
-            if not phrase.exists():
+            if not phrase.cache_path_exists():
                 tmp_phrase: Phrase = phrase.clone(check_expired=False)
-                # espeak_engine: ESpeakTTSBackend =\
-                #     BaseServices.getService(SettingsProperties.ESPEAK_ID)
-                # if not espeak_engine.initialized:
-                #     espeak_engine.init()
-
-                # espeak_engine.say_phrase(phrase)
-                # generate voice in cache for the future.
-                # Ignore result, don't wait
                 generator: GoogleSpeechGenerator = GoogleSpeechGenerator()
+
+                # Blocks a max of timeout seconds. Generator continues past
+                # timeout so the file will be in the cache for the next time
+
                 generator.generate_speech(tmp_phrase, timeout=1.0)
             try:
                 attempts: int = 10
-                while not phrase.get_cache_path().exists():
+                while not phrase.cache_path_exists():
                     attempts -= 1
                     if attempts <= 0:
                         break
                     Monitor.exception_on_abort(timeout=0.5)
-                    # byte_stream = io.open(phrase.get_cache_path(), 'br')
-                if attempts >= 0:
-                    byte_stream = phrase.get_cache_path().open(mode='br')
             except AbortException as e:
                 reraise(*sys.exc_info())
-            except FileNotFoundError:
-                clz._logger.debug(f'File not found: {phrase.get_cache_path()}')
-                byte_stream = None
             except Exception:
                 clz._logger.exception('')
-                byte_stream = None
 
         except ExpiredException:
             pass
-        return byte_stream
+        return phrase.cache_path_exists()
 
     def runCommandAndPipe(self, phrase: Phrase) -> BinaryIO:
         clz = type(self)
@@ -650,8 +683,12 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
             clz.update_voice_path(phrase)
             self.get_voice_cache().get_path_to_voice_file(phrase,
                                                           use_cache=Settings.is_use_cache())
-            if not phrase.exists():
+            if not phrase.cache_path_exists():
                 tmp_phrase: Phrase = phrase.clone(check_expired=False)
+                # Can use eSpeak as a backup in case generator is not fast enough,
+                # however internet speeds (at least around here) are fast enough.
+                # If this presents a problem, this code can be re-enabled.
+                #
                 # espeak_engine: ESpeakTTSBackend =\
                 #     BaseServices.getService(SettingsProperties.ESPEAK_ID)
                 # if not espeak_engine.initialized:
@@ -664,7 +701,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
                 generator.generate_speech(tmp_phrase, timeout=1.0)
             try:
                 attempts: int = 10
-                while not phrase.get_cache_path().exists():
+                while not phrase.cache_path_exists():
                     attempts -= 1
                     if attempts <= 0:
                         break
@@ -686,10 +723,13 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         return byte_stream
 
     def seed_text_cache(self, phrases: PhraseList) -> None:
-        # For engines that are expensive, it can be beneficial to cache the voice
-        # files. In addition, by saving text to the cache that is not yet
-        # voiced, then a background process can generate speech so the cache
-        # gets built more quickly
+        """
+        Provides means to generate voice files before actually needed. Currently
+        called by worker_thread to get a bit of a head-start on the normal path.
+        (Probably does not help much). Also, called by disabled code which
+        :param phrases:
+        :return:
+        """
 
         clz = type(self)
         try:
@@ -700,7 +740,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
                 if Settings.is_use_cache():
                     GoogleTTSEngine.update_voice_path(phrase)
                     self.voice_cache.get_path_to_voice_file(phrase, use_cache=True)
-                    if not phrase.exists():
+                    if not phrase.cache_path_exists():
                         text_to_voice: str = phrase.get_text()
                         voice_file_path: pathlib.Path = phrase.get_cache_path()
                         clz._logger.debug_extra_verbose(f'PHRASE Text {text_to_voice}')
@@ -786,7 +826,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
                     *args) -> Tuple[List[Choice], str]:
         """
         Gets the possible specified setting values in same representation
-        as stored in settings.xml (not translated). Sorting/translating done
+        as stored in settings.xml (not translate). Sorting/translating done
         in UI.
 
         :param setting: name of the setting
@@ -864,6 +904,11 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         languages: List[Tuple[str, str]]  # lang_id, locale_id
         languages, default_lang = cls.settingList(SettingsProperties.LANGUAGE)
         return default_lang
+
+    @classmethod
+    def get_voice(cls) -> str:
+        voice: str = Settings.get_voice(cls.engine_id)
+        return voice
 
     @classmethod
     def getLanguage(cls) -> str:

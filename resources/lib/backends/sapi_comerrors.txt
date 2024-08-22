@@ -131,7 +131,7 @@ The token specified is invalid.
 SPERR_XML_BAD_SYNTAX	0x80045042	-2147200958
 The xml parser failed due to bad syntax.
 SPERR_XML_RESOURCE_NOT_FOUND	0x80045043	-2147200957
-The xml parser failed to load a required resource (e.g., voice, phoneconverter, etc.).
+The xml parser failed to load a is_required resource (e.g., voice, phoneconverter, etc.).
 SPERR_TOKEN_IN_USE	0x80045044	-2147200956
 Attempted to remove registry data from a token that is already in use elsewhere.
 SPERR_TOKEN_DELETED	0x80045045	-2147200955

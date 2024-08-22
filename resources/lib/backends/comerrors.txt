@@ -93,7 +93,7 @@ STG_E_OLDDLL
 The compound file %1 was produced with a newer version of storage.
 STG_E_SHAREREQUIRED
 0x80030106
-Share.exe or equivalent is required for operation.
+Share.exe or equivalent is is_required for operation.
 STG_E_NOTFILEBASEDSTORAGE
 0x80030107
 Illegal operation called on non-file based storage.
@@ -219,7 +219,7 @@ RPC_E_SYS_CALL_FAILED
 System call failed.
 RPC_E_OUT_OF_RESOURCES
 0x80010101
-Could not allocate some required resource (memory, events, ...)
+Could not allocate some is_required resource (memory, events, ...)
 RPC_E_ATTEMPTED_MULTITHREAD
 0x80010102
 Attempted to make calls on more than one thread in single threaded mode.

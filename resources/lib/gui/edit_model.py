@@ -1,17 +1,16 @@
 # coding=utf-8
 
-from typing import Callable, ForwardRef, List, Union
+from typing import Callable, List
 
 from common.logger import BasicLogger
-from common.phrases import PhraseList
 from gui.base_label_model import BaseLabelModel
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
 from gui.base_tags import control_elements, ControlType, Item
-from gui.element_parser import (BaseElementParser, ElementHandler)
+from gui.edit_no_topic_model import NoEditTopicModel
+from gui.edit_topic_model import EditTopicModel
+from gui.element_parser import (ElementHandler)
 from gui.parse_edit import ParseEdit
-from gui.parse_topic import ParseTopic
-from gui.topic_model import TopicModel
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -25,20 +24,20 @@ class EditModel(BaseLabelModel):
         clz = type(self)
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz.__class__.__name__)
-        super().__init__(window_model=parent.window_model, parser=parsed_edit)
+        super().__init__(window_model=parent.window_model,
+                         parser=parsed_edit)
         self.parent = parent
         self.action_expr: str = ''
         self.description: str = ''
         self.enable_expr: str = ''
+        self.control_hint_text: str
         self.hint_text_expr: str = ''
         self.info_expr: str = ''
         self.label_expr: str = ''
         self.on_focus_expr: str = ''
         self.on_unfocus_expr: str = ''
         self.visible_expr: str = ''
-        self.children: List[BaseModel] = []
-
-        self.previous_heading: PhraseList = PhraseList()
+        self.topic: EditTopicModel | None = None
 
         self.convert(parsed_edit)
 
@@ -51,8 +50,6 @@ class EditModel(BaseLabelModel):
         :return:
         """
         clz = type(self)
-        self.control_type = parsed_edit.control_type
-        self.control_id = parsed_edit.control_id
         self.description = parsed_edit.description
         self.enable_expr = parsed_edit.enable_expr
         self.label_expr = parsed_edit.label_expr
@@ -66,24 +63,25 @@ class EditModel(BaseLabelModel):
 
         if parsed_edit.topic is not None:
             model_handler: Callable[[BaseModel, BaseModel, BaseParser], BaseModel]
-            model_handler = ElementHandler.get_model_handler(ParseTopic.item)
-            self.topic = model_handler(self, parsed_edit.topic)
+            self.topic = EditTopicModel(self, parsed_edit.topic)
+        else:
+            self.topic = NoEditTopicModel(self)
 
         clz._logger.debug(f'# parsed children: {len(parsed_edit.get_children())}')
 
         for child in parsed_edit.children:
             child: BaseParser
             # clz._logger.debug(f'child: {child}')
-            model_handler:  Callable[[BaseModel, BaseParser], BaseModel]
+            model_handler: Callable[[BaseModel, BaseParser], BaseModel]
             # clz._logger.debug(f'About to create model from {type(child).item}')
             model_handler = ElementHandler.get_model_handler(child.item)
             child_model: BaseModel = model_handler(self, child)
             self.children.append(child_model)
 
-    def clear_history(self) -> None:
-        self.previous_heading.clear()
-
     def __repr__(self) -> str:
+        return self.to_string(include_children=False)
+
+    def to_string(self, include_children: bool = False) -> str:
         clz = type(self)
         if self.on_focus_expr != '':
             on_focus_expr: str = f'\n on_focus_expr: {self.on_focus_expr}'
@@ -144,8 +142,9 @@ class EditModel(BaseLabelModel):
                        )
         results.append(result)
 
-        for child in self.children:
-            child: BaseParser
-            results.append(str(child))
+        if include_children:
+            for child in self.children:
+                child: BaseParser
+                results.append(str(child))
 
         return '\n'.join(results)

@@ -6,7 +6,7 @@ from typing import Callable, ForwardRef, List, Tuple
 from common.logger import BasicLogger
 from gui import ControlType
 from gui.base_parser import BaseParser
-from gui.base_tags import control_elements, ElementKeywords as EK, Item
+from gui.base_tags import control_elements, ElementKeywords as EK, TopicElement as TE, Item
 from gui.element_parser import ElementHandler
 from gui.parse_control import ParseControl
 from gui.parse_topic import ParseTopic
@@ -85,11 +85,11 @@ class ParseRadioButton(ParseControl):
         if labeled_by_str is not None:
             self.labeled_by_expr = labeled_by_str
 
-        tags_to_parse: Tuple[str, ...] = (EK.TOPIC, EK.VISIBLE, EK.SELECTED,
+        tags_to_parse: Tuple[str, ...] = (TE.TOPIC, EK.VISIBLE, EK.SELECTED,
                                           EK.ENABLE, EK.WRAP_MULTILINE,
                                           EK.ON_CLICK, EK.DESCRIPTION, EK.LABEL,
                                           EK.LABEL2, EK.ON_CLICK, EK.ON_FOCUS,
-                                          EK.ON_UNFOCUS, EK.ALT_LABEL,
+                                          EK.ON_UNFOCUS,
                                           EK.HINT_TEXT, EK.ON_INFO)
         elements: [ET.Element] = el_button.findall(f'./*')
         element: ET.Element
@@ -104,6 +104,8 @@ class ParseRadioButton(ParseControl):
                 # Values copied to self
                 handler: Callable[[BaseParser, ET.Element], str | BaseParser]
                 handler = ElementHandler.get_handler(item.key)
+                clz._logger.debug(f'item.key: {item.key} '
+                                  f'handler: {type(handler)}')
                 parsed_instance: BaseParser = handler(self, element)
                 if parsed_instance is not None:
                     if control_type is not None:

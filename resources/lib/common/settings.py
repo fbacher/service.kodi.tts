@@ -136,14 +136,24 @@ class Settings(SettingsLowLevel):
         return SettingsProperties.ESPEAK_ID
 
     @classmethod
+    def extended_help_on_startup(cls) -> bool:
+        return SettingsLowLevel.get_setting_bool(
+                SettingsProperties.EXTENDED_HELP_ON_STARTUP)
+
+    @classmethod
+    def extended_help_on_startup(cls, extended_help_enabled: bool) -> None:
+        SettingsLowLevel.set_setting_bool(SettingsProperties.EXTENDED_HELP_ON_STARTUP,
+                                          extended_help_enabled)
+
+    @classmethod
     def get_gender(cls, engine_id: str = None) -> Genders:
         if engine_id is None:
             engine_id = super()._current_engine
         # cls._logger.debug(f'getting gender for engine_id: {engine_id}')
-        gender_validator: IGenderValidator
-        gender_validator = SettingsMap.get_validator(Services.TTS_SERVICE,
-                                                     property_id=SettingsProperties.GENDER)
-        gender: Genders = gender_validator.get_tts_value()
+        gender_val: IGenderValidator
+        gender_val = SettingsMap.get_validator(Services.TTS_SERVICE,
+                                               property_id=SettingsProperties.GENDER)
+        gender: Genders = gender_val.get_tts_value()
         return gender
 
     @classmethod
@@ -156,6 +166,15 @@ class Settings(SettingsLowLevel):
                                                             property_id=SettingsProperties.GENDER)
         engine_gender_validator.set_tts_value(gender)
         return
+
+    @classmethod
+    def is_hint_text_on_startup(cls) -> bool:
+        return SettingsLowLevel.get_setting_bool(SettingsProperties.HINT_TEXT_ON_STARTUP)
+
+    @classmethod
+    def set_hint_text_on_startup(cls, hint_text_enabled: bool)  -> None:
+        SettingsLowLevel.set_setting_bool(SettingsProperties.HINT_TEXT_ON_STARTUP,
+                                          hint_text_enabled)
 
     @classmethod
     def get_language(cls, engine_id: str = None) -> str:
@@ -181,10 +200,10 @@ class Settings(SettingsLowLevel):
         # cls._logger.debug(f'setting language: {language}')
         if engine_id is None:
             engine_id = super()._current_engine
-        engine_language_validator: IValidator
-        engine_language_validator = SettingsMap.get_validator(engine_id,
-                                                              property_id=SettingsProperties.LANGUAGE)
-        engine_language_validator.set_tts_value(language)
+        lang_val: IValidator
+        lang_val = SettingsMap.get_validator(engine_id,
+                                             property_id=SettingsProperties.LANGUAGE)
+        lang_val.set_tts_value(language)
         return
 
     @classmethod
@@ -250,6 +269,7 @@ class Settings(SettingsLowLevel):
             engine_id = super()._current_engine
         voice_val: IValidator = SettingsMap.get_validator(
                 engine_id, SettingsProperties.VOICE)
+        cls._logger.debug(f'Setting voice {voice} for engine_id: {engine_id}')
         voice_val.set_tts_value(voice)
         return None
 
@@ -486,6 +506,18 @@ class Settings(SettingsLowLevel):
         """
         # cls._logger.debug(f'setting {SettingsProperties.PLAYER}: {value}')
         return cls.set_setting_str(SettingsProperties.PLAYER, value,
+                                   engine_id=engine_id)
+
+    @classmethod
+    def set_module(cls, value: str, engine_id: str = None) -> bool:
+        """
+        TODO: END HIGH LEVEL
+        :param value:
+        :param engine_id:
+        :return:
+        """
+        # cls._logger.debug(f'setting {SettingsProperties.PLAYER}: {value}')
+        return cls.set_setting_str(SettingsProperties.MODULE, value,
                                    engine_id=engine_id)
 
     @classmethod

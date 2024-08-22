@@ -5,9 +5,9 @@ class Choice:
     """
     Encapsulates information for making a settings choice.
 
-    Typically contains display_value, id and choice_index. May contain more
+    Typicaly contains display_value, id and choice_index. May contain more
     items, as needed. By containing the choice variants here, the users of this
-    class don't have to change whenever a new variant is required.
+    class don't have to change whenever a new variant is is_required.
     """
 
     def __init__(self, label: str, value: str, choice_index: int,
@@ -16,7 +16,7 @@ class Choice:
                  match_distance: int = 1000) -> None:
         """
 
-        :param label: User friendly, translated label
+        :param label: User friendly, translate label
         :param value: value used in settings, etc.
         :param choice_index: When from a list of choices, this is its place in list.
         :param sort_key:  Key to use when sorting list
@@ -45,5 +45,5 @@ class Choice:
 
     def __repr__(self) -> str:
         result: str = (f'label: {self.label} value: {self.value} idx: {self.choice_index}\n'
-                       f'engine: {self.engine_id} lang_info: {self.lang_info}')
+                       f'engine_id: {self.engine_id} lang_info: {self.lang_info}')
         return result

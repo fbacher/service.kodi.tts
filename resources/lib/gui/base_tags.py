@@ -40,36 +40,219 @@ class BaseAttributeType(StrEnum):
     LABEL_ID = 'label_id'
     SET_FOCUS = 'setfocus'
     TYPE = 'type'
+    # ALT_TYPE specifies the control type to use that may be more clear
+    # than the Kodi control names. TODO: create type listing suggested
+    # alt-types.  If a string is specified, then it is for a pre-defined
+    # alt-type. If an int, then it is a message id.
     ALT_TYPE = 'alt_type'
+    # HEADING_LABEL specifies a label used for the heading of this control
+    # If an integer, then it is a message_id
+    # If text it is either an $INFOLABEL or a topic_name where it's
+    # HEADING_LABEL is used instead
+    HEADING_LABEL = 'heading_label'
+    # HEADING_NEXT specifies an additional topic containing a sub-heading
+    # to voice
+    HEADING_NEXT = 'heading_next'
+    # LABEL_FOR marks a control as being the label for another control
+    # Typically the control needing this label also has a LABELED_BY
+    # reference back to this topic
     LABEL_FOR = 'label_for'
+    # See LABEL_FOR
     LABELED_BY = 'labeled_by'
+    # ALT_LABEL specifies an alternate label to use that may be more
+    # accessible. ALT_LABEL may be an int, which is interpreted as a
+    # message id. (To use another control as a label, use LABELED_BY
+    # instead.) ALT_LABEL may be a string, in which case it is
+    # interpreted as an INFO_LABEL or similar.
     ALT_LABEL = 'alt_label'
     TOPIC = 'topic'
+    # NAME is the id to use for this Topic
     NAME = 'name'
-    HINT_TEXT = 'hinttext'
-    FLOWS_TO = 'flowsto'
-    FLOWS_FROM = 'flowsfrom'
+    # HINT_TEXT supplies additional text that may clarify what the control
+    # is for, or perhaps your options, etc. Format is the same as ALT_LABEL
+    HINT_TEXT = 'hint_text'
+    # FLOWS_TO indicates that the result of this control (label or value)
+    # is voiced by another control. FLOWS_TO specifies the int id or topic name
+    # of the other control. Typically, the receiving control has a FLOWS_FROM
+    # referencing back to this topic or control with the FLOWS_TO
+    FLOWS_TO = 'flows_to'
+    # See FLOWS_TO, above
+    FLOWS_FROM = 'flows_from'
     # For binary controls: RadioButton. By default, 'Enabled' is
     # substituted for '(*)' from the ListItem value of the control
     TRUE_MSG_ID = 'true_msg_id'
     # For binary controls: RadioButton. By default, 'Disabled' is
     # substituted for '()' from the ListItem value of the control
     FALSE_MSG_ID = 'false_msg_id'
+    # READ_NEXT is typically used for non-focusable items. It indicates that
+    # more than one thing needs to be read for, say, a window header.
+    READ_NEXT = 'read_next'
     # INNER/OUTER are to traverse the logically
     # superior/inferior topic (window header is
     # superior to all, categories, etc. are in
     # between and detail values are most inferior)
-    INNER_TOPIC = 'innertopic'
-    OUTER_TOPIC = 'outertopic'
+    INNER_TOPIC = 'inner_topic'
+    OUTER_TOPIC = 'outer_topic'
     # LEFT/RIGHT are for topics to the physical left/right.
     # similar for UP/DOWN.
-    TOPIC_LEFT = 'topicleft'
-    TOPIC_RIGHT = 'topicright'
-    TOPIC_UP = 'topicup'
-    TOPIC_DOWN = 'topicdown'
+    TOPIC_LEFT = 'topic_left'
+    TOPIC_RIGHT = 'topic_right'
+    TOPIC_UP = 'topic_up'
+    TOPIC_DOWN = 'topic_down'
     RANK = 'rank'
-    TOPIC_TYPE = 'topictype'
+    # TOPIC_TYPE specifies how this topic is used.
+    # It can be one of 'heading'
+    TOPIC_TYPE = 'topic_type'   # Consider removing
+    # UNITS indicates that the value needs to be formatted to the
+    # given units. The value of units needs to be one of the
+    # predefined units (TODO: Add the units)
     UNITS = 'units'  # complex string value
+
+
+class TopicElement(StrEnum):
+        # ALT_TYPE specifies the control type to use that may be more clear
+        # than the Kodi control names. TODO: create type listing suggested
+        # alt-types.  If a string is specified, then it is for a pre-defined
+        # alt-type. If an int, then it is a message id.
+    ALT_TYPE = 'alt_type'
+        # ALT_TYPE TBD
+    ALT_INFO = 'alt_info'
+        # CONTAINER_TOPIC specifies the topic whis is the container (list-like)
+        # topic of this topic.
+    CONTAINER_TOPIC = 'container_topic'
+        # HEADING_LABEL specifies a label used for the heading of this control
+        # If an integer, then it is a message_id
+        # If text it is an $INFOLABEL
+    HEADING_LABEL = 'heading_label'
+        # HEADING_LABELED_BY specifies another topic id or control_id to
+        # get the label from.
+    HEADING_LABELED_BY = 'heading_labeled_by'
+        # HEADING_NEXT specifies an additional topic containing a sub-heading
+        # to voice
+    HEADING_NEXT = 'heading_next'
+        # LABEL_FOR marks a control as being the label for another control
+        # Typically the control needing this label also has a LABELED_BY
+        # reference back to this topic
+    LABEL_FOR = 'label_for'
+        # See LABEL_FOR
+    LABELED_BY = 'labeled_by'
+        # ALT_LABEL specifies an alternate label to use that may be more
+        # accessible. ALT_LABEL may be an int, which is interpreted as a
+        # message id. (To use another control as a label, use LABELED_BY
+        # instead.) ALT_LABEL may be a string, in which case it is
+        # interpreted as an INFO_LABEL or similar.
+    ALT_LABEL = 'alt_label'
+    TOPIC = 'topic'
+        # NAME is the id to use for this Topic
+    NAME = 'name'
+        # HINT_TEXT supplies additional text that may clarify what the control
+        # is for, or perhaps your options, etc. Format is the same as ALT_LABEL
+    HINT_TEXT = 'hint_text'
+        # FLOWS_TO indicates that the result of this control (label or value)
+        # is voiced by another control. FLOWS_TO specifies the int id or topic name
+        # of the other control. Typically, the receiving control has a FLOWS_FROM
+        # referencing back to this topic or control with the FLOWS_TO
+    FLOWS_TO = 'flows_to'
+        # See FLOWS_TO, above
+    FLOWS_FROM = 'flows_from'
+        # For binary controls: RadioButton. By default, 'Enabled' is
+        # substituted for '(*)' from the ListItem value of the control
+    TRUE_MSG_ID = 'true_msg_id'
+        # For binary controls: RadioButton. By default, 'Disabled' is
+        # substituted for '()' from the ListItem value of the control
+    FALSE_MSG_ID = 'false_msg_id'
+        # READ_NEXT is typically used for non-focusable items. It indicates that
+        # more than one thing needs to be read for, say, a window header.
+    READ_NEXT = 'read_next'
+        # INNER/OUTER are to traverse the logically
+        # superior/inferior topic (window header is
+        # superior to all, categories, etc. are in
+        # between and detail values are most inferior)
+    INNER_TOPIC = 'inner_topic'
+    OUTER_TOPIC = 'outer_topic'
+        # References a topic containg heading information to voice for this control
+    TOPIC_HEADING = 'topic_heading'
+        # LEFT/RIGHT are for topics to the physical left/right.
+        # similar for UP/DOWN.
+    TOPIC_LEFT = 'topic_left'
+    TOPIC_RIGHT = 'topic_right'
+    TOPIC_UP = 'topic_up'
+    TOPIC_DOWN = 'topic_down'
+    RANK = 'rank'
+        # TOPIC_TYPE specifies how this topic is used.
+        # It can be one of 'heading'
+    TOPIC_TYPE = 'topic_type'
+        # UNITS indicates that the value needs to be formatted to the
+        # given units. The value of units needs to be one of the
+        # form:  scale=db, type=float, step=.1, min=-12, max=12.
+        # The value will appear in the form <scaled_value><scale_suffix> and
+        # conforming to the range number-type and step specified.
+        #  Example: 3.1db  Instead of 3.09db
+    UNITS = 'units'
+        # Format the value (after formatting with UNITS, above) to add text, etc.
+    VALUE_FORMAT = 'value_format'
+        #  Get the value from a control/listitem or from TTS <control>module
+    VALUE_FROM = 'value_from'
+
+class TopicKeyword(StrEnum):
+    UNIT = 'unit'
+    TYPE = 'type'
+    DECIMAL_DIGITS = 'decimal_digits'
+
+class UnitsType(StrEnum):
+    INT = 'int'
+    FLOAT = 'float'
+
+class TopicType(StrEnum):
+    HEADING = 'heading'
+    VALUE = 'value'
+    DEFAULT = 'default'
+    #  NONE causes no voicing of the control. Default value for
+    #  control_type "group".
+    NONE = 'none'
+
+class TopicAltType(StrEnum):
+    DIALOG = 'dialog'
+    WINDOW = 'window'
+
+class ValueFromType(StrEnum):
+    INTERNAL = 'internal'
+    NONE = 'none'
+
+
+class ValueUnits:
+
+    def __init__(self, units_unit: str, unit_type: UnitsType,
+                 units_digits: int) -> None:
+        clz = ValueUnits
+        # ex: units unit="db" type="float" decimal_digits="1
+        self.units: str = units_unit
+        self.unit_type: UnitsType = unit_type
+        self.units_digits: int = units_digits
+        return
+
+    def format_value(self, value: float | int) -> str:
+        clz = ValueUnits
+        result: str = ''
+        try:
+
+            if self.unit_type == UnitsType.INT:
+                # Converts 1234 with units of 'db'  to '1234db'
+                result = f'{int(value)}{self.units}'
+            else:
+                # Float
+                result: str = f'{value:.{self.units_digits}f}{self.units}'
+        except Exception:
+            clz._logger.exception('')
+        return result
+
+    def __repr__(self) -> str:
+        result: str = (f'UNITS:'
+                       f'\n  units: {self.units} '
+                       f'\n  unit_type: {self.unit_type} '
+                       f'\n  units_digits: {self.units_digits}'
+                       f'\nEND UNITS')
+        return result
 
 
 class ControlType(StrEnum):
@@ -87,7 +270,7 @@ class ControlType(StrEnum):
     GROUP = 'group'
     GROUP_LIST = 'grouplist'
     IMAGE = 'image'
-    LABEL_CONTROL = 'label'
+    LABEL = 'label'
     LIST = 'list'
     MENU_CONTROL = 'menucontrol'
     MOVER = 'mover'
@@ -117,10 +300,21 @@ class ElementType(StrEnum):
     NON_CONTROL = 'noncontrol'
     BOTH = 'both'
     ATTRIB = 'attrib'
-    HINT_TEXT = 'hinttext'
-    ALT_LABEL = 'alt_label'
-    ALT_INFO = 'alt_info'
     WINDOW = 'window'
+
+
+class MessageType(Enum):
+    YES = 32173
+    NO = 32174
+    ENABLED = 32338
+    DISABLED = 32339
+    ON = 32818
+    OFF = 32819
+    TRUE = 32820
+    FALSE = 32821
+    FAST = 32822
+    SLOW = 32823
+
 
 # Tags available to all controls
 """
@@ -280,7 +474,7 @@ KeywordInfo("visible", only_focusable=False, tts_ignored=False,
             element_type=ElementType.NON_CONTROL)
 KeywordInfo("label", only_focusable=False, tts_ignored=False,
             element_type=ElementType.NON_CONTROL)
-KeywordInfo(ControlType.LABEL_CONTROL.name, only_focusable=False, tts_ignored=False,
+KeywordInfo(ControlType.LABEL.name, only_focusable=False, tts_ignored=False,
             element_type=ElementType.CONTROL)
 KeywordInfo("label2", only_focusable=False, tts_ignored=False,
             element_type=ElementType.NON_CONTROL)
@@ -483,16 +677,95 @@ control_attributes_with_values = ['id', 'type',
                                   'label_for'
                                   'labeled_by', 'flows_to', 'flows_from']
 control_elements: Items = Items()
+
 control_items_list: List[Item] = [
-    Item(ElementType.ALT_LABEL, is_control=False, focusable=False,
+    Item(TopicElement.ALT_LABEL, is_control=False, focusable=False,
          element_type=ElementType.NON_CONTROL,
          attributes_with_values=control_attributes_with_values),
-    Item(ElementType.ALT_INFO, is_control=False, focusable=False,
+    Item(TopicElement.ALT_TYPE, is_control=False, focusable=False,
          element_type=ElementType.NON_CONTROL,
          attributes_with_values=control_attributes_with_values),
-    Item(ElementType.HINT_TEXT, is_control=False, focusable=False,
+    Item(TopicElement.ALT_INFO, is_control=False, focusable=False,
          element_type=ElementType.NON_CONTROL,
          attributes_with_values=control_attributes_with_values),
+    Item(TopicElement.CONTAINER_TOPIC, is_control=False, focusable=False,
+         element_type=ElementType.NON_CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(TopicElement.LABEL_FOR, is_control=False, focusable=False,
+         element_type=ElementType.NON_CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(TopicElement.LABELED_BY, is_control=False, focusable=False,
+         element_type=ElementType.NON_CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(TopicElement.NAME, is_control=False, focusable=False,
+         element_type=ElementType.NON_CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(TopicElement.HINT_TEXT, is_control=False, focusable=False,
+         element_type=ElementType.NON_CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(TopicElement.FLOWS_TO, is_control=False, focusable=False,
+         element_type=ElementType.NON_CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(TopicElement.FLOWS_FROM, is_control=False, focusable=False,
+         element_type=ElementType.NON_CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(TopicElement.TRUE_MSG_ID, is_control=False, focusable=False,
+         element_type=ElementType.NON_CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(TopicElement.FALSE_MSG_ID, is_control=False, focusable=False,
+         element_type=ElementType.NON_CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(TopicElement.READ_NEXT, is_control=False, focusable=False,
+         element_type=ElementType.NON_CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(TopicElement.TOPIC_HEADING, is_control=False, focusable=False,
+         element_type=ElementType.NON_CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(TopicElement.HEADING_LABEL, is_control=False, focusable=False,
+         element_type=ElementType.NON_CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(TopicElement.HEADING_LABELED_BY, is_control=False, focusable=False,
+         element_type=ElementType.NON_CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(TopicElement.HEADING_NEXT, is_control=False, focusable=False,
+         element_type=ElementType.NON_CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(TopicElement.INNER_TOPIC, is_control=False, focusable=False,
+         element_type=ElementType.NON_CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(TopicElement.OUTER_TOPIC, is_control=False, focusable=False,
+         element_type=ElementType.NON_CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(TopicElement.TOPIC_LEFT, is_control=False, focusable=False,
+         element_type=ElementType.NON_CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(TopicElement.TOPIC_RIGHT, is_control=False, focusable=False,
+         element_type=ElementType.NON_CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(TopicElement.RANK, is_control=False, focusable=False,
+         element_type=ElementType.NON_CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(TopicElement.TOPIC_TYPE, is_control=False, focusable=False,
+         element_type=ElementType.NON_CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(TopicElement.UNITS, is_control=False, focusable=False,
+         element_type=ElementType.NON_CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(TopicElement.VALUE_FROM, is_control=False, focusable=False,
+         element_type=ElementType.NON_CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(TopicElement.VALUE_FORMAT, is_control=False, focusable=False,
+         element_type=ElementType.NON_CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(TopicElement.TOPIC_DOWN, is_control=False, focusable=False,
+         element_type=ElementType.NON_CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(TopicElement.TOPIC_UP, is_control=False, focusable=False,
+         element_type=ElementType.NON_CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(TopicElement.TOPIC, is_control=False, ignore=False,
+         element_type=ElementType.NON_CONTROL),
+
     Item(keyword=ControlType.CONTROL.name, is_control=True,
          element_type=ElementType.CONTROL,
          attributes_with_values=control_attributes_with_values),
@@ -531,15 +804,13 @@ control_items_list: List[Item] = [
     Item("haspath", is_control=False, element_type=ElementType.NON_CONTROL),
     Item(ControlType.IMAGE.name, is_control=True, focusable=False,
          element_type=ElementType.CONTROL, ignore=True),
-    Item(ControlType.LABEL_CONTROL.name, is_control=True, focusable=False,
+    Item(ControlType.LABEL.name, is_control=True, focusable=False,
          element_type=ElementType.CONTROL,
          attributes_with_values=control_attributes_with_values),
     Item("label", is_control=False, focusable=False,
          element_type=ElementType.NON_CONTROL,
          attributes_with_values=control_attributes_with_values),
     Item("label2", is_control=False, focusable=False,
-         element_type=ElementType.NON_CONTROL),
-    Item("hinttext", is_control=False, focusable=False,
          element_type=ElementType.NON_CONTROL),
     Item(ControlType.LIST.name, is_control=True, element_type=ElementType.CONTROL,
          attributes_with_values=control_attributes_with_values),
@@ -575,8 +846,6 @@ control_items_list: List[Item] = [
          element_type=ElementType.CONTROL),
     Item(ControlType.TOGGLE_BUTTON.name, is_control=True, element_type=ElementType.CONTROL,
          attributes_with_values=control_attributes_with_values),
-    Item(ElementKeywords.TOPIC, is_control=False, ignore=False,
-         element_type=ElementType.NON_CONTROL),
     Item(ControlType.VIDEO_WINDOW.name, is_control=True, focusable=False,
          element_type=ElementType.CONTROL),
     Item(ControlType.VISUALISATION.name, is_control=True, focusable=False,
@@ -690,7 +959,7 @@ class Tag(StrEnum):
 
 class ElementKeywords(StrEnum):
     ACTION = 'action'
-    ALT_LABEL = 'alt_label'
+    #  ALT_LABEL = 'alt_label'
     BUTTON = 'button'
     DEFAULT_CONTROL = 'defaultcontrol'
     DIALOG = 'dialog'
@@ -733,5 +1002,3 @@ class Units(StrEnum):
     SCALE_DB = 'db'
     SCALE_PERCENT = '%'
     SCALE_NUMBER = 'number'
-    TYPE_FLOAT = 'float'
-    TYPE_INT = 'int'

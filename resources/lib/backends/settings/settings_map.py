@@ -214,7 +214,7 @@ class SettingsMap:
             cls._logger.debug(f'Undefining setting {property_id} from {service_id}')
         else:
             settings_for_service[property_id] = validator
-            cls._logger.debug(f'Defining setting {property_id} for {service_id}')
+            #  cls._logger.debug(f'Defining setting {property_id} for {service_id}')
 
     @classmethod
     def is_setting_available(cls, service_id: str, property_id: str) -> bool:
@@ -243,7 +243,7 @@ class SettingsMap:
         settings_for_service: Dict[str, IValidator]
         settings_for_service = cls.service_to_settings_map.get(service_id)
         if settings_for_service is None:
-            cls._logger.debug(f'No settings for {service_id}')
+            # cls._logger.debug(f'No settings for {service_id}')
             return False
 
         if property_id not in settings_for_service.keys():

@@ -662,7 +662,7 @@ class KodiFormatter(logging.Formatter):
         # [threadName name funcName:lineno]
 
         text = ''
-        clz = type(self)
+        clz = Logger
         try:
             '''
             start_file = record.__dict__.get('start_file', None)
@@ -912,12 +912,12 @@ class Trace(logging.Filter):
         :param record:
         :return:
         """
+        cls = Trace
         try:
             passed_traces = record.__dict__.get('trace', [])
             if passed_traces is None or len(passed_traces) == 0:
                 return 1
 
-            cls = type(self)
             filtered_traces = []
             for trace in passed_traces:
                 is_enabled = cls._trace_map.get(trace, None)
