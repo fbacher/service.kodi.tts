@@ -101,5 +101,3 @@ class WindowControls:
 class Topic:
     def __init__(self, control: BaseModel):
         self.control: BaseModel = control
-        #  window.menu_control
-        #  window.window_title_id

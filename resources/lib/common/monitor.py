@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations  # For union operator |
 
+import faulthandler
+import io
+import sys
+
 """
 Created on Feb 19, 2019
 
@@ -30,6 +34,7 @@ class Monitor(MinimalMonitor):
         MinimalMonitor exists simply to not drag in logging dependencies
         at startup.
     """
+    FOREVER = 24 * 60 * 60 * 365  # A year, in seconds
 
     class NotificationMonitor(xbmc.Monitor):
 
@@ -66,6 +71,7 @@ class Monitor(MinimalMonitor):
     _abort_listeners_informed: bool = False
     _wait_return_count_map: Dict[str, int] = {}  # thread_id, returns from wait
     _wait_call_count_map: Dict[str, int] = {}  # thread_id, calls to wait
+    _inform_abort_listeners_thread: threading.Thread = None
 
     """
       Can't get rid of __init__
@@ -92,7 +98,6 @@ class Monitor(MinimalMonitor):
             cls._abort_listeners_informed: bool = False
             cls._notification_listeners = {}
             cls._notification_listener_lock = threading.RLock()
-
             #
             # These events are prioritized:
             #
@@ -110,8 +115,10 @@ class Monitor(MinimalMonitor):
 
             cls._monitor_changes_in_settings_thread = threading.Thread(
                     target=cls._monitor_changes_in_settings,
-                    name='_monitor_changes_in_settings')
+                    name='mntr_chng_setngs')
             cls._monitor_changes_in_settings_thread.start()
+            from common.garbage_collector import GarbageCollector
+            GarbageCollector.add_thread(cls._monitor_changes_in_settings_thread)
 
     @classmethod
     def _monitor_changes_in_settings(cls) -> None:
@@ -264,6 +271,8 @@ class Monitor(MinimalMonitor):
                                                      'delay' : delay, **kwargs})
         xbmc.log(f'util.runInThread starting thread {name}', xbmc.LOGINFO)
         thread.start()
+        from common.garbage_collector import GarbageCollector
+        GarbageCollector.add_thread(thread)
 
     @classmethod
     def thread_wrapper(cls, *args, **kwargs):
@@ -403,6 +412,16 @@ class Monitor(MinimalMonitor):
 
         :return:
         """
+        listener = cls._inform_abort_listener_worker
+        cls._inform_abort_listeners_thread = threading.Thread(
+                target=cls._listener_wrapper, name='infrm_listnrs',
+                args=(), kwargs={'listener': listener})
+        cls._inform_abort_listeners_thread.start()
+        from common.garbage_collector import GarbageCollector
+        GarbageCollector.add_thread(cls._inform_abort_listeners_thread)
+
+    @classmethod
+    def _inform_abort_listener_worker(cls) -> None:
         with cls._abort_listener_lock:
             if cls._abort_listeners_informed:
                 return
@@ -418,28 +437,34 @@ class Monitor(MinimalMonitor):
                     target=cls._listener_wrapper, name=listener_name,
                     args=(), kwargs={'listener': listener})
             thread.start()
+            from common.garbage_collector import GarbageCollector
+            GarbageCollector.add_thread(thread)
 
         cls.startup_complete_event.set()
-
         with cls._settings_changed_listener_lock:
             cls._settings_changed_listeners.clear()
 
         with cls._screen_saver_listener_lock:
             cls._screen_saver_listeners.clear()
-
-        if cls._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-            from common.debug import Debug
-            Debug.dump_all_threads(delay=0.25)
-            Debug.dump_all_threads(delay=0.50)
+        from common.garbage_collector import GarbageCollector
+        thread = threading.Thread(
+                target=cls._listener_wrapper, name='grbg_abrt_notfy',
+                args=(), kwargs={'listener': GarbageCollector.abort_notification})
+        xbmc.log('Adding monitor notification listener to GC')
+        thread.start()
+        GarbageCollector.add_thread(thread)
+        xbmc.log('Added monitor listener')
 
     @classmethod
     def _listener_wrapper(cls, listener):
         try:
-            listener()
+            if listener is not None:
+                listener()
         except AbortException:
             pass
         except Exception as e:
-            cls._logger.exception('')
+            reraise(*sys.exc_info())
+            xbmc.log(f'Exception in _listener_wrapper {e}', xbmc.LOGINFO)
 
     @classmethod
     def _inform_settings_changed_listeners(cls) -> None:
@@ -457,8 +482,10 @@ class Monitor(MinimalMonitor):
                 cls._logger.debug_verbose(
                         f'Notifying listener: {listener_name}')
             thread = threading.Thread(
-                    target=listener, name='Monitor.inform_' + listener_name)
+                    target=listener, name=f'nform_{listener_name}')
             thread.start()
+            from common.garbage_collector import GarbageCollector
+            GarbageCollector.add_thread(thread)
 
     @classmethod
     def _inform_screensaver_listeners(cls,
@@ -477,9 +504,11 @@ class Monitor(MinimalMonitor):
             cls._logger.debug_verbose(f'Screensaver activated: {activated}')
         for listener, listener_name in listeners_copy.items():
             thread = threading.Thread(
-                    target=listener, name='Monitor._inform_' + listener_name,
+                    target=listener, name=f'nform_{listener_name}',
                     args=(activated,))
             thread.start()
+            from common.garbage_collector import GarbageCollector
+            GarbageCollector.add_thread(thread)
 
     def onSettingsChanged(self) -> None:
         """
@@ -597,7 +626,7 @@ class Monitor(MinimalMonitor):
         return abort
 
     @classmethod
-    def wait_for_abort(cls, timeout: float = None) -> bool:
+    def wait_for_abort(cls, timeout: float | None = None) -> bool:
         """
         Wait for Abort
 
@@ -609,9 +638,8 @@ class Monitor(MinimalMonitor):
             False if a timeout is given and the operation times out.
 
         """
-        FOREVER = 24 * 60 * 60 * 365  # A year
         if timeout is None or timeout < 0.0:
-            timeout = FOREVER
+            timeout = cls.FOREVER
 
         #  Use xbmc wait for long timeouts so that the wait time is better
         #  shared with other threads, etc.

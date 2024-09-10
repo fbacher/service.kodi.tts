@@ -1,11 +1,11 @@
 # coding=utf-8
-
+from enum import StrEnum
 from typing import Callable, List, Tuple
 import xml.etree.ElementTree as ET
 from gui.base_tags import ElementKeywords as EK
 
 from common.logger import BasicLogger, DEBUG_VERBOSE
-from gui import ControlType
+from gui import ControlElement
 from gui.base_parser import BaseParser
 from gui.base_tags import control_elements, Item
 from gui.element_parser import ElementHandler
@@ -18,7 +18,7 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 class ParseButton(ParseControl):
 
     _logger: BasicLogger = None
-    item: Item = control_elements[ControlType.BUTTON.name]
+    item: Item = control_elements[ControlElement.BUTTON]
 
     @classmethod
     def init_class(cls) -> None:
@@ -69,7 +69,7 @@ class ParseButton(ParseControl):
         :return:
         """
         clz = type(self)
-        self.control_type = ControlType.BUTTON
+        self.control_type = ControlElement.BUTTON
         control_id_str: str = el_button.attrib.get('id')
         if control_id_str is not None:
             control_id: int = int(control_id_str)
@@ -77,7 +77,7 @@ class ParseButton(ParseControl):
 
         DEFAULT_TAGS: Tuple[str, ...] = (EK.DESCRIPTION, EK.VISIBLE)
         DEFAULT_FOCUS_TAGS: Tuple[str, ...] = (EK.ENABLE, EK.ON_FOCUS, EK.ON_UNFOCUS)
-        BUTTON_CONTROL_TAGS: Tuple[str, ...] = (EK.LABEL, EK.HINT_TEXT,
+        BUTTON_CONTROL_TAGS: Tuple[str, ...] = (EK.LABEL,
                                                 EK.WRAP_MULTILINE)
         tags_to_parse: Tuple[str, ...] = ((EK.TOPIC,) + DEFAULT_FOCUS_TAGS +
                                           DEFAULT_TAGS + BUTTON_CONTROL_TAGS)
@@ -89,10 +89,14 @@ class ParseButton(ParseControl):
             if child.tag in tags_to_parse:
                 #  clz._logger.debug(f'child_tag: {child.tag}')
                 key: str = child.tag
-                control_type: ControlType = clz.get_control_type(child)
+                control_type: ControlElement = clz.get_control_type(child)
+                clz._logger.debug(f'control_type: {control_type}')
+                str_enum: StrEnum = None
                 if control_type is not None:
-                    key = control_type.name
-                item: Item = control_elements[key]
+                    str_enum = control_type
+                else:
+                    str_enum = EK(key)
+                item: Item = control_elements[str_enum]
                 # Values copied to self
                 handler: Callable[[BaseParser, ET.Element], str | BaseParser]
                 handler = ElementHandler.get_handler(item.key)

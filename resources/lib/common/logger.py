@@ -723,6 +723,8 @@ class KodiFormatter(logging.Formatter):
             else:
                 passed_traces = ''
 
+            # prefix = (f'[{thread_field}{addon_label}{module_path}{func_name}:'
+            #           f'{record.lineno}:{level}{passed_traces}]')
             prefix = (f'[{thread_field}{addon_label}{module_path}{func_name}:'
                       f'{record.lineno}:{level}{passed_traces}]')
 

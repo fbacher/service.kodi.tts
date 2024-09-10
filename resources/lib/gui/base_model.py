@@ -1,19 +1,21 @@
 # coding=utf-8
 
 import xml.etree.ElementTree as ET
+from logging import DEBUG
 from typing import Dict, ForwardRef, List, Tuple
 
 import xbmc
 import xbmcgui
 
-from common.logger import BasicLogger
+from common.critical_settings import CriticalSettings
+from common.logger import BasicLogger, DEBUG_VERBOSE, DISABLED
 from common.messages import Messages
 from common.phrases import Phrase, PhraseList
-from gui.base_tags import ControlType, Requires, WindowType
+from gui.base_tags import ControlElement, Requires, WindowType
 
 from gui.base_parser import BaseParser
-from gui.statements import Statement, Statements
-from windows.ui_constants import AltCtrlType
+from gui.statements import Statement, Statements, StatementType
+from windows.ui_constants import AltCtrlType, UIConstants
 from windows.window_state_monitor import WinDialogState
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -32,8 +34,7 @@ class BaseModel:
         self._window_model: ForwardRef('WindowModel') = window_model
 
         self._control_id: int = parser.control_id
-        clz._logger.debug(f'BaseModel control_id: {parser.control_id} {self.control_id}')
-        self._control_type: ControlType = parser.control_type
+        self._control_type: ControlElement = parser.control_type
         self._tree_id: str = f'JUNK'
         self._topic: ForwardRef('TopicModel') = None
         self._topic_checked: bool = False
@@ -177,7 +178,7 @@ class BaseModel:
         return self.windialog_state.focus_changed
 
     @property
-    def control_type(self) -> ControlType:
+    def control_type(self) -> ControlElement:
         return self._control_type
 
     @property
@@ -231,18 +232,6 @@ class BaseModel:
         slider, but never leaves the control's focus.
         """
         clz = BaseModel
-        success: bool = False
-        if self.topic is not None:
-            topic: ForwardRef('TopicModel') = self.topic
-            clz._logger.debug(f'topic: {topic.alt_type}')
-            success = self.voice_control_heading(stmts)
-            #  success = self.voice_number_of_items(phrases)
-            # Voice either focused control, or label/text
-            # success = self.voice_active_item(phrases)
-            # Voice either next Topic down or focus item
-
-            # success = self.voice_controlx(phrases)
-            return success
         # TODO, incomplete
         return False
 
@@ -269,7 +258,7 @@ class BaseModel:
             control_name = self.topic.get_alt_control_name()
         if control_name == '':
             control_type: AltCtrlType
-            control_type = AltCtrlType.alt_ctrl_type_for_ctrl_name(self.control_type)
+            control_type = AltCtrlType.get_default_alt_ctrl_type(self.control_type)
             control_name = Messages.get_msg_by_id(control_type.value)
         return control_name
 
@@ -289,11 +278,13 @@ class BaseModel:
         success = self.voice_chained_controls(stmts)
         return success
 
-    def get_item_number(self) -> int:
+    def get_item_number(self, control_id: int | None = None) -> int:
         """
         Used to get the current item number from a List type topic. Called from
         a child topicof the list
 
+        :param control_id: optional id of the control to query. Defaults to
+                           the currently focused control
         :return: Current topic number, or -1
         """
         return -1
@@ -318,7 +309,26 @@ class BaseModel:
         """
         return False
 
-    def get_list_orientation(self) -> str:
+    def get_working_value(self, item_number: int) -> float | List[str]:
+        """
+            Gets the intermediate value of this control. Used for controls where
+            the value is entered over time, such as a list container where
+            you can scroll through your choices (via cursor up/down, etc.)
+            without changing focus.
+
+            The control's focus does not change so the value must be checked
+            as long as the focus remains on the control. Further, the user wants
+            to hear changes as they are being made and does not want to hear
+            extra verbage, such as headings.
+
+        :param item_number: 1-based item number
+        :return: List of values from the current item_number and from the
+                 first item_layout and focused_layout with a passing condition.
+        """
+        return ['Not implemented']
+
+    def get_orientation(self) -> str:
+        clz = BaseModel
         return ''
 
     def voice_active_item(self, stmts: Statements) -> bool:
@@ -333,6 +343,7 @@ class BaseModel:
 
     def voice_labeled_by(self, stmts: Statements) -> bool:
         """
+        Voice this control's label
         A topic's labeled_by says to get the label for this control from somewhere
         else. The labeled_by_expr may be one of:
                  A control_id (must be numeric)  TODO: Consider allowing an int-sting
@@ -355,42 +366,24 @@ class BaseModel:
             label_cntrl: BaseModel
             label_cntrl = self.window_model.get_control_model(control_id)
             label_cntrl: ForwardRef('LabelModel')
-            clz._logger.debug(f'labeled_by: {self.topic.labeled_by_expr}')
+            if clz._logger.isEnabledFor(DEBUG_VERBOSE):
+                clz._logger.debug_verbose(f'labeled_by: {self.topic.labeled_by_expr}')
             if label_cntrl is not None:
                 control_type: str = label_cntrl.control_type
-                clz._logger.debug(f'label_cntrl: {control_type}')
-                if label_cntrl.control_type != ControlType.LABEL:
+                if clz._logger.isEnabledFor(DEBUG_VERBOSE):
+                    clz._logger.debug_verbose(f'label_cntrl: {control_type}')
+                if label_cntrl.control_type != ControlElement.LABEL_CONTROL:
                     success = label_cntrl.voice_labels(stmts)  # Label and Label 2
                 else:
                     success = label_cntrl.voice_label(stmts)
-        clz._logger.debug(f'{stmts.last.phrases}')
+        if clz._logger.isEnabledFor(DEBUG):
+            clz._logger.debug(f'{stmts.last.phrases}')
         return success
 
     def voice_heading_without_topic(self, stmts: Statements) -> bool:
         stmts.last.phrases.append(
                 Phrase(text='voice_heading_without_topic not implemented'))
         return True
-
-    '''
-    def voice_labeled_by(self, phrases: PhraseList) -> bool:
-        clz = BaseModel
-        success: bool = False
-        # label_by_expr can be:
-        #    topic_id
-        #    a control_id in the current window
-        #    Message id
-        #    Some other expression (info label?)
-        clz._logger.debug(f'labeled_by_expr: {self.topic.labeled_by_expr}')
-        if self.topic.labeled_by_expr != '':
-            # First try for topic_id
-            topic: ForwardRef('TopicModel')
-            control_id: int = BaseModel.get_non_negative_int(self.topic.labeled_by_expr)
-            if control_id == -1:
-                clz._logger.debug(f"Can't find labeled by for {self.topic.labeled_by_expr}")
-
-        clz._logger.debug(f'{phrases}')
-        return success
-    '''
 
     def voice_labels(self, stmts: Statements, voice_label: bool = True,
                      voice_label_2: bool = True) -> bool:
@@ -419,12 +412,14 @@ class BaseModel:
         return success
 
     def voice_label(self, stmts: Statements,
-                    control_id_expr: int | str | None = None) -> bool:
+                    control_id_expr: int | str | None = None,
+                    stmt_type: StatementType = StatementType.NORMAL) -> bool:
         """
-
-        :param stmts: Any found text is appended to this
+        Voices the label of a control
+        :param stmts: Any found text is appended to stmts
         :param control_id_expr:  If non-None, then used as the control_id instead
                of self.control_id
+        :param stmt_type StatementType to assign any voiced Statements
         :return:
         """
         clz = BaseModel
@@ -433,11 +428,12 @@ class BaseModel:
         control_id: int = self.control_id
         if control_id_expr is None:
             control_id_expr = str(self.control_id)
-
-        clz._logger.debug(f'control_id_expr: {control_id_expr}')
+        if clz._logger.isEnabledFor(DEBUG):
+            clz._logger.debug(f'control_id_expr: {control_id_expr}')
         if control_id != -1:
             try:
-                success = self.get_label_ll(stmts, label_expr=control_id_expr)
+                success = self.get_label_ll(stmts, label_expr=control_id_expr,
+                                            stmt_type=stmt_type)
             except ValueError as e:
                 success = False
             except Exception:
@@ -445,7 +441,8 @@ class BaseModel:
         return success
 
     def voice_label2(self, stmts: Statements,
-                     control_id_expr: int | str | None = None) -> bool:
+                     control_id_expr: int | str | None = None,
+                     stmt_type: StatementType = StatementType.NORMAL) -> bool:
         # ONY works for edit controls (NOT ControlLabel). Lies when there is
         # no label2 and simply returns label.
 
@@ -461,7 +458,8 @@ class BaseModel:
             try:
                 query: str = f'Control.GetLabel({control_id}.index(1))'
                 text: str = xbmc.getInfoLabel(query)
-                clz._logger.debug(f'Text: {text}')
+                if clz._logger.isEnabledFor(DEBUG):
+                    clz._logger.debug(f'Text: {text}')
                 if text != '':
                     stmts.last.phrases.append(Phrase(text=text))
                     success = True
@@ -482,16 +480,18 @@ class BaseModel:
         """
         success: bool = False
         clz = BaseModel
-        clz._logger.debug(f'control_id: {control_id} self.control_id: {self.control_id}')
+        if clz._logger.isEnabledFor(DISABLED):
+            clz._logger.debug_verbose(f'control_id: {control_id} self.control_id: {self.control_id}')
         if control_id is None:
             control_id = self.control_id
 
         label_1: bool = True
         if self.supports_label2:
             label_1 = False
-            success = self.get_label_ll(stmts, label_expr=str(control_id),
-                                        label_1=label_1,  label_2=True)
-        clz._logger.debug(f'{stmts.last.phrases}')
+        success = self.get_label_ll(stmts, label_expr=str(control_id),
+                                    label_1=label_1,  label_2=True)
+        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
+            clz._logger.debug_verbose(f'{stmts.last.phrases}')
         return success
 
     def visible_item_count(self) -> int:
@@ -505,6 +505,37 @@ class BaseModel:
         if num_items_str.isdigit():
             return int(num_items_str)
         return -1
+
+    def get_info_label(self, label_expr: str) -> str | None:
+        """
+           Queries xbmc for the value of the given Info Label.
+
+        :param label_expr:  A Kodi info-label or list-item expression
+
+        :return: True if one or more statements was found and added
+        """
+        clz = BaseModel
+        if label_expr == '':
+            return None
+        if label_expr.startswith('$INFO['):
+            label_expr = label_expr[6:-1]
+        try:
+            text = xbmc.getInfoLabel(f'{label_expr}')
+            if clz._logger.isEnabledFor(DEBUG):
+                clz._logger.debug(f'label_expr: {label_expr} = {text}')
+        except ValueError as e:
+            clz._logger.exception('')
+            text = ''
+
+        '''
+        if text == '':
+            text = CriticalSettings.ADDON.getInfoLabel(label_expr)
+            clz._logger.debug(f'label_expr: {label_expr} = {text}')
+        '''
+        if text == '':
+            clz._logger.debug(f'Failed to get label_expr {label_expr}')
+            return None
+        return text
 
     """
         Useful Container/List functions
@@ -686,7 +717,7 @@ class BaseModel:
         if self.control_id >= 0:
             window.model_for_control_id[self.control_id] = self
             self.tree_id = f'{self.control_id}'
-            clz._logger.debug(f'added {self.control_id} to model_for_control_id')
+            clz._logger.debug_verbose(f'added {self.control_id} to model_for_control_id')
         else:  # Control_id is invalid.
             #  Generate fake ID for controls which don't have an explicit ID
             self.tree_id = f'L{level}C{child_idx}'
@@ -750,16 +781,22 @@ class BaseModel:
         """
           Create ordered map of topics. Ordered by traversing right from each
           topic, beginning with the window topic. The key is topic.name
+
+          TODO:  Rework this turkey. Assumes that you link every node in tree
+          topic.right. This is quite restrictive, error prone and perhaps
+          of not much value.
        """
         clz = BaseModel
         from gui.old_topic_model import TopicModel
 
-        clz._logger.debug(f'size of window.topics: {len(window.topics)}')
         root_topic: ForwardRef('TopicModel') = window.topics[0]
         topic: ForwardRef('TopicModel') = root_topic
         while topic is not None:
             if topic.name == '':
                 raise ET.ParseError(f'Topic.name is empty')
+
+            if topic in window.ordered_topics_by_name:
+                continue
             window.ordered_topics_by_name[topic.name] = topic
             try:
                 if not topic.is_real_topic or topic.topic_right == '':
@@ -867,7 +904,8 @@ class BaseModel:
         return False
 
     def get_label_ll(self, stmts: Statements, label_expr: str | None,
-                     label_1: bool = True, label_2: bool = False) -> bool:
+                     label_1: bool = True, label_2: bool = False,
+                     stmt_type: StatementType = StatementType.NORMAL) -> bool:
         """
             Converts a label expression which may be a simple integer string
             or an infoList expression, etc.
@@ -877,6 +915,7 @@ class BaseModel:
         :param label_1: If True then return the value of getLabel
         :param label_2: If True, and the control supports label 2, then return
                         it's value
+        :param stmt_type: StatementType to assign any Statements
         :return: True if any text added to phrases, otherwise False
 
         If both label and label_2 are False, then nothing is added to phrases.
@@ -947,16 +986,23 @@ class BaseModel:
                 text_1 = text_1.strip()
                 if text_1 != '':
                     stmts.append(Statement(PhraseList.create(texts=text_1,
-                                                             check_expired=False)))
+                                                             check_expired=False),
+                                           stmt_type=stmt_type))
             except:
                 clz._logger.exception(f'control_expr: {query_1} label_1')
                 success_1 = False
         if query_2 != '' and label_2:
             try:
                 text_2 = xbmc.getInfoLabel(query_2)  # TODO: May require post-processing
-                text_1 = text_1.strip()
-                if text_1 != '':
-                    stmts.last.phrases.add_text(texts=text_2)
+                text_2 = text_2.strip()
+                if text_2 != '':
+                    if text_1 != '':
+                        stmts.last.phrases.add_text(texts=text_2)
+                    else:
+                        stmts.append(Statement(PhraseList.create(texts=text_2,
+                                                                 check_expired=False),
+                                               stmt_type=stmt_type))
+
             except:
                 clz._logger.exception(f'control_expr: {query_2} label_1')
                 success_2 = False
@@ -1046,7 +1092,8 @@ class BaseModel:
         :return:
         """
         clz = BaseModel
-        clz._logger.debug(f'ctrl_topic_or_tree_id: {ctrl_topic_or_tree_id}')
+        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
+            clz._logger.debug_verbose(f'ctrl_topic_or_tree_id: {ctrl_topic_or_tree_id}')
         topic: ForwardRef('TopicModel') = None
         control_id: int = BaseModel.get_non_negative_int(ctrl_topic_or_tree_id)
         if control_id != -1:

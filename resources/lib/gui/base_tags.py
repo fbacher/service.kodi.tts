@@ -19,6 +19,8 @@ from collections import namedtuple
 from enum import auto, Enum, StrEnum
 from typing import Dict, ForwardRef, Iterable, List, TypeAlias
 
+import xbmcgui
+
 from common.logger import BasicLogger
 import xml.etree.ElementTree as ET
 from enum import auto, Enum
@@ -34,6 +36,7 @@ AttribInfo = namedtuple('attrib_info', ['attrib_name', 'attrib_value',
 
 class BaseAttributeType(StrEnum):
     ID = 'id'
+    CONDITION = 'condition'
     CONTROL_TYPE = 'type'
     SLIDER = 'slider'
     LABEL = 'label'
@@ -255,8 +258,9 @@ class ValueUnits:
         return result
 
 
-class ControlType(StrEnum):
+class ControlElement(StrEnum):
     BUTTON = 'button'
+    COLOR_BUTTON = 'colorbutton'
     CONTROLS = 'controls'
     CONTROL = 'control'
     DIALOG = 'dialog'
@@ -264,13 +268,16 @@ class ControlType(StrEnum):
     EPG_GRID = 'epggrid'
     FADE_LABEL = 'fadelabel'
     FIXED_LIST = 'fixedlist'
+    FOCUSED_LAYOUT = 'focusedlayout'
     GAME_CONTROLLER = 'gamecontroller'
     GAME_CONTROLLER_LIST = 'gamecontrollerlist'
     GAME_WINDOW = 'gamewindow'
     GROUP = 'group'
     GROUP_LIST = 'grouplist'
     IMAGE = 'image'
-    LABEL = 'label'
+    ITEM_LAYOUT = 'itemlayout'
+    # To distinguish from Label attribute or elements within a Control
+    LABEL_CONTROL = 'label'
     LIST = 'list'
     MENU_CONTROL = 'menucontrol'
     MOVER = 'mover'
@@ -279,6 +286,7 @@ class ControlType(StrEnum):
     PROGRESS = 'progress'
     RADIO_BUTTON = 'radiobutton'
     RANGES = 'ranges'
+    RENDER_ADDON = 'renderaddon'
     RESIZE = 'resize'
     RSS = 'rss'
     SCROLL_BAR = 'scrollbar'
@@ -293,6 +301,41 @@ class ControlType(StrEnum):
     VISUALISATION = 'visiualisation'
     WINDOW = 'window'
     WRAP_LIST = 'wraplist'
+
+    @classmethod
+    def parse_control_type(cls, ctrl_type: str) -> ForwardRef('ControlElement'):
+        """
+           Converts a control's type (i.e. the parsed control's "type" attribute)
+           into ControlElement
+           :param ctrl_type:
+           :return: the appropriate ControlType for the given ctrl_type
+           :raise ValueError: on error
+           """
+        ctrl_name: str = ctrl.__class__.__name__
+        module_logger.debug(f'ctrl_name: {ctrl_name}')
+        ctrl_element: ControlElement = None
+        try:
+            ctrl_element = ControlElement(ctrl_type)
+        except ValueError:
+            raise ValueErro('Invalid ctrl_type: {ctrl_type}')
+        return ctrl_element
+
+    @classmethod
+    def parse_kodi_control_type(cls,
+                                kodi_control: xbmcgui.Control) -> ForwardRef('ControlElement'):
+        """
+        Similar to parse_control_type, except the control type comes
+        directly from the class name of xbmc.getControl(). Used when
+        there is no other access to the control name.
+
+        :param kodi_control: xbmcgui.Control to derive the control type from
+        :return: ControlElement for the given control
+        :raise ValueError:
+             if control type can not be determined.
+        """
+        ctrl_name: str = ctrl.__class__.__name__
+        module_logger.debug(f'ctrl_name: {ctrl_name}')
+        return ControlElement.parse_control_type(ctrl_name)
 
 
 class ElementType(StrEnum):
@@ -392,7 +435,7 @@ pulseonselect 	This specifies whether or not a button type will "pulse" when it 
 focus. This is done by varying the alpha channel of the button. Defaults to true. 
 """
 
-
+'''
 class KeywordInfo:
 
     def __init__(self, keyword: str, only_focusable: bool, tts_ignored: bool,
@@ -474,7 +517,7 @@ KeywordInfo("visible", only_focusable=False, tts_ignored=False,
             element_type=ElementType.NON_CONTROL)
 KeywordInfo("label", only_focusable=False, tts_ignored=False,
             element_type=ElementType.NON_CONTROL)
-KeywordInfo(ControlType.LABEL.name, only_focusable=False, tts_ignored=False,
+KeywordInfo(ControlElement.LABEL.name, only_focusable=False, tts_ignored=False,
             element_type=ElementType.CONTROL)
 KeywordInfo("label2", only_focusable=False, tts_ignored=False,
             element_type=ElementType.NON_CONTROL)
@@ -494,6 +537,7 @@ KeywordInfo("orientation", only_focusable=False, tts_ignored=False,
             element_type=ElementType.NON_CONTROL)
 KeywordInfo("scroll", only_focusable=False, tts_ignored=False,
             element_type=ElementType.NON_CONTROL)
+'''
 
 
 class Item:
@@ -520,7 +564,17 @@ class Item:
                              NON_CONTROL when the element is not a Control
                              BOTH when the element can be both
         """
-        self.keyword: str | StrEnum = keyword
+        keyword: str | StrEnum = keyword
+        if isinstance(keyword, StrEnum):
+            enum_key: StrEnum = keyword
+            keyword = enum_key.name
+            # module_logger.debug(f'key is enum: {enum_key.name} {enum_key} '
+            #                   f'keyword: {keyword}')
+        else:
+            pass
+            # module_logger.debug(f'key is str: {keyword} type: {type(keyword)}')
+
+        self.keyword: str = keyword
         attribs: List[str] = []
         if attributes is not None:
             if not isinstance(attributes, list):
@@ -622,7 +676,9 @@ class Items:
     def get(self, key) -> Item:
         return self.items.get(key)
 
-    def __getitem__(self, key: str) -> Item:
+    def __getitem__(self, key: str | StrEnum) -> Item:
+        if isinstance(key, StrEnum):
+            key = key.name
         item: Item = self.get(key)
         if item is None:
             raise KeyError(f'{key}')
@@ -639,43 +695,85 @@ class Tag(StrEnum):
 
 class ElementKeywords(StrEnum):
     ACTION = 'action'
-    ALT_LABEL = 'alt_label'
+    AUTO_SCROLL = 'autoscroll'
     BUTTON = 'button'
-    DEFAULT_CONTROL = 'defaultcontrol'
-    DIALOG = 'dialog'
+    CONTENT = 'content'
     CONTROL = 'control'
     CONTROLS = 'controls'
+    DESCRIPTION = 'description'
+    DEFAULT_CONTROL = 'defaultcontrol'
+    DIALOG = 'dialog'
+    ENABLE = 'enable'
+    #  FALSE_MSG_ID = 'false_msg_id'
+    FOCUSED_LAYOUT = 'focusedlayout'
     GROUP = 'group'
-    ON_FOCUS = 'onfocus'
-    ON_UNFOCUS = 'onunfocus'
-    ON_CLICK = 'onclick'
-    PAGE_CONTROL = 'pagecontrol'
-    VISIBLE = 'visible'
+    HAS_PATH = 'haspath'
     HINT_TEXT = 'hinttext'
+    INFO = 'info'
+    INFO2 = 'info2'  # slider, pvr only
+    ITEM_LAYOUT = 'itemlayout'
     LABEL = 'label'
     LABEL2 = 'label2'
-    INFO = 'info'
     MENU_CONTROL = 'menucontrol'
     NUMBER = 'number'
+    ON_FOCUS = 'onfocus'
+    ON_CLICK = 'onclick'
+    ON_INFO = 'oninfo'
+    ON_UNFOCUS = 'onunfocus'
+    ORIENTATION = 'orientation'
+    PAGE_CONTROL = 'pagecontrol'
+    PRELOAD_ITEMS = 'preloaditems'
     SHOW_ONE_PAGE = 'showonepage'
-    HAS_PATH = 'haspath'
-    SCROLL_SUFFIX = 'scrollsuffix'
     SCROLL = 'scroll'
+    SCROLL_LIST = 'scrollist'
+    SCROLL_SUFFIX = 'scrollsuffix'
     SCROLL_TIME = 'scrolltime'  # Might care about scrolling of ui during TTS
     SELECTED = 'selected'
-    ON_INFO = 'oninfo'
-    ORIENTATION = 'orientation'
-    DESCRIPTION = 'description'
-    ENABLE = 'enable'
     TOPIC = 'topic'
+    VIEW_TYPE = 'viewtype'
+    VISIBLE = 'visible'
     WINDOW = 'window'
     WRAP_MULTILINE = 'wrapmultiline'
+
+
+class IgnoredKeywords(StrEnum):
+    TEXTURE_FOCUS = 'texturefocus'
+    TEXTURE_NO_FOCUS ='texturenofocus'
+    FOCUSED_COLOR ='focusedcolor'
+    TEXT_COLOR ='textcolor'
+    DISABLED_COLOR ='disabledcolor'
+    INVALID_COLOR ='invalidcolor'
+    SHADOW_COLOR ='shadowcolor'
+    # Position related
+    POS_X ='posx'
+    POS_Y ='posy'
+    ALIGN ='align'
+    ALIGN_Y ='aligny'
+    TEXT_OFFSET_X ='textoffsetx'
+    TEXT_OFFSET_Y ='textoffsety'
+    TEXT_WIDTH ='textwidth'
+    # Action related
+    ON_CLICK ='onclick'
+    # Misc
+    FONT ='font'
+    COLOR_DIFFUSE ='colordiffuse'
+    # Position items
+    WIDTH ='width'
+    HEIGHT ='height'
+    PULSE_ON_SELECT = 'pulseonselect'
+    ON_UP = 'onup'
+    ON_DOWN = 'ondown'
+    ON_LEFT = 'onleft'
+    ON_RIGHT = 'onright'
+    COORDINATES = 'coordinates'
+    TEXTURE = 'texture'
 
 control_attributes_with_values: List[str]
 control_attributes_with_values = ['id', 'type',
                                   BaseAttributeType.ALT_TYPE,
                                   'label_for'
                                   'labeled_by', 'flows_to', 'flows_from']
+
 control_elements: Items = Items()
 
 control_items_list: List[Item] = [
@@ -766,94 +864,100 @@ control_items_list: List[Item] = [
     Item(TopicElement.TOPIC, is_control=False, ignore=False,
          element_type=ElementType.NON_CONTROL),
 
-    Item(keyword=ControlType.CONTROL.name, is_control=True,
+    Item(keyword=ControlElement.CONTROL, is_control=True,
          element_type=ElementType.CONTROL,
          attributes_with_values=control_attributes_with_values),
-    Item(keyword=ControlType.CONTROLS.name, is_control=True,
+    Item(keyword=ControlElement.CONTROLS, is_control=True,
          element_type=ElementType.CONTROL,
          attributes_with_values=['id', 'type']),
-    Item(keyword="colorbutton", is_control=True, ignore=True,
+    Item(keyword=ControlElement.COLOR_BUTTON, is_control=True, ignore=True,
          element_type=ElementType.CONTROL),
-    Item(keyword="defaultcontrol", is_control=False, ignore=False,
+    Item(keyword=ElementKeywords.DEFAULT_CONTROL, is_control=False, ignore=False,
          element_type=ElementType.NON_CONTROL),
-    Item(keyword='dialog', is_control=False, ignore=False,
+    Item(keyword=ElementKeywords.DIALOG, is_control=False, ignore=False,
          attributes_with_values=['type', 'tts', 'label'],
          element_type=ElementType.WINDOW),
-    Item(ControlType.BUTTON.name, is_control=True, element_type=ElementType.CONTROL,
+    Item(ControlElement.BUTTON, is_control=True, element_type=ElementType.CONTROL,
          attributes_with_values=control_attributes_with_values),
-    Item("renderaddon", is_control=True, focusable=False,
+    Item(ControlElement.RENDER_ADDON, is_control=True, focusable=False,
          element_type=ElementType.CONTROL),
-    Item(ControlType.SCROLL_BAR.name, is_control=True, element_type=ElementType.CONTROL,
+    Item(ControlElement.SCROLL_BAR, is_control=True, element_type=ElementType.CONTROL,
          attributes_with_values=control_attributes_with_values),
-    Item(ControlType.EPG_GRID.name, is_control=True, element_type=ElementType.CONTROL),
-    Item(ControlType.EDIT.name, is_control=True, element_type=ElementType.CONTROL),
-    Item(ControlType.FADE_LABEL.name, is_control=True, ignore=True, focusable=False,
+    Item(ControlElement.EPG_GRID, is_control=True, element_type=ElementType.CONTROL),
+    Item(ControlElement.EDIT, is_control=True, element_type=ElementType.CONTROL),
+    Item(ControlElement.FADE_LABEL, is_control=True, ignore=True, focusable=False,
          element_type=ElementType.CONTROL),
-    Item(ControlType.FIXED_LIST.name, is_control=True, element_type=ElementType.CONTROL),
-    Item(ControlType.GAME_WINDOW.name, is_control=True, focusable=False,
+    Item(ControlElement.FIXED_LIST, is_control=True, element_type=ElementType.CONTROL),
+    Item(ControlElement.GAME_WINDOW, is_control=True, focusable=False,
          element_type=ElementType.CONTROL),
-    Item(ControlType.GAME_CONTROLLER.name, is_control=True,
+    Item(ControlElement.FOCUSED_LAYOUT, is_control=False,
+         element_type=ElementType.NON_CONTROL),
+    Item(ControlElement.GAME_CONTROLLER, is_control=True,
          element_type=ElementType.CONTROL),
-    Item(ControlType.GAME_CONTROLLER_LIST.name, is_control=True,
+    Item(ControlElement.GAME_CONTROLLER_LIST, is_control=True,
          element_type=ElementType.CONTROL),
-    Item(ControlType.GROUP.name, is_control=True, element_type=ElementType.CONTROL,
+    Item(ControlElement.GROUP, is_control=True, element_type=ElementType.CONTROL,
          attributes_with_values=control_attributes_with_values, attributes=None,
          focusable=True),
-    Item(ControlType.GROUP_LIST.name, is_control=True, element_type=ElementType.CONTROL,
-         attributes_with_values=control_attributes_with_values),
-    Item("haspath", is_control=False, element_type=ElementType.NON_CONTROL),
-    Item(ControlType.IMAGE.name, is_control=True, focusable=False,
-         element_type=ElementType.CONTROL, ignore=True),
-    Item(ControlType.LABEL.name, is_control=True, focusable=False,
+    Item(ControlElement.GROUP_LIST, is_control=True,
          element_type=ElementType.CONTROL,
          attributes_with_values=control_attributes_with_values),
-    Item("label", is_control=False, focusable=False,
+    Item(ElementKeywords.HAS_PATH, is_control=False,
+         element_type=ElementType.NON_CONTROL),
+    Item(ControlElement.IMAGE, is_control=True, focusable=False,
+         element_type=ElementType.CONTROL, ignore=True),
+    Item(ControlElement.LABEL_CONTROL, is_control=True, focusable=False,
+         element_type=ElementType.CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(ElementKeywords.LABEL, is_control=False, focusable=False,
          element_type=ElementType.NON_CONTROL,
          attributes_with_values=control_attributes_with_values),
-    Item("label2", is_control=False, focusable=False,
+    Item(ElementKeywords.LABEL2, is_control=False, focusable=False,
          element_type=ElementType.NON_CONTROL),
-    Item(ControlType.LIST.name, is_control=True, element_type=ElementType.CONTROL,
-         attributes_with_values=control_attributes_with_values),
-    Item(ControlType.MENU_CONTROL.name, is_control=True, element_type=ElementType.NON_CONTROL),
-    Item(ControlType.MOVER.name, is_control=True, element_type=ElementType.CONTROL),
-    Item(ControlType.MULTI_IMAGE.name, is_control=True, focusable=False,
-         element_type=ElementType.CONTROL),
-    Item("number", is_control=False, focusable=True,
+    Item(ControlElement.ITEM_LAYOUT, is_control=False,
          element_type=ElementType.NON_CONTROL),
-    Item(ControlType.PANEL.name, is_control=True, element_type=ElementType.CONTROL,
+    Item(ControlElement.LIST, is_control=True, element_type=ElementType.CONTROL,
          attributes_with_values=control_attributes_with_values),
-    Item('pagecontrol', is_control=False, element_type=ElementType.NON_CONTROL),
-    Item(ControlType.PROGRESS.name, is_control=True, element_type=ElementType.CONTROL),
-    Item(ControlType.RSS.name, is_control=True, element_type=ElementType.CONTROL),
-    Item(ControlType.RANGES.name, is_control=True, focusable=False,
+    Item(ControlElement.MENU_CONTROL, is_control=True, element_type=ElementType.NON_CONTROL),
+    Item(ControlElement.MOVER, is_control=True, element_type=ElementType.CONTROL),
+    Item(ControlElement.MULTI_IMAGE, is_control=True, focusable=False,
          element_type=ElementType.CONTROL),
-    Item(ControlType.RADIO_BUTTON.name, is_control=True, element_type=ElementType.CONTROL,
+    Item(ElementKeywords.NUMBER, is_control=False, focusable=True,
+         element_type=ElementType.NON_CONTROL),
+    Item(ControlElement.PANEL, is_control=True, element_type=ElementType.CONTROL,
          attributes_with_values=control_attributes_with_values),
-    Item(ControlType.RESIZE.name, is_control=True, element_type=ElementType.CONTROL),
-    Item("selected", is_control=False, element_type=ElementType.NON_CONTROL),
-    Item('scrollist', is_control=False, element_type=ElementType.NON_CONTROL),
-    Item('scrolltime', is_control=False, element_type=ElementType.NON_CONTROL),
-    Item('scroll', is_control=False, element_type=ElementType.NON_CONTROL),
-    Item('showonepage', is_control=False, element_type=ElementType.NON_CONTROL),
-    Item(ControlType.SLIDER_EX.name, is_control=True, element_type=ElementType.CONTROL,
-         attributes_with_values=control_attributes_with_values),
-    Item(ControlType.SLIDER.name, is_control=True, element_type=ElementType.CONTROL,
-         attributes_with_values=control_attributes_with_values),
-    Item(ControlType.SPIN_CONTROL.name, is_control=True, element_type=ElementType.CONTROL),
-    Item(ControlType.SPIN_CONTROL_EX.name, is_control=True, element_type=ElementType.CONTROL,
-         attributes_with_values=control_attributes_with_values),
-    Item(ControlType.TEXT_BOX.name, is_control=True, focusable=False,
+    Item(ElementKeywords.PAGE_CONTROL, is_control=False, element_type=ElementType.NON_CONTROL),
+    Item(ControlElement.PROGRESS, is_control=True, element_type=ElementType.CONTROL),
+    Item(ControlElement.RSS, is_control=True, element_type=ElementType.CONTROL),
+    Item(ControlElement.RANGES, is_control=True, focusable=False,
          element_type=ElementType.CONTROL),
-    Item(ControlType.TOGGLE_BUTTON.name, is_control=True, element_type=ElementType.CONTROL,
+    Item(ControlElement.RADIO_BUTTON, is_control=True, element_type=ElementType.CONTROL,
          attributes_with_values=control_attributes_with_values),
-    Item(ControlType.VIDEO_WINDOW.name, is_control=True, focusable=False,
+    Item(ControlElement.RESIZE, is_control=True, element_type=ElementType.CONTROL),
+    Item(ElementKeywords.SELECTED, is_control=False, element_type=ElementType.NON_CONTROL),
+    Item(ElementKeywords.SCROLL_LIST, is_control=False, element_type=ElementType.NON_CONTROL),
+    Item(ElementKeywords.SCROLL_TIME, is_control=False, element_type=ElementType.NON_CONTROL),
+    Item(ElementKeywords.SCROLL, is_control=False, element_type=ElementType.NON_CONTROL),
+    Item(ElementKeywords.SHOW_ONE_PAGE, is_control=False, element_type=ElementType.NON_CONTROL),
+    Item(ControlElement.SLIDER_EX, is_control=True, element_type=ElementType.CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(ControlElement.SLIDER, is_control=True, element_type=ElementType.CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(ControlElement.SPIN_CONTROL, is_control=True, element_type=ElementType.CONTROL),
+    Item(ControlElement.SPIN_CONTROL_EX, is_control=True, element_type=ElementType.CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(ControlElement.TEXT_BOX, is_control=True, focusable=False,
          element_type=ElementType.CONTROL),
-    Item(ControlType.VISUALISATION.name, is_control=True, focusable=False,
+    Item(ControlElement.TOGGLE_BUTTON, is_control=True, element_type=ElementType.CONTROL,
+         attributes_with_values=control_attributes_with_values),
+    Item(ControlElement.VIDEO_WINDOW, is_control=True, focusable=False,
          element_type=ElementType.CONTROL),
-    Item(ControlType.WINDOW.name, is_control=False,
+    Item(ControlElement.VISUALISATION, is_control=True, focusable=False,
+         element_type=ElementType.CONTROL),
+    Item(ControlElement.WINDOW, is_control=False,
          attributes_with_values=['type', 'tts', 'label'],
          element_type=ElementType.WINDOW),
-    Item("wraplist", is_control=True, element_type=ElementType.CONTROL),
+    Item(ControlElement.WRAP_LIST, is_control=True, element_type=ElementType.CONTROL),
     # ]
     # control_elements.add_all(control_items_list)
 
@@ -866,39 +970,38 @@ control_items_list: List[Item] = [
 
     # tmp: List[Item] = [
     # The only ones we care about
-    Item('action'),
-    Item('enable'),
-    #  Item('label'),
-    Item('orientation'),
-    Item('wrapmultiline'),
-    Item('description'),
-    Item('info'),
-    Item('visible'),
+    Item(ElementKeywords.ACTION),
+    Item(ElementKeywords.ENABLE),
+    Item(ElementKeywords.ORIENTATION),
+    Item(ElementKeywords.WRAP_MULTILINE),
+    Item(ElementKeywords.DESCRIPTION),
+    Item(ElementKeywords.INFO),
+    Item(ElementKeywords.VISIBLE),
 
     # Color related
-    Item('texturefocus', attributes_with_values='colordiffuse', ignore=True),
-    Item('texturenofocus', attributes_with_values='colordiffuse', ignore=True),
-    Item('focusedcolor', ignore=True),
-    Item('textcolor', ignore=True),
-    Item('disabledcolor', ignore=True),
-    Item('invalidcolor', ignore=True),
-    Item('shadowcolor', ignore=True),
+    Item(IgnoredKeywords.TEXTURE_FOCUS, attributes_with_values='colordiffuse', ignore=True),
+    Item(IgnoredKeywords.TEXTURE_NO_FOCUS, attributes_with_values='colordiffuse', ignore=True),
+    Item(IgnoredKeywords.FOCUSED_COLOR, ignore=True),
+    Item(IgnoredKeywords.TEXT_COLOR, ignore=True),
+    Item(IgnoredKeywords.DISABLED_COLOR, ignore=True),
+    Item(IgnoredKeywords.INVALID_COLOR, ignore=True),
+    Item(IgnoredKeywords.SHADOW_COLOR, ignore=True),
     # Position related
-    Item('posx', ignore=True),
-    Item('posy', ignore=True),
-    Item('align', ignore=True),
-    Item('aligny', ignore=True),
-    Item('textoffsetx', ignore=True),
-    Item('textoffsety', ignore=True),
-    Item('textwidth', ignore=True),
+    Item(IgnoredKeywords.POS_X, ignore=True),
+    Item(IgnoredKeywords.POS_Y, ignore=True),
+    Item(IgnoredKeywords.ALIGN, ignore=True),
+    Item(IgnoredKeywords.ALIGN_Y, ignore=True),
+    Item(IgnoredKeywords.TEXT_OFFSET_X, ignore=True),
+    Item(IgnoredKeywords.TEXT_OFFSET_Y, ignore=True),
+    Item(IgnoredKeywords.TEXT_WIDTH, ignore=True),
     # Action related
-    Item('onclick', ignore=True),
+    Item(IgnoredKeywords.ON_CLICK, ignore=True),
     # Misc
-    Item('font', ignore=True),
-    Item('colordiffuse', ignore=True),
+    Item(IgnoredKeywords.FONT, ignore=True),
+    Item(IgnoredKeywords.COLOR_DIFFUSE, ignore=True),
     # Position items
-    Item('width', ignore=True),
-    Item('height', ignore=True),
+    Item(IgnoredKeywords.WIDTH, ignore=True),
+    Item(IgnoredKeywords.HEIGHT, ignore=True),
     #    ]
 
     # default_items: Items = Items()
@@ -906,16 +1009,16 @@ control_items_list: List[Item] = [
 
     # focusable_control_default_items: List[Item] = [
     # The only ones we care about
-    Item('onfocus'),
-    Item('onunfocus'),
+    Item(ElementKeywords.ON_FOCUS),
+    Item(ElementKeywords.ON_UNFOCUS),
     # Who cares?
-    Item('pulseonselect', ignore=True),
-    Item('onup', ignore=True),
-    Item('ondown', ignore=True),
-    Item('onleft', ignore=True),
-    Item('onright', ignore=True),
-    Item('coordinates', ignore=True),
-    Item('texture', ignore=True)
+    Item(IgnoredKeywords.PULSE_ON_SELECT, ignore=True),
+    Item(IgnoredKeywords.ON_UP, ignore=True),
+    Item(IgnoredKeywords.ON_DOWN, ignore=True),
+    Item(IgnoredKeywords.ON_LEFT, ignore=True),
+    Item(IgnoredKeywords.ON_RIGHT, ignore=True),
+    Item(IgnoredKeywords.COORDINATES, ignore=True),
+    Item(IgnoredKeywords.TEXTURE, ignore=True)
     ]
 control_elements.add_all(control_items_list)
 
@@ -955,44 +1058,6 @@ class Tag(StrEnum):
     ON_FOCUS = 'onfocus'
     ON_CLICK = 'onclick'
     VISIBLE = 'visible'
-
-
-class ElementKeywords(StrEnum):
-    ACTION = 'action'
-    #  ALT_LABEL = 'alt_label'
-    BUTTON = 'button'
-    DEFAULT_CONTROL = 'defaultcontrol'
-    DIALOG = 'dialog'
-    CONTROL = 'control'
-    CONTROLS = 'controls'
-    GROUP = 'group'
-    ON_FOCUS = 'onfocus'
-    ON_UNFOCUS = 'onunfocus'
-    ON_CLICK = 'onclick'
-    PAGE_CONTROL = 'pagecontrol'
-    VISIBLE = 'visible'
-    HINT_TEXT = 'hinttext'
-    LABEL = 'label'
-    LABEL2 = 'label2'
-    INFO = 'info'
-    INFO2 = 'info2'  # slider, pvr only
-    MENU_CONTROL = 'menucontrol'
-    NUMBER = 'number'
-    SHOW_ONE_PAGE = 'showonepage'
-    HAS_PATH = 'haspath'
-    SCROLL_SUFFIX = 'scrollsuffix'
-    SCROLL = 'scroll'
-    SCROLL_TIME = 'scrolltime'  # Might care about scrolling of ui during TTS
-    SELECTED = 'selected'
-    ON_INFO = 'oninfo'
-    ORIENTATION = 'orientation'
-    DESCRIPTION = 'description'
-    ENABLE = 'enable'
-    TOPIC = 'topic'
-    FALSE_MSG_ID = 'false_msg_id'
-    WINDOW = 'window'
-    WRAP_MULTILINE = 'wrapmultiline'
-
 
 class Requires(Enum):
     TOPIC_UNITS = auto()

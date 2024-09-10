@@ -90,7 +90,7 @@ class EngineQueue:
             cls._instance.active_queue = True
         if cls._instance.queue_processor is None:
             cls._instance.queue_processor = threading.Thread(
-                    target=cls._instance._handleQueue, name=f'EngineQueue')
+                    target=cls._instance._handleQueue, name=f'EngnQue')
             cls._instance._logger.debug(f'Starting queue_processor EngineQueue')
             cls._instance.queue_processor.start()
             GarbageCollector.add_thread(cls._instance.queue_processor)
@@ -1136,6 +1136,8 @@ class SimpleTTSBackend(ThreadedTTSBackend):
                 clz._simpleIsSpeaking = True
                 self.runCommandAndSpeak(phrase)
                 clz._simpleIsSpeaking = False
+        except AbortException as e:
+            reraise(*sys.exc_info())
         except ExpiredException:
             clz._logger.debug('EXPIRED')
         except Exception as e:
@@ -1154,6 +1156,8 @@ class SimpleTTSBackend(ThreadedTTSBackend):
             player: IPlayer = self.get_player(self.engine_id)
             if player:
                 player.init(clz.engine_id)
+        except AbortException as e:
+            reraise(*sys.exc_info())
         except Exception as e:
             clz._logger.exception('')
 
@@ -1170,6 +1174,8 @@ class SimpleTTSBackend(ThreadedTTSBackend):
             player: IPlayer = self.get_player(self.engine_id)
             if player:
                 player.abort_voicing(purge=True, future=False)
+        except AbortException as e:
+            reraise(*sys.exc_info())
         except Exception as e:
             clz._logger.exception('')
 

@@ -38,7 +38,8 @@ class SlaveCommunication:
     video_player_state: str = KodiPlayerState.VIDEO_PLAYER_IDLE
     logger: BasicLogger = None
 
-    def __init__(self, args: List[str], phrase_serial: int = 0, thread_name: str = '',
+    def __init__(self, args: List[str], phrase_serial: int = 0,
+                 thread_name: str = 'slav_commo',
                  stop_on_play: bool = True, slave_pipe_path: Path = None,
                  speed: float = 1.0, volume: float = 100.0,
                  channels: Channels = Channels.NO_PREF) -> None:
@@ -97,9 +98,8 @@ class SlaveCommunication:
             clz.logger.exception(f'Failed to create FIFO: {slave_pipe_path}')
 
         clz.logger.debug(f'Starting SlaveRunCommand')
-        self.slave = SlaveRunCommand(args, thread_name='name',
+        self.slave = SlaveRunCommand(args, thread_name='slv_run_cmd',
                                      post_start_callback=self.create_slave_pipe)
-        clz.logger.debug(f'Returned from SlaveRunCommand')
 
     def create_slave_pipe(self) -> bool:
         clz = type(self)
@@ -108,7 +108,8 @@ class SlaveCommunication:
         # fifo_file_in = os.open(self.slave_pipe_path, os.O_RDONLY | os.O_NONBLOCK)
         # fifo_file_out = os.open(self.slave_pipe_path, os.O_WRONLY)
 
-        clz.logger.debug(f'Slave started, in callback')
+        if clz.logger.isEnabledFor(DEBUG_VERBOSE):
+            clz.logger.debug_verbose(f'Slave started, in callback')
         fifo_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         fifo_sock.settimeout(0.0)
         finished: bool = False
@@ -116,9 +117,11 @@ class SlaveCommunication:
 
         while limit > 0:
             try:
-                clz.logger.debug(f'fifo_sock.connect path: {self.slave_pipe_path}')
+                if clz.logger.isEnabledFor(DEBUG_VERBOSE):
+                    clz.logger.debug_verbose(f'fifo_sock.connect path: {self.slave_pipe_path}')
                 fifo_sock.connect(str(self.slave_pipe_path))
-                clz.logger.debug(f'Connected')
+                if clz.logger.isEnabledFor(DEBUG_VERBOSE):
+                    clz.logger.debug_verbose(f'Connected')
                 break
             except TimeoutError:
                 limit -= 1
@@ -135,7 +138,8 @@ class SlaveCommunication:
                 break
             Monitor.exception_on_abort(timeout=0.1)
         try:
-            clz.logger.debug(f'Unlinking {self.slave_pipe_path}')
+            if clz.logger.isEnabledFor(DEBUG_VERBOSE):
+                clz.logger.debug_verbose(f'Unlinking {self.slave_pipe_path}')
             self.slave_pipe_path.unlink(missing_ok=True)
             pass
         except Exception as e:
@@ -148,8 +152,9 @@ class SlaveCommunication:
                                            encoding='utf-8', errors=None,
                                            newline=None)
         self.fifo_reader_thread = threading.Thread(target=self.fifo_reader,
-                                                   name=f'{self.thread_name}_fifo_reader')
+                                                   name=f'{self.thread_name}_fifo_rdr')
         self.fifo_reader_thread.start()
+        GarbageCollector.add_thread(self.fifo_reader_thread)
         xbmc.sleep(250)
         self.send_speed()
         self.send_volume()
@@ -162,10 +167,12 @@ class SlaveCommunication:
         try:
             # Ignore while kodi owns audio
             if self.tts_player_idle and not phrase.speak_over_kodi:
-                clz.logger.debug(f'player is idle')
+                if clz.logger.isEnabledFor(DEBUG):
+                    clz.logger.debug(f'player is idle')
                 return
-            clz.logger.debug(f'run_state.value: {self.run_state.value}'
-                             f' < RUNNING.value: {RunState.RUNNING.value}')
+            if clz.logger.isEnabledFor(DEBUG_VERBOSE):
+                clz.logger.debug_verbose(f'run_state.value: {self.run_state.value}'
+                                 f' < RUNNING.value: {RunState.RUNNING.value}')
             if (self.run_state.value < RunState.RUNNING.value
                     and self.fifo_out is None):
                 #
@@ -327,9 +334,9 @@ class SlaveCommunication:
             return
         try:
             # quit[<keep-playlist>]
-            code: str = '0'
-            quit_str: str = f'quit {code}'
-            self.send_line(quit_str)
+            # code: str = '0'
+            # quit_str: str = f'quit {code}'
+            #  self.send_line(quit_str)
             self.slave.destroy()
         except Exception as e:
             clz.logger.exception('')
@@ -427,8 +434,9 @@ class SlaveCommunication:
                                                encoding='utf-8', errors=None,
                                                newline=None)
             self.fifo_reader_thread = threading.Thread(target=self.fifo_reader,
-                                                       name=f'{self.thread_name}_fifo_reader')
+                                                       name=f'{self.thread_name}_fifo_rdr')
             self.fifo_reader_thread.start()
+            GarbageCollector.add_thread(self.fifo_reader_thread)
             sleep(0.25)
             self.send_speed()
             self.send_volume()
@@ -445,7 +453,6 @@ class SlaveCommunication:
 
     def fifo_reader(self):
         clz = type(self)
-        GarbageCollector.add_thread(self.fifo_reader_thread)
         # if Monitor.is_abort_requested():
         #     self.process.kill()
 

@@ -72,7 +72,7 @@ class KodiPlayerMonitor(Player):
                     clz._inform_player_status_listeners(video_player_state)
                     was_playing = playing
             except AbortException:
-                break  # Let thread die
+                return  # Let thread die
 
     @classmethod
     def stop_audio(cls):

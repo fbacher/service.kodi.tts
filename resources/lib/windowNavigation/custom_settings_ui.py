@@ -107,14 +107,14 @@ class SettingsGUI(threading.Thread):
         #  self.do_modal_queue = queue.SimpleQueue()
         self.is_modal: threading.Condition = threading.Condition()
         self.wants_modal: bool = False
+        self.thread: threading.Thread | None = None
+        self.launch_thread: threading.Thread | None = None
 
         clz.logger.debug(f'Initialized SettingsGUI')
         self.thread = threading.Thread(target=self.dialog_queue_processor,
-                                       name=f'dialog_queue')
+                                       name=f'dialg_Q')
         self.thread.start()
-        # self.dialog_thread = threading.Thread(target=self.dialog_baby_sitter,
-        #                                       name=f'help_baby_sitter')
-        # self.dialog_thread.start()
+        GarbageCollector.add_thread(self.thread)
 
     def dialog_queue_processor(self):
         """
@@ -124,13 +124,13 @@ class SettingsGUI(threading.Thread):
         :return:
         """
         clz = type(self)
-        GarbageCollector.add_thread(self.thread)
 
         # Launch and doModal
         try:
-            self.thread = threading.Thread(target=self.launch,
-                                           name=f'settings_dialog')
-            self.thread.start()
+            self.launch_thread = threading.Thread(target=self.launch,
+                                                  name=f'setng_dialg')
+            self.launch_thread.start()
+            GarbageCollector.add_thread(self.launch_thread)
         except AbortException:
             return   # Let thread die
         except Exception:
@@ -217,12 +217,7 @@ class SettingsGUI(threading.Thread):
                             self.wants_modal = False
                             if True:  # first_time:
                                 self.gui.doModal()
-                                #  first_time = False
-                            '''
-                            else:
-                                self.gui.show()
-                                first_time = True
-                            '''
+                                # Blocked until no longer modal
                             self.is_modal.notify()
                 except queue.Empty:
                     pass

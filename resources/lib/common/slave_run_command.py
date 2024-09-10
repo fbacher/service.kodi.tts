@@ -35,7 +35,7 @@ class SlaveRunCommand:
     #  player_state: str = KodiPlayerState.VIDEO_PLAYER_IDLE
     logger: BasicLogger = None
 
-    def __init__(self, args, thread_name: str = '',
+    def __init__(self, args, thread_name: str = 'slave_run_cmd',
                  post_start_callback: Callable[[None], bool] = None) -> None:
         """
 
@@ -109,7 +109,7 @@ class SlaveRunCommand:
             self.process.stdin = None
         except:
             pass
-        self.process.wait(0.1)
+        # self.process.wait(0.1)
         clz.logger.debug('Slave Destroyed')
 
     def start_service(self) -> int:
@@ -124,6 +124,7 @@ class SlaveRunCommand:
         try:
             Monitor.exception_on_abort()
             self.run_thread.start()
+            GarbageCollector.add_thread(self.run_thread)
             self.cmd_finished = False
             self.process: Popen
 
@@ -150,7 +151,6 @@ class SlaveRunCommand:
     def run_service(self) -> None:
         clz = type(self)
         self.rc = 0
-        GarbageCollector.add_thread(self.run_thread)
         # clz.logger.debug(f'run_service started')
         env = os.environ.copy()
         try:
@@ -204,7 +204,6 @@ class SlaveRunCommand:
 
     def stdout_reader(self):
         clz = type(self)
-        GarbageCollector.add_thread(self.stdout_thread)
         finished = False
         try:
             while not Monitor.exception_on_abort(timeout=0.1):

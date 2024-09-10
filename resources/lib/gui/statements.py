@@ -39,6 +39,7 @@ from common.phrases import PhraseList
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
+
 class StatementType(Enum):
     # Same as normal. Must be compared and present. No functional difference
     # at this time.
@@ -95,8 +96,9 @@ class Statement:
         """
         clz = Statement
         if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose(f'stmt_type: {self.stmt_type} required_types: {required_types} '
-                              f'{self.stmt_type in required_types}')
+            clz._logger.debug_verbose(f'stmt_type: {self.stmt_type} '
+                                      f'required_types: {required_types} '
+                                      f'{self.stmt_type in required_types}')
         return self.stmt_type in required_types
 
     @classmethod
@@ -201,7 +203,7 @@ class Statements:
                        interrupt: bool = False) -> None:
         """
         Change the StatementType of all statements from NORMAL to SILENT.
-        This will cause to Statements to only voice items which are not SILENT.
+        This will cause Statements to only voice items which are not SILENT.
         This allows for only a value to be voiced when it has changed without
         revoicing the whole control.
 
@@ -250,7 +252,13 @@ class Statements:
         return value
 
     def requires_voicing_worker(self, last_voiced: Union[ForwardRef('Statements'), None],
-                         stmt_filter: List[StatementType] = None) -> bool:
+                                stmt_filter: List[StatementType] = None) -> bool:
+        """
+
+        :param last_voiced:
+        :param stmt_filter:
+        :return:
+        """
         clz = Statements
         if clz._logger.isEnabledFor(DEBUG_VERBOSE):
             clz._logger.debug_verbose(f'source: {self.stmts}')

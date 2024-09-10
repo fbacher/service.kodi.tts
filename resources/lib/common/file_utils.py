@@ -7,6 +7,7 @@ from pathlib import Path
 from queue import Queue
 
 from common import *
+from common.garbage_collector import GarbageCollector
 
 from common.logger import *
 from common.minimal_monitor import MinimalMonitor
@@ -109,8 +110,10 @@ class FindTextToVoice:
         self.finder: FindFiles = FindFiles(top, self.glob_pattern)
         self.worker = threading.Thread
         self.worker = threading.Thread(target=self.find_thread,
-                                       name=None, args=(), kwargs={}, daemon=None)
+                                       name='fndtxt2vce', args=(), kwargs={}, daemon=None)
         self.worker.start()
+        GarbageCollector.add_thread(self.worker)
+
 
     def get_next(self) -> Path:
         #  Delay one second on each call.

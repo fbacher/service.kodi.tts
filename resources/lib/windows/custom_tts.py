@@ -44,9 +44,10 @@ class CustomTTSReader(WindowReaderBase):
         if cls._logger is None:
             cls._logger = module_logger.getChild(CustomTTSReader.__class__.__name__)
 
-        #  cls._logger.debug(f'current_reader: {cls.current_reader} window_id: {window_id}')
+        cls._logger.debug(f'current_reader: {cls.current_reader} window_id: {window_id}')
         simple_path: Path = Path(xbmc.getInfoLabel('Window.Property(xmlfile)'))
         if str(simple_path.name) not in ('script-tts-settings-dialog.xml',
+                                         'selection-dialog.xml',
                                          'tts-help-dialog.xml'):
             cls._logger.debug(f'simple_path: {simple_path}')
             return None
@@ -72,7 +73,7 @@ class CustomTTSReader(WindowReaderBase):
         windialog_state: WinDialogState
         changed, windialog_state = WindowStateMonitor.check_win_dialog_state()
         clz._logger.debug(f'simple_path: {simple_path}')
-        #  clz._logger.debug(f'simple_path.name: {simple_path.name}')
+        clz._logger.debug(f'simple_path.name: {simple_path.name}')
         self.control_id = windialog_state.window_id
         clz._logger.debug(f'window_id: {self.control_id}')
         self.window_heading_ctrl: xbmcgui.ControlLabel = None
@@ -82,20 +83,24 @@ class CustomTTSReader(WindowReaderBase):
 
         window_parser: ParseWindow | None = None
         if str(simple_path.name) in ('script-tts-settings-dialog.xml',
+                                     'selection-dialog.xml',
                                      'tts-help-dialog.xml'):
             parser: ParseWindow = ParseWindow()
             parser.parse_window(control_id=self.control_id, xml_path=simple_path,
                                 is_addon=True)
-            if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                clz._logger.debug_verbose(f'DUMP PARSED:')
+            clz._logger.debug(f'returned from hell')
+            if clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
+                clz._logger.debug_extra_verbose(f'DUMP PARSED:')
                 for result in parser.dump_parsed():
-                    clz._logger.debug(result)
+                    clz._logger.debug_extra_verbose(result)
+                clz._logger.debug_extra_verbose('finished DUMP PARSED')
             window_parser = parser
             #  clz._logger.debug(f'Number of parsers2: {len(parser.parsers)}')
 
             self.window_model: WindowModel = WindowModel(window_parser)
             if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                clz._logger.debug_verbose(f'DUMP MODEL: \n{self.window_model}')
+                clz._logger.debug_verbose(f'DUMP MODEL:'
+                              f' \n{self.window_model.to_string(include_children=True)}')
 
         clz.current_reader = self
         return
@@ -133,24 +138,32 @@ class CustomTTSReader(WindowReaderBase):
 
         clz._logger.debug(f'windialog_state focus: {windialog_state.focus_id} '
                           f'revoice: {windialog_state.revoice}')
+        focus_changed: bool = windialog_state.focus_changed
+        if focus_changed:
+            GuiGlobals.clear()
+            GuiGlobals.require_focus_change = True
+
         topic: TopicModel
         if windialog_state.window_changed:  # or windialog_state.revoice:
             clz._previous_stmts_chain = [Statements(stmt=None, topic_id=None)]
 
         for topic in topics_to_voice:
+            if clz._logger.isEnabledFor(DEBUG_VERBOSE) and focus_changed:
+                clz._logger.debug_verbose(f'topic: {topic}')
             if GuiWorkerQueue.canceled_sequence_number >= sequence_number:
                 clz._logger.debug(f'canceled voicing: seq#: {sequence_number}'
-                                  f' topic: {topic}')
+                                  f' topic: {topic.name}')
                 return
             stmts: Statements = Statements(stmt=None, topic_id=topic.name)
             try:
                 focus_changed: bool = windialog_state.focus_changed
                 if topic.is_real_topic:
-                    if clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                        clz._logger.debug_extra_verbose(
-                            f'About to call topic {topic.name} '
-                            f'control_id: {topic.control_id} '
-                            f'focus_changed: {focus_changed}')
+                    if clz._logger.isEnabledFor(DEBUG_VERBOSE) and focus_changed:
+                        clz._logger.debug_verbose(
+                            f'\n topic {topic.name} '
+                            f'\ncontrol_id: {topic.control_id} '
+                            f'\nfocus: {windialog_state.focus_id} '
+                            f'\nfocus_changed: {focus_changed}')
                     #  clz._logger.debug(f'Topic is real')
                     success = topic.voice_control(stmts, focus_changed,
                                                   windialog_state)
@@ -159,8 +172,8 @@ class CustomTTSReader(WindowReaderBase):
                     if clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
                         clz._logger.debug_extra_verbose(
                             f'About to call {parent.__class__.__name__} '
-                            f'focus_changed: {focus_changed} '
-                            f'{windialog_state}')
+                            f'\nfocus_changed: {focus_changed} '
+                            f'\n{windialog_state}')
 
                     success = parent.voice_control(stmts, focus_changed,
                                                    windialog_state)
@@ -181,12 +194,13 @@ class CustomTTSReader(WindowReaderBase):
         # Force revoice
         if windialog_state.revoice:
             clz._previous_stmts_chain = []
-        clz._logger.debug(f'Previous_chain: {clz._previous_stmts_chain}')
-        clz._logger.debug(f'Current_chain: {new_stmt_chain}')
+        if clz._logger.isEnabledFor(DEBUG_VERBOSE) and focus_changed:
+            clz._logger.debug(f'Previous_chain: {clz._previous_stmts_chain}')
+            clz._logger.debug(f'Current_chain: {new_stmt_chain}')
         stmts_chain_iter = iter(clz._previous_stmts_chain)
         phrases_to_voice: PhraseList = PhraseList(check_expired=False)
         stmt_filter: List[StatementType] = Statement.create_filter()
-        clz._logger.debug(f'revoice: {windialog_state.revoice}')
+        #  clz._logger.debug(f'revoice: {windialog_state.revoice}')
         # Force voicing of focused item on Revoice request
 
         # Mark final text to be voiced with 'interrupt' if any of the
@@ -194,8 +208,9 @@ class CustomTTSReader(WindowReaderBase):
         interrupt_voicing: bool = False
         for stmts in new_stmt_chain:
             stmts: Statements
-            previous_stmts: Statements = None
-            clz._logger.debug(f'Building what to voice stmts: {stmts}')
+            previous_stmts: Statements | None = None
+            if clz._logger.isEnabledFor(DEBUG_VERBOSE):
+                clz._logger.debug_verbose(f'Building what to voice stmts: {stmts}')
             try:
                 # Iterate old/previous stmts in own try-catch
                 previous_stmts = next(stmts_chain_iter)
@@ -206,17 +221,24 @@ class CustomTTSReader(WindowReaderBase):
                 clz._logger.debug(f'No more previous_chain')
             if previous_stmts is None or stmts.requires_voicing(previous_stmts,
                                                                 stmt_filter=stmt_filter):
-                if previous_stmts is None:
-                    clz._logger.debug(f'previous_stmts is None')
+                # if previous_stmts is None:
+                #     clz._logger.debug(f'previous_stmts is None')
                 clz._logger.debug(f'Voicing {stmts}')
                 phrases: PhraseList = stmts.as_phrases(stmt_filter=stmt_filter)
-                clz._logger.debug(f'expanded phrases: {phrases}')
+                #  clz._logger.debug(f'expanded phrases: {phrases}')
                 phrases_to_voice.extend(phrases)
                 interrupt_voicing = interrupt_voicing or stmts.interrupt
-                clz._logger.debug(f'Aggregate text: {phrases_to_voice}')
+                if (clz._logger.isEnabledFor(DEBUG_VERBOSE)
+                        and not phrases_to_voice.is_empty()):
+                    clz._logger.debug(f'Aggregate text: {phrases_to_voice}')
             else:
-                clz._logger.debug(f'Not voicing {stmts}')
+                if clz._logger.isEnabledFor(DEBUG_VERBOSE) and focus_changed:
+                    clz._logger.debug(f'Not voicing {stmts}')
 
         clz._previous_stmts_chain = new_stmt_chain
-        phrases_to_voice.set_interrupt(interrupt_voicing)
-        self.service.sayText(phrases_to_voice)
+        if clz._logger.isEnabledFor(DEBUG) and not phrases_to_voice.is_empty():
+            clz._logger.debug(f'Final Aggregate text: {phrases_to_voice}')
+        if not phrases_to_voice.is_empty():
+            interrupt_voicing = True
+            phrases_to_voice.set_interrupt(interrupt_voicing)
+            self.service.sayText(phrases_to_voice)

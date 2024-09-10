@@ -1590,8 +1590,8 @@ msgid "Dialog"
 msgstr "Dialog"
 
 msgctxt "#32710"
-msgid "Spin"
-msgstr "Spin"
+msgid "Spin-List"
+msgstr "Spin-List"
 
 msgctxt "#32711"
 msgid "Group"
@@ -1619,6 +1619,20 @@ msgstr "Begins with the closest match"
 msgctxt "#32716"
 msgid "Available Voices for {0}"
 msgstr "Available Voices for {0}"
+
+msgctxt "#32717"
+msgid "List"
+msgstr ""
+
+msgctxt "#32718"
+msgid "Slider"
+msgstr ""
+
+msgctxt "#32719"
+msgid "Settings Spin-List"
+msgstr ""
+
+
 
 # Messages for Controls
 
@@ -1731,3 +1745,151 @@ msgstr "fast"
 msgctxt "#32823"
 msgid "slow"
 msgstr "slow"
+
+#  The following messages are for a basic help system
+#  The messages are in pairs: A subject title, followed by the subject text
+
+msgctxt "#32824"
+msgid "Introduction"
+msgstr ""
+
+msgctxt "#32825"
+msgid "Welcome to an early release of Kodi Text To Speech which provides basic TTS functionality. It is based\n upon an earlier version which is no longer supported. This version of Kodi TTS is maintained by a different team.\n The primary goal of this early release is to provide basic functionality and to get feedback. Currently, only two TTS engines: E Speak-NG and Google TTS; as well as two platforms:  Windows and Linux, are supported at this time."
+msgstr ""
+
+msgctxt "#32826"
+msgid "What about Windows TTS?"
+msgstr ""
+
+msgctxt "#32827"
+msgid "The API providing Windows TTS (SAPI5) requires a python library interface with the Windows .NET layer. Unfortunately, Kodi’s python does not work with these libraries. A simple fix will solve the problem, but the build-test-approval process takes time. I want to investigate other solutions to the problem."
+msgstr "The API providing Windows TTS (SAPI5) requires a python library interface with the Windows .NET layer. Unfortunately, Kodi’s python does not work with these libraries. A simple fix will solve the problem, but the build-test-approval process takes time. I want to investigate other solutions to the problem."
+
+msgctxt "#32828"
+msgid "Welcome to Kodi TTS"
+msgstr ""
+
+msgctxt "#32829"
+msgid "Provides basic information for first time users"
+msgstr ""
+
+msgctxt "#32830"
+msgid "Keyboard mappings"
+msgstr "
+
+msgctxt "#32831"
+msgid "Kodi provides a means to define and modify numerous shortcuts for keyboards, ir-remotes and other devices. Kodi TTS comes with a small set of shortcuts to help you get started. Suggestions for improving these assignments are welcome. Keyboard (and other input device) mappings are configured in .xml files in Kodi’s user_data/keymap directory. The pre-configured one installed with Kodi is named “kodi.tts.keyboard.xml” It can be directly edited to change the key assignments. It can also be configured within Kodi."
+msgstr ""
+
+msgctxt "#32832"
+msgid "Predefined TTS keybord/remote mappings"
+msgstr ""
+
+msgctxt "#32833"
+msgid "Open Settings"
+msgstr ""
+
+msgctxt "#32834"
+msgid "Launches the Kodi TTS configuration settings dialog. \n\nKeyboard shortcut: Control-F12""
+msgstr ""
+
+msgctxt "#32835"
+msgid "Voice Hints"
+msgstr ""
+
+mstctxt "#32836"
+msgid "Voice hints toggles voicing hint text which is currently only embedded in the kodi.tts settings dialogs.\n\n Keyboard shortcut: ALT-H"
+msgstr ""
+
+msgctxt "#32837"
+msgid "Repeat"
+msgstr ""
+
+msgctxt "#32838"
+msgid "Repeat voicing the previous item, including complete context (Window name, heading, etc. on down to the item itself).\n\n Keyboard shortcut: SHIFT-F12"
+msgstr ""
+
+msgctxt "#32839"
+msgid "Verbosity"
+msgstr "Toggles how much detail is voiced."
+
+mstctxt "#32840"
+msgid "VAGUE- SPLIT INTO MULTIPLE SETTINGS (after I know what this means)."
+msgstr ""
+
+msgctxt "#32841"
+msgid "Help"
+msgstr ""
+
+msgctxt "#32842"
+msgid "Launch Kodi help dialog.\n\n Keyboard Shortcut: Control-F1"
+msgstr ""
+
+msgctxt "#32843"
+msgid "Toggle Voicing"
+msgstr ""
+
+msgctxt "#32844"
+msgid "Starts or stops voicing. TTS still runs in the background.\n\n Keyboard Shortcut: F12"
+msgstr ""
+
+msgctxt "#32845"
+msgid "Starts or stops TTS"
+msgstr ""
+
+msgctxt "#32846"
+msgid "Starts or shuts-down TTS. TTS addon stops or launches.\n\n Keyboard Shortcut: not-defined yet"
+msgstr ""
+
+msgctxt "#32847"
+msgid "Increase TTS volume"
+msgstr ""
+
+msgctxt "#32848"
+msgid "Temporarily increase the volume of voiced text.\n\n Keyboard Shortcut: Control +"
+msgstr ""
+
+msgctxt "#32849"
+msgid "Decrease TTS volume"
+msgstr ""
+
+msgctxt "#32850"
+msgid "Temporarily decrease the volume of voiced text. NOTE: Ignored while changing TTS settings.\n\n Keyboard Shortcut: Control -"
+msgstr ""
+
+msgctxt "#32851"
+msgid "Increase the speed of voiced text"
+msgstr ""
+
+msgctxt "#32852"
+msgid "Temporarily increase the speed of voiced text.  NOTE: Ignored while changing TTS settings.\n\n Keyboard Shortcut: ALT +"
+msgstr ""
+
+msgctxt "#32853"
+msgid "Decrease the speed of voiced text"
+msgstr ""
+
+msgctxt "#32854"
+msgid "Temporarily decrease the speed of voiced text.  Note: Ignored while changing TTS settings.\n\n Keyboard Shortcut: ALT -"
+msgstr ""
+
+
+msgctxt "#32855"
+msgid "Keyboard mappings TEXT"
+msgstr ""
+
+msgctxt "#32856"
+msgid "Choose Subject"
+msgstr ""
+
+msgctxt "#32857"
+msgid "Use cursor up/down buttons to scroll through subjects. Press Select (enter) to read about the subject"
+msgstr ""
+
+msgctxt "#32858"
+msgid "(return to previous menu)"
+msgstr ""
+
+msgctxt "#32859"
+msgid "Kodi TTS Documentation"
+msgstr ""

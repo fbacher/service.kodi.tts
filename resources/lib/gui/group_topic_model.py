@@ -4,7 +4,7 @@ from typing import List
 
 import xbmc
 
-from common.logger import BasicLogger
+from common.logger import BasicLogger, DEBUG_VERBOSE
 from common.messages import Messages
 from common.phrases import Phrase, PhraseList
 from gui.base_model import BaseModel
@@ -30,9 +30,10 @@ class GroupTopicModel(TopicModel):
     @property
     def control_id(self) -> int:
         clz = GroupTopicModel
-        clz._logger.debug(f'self: {self.__class__.__name__} '
-                          f'parent: {self.parent.__class__.__name__} '
-                          f'control_id: {super().control_id}')
+        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
+            clz._logger.debug_verbose(f'self: {self.__class__.__name__} '
+                              f'parent: {self.parent.__class__.__name__} '
+                              f'control_id: {super().control_id}')
         return super().control_id
 
     '''

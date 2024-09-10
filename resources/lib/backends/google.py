@@ -317,6 +317,8 @@ class GoogleSpeechGenerator(ISpeechGenerator):
                             temp_file.unlink(True)
                         self.set_rc(ReturnCode.DOWNLOAD)
                         self.set_finished()
+                except AbortException as e:
+                    reraise(*sys.exc_info())
                 except Exception as e:
                     clz._logger.exception('')
             else:
@@ -517,11 +519,15 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
                 lang: langcodes.Language = None
                 try:
                     lang = langcodes.Language.get(locale_id)
+                except AbortException as e:
+                    reraise(*sys.exc_info())
                 except LanguageTagError:
                     cls._logger.exception('')
                 voice: str = ''
                 try:
                     voice = langcodes.Language.get(locale_id).display_name()
+                except AbortException as e:
+                    reraise(*sys.exc_info())
                 except:
                     voice = locale_id
 
@@ -615,6 +621,8 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
                 # Ignore result, don't wait
                 generator: GoogleSpeechGenerator = GoogleSpeechGenerator()
                 generator.generate_speech(tmp_phrase, timeout=1.0)
+        except AbortException as e:
+            reraise(*sys.exc_info())
         except ExpiredException:
             return False
 
@@ -771,6 +779,8 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
                             if clz._logger.isEnabledFor(ERROR):
                                 clz._logger.error(
                                         'Failed to download voice: {}'.format(str(e)))
+        except AbortException as e:
+            reraise(*sys.exc_info())
         except Exception as e:
             clz._logger.exception('')
         clz._logger.debug(f'Leaving')
@@ -951,6 +961,8 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         try:
             default_lang: str = GoogleTTSEngine.get_default_language()
             GoogleTTSEngine._logger.debug(f'default_lang: {default_lang}')
+        except AbortException as e:
+            reraise(*sys.exc_info())
         except Exception:
             available = False
 

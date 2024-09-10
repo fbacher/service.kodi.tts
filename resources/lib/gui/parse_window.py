@@ -1,11 +1,12 @@
 # coding=utf-8
 
 import xml.etree.ElementTree as ET
+from enum import StrEnum
 from pathlib import Path
 from typing import Callable, Dict, List, Tuple
 
 from common.logger import BasicLogger, DEBUG_VERBOSE
-from gui.base_tags import control_elements, ControlType, Item, Tag, WindowType
+from gui.base_tags import control_elements, ControlElement, Item, Tag, WindowType
 from gui.element_parser import ( BaseElementParser,
                                 ElementHandler)
 from gui.parse_button import ParseButton
@@ -13,12 +14,17 @@ from gui.parse_controls import CreateControl, ParseControls
 from gui.parse_control import ParseControl
 from gui.base_parser import BaseParser
 from gui.parse_edit import ParseEdit
+from gui.parse_focused_layout import ParseFocusedLayout
 from gui.parse_group import ParseGroup
 from gui.parse_group_list import ParseGroupList
+from gui.parse_item_layout import ParseItemLayout
 from gui.parse_label import ParseLabel
+from gui.parse_list import ParseList
 from gui.parse_radio_button import ParseRadioButton
 from gui.parse_scrollbar import ScrollbarParser
 from gui.parse_slider import ParseSlider
+from gui.parse_spin import ParseSpin
+from gui.parse_spinex import ParseSpinex
 from gui.parse_topic import ParseTopic
 from windows.windowparser import WindowParser
 from gui.base_tags import ElementKeywords as EK
@@ -33,17 +39,22 @@ class InitParsers:
         ParseButton.init_class()
         ParseRadioButton.init_class()
         ParseSlider.init_class()
+        ParseSpin.init_class()
+        ParseSpinex.init_class()
         CreateControl.init_class()
         ParseControl.init_class()
         ParseControls.init_class()
         ParseGroup.init_class()
         ParseGroupList.init_class()
         ParseGroupList.init_class()
+        ParseItemLayout.init_class()
+        ParseFocusedLayout.init_class()
+        ParseList.init_class()
         BaseElementParser.init_class()
+        ScrollbarParser.init_class()
         ParseEdit.init_class()
         ParseTopic.init_class()
         ElementHandler.init_class()
-        ScrollbarParser.init_class()
 
 
 InitParsers.init_all()
@@ -119,7 +130,7 @@ class ParseWindow(BaseParser):
 
     """
     _logger: BasicLogger = None
-    item: Item = control_elements[ControlType.WINDOW.name]
+    item: Item = control_elements[ControlElement.WINDOW]
 
     @classmethod
     def init_class(cls) -> None:
@@ -127,12 +138,12 @@ class ParseWindow(BaseParser):
             cls._logger = module_logger.getChild(cls.__class__.__name__)
 
     def __init__(self):
-        super().__init__(parent=None)
+        super().__init__(parent=None, window_parser=self)
         clz = type(self)
         clz.init_class()
 
         self.topic: ParseTopic | None = None
-        self.xml_path: Path = None
+        self.xml_path: Path = None  # Source path of current window xml
         self.win_parser: WindowParser = None
         self.window_type: WindowType = None
         # self.win_dialog_id: int = -1
@@ -142,16 +153,22 @@ class ParseWindow(BaseParser):
         self.menu_control: int = -1
         self.default_control_id: str = None
         self.children: List[BaseParser] = []
-        self.tts: str = ''
-        self.window_title_id: int = -1
         self.visible_expr: str = ''
 
-        self.control_type = ControlType.WINDOW
+        self.control_type = ControlElement.WINDOW
         if clz._logger.isEnabledFor(DEBUG_VERBOSE):
             clz._logger.debug_verbose(f'control_type.label: {self.control_type} '
                           f'name: {self.control_type.name} '
                           f'value: {self.control_type.value}'
                           f'str: {str(self.control_type)}')
+
+    @property
+    def control_type(self) -> ControlElement:
+        return BaseParser.control_type.fget(self)
+
+    @control_type.setter
+    def control_type(self, value: ControlElement) -> None:
+        BaseParser.control_type.fset(self, value)
 
     def calculate_allowed_children(self) -> None:
         pass
@@ -183,16 +200,10 @@ class ParseWindow(BaseParser):
 
         # type == window | dialog
         self.window_type: WindowType = self.win_parser.get_window_type()
-        attribs: Dict[str, str] = self.xml_root.attrib
-        self.tts = attribs.get('tts')
-        self.window_title_id = attribs.get('label')
-        # Hint-text ?
         self.default_control_id = self.get_default_control()
-        #  clz._logger.debug(f'default_control: {self.default_control_id}')
-        # <onload>SetProperty(onnext,SetFocus(100))</onload>
 
         # Parse each child element/control
-        tags_to_parse: Tuple[str, ...] = (EK.TOPIC, EK.MENU_CONTROL, EK.DEFAULT_CONTROL,
+        tags_to_parse: Tuple[str, ...] = (EK.TOPIC, EK.MENU_CONTROL,
                                           EK.CONTROL, EK.CONTROLS)
         elements: [ET.Element] = self.xml_root.findall(f'./*')
         element: ET.Element
@@ -200,10 +211,17 @@ class ParseWindow(BaseParser):
             if element.tag in tags_to_parse:
                 #  clz._logger.debug(f'element_tag: {element.tag}')
                 key: str = element.tag
-                control_type: ControlType = clz.get_control_type(element)
+                control_type: ControlElement = clz.get_control_type(element)
+                str_enum: StrEnum = None
                 if control_type is not None:
-                    key = control_type.name
-                item: Item = control_elements[key]
+                    str_enum = control_type
+                else:
+                    str_enum = EK(element.tag)
+
+                # control_elements MUCH prefers a StrEnum, otherwise it MUST
+                # be the 'name' property of the proper StrEnum defined in base_tags
+
+                item: Item = control_elements[str_enum]
                 # Values copied to self
                 handler: Callable[[BaseParser, ET.Element], str | BaseParser]
                 handler = ElementHandler.get_handler(item.key)
@@ -211,13 +229,8 @@ class ParseWindow(BaseParser):
                 if parsed_instance is not None:
                     if control_type is not None:
                         self.children.append(parsed_instance)
-                    if key == EK.TOPIC:
+                    if str_enum == EK.TOPIC:
                         self.topic = parsed_instance
-            else:
-                pass
-                # if element.tag not in ('top', 'left', 'width', 'height', 'bottom'):
-                #    clz._logger.debug(f'ParseGroup ignored element: {element.tag}')
-
         '''   
         parser: Callable[[BaseParser, ET.Element], BaseParser]
         # acceptable_tags: Tuple[str] = (EK.CONTROLS.value, EK.CONTROL.value)
@@ -266,9 +279,7 @@ class ParseWindow(BaseParser):
         result: str = ''
 
         #  Start with this window
-        window_str: str = (f'\nwindow: {self.window_type} id: {self.control_id} '
-                           f'window_title_id: {self.window_title_id} '
-                           f'tts: {self.tts}')
+        window_str: str = (f'\nwindow: {self.window_type} id: {self.control_id}')
         menu_ctrl_str: str = ''
         if self.menu_control != -1:
             menu_ctrl_str = f'\n menu_ctrl: {self.menu_control}'

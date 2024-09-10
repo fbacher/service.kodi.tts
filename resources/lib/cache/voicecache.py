@@ -441,7 +441,7 @@ class VoiceCache:
                             text_file: pathlib.Path | None
                             text_file = voice_file_path.with_suffix('.txt')
                             try:
-                                if text_file.is_file():
+                                if text_file.is_file() and text_file.exists():
                                     text_file.unlink()
 
                                 with open(text_file, 'wt', encoding='utf-8') as f:

@@ -1,16 +1,19 @@
 # coding=utf-8
-
+from enum import StrEnum
 from typing import Callable, ForwardRef, List, Tuple
 import xml.etree.ElementTree as ET
+
+from common.messages import Messages
 from gui.base_tags import (ElementKeywords as EK, TopicElement, TopicType, ValueFromType,
                            ValueUnits)
 from gui.base_tags import BaseAttributeType as BAT, TopicElement as TE
 
 from common.logger import BasicLogger
-from gui import ControlType, ParseError
+from gui import ControlElement, ParseError
 from gui.base_parser import BaseParser
 from gui.base_tags import control_elements, Item
 from gui.element_parser import BaseElementParser, ElementHandler
+from windows.ui_constants import AltCtrlType
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
@@ -31,13 +34,13 @@ class ParseTopic(BaseParser):
     def init_class(cls) -> None:
         if cls._logger is None:
             cls._logger = module_logger.getChild(cls.__class__.__name__)
-            ElementHandler.add_handler(cls.item.key, cls.parse_topic)
+            ElementHandler.add_handler(EK.TOPIC, cls.parse_topic)
 
     @classmethod
     def parse_topic(cls, parent: BaseParser | None = None,
                     el_topic: ET.Element = None) -> ForwardRef('ParseTopic'):
         """
-             <topic name="speech_engine" label="102"
+             <topic name="speech_engine" label="102" rank="3">
                                            hinttext="Select to choose speech engine"
                             topicleft="category_keymap" topicright="" topicup="engine_settings"
                                     topicdown="" rank="3">header</topic>
@@ -72,7 +75,9 @@ class ParseTopic(BaseParser):
         self.topic_down: str = ''
         self.topic_heading: str = ''
         self.topic_type: TopicType = TopicType.DEFAULT
-        self.alt_type: str = ''
+        self._alt_type: str = ''  # Can not resolve this until TopicModels created
+        # Raw from xml Topic Element Used to create alt_type, above.
+        self.alt_type_expr: str = ''
         self.rank: int = -1
         self.read_next_expr: str = ''
         self.true_msg_id: int | None = None
@@ -86,102 +91,92 @@ class ParseTopic(BaseParser):
         # the Kodi standard controls, group, groupList, etc.
 
         self.type: str = ''  # header, custom,
-
-        attributes_to_parse: Tuple[str, ...] = (BAT.TOPIC,
-                                                BAT.LABEL,  # Used for label="32807"
-                                                BAT.ALT_LABEL, BAT.ALT_TYPE,
-                                                BAT.NAME, BAT.HINT_TEXT,
-                                                BAT.LABEL_FOR, BAT.LABELED_BY,
-                                                BAT.LABEL_ID,  # ?
-                                                BAT.TRUE_MSG_ID,
-                                                BAT.FALSE_MSG_ID,
-                                                BAT.READ_NEXT,
-                                                BAT.RANK,
-                                                BAT.INNER_TOPIC,
-                                                BAT.OUTER_TOPIC,
-                                                BAT.FLOWS_TO,
-                                                BAT.FLOWS_FROM,
-                                                BAT.SET_FOCUS,  # ?
-                                                BAT.TOPIC_DOWN,
-                                                BAT.TOPIC_UP, BAT.TOPIC_LEFT,
-                                                BAT.TOPIC_RIGHT,
-                                                BAT.TOPIC_TYPE,
-                                                BAT.UNITS)
-        tags_to_parse: Tuple[str, ...] = (EK.DESCRIPTION, EK.TOPIC)
-
-        if el_topic.tag != EK.TOPIC:
-            raise ParseError(f'Expected {EK.TOPIC} not {el_topic.tag}')
+        if el_topic.tag != TE.TOPIC:
+            raise ParseError(f'Expected {TE.TOPIC} not {el_topic.tag}')
         name: str | None = el_topic.attrib.get(TE.NAME)
-        if name is None:
+        if name is None or name == '':
             raise ParseError(f'Expected Topic name attribute')
+        self.name = name
 
-        label_attrib_str: str = el_topic.attrib.get(BAT.LABEL)
-        if label_attrib_str is not None:
-            self.label_expr = label_attrib_str
-        if BAT.ALT_LABEL in el_topic.attrib:
-            self.alt_label_expr = el_topic.attrib.get(BAT.ALT_LABEL)
-        if BAT.ALT_TYPE in el_topic.attrib:
-            self.alt_type = el_topic.attrib.get(BAT.ALT_TYPE)
-        if BAT.NAME in el_topic.attrib:
-            self.name = el_topic.attrib.get(BAT.NAME)
-        if BAT.HINT_TEXT in el_topic.attrib:
-            self.hint_text_expr = el_topic.attrib.get(BAT.HINT_TEXT)
-        if BAT.LABEL_FOR in el_topic.attrib:
-            self.label_for_expr = el_topic.attrib.get(BAT.LABEL_FOR)
-        if BAT.LABELED_BY in el_topic.attrib:
-            self.labeled_by_expr = el_topic.attrib.get(BAT.LABELED_BY)
-        if BAT.RANK in el_topic.attrib:
-            try:
-                self.rank = int(el_topic.attrib.get(BAT.RANK))
-                #  clz._logger.debug(f'RANK: {self.rank}')
-            except Exception as e:
-                clz._logger.exception('')
-        if BAT.INNER_TOPIC in el_topic.attrib:
-            self.inner_topic = el_topic.attrib.get(BAT.INNER_TOPIC)
-        if BAT.OUTER_TOPIC in el_topic.attrib:
-            self.outer_topic = el_topic.attrib.get(BAT.OUTER_TOPIC)
-        if BAT.FLOWS_TO in el_topic.attrib:
-            self.flows_to = el_topic.attrib.get(BAT.FLOWS_TO)
-        if BAT.FLOWS_FROM in el_topic.attrib:
-            self.flows_from = el_topic.attrib.get(BAT.FLOWS_FROM)
-        if BAT.TOPIC_DOWN in el_topic.attrib:
-            self.topic_down = el_topic.attrib.get(BAT.TOPIC_DOWN)
-        if BAT.TOPIC_UP in el_topic.attrib:
-            self.topic_up = el_topic.attrib.get(BAT.TOPIC_UP)
-        if BAT.TOPIC_LEFT in el_topic.attrib:
-            self.topic_left = el_topic.attrib.get(BAT.TOPIC_LEFT)
-        if BAT.TOPIC_RIGHT in el_topic.attrib:
-            self.topic_right = el_topic.attrib.get(BAT.TOPIC_RIGHT)
-        if BAT.FALSE_MSG_ID in el_topic.attrib:
-            self.false_msg_id = el_topic.attrib.get(BAT.FALSE_MSG_ID)
-        if BAT.TRUE_MSG_ID in el_topic.attrib:
-            self.true_msg_id = el_topic.attrib.get(BAT.TRUE_MSG_ID)
-        if BAT.UNITS in el_topic.attrib:
-            self.units = self.parse_units(el_topic.attrib.get(BAT.UNITS))
+        rank_str: str | None = el_topic.attrib.get(TE.RANK)
+        if rank_str is not None:
+            if not rank_str.isdigit():
+                clz._logger.info(f'topic rank is not a number for topic: {self.name} '
+                                 f'from the path {self.get_xml_path()}')
+            else:
+                self.rank = int(rank_str)
 
-        topic_element: TopicElement
         element: ET.Element
-        element = el_topic.find(f'./{EK.DESCRIPTION}')
+        #  Should add as element
+        #  element = el_topic.find(f'./{EK.DESCRIPTION}')
         for tag in TopicElement:
+            tag: str
             if tag == TopicElement.NAME:  # attribute
                 continue
             element = el_topic.find(f'./{tag}')
             if element is not None:
-                #  clz._logger.debug(f'element_tag: {element.tag}')
-                #
-                # This is a lot of work just to save to specific field names
-                #
+
                 key: str = element.tag
-                text: str = element.text
-                item: Item = control_elements[key]
+                control_type: ControlElement = clz.get_control_type(element)
+                str_enum: StrEnum = None
+                if control_type is not None:
+                    str_enum = control_type
+                else:
+                    str_enum = TE(key)  # Any valid topic element
+                item: Item = control_elements[str_enum]
                 # Values copied to self
                 handler: Callable[[BaseParser, TopicElement], str | BaseParser]
                 handler = ElementHandler.get_handler(item.key)
                 parsed_instance: BaseParser = handler(self, element)
                 if parsed_instance is not None:
                     self.children.append(parsed_instance)
-        self.parent.topic = self
+        parent.topic = self
         #  clz._logger.debug(f'{self}')
+
+    @property
+    def control_type(self) -> ControlElement:
+        return BaseParser.control_type.fget(self)
+
+    @control_type.setter
+    def control_type(self, value: ControlElement) -> None:
+        BaseParser.control_type.fset(self, value)
+
+    @property
+    def alt_type(self) -> str:
+        """
+        Creates alternate type string during creation of Topic Models.
+        This is due to it being awkward to create sooner.
+
+        :return:
+        """
+        clz = ParseTopic
+        self._alt_type: str = ''
+        msg_id: int = -1
+        clz._logger.debug(f'parent: {self.__class__.__name__}')
+
+        # If not defined, get default translated value for control
+        if self.alt_type_expr is None or self.alt_type_expr == '':
+            alt_ctrl_type: AltCtrlType
+            alt_ctrl_type = AltCtrlType.get_default_alt_ctrl_type(self.parent.control_type)
+            msg_id = alt_ctrl_type.value
+            clz._logger.debug(f'default alt_type for control {self.parent.control_type} '
+                              f'alt_ctrl_type: {alt_ctrl_type} msg_id: {msg_id}')
+        elif self.alt_type_expr.isdigit():
+            msg_id = int(self.alt_type_expr)
+            clz._logger.debug(f'msg_id: {msg_id}')
+        else:
+            try:
+                alt_type: AltCtrlType
+                alt_type = AltCtrlType.get_alt_type_for_name(self.alt_type_expr)
+                clz._logger.debug(f'alt_type: {alt_type} alt_type_str: '
+                                  f'{alt_type.get_message_str()}')
+                self._alt_type = alt_type.get_message_str()
+            except ValueError:
+                msg_id = -1
+        if msg_id > 0:
+            self._alt_type = Messages.get_msg_by_id(msg_id)
+            clz._logger.debug(f'alt_type: {self._alt_type} ')
+        return self._alt_type
 
     def __repr__(self) -> str:
         clz = type(self)
@@ -236,12 +231,20 @@ class ParseTopic(BaseParser):
             heading_labeled_by_str = f'\n  heading_labeled_by: {self.heading_labeled_by}'
 
         heading_next_str: str = ''
-        if self.heading_label != '':
+        if self.heading_next != '':
             heading_next_str = f'\n  heading_next: {self.heading_next}'
 
         topic_type_str: str = ''
         if self.topic_type != '':
             topic_type_str = f'\n  topic_type: {self.topic_type}'
+
+        outer_topic_str: str = ''
+        if self.outer_topic != '':
+            outer_topic_str = f'\n  outer_topic: {self.outer_topic}'
+
+        inner_topic_str: str = ''
+        if self.inner_topic != '':
+            inner_topic_str = f'\n  inner_topic: {self.inner_topic}'
 
         topic_up_str: str = ''
         if self.topic_up != '':
@@ -264,8 +267,8 @@ class ParseTopic(BaseParser):
             topic_right_str = f'\n  topic_right: {self.topic_right}'
 
         alt_type_str: str = ''
-        if self.alt_type != '':
-            alt_type_str = f'\n  alt_type: {self.alt_type}'
+        if self.alt_type_expr != '':
+            alt_type_str = f'\n  alt_type: {self.alt_type_expr}'
 
         rank_str: str = ''
         if self.rank > -1:
@@ -294,6 +297,8 @@ class ParseTopic(BaseParser):
                        f'{heading_label_str}'
                        f'{heading_labeled_by_str}'
                        f'{heading_next_str}'
+                       f'{outer_topic_str}'
+                       f'{inner_topic_str}'
                        f'{topic_type_str}'
                        f'{alt_type_str}'
                        f'{rank_str}'

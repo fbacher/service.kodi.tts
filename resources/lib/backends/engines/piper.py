@@ -479,7 +479,7 @@ class Voice:
         glob_pattern: str = '*.onnx'
 
         for path in voices_path.glob(glob_pattern):
-            if not path.is_file():
+            if not (path.is_file() and path.exists()):
                 continue
             Voice.parse(path.stem)
 

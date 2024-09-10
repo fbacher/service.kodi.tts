@@ -1,10 +1,11 @@
 # coding=utf-8
 import xml.etree.ElementTree as ET
+from enum import StrEnum
 from typing import Callable, List, Tuple
 
 from common.logger import BasicLogger
 from gui.base_parser import BaseParser
-from gui.base_tags import (BaseAttributeType as BAT, control_elements, ControlType,
+from gui.base_tags import (control_elements, ControlElement,
                            ElementKeywords as EK, TopicElement as TE, Item)
 from gui.element_parser import ElementHandler
 from gui.parse_control import ParseControl
@@ -19,7 +20,7 @@ class ParseGroup(ParseControl):
 
     """
     _logger: BasicLogger = None
-    item: Item = control_elements[ControlType.GROUP.name]
+    item: Item = control_elements[ControlElement.GROUP]
 
     @classmethod
     def init_class(cls) -> None:
@@ -35,22 +36,20 @@ class ParseGroup(ParseControl):
         self.topic: ParseTopic | None = None
         self.default_control_always: bool = False
         self.default_control_id: int = -1
-        self.alt_type_expr: str = ''
         self.description: str = ''
         self.visible_expr: str = ''
         self.enable_expr: str = ''
         self.label_expr: str = ''
-        self.alt_label_expr: str = ''
         self.best_tts_label_expr: str = ''
         self.alt_info_expr: str = ''
-        self.labeled_by_expr: str = ''
-        self.label_for_expr: str = ''
-        self.hint_text_expr: str = ''
-        #  self.info_expr: str = ''
-        # self.on_click
-        self.on_focus_expr: str = ''
-        # self.on_info_expr: str = ''
-        self.on_unfocus_expr: str = ''
+
+    @property
+    def control_type(self) -> ControlElement:
+        return BaseParser.control_type.fget(self)
+
+    @control_type.setter
+    def control_type(self, value: ControlElement) -> None:
+        BaseParser.control_type.fset(self, value)
 
     @classmethod
     def get_instance(cls, parent: ParseControl,
@@ -86,29 +85,14 @@ class ParseGroup(ParseControl):
         # Group control type. Get any ID
 
         #  clz._logger.debug(f'In ParseGroup.parse_group')
-        self.control_type = ControlType.GROUP
+        self.control_type = ControlElement.GROUP
         control_id_str: str = el_group.attrib.get('id')
         if control_id_str is not None:
             control_id: int = int(control_id_str)
             self.control_id = control_id
 
-        alt_label_str: str = el_group.attrib.get(BAT.ALT_LABEL)
-        if alt_label_str is not None:
-            self.alt_label_expr = alt_label_str
-
-        alt_type_str: str = el_group.attrib.get(BAT.ALT_TYPE)
-        if alt_type_str is not None:
-            self.alt_type_expr = alt_type_str
-
-        label_expr: str = el_group.attrib.get('label')
-        if label_expr is not None:
-            self.label_expr = label_expr
-
         DEFAULT_TAGS: Tuple[str, ...] = (EK.DESCRIPTION, EK.VISIBLE)
-        # DEFAULT_FOCUS_TAGS: Tuple[str, ...] = (EK.ENABLE, EK.ON_FOCUS, EK.ON_UNFOCUS,
-        #                                        EK.ON_INFO)
-        GROUP_CONTROL_TAGS: Tuple[str, ...] = (TE.TOPIC, TE.HINT_TEXT,
-                                               TE.ALT_LABEL,
+        GROUP_CONTROL_TAGS: Tuple[str, ...] = (TE.TOPIC,
                                                EK.DEFAULT_CONTROL,
                                                EK.CONTROL,
                                                EK.CONTROLS)
@@ -120,16 +104,27 @@ class ParseGroup(ParseControl):
             if element.tag in tags_to_parse:
                 # clz._logger.debug(f'element_tag: {element.tag}')
                 key: str = element.tag
-                control_type: ControlType = clz.get_control_type(element)
+                control_type: ControlElement = clz.get_control_type(element)
+                str_enum: StrEnum = None
                 if control_type is not None:
-                    key = control_type.name
-                item: Item = control_elements[key]
+                    str_enum = control_type
+                elif str_enum == TE.TOPIC:
+                    str_enum = TE.TOPIC
+                else:
+                    str_enum = EK(key)
+
+                item: Item = control_elements[str_enum]
                 # Values copied to self
                 handler: Callable[[BaseParser, ET.Element], str | BaseParser]
                 handler = ElementHandler.get_handler(item.key)
+                #  clz._logger.debug(f'str_enum: {str_enum} item: {item} ')
+                #  clz._logger.debug(f'item_key: {item.key} handler: {handler} '
+                #                    f'element: {element}')
                 parsed_instance: BaseParser = handler(self, element)
                 if parsed_instance is not None:
                     if control_type is not None:
+                        # clz._logger.debug(f'parsed_instance: {parsed_instance} '
+                        #                   f'control_type: {control_type}')
                         self.children.append(parsed_instance)
             # else:
             #     if element.tag not in ('top', 'left', 'width', 'height', 'bottom'):
@@ -146,16 +141,6 @@ class ParseGroup(ParseControl):
         if self.default_control_id != '':
             default_control_str = (f'\n default_control: {self.default_control_id} '
                                    f' always: {self.default_control_always}')
-        '''
-        if self.on_focus_expr is not None and (len(self.on_focus_expr) > 0):
-            on_focus_expr: str = f' on_focus_expr: {self.on_focus_expr}'
-        else:
-            on_focus_expr: str = ''
-        if self.on_unfocus_expr is not None and (len(self.on_unfocus_expr) > 0):
-            on_unfocus_expr: str = f' on_unfocus_expr: {self.on_unfocus_expr}'
-        else:
-            on_unfocus_expr: str = ''
-        '''
         visible_expr: str = ''
         if self.visible_expr != '':
             visible_expr = f'\n visible_expr: {self.visible_expr}'

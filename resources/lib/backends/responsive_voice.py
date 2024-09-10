@@ -168,7 +168,8 @@ class SpeechGenerator:
                 if save_to_file:
                     failing_voice_text_file = phrase.get_cache_path().with_suffix(
                             '.txt')
-                    if failing_voice_text_file.is_file():
+                    if (failing_voice_text_file.is_file()
+                            and failing_voice_text_file.exists()):
                         expiration_time: float = time() - timedelta(
                                 hours=24).total_seconds()
                         if (

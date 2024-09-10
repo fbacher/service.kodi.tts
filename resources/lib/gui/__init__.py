@@ -6,7 +6,7 @@ from typing import Callable
 
 from common.logger import BasicLogger
 from gui.base_parser import BaseParser
-from gui.base_tags import ControlType, Tag
+from gui.base_tags import ControlElement, Tag
 from gui.base_tags import BaseAttributeType as BAT
 from gui.base_tags import ElementKeywords as EK
 from gui.exceptions import ParseError

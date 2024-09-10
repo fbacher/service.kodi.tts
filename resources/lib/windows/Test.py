@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
-
+from common.exceptions import reraise
 import copy
 import os
 import pathlib
@@ -987,7 +987,7 @@ class Includes:
                 xml_name: str = file_attrib
                 included_file: Path
                 included_file = base_path / xml_name
-                if not included_file.is_file():
+                if not (included_file.is_file() and included_file.exists()):
                     continue
                 includes_xml: lxml_ET = lxml_ET.parse(str(included_file))
                 includes_root = includes_xml.getroot()

@@ -2,12 +2,12 @@
 from __future__ import annotations  # For union operator |
 
 import queue
-from email._header_value_parser import MessageID
+from collections import namedtuple
 
 import xbmc
 import xbmcgui
 from xbmcgui import (Control, ControlButton, ControlEdit, ControlGroup, ControlLabel,
-                     ControlRadioButton, ControlSlider)
+                     ControlRadioButton, ControlSlider, ControlList, ListItem)
 
 import utils.util
 from common import *
@@ -17,6 +17,9 @@ from common.logger import *
 from common.message_ids import MessageId, MessageUtils
 from common.messages import Messages
 from common.monitor import Monitor
+from welcome.subjects import (Category, CategoryRef, Load, MessageRef, Subject,
+                              SubjectRef,
+                              Utils)
 from windowNavigation.choice import Choice
 
 if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
@@ -25,20 +28,25 @@ if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
 else:
     module_logger = BasicLogger.get_module_logger()
 
+ParentStack = namedtuple('ParentStack', ['cat_ref', 'item_idx'])
+
 
 class HelpDialog(xbmcgui.WindowXMLDialog):
     _logger: BasicLogger
     HEADING_CONTROL_ID: Final[int] = 1
-    BIG_GROUP_ID: Final[int] = 1000
-    OK_CANCEL_GROUP_ID: Final[int] = 1002
-    OK_CONTROL_ID: Final[int] = 5
-    CANCEL_CONTROL_ID: Final[int] = 7
-    HELP_CONTROL_ID: Final[int] = 8
-    NUMBER_OF_ITEMS_ID: Final[int] = 42
-    # BUTTON IDs 1-based numbering
-    NUMBER_OF_BUTTONS: Final[int] = 10
-    BUTTON_ID_BASE: Final[int] = 101
-    BUTTON_ID_LIMIT: Final[int] = NUMBER_OF_BUTTONS + BUTTON_ID_BASE
+    SUB_HEADING_CONTROL_ID: Final[int] = 4
+    FULL_SCREEN_GROUP_ID: Final[int] = 1000
+    HEADER_SUB_HEADER_GROUP_ID: Final[int] = 1001
+    SELECTION_GROUP_ID: Final[int] = 1002
+    SELECTION_LIST_GROUP_ID: Final[int] = 1003
+    SPIN_CONTROL_ID: Final[int] = 200
+    LIST_CONTROL_ID: Final[int] = 201
+
+    HELP_CONTROL_ID: Final[int] = 100
+    OK_GROUP_ID: Final[int] = 1005
+    OK_CONTROL_ID: Final[int] = 101
+
+    RETURN_TO_PREVIOUS_MENU: str = MessageRef.RETURN_TO_PREVIOUS_MENU.get_msg()
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """
@@ -48,14 +56,16 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
         super().__init__(*args, **kwargs)
         self.initialized: bool = False
         clz = type(self)
+        Load.load_help()
         clz._logger = module_logger.getChild(self.__class__.__name__)
         clz._logger.debug('HelpDialog.__init__')
         Monitor.register_abort_listener(self.on_abort_requested)
         empty_display_values: List[Choice] = []
         self.list_position: int = 0
+        self.full_window_group: xbmcgui.ControlGroup | None = None
         self.selection_index: int = -1
-        self.title: str = kwargs.get('title', 'Test Moronic Heading')
-        self.sub_title: str | None = kwargs.get('sub_title', 'Default sub_title')
+        self.title: str = kwargs.get('title', MessageId.TTS_HELP_LABEL.get_msg())
+        self.sub_title: str | None = kwargs.get('sub_title', None)
         self.help_text: str | None = None
         self.is_modal: bool = False
         self.notification_queue: queue.SimpleQueue = queue.SimpleQueue()
@@ -67,13 +77,15 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
 
         self.gui_updates_allowed: bool = False
 
-        clz._logger.debug(f'sub_title: {self.sub_title}')
+        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
+            clz._logger.debug_verbose(f'sub_title: {self.sub_title}')
         self._choices: List[Choice]
         self._choices = kwargs.get('choices', empty_display_values)
         self._initial_choice: int = kwargs.get('initial_choice', -1)
         if self._initial_choice < 0:
             self._initial_choice = 0
-        self._previous_num_items: int = HelpDialog.NUMBER_OF_BUTTONS + 1
+
+        # self._previous_num_items: int = HelpDialog.NUMBER_OF_BUTTONS + 1
         self._call_on_focus: Callable[Choice, None] | None
         self._call_on_focus = kwargs.get('call_on_focus', None)
         self._call_on_select: Callable[Choice, None] | None
@@ -81,18 +93,29 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
         self._callback:  Callable[[Any], None] | None = kwargs.get('callback', None)
         self.heading_control: ControlLabel | None = None
         self.sub_heading_control: ControlLabel | None = None
-        self.help_button: ControlButton | None = None
+        self.heading_group_control: ControlGroup | None = None
+        # self.help_button: ControlButton | None = None
+        self.help_label: ControlLabel | None = None
         self.choices_group: ControlGroup | None = None
-        # GroupList's button_controls
-        self.big_group: ControlGroup = None
-        self.ok_cancel_group: ControlGroup = None
+        self.spin_control: xbmcgui.ControlSpin | None = None
+        self.selection_group: ControlGroup | None = None
+        self.seletion_list_group: ControlGroup | None = None
+        self.ok_group: ControlGroup | None = None
+        self.list_control: ControlList | None = None
+        self.list_items: List[ListItem] = []
         self.button_controls: List[ControlButton] = []
-        self.cancel_radio_button: ControlRadioButton | None = None
         self.number_of_button_controls: int = 0
         self.ok_radio_button: ControlRadioButton | None = None
         self.items_label: ControlLabel | None = None
         self.close_selected_idx: int = -1
-        clz._logger.debug(f'choices: {len(self._choices)}')
+
+        self.current_category: Category = Category.get_category(CategoryRef.WELCOME_TTS)
+        # When we descend into Category/Subject tree, remember where to return
+        self.parent_stack: List[ParentStack]
+        # Top of stack is only needed for the CatagoryRef.
+        entry: ParentStack = ParentStack(cat_ref=CategoryRef.WELCOME_TTS, item_idx=-1)
+        self.parent_stack = [entry]
+        clz._logger.debug(f'top category: {self.current_category}')
 
     def onInit(self):
         """
@@ -104,40 +127,12 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
         clz._logger.debug('HelpDialog.onInit enter')
         self.initialized = False
         try:
-            self.big_group = self.getControlGroup(self.BIG_GROUP_ID)
-            self.big_group.setVisible(False)
-            self.ok_cancel_group = self.getControlGroup(self.OK_CONTROL_ID)
-            self.ok_cancel_group.setVisible(False)
+            self.configure_heading()
+            # self.help_button = self.getControlButton(HelpDialog.HELP_CONTROL_ID)
+            self.help_label = self.getControlLabel(HelpDialog.HELP_CONTROL_ID)
 
-            self.heading_control = self.getControlLabel(1)
-            clz._logger.debug(f'Got heading ctrl: 1')
-            self.sub_heading_control = self.getControlLabel(4)
-            clz._logger.debug(f'Got heading ctrl: 4')
-            self.help_button = self.getControlButton(HelpDialog.HELP_CONTROL_ID)
-            self.ok_radio_button = self.getControlRadioButton(clz.OK_CONTROL_ID)
-            clz._logger.debug(f'Just initialized ok_radio_button')
-            self.cancel_radio_button = self.getControlRadioButton(
-                clz.CANCEL_CONTROL_ID)
-            self.ok_radio_button.setLabel(Messages.get_msg(Messages.OK))
-            self.ok_radio_button.setVisible(True)
-            self.cancel_radio_button.setLabel(Messages.get_msg(Messages.CANCEL))
-            self.cancel_radio_button.setVisible(True)
-            try:
-                # Buttons for displaying and choosing choices.
-                # Defined in selection-dialog.xml as controls 101 - 110
-                clz._logger.debug(f'ID_BASE: {clz.BUTTON_ID_BASE} LIMIT:'
-                                  f' {clz.BUTTON_ID_LIMIT}')
-                for idx in range(clz.BUTTON_ID_BASE, clz.BUTTON_ID_LIMIT):
-                    button_control: ControlButton = \
-                                self.getControlButton(idx)
-                    #  clz._logger.debug(f'button controlId: {idx}')
-                    self.button_controls.append(button_control)
-                    button_control.setLabel('')
-                    button_control.setVisible(False)
-            except Exception as e:
-                clz._logger.exception('Setting up List and evaluating response')
-
-            self.items_label = self.getControlLabel(clz.NUMBER_OF_ITEMS_ID)
+            self.configure_ok()
+            self.configure_selection_list()
             self.update_choices(title=self.title,
                                 choices=self._choices,
                                 sub_title=self.sub_title,
@@ -149,14 +144,44 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
 
         clz._logger.debug('HelpDialog.onInit exiting')
 
+    def configure_heading(self) -> None:
+        clz = HelpDialog
+        self.full_window_group = self.getControlGroup(HelpDialog.FULL_SCREEN_GROUP_ID)
+        if self.full_window_group is None:
+            clz._logger.debug(f'full_window_group is None')
+        self.full_window_group.setVisible(False)
+
+        self.heading_group_control = self.getControlGroup(
+                clz.HEADER_SUB_HEADER_GROUP_ID)
+        self.heading_control = self.getControlLabel(clz.HEADING_CONTROL_ID)
+        clz._logger.debug(f'Got heading ctrl: 1')
+        self.sub_heading_control = (self.getControlLabel
+                                    (HelpDialog.SUB_HEADING_CONTROL_ID))
+        clz._logger.debug(f'Got heading ctrl: 4')
+
+    def configure_ok(self) -> None:
+        clz = HelpDialog
+        self.ok_group = self.getControlGroup(self.OK_CONTROL_ID)
+        self.ok_group.setVisible(False)
+        self.ok_radio_button = self.getControlRadioButton(clz.OK_CONTROL_ID)
+        self.ok_radio_button.setLabel(Messages.get_msg(Messages.OK))
+        self.ok_radio_button.setVisible(True)
+
+    def configure_selection_list(self) -> None:
+        clz = HelpDialog
+        self.selection_group = self.getControlGroup(clz.SELECTION_GROUP_ID)
+        self.seletion_list_group = self.getControlGroup(
+                clz.SELECTION_LIST_GROUP_ID)
+        self.selection_group.setVisible(False)
+        self.list_control = self.getControlList(clz.LIST_CONTROL_ID)
+
     def update_choices(self, title: str,
-                       choices: List[Choice] = [], initial_choice: int = -1,
+                       choices: List[Choice] = None, initial_choice: int = -1,
                        sub_title: str | None = None,
                        call_on_focus: Callable[Choice, None] | None = None,
                        call_on_select: Callable[Choice, None] | None = None):
         """
-        Provides a means for the HelpDialog so that the single instance
-        can be shared.
+        Provides a means for HelpDialog to be a single shared instance.
 
         :param title:  Heading for the dialog
         :param choices:  List of available choices to present
@@ -169,111 +194,261 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
         :return: Returns the underlying HelpDialog so that methods can be
                 called such as doModal
 
-        Note: Any changes made in SettingsDialog are either committed or undone
-        on exit. OK commits the changes in Settings to settings.xml.
-        Cancel reverts all changes in Settings from a backup-copy.
-
-        Reverting live changes without Cancelling SettingsDialog requires care.
         """
         clz = HelpDialog
         # Used to convey the selection when DONE. Set to -1 on CANCEL
         self.close_selected_idx = -1
+        if choices is None:
+            choices = []
 
-        self.title = title
-        self.sub_title = sub_title
-        self.help_text = "help_text"
-        clz._logger.debug(f'sub_title: {sub_title}')
         # Choices can have zero length
         self._choices = choices
         self._initial_choice = initial_choice
         if self._initial_choice < 0:
             self._initial_choice = 0
         self._call_on_focus = call_on_focus
+        self.update_heading(title=title, sub_title=sub_title)
+        idx: int = 1
+        if len(self.parent_stack) == 1:
+            idx = 0
+        self.update_selection_list(self.current_category, idx)
 
+        # self.setProperty('help_title', 'Great Ideas')
+        # self.help_button.setLabel(self.help_text)
+        # self.help_button.setVisible(True)
+        self.help_label.setLabel(self.help_text)
+        self.help_label.setVisible(True)
+        #  self._previous_num_items = len(self._choices)
+        self.full_window_group.setVisible(True)
+        self.initialized = True
+        self.gui_updates_allowed = True
+        #
+        #  TODO: Change to be like custom_settings-ui so that new window
+        #        is not created on every launch.
+        #
+        utils.util.runInThread(func=self.notification_queue_handler,
+                               name='help_notification')
+
+    def update_heading(self, title: str, sub_title: str = ''):
+        clz = HelpDialog
+        self.title = title
+        self.sub_title = sub_title
+        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
+            clz._logger.debug_verbose(f'sub_title: {sub_title}')
         self.heading_control.setLabel(self.title)
-        clz._logger.debug(f'title: {self.title}')
+        self.heading_control.setVisible(True)
+        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
+            clz._logger.debug_verbose(f'HEADING set to title: {self.title}')
         if self.sub_title is not None:
             self.sub_heading_control.setLabel(self.sub_title)
             self.sub_heading_control.setVisible(True)
         else:
             self.sub_heading_control.setVisible(False)
-        self.setProperty('help_title', 'Great Ideas')
-        self.help_button.setLabel(self.help_text)
-        self.help_button.setVisible(True)
-        button_control = self.getControlButton(101)
-        button_control.setLabel('You pig')
-        for idx in range(0, min(len(self._choices), clz.NUMBER_OF_BUTTONS)):
-            choice: Choice = self._choices[idx]
-            clz._logger.debug(f'VISIBLE idx: {idx} ctrl: {idx + 101} '
-                              f'enabled: {choice.enabled}')
-            button_control = self.button_controls[idx]
-            button_control.setLabel(choice.label)
-            button_control.setVisible(True)
-            button_control.setEnabled(choice.enabled)
+        clz = HelpDialog
+        self.heading_group_control.setVisible(True)
 
-        label: str = ''
-        if len(self._choices) != 0:
-            # turn off visibility of unused items
-            start: int = min(len(self._choices), clz.NUMBER_OF_BUTTONS)
-            stop: int = min(clz.NUMBER_OF_BUTTONS, self._previous_num_items)
+    def update_selection_list(self, parent_category: Category,
+                              selected_idx: int = 0):
+        """
+            Updates the ListItems after changing the category.
+            Choices changeed: at startup,
+                              When a new category is selected
+                              When returning from an old category
+        :return:
 
-            for idx in range(start, stop):
-                clz._logger.debug(f'INVISIBLE idx: {idx} ctrl: {idx + 101}')
-                button_control = self.button_controls[idx]
-                button_control.setVisible(False)
+        """
+        clz = HelpDialog
+        clz._logger.debug(f'parent_category: {parent_category.category_id} name: {parent_category.get_name()}')
 
-            choice: Choice = self._choices[self._initial_choice]
-            clz._logger.debug(f'HelpDialog.onInit setting focus on'
-                              f' control: {101 + self._initial_choice:d}'
-                              f' value: {choice.label}')
+        new_list_items = []
+        cat_name: str
+        cat_text: str
+        subject_refs: List[SubjectRef | CategoryRef]
+        cat_name, cat_text, subject_refs = parent_category.get_choices()
+        self.list_control.reset()  # Blow away any existing ListItems
 
-            label: str = MessageUtils.get_formatted_msg_by_id(MessageId.DIALOG_N_OF_M_ITEMS,
-                                                              str(1),
-                                                              str(len(self._choices)))
-            self.items_label.setLabel(label)
-            self.items_label.setVisible(True)
-            self.selection_index = self._initial_choice
-            control_id: int = self._initial_choice + 101
-            idx = self._initial_choice
-            choice: Choice = self._choices[idx]
-            clz._logger.debug(f'Enable initial_choice idx: {idx} ctrl: {idx + 101} '
-                              f'enabled: {choice.enabled}')
-            button_control = self.button_controls[self._initial_choice]
-            button_control.setEnabled(True)
-            self.setFocusId(control_id)
-            self.big_group.setVisible(True)
-            self.ok_cancel_group.setVisible(True)
+        # If list is not at the top level, then add a list-item for
+        # returning to the previous category (like parent directory)
+        clz._logger.debug(f'FRED parent_category: {parent_category.category_id} '
+                          f'stack_depth: {len(self.parent_stack)}')
+        if len(self.parent_stack) != 1:
+            list_item: ListItem
+            list_item = ListItem(label=f'...  {clz.RETURN_TO_PREVIOUS_MENU}')
+            # Add the marker for returning up a level
+            # Fill out which item to return to later
+            # most_recent_cat: CategoryRef =
+            #  list_item.setProperty('key', most_recent_cat)
+            clz._logger.debug(f'FRED pushing {parent_category.category_id} '
+                              f'value: PopStack')
+            list_item.setProperty(parent_category.category_id, 'PopStack')
+            new_list_items.append(list_item)
+        for sub_cat_ref in subject_refs:
+            sub_cat_ref: SubjectRef | CategoryRef
+            subject_ref: SubjectRef | None = None
+            cat_ref: CategoryRef | None = None
+            summary: str = ''
+            name: str = ''
+            clz._logger.debug(f'sub_cat_ref: {sub_cat_ref} type: {type(sub_cat_ref)}')
+            if isinstance(sub_cat_ref, SubjectRef):
+                subject_ref = sub_cat_ref
+                subject_ref: SubjectRef
+                subject: Subject = Subject.get_subject(subject_ref)
+                name: str = subject.get_name()
+                clz._logger.debug(f'subjectRef: {name}')
+            else:
+                cat_ref: CategoryRef = sub_cat_ref
+                clz._logger.debug(f'sub_cat_ref: {cat_ref}')
+                category: Category = Category.get_category(cat_ref)
+                clz._logger.debug(f'category: {category.category_id}')
+                name: str = category.get_name()
+                clz._logger.debug(f'cat_ref: {cat_ref}')
 
-        self._previous_num_items = len(self._choices)
-        self.initialized = True
-        self.gui_updates_allowed = True
-        utils.util.runInThread(func=self.notification_queue_handler,
-                               name='help_notification')
+            #  subj_text: str = subject.get_text()
+            list_item: ListItem
+            list_item = ListItem(label=name)
+            # if summary != '':
+            #    # clz._logger.debug(f'Setting label2 to: {summary}')
+            #    # list_item.setLabel2(summary)
+            list_item.setProperty('key', sub_cat_ref)
+            list_item.setProperty('type', sub_cat_ref.__class__.__name__)
+            new_list_items.append(list_item)
+
+        self.list_control.reset()
+        self.list_control.addItems(new_list_items)
+        self.list_items = new_list_items
+        self.list_control.selectItem(selected_idx)
+        self.list_control.setVisible(True)
+        self.seletion_list_group.setVisible(True)
+        self.setFocus(self.list_control)
+        self.selection_group.setVisible(True)
+        self.help_label.setVisible(False)
+        self.help_label.setLabel(self.help_text)
+
+    def process_selection(self, select_idx: int) -> None:
+        clz = HelpDialog
+        # Voice the text for this selection
+        choice: int = self.list_control.getSelectedPosition()
+        choice_value: str = ''
+        choice_type: str = ''
+        """
+         The 'help' menus arranged hiearchecally. Catalog nodes have child nodes
+         while Subject nodes are leaf nodes. Selecting a Subject node causes
+         the help to displayed in a Label. Selecting a Catalog node cause the 
+         menu to be replaced by the members of the Catalog node. NOTE that the
+         Catalog node does NOT appear in its children's menu, rather the 
+         first menu item (after 'return to parent') is the proxy node that
+         contains some brief description about that category.
+         
+         self.parent_stack tracks how to return to the previous menu.
+         All but the top menu starts with the entry ... '(Return to Parent)'.
+         You can't return from the top level.
+         
+         TWO parent_stack entries must be used to return from a sub-menu.
+         The index to the previously focused item is at parent_stack[-1],
+         but the Category_id is at parent_stack[-2].
+        
+         parent_stack[0].cat_ref contains CategoryRef.TTS.value (top of menu structure)
+         parent_stack[1].item_idx contains the item index that was selected to
+         get to this menu.
+         
+        """
+        if choice == 0 and len(self.parent_stack) > 1:
+            choice_type = 'PopStack'  # Special
+        else:
+            choice_value = self.list_items[choice].getProperty(f'key')
+            choice_type = self.list_items[choice].getProperty(f'type')
+        clz._logger.debug(f'FRED pushing cat: {self.current_category.category_id}')
+        clz._logger.debug(f'FRED choice: {choice} '
+                          f'{self.list_items[choice].getLabel()} '
+                          f'key: {choice_value} type: {choice_type}')
+        failed: bool = False
+        category_ref: CategoryRef | None = None
+        subject: SubjectRef | None = None
+        if choice_type == 'CategoryRef':
+            # Selecting this causes the menu for the new category to be displayed
+            try:
+                clz._logger.debug(f'cat_ref: {choice_value}')
+                category_ref = CategoryRef(choice_value)
+            except ValueError:
+                clz._logger.debug(f'failed process CategoryRef')
+                failed = True
+        elif choice_type == 'SubjectRef':
+            # Selecting this results in displaying the help-text in the
+            # help-text label
+            try:
+                clz._logger.debug(f'SubjectRef: {choice_value}')
+                subject = SubjectRef(choice_value)
+            except ValueError:
+                clz._logger.debug(f'failed to process SubjectRef')
+                failed = True
+        elif choice_type == 'PopStack':
+            # Results in returning to parent menu and setting focus to
+            # same entry as before
+            #
+            # Get the reference to the previous menu. This reference is from
+            # the Category of the grand-parent's node.
+            choice_value: str = self.parent_stack[-2].cat_ref
+            parent_item_index: int = self.parent_stack[-1].item_idx
+            parent_ref: CategoryRef = CategoryRef(choice_value)
+            self.parent_stack.pop()  # pops copy of current position
+            clz._logger.debug(f'FRED PopStack cat: {parent_ref} '
+                              f'parent: {parent_ref} idx: {parent_item_index}')
+            clz._logger.debug(f'FRED popped cat: {self.current_category.category_id}')
+            clz._logger.debug(f'FRED Updating selection_list category: {parent_ref}')
+            self.current_category = Category.get_category(parent_ref)
+            self.update_selection_list(self.current_category, parent_item_index)
+            category_ref = None   # Don't want any changes due to this.
+        if category_ref is not None:
+            # Category selected, drill down and display its choices.
+            # parent_cat: ParentStack = self.parent_stack[-1]
+            category: Category = Category.get_category(category_ref)
+            # Set the category to show the subjects of from the stack that was
+            # populated with this category's info just before calling here
+
+            self.current_category = category
+            self.parent_stack.append(ParentStack(cat_ref=category_ref,
+                                                 item_idx=choice))
+            clz._logger.debug(f'FRED pushing cat: {category_ref}')
+            self.update_selection_list(self.current_category, select_idx)
+        elif subject is not None:
+            clz._logger.debug(f'ShowManual subject: {subject}')
+            self.notify(cmd='ShowManual', text='',
+                        subject=subject)
+
     def setProperty(self, key, value):
         clz = type(self)
         clz._logger.debug_verbose(f'SelectionDialog.setProperty key: {key} '
                                   f'value: {value}')
         super().setProperty(key, value)
 
-    def notify(self, cmd: str, text: str):
+    def notify(self, cmd: str, text: str = None,
+               subject: SubjectRef | CategoryRef = None):
         clz = type(self)
         clz._logger.debug(f'Notify cmd: {cmd} text {text}')
-        item: Tuple[str, str] = (cmd, text)
+        item: Tuple[str, str, SubjectRef | CategoryRef] = (cmd, text, subject)
         self.notification_queue.put(item)
-        if self.is_modal:
-            self.help_text = text
-            self.help_button.setLabel(self.help_text)
 
     def notification_queue_handler(self) -> None:
         try:
+            from windowNavigation.help_manager import HelpManager
+
             self._logger.debug(f'Notification queue handler started')
             while not Monitor.exception_on_abort(timeout=0.10):
                 if self.gui_updates_allowed:
                     try:
-                        cmd, text = self.notification_queue.get(block=False)
-                        self.help_text = text
-                        self.help_button.setLabel(text)
-                        self.help_button.setVisible(True)
+                        cmd, text, subject_ref = self.notification_queue.get(block=False)
+                        if cmd == 'ShowManual':
+                            subject_ref: SubjectRef
+                            subject: Subject = Subject.get_subject(subject_ref)
+                            self.help_text = subject.get_text()
+                            # self.help_button.setLabel(subject.get_text())
+                            self.help_label.setLabel(subject.get_text())
+                        elif cmd == HelpManager.HELP:
+                            self.help_text = text
+                            # self.help_button.setLabel(text)
+                            self.help_label.setLabel(text)
+                        # self.help_button.setVisible(True)
+                        self.help_label.setVisible(True)
                     except queue.Empty:
                         pass
         except AbortException:
@@ -310,6 +485,12 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
         control: ControlSlider
         return control
 
+    def getControlList(self, iControlId: int) -> ControlList:
+        clz = type(self)
+        list_control: Control = super().getControl(iControlId)
+        list_control: ControlList
+        return list_control
+
     def doModal(self) -> None:
         """
 
@@ -321,6 +502,7 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
             self.is_modal = True
             super().doModal()
             clz._logger.debug(f'No longer Modal')
+            self.is_modal = False
         except Exception as e:
             clz._logger.exception('HelpDialog.doModal')
         return
@@ -337,7 +519,6 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
 
         if self.initialized:
             self.ok_radio_button.setVisible(True)
-            self.cancel_radio_button.setVisible(True)
         clz._logger.debug('HelpDialog.show exiting')
 
     def close(self) -> None:
@@ -377,11 +558,20 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
 
             buttonCode: int = action.getButtonCode()
             clz._logger.debug(
-                    'HelpDialog.onAction action_id: {} buttonCode: {}'.
-                    format(action_id, buttonCode))
+                    f'HelpDialog.onAction focus_id: {self.getFocusId()}'
+                    f' action_id: {action_id} buttonCode: {buttonCode}')
             if (action_id == xbmcgui.ACTION_PREVIOUS_MENU
                     or action_id == xbmcgui.ACTION_NAV_BACK):
                 self.close()
+            if action_id == xbmcgui.ACTION_SELECT_ITEM:
+                focus_id: int = self.getFocusId()
+                clz._logger.debug(f'onAction select item focus: {focus_id}')
+                # self.setFocus(self.help_button)
+
+            if action_id in (xbmcgui.ACTION_MOVE_DOWN, xbmcgui.ACTION_MOVE_UP):
+                self.help_label.setLabel('')
+                self.help_label.setVisible(False)
+
         except Exception as e:
             clz._logger.exception('')
 
@@ -402,38 +592,18 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
         try:
             clz._logger.debug(
                     'HelpDialog.onClick controlId: {:d}'.format(controlId))
-
             focus_id = self.getFocusId()
             clz._logger.debug('HelpDialog.onClick FocusId: ' + str(focus_id))
-
             # if controlId == self.list_control.getId():
             #    clz._logger.debug('HelpDialog List control 3 pressed')
             # x = xbmc.executebuiltin('Skin.String(category)',True)
-
             if controlId == clz.OK_CONTROL_ID:
                 self.close_selected_idx = self.selection_index
                 # OK radio_button
                 self.close()
 
-            elif controlId == clz.CANCEL_CONTROL_ID:
-                # Cancel. Reset to original choice
-
-                # self.getControl(3).selectItem(self._initial_choice)
-                self.close()
-
-            elif 101 <= controlId < (101 + len(self._choices)):
-                # Deselect previous
-                if self.selection_index >= 0:
-                    button: ControlButton = self.getControlButton(
-                            101 + self.selection_index)
-
-                self.selection_index = controlId - 101
-                button: ControlButton = self.getControlButton(controlId)
-                button.setEnabled(True)
-                if self._call_on_select is not None:
-                    choice = self._choices[self.selection_index]
-                    choice: Choice
-                    self._call_on_select(choice, self.selection_index)
+            elif controlId == clz.LIST_CONTROL_ID:
+                self.process_selection(self.close_selected_idx)
 
         except Exception as e:
             clz._logger.exception('')
@@ -445,15 +615,16 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
 
     def onFocus(self, controlId: int):
         clz = type(self)
+        clz._logger.debug(f'onFocus controlId: {controlId}')
         try:
-            if not self.initialized or not self.big_group.isVisible():
+            if not self.initialized or not self.selection_group.isVisible():
                 return
+            # Stop any reading of help text
+            self.help_label.setLabel('')
+            self.help_label.setVisible(False)
             if self._call_on_focus is not None:
-                if 101 <= controlId < (101 + len(self._choices)):
-                    idx: int = controlId - 101
-                    choice = self._choices[idx]
-                    choice: Choice
-                    self._call_on_focus(choice, idx)
+                pass
+                #  self._call_on_focus(choice, idx)
         except Exception as e:
             clz._logger.exception('')
 

@@ -173,7 +173,8 @@ class SpeechGenerator:
                 if save_to_file:
                     failing_voice_text_file = phrase.get_cache_path().with_suffix(
                             '.txt')
-                    if failing_voice_text_file.is_file():
+                    if (failing_voice_text_file.is_file() and
+                            failing_voice_text_file.exists()):
                         expiration_time: float = time() - timedelta(
                                 hours=24).total_seconds()
                         if (
@@ -504,7 +505,8 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
                 # save_to_file False
                 if save_to_file:
                     failing_voice_text_file = voice_file_path.with_suffix('.txt')
-                    if failing_voice_text_file.is_file():
+                    if (failing_voice_text_file.is_file() and
+                            failing_voice_text_file.exists()):
                         expiration_time: float = time() - timedelta(
                             hours=24).total_seconds()
                         if (os.stat(failing_voice_text_file).st_mtime <
@@ -522,7 +524,8 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
                         copy_text_file_path: pathlib.Path
                         copy_text_file_path = voice_file_path.with_suffix('.txt')
                         try:
-                            if copy_text_file_path.is_file():
+                            if (copy_text_file_path.is_file() and
+                                    copy_text_file_path.exists()):
                                 copy_text_file_path.unlink()
 
                             with copy_text_file_path.open('wt', encoding='utf-8') as f:

@@ -1,11 +1,12 @@
 # coding=utf-8
 
 import xml.etree.ElementTree as ET
-from typing import ForwardRef, List, Tuple
+from enum import StrEnum
+from typing import Callable, ForwardRef, List, Tuple
 
 from common.logger import BasicLogger
 from gui import BaseParser
-from gui.base_tags import control_elements, ControlType, ElementKeywords as EK, Item
+from gui.base_tags import control_elements, ControlElement, ElementKeywords as EK, Item
 from gui.element_parser import BaseElementParser, ElementHandler
 from gui.parse_control import ParseControl
 from gui.parse_topic import ParseTopic
@@ -38,7 +39,7 @@ class ParseSlider(ParseControl):
                 true, false, or a condition. See Conditional Visibility for more information.
                 Defaults to true.
     """
-    item: Item = control_elements[ControlType.SLIDER.name]
+    item: Item = control_elements[ControlElement.SLIDER]
 
     @classmethod
     def init_class(cls) -> None:
@@ -88,7 +89,7 @@ class ParseSlider(ParseControl):
                      position, pvr.seek for timeshifting in PVR. 
         """
 
-        self.control_type = ControlType.SLIDER
+        self.control_type = ControlElement.SLIDER
         control_id_str: str = el_slider.attrib.get('id')
         if control_id_str is not None:
             control_id: int = int(control_id_str)
@@ -105,16 +106,20 @@ class ParseSlider(ParseControl):
         for element in elements:
             if element.tag in tags_to_parse:
                 key: str = element.tag
-                control_type = clz.get_control_type(element)
+                control_type: ControlElement = clz.get_control_type(element)
+                str_enum: StrEnum = None
                 if control_type is not None:
-                    key = control_type.name
-                item: Item = control_elements[key]
-                info_handler: BaseElementParser = ElementHandler.get_handler(key)
-                parsed_instance: BaseParser = info_handler(self, element)
+                    str_enum = control_type
+                else:
+                    str_enum = EK(key)
+                item: Item = control_elements[str_enum]
+                handler: Callable[[BaseParser, ET.Element], str | BaseParser]
+                handler = ElementHandler.get_handler(item.key)
+                parsed_instance: BaseParser = handler(self, element)
                 if parsed_instance is not None:
                     if control_type is not None:
                         self.children.append(parsed_instance)
-                    if key == EK.TOPIC:
+                    if str_enum == EK.TOPIC:
                         self.topic = parsed_instance
 
     def __repr__(self) -> str:

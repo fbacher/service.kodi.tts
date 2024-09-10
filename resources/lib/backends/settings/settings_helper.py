@@ -359,7 +359,7 @@ class SettingsHelper:
             # Get language entries for just this engine
             """
                Returns a  Dict indexed by engine_id. The values are
-               Dict's indexed by language (. Values are lists
+               Dict's indexed by language. Values are lists
                  of languages supported by that engine. The list will contain
                  all supported variations of a single language.
                  entries_by_engine: key: engine_id
@@ -707,8 +707,6 @@ class SettingsHelper:
                     count += len(lang_values)
                     # cls._logger.debug(f'key: {key} lang:{lang} '
                     #                   f'# values {len(lang_values)}')
-
-            # cls._logger.debug(f'FLOYD # items: {count}')
 
         except Exception as e:
             cls._logger.exception('')

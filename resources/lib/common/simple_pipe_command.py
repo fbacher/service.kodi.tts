@@ -210,6 +210,7 @@ class SimplePipeCommand:
                         clz.logger.exception('')
                 self.rc = 99
 
+            #  TODO: TIMEOUTS TOO LONG Rework
             if self.run_thread.is_alive():
                 self.run_thread.join(timeout=0.5)
             if self.capture_output:

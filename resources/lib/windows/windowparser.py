@@ -53,7 +53,7 @@ def currentWindowXMLFile() -> Path | None:
     module_logger.debug(f'simple_path: {simple_path} skin_path: {skin_path} '
                         f'cwd: {Path.cwd()}')
     for path in possible_paths:
-        if path.is_file():
+        if path.is_file() and path.exists():
             module_logger.debug(f'path_is_file: {path.absolute()}')
             return path.absolute()
     return None
@@ -72,13 +72,13 @@ def get_xbmc_skin_path(fname) -> Path:
     base_path: Path = Path(xbmcvfs.translatePath('special://skin'))
     for res in ('720p', '1080i'):
         skin_path = base_path / res
-        if skin_path.is_file():
+        if skin_path.is_file() and skin_path.exists():
             break
     else:
         aspect = xbmc.getInfoLabel('Skin.AspectRatio')
         addonXMLPath: Path = base_path / 'addon.xml'
         skin_path: Path = Path('')
-        if addonXMLPath.is_file():
+        if addonXMLPath.is_file() and addonXMLPath.exists():
             with open(addonXMLPath, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
             for l in lines:
@@ -86,7 +86,7 @@ def get_xbmc_skin_path(fname) -> Path:
                     folder = l.split('folder="', 1)[-1].split('"', 1)[0]
                     skin_path = base_path / folder
     path: Path = skin_path / fname
-    if not path.is_file():
+    if not (path.is_file() and path.exists()):
         path = Path('')
     if module_logger.isEnabledFor(DEBUG_VERBOSE):
         module_logger.debug_verbose(f'Including: {path}')
@@ -99,7 +99,6 @@ def getInfoLabel(info, container):
         info = info.replace(
                 'ListItem.', f'Container({container}).ListItem.')
     return xbmc.getInfoLabel(info)
-
 
 def dump_dom(entries) -> str:
     dom_impl = minidom.getDOMImplementation()
@@ -288,6 +287,8 @@ class WindowParser:
         window_element: ET.Element = self.get_window_element()
         child: ET.Element = window_element.find('./defaultcontrol')
         try:
+            # TODO: should test to see if it exists (may be difficult since
+            #       you can't instantiate every control via python).
             default_control = int(child.text)
         except Exception:
             clz._logger.exception('Invalid defaultcontrol')
@@ -1492,7 +1493,7 @@ class Includes:
                     clz._logger.debug_verbose(f'fileAttr: {file_attrib.value}')
                 included_file_name: str = file_attrib.value
                 included_file_path: Path = get_xbmc_skin_path(included_file_name)
-                if not included_file_path.is_file():
+                if not (included_file_path.is_file() and included_file_path.exists()):
                     continue
                 xml = minidom.parse(included_file_path)
                 includes = xpath.findnode('includes', xml)
@@ -1902,7 +1903,8 @@ class Includes:
                     included_file_name: str = include_element.attrib.get('file')
                     if included_file_name:
                         included_file_path: Path = get_xbmc_skin_path(included_file_name)
-                        if not included_file_path.is_file():
+                        if not (included_file_path.is_file() and
+                                included_file_path.exists()):
                             continue
 
                         included_xml: ET = ET.parse(included_file_path)
@@ -1977,7 +1979,7 @@ class Includes:
                 # included fragment to the root element of Includes.xml
                 included_file: Path
                 included_file = get_xbmc_skin_path(include_file_name)
-                if not included_file.is_file():
+                if not (included_file.is_file() and included_file.exists()):
                     continue
                 includes_xml: lxml_ET = lxml_ET.parse(included_file)
                 includes_root = includes_xml.getroot()

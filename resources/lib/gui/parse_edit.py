@@ -1,10 +1,11 @@
 # coding=utf-8
 
 import xml.etree.ElementTree as ET
+from enum import StrEnum
 from typing import Callable, ForwardRef, List, Tuple
 
 from common.logger import BasicLogger
-from gui import ControlType
+from gui import ControlElement
 from gui.base_parser import BaseParser
 from gui.base_tags import control_elements, ElementKeywords as EK, Item
 from gui.element_parser import ControlElementHandler, ElementHandler
@@ -15,7 +16,7 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class ParseEdit(ParseControl):
-    item: Item = control_elements[ControlType.EDIT.name]
+    item: Item = control_elements[ControlElement.EDIT]
 
     _logger: BasicLogger = None
 
@@ -55,6 +56,13 @@ class ParseEdit(ParseControl):
         self.on_unfocus_expr: str = ''
         self.visible_expr: str = ''
 
+    @property
+    def control_type(self) -> ControlElement:
+        return BaseParser.control_type.fget(self)
+
+    @control_type.setter
+    def control_type(self, value: ControlElement) -> None:
+        BaseParser.control_type.fset(self, value)
 
     @classmethod
     def get_instance(cls, parent: ParseControl,
@@ -80,7 +88,7 @@ class ParseEdit(ParseControl):
         :return:
         """
         clz = type(self)
-        self.control_type = ControlType.EDIT
+        self.control_type = ControlElement.EDIT
         control_id_str: str = el_edit.attrib.get('id')
         if control_id_str is not None:
             control_id: int = int(control_id_str)
@@ -94,10 +102,13 @@ class ParseEdit(ParseControl):
             if element.tag in tags_to_parse:
                 # clz._logger.debug(f'element_tag: {element.tag}')
                 key: str = element.tag
-                control_type: ControlType = clz.get_control_type(element)
+                control_type: ControlElement = clz.get_control_type(element)
+                str_enum: StrEnum = None
                 if control_type is not None:
-                    key = control_type.name
-                item: Item = control_elements[key]
+                    str_enum = control_type
+                else:
+                    str_enum = EK(key)
+                item: Item = control_elements[str_enum]
                 # Values copied to self
                 handler: Callable[[BaseParser, ET.Element], str | BaseParser]
                 handler = ElementHandler.get_handler(item.key)
@@ -105,11 +116,8 @@ class ParseEdit(ParseControl):
                 if parsed_instance is not None:
                     if control_type is not None:
                         self.children.append(parsed_instance)
-                    if key == EK.TOPIC:
+                    if str_enum == EK.TOPIC:
                         self.topic = parsed_instance
-            # else:
-            #     if element.tag not in ('top', 'left', 'width', 'height', 'bottom'):
-            #         clz._logger.debug(f'ParseEdit ignored element: {element.tag}')
 
     def __repr__(self) -> str:
         clz = type(self)

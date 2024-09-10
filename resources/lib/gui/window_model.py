@@ -1,5 +1,5 @@
 # coding=utf-8
-
+import pathlib
 from typing import Callable, Dict, ForwardRef, List
 
 import xbmc
@@ -9,22 +9,27 @@ from common.logger import BasicLogger, DEBUG_VERBOSE
 from common.phrases import PhraseList
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
-from gui.base_tags import control_elements, ControlType, Item, WindowType
+from gui.base_tags import control_elements, ControlElement, Item, WindowType
 from gui.base_topic_model import BaseTopicModel
 from gui.button_model import ButtonModel
 from gui.controls_model import ControlsModel
 from gui.edit_model import EditModel
 from gui.element_parser import (ElementHandler)
+from gui.focused_layout_model import FocusedLayoutModel
 from gui.group_list_model import GroupListModel
 from gui.group_model import GroupModel
+from gui.item_layout_model import ItemLayoutModel
 from gui.label_model import LabelModel
+from gui.list_model import ListModel
+from gui.no_topic_models import NoWindowTopicModel
 from gui.parse_window import ParseWindow
 from gui.radio_button_model import RadioButtonModel
 from gui.scrollbar_model import ScrollbarModel
 from gui.slider_model import SliderModel
+from gui.spin_model import SpinModel
+from gui.spinex_model import SpinexModel
 from gui.statements import Statements
 from gui.topic_model import TopicModel
-from gui.window_no_topic_model import NoWindowTopicModel
 from gui.window_topic_model import WindowTopicModel
 from windows.window_state_monitor import WinDialogState, WindowStateMonitor
 
@@ -37,7 +42,12 @@ ElementHandler.add_model_handler(GroupListModel.item, GroupListModel)
 ElementHandler.add_model_handler(ScrollbarModel.item, ScrollbarModel)
 ElementHandler.add_model_handler(EditModel.item, EditModel)
 ElementHandler.add_model_handler(SliderModel.item, SliderModel)
-# ElementHandler.add_model_handler(OldTopicModel.item, OldTopicModel)
+ElementHandler.add_model_handler(FocusedLayoutModel.item, FocusedLayoutModel)
+ElementHandler.add_model_handler(ItemLayoutModel.item, ItemLayoutModel)
+ElementHandler.add_model_handler(SpinexModel.item, SpinexModel)
+ElementHandler.add_model_handler(SpinModel.item, SpinModel)
+ElementHandler.add_model_handler(ListModel.item, ListModel)
+
 
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -46,7 +56,7 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 class WindowModel(BaseModel):
 
     _logger: BasicLogger = None
-    item: Item = control_elements[ControlType.WINDOW.name]
+    item: Item = control_elements[ControlElement.WINDOW]
 
     def __init__(self, parsed_window: ParseWindow) -> None:
         clz = WindowModel
@@ -61,17 +71,15 @@ class WindowModel(BaseModel):
 
         self.changed: bool = True
         self._windialog_state: WinDialogState = WinDialogState()
-
+        self.xml_path: pathlib.Path = parsed_window.xml_path
         self.window_type: WindowType = parsed_window.window_type
         self.win_or_dialog: xbmcgui.Window | xbmcgui.WindowDialog
         self.win_dialog_id: int = WindowStateMonitor.previous_chosen_state.window_id
         self.win_or_dialog = WindowStateMonitor.previous_chosen_state.window_instance
-        self.window_title_id: int = parsed_window.window_title_id
         self.default_control_id: str = parsed_window.default_control_id
         self.window_modality: str = parsed_window.window_modality  # Only dialogs
         self.menu_control: int = parsed_window.menu_control
         self.visible_expr: str = parsed_window.visible_expr
-        self.tts: str = parsed_window.tts
 
         """
             All Topics in this window. The first one is for this control
@@ -136,17 +144,15 @@ class WindowModel(BaseModel):
 
         for child in parsed_window.children:
             child: BaseParser
-            #  clz._logger.debug(f'About to create model from window{child}')
             model_handler: Callable[[BaseModel, BaseParser], BaseModel]
             model_handler = ElementHandler.get_model_handler(child.item)
             value_or_control = model_handler(self, child)
             if clz._logger.isEnabledFor(DEBUG_VERBOSE):
                 clz._logger.debug_verbose(f'value_or_control: {value_or_control}')
             if value_or_control is not None:
-                if (child.item.key in (ControlType.CONTROLS.name,
-                                       ControlType.CONTROL.name)):
+                if (child.item.key in (ControlElement.CONTROLS.name,
+                                       ControlElement.CONTROL.name)):
                     self.children.append(value_or_control)
-
     '''
     def build_control_tree(self):
         """
@@ -328,9 +334,6 @@ class WindowModel(BaseModel):
         except Exception as e:
             return None
 
-    def get_window_heading_id(self) -> str:
-        return f'{self.window_title_id}'
-
     previously_voiced_items: Dict[str, BaseModel] = {}
     about_to_voice_items: Dict[str, BaseModel] = {}
 
@@ -346,10 +349,7 @@ class WindowModel(BaseModel):
 
         #  Start with this window
         window_str: str = (f'\nWindowModel window: {self.control_type} id: '
-                           f'{self.control_id} '
-                           f'window_title_id: {self.window_title_id} '
-                           f'tts: {self.tts}')
-        menu_ctrl_str: str = ''
+                           f'{self.control_id}')
         if self.menu_control != -1:
             menu_ctrl_str = f'\n menu_ctrl: {self.menu_control}'
         default_control_str: str = f''
@@ -375,6 +375,7 @@ class WindowModel(BaseModel):
         if include_children:
             for control in self.children:
                 control: BaseModel
+                results.append(f"child type: {type(control)}")
                 result: str = control.to_string(include_children)
                 results.append(result)
 

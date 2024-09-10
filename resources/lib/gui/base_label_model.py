@@ -11,7 +11,7 @@ from common.logger import BasicLogger
 from common.messages import Messages
 from common.phrases import Phrase, PhraseList
 from gui.base_model import BaseModel
-from gui.base_tags import control_elements, ControlType, Item, WindowType
+from gui.base_tags import control_elements, ControlElement, Item, WindowType
 
 from gui.base_parser import BaseParser
 from gui.base_tags import ElementKeywords as EK

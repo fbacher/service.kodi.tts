@@ -2,11 +2,12 @@
 
 import xml.etree.ElementTree as ET
 from collections import namedtuple
+from enum import StrEnum
 from typing import ForwardRef, List, Union
 
 from common.logger import BasicLogger
 from gui.base_parser import BaseParser
-from gui.base_tags import (control_elements, ControlType,
+from gui.base_tags import (control_elements, ControlElement,
                            Item, Tag)
 from gui.element_parser import BaseElementParser, ElementHandler
 from gui.exceptions import ParseError
@@ -21,7 +22,7 @@ AttribInfo = namedtuple('attrib_info', ['attrib_name', 'attrib_value',
 class ParseControl(BaseParser):
 
     _logger: BasicLogger = None
-    item: Item = control_elements[ControlType.CONTROL.name]
+    item: Item = control_elements[ControlElement.CONTROL]
 
     @classmethod
     def init_class(cls) -> None:
@@ -35,12 +36,20 @@ class ParseControl(BaseParser):
         super().__init__(parent)
         clz = type(self)
         self.control_id: int = -1
-        self.control_type: ControlType = ControlType.UNKNOWN
+        self.control_type: ControlElement = ControlElement.UNKNOWN
         self.children: List[BaseParser] = []
         self.attributes_with_values: List[str] = clz.item.attributes_with_values
         self.attributes: List[str] = clz.item.attributes
-        self.parent: Union[ForwardRef('ParseControl'), ParseControls] = parent
+        #  self.parent: Union[ForwardRef('ParseControl'), ParseControls] = parent
         self.visible_expr: str = ''
+
+    @property
+    def control_type(self) -> ControlElement:
+        return BaseParser.control_type.fget(self)
+
+    @control_type.setter
+    def control_type(self, value: ControlElement) -> None:
+        BaseParser.control_type.fset(self, value)
 
     @classmethod
     def get_instance(cls, parent: BaseParser,
@@ -55,15 +64,13 @@ class ParseControl(BaseParser):
          """
         # Current element should be a control. Determine control type
 
-        control_type: ControlType = cls.get_control_type(control_el)
+        control_type: ControlElement = cls.get_control_type(control_el)
         if control_type is None:
             raise ParseError(f'Expected {Tag.CONTROL.value} not {control_el.tag}')
-        if control_type.name not in control_elements.keys():
-            cls._logger.debug(f'Expected a controltype not {control_type}')
-            return None
-        # Once the control's type is determined, call the appropriate handler
-
-        item: Item = control_elements[control_type.name]
+        str_enum: StrEnum = None
+        if control_type is not None:
+            str_enum = control_type
+        item: Item = control_elements[str_enum]
         #  clz._logger.debug(f'item: {item.key} {item}')
         parser: BaseElementParser = ElementHandler.get_handler(item.key)
         child: ParseControl = parser(parent, control_el)

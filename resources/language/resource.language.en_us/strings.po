@@ -1731,3 +1731,40 @@ msgstr "fast"
 msgctxt "#32823"
 msgid "slow"
 msgstr "slow"
+
+#  The following messages are for a basic help system
+#  The messages are in pairs: A subject title, followed by the subject text
+
+msgctxt "#32824"
+msgid "Introduction"
+msgstr "Introduction"
+
+msgctxt "#32825"
+msgid "Welcome to the first early release of Kodi Text To Speech which provides basic TTS functionality to Kodi. It is based upon XBMC TTS which is no longer supported. This version of Kodi TTS is maintained by a different team and is a major release. The primary goals of this early release is to provide basic functionality and to get feedback. To accomplish this functionality is limited: only two TTS engines: eSpeak-ng and Google TTS. As well as two platforms: Windows and Linux are supported at this time."
+msgstr "Welcome to the first early release of Kodi Text To Speech which provides basic TTS functionality to Kodi. It is based upon XBMC TTS which is no longer supported. This version of Kodi TTS is maintained by a different team and is a major release. The primary goals of this early release is to provide basic functionality and to get feedback. To accomplish this functionality is limited: only two TTS engines: eSpeak-ng and Google TTS. As well as two platforms: Windows and Linux are supported at this time."
+
+msgctxt "#32826"
+msgid "What about Windows TTS?"
+msgstr "What about Windows TTS?"
+
+msgctxt "#32827"
+msgid "The API providing Windows TTS (SAPI5) requires a python library interface with the Windows .NET layer. Unfortunately, Kodi’s python does not work with these libraries. A simple fix will solve the problem, but the build-test-approval process takes time. I want to investigate other solutions to the problem."
+msgstr "The API providing Windows TTS (SAPI5) requires a python library interface with the Windows .NET layer. Unfortunately, Kodi’s python does not work with these libraries. A simple fix will solve the problem, but the build-test-approval process takes time. I want to investigate other solutions to the problem."
+
+msgctxt "#32828"
+msgid "Welcome to Kodi TTS"
+msgstr "Welcome to Kodi TTS"
+
+msgctxt "#32829"
+msgid "Provides basic information for first time users"
+msgstr "Provides basic information for first time users"
+
+# label for a List container used for reading help topics for TTS.
+# The label acts as a heading
+msgctxt "#32830"
+msgid "Select a subject to get help on."
+msgstr ""
+
+msgctxt "#32831"
+msgid "Scroll through subjects and categories using cursor up/down. Select a subject or drill down a category by pressing enter or clicking. Navigate to other controls using left/right."
+msgstr ""

@@ -2,10 +2,10 @@
 
 from typing import Callable, List
 
-from common.logger import BasicLogger
+from common.logger import BasicLogger, DEBUG_EXTRA_VERBOSE
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
-from gui.base_tags import control_elements, ControlType, Item
+from gui.base_tags import control_elements, ControlElement, Item
 from gui.element_parser import (BaseElementParser,
                                 ElementHandler)
 from gui.parse_control import ParseControl
@@ -17,7 +17,7 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 class ControlsModel(BaseModel):
 
     _logger: BasicLogger = None
-    item: Item = control_elements[ControlType.CONTROLS.name]
+    item: Item = control_elements[ControlElement.CONTROLS]
 
     def __init__(self, parent, parsed_controls: ParseControls) -> None:
         clz = type(self)
@@ -39,7 +39,7 @@ class ControlsModel(BaseModel):
         :return:
         """
         '''
-        description 	y
+        description 	
         attrib: type 
         attrib: id 
         visible 	
@@ -62,23 +62,25 @@ class ControlsModel(BaseModel):
             model_handler:  Callable[[BaseModel, BaseModel, BaseParser], BaseModel]
             model_handler = ElementHandler.get_model_handler(parser.item)
             #  clz._logger.debug(f'About to create model from {parser.item}')
-            child_model = model_handler(self, parser)
-            #  clz._logger.debug(f'adding child: {child_model}')
+            child_model: BaseModel = model_handler(self, parser)
+            if clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
+                clz._logger.debug_extra_verbose(f'adding child: {child_model}')
             self.children.append(child_model)
 
-        children: List[BaseParser] = []
-        parsers: List[BaseElementParser] = []
-
     def __repr__(self) -> str:
+        return self.to_string(include_children=False)
+
+    def to_string(self, include_children: bool = False) -> str:
         clz = type(self)
         results: List[str] = []
         result: str = f'\nControlsModel'
         results.append(result)
 
         results.append(f'Number of children: {len(self.children)}')
-        for control in self.children:
-            control: BaseModel
-            result: str = str(control)
-            results.append(result)
+        if include_children:
+            for control in self.children:
+                control: BaseModel
+                result: str = control.to_string(include_children=include_children)
+                results.append(result)
 
         return '\n'.join(results)

@@ -365,7 +365,9 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
                 self.engine_language_value = self.get_control_label(
                         clz.SELECT_LANGUAGE_VALUE_LABEL)
-                self.engine_language_value.setLabel(self.get_language(label=True))
+
+                voice = self.get_current_voice()
+                self.engine_language_value.setLabel(voice)
 
                 self.engine_voice_group = self.get_control_group(
                         clz.SELECT_VOICE_GROUP)
@@ -724,7 +726,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 #  self._logger.debug(
                 #         f'Key found: {",".join(key_codes)}')
 
-            self._logger.debug(f'action_id: {action_id}')
+                self._logger.debug(f'action_id: {action_id}')
             if (action_id == xbmcgui.ACTION_PREVIOUS_MENU
                     or action_id == xbmcgui.ACTION_NAV_BACK):
                 exit_dialog = True
@@ -971,7 +973,6 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 lang_info: LanguageInfo = choice.lang_info
                 if self._logger.isEnabledFor(DEBUG):
                     self._logger.debug(f'lang_info: {lang_info}')
-                #  gender: Genders = Settings.get_gender(self.engine_id)
                 if lang_info is not None:
                     # current_lang: LanguageInfo
                     #   TODO: this is pretty crude.
@@ -1007,6 +1008,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                                           engine_id=engine_id)
                     language: str = lang_info.ietf.autonym()
                     voice: str = lang_info.engine_voice_id
+                    voice_name: str = lang_info.translated_voice
                     engine_name: str = lang_info.translated_engine_name
                     #  text: str = (f'{engine_name} speaking in {language} using voice '
                     #               f'{voice}')
@@ -1057,10 +1059,10 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                         Settings.set_engine_id(engine_id)
 
                         # Expensive
-                        TTSService.get_instance().initTTS(
-                                self.engine_id)
+                        TTSService.get_instance().initTTS(engine_id)
 
-            self.engine_language_value.setLabel(choice.lang_info.locale_label)
+            voice = self.get_current_voice()
+            self.engine_language_value.setLabel(voice)
             self.engine_engine_value.setLabel(choice.lang_info.translated_engine_name)
             if self._logger.isEnabledFor(DEBUG):
                 self._logger.debug(f'engine_language_value: '
@@ -1154,10 +1156,10 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 self.engine_language_value.setEnabled(True)
 
             choice: Choice = choices[current_choice_index]
-            language = choice.lang_info.translated_language_name
+            voice = choice.lang_info.translated_voice
             lang_id: str = choice.lang_info.locale
             #  self._logger.debug(f'language: {language} # choices {len(choices)}')
-            self.engine_language_value.setLabel(language)
+            self.engine_language_value.setLabel(voice)
             if len(choices) < 2:
                 self.engine_language_value.setEnabled(False)
             else:
@@ -1276,7 +1278,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                         TTSService.get_instance().initTTS(
                             self.engine_id)  # .sayText(phrases)
 
-            self.engine_language_value.setLabel(choice.lang_info.locale_label)
+            self.engine_language_value.setLabel(choice.lang_info.translated_voice)
             if self._logger.isEnabledFor(DEBUG):
                 self._logger.debug(f'Set engine_language_value to '
                                    f'{self.engine_language_value.getLabel()}')
@@ -2322,6 +2324,26 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             engine_id = BackendInfo.getAvailableBackends()[0].backend_id
             Settings.set_engine_id(engine_id)
         return engine_id
+
+    def get_current_lang_info(self) -> LanguageInfo | None:
+        engine_id: str = self.engine_id
+        voice_id: str = Settings.get_voice(engine_id)
+        lang_id: str =  Settings.get_language(engine_id)
+        lang_info: LanguageInfo
+        lang_info = LanguageInfo.get_entry(engine_id=engine_id,
+                                           engine_voice_id=voice_id,
+                                           lang_id=lang_id)
+        if lang_info is None:
+            self._logger.debug(f'Could not get language info')
+        return lang_info
+
+    def get_current_voice(self) -> str:
+        lang_info: LanguageInfo = self.get_current_lang_info()
+        voice: str = ''
+        if lang_info is None:
+            voice = 'unknown'
+        else:
+            voice = lang_info.translated_voice
 
     def get_language(self, label=False):
         """

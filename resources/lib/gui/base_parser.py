@@ -7,14 +7,14 @@ import xbmcvfs
 
 from common.logger import *
 from common.monitor import Monitor
-from gui.base_tags import ControlType, Item, Units
+from gui.base_tags import ControlElement, Item, Units
 from gui.exceptions import ParseError
 import xml.etree.ElementTree as ET
 from enum import auto, Enum
 from typing import Callable
 
 from common.logger import BasicLogger
-from gui.base_tags import ControlType, Tag
+from gui.base_tags import ControlElement, Tag
 from gui.base_tags import BaseAttributeType as BAT
 from gui.base_tags import ElementKeywords as EK
 from gui.exceptions import ParseError
@@ -54,18 +54,51 @@ class BaseParser:
         if cls._logger is None:
             cls._logger = module_logger.getChild(cls.__class__.__name__)
 
-    def __init__(self, parent: ForwardRef('BaseParser')) -> None:
-        self.parent: BaseParser = parent
+    def __init__(self, parent: ForwardRef('BaseParser'),
+                 window_parser: Union[ForwardRef('ParseWindow'), None] = None) -> None:
+        self._window_parser: BaseParser = None
+        self._parent: BaseParser = parent
+        if window_parser is not None:
+            self._window_parser = window_parser
+        elif self._parent is not None:
+            self._window_parser: BaseParser = parent.window_parser
         self.control_id: int = -1   # Dummy field
-        self.control_type: ControlType = ControlType.UNKNOWN
+        self._control_type: ControlElement = ControlElement.UNKNOWN
         self.tree_id: str = 'DUMMY_BASE_PARSER'
         self.topic: ForwardRef('TopicModel') = None
+
+    @property
+    def control_type(self) -> ControlElement:
+        # Window has no parent. Probably should change that
+        if self.parent is not None:
+            return self.parent._control_type
+        else:
+            return self._control_type
+
+    @control_type.setter
+    def control_type(self, value: ControlElement) -> None:
+        # Window has no parent
+        if self.parent is not None:
+            self.parent._control_type = value
+        else:
+            self._control_type = value
+
+    @property
+    def parent(self) -> ForwardRef('BaseParser'):
+        return self._parent
+
+    @property
+    def window_parser(self) -> ForwardRef('BaseParser'):
+        return self._window_parser
+
+    def get_xml_path(self) -> Path | None:
+        return self.window_parser.xml_path
 
     @classmethod
     def get_xml_file_for_current_window(cls) -> Path | None:
         xml_file: str = xbmc.getInfoLabel('Window.Property(xmlfile)')
         xml_path: Path = Path(xml_file)
-        if not xml_path.is_file():
+        if not (xml_path.is_file() and xml_path.exists()):
             cls._logger.debug(f'Window xml file not found: {xml_path}')
             return None
         return xml_path
@@ -78,7 +111,7 @@ class BaseParser:
                 f'xml file not defined: for win_dialog_id: {win_dialog_id}')
             return None
         xml_path: Path = Path(xml_file)
-        if not xml_path.is_file():
+        if not (xml_path.is_file() and xml_path.exists()):
             cls._logger.debug(f'xml file not found: for win_dialog_id: {win_dialog_id}'
                               f' {xml_path}')
             return None
@@ -92,14 +125,14 @@ class BaseParser:
         cls._logger.debug(f'base_path: {base_path}')
         for res in ('720p', '1080i'):
             skin_path = base_path / res
-            if skin_path.is_file():
+            if skin_path.is_file() and skin_path.exists():
                 break
         else:
             aspect = xbmc.getInfoLabel('Skin.AspectRatio')
             addonXMLPath: Path = base_path / 'addon.xml'
             cls._logger.debug(f'addonXMLPath: {addonXMLPath}')
             skin_path: Path = Path('')
-            if addonXMLPath.is_file():
+            if addonXMLPath.is_file() and addonXMLPath.exists():
                 with open(addonXMLPath, 'r', encoding='utf-8') as f:
                     lines = f.readlines()
                 for l in lines:
@@ -107,7 +140,7 @@ class BaseParser:
                         folder = l.split('folder="', 1)[-1].split('"', 1)[0]
                         skin_path = base_path / folder
         path: Path = skin_path / fname
-        if not path.is_file():
+        if not (path.is_file() and path.exists()):
             path = Path('')
         if module_logger.isEnabledFor(DEBUG):
             module_logger.debug(f'Including: {path}')
@@ -126,21 +159,25 @@ class BaseParser:
         skin_path: Path = cls.get_kodi_skin_path(simple_path)
         possible_paths: Tuple[Path, Path] = simple_path, skin_path
         for path in possible_paths:
-            if path.is_file:
+            if path.is_file and path.exists():
                 return path
         return None
 
     @classmethod
-    def get_control_type(cls, element: ET.Element) -> ControlType | None:
+    def get_control_type(cls, element: ET.Element, dog: str = '') -> ControlElement | None:
+        clz = BaseParser
         is_control: bool = element.tag in (EK.CONTROL.value, EK.CONTROLS.value)
         if not is_control:
             return None
         if element.tag == EK.CONTROLS.value:
-            return ControlType.CONTROLS
-        control_type_str: str = element.attrib.get(BAT.CONTROL_TYPE.value)
+            return ControlElement.CONTROLS
+        control_type_str: str = element.attrib.get(BAT.CONTROL_TYPE)
+        clz._logger.debug(f'control_type_str: {control_type_str}')
         if control_type_str is None:
             raise ParseError(f'Missing Control Type')
-        control_type: ControlType = ControlType(control_type_str)
+        control_type: ControlElement = ControlElement(control_type_str)
+        clz._logger.debug(f'done: {control_type.value} orig: {control_type_str} '
+                          f'dog: {dog}')
         return control_type
 
     @classmethod

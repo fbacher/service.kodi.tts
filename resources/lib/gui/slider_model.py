@@ -9,12 +9,12 @@ from common.messages import Messages
 from common.phrases import Phrase, PhraseList
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
-from gui.base_tags import (control_elements, ControlType, Item, Requires, Units,
+from gui.base_tags import (control_elements, ControlElement, Item, Requires, Units,
                            UnitsType,
                            ValueUnits)
 from gui.element_parser import (ElementHandler)
+from gui.no_topic_models import NoSliderTopicModel
 from gui.parse_slider import ParseSlider
-from gui.slider_no_topic_model import NoSliderTopicModel
 from gui.slider_topic_model import SliderTopicModel
 from gui.topic_model import TopicModel
 from windows.ui_constants import UIConstants
@@ -26,7 +26,7 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 class SliderModel(BaseModel):
 
     _logger: BasicLogger = None
-    item: Item = control_elements[ControlType.SLIDER.name]
+    item: Item = control_elements[ControlElement.SLIDER]
 
     def __init__(self, parent: BaseModel, parsed_slider: ParseSlider) -> None:
         clz = type(self)
@@ -53,6 +53,7 @@ class SliderModel(BaseModel):
         self._listener: Callable[[int, WinDialogState], bool] | None = None
         self.value: float = 0.0
         self.value_changed: bool = False
+
         self.convert(parsed_slider)
 
         self.slider_control: xbmcgui.ControlSlider | None = None
@@ -90,9 +91,6 @@ class SliderModel(BaseModel):
             self.topic = SliderTopicModel(self, parsed_slider.topic)
         else:
             self.topic = NoSliderTopicModel(self)
-
-        clz._logger.debug(f'# parsed children: {len(parsed_slider.get_children())}')
-
         for child in parsed_slider.children:
             child: BaseParser
             model_handler: Callable[[BaseModel, BaseModel, BaseParser], BaseModel]
@@ -159,7 +157,7 @@ class SliderModel(BaseModel):
         # TODO, incomplete
         return False
 
-    def get_slider_orientation(self) -> str:
+    def get_orientation(self) -> str:
         msg_id: int = 32809
         if self.orientation_expr == UIConstants.VERTICAL:
             msg_id = 32808
@@ -335,8 +333,8 @@ class SliderModel(BaseModel):
 
         if include_children:
             for child in self.children:
-                child: BaseParser
-                results.append(str(child))
-
+                child: BaseModel
+                result: str = child.to_string(include_children=include_children)
+                results.append(result)
         results.append('END SliderModel')
         return '\n'.join(results)

@@ -104,6 +104,8 @@ class Commands:
     ITEM_EXTRA: Final[str] = 'ITEM_EXTRA'
     VOL_UP: Final[str] = 'VOL_UP'
     VOL_DOWN: Final[str] = 'VOL_DOWN'
+    SPEED_UP: Final[str] = 'SPEED_UP'
+    SLOW_DOWN: Final[str] = 'SLOW_DOWN'
     STOP: Final[str] = 'STOP'
     SHUTDOWN: Final[str] = 'SHUTDOWN'
     SAY: Final[str] = 'SAY'
@@ -398,7 +400,7 @@ class TTSService:
     def help(cls):
         from utils import util
         cls._logger.debug(f'enter help')
-        HelpManager.notify(cmd=HelpManager.HELP, text='Daddy')
+        HelpManager.notify(cmd=HelpManager.HELP, text='')
         cls._logger.debug(f'ext help')
 
     @classmethod
@@ -933,6 +935,10 @@ class TTSService:
 
     @classmethod
     def volumeUp(cls) -> None:
+        """
+        Increases the TTS volume. Does NOT impact Kodi's volume
+        :return:
+        """
         msg: str | None = cls.get_tts().volumeUp()
         if not msg:
             return
@@ -945,6 +951,10 @@ class TTSService:
 
     @classmethod
     def volumeDown(cls) -> None:
+        """
+          Decreases the TTS volume. Does NOT impact Kodi's volume
+          :return:
+          """
         msg: str | None = cls.get_tts().volumeDown()
         if not msg:
             return

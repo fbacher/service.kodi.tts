@@ -132,6 +132,7 @@ class AudioPlayer(IPlayer, BaseServices):
 
 class SubprocessAudioPlayer(AudioPlayer):
     _logger: BasicLogger = None
+    _availableArgs = None
 
     def __init__(self):
         super().__init__()
@@ -144,7 +145,6 @@ class SubprocessAudioPlayer(AudioPlayer):
         self.speed: float = 0.0
         self.volume: float | None = None
         self.active = True
-        self._availableArgs = None
         self._speedMultiplier: int = 1
         self._player_process: SimpleRunCommand | None = None
         self._post_play_pause_ms: int = 0
@@ -343,9 +343,10 @@ class SubprocessAudioPlayer(AudioPlayer):
         path to .wav or .mp3 file
         :return:
         """
+        clz = SubprocessAudioPlayer
         # Do we need to kill a stale player?
         if self.slave_player_process is not None:
-            # Will stop pending voicings and destroy any active player.
+            # Will stop pending voicings and destroy non-slave player.
             self.abort_voicing(purge=True, future=True)
 
         stop_on_play: bool = not phrase.speak_over_kodi
@@ -426,7 +427,7 @@ class SubprocessAudioPlayer(AudioPlayer):
 
         # Do we need to kill a stale player?
         if self._player_process is not None:
-            # Will stop pending voicings and destroy any active player.
+            # Will stop pending voicings
             self.abort_voicing(purge=True, future=True)
 
         try:
@@ -485,9 +486,8 @@ class SubprocessAudioPlayer(AudioPlayer):
 
     def abort_voicing(self, purge: bool = True, future: bool = False) -> None:
         """
-        Stop voicing pending speech and/or future speech.
-
-        Vocing can be resumed using resume_voicing
+        Stop voicing pending speech and/or future speech. Most often used to
+        stop in order to allow a higher priority voicing to start.
 
         :param purge: if True, then abandon playing all pending speech
         :param future: if True, then ignore future voicings.
@@ -650,7 +650,7 @@ class SubprocessAudioPlayer(AudioPlayer):
     def available(cls, ext=None) -> bool:
         # This looks messed up bad
         try:
-            subprocess.call(self._availableArgs, stdout=(open(os.path.devnull, 'w')),
+            subprocess.call(cls._availableArgs, stdout=(open(os.path.devnull, 'w')),
                             stderr=subprocess.STDOUT, universal_newlines=True,
                             encoding='utf-8')
         except AbortException:

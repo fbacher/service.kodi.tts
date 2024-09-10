@@ -6,17 +6,17 @@ import xbmc
 import xbmcgui
 
 from common.constants import Constants
-from common.logger import BasicLogger
+from common.logger import BasicLogger, DEBUG_VERBOSE
 from common.messages import Messages
 from common.phrases import Phrase, PhraseList
 from gui.base_label_model import BaseLabelModel
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
-from gui.base_tags import control_elements, ControlType, Item
+from gui.base_tags import control_elements, ControlElement, Item
 from gui.element_parser import (ElementHandler)
+from gui.no_topic_models import NoRadioButtonTopicModel
 from gui.parse_radio_button import ParseRadioButton
 from gui.parse_topic import ParseTopic
-from gui.radio_button_no_topic_model import NoRadioButtonTopicModel
 from gui.radio_button_topic_model import RadioButtonTopicModel
 from gui.statements import Statements
 from gui.topic_model import TopicModel
@@ -33,7 +33,7 @@ class NoRadioButonTopicModel:
 class RadioButtonModel(BaseLabelModel):
 
     _logger: BasicLogger = None
-    item: Item = control_elements[ControlType.RADIO_BUTTON.name]
+    item: Item = control_elements[ControlElement.RADIO_BUTTON]
 
     def __init__(self, parent: BaseModel, parsed_radio_button: ParseRadioButton) -> None:
         clz = type(self)
@@ -89,15 +89,12 @@ class RadioButtonModel(BaseLabelModel):
             self.topic = RadioButtonTopicModel(self, parsed_radio_button.topic)
         else:
             self.topic = NoRadioButtonTopicModel(self)
-            clz._logger.debug(f'# parsed children: '
-                              f'{len(parsed_radio_button.get_children())}')
-
-        clz._logger.debug(f'children: {parsed_radio_button.children}')
+            if clz._logger.isEnabledFor(DEBUG_VERBOSE):
+                clz._logger.debug_verbose(f'# parsed children: '
+                                          f'{len(parsed_radio_button.get_children())}')
         for child in parsed_radio_button.children:
             child: BaseParser
-            # clz._logger.debug(f'child: {child}')
             model_handler:  Callable[[BaseModel, BaseParser], BaseModel]
-            # clz._logger.debug(f'About to create model from {type(child).item}')
             model_handler = ElementHandler.get_model_handler(child.item)
             child_model: BaseModel = model_handler(self, child)
             self.children.append(child_model)
@@ -151,7 +148,6 @@ class RadioButtonModel(BaseLabelModel):
             if not focus_changed:
                 success = self.voice_radio_button_value(stmts, focus_changed)
                 return success
-            clz._logger.debug(f'topic: {topic.alt_type}')
             success = self.voice_heading(stmts)
             success = self.voice_radio_button_label(stmts, focus_changed)
 
@@ -239,6 +235,10 @@ class RadioButtonModel(BaseLabelModel):
     '''
 
     def __repr__(self) -> str:
+        return self.to_string(include_children=False)
+
+    def to_string(self, include_children: bool = False) -> str:
+
         clz = type(self)
         labeled_by_str: str = ''
         if self.labeled_by_expr != '':
@@ -314,9 +314,10 @@ class RadioButtonModel(BaseLabelModel):
                        )
         results.append(result)
 
-        for child in self.children:
-            child: BaseParser
-            results.append(str(child))
-
+        if include_children:
+            for child in self.children:
+                child: BaseModel
+                result: str = child.to_string(include_children=include_children)
+                results.append(result)
         results.append(f'END RadioButtonModel')
         return '\n'.join(results)

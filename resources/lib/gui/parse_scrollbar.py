@@ -1,11 +1,12 @@
 # coding=utf-8
 
 import xml.etree.ElementTree as ET
+from enum import StrEnum
 from typing import Callable, ForwardRef, List, Tuple
 
 from common.logger import BasicLogger, DEBUG_VERBOSE
 from gui import BaseParser
-from gui.base_tags import control_elements, ControlType, ElementKeywords as EK, Item
+from gui.base_tags import control_elements, ControlElement, ElementKeywords as EK, Item
 from gui.element_parser import ElementHandler
 from gui.parse_control import ParseControl
 from gui.parse_topic import ParseTopic
@@ -28,7 +29,7 @@ class ScrollbarParser(ParseControl):
                     it's controlling has just one page. Defaults to true
     """
 
-    item: Item = control_elements[ControlType.SCROLL_BAR.name]
+    item: Item = control_elements[ControlElement.SCROLL_BAR]
 
     @classmethod
     def init_class(cls) -> None:
@@ -51,6 +52,14 @@ class ScrollbarParser(ParseControl):
         # self.on_info_expr: str = ''
         self.on_unfocus_expr: str = ''
 
+    @property
+    def control_type(self) -> ControlElement:
+        return BaseParser.control_type.fget(self)
+
+    @control_type.setter
+    def control_type(self, value: ControlElement) -> None:
+        BaseParser.control_type.fset(self, value)
+
     @classmethod
     def get_instance(cls, parent: ParseControl,
                      el_scrollbar: ET.Element) -> ForwardRef('ScrollbarParser'):
@@ -68,7 +77,7 @@ class ScrollbarParser(ParseControl):
         clz = type(self)
         if clz._logger.isEnabledFor(DEBUG_VERBOSE):
             clz._logger.debug_verbose(f'In parse_scrollbar')
-        self.control_type = ControlType.SCROLL_BAR
+        self.control_type = ControlElement.SCROLL_BAR
         control_id_str: str = el_scrollbar.attrib.get('id')
         if control_id_str is not None:
             control_id: int = int(control_id_str)
@@ -84,10 +93,13 @@ class ScrollbarParser(ParseControl):
             if element.tag in tags_to_parse:
                 #  clz._logger.debug(f'element_tag: {element.tag}')
                 key: str = element.tag
-                control_type: ControlType = clz.get_control_type(element)
+                control_type: ControlElement = clz.get_control_type(element)
+                str_enum: StrEnum = None
                 if control_type is not None:
-                    key = control_type.name
-                item: Item = control_elements[key]
+                    str_enum = control_type
+                else:
+                    str_enum = EK(key)
+                item: Item = control_elements[str_enum]
                 # Values copied to self
                 handler: Callable[[BaseParser, ET.Element], str | BaseParser]
                 handler = ElementHandler.get_handler(item.key)
@@ -98,7 +110,7 @@ class ScrollbarParser(ParseControl):
                 if parsed_instance is not None:
                     if control_type is not None:
                         self.children.append(parsed_instance)
-                    if key == EK.TOPIC:
+                    if str_enum == EK.TOPIC:
                         self.topic = parsed_instance
             elif clz._logger.isEnabledFor(DEBUG_VERBOSE):
                 if element.tag not in ('top', 'left', 'width', 'height', 'bottom'):

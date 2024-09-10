@@ -1,5 +1,5 @@
 # coding=utf-8
-
+from enum import StrEnum
 from pathlib import Path
 from typing import Callable, Dict, ForwardRef, Tuple, Type, Union
 
@@ -7,6 +7,7 @@ import xbmc
 import xbmcvfs
 
 from common.logger import *
+from common.messages import Messages
 from gui import BaseParser
 from gui.base_model import BaseModel
 from gui.base_tags import (control_elements, Item, MessageType, TopicElement,
@@ -16,10 +17,12 @@ from gui.base_tags import (control_elements, Item, MessageType, TopicElement,
 import xml.etree.ElementTree as ET
 from typing import Callable
 
-from gui.base_tags import ControlType, Tag
+from gui.base_tags import ControlElement, Tag
 from gui.base_tags import ElementKeywords as EK
 from gui.base_tags import TopicElement as TE
 from gui.exceptions import ParseError
+from windows.ui_constants import AltCtrlType
+
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 
@@ -212,7 +215,8 @@ class ElementParser:
     def parse_orientation(cls, parent: BaseParser | None = None,
                           el_orientation: ET.Element = None) -> str | None:
         text_access: ElementTextAccess
-        text_access = ElementTextAccess(parent=parent, tag_name=[EK.ORIENTATION.value])
+        text_access = ElementTextAccess(parent=parent,
+                                        tag_name=EK.ORIENTATION.value)
         orientation_expr: str = 'vertical'
         if el_orientation is not None:
             orientation_expr: str = el_orientation.text
@@ -356,12 +360,25 @@ class ElementParser:
 
     @classmethod
     def parse_alt_type(cls, parent: BaseParser | None = None,
-                       el_alt_type: ET.Element = None) -> str | None:
-        alt_type_expr: str = el_alt_type.text
-        if alt_type_expr is None:
-            alt_type_expr = ''
-        parent.alt_type_expr = alt_type_expr
-        return None
+                       el_alt_type: ET.Element = None) -> None:
+        """
+        Parses an alt-type.
+        An alt-type is an optional element which allows an alternative translated
+        label to be associated with a control's type. A number of alternative
+        labels are predefined in window.ui_constants.AltCtrlType. In addition,
+        a msg_id can be used.
+
+        If alt-type is not specified, then the default AltCtrlType for the
+        control will be used.
+
+        :param parent: parser that is parsing a particular element (typically
+                       a Kodi control)
+        :param el_alt_type: If a string, then should match an AltCtrlType.name
+                            value. If an integer, then is interpreted as a
+                            Kodi message id. Anything else is an error.
+        :return:
+        """
+        parent.alt_type_expr = el_alt_type.text
 
     @classmethod
     def parse_heading_label(cls, parent: BaseParser | None = None,
@@ -628,7 +645,7 @@ class ElementParser:
 
     @classmethod
     def parse_container_topic(cls, parent: BaseParser | None = None,
-                               el_container_topic: ET.Element = None) -> str | None:
+                               el_container_topic: ET.Element = None) -> None:
         clz = ElementParser
         container_topic: str = el_container_topic.text
         if container_topic is None:
@@ -796,80 +813,91 @@ class ElementHandler:
     def init_class(cls) -> None:
         if cls._logger is None:
             cls._logger = module_logger.getChild(cls.__class__.__name__)
-        cls.add_handler(EK.INFO.value, ElementParser.parse_info)
-        cls.add_handler(EK.INFO2.value, ElementParser.parse_info2)
-        cls.add_handler(EK.ACTION.value, ElementParser.parse_action)
-        cls.add_handler(TE.ALT_TYPE.value, ElementParser.parse_alt_type)
-        cls.add_handler(TE.ALT_INFO.value, ElementParser.parse_alt_info)
-        cls.add_handler(TE.CONTAINER_TOPIC.value, ElementParser.parse_container_topic)
-        cls.add_handler(TE.LABEL_FOR.value, ElementParser.parse_label_for)
-        cls.add_handler(TE.LABELED_BY.value, ElementParser.parse_labeled_by)
-        cls.add_handler(TE.FLOWS_TO.value, ElementParser.parse_flows_to)
-        cls.add_handler(TE.FLOWS_FROM.value, ElementParser.parse_flows_from)
-        cls.add_handler(TE.TRUE_MSG_ID.value, ElementParser.parse_true_msg_id)
-        cls.add_handler(TE.FALSE_MSG_ID.value, ElementParser.parse_false_msg_id)
-        cls.add_handler(TE.READ_NEXT.value, ElementParser.parse_read_next)
-        cls.add_handler(TE.INNER_TOPIC.value, ElementParser.parse_inner_topic)
-        cls.add_handler(TE.OUTER_TOPIC.value, ElementParser.parse_outer_topic)
-        cls.add_handler(TE.TOPIC_LEFT.value, ElementParser.parse_topic_left)
-        cls.add_handler(TE.TOPIC_RIGHT.value, ElementParser.parse_topic_right)
-        cls.add_handler(TE.TOPIC_UP.value, ElementParser.parse_topic_up)
-        cls.add_handler(TE.TOPIC_DOWN.value, ElementParser.parse_topic_down)
-        cls.add_handler(TE.TOPIC_TYPE.value, ElementParser.parse_topic_type)
-        cls.add_handler(TE.TOPIC_HEADING.value, ElementParser.parse_topic_heading)
-        cls.add_handler(TE.HEADING_LABEL.value, ElementParser.parse_heading_label)
-        cls.add_handler(TE.HEADING_LABELED_BY.value,
+        cls.add_handler(EK.INFO, ElementParser.parse_info)
+        cls.add_handler(EK.INFO2, ElementParser.parse_info2)
+        cls.add_handler(EK.ACTION, ElementParser.parse_action)
+        cls.add_handler(TE.ALT_TYPE, ElementParser.parse_alt_type)
+        cls.add_handler(TE.ALT_INFO, ElementParser.parse_alt_info)
+        cls.add_handler(TE.CONTAINER_TOPIC, ElementParser.parse_container_topic)
+        cls.add_handler(TE.LABEL_FOR, ElementParser.parse_label_for)
+        cls.add_handler(TE.LABELED_BY, ElementParser.parse_labeled_by)
+        cls.add_handler(TE.FLOWS_TO, ElementParser.parse_flows_to)
+        cls.add_handler(TE.FLOWS_FROM, ElementParser.parse_flows_from)
+        cls.add_handler(TE.TRUE_MSG_ID, ElementParser.parse_true_msg_id)
+        cls.add_handler(TE.FALSE_MSG_ID, ElementParser.parse_false_msg_id)
+        cls.add_handler(TE.READ_NEXT, ElementParser.parse_read_next)
+        cls.add_handler(TE.INNER_TOPIC, ElementParser.parse_inner_topic)
+        cls.add_handler(TE.OUTER_TOPIC, ElementParser.parse_outer_topic)
+        cls.add_handler(TE.TOPIC_LEFT, ElementParser.parse_topic_left)
+        cls.add_handler(TE.TOPIC_RIGHT, ElementParser.parse_topic_right)
+        cls.add_handler(TE.TOPIC_UP, ElementParser.parse_topic_up)
+        cls.add_handler(TE.TOPIC_DOWN, ElementParser.parse_topic_down)
+        cls.add_handler(TE.TOPIC_TYPE, ElementParser.parse_topic_type)
+        cls.add_handler(TE.TOPIC_HEADING, ElementParser.parse_topic_heading)
+        cls.add_handler(TE.HEADING_LABEL, ElementParser.parse_heading_label)
+        cls.add_handler(TE.HEADING_LABELED_BY,
                         ElementParser.parse_heading_labeled_by)
-        cls.add_handler(TE.HEADING_NEXT.value, ElementParser.parse_heading_next)
-        cls.add_handler(TE.UNITS.value, ElementParser.parse_topic_units)
-        cls.add_handler(TE.VALUE_FROM.value, ElementParser.parse_topic_value_from)
-        cls.add_handler(TE.VALUE_FORMAT.value, ElementParser.parse_topic_value_format)
-        cls.add_handler(EK.ORIENTATION.value, ElementParser.parse_orientation)
-        cls.add_handler(EK.DEFAULT_CONTROL.value, ElementParser.parse_default_control)
-        cls.add_handler(EK.ON_FOCUS.value, ElementParser.parse_on_focus)
-        cls.add_handler(EK.ENABLE.value, ElementParser.parse_enable)
-        cls.add_handler(EK.ON_UNFOCUS.value, ElementParser.parse_on_unfocus)
-        cls.add_handler(EK.VISIBLE.value, ElementParser.parse_visible)
-        cls.add_handler(EK.LABEL.value, ElementParser.parse_label)
-        cls.add_handler(TE.ALT_LABEL.value, ElementParser.parse_alt_label)
-        cls.add_handler(EK.MENU_CONTROL.value, ElementParser.parse_menu_control)
-        cls.add_handler(TE.HINT_TEXT.value, ElementParser.parse_hint_text)
-        cls.add_handler(EK.DESCRIPTION.value, ElementParser.parse_description)
-        cls.add_handler(EK.NUMBER.value, ElementParser.parse_number)
-        cls.add_handler(EK.HAS_PATH.value, ElementParser.parse_has_path)
-        cls.add_handler(EK.SELECTED.value, ElementParser.parse_selected)
-        cls.add_handler(EK.PAGE_CONTROL.value, ElementParser.parse_page_control_id)
-        cls.add_handler(EK.SCROLL_TIME.value, ElementParser.parse_scroll_time)
-        cls.add_handler(EK.SCROLL.value, ElementParser.parse_scroll)
-        cls.add_handler(EK.SHOW_ONE_PAGE.value, ElementParser.parse_show_one_page)
-        cls.add_handler(EK.WRAP_MULTILINE.value, ElementParser.parse_wrap_multiline)
+        cls.add_handler(TE.HEADING_NEXT, ElementParser.parse_heading_next)
+        cls.add_handler(TE.UNITS, ElementParser.parse_topic_units)
+        cls.add_handler(TE.VALUE_FROM, ElementParser.parse_topic_value_from)
+        cls.add_handler(TE.VALUE_FORMAT, ElementParser.parse_topic_value_format)
+        cls.add_handler(EK.ORIENTATION, ElementParser.parse_orientation)
+        cls.add_handler(EK.DEFAULT_CONTROL, ElementParser.parse_default_control)
+        cls.add_handler(EK.ON_FOCUS, ElementParser.parse_on_focus)
+        cls.add_handler(EK.ENABLE, ElementParser.parse_enable)
+        cls.add_handler(EK.ON_UNFOCUS, ElementParser.parse_on_unfocus)
+        cls.add_handler(EK.VISIBLE, ElementParser.parse_visible)
+        cls.add_handler(EK.LABEL, ElementParser.parse_label)
+        cls.add_handler(TE.ALT_LABEL, ElementParser.parse_alt_label)
+        cls.add_handler(EK.MENU_CONTROL, ElementParser.parse_menu_control)
+        cls.add_handler(TE.HINT_TEXT, ElementParser.parse_hint_text)
+        cls.add_handler(EK.DESCRIPTION, ElementParser.parse_description)
+        cls.add_handler(EK.NUMBER, ElementParser.parse_number)
+        cls.add_handler(EK.HAS_PATH, ElementParser.parse_has_path)
+        cls.add_handler(EK.SELECTED, ElementParser.parse_selected)
+        cls.add_handler(EK.PAGE_CONTROL, ElementParser.parse_page_control_id)
+        cls.add_handler(EK.SCROLL_TIME, ElementParser.parse_scroll_time)
+        cls.add_handler(EK.SCROLL, ElementParser.parse_scroll)
+        cls.add_handler(EK.SHOW_ONE_PAGE, ElementParser.parse_show_one_page)
+        cls.add_handler(EK.WRAP_MULTILINE, ElementParser.parse_wrap_multiline)
 
     @classmethod
-    def add_handler(cls, item_key: str,
+    def add_handler(cls, item_key: str | StrEnum,
                     element_parser: Callable[[BaseParser, ET.Element],
                     str | int | BaseParser | Tuple[str, bool]]) -> None:
+        if isinstance(item_key, StrEnum):
+            enum_key: StrEnum = item_key
+            item_key = enum_key.name
+
+        #  cls._logger.debug(f'Added ElementHandler {item_key}')
         cls.element_handlers[item_key] = element_parser
 
     @classmethod
     def get_handler(cls,
-                    key: str) -> Callable[[BaseParser,  ET.Element | TopicElement],
-                                           str | BaseParser]:
+                    item_key: str | StrEnum
+                    ) -> Callable[[BaseParser,  ET.Element | TopicElement],
+                                  str | BaseParser]:
         item: Item = None
         try:
-            item: Item = control_elements[key]
+            if isinstance(item_key, StrEnum):
+                enum_key: StrEnum = item_key
+                item_key = enum_key.name
+                # cls._logger.debug(f'key is enum: {enum_key.name} {enum_key} '
+                #                   f'item_key: {item_key}')
+            # else:
+            #     cls._logger.debug(f'key is str: {item_key} type: {type(item_key)}')
+            item: Item = control_elements[item_key]
         except KeyError:
             item = None
 
-        cls._logger.debug_verbose(f'item: {item}')
+        cls._logger.debug_verbose(f'item: {item_key}')
         if item is None or item.ignore:
             cls._logger.debug_verbose(f'about to call no-op')
             return ElementParser.no_op  # Acts as a Null parser
 
         # element_handler:  Callable[[BaseParser, ET.Element], str] = None
-        cls._logger.debug_verbose(f'Item key: {item.key}')
         try:
             element_handler = cls.element_handlers[item.key]
-            cls._logger.debug_verbose(f'element_handler: {element_handler}')
         except Exception:
             cls._logger.debug_verbose(f'Handler not found for element: {item.key}')
             raise ParseError(f'Handler not found for element: {item.key}')
@@ -879,18 +907,18 @@ class ElementHandler:
     @classmethod
     def add_model_handler(cls, item: Item,
                           model: Type[BaseModel]) -> None:
-        cls._logger.debug_verbose(f'item: {item.key} model: {model}')
+        #  cls._logger.debug_verbose(f'item: {item.key} model: {model}')
         cls.model_handlers[item.key] = model
 
     @classmethod
     def get_model_handler(cls, item: Item) -> \
             Callable[[BaseModel, BaseModel, BaseParser],
                      ForwardRef('TopicModel') | BaseModel]:
-        supress_keys = (ControlType.IMAGE.name,)
-        cls._logger.debug_verbose(f'key: {item.key} contained: {item.key in supress_keys}')
+        supress_keys = (ControlElement.IMAGE.name,)
         if item.ignore:
             if item.key not in supress_keys:
-                cls._logger.debug_verbose(f'Skipping ignored item: {item.key}')
+                if cls._logger.isEnabledFor(DEBUG_VERBOSE):
+                    cls._logger.debug_verbose(f'Skipping ignored item: {item.key}')
                 pass
 
         model: BaseModel = None

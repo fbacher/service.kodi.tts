@@ -60,6 +60,15 @@ class MessageId(Enum):
     # Enabled on new install
     READ_HINT_TEXT_ON_STARTUP = 32812
     EXTENDED_HELP_ON_STARTUP = 32813
+    TTS_HELP_LABEL = 32859
+
+    def get_msg(self) -> str:
+        return MessageUtils.get_msg_by_id(self.value)
+
+    def get_formatted_msg(self, *args: Optional[str]) -> str:
+        return MessageUtils.get_formatted_msg_by_id(self.value,
+                                                    *args)
+
 class MessageUtils:
 
     msg_id_lookup: Dict[str, int] = {

@@ -22,19 +22,19 @@ every remaining topic until the focused topic is reached.
 
 This simple rule works even if the focus changes. You only voice what changes.
 """
+from logging import DEBUG
 from typing import Callable, Final, ForwardRef, List, Tuple
 
 import xbmc
 
 from common.critical_settings import CriticalSettings
-from common.globals import Globals
 from common.logger import BasicLogger, DEBUG_EXTRA_VERBOSE, DEBUG_VERBOSE
 from common.message_ids import MessageUtils
 from common.messages import Messages
 from common.phrases import Phrase, PhraseList
 from gui import BaseParser
 from gui.base_model import BaseModel
-from gui.base_tags import (BaseAttributeType as BAT, control_elements, ControlType, Item,
+from gui.base_tags import (BaseAttributeType as BAT, control_elements, ControlElement, Item,
                            Requires,
                            TopicType, UnitsType, ValueFromType, ValueUnits)
 from gui.base_topic_model import BaseTopicModel
@@ -59,7 +59,6 @@ class TopicModel(BaseTopicModel):
         self._control_id: Final[int] = parent.control_id
         if clz._logger is None:
             clz._logger = module_logger.getChild(clz.__class__.__name__)
-        clz._logger.debug(f'parent is: {parent.__class__.__name__}')
         self.alt_label_expr: Final[str] = parsed_topic.alt_label_expr
         # if self.alt_label_expr == '':
         #     AltCtrlType.get_ctrl_type_for_control(self.parent.control_type)
@@ -85,7 +84,7 @@ class TopicModel(BaseTopicModel):
 
         # Don't voice Groups which have no content
 
-        if (self.parent.control_type in (ControlType.GROUP, ControlType.LABEL)
+        if (self.parent.control_type in (ControlElement.GROUP, ControlElement.LABEL_CONTROL)
                 and tmp_topic_type == TopicType.DEFAULT):
             tmp_topic_type = TopicType.NONE
         self.topic_type: Final[TopicType] = tmp_topic_type
@@ -93,15 +92,10 @@ class TopicModel(BaseTopicModel):
         self.heading_label: Final[str] = parsed_topic.heading_label
         self.heading_labeled_by: Final[str] = parsed_topic.heading_labeled_by
         self.heading_next: Final[str] = parsed_topic.heading_next
-        self._heading_next: TopicModel | None = None
+        self._heading_next: BaseTopicModel | None = None
         #  TODO- Revisit this ugly alt_type
-        tmp_alt_type: AltCtrlType = AltCtrlType.NONE
-        if self.parent.control_type != '':
-            tmp_alt_type = UIConstants.alt_ctrl_type_for_ctrl_type.get(
-                    self.parent.control_type)
-            if parsed_topic.alt_type != '':
-                tmp_alt_type = parsed_topic.alt_type
-        self.alt_type: Final[AltCtrlType | int] = tmp_alt_type
+        self.alt_type: Final[str] = parsed_topic.alt_type
+        clz._logger.debug(f'Just set alt_type from parsed_topic: {self.alt_type}')
         self.read_next_expr: Final[str] = parsed_topic.read_next_expr
         self._read_next: TopicModel | None = None
         tmp_msg_id: int = -1
@@ -130,8 +124,14 @@ class TopicModel(BaseTopicModel):
 
         self.attributes_with_values: List[str] = clz.item.attributes_with_values
         self.attributes: List[str] = clz.item.attributes
+        clz._logger.debug(f'me, so far: {self}')
+        clz._logger.debug(f'them: {parsed_topic}')
         self.convert(parsed_topic)
-        self._container_topic: TopicModel | None = None  # Can not initialize in init
+        #  self._container_topic: TopicModel | None = None  # Can not initialize in init
+
+    @property
+    def control_type(self) -> ControlElement:
+        return self.parent.control_type
 
     @property
     def parent(self) -> BaseModel:
@@ -147,12 +147,15 @@ class TopicModel(BaseTopicModel):
         """
         clz = TopicModel
         for child in parsed_topic.children:
-            clz._logger.debug(f'child: {child}')
             child: BaseParser
-            model_handler: Callable[[BaseModel, BaseModel, BaseParser], BaseModel]
-            model_handler = ElementHandler.get_model_handler(child.item)
-            child_model: BaseModel = model_handler(self, child)
-            self.children.append(child_model)
+            try:
+                model_handler: Callable[[BaseModel, BaseModel, BaseParser], BaseModel]
+                model_handler = ElementHandler.get_model_handler(child.item)
+                child_model: BaseModel = model_handler(self, child)
+                self.children.append(child_model)
+            except Exception as e:
+                clz._logger.debug(f'self: {self} child: {child}')
+                clz._logger.exception(f'{e}')
 
         #  clz._logger.debug(f'parent: {type(self.parent)}')
         self.parent.topic = self
@@ -301,7 +304,7 @@ class TopicModel(BaseTopicModel):
         :return: True if anything appended to phrases, otherwise False
 
         Note that focus_changed = False can occur even when a value has changed.
-        One example is when user users cursor to select different values in a
+        One example is when user uses cursor to select different values in a
         slider, but never leaves the control's focus.
 
         Only voice when window/control is newly changed
@@ -309,75 +312,14 @@ class TopicModel(BaseTopicModel):
               such as when there is an interruption (focus change occurs before this
               window info is announced, causing the window not being announced when
               focus change announced).
-        """
-        clz = TopicModel
-        #  type(self)._logger.debug(f'on entry to voice_control: {phrases}')
-        focus_changed: bool = windialog_state.focus_changed
-        if self.control_id is not None and self.control_id > 0:
-            if not self.is_visible():
-                clz._logger.debug(f'not visible, '
-                                  f'control_id: {self.control_id}')
-                return False
-        clz._logger.debug(f'visible control_id {self.control_id} '
-                          f'focus_changed: {focus_changed}\n'
-                          f'  {self}')
 
-        success: bool = True
-        if focus_changed:
-            success = self.voice_item_number(stmts)
-            success = self.voice_topic_heading(stmts)
-            success = self.voice_generic_value(stmts)
-            success = self.voice_topic_hint(stmts)
-        elif self.supports_change_without_focus_change:
+            A heading consists of several parts:
+           Heading label(s)
+           orientation of control (for lists, etc)
+           # of items in control (for lists, containers, etc.)
 
-            # Control with focus, most likely has value
-            if windialog_state.focus_id == self.control_id:
-                #  clz._logger.debug(f'Calling voice_working_value')
-                # success = self.voice_item_number(stmts)
-                # success = self.voice_topic_heading(stmts)
-                #  success = self.voice_generic_value(stmts)
-                success = self.voice_working_value(stmts)
-                # success = self.voice_topic_hint(stmts)
-                #  stmts.mark_as_silent(stmt_filter=(StatementType.NORMAL,),
-                #                       interrupt=False)
-            else:
-                success = self.voice_item_number(stmts)
-                success = self.voice_topic_heading(stmts)
-                success = self.voice_generic_value(stmts)
-                success = self.voice_topic_hint(stmts)
-        else:
-            success = self.voice_item_number(stmts)
-            success = self.voice_topic_heading(stmts)
-            success = self.voice_generic_value(stmts)
-            success = self.voice_topic_hint(stmts)
-        return success
-
-    def voice_topic_heading(self, stmts: Statements) -> bool:
-        """
-        Generate the speech for the window header. A header for a window or control
-        is only voiced when the focus changes to that window or control.
-
-        For example, a GroupList logically has a heading. When the heading is
-        read, it should also include the orientation (horizontal/vertical) and
-        the number of items in the list.
-
-        The heading is designated by the Topic. Without a Topic an attempt
-        is made to guess what to voice. via BaseModel.voice_control_heading
-
-        The heading does NOT include the control's value (unless the control is
-        a label).  TODO: Fix
-
-          TODO: ? The header's topic must be marked with topic_type heading
-
-          Specifically, Heading voices:
-          Item # (if member of a list)
-           Alt-ControlType, otherwise Control type
-           heading_labeled_by, otherwise heading_label, otherwise
-           Alt-Label, otherwise labeled_by, otherwise topic.label, otherwise
-           the control's label
-           next_header chain (if read_next)
-           orientation: vertical or horizontaol (if appropriate)
-           # items (if appropriate)
+        value/values are NOT part of the heading and voiced in
+        voice_topic_value.
 
         A Basic Window Heading is:
 
@@ -394,7 +336,9 @@ class TopicModel(BaseTopicModel):
         </topic>
 
         The name is up to you. The name can be referenced by other topics.
-        The topic_type is heading to clearly indicate the purpose of this topic.
+        A topic_type of heading indicates this topic has heading information
+        in it (TODO: remove topic-type heading, redundant).
+
         labeled_by indicates where to get the heading's label from
         alt_type specifies an alternate control type to voice. More alternate
         control types to choose from to provide better information for the listener.
@@ -458,6 +402,160 @@ class TopicModel(BaseTopicModel):
         # more than one thing needs to be read for, say, a window header.
 
         UNITS = 'units'  # complex string value
+        """
+        clz = TopicModel
+        #  type(self)._logger.debug(f'on entry to voice_control: {phrases}')
+        focus_changed: bool = windialog_state.focus_changed
+        if self.control_id is not None and self.control_id > 0:
+            if not self.is_visible():
+                clz._logger.debug(f'not visible, '
+                                  f'control_id: {self.control_id}')
+                return False
+        clz._logger.debug(f'visible control_id {self.control_id} '
+                          f'focus_changed: {focus_changed} '
+                          f'focus_id: {windialog_state.focus_id}\n'
+                          f'  {self}')
+        '''
+            One problem with voicing without a focus change is that
+            the code has to evaluate almost every poll request (about
+            10/second. This has the side effect of increasing the probability
+            that previous text gets stomped on. For example, TTS 
+            starts in voicing only on focus change. The focus changes
+            and you start to voice whatever controls have changed. 
+            If the control that you are voicing is one that can change
+            without focus, then 1/10th of a second later, this code is
+            called again, long before the initial heading info is voiced.
+            If there is any difference in the text generated on this
+            call than when voicing the heading, then the voicing of the
+            heading will be aborted mid-stream and the new text, 
+            which will be missing everything that is in common with this
+            new text (up until the first change). Currently there is no 
+            way to tell if something being voiced has completed voicing.
+            
+            To improve on the situation the code tries to reduce what is
+            voice and to focus on what has changed.
+        '''
+        success: bool = True
+        if focus_changed:
+            success = self.voice_item_number(stmts)
+            success = self.voice_topic_heading(stmts)
+            success = self.voice_value(stmts)
+            success = self.voice_topic_hint(stmts)
+        elif self.supports_change_without_focus_change:
+            # Control with focus, most likely has value
+            if windialog_state.focus_id == self.control_id:
+                #  clz._logger.debug(f'Calling voice_working_value')
+                # success = self.voice_item_number(stmts)
+                # success = self.voice_topic_heading(stmts)
+                #  success = self.voice_value(stmts)
+                success = self.voice_value(stmts)
+                # success = self.voice_topic_hint(stmts)
+                #  stmts.mark_as_silent(stmt_filter=(StatementType.NORMAL,),
+                #                       interrupt=False)
+            else:
+                success = self.voice_item_number(stmts)
+                success = self.voice_topic_heading(stmts)
+                success = self.voice_value(stmts)
+                success = self.voice_topic_hint(stmts)
+        else:
+            success = self.voice_item_number(stmts)
+            success = self.voice_topic_heading(stmts)
+            success = self.voice_value(stmts)
+            success = self.voice_topic_hint(stmts)
+        return success
+
+    def voice_topic_heading(self, stmts: Statements) -> bool:
+        """
+            TODO: Reword and breakup for different methods.
+                  This method ONLY worries about the topic's heading
+
+        Generate the speech for header that this control may have.
+        A header for a window or control is only voiced when the focus
+        changes to that window or control, or when explicitly re-voiced.
+
+        For example, a GroupList logically has a heading. When the heading is
+        read, it should also include the orientation (horizontal/vertical) and
+        the number of items in the list.
+
+        The heading is designated by the Topic. Without a Topic an attempt
+        is made to guess what to voice. via BaseModel.voice_control_heading
+
+        The heading does NOT include the control's value (unless the control is
+        a label).  TODO: Fix
+
+          TODO: ? The header's topic must be marked with topic_type heading
+
+        See Voice_control which is responsible for voicing (almost)
+        everything about a control. It calls voice_heading to do its part.
+        Prior to calling voice_heading, any item# and controltype info is
+        voiced.
+
+        A heading consists of several parts:
+           Heading label(s)
+           orientation of control (for lists, etc)
+           # of items in control (for lists, containers, etc.)
+
+        value/values are NOT part of the heading and voiced in
+        voice_topic_value.
+
+        The control's name, orientation and # of items in the control
+        are voiced first (see voice_control_name_heading).
+
+        Finally, the control's heading(s) are voiced
+
+
+        To successfully voice the needed topics for an arbitrary control, a
+        chain of topics linked by outer_topic from the focused control to the
+        window heading must exist. The outer_topic is is_required (except for the
+        root topic for the window).
+
+        Other, advanced topic elements:
+        heading_next is used when more than one heading label needs to be read.
+        Perhaps you
+        have a Title and sub-title, each with its own label. By defining the
+        topic for title with a heading_next element referencing the sub-title's id,
+        the subtitle gets read after the title. A topic can have a single
+        heading_next, but a chain of topics can be linked with heading_next fields.
+
+        read_next is similar to heading_next, except used for voicing labels
+        in a non-heading context.
+
+        labeled_by References a label to voice for this control. Typically used
+        when the control does not have a label and the label, being a label,
+        never gets focus so it can not otherwise be found
+
+        label_for  Marks a control as being the label for another control
+        Typically the control needing this label also has a LABELED_BY
+        reference back to this topic
+
+        flows_from Similar to labeled_by. Sometimes a control gets its value
+        from another control, such as when you have a slider, which has no label,
+        has to go through some tricks to get its value from some other, perhaps
+        hidden or invisible label.
+
+        flows_to See flows_from. Indicates that this control sends its value to
+        another (which is marked with flows_from, refering to this control)
+
+        alt_label specifies an alternate label to use that may be more
+        # accessible. ALT_LABEL may be an int, which is interpreted as a
+        # message id. (To use another control as a label, use LABELED_BY
+        # instead.) ALT_LABEL may be a string, in which case it is
+        # interpreted as an INFO_LABEL or similar.
+
+    NAME = 'name' key that topics used to reference one another
+
+        hint_text supplies additional text that may clarify what the control
+        # is for, or perhaps your options, etc. Format is the same as ALT_LABEL
+
+        true_msg_id For boolean controls: RadioButton. By default, 'Enabled' is
+        # substituted for '(*)' from the ListItem value of the control
+
+        false-msg_id For binary controls: RadioButton. By default, 'Disabled' is
+        # substituted for '()' from the ListItem value of the control
+        # READ_NEXT is typically used for non-focusable items. It indicates that
+        # more than one thing needs to be read for, say, a window header.
+
+        UNITS = 'units'  # complex string value
 
         :param stmts:
         :return:
@@ -465,18 +563,20 @@ class TopicModel(BaseTopicModel):
         clz = TopicModel
         success: bool = False
 
-        # Don't touch voicing anything marked NONE (Control-type group)
-        # Prevents "Group" and "Label" to be voiced
+        # Don't voice anything for a control-type marked NONE
 
         if self.topic_type == TopicType.NONE:
+            clz._logger.debug_verbose(f'Not voicing topic: {self.name} due to'
+                                      f' TopicType.NONE')
             return False
         if clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
             clz._logger.debug_extra_verbose(f'on entry to voice_topic_heading: {stmts}')
         #
-        #   Reads:  "Volume. Horizontal Slider"
+        #  Voice the control name, orientation and # items.
+        #  Formatting occurs in voice_control_name_heading
         #
         control_name: str = self.get_best_control_name()
-        orientation: str = self.get_list_orientation()
+        orientation: str = self.get_orientation()
         visible_item_count: int = self.visible_item_count()
         if clz._logger.isEnabledFor(DEBUG_VERBOSE):
             clz._logger.debug_verbose(f'control_id: {self.control_id} '
@@ -484,13 +584,26 @@ class TopicModel(BaseTopicModel):
                                       f'orientation: {orientation}')
         success = self.voice_control_name_heading(stmts, control_name,
                                                   orientation, visible_item_count)
+
+        #  Finally, voice the control's heading label(s)
+
         #  clz._logger.debug(f'from voice_control_name_heading {stmts}')
         success = self.voice_heading_label(stmts)
-        #  type(self)._logger.debug(f'Exiting voice_topic_heading: {stmts}')
+        type(self)._logger.debug(f'Exiting voice_topic_heading: {stmts}')
         return success
 
     def voice_control_name_heading(self, stmts: Statements, control_name: str,
                                    orientation: str, visible_item_count: int) -> bool:
+        """
+        Voices a translated a formatted heading containing a control's: name,
+        orientation and item-count, as appropriate.
+
+        :param stmts:
+        :param control_name:
+        :param orientation:
+        :param visible_item_count:
+        :return:
+        """
         clz = TopicModel
         text: str = ''
         if visible_item_count > 0:
@@ -512,7 +625,7 @@ class TopicModel(BaseTopicModel):
     def voice_heading_label(self, stmts: Statements,
                             chain: bool = True) -> bool:
         """
-        Voices the label for this topic's heading. label information is contained
+        Voices the label(s) for this topic's heading. label information is contained
         in heading_label and heading_next.
 
         :param stmts: Append any voicings to stmts
@@ -521,17 +634,28 @@ class TopicModel(BaseTopicModel):
         :return: True if at least one phrase was appended. False if no phrases
                  added.
 
-        Voice only heading_label or heading_labeled_by. If chain is True,
-         then call voice_chained_headings
+        Voice  heading_label, if present or heading_labeled_by, if present.
+         If chain is True, then call voice_chained_headings to voice sub-headings,
+         etc.
 
         If heading_label is an int, then it is a message id. Otherwise, it is
         interpreted as an infolabel.
 
         If heading_labeled_by is an int, then it is assumed to be a
-        control_id.  If a str, then it is assumed to be a topic_id
+        control_id.  If a str, then it is assumed to be a topic_id.
+        If a topic_id is referenced, then voice the heading_label
+        from that topic.
+
+          TODO: Try to eliminate this and force use of explicit
+                heading_**label** elements.
+        If neither heading_label nor heading_labeled_by are voiced, then
+        if the control is marked with supports_heading_label then one of
+        the control's "normal" labels are read.
         """
         clz = TopicModel
         success: bool = False
+
+        # Use heading_label, if available
         if self.heading_label != '':
             if self.heading_label.isdigit():
                 msg_id: int = int(self.heading_label)
@@ -546,6 +670,7 @@ class TopicModel(BaseTopicModel):
 
             if clz._logger.isEnabledFor(DEBUG_VERBOSE):
                 clz._logger.debug_verbose(f'heading_label: {self.heading_label} {stmts}')
+        # Otherwise, read any heading_labeled_by
         elif self.heading_labeled_by != '':
             success: bool = False
             control: BaseModel | None
@@ -554,32 +679,30 @@ class TopicModel(BaseTopicModel):
                     self.heading_labeled_by)
             if topic is not None:
                 success = topic.voice_heading_label(stmts, chain)
-                #  clz._logger.debug(f'voice_heading_label returned: {phrases}')
+                clz._logger.debug(f'voice_heading_label returned: {stmts.last}')
             elif control is not None:
                 control: BaseModel
                 success = control.voice_heading_without_topic(stmts)
-            #  clz._logger.debug(f'{stmts.last}')
+                clz._logger.debug(f'{stmts.last}')
 
         '''
+        Be careful voicing standard labels because it can lead to duplicate
+        voicings. 
         
-            Don't voice standard labels because it leads to either duplicate
-            voicings of labels or no voicings. (Voiced in both header and value/label)
-          
-                # Backup to use standard label search order
-            You can not tell if a label control's single displayed string is 
-            a heading, giving direction or a value. For this reason labels are not
-            processed here unless they explicitly use heading_label and heading_labeled_by.
-            
-            Other controls, such as Button also have only one label to display, but 
-            is almost certainly for an instruction on what the button is for. Other
-            measures must be taken to read the value of the button, likely through 
-            flows_to, etc., but that is the responsibility of other code.
-            
+        You can not tell if a label control's single displayed string is 
+        a heading, giving direction or a value. For this reason labels are not
+        processed here unless they explicitly use heading_label or heading_labeled_by.
+        
+        Other controls, such as Button also have only one label to display, but 
+        is almost certainly for an instruction on what the button is for. Other
+        measures must be taken to read the value of the button, likely through 
+        flows_to, etc., but that is the responsibility of other code.
             
         '''
+        if not self.supports_heading_label:
+            return success
         if not success:
-            if not self.supports_heading_label:
-                return success
+            clz._logger.debug(f'Considering normal labels for heading')
         if not success:
             success = self.voice_alt_label(stmts)
             if success and clz._logger.isEnabledFor(DEBUG_VERBOSE):
@@ -604,28 +727,21 @@ class TopicModel(BaseTopicModel):
         if chain and self.heading_next != '':
             # If this topic has a 'heading_next' value, then voice the heading_label
             # from that topic
+
+
             _ = self.voice_chained_headings(stmts)
             if clz._logger.isEnabledFor(DEBUG_VERBOSE):
                 self._logger.debug_verbose(f'post voice_chained_headings: {stmts.last}')
         return success
 
-    def voice_orientation(self, phrases: PhraseList) -> bool:
-        """
-        Primarily used for lists and containers. Also sliders, scrollbars, etc.
-
-        :param phrases:
-        :return:
-        """
-        pass
-
-    def get_list_orientation(self) -> str:
+    def get_orientation(self) -> str:
         """
         Primarily used for lists and containers. Also sliders, scrollbars, etc.
 
         :return:
         """
         clz = TopicModel
-        orientation: str = self.parent.get_list_orientation()
+        orientation: str = self.parent.get_orientation()
         return orientation
 
     def visible_item_count(self) -> int:
@@ -638,13 +754,12 @@ class TopicModel(BaseTopicModel):
             return -1
         return self.parent.visible_item_count()
 
-
     def voice_active_item(self, stmts: Statements) -> bool:
         return False
 
     def voice_control_name_and_value(self, stmts: Statements) -> bool:
         success: bool = False
-        self.voice_topic_value(stmts, )
+        self.voice_topic_value(stmts)
         return success
 
     def voice_best_control_name(self, stmts: Statements) -> bool:
@@ -664,9 +779,11 @@ class TopicModel(BaseTopicModel):
 
     def voice_alt_control_name(self, stmts: Statements) -> bool:
         clz = TopicModel
-        if self.alt_type == '':
+        clz._logger.debug(f'alt_type: {self.alt_type}')
+        if self.alt_type in ('', 'none'):
             return False
         alt_name: str = self.get_alt_control_name()
+        clz._logger.debug(f'alt_name: {alt_name}')
         if alt_name == '':
             return False
         stmts.last.phrases.append(Phrase(text=alt_name,
@@ -675,22 +792,10 @@ class TopicModel(BaseTopicModel):
 
     def get_alt_control_name(self) -> str:
         clz = TopicModel
-        # clz._logger.debug(f'alt_type: {self.alt_type}')
-        if self.alt_type == '':
+        clz._logger.debug(f'alt_type: {self.alt_type}')
+        if self.alt_type in ('', 'none'):
             return ''
-
-        phrases: PhraseList = PhraseList(check_expired=False)
-        alt_type: AltCtrlType = AltCtrlType.alt_ctrl_type_for_ctrl_name(self.alt_type)
-        # clz._logger.debug(f'alt_type: {alt_type}')
-        success = AltCtrlType.get_message(alt_type, phrases)
-        return phrases[-1].get_text()
-
-    def get_alt_control_type(self) -> AltCtrlType:
-        alt_type: str = ''
-        if self.alt_type != '':
-            alt_type: AltCtrlType = AltCtrlType.alt_ctrl_type_for_ctrl_name(
-                    self.alt_type)
-        return alt_type
+        return self.alt_type
 
     def voice_alt_label(self, stmts: Statements) -> bool:
         clz = TopicModel
@@ -774,52 +879,35 @@ class TopicModel(BaseTopicModel):
             single parameter. 
     """
 
-    def voice_info_label(self, stmts: Statements, label_expr: str,
-                         clean: bool = True) -> bool:
+    def voice_label(self, stmts: Statements,
+                    control_id_expr: int | str | None = None) -> bool:
+        """
+        Voices the label of a control
+        :param stmts: Any found text is appended to stmts
+        :param control_id_expr:  If non-None, then used as the control_id instead
+               of self.control_id
+        :return:
+        """
+        clz = TopicModel
+        success = self.parent.voice_label(stmts, control_id_expr)
+        return success
+
+    def voice_info_label(self, stmts: Statements, label_expr: str) -> bool:
         """
            Queries xbmc for the value of the given Info Label.
 
         :param stmts: Any statements are appended to this
         :param label_expr:  A Kodi info-label or list-item expression
-        :param clean: If True, then perform some rudementary cleanup on the
-               resulting text
         :return: True if one or more statements was found and added
         """
         clz = TopicModel
-        if label_expr == '':
-            return False
-        try:
-            text = xbmc.getInfoLabel(f'{label_expr}')
-            clz._logger.debug(f'label_expr: {label_expr} = {text}')
-        except ValueError as e:
-            text = ''
-
-        if text == '':
-            text = CriticalSettings.ADDON.getInfoLabel(label_expr)
-            clz._logger.debug(f'label_expr: {label_expr} = {text}')
-        if text == '':
-            clz._logger.debug(f'Failed to get alt_label_expr {label_expr}')
+        text: str | None = self.parent.get_info_label(label_expr)
+        if text is None:
             return False
 
         # Append these phrase(s) to existing statement
         phrases: PhraseList = stmts.last.phrases
-        if clean:
-            #  clz._logger.debug(f'text: {text}')
-            #  TAG_RE = re.compile(r'(?i)\[/?(?:B|I|COLOR|UPPERCASE|LOWERCASE)[^]]*]')
-            text = UIConstants.TAG_RE.sub('', text).strip(' .')
-            # clz._logger.debug(f'text: {text}')
-            texts: List[str] = text.split('[CR]')
-            #  clz._logger.debug(f'texts: {texts}')
-            for text in texts:
-                text = text.strip()
-                if text == '':
-                    if len(phrases) > 0:
-                        phrases[-1].set_post_pause(Phrase.PAUSE_DEFAULT)
-                    continue
-                phrase = Phrase(text)
-                phrases.append(phrase)
-        else:
-            phrases.add_text(text)
+        phrases.add_text(text)
         return True
 
     def voice_label_expr(self, stmts: Statements) -> bool:
@@ -927,10 +1015,11 @@ class TopicModel(BaseTopicModel):
         """
         # Needs work
         clz = TopicModel
+        clz._logger.debug(f'voice_heading_labeled_by: {self.heading_labeled_by}')
+
         if self.heading_labeled_by == '':
             return False
 
-        clz._logger.debug(f'{self.heading_labeled_by}')
         success: bool = False
         control: BaseModel | None
         topic: TopicModel | None
@@ -938,10 +1027,7 @@ class TopicModel(BaseTopicModel):
         if topic is not None:
             success = topic.voice_heading_label(stmts)
         else:
-            # Have to do it the hard way without topic, if possible.
-            # TODO: Implement
-            success = False
-        #  clz._logger.debug(f'{stmts.last}')
+            success = control.voice_label(stmts, None)
         return success
 
     def voice_control_labels(self, stmts: Statements, voice_label: bool = True,
@@ -1030,9 +1116,17 @@ class TopicModel(BaseTopicModel):
             self._logger.debug(f'post voice_chained_controls: {stmts.last}')
         return success
 
+    def voice_value(self, stmts: Statements) -> bool:
+        if self.supports_container:
+            success = self.voice_active_item(stmts)
+        else:
+            success = self.voice_generic_value(stmts)
+        return success
+
     def voice_generic_value(self, stmts: Statements) -> bool:
         clz = TopicModel
-        clz._logger.debug(f'In TopicModel.voice_generic_value')
+        if clz._logger.isEnabledFor(DEBUG):
+            clz._logger.debug(f'In TopicModel.voice_generic_value')
         success: bool = False
         success = self.voice_topic_value(stmts)
         return success
@@ -1040,7 +1134,7 @@ class TopicModel(BaseTopicModel):
     def get_item_number(self) -> int:
         """
         Used to get the current item number from a List type topic. Called from
-        a child topicof the list
+        a child topic of the list.
 
         :return: Current topic number, or -1
         """
@@ -1124,10 +1218,79 @@ class TopicModel(BaseTopicModel):
             return success
 
         if self._heading_next is None and self.heading_next != '':
-            clz._logger.debug(f"Can't find heading_next {self.heading_next}")
-            return False
+            control, topic = self.parent.get_control_and_topic_for_id(
+                    self.heading_next)
+            if topic is not None:
+                self._heading_next = topic
+            else:
+                clz._logger.debug(f"Can't find heading_next {self.heading_next}")
+                return False
+
         _ = self._heading_next.voice_heading_label(stmts, chain=True)
         clz._logger.debug(f'{stmts.last}')
+        return success
+
+    def voice_flows_to(self, stmts: Statements,
+                       stmt_type: StatementType = StatementType.NORMAL) -> bool:
+        """
+        Voice a control's value. Used primarily when a control's value comes from
+        another control ('flows_to'). Let the control using the value decide
+        whether it should be voiced.
+
+        When a control, like a button, impacts the value of another control, a label,
+        then the button 'flows_to' the label (TODO: perhaps more than one?) control.
+
+        If a control has a label, it is voiced first. If the control has a 'flows_to'
+        then that is voiced next. (TODO: What about a chain of 'flows_to'? What about
+        additional labels, labeled_bys or flows_to in a chain?)
+
+        If both labeled_by and flows_to are present, ignore labeled_by, otherwise,
+        only voice flows_to.
+
+        Whenever voicing, if there is a choice to voice label_2, then do so,
+        otherwise label.
+
+        NOTE: TODO: For now, flows_to values are ONLY voiced if the control that
+                    it comes from is visible.
+                    Possible ways to overcome this limitation:
+                      - Allow condition expressions in flows_to
+                      - Add attributes to flows_to
+                    Similar issues are chaining and labeled_by + flows_to, etc.
+
+        :param stmts:
+        :param stmt_type: Sets the StatementType of the voiced Statement
+        :return:
+        """
+        clz = TopicModel
+        success: bool = False
+
+        if self.flows_to == '':
+            return False
+
+        # flows_to can be a control_id or a topic name
+        # if self.labeled_by_expr == self.flows_to:
+        # Will cause the same thing to be voiced. Already voiced
+        # labeled_by, so skip this
+        #    clz._logger.debug(f'Already voiced by labeled_by')
+        #   return False
+        if clz._logger.isEnabledFor(DEBUG):
+            clz._logger.debug(f'flows_to: {self.flows_to}')
+        if self._flows_to is None:
+            self._flows_to = self.parent.get_topic_for_id(self.flows_to)
+        if self._flows_to is None:
+            clz._logger.info(f'Can not find flows_to topic for id: {self.flows_to}')
+            return False
+        # labeled_by: TopicModel | None
+        # labeled_by = self.parent.get_topic_for_id(self.labeled_by_expr)
+        # if labeled_by is not None and flows_to == labeled_by:
+        #     clz._logger.debug(f'Already voiced by labeled_by_expr')
+        #     return False
+        # Labels don't support a value, but here we are using the label
+        # as a value or a label. It is a bit murky.
+        control_id: int = self._flows_to.control_id
+        if self._flows_to.parent.is_visible():
+            success = self._flows_to.parent.voice_label(stmts, control_id,
+                                                        stmt_type=stmt_type)
         return success
 
     def voice_topic_value(self, stmts: Statements) -> bool:
@@ -1136,10 +1299,6 @@ class TopicModel(BaseTopicModel):
         another control ('flows_to'). Let the control using the value decide
         whether it should be voiced (repeat values are supressed when the focus
         has not changed).
-
-        When a control, like a button, impacts the value of another control, a label,
-        then the button 'flows_to' the label (TODO: perhaps more than one?) control.
-        When voicing a control's label, see if another control also needs to be voiced.
 
         If both labeled_by and flows_to are present, ignore labeled_by, otherwise,
         only voice flows_to. If neither is present, then voice any label.
@@ -1152,28 +1311,12 @@ class TopicModel(BaseTopicModel):
         """
         clz = TopicModel
         success: bool = False
-
         if self.flows_to != '':
-            # flows_to can be a control_id or a topic name
-            # if self.labeled_by_expr == self.flows_to:
-                # Will cause the same thing to be voiced. Already voiced
-                # labeled_by, so skip this
-            #    clz._logger.debug(f'Already voiced by labeled_by')
-            #   return False
-            clz._logger.debug(f'flows_to: {self.flows_to}')
-            if self._flows_to is None:
-                self._flows_to = self.parent.get_topic_for_id(self.flows_to)
-            if self._flows_to is None:
-                clz._logger.info(f'Can not find flows_to topic for id: {self.flows_to}')
-                return False
-            # labeled_by: TopicModel | None
-            # labeled_by = self.parent.get_topic_for_id(self.labeled_by_expr)
-            # if labeled_by is not None and flows_to == labeled_by:
-            #     clz._logger.debug(f'Already voiced by labeled_by_expr')
-            #     return False
-            success = self._flows_to.voice_control_value(stmts)
-            return success
-        if not self.supports_value:
+            success = self.voice_flows_to(stmts)
+            if success:
+                return success
+
+        if not self.supports_value:  # Not all controls have a value, get elsewhere
             return False
 
         control_model: ForwardRef('BasicModel')
@@ -1195,8 +1338,8 @@ class TopicModel(BaseTopicModel):
                             control_topic: ForwardRef(
                                     'TopicModel') = None) -> bool:
         """
-        Voices this control's value. This differs from voice_topic_value which
-        can determine which control to get the value from.
+        Voices another control's value. Sometimes a control, such as a button
+        may change the value in a label. This allows the label to be read.
 
         :param stmts:
         :param control_topic:

@@ -32,7 +32,6 @@ class BaseTopicModel:
             clz._logger = module_logger.getChild(clz.__class__.__name__)
         # Mark as a TopicModel. Used in BaseModel
         self.is_topic: bool = True
-        clz._logger.debug(f'parent is: {parent.__class__.__name__}')
         self._name: str = topic_name
         self.rank: int = rank
 

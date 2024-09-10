@@ -316,6 +316,8 @@ class WindowStateMonitor:
     _window_state_listeners: OrderedDict_type[str, ListenerInfo]
     _window_state_listeners = OrderedDict()
     POLLING_INTERVAL: Final[float] = 0.2
+    NON_FOCUSED_POLLING_INTERVAL: Final[float] = 0.4
+    current_polling_interval: float = POLLING_INTERVAL
     INVALID_DIALOG: Final[int] = 9999
 
     WINDOW_CHANGED: Final[int] = 0x01
@@ -365,10 +367,15 @@ class WindowStateMonitor:
 
     @classmethod
     def monitor_gui_state(cls) -> None:
-        while not Monitor.wait_for_abort(timeout=cls.POLLING_INTERVAL):
+        while not Monitor.wait_for_abort(timeout=cls.current_polling_interval):
             changed_state: int
             window_state: WinDialogState
             changed_state, window_state = cls.check_win_dialog_state()
+            if window_state.focus_changed:
+                cls.current_polling_interval = cls.POLLING_INTERVAL
+            else:
+                cls.current_polling_interval = cls.NON_FOCUSED_POLLING_INTERVAL
+
             # notify_listeners does additional filtering
             if changed_state != WindowStateMonitor.BAD_WINDOW:
                 cls._notify_listeners(changed_state, window_state)

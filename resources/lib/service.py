@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations  # For union operator |
 
+import faulthandler
+import io
 #
 import os
+import signal
 import sys
 
 import xbmc
@@ -27,14 +30,19 @@ from common.critical_settings import CriticalSettings
 from common.minimal_monitor import MinimalMonitor
 from common.python_debugger import PythonDebugger
 
-REMOTE_DEBUG: bool = True
+DEVELOPMENT_BUILD: Final[bool] = True
+CRASH_FILE_ENABLED: Final[bool] = False
+REMOTE_DEBUG: bool = False
+
 addon_id: str = CriticalSettings.ADDON_ID
 
-# debug_file = io.open("/home/fbacher/.kodi/temp/kodi.crash", mode='w', buffering=1,
-#                      newline=None,
-#                     encoding='ASCII')
-
-# faulthandler.register(signal.SIGUSR1, file=debug_file, all_threads=True)
+if DEVELOPMENT_BUILD:
+    if CRASH_FILE_ENABLED:
+        crash_path: str = xbmcvfs.translatePath("special://home/temp/kodi.crash")
+        debug_file = io.open(crash_path, mode='w', buffering=1,
+                             newline=None,
+                             encoding='ASCII')
+        faulthandler.register(signal.SIGUSR1, file=debug_file, all_threads=True)
 
 if REMOTE_DEBUG:
     xbmc.log(f'About to PythonDebugger.enable from tts service', xbmc.LOGINFO)
@@ -44,7 +52,8 @@ if REMOTE_DEBUG:
     xbmc.sleep(500)
     if MinimalMonitor.abort_requested():
         PythonDebugger.disable()
-        sys.exit()
+        xbmc.log('shutdown initializing debugger', xbmc.LOGDEBUG)
+        sys.exit(0)
 
 try:
     pass
@@ -126,6 +135,11 @@ def preInstalledFirstRun():
 
 
 def startService():
+    """
+    This is a separate thread that runs the service_worker
+
+    :return:
+    """
     try:
         if preInstalledFirstRun():
             return
@@ -171,6 +185,7 @@ class MainThreadLoop:
     """
 
     profiler = None
+    thread: threading.Thread = None
 
     @classmethod
     def event_processing_loop(cls) -> None:
@@ -232,11 +247,13 @@ class MainThreadLoop:
     @classmethod
     def start_worker_thread(cls) -> None:
         try:
-            thread = threading.Thread(
+            cls.thread = threading.Thread(
                     target=startService,
                     name='tts_service',
                     daemon=False)
-            thread.start()
+            cls.thread.start()
+            from common.garbage_collector import GarbageCollector
+            GarbageCollector.add_thread(cls.thread)
         except Exception as e:
             xbmc.log('Exception: ' + str(e), xbmc.LOGERROR)
             module_logger.exception('')
@@ -244,16 +261,43 @@ class MainThreadLoop:
 
 if __name__ == '__main__':
     import threading
+    from common.garbage_collector import GarbageCollector
 
     module_logger.debug('starting service.py service.kodi.tts service thread')
     # sys.exit()
     #
     try:
         MainThreadLoop().event_processing_loop()
-        PythonDebugger.disable()
-    except AbortException:
+    except:
+        pass
+    try:
         PythonDebugger.disable()
     except Exception as e:
         module_logger.exception('')
+    try:
+        tmp_path: str = xbmcvfs.translatePath("special://home/temp/kodi.threads")
+        debug_file = io.open(tmp_path,
+                             mode='w',
+                             buffering=1,
+                             newline=None,
+                             encoding='ASCII')
+        for tries in range(0, 40):
+            pending_threads: int = GarbageCollector.reap_the_dead()
+            GarbageCollector.garbage_collector.join(timeout=0.001)
+            if GarbageCollector.garbage_collector.is_alive():
+                xbmc.log(f'GC still alive', xbmc.LOGDEBUG)
+            else:
+                xbmc.log(f'GC reaped')
+            unaccounted_for_threads: int = threading.active_count()
+            if unaccounted_for_threads > 0:
+                xbmc.log(f'Threads remaining: {unaccounted_for_threads} '
+                         f'pending: {pending_threads}', xbmc.LOGDEBUG)
+                faulthandler.dump_traceback(file=debug_file, all_threads=True)
+            if pending_threads == 0:
+                break
+        debug_file.close()
+    except Exception as e:
+        xbmc.log(f'Exception occured shutting down MainThreadLoop {e}')
         PythonDebugger.disable()
-    sys.exit()
+    xbmc.log('TTS Execution Done', xbmc.LOGDEBUG)
+    sys.exit(0)

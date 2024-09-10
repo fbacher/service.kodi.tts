@@ -8,12 +8,12 @@ Created on Feb 10, 2019
 
 import threading
 
+import xbmc
+
 from common import *
 
-from common.logger import *
+#  from common.logger import *
 from common.monitor import Monitor
-
-module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
 
 
 class GarbageCollector:
@@ -23,7 +23,8 @@ class GarbageCollector:
     _lock = threading.RLock()
     _stopped = False
     _threads_to_join: List[threading.Thread] = []
-    _logger: BasicLogger = None
+    GARBAGE_COLLECTOR_THREAD_NAME: Final[str] = 'thrd_gc'
+    garbage_collector: threading.Thread = None
 
     def __init__(self) -> None:
         raise NotImplemented()
@@ -36,69 +37,95 @@ class GarbageCollector:
             if not cls._stopped:
                 if thread not in cls._threads_to_join:
                     cls._threads_to_join.append(thread)
-                    if cls._logger.isEnabledFor(DISABLED):
-                        cls._logger.debug_extra_verbose(f'Adding thread: {thread.name} '
-                                                        f'{thread.ident}')
+                    xbmc.log(f'garbage_collector adding {thread.name}')
+                    # if cls._logger.isEnabledFor(DISABLED):
+                    #     cls._logger.debug_extra_verbose(f'Adding thread: {thread.name} '
+                    #                                     f'{thread.ident}')
                 else:
-                    if cls._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                        cls._logger.debug_extra_verbose(
-                            f'Duplicate thread: {thread.name} '
-                            f'{thread.ident}')
+                    pass
+                    # if cls._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
+                    #     cls._logger.debug_extra_verbose(
+                    #         f'Duplicate thread: {thread.name} '
+                    #         f'{thread.ident}')
 
     @classmethod
     def init_class(cls):
-        if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__name__)
+        # if cls._logger is None:
+        #     cls._logger = module_logger.getChild(cls.__name__)
 
-        garbage_collector = threading.Thread(
+        cls.garbage_collector = threading.Thread(
                 target=cls.join_dead_threads,
-                name='thread_gc',
+                name=cls.GARBAGE_COLLECTOR_THREAD_NAME,
                 daemon=False)
 
-        garbage_collector.start()
+        cls.garbage_collector.start()
 
         # Did not see thread name while using debugger.
-        garbage_collector.name = 'Thread garbage collection'
+        cls.garbage_collector.name = cls.GARBAGE_COLLECTOR_THREAD_NAME
 
     @classmethod
     def join_dead_threads(cls) -> None:
         finished = False
         # Sometimes thread name doesn't get set.
-        threading.current_thread.__name__ = 'Thread garbage collection'
-        while not finished:
-            with cls._lock:
-                joined_threads: List[threading.Thread] = []
-                for thread in cls._threads_to_join:
+        threading.current_thread.__name__ = cls.GARBAGE_COLLECTOR_THREAD_NAME
+        while Monitor.exception_on_abort(timeout=2.0):
+            cls.reap_the_dead()
+
+    @classmethod
+    def reap_the_dead(cls) -> int:
+        live_threads: int = 0
+        with cls._lock:
+            joined_threads: List[threading.Thread] = []
+            for thread in cls._threads_to_join:
+                if not thread.is_alive():
+                    # if cls._logger.isEnabledFor(DISABLED):
+                    #     cls._logger.debug_extra_verbose(
+                    #             f'Purging dead thread: {thread.name} '
+                    #             f'{thread.ident}')
+                    thread.join(timeout=0.001)
+                    joined_threads.append(thread)
+                else:
+                    live_threads += 1
+            for thread in joined_threads:
+                # if cls._logger.isEnabledFor(DISABLED):
+                #     cls._logger.debug_extra_verbose(f'Removing dead thread: '
+                #                                     f'{thread.name} '
+                #                                     f'{thread.ident}')
+                xbmc.log(f'garbage_collector joined: {thread.name} live: {live_threads}',
+                         xbmc.LOGDEBUG)
+                cls._threads_to_join.remove(thread)
+        return live_threads
+
+    @classmethod
+    def abort_notification(cls):
+        """
+        ABORT HAS OCCURRED. Shut down fast and capture dump of stragglers
+        :return:
+        """
+        with cls._lock:
+            joined_threads: List[threading.Thread] = []
+            for thread in cls._threads_to_join:
+                if thread.is_alive() and thread.name != cls.GARBAGE_COLLECTOR_THREAD_NAME:
+                    xbmc.log(f'garbage_collector Thread alive after ABORT '
+                             f'{thread.name}', xbmc.LOGDEBUG)
+                else:
+                    # if cls._logger.isEnabledFor(DISABLED):
+                    #     cls._logger.debug_extra_verbose(
+                    #             f'Purging dead thread: {thread.name} '
+                    #             f'{thread.ident}')
+                    thread.join(0.001)
                     if not thread.is_alive():
-                        if cls._logger.isEnabledFor(DISABLED):
-                            cls._logger.debug_extra_verbose(
-                                    f'Purging dead thread: {thread.name} '
-                                    f'{thread.ident}')
                         joined_threads.append(thread)
-                    else:
-                        if cls._logger.isEnabledFor(DISABLED):
-                            cls._logger.debug_extra_verbose(
-                                    f'Joining thread: {thread.name} '
-                                    f'{thread.ident}')
-                        thread.join(timeout=0.2)
-                        if not thread.is_alive():
-                            if cls._logger.isEnabledFor(DISABLED):
-                                cls._logger.debug_extra_verbose(
-                                        f'Purging dead thread: {thread.name} '
-                                        f'{thread.ident}')
-                            joined_threads.append(thread)
-
-                for thread in joined_threads:
-                    if cls._logger.isEnabledFor(DISABLED):
-                        cls._logger.debug_extra_verbose(f'Removing dead thread: '
-                                                        f'{thread.name} '
-                                                        f'{thread.ident}')
-                    cls._threads_to_join.remove(thread)
-
-            if Monitor.wait_for_abort(timeout=1.0):
-                cls._stopped = True
-                finished = True
-                del cls._threads_to_join
+            for thread in joined_threads:
+                # if cls._logger.isEnabledFor(DISABLED):
+                #     cls._logger.debug_extra_verbose(f'Removing dead thread: '
+                #                                     f'{thread.name} '
+                #                                    f'{thread.ident}')
+                xbmc.log(f'garbage_collector purged {thread.name}', xbmc.LOGDEBUG)
+                cls._threads_to_join.remove(thread)
+        # cls._stopped = True
+        finished = True
+        # del cls._threads_to_join
 
 
 GarbageCollector.init_class()

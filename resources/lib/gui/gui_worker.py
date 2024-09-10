@@ -6,8 +6,6 @@ from common import AbortException
 from common.garbage_collector import GarbageCollector
 from common.logger import *
 from common.monitor import Monitor
-from common.phrases import PhraseList
-from gui.base_model import BaseModel
 from gui.gui_globals import GuiGlobals
 from gui.statements import Statements
 from gui.topic_model import TopicModel
@@ -62,7 +60,7 @@ class GuiWorkerQueue:
             cls._instance.active_queue = True
         if cls._instance.queue_processor is None:
             cls._instance.queue_processor = threading.Thread(
-                    target=cls._instance._handleQueue, name=f'GuiWorkerQueue')
+                    target=cls._instance._handleQueue, name=f'GuiWrkrQ')
             cls._instance._logger.debug_verbose(f'Starting queue_processor GuiWorkerQueue')
             cls._instance.queue_processor.start()
             GarbageCollector.add_thread(cls._instance.queue_processor)
@@ -149,7 +147,7 @@ class GuiWorkerQueue:
         """
         if True:  # windialog_state.is_control_visible:
             if changed & WindowStateMonitor.WINDOW_FOCUS_CHANGED:
-                focused_topic = window_model.topic_by_tree_id.get(str(focus_id))
+                #  focused_topic = window_model.topic_by_tree_id.get(str(focus_id))
                 topic_str: str = ''
                 if cls._logger.isEnabledFor(DEBUG_VERBOSE):
                     cls._logger.debug_verbose(f'WINDOW_FOCUS_CHANGED '
@@ -225,13 +223,13 @@ class GuiWorker:
         if GuiGlobals.require_focus_change and not window_state.focus_changed:
             return True
         if not GuiGlobals.require_focus_change and window_state.focus_changed:
+            clz._logger.debug(f'require_focus_change = True because focus_changed')
             GuiGlobals.require_focus_change = True
 
         if window_state.changed == 0 and window_state.focus_id == 0:
             return True
 
         clz._logger.debug(f'In determine_focus_changed window_state: {window_state}')
-
         current_windialog_id: int = window_state.window_id
 
         from windows import CustomTTSReader
@@ -428,8 +426,8 @@ class GuiWorker:
                 topic = None
                 clz._logger.debug(f'No topics found for root')
                 return []
-            clz._logger.debug(f'focused topic: {topic.name}')
-
+            if clz._logger.isEnabledFor(DEBUG_VERBOSE):
+                clz._logger.debug_verbose(f'focused topic: {topic.name}')
         if not focus_changed:
             current_focus_chain.append(topic)
             return current_focus_chain
@@ -439,8 +437,10 @@ class GuiWorker:
                 clz._logger.debug(f'Skipping over fake topic: {topic}')
                 continue
             current_focus_chain.append(topic)
-            clz._logger.debug(f'topic: {topic.name} ctrl: {topic.parent.control_id} '
-                              f'outer_topic: {topic.outer_topic}')
+            if clz._logger.isEnabledFor(DEBUG_VERBOSE):
+                clz._logger.debug_verbose(f'topic: {topic.name} ctrl: '
+                                          f'{topic.parent.control_id} '
+                                          f'outer_topic: {topic.outer_topic}')
             topic = window_model.topic_by_topic_name.get(topic.outer_topic)
 
         # Reverse to make head of list the first thing to voice (window header)

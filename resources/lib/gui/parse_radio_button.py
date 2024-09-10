@@ -1,10 +1,11 @@
 # coding=utf-8
 
 import xml.etree.ElementTree as ET
+from enum import StrEnum
 from typing import Callable, ForwardRef, List, Tuple
 
 from common.logger import BasicLogger
-from gui import ControlType
+from gui import ControlElement
 from gui.base_parser import BaseParser
 from gui.base_tags import control_elements, ElementKeywords as EK, TopicElement as TE, Item
 from gui.element_parser import ElementHandler
@@ -29,7 +30,7 @@ class ParseRadioButton(ParseControl):
                     be a built in function.
     """
     _logger: BasicLogger = None
-    item: Item = control_elements[ControlType.RADIO_BUTTON.name]
+    item: Item = control_elements[ControlElement.RADIO_BUTTON]
 
     @classmethod
     def init_class(cls) -> None:
@@ -60,6 +61,14 @@ class ParseRadioButton(ParseControl):
         self.hint_text_expr: str = ''
         self.on_info_expr: str = ''
 
+    @property
+    def control_type(self) -> ControlElement:
+        return BaseParser.control_type.fget(self)
+
+    @control_type.setter
+    def control_type(self, value: ControlElement) -> None:
+        BaseParser.control_type.fset(self, value)
+
     @classmethod
     def get_instance(cls, parent: ParseControl,
                      el_button: ET.Element) -> ForwardRef('ParseRadioButton'):
@@ -76,7 +85,7 @@ class ParseRadioButton(ParseControl):
         """
         clz = type(self)
 
-        self.control_type = ControlType.RADIO_BUTTON
+        self.control_type = ControlElement.RADIO_BUTTON
         control_id_str: str = el_button.attrib.get('id')
         if control_id_str is not None:
             control_id: int = int(control_id_str)
@@ -89,18 +98,23 @@ class ParseRadioButton(ParseControl):
                                           EK.ENABLE, EK.WRAP_MULTILINE,
                                           EK.ON_CLICK, EK.DESCRIPTION, EK.LABEL,
                                           EK.LABEL2, EK.ON_CLICK, EK.ON_FOCUS,
-                                          EK.ON_UNFOCUS,
-                                          EK.HINT_TEXT, EK.ON_INFO)
+                                          EK.ON_UNFOCUS, EK.ON_INFO)
         elements: [ET.Element] = el_button.findall(f'./*')
         element: ET.Element
         for element in elements:
             if element.tag in tags_to_parse:
                 # clz._logger.debug(f'element_tag: {element.tag}')
                 key: str = element.tag
-                control_type: ControlType = clz.get_control_type(element)
+                control_type: ControlElement = clz.get_control_type(element)
+                clz._logger.debug(f'control_type: {control_type} self: '
+                                  f'{self.control_type}')
+                str_enum: StrEnum = None
                 if control_type is not None:
-                    key = control_type.name
-                item: Item = control_elements[key]
+                    str_enum = control_type
+                else:
+                    str_enum = EK(key)  # TE.TOPIC also in EK
+                item: Item = control_elements[str_enum]
+
                 # Values copied to self
                 handler: Callable[[BaseParser, ET.Element], str | BaseParser]
                 handler = ElementHandler.get_handler(item.key)
@@ -110,7 +124,7 @@ class ParseRadioButton(ParseControl):
                 if parsed_instance is not None:
                     if control_type is not None:
                         self.children.append(parsed_instance)
-                    if key == EK.TOPIC:
+                    if str_enum == EK.TOPIC:
                         self.topic = parsed_instance
             # else:
             #     if element.tag not in ('top', 'left', 'width', 'height', 'bottom'):

@@ -11,14 +11,14 @@ from common.monitor import Monitor
 from gui import BaseParser
 from gui.base_model import BaseModel
 from gui.base_parser import BaseControlParser
-from gui.base_tags import control_elements, ControlType, Item
+from gui.base_tags import control_elements, ControlElement, Item
 from gui.exceptions import ParseError
 import xml.etree.ElementTree as ET
 from enum import auto, Enum
 from typing import Callable
 
 from common.logger import BasicLogger
-from gui.base_tags import ControlType, Tag
+from gui.base_tags import ControlElement, Tag
 from gui.base_tags import BaseAttributeType as BAT
 from gui.base_tags import ElementKeywords as EK
 from gui.exceptions import ParseError

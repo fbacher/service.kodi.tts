@@ -199,6 +199,7 @@ class SimpleRunCommand:
 
             self.cleanup()
             if self.run_thread.is_alive():
+                # TODO: TIMEOUTS TOO LONG REWORK
                 self.run_thread.join(timeout=1.0)
             if self.stdout_thread.is_alive():
                 self.stdout_thread.join(timeout=0.2)

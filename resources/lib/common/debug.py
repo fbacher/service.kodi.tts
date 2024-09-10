@@ -83,6 +83,15 @@ class Debug:
             cls._logger.exception('')
 
     @classmethod
+    def dump_current_thread(cls) -> None:
+        debug_file = io.open("/home/fbacher/.kodi/temp/kodi.threads", mode='a',
+                             buffering=1,
+                             newline=None,
+                             encoding='ASCII')
+        faulthandler.dump_traceback(file=debug_file, all_threads=False)
+        debug_file.close()
+
+    @classmethod
     def _dump_all_threads(cls) -> None:
         """
             Worker method that dumps all threads.
@@ -90,6 +99,13 @@ class Debug:
         :return:
         """
         try:
+            # debug_file = io.open("/home/fbacher/.kodi/temp/kodi.threads", mode='w',
+            #                      buffering=1,
+            #                      newline=None,
+            #                      encoding='ASCII')
+            faulthandler.dump_traceback(file=sys.stdout, all_threads=True)
+            '''
+            # debug_file.close()
             addon_prefix = f'{Constants.ADDON_ID}/'
             xbmc.log('dump_all_threads', xbmc.LOGDEBUG)
             sio = StringIO()
@@ -131,6 +147,7 @@ class Debug:
                 reraise(*sys.exc_info())
             except Exception as e:
                 cls._logger.exception(msg='')
+            '''
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:

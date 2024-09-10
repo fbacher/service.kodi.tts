@@ -90,8 +90,8 @@ class WindowTopicModel(TopicModel):
 
         clz = WindowTopicModel
         success: bool = False
-        if self.alt_type not in (AltCtrlType.DIALOG, AltCtrlType.WINDOW):
-            clz._logger.debug(f'{self.alt_type} not DIALOG nor WINDOW')
+        if self.alt_type == '':
+            clz._logger.debug(f'{self.alt_type} not set')
             return False
         success = super().voice_control(stmts, focus_changed, windialog_state)
         # TODO, incomplete

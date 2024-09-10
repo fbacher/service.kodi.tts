@@ -1,12 +1,14 @@
 # coding=utf-8
 
 import xml.etree.ElementTree as ET
+from enum import StrEnum
 from typing import Callable, List, Tuple
 
 from common.logger import BasicLogger
 from gui import BaseParser
-from gui.base_tags import (BaseAttributeType as BAT, control_elements, ControlType,
-                           ElementKeywords as EK, Item)
+from gui.base_tags import (BaseAttributeType as BAT, control_elements, ControlElement,
+                           ControlElement as CE, ElementKeywords as EK, Item,
+                           TopicElement as TE)
 from gui.element_parser import ElementHandler
 from gui.parse_control import ParseControl
 from gui.parse_topic import ParseTopic
@@ -53,7 +55,7 @@ class ParseLabel(ParseControl):
     scrollspeed 	Scroll speed of text in pixels per second. Defaults to 60.
 
     """
-    item: Item = control_elements[ControlType.LABEL.name]
+    item: Item = control_elements[ControlElement.LABEL_CONTROL]
     label = BasicLogger = None
 
     @classmethod
@@ -63,7 +65,7 @@ class ParseLabel(ParseControl):
 
     def __init__(self, parent: BaseParser) -> None:
         super().__init__(parent)
-        self.control_type = ControlType.LABEL
+        self.control_type = ControlElement.LABEL_CONTROL
         self.topic: ParseTopic | None = None
         self.scroll: bool = False
         self.scroll_suffix: str = '|'
@@ -72,11 +74,18 @@ class ParseLabel(ParseControl):
         self.info_expr: str = ''
         self.number_expr: str = ''
         self.has_path: bool = False
-        self.hint_text_expr: str = ''
         self.wrap_multiline: bool = False
         self.description: str = ''
         self.visible_expr: str = ''
         self.label_for: str = ''
+
+    @property
+    def control_type(self) -> ControlElement:
+        return BaseParser.control_type.fget(self)
+
+    @control_type.setter
+    def control_type(self, value: ControlElement) -> None:
+        BaseParser.control_type.fset(self, value)
 
     @classmethod
     def get_instance(cls, parent: BaseParser,
@@ -93,7 +102,6 @@ class ParseLabel(ParseControl):
         :return:
         """
         clz = type(self)
-
 
         """
          <control type="label">
@@ -122,10 +130,6 @@ class ParseLabel(ParseControl):
             control_id: int = int(el_label.attrib.get('id'))
             self.control_id = control_id
 
-        label_for_str: str = el_label.attrib.get(BAT.LABEL_FOR)
-        if label_for_str is not None:
-            self.label_for = label_for_str
-
         el_scroll_suffix: ET.Element = el_label.find(f'./{EK.SCROLL_SUFFIX}')
         if el_scroll_suffix is not None:
             scroll_suffix: str = el_scroll_suffix.text
@@ -133,10 +137,10 @@ class ParseLabel(ParseControl):
                 clz._logger.debug(f'scrollsuffix value not specified. Ignored')
             self.scroll_suffix = scroll_suffix
 
-        tags_to_parse: Tuple[str, ...] = (EK.TOPIC, EK.LABEL, EK.SCROLL, EK.NUMBER,
-                                          EK.HAS_PATH, EK.INFO, EK.ACTION,
-                                          EK.ORIENTATION, EK.HINT_TEXT,
-                                          EK.DESCRIPTION)
+        tags_to_parse: Tuple[str, ...] = (TE.TOPIC, CE.LABEL_CONTROL, EK.SCROLL,
+                                          EK.NUMBER, EK.HAS_PATH, EK.INFO, EK.ACTION,
+                                          EK.ORIENTATION, EK.DESCRIPTION,
+                                          EK.VISIBLE)
         orphans: List[ET.Element] = []
         elements: [ET.Element] = el_label.findall(f'./*')
         element: ET.Element
@@ -145,10 +149,13 @@ class ParseLabel(ParseControl):
             if element.tag in tags_to_parse:
                 # clz._logger.debug(f'element_tag: {element.tag}')
                 key: str = element.tag
-                control_type: ControlType = clz.get_control_type(element)
+                control_type: ControlElement = clz.get_control_type(element)
+                str_enum: StrEnum = None
                 if control_type is not None:
-                    key = control_type.name
-                item: Item = control_elements[key]
+                    str_enum = control_type
+                else:
+                    str_enum = EK(key)
+                item: Item = control_elements[str_enum]
                 # Values copied to self
                 handler: Callable[[BaseParser, ET.Element], str | BaseParser]
                 handler = ElementHandler.get_handler(item.key)
@@ -156,11 +163,8 @@ class ParseLabel(ParseControl):
                 if parsed_instance is not None:
                     if control_type is not None:
                         self.children.append(parsed_instance)
-                    if key == EK.TOPIC:
+                    if str_enum == EK.TOPIC:
                         self.topic = parsed_instance
-            # else:
-            #     if element.tag not in ('top', 'left', 'width', 'height', 'bottom'):
-            #         clz._logger.debug(f'ParseLabel ignored element: {element.tag}')
 
     def __repr__(self) -> str:
         clz = type(self)
@@ -168,17 +172,14 @@ class ParseLabel(ParseControl):
         if self.control_id != -1:
             control_id = f' id: {self.control_id}'
 
-        label_for_str: str = ''
-        if self.label_for != '':
-            label_for_str = f'\n label_for: {self.label_for}'
-
         visible_expr: str = ''
         if self.visible_expr != '':
             visible_expr = f'\n visible_expr: {self.visible_expr}'
 
-        label_expr: str = ''
+        label_expr_str: str = ''
         if self.label_expr != '':
-            label_expr = f'\n label_expr: {self.label_expr}'
+            label_expr_str = f'\n label_expr: {self.label_expr}'
+
         number_expr: str = ''
         if self.number_expr:
             number_expr = f'\n number_expr: {number_expr}'
@@ -186,10 +187,6 @@ class ParseLabel(ParseControl):
         has_path_str: str = ''
         if self.has_path:
             has_path_str = f'\n has_path: {self.has_path}'
-
-        hint_text_str: str = ''
-        if self.hint_text_expr != '':
-            hint_text_str = f'\n hint_text: {self.hint_text_expr}'
 
         scroll_suffix: str = ''
         # if self.scroll_suffix: str = '|'  # appended to scrolled lines (?)
@@ -206,12 +203,11 @@ class ParseLabel(ParseControl):
 
         results: List[str] = []
         result: str = (f'\nParseLabel type: {self.control_type}'
-                       f'{control_id}{label_for_str}'
+                       f'{control_id}{label_expr_str}'
                        f'{visible_expr}'
                        f'{number_expr}{has_path_str} '
-                       f'{hint_text_str}'
                        f'{info_expr}{topic_str}'
-                       f'\n #children: {len(self.children)}{label_expr}')
+                       f'\n #children: {len(self.children)}')
 
         results.append(result)
 

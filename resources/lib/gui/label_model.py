@@ -2,16 +2,18 @@
 
 from typing import Callable, List
 
+from common.debug import Debug
 from common.logger import BasicLogger
 from common.phrases import PhraseList
 from gui.base_label_model import BaseLabelModel
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
-from gui.base_tags import (control_elements, ControlType, Item)
+from gui.base_tags import (control_elements, ControlElement, Item)
 from gui.element_parser import ElementHandler
-from gui.label_no_topic_model import NoLabelTopicModel
 from gui.label_topic_model import LabelTopicModel
+from gui.no_topic_models import NoLabelTopicModel
 from gui.parse_label import ParseLabel
+from gui.statements import Statements, StatementType
 from windows.window_state_monitor import WinDialogState
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -20,7 +22,7 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 class LabelModel(BaseLabelModel):
 
     _logger: BasicLogger = None
-    item: Item = control_elements[ControlType.LABEL.name]
+    item: Item = control_elements[ControlElement.LABEL_CONTROL]
 
     def __init__(self, parent: BaseModel, parsed_label: ParseLabel) -> None:
         clz = LabelModel
@@ -71,7 +73,6 @@ class LabelModel(BaseLabelModel):
         self.scroll_suffix = parsed_label.scroll_suffix
         self.scroll_speed = parsed_label.scroll_speed
         self.label_expr = parsed_label.label_expr
-        self.hint_text_expr = parsed_label.hint_text_expr
         self.info_expr = parsed_label.info_expr
         self.number_expr = parsed_label.number_expr
         self.has_path = parsed_label.has_path
@@ -125,12 +126,12 @@ class LabelModel(BaseLabelModel):
         """
         return False
 
-    def voice_control(self, phrases: PhraseList,
+    def voice_control(self, stmts: Statements,
                       focus_changed: bool,
                       windialog_state: WinDialogState) -> bool:
         """
 
-        :param phrases: PhraseList to append to
+        :param stmts: Statements to append to
         :param focus_changed: If True, then voice changed heading, labels and all
                               If False, then only voice a change in value.
         :param windialog_state: contains some useful state information
@@ -146,12 +147,12 @@ class LabelModel(BaseLabelModel):
         if self.topic is not None:
             topic: LabelTopicModel = self.topic
             clz._logger.debug(f'topic: {topic.alt_type}')
-            success = topic.voice_alt_control_name(phrases)
+            success = topic.voice_alt_control_name(stmts)
             if not success:
-                success = self.voice_control_name(phrases)
-            success = self.voice_heading(phrases)
-            success = self.voice_label(phrases)
-            success = self.voice_label2(phrases)
+                success = self.voice_control_name(stmts)
+            success = self.voice_heading(stmts)
+            success = self.voice_label(stmts)
+            success = self.voice_label2(stmts)
             # Voice either next Topic down or focus item
         else:
             topic: NoLabelTopicModel = self.topic
@@ -159,39 +160,41 @@ class LabelModel(BaseLabelModel):
         # TODO, incomplete
         return success
 
-    def voice_controls_labels(self, phrases: PhraseList) -> bool:
+    def voice_controls_labels(self, stmts: Statements) -> bool:
         """
             Voices ONLY label, since ControlLabel does not support label2
-        :param phrases:
+        :param stmts:
         :return:
 
         """
-        result: bool = self.voice_label(phrases)
+        result: bool = self.voice_label(stmts)
         return result
 
-    def voice_labels(self, phrases: PhraseList, voice_label: bool = True,
+    def voice_labels(self, stmts: Statements, voice_label: bool = True,
                      voice_label_2: bool = True) -> bool:
         """
         Redundant with voice_label since ControlLabel does not support Label2.
         Simplier to keep it.
 
-        :param phrases:
+        :param stmts:
         :param voice_label: Voice the label, if supportted by control
         :param voice_label_2 Voice label_2, if supported by control (Not supported)
         :return:
         """
         if not voice_label:
             return False
-        return self.voice_label(phrases)
+        return self.voice_label(stmts)
 
-    def voice_label(self, phrases: PhraseList,
-                    control_id_expr: int | str | None = None) -> bool:
+    def voice_label(self, stmts: Statements,
+                    control_id_expr: int | str | None = None,
+                    stmt_type: StatementType = StatementType.NORMAL) -> bool:
         """
         TODO: Get rid of control_id, rely on Topic code handling
 
-        :param phrases: Any found text is appended to this
+        :param stmts: Any found text is appended to this
         :param control_id_expr:  If non-None, then used as the control_id instead
                of self.control_id
+        :param stmt_type: Sets the StatementType of voiced label.
         :return:
         """
         clz = LabelModel
@@ -200,23 +203,24 @@ class LabelModel(BaseLabelModel):
         success: bool = False
         control_id: int | None
         control_query: str | None
-        success = self.get_label_ll(phrases, label_expr=control_id_expr)
-        clz._logger.debug(f'{phrases}')
+        success = self.get_label_ll(stmts, label_expr=control_id_expr,
+                                    stmt_type=stmt_type)
+        clz._logger.debug(f'{stmts}')
         return success
 
-    def voice_value(self, phrases: PhraseList) -> bool:
+    def voice_value(self, stmts: Statements) -> bool:
         """
         Voice this label as a value for some other control.
         Let the other control decide whether to ignore repeat values.
         That will be consistent with a control deciding when to voice its
         value.
-        :param phrases:
+        :param stmts:
         :return:
         """
         clz = LabelModel
         # clz._logger.debug(f'label_model: {self}')
         # temp_phrases: PhraseList = PhraseList(check_expired=False)
-        success: bool = self.voice_label(phrases)
+        success: bool = self.voice_label(stmts)
         # if temp_phrases.equal_text(self.previous_value):
         #     return False
         # else:
@@ -233,9 +237,13 @@ class LabelModel(BaseLabelModel):
         if self.control_id != '':
             control_id = f' id: {self.control_id}'
 
+        description_str: str = ''
+        if self.description != '':
+            description_str = f'\n  decription: {self.description}'
+
         label_for_str: str = ''
         if self.label_for != '':
-            label_for_str = f'\n label_for: {self.label_for}'
+            label_for_str = f'\n  label_for: {self.label_for}'
 
         visible_expr: str = ''
         if self.visible_expr is not None and len(self.visible_expr) > 0:
@@ -270,9 +278,11 @@ class LabelModel(BaseLabelModel):
         results: List[str] = []
         result: str = (f'\nLabelModel type: {self.control_type}'
                        #  f' item: {clz.item} key: {clz.item.key}'
-                       f'{control_id}{label_for_str}'
+                       f'{control_id}'
+                       f'{description_str}'
+                       f'{label_for_str}'
                        f'{visible_expr}'
-                       f'{visible_expr}{label_expr}'
+                       f'{label_expr}'
                        f'{number_expr}{has_path_str} '
                        f'{hint_text_str}'
                        f'{info_expr}'
@@ -283,8 +293,8 @@ class LabelModel(BaseLabelModel):
 
         if include_children:
             for child in self.children:
-                child: BaseParser
-                results.append(str(child))
+                child: BaseModel
+                results.append(child.to_string(include_children))
         results.append(f'\nEND LabelModel')
 
         return '\n'.join(results)

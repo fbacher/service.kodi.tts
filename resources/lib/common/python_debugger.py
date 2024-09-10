@@ -61,7 +61,7 @@ class PythonDebugger:
                 if cls.START_IN_SEPARATE_THREAD:
                     cls.thread = threading.Thread(
                             target=cls._enable,
-                            name=cls.plugin_name + 'pydevd startup thread')
+                            name=cls.plugin_name + 'pydevd_strt')
                     cls.thread.start()
                 else:
                     cls._enable()
@@ -82,7 +82,8 @@ class PythonDebugger:
             try:
                 import pydevd
                 pydevd.stoptrace()
-                cls.thread.join(timeout=0.1)
+                cls.thread.join(timeout=0.05)
+                del cls.thread
             except Exception:
                 pass
 

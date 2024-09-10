@@ -5,13 +5,13 @@ from typing import Callable, List
 from common.logger import BasicLogger
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
-from gui.base_tags import control_elements, ControlType, Item
+from gui.base_tags import control_elements, ControlElement, Item
 from gui.element_parser import (BaseElementParser,
                                 ElementHandler)
+from gui.no_topic_models import NoScrollbarTopicModel
 from gui.parse_group import ParseGroup
 from gui.parse_scrollbar import ScrollbarParser
 from gui.parse_topic import ParseTopic
-from gui.scrollbar_no_topic_model import NoScrollbarTopicModel
 from gui.scrollbar_topic_model import ScrollbarTopicModel
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -20,7 +20,7 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 class ScrollbarModel(BaseModel):
 
     _logger: BasicLogger = None
-    item: Item = control_elements[ControlType.SCROLL_BAR.name]
+    item: Item = control_elements[ControlElement.SCROLL_BAR]
 
     def __init__(self, parent: BaseModel, parsed_scrollbar: ScrollbarParser) -> None:
         clz = type(self)
@@ -62,10 +62,7 @@ class ScrollbarModel(BaseModel):
             self.topic = ScrollbarTopicModel(self, parsed_scrollbar.topic)
         else:
             self.topic = NoScrollbarTopicModel(self)
-
-        clz._logger.debug(f'# parsed children: {len(parsed_scrollbar.get_children())}')
         parsers: List[BaseParser] = parsed_scrollbar.get_children()
-
         for parser in parsers:
             parser: BaseParser
             # clz._logger.debug(f'parser: {parser}')
@@ -143,6 +140,6 @@ class ScrollbarModel(BaseModel):
         if include_children:
             for child in self.children:
                 child: BaseModel
-                results.append(str(child))
-
+                result: str = child.to_string(include_children=include_children)
+                results.append(result)
         return '\n'.join(results)

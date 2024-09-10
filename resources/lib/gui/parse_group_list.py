@@ -1,11 +1,11 @@
 # coding=utf-8
-
+from enum import StrEnum
 from typing import Callable, List, Tuple
 import xml.etree.ElementTree as ET
 from gui.base_tags import ElementKeywords as EK, TopicElement as TE
 
 from common.logger import BasicLogger, DEBUG_VERBOSE
-from gui import ControlType
+from gui import ControlElement
 from gui.base_parser import BaseParser
 from gui.base_tags import control_elements, Item
 from gui.element_parser import BaseElementParser, ElementHandler
@@ -19,7 +19,7 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 class ParseGroupList(ParseControl):
 
     _logger: BasicLogger = None
-    item: Item = control_elements[ControlType.GROUP_LIST.name]
+    item: Item = control_elements[ControlElement.GROUP_LIST]
 
     @classmethod
     def init_class(cls) -> None:
@@ -91,7 +91,7 @@ class ParseGroupList(ParseControl):
                 <ondown>100</ondown>
         """
         clz = type(self)
-        self.control_type = ControlType.GROUP_LIST
+        self.control_type = ControlElement.GROUP_LIST
         control_id_str: str = el_group_list.attrib.get('id')
         if control_id_str is not None:
             control_id: int = int(control_id_str)
@@ -108,11 +108,9 @@ class ParseGroupList(ParseControl):
         DEFAULT_TAGS: Tuple[str, ...] = (EK.DESCRIPTION, EK.VISIBLE)
         DEFAULT_FOCUS_TAGS: Tuple[str, ...] = (EK.ENABLE, EK.ON_FOCUS, EK.ON_UNFOCUS,
                                                EK.ON_INFO)
-        GROUP_LIST_CONTROL_TAGS: Tuple[str, ...] = (TE.HINT_TEXT,
-                                                    EK.PAGE_CONTROL,
+        GROUP_LIST_CONTROL_TAGS: Tuple[str, ...] = (EK.PAGE_CONTROL,
                                                     EK.ORIENTATION,
                                                     EK.SCROLL_TIME,
-                                                    TE.ALT_LABEL,
                                                     EK.DEFAULT_CONTROL,
                                                     EK.CONTROL)
         tags_to_parse: Tuple[str, ...] = ((TE.TOPIC,) + DEFAULT_FOCUS_TAGS +
@@ -126,16 +124,19 @@ class ParseGroupList(ParseControl):
                 if clz._logger.isEnabledFor(DEBUG_VERBOSE):
                     clz._logger.debug_verbose(f'element_tag: {child.tag}')
                 key: str = child.tag
-                control_type: ControlType = clz.get_control_type(child)
+                control_type: ControlElement = clz.get_control_type(child)
+                str_enum: StrEnum = None
                 if control_type is not None:
-                    key = control_type.name
-                item: Item = control_elements[key]
+                    str_enum = control_type
+                else:
+                    str_enum = EK(key)
+                item: Item = control_elements[str_enum]
                 # Values copied to self
                 handler: Callable[[BaseParser, ET.Element], str | BaseParser]
                 handler = ElementHandler.get_handler(item.key)
                 parsed_instance: BaseParser = handler(self, child)
                 if parsed_instance is not None:
-                    if key == EK.TOPIC:
+                    if str_enum == EK.TOPIC:
                         self.topic = parsed_instance
                     elif control_type is not None:
                         self.children.append(parsed_instance)

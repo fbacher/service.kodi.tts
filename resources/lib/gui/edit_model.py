@@ -6,10 +6,10 @@ from common.logger import BasicLogger
 from gui.base_label_model import BaseLabelModel
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
-from gui.base_tags import control_elements, ControlType, Item
-from gui.edit_no_topic_model import NoEditTopicModel
+from gui.base_tags import control_elements, ControlElement, Item
 from gui.edit_topic_model import EditTopicModel
 from gui.element_parser import (ElementHandler)
+from gui.no_topic_models import NoEditTopicModel
 from gui.parse_edit import ParseEdit
 
 module_logger = BasicLogger.get_module_logger(module_path=__file__)
@@ -18,7 +18,7 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 class EditModel(BaseLabelModel):
 
     _logger: BasicLogger = None
-    item: Item = control_elements[ControlType.EDIT.name]
+    item: Item = control_elements[ControlElement.EDIT]
 
     def __init__(self, parent: BaseLabelModel, parsed_edit: ParseEdit) -> None:
         clz = type(self)

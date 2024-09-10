@@ -41,32 +41,27 @@ class Phrase:
     When caching is not used, then phrases be merged with other non-interrupting
     phrases.
     """
-    PAUSE_DEFAULT: int = 0
+    # Units in milliseconds
+    # MP3 has some timeing error, due to the format. It is okay
+    # after 500 ms
+
+    MINIMUM_PAUSE: int = 100
+    MAXIMUM_PAUSE: int = 1990
+    MINIMUM_WAVE: int = MINIMUM_PAUSE
+    MAXIMUM_WAVE: int = 490
+    MINIMUM_MP3: int = 100
+    PREFERRED_MINIMUM_MP3 = 500
+    MAXIMUM_MP3: int = 1990
+    PAUSE_DEFAULT: int = 100
     PAUSE_WORD: int = 0
-    PAUSE_SENTENCE: int = 0
-    PAUSE_PARAGRAPH: int = 0
+    PAUSE_SENTENCE: int = 300
+    PAUSE_PARAGRAPH: int = 400
     PAUSE_SHORT: int = 10
     PAUSE_NORMAL: int = 20
-    PAUSE_LONG: int = 145
-    PAUSE_PRE_HINT: int = 145
-    PAUSE_POST_HINT: int = 145
+    PAUSE_LONG: int = 150
+    PAUSE_PRE_HINT: int = 400
+    PAUSE_POST_HINT: int = 400
 
-    available_pauses: List[int] = [
-        45,
-        50,
-        100,
-        145,
-        150,
-        200,
-        250,
-        300,
-        350,
-        400,
-        450,
-        500
-    ]
-    min_pause: int = available_pauses[0]
-    max_pause: int = available_pauses[len(available_pauses) - 1]
 
     _remove_multiple_whitespace_re: Final[regex.Pattern] = regex.compile(r'(\s{2,})')
     _formatTagRE: Final[regex.Pattern] = regex.compile(
@@ -358,17 +353,21 @@ class Phrase:
     def exists(self) -> bool:
         clz = type(self)
         self.test_expired()
-        text: str = self.get_text()
-        voice_file_path: pathlib.Path = self.get_cache_path()
-        try:
-            text_file: pathlib.Path | None
-            text_file = voice_file_path.with_suffix('.txt')
-            exists: bool = text_file.is_file()
-            size: int = text_file.stat().st_size
-            clz._logger.debug(f'path: {text_file} exists: {exists} size: {size} '
-                              f'text: {text}')
-        except:
-            clz._logger.exception('')
+        if clz._logger.isEnabledFor(DEBUG):
+            text: str = self.get_text()
+            voice_file_path: pathlib.Path = self.get_cache_path()
+            try:
+                text_file: pathlib.Path | None
+                text_file = voice_file_path.with_suffix('.txt')
+                exists: bool = text_file.is_file() and text_file.exists()
+                size: int = -1
+                if exists:
+                    size = text_file.stat().st_size
+                if size <= 0:
+                    clz._logger.debug(f'EMPTY FILE path: {text_file} exists: {exists} '
+                                      f'size: {size} text: {text}')
+            except:
+                clz._logger.exception('')
         return self._exists
 
     def set_exists(self, exists: bool) -> None:
@@ -408,19 +407,23 @@ class Phrase:
         if pause_ms == 0:
             return None
 
-        if (pause_ms < Phrase.min_pause) or (pause_ms > Phrase.max_pause):
-            clz._logger.debug_verbose(f'pause out of range: {pause_ms}')
-
         found_pause_ms: int | None = None
-        for available_pause in Phrase.available_pauses:
-            if pause_ms <= available_pause:
-                found_pause_ms = available_pause
-                break
+        # Pauses from 10ms - 1990 ms available.
+        if (pause_ms < Phrase.MINIMUM_PAUSE) or (pause_ms > Phrase.MAXIMUM_PAUSE):
+            clz._logger.debug_verbose(f'pause out of range: {pause_ms}')
+            if pause_ms < Phrase.MINIMUM_PAUSE:
+                found_pause_ms = Phrase.MINIMUM_PAUSE
+            elif pause_ms > Phrase.MAXIMUM_PAUSE:
+                found_pause_ms = Phrase.MAXIMUM_PAUSE
+        else:
+            found_pause_ms = int((pause_ms + 5) / 10.0)  # Round to nearest available
 
-        if found_pause_ms is None:
-            found_pause_ms = Phrase.max_pause
+        sound_file_type: str = 'wav'
+        if found_pause_ms >= Phrase.MINIMUM_MP3:
+            sound_file_type: str = 'mp3'
+
         pause_file_path: Path = CriticalSettings.RESOURCES_PATH.joinpath(
-                'wavs', f'silence{found_pause_ms:03d}.wav')
+                'wavs', f'silence{found_pause_ms:04d}.{sound_file_type}')
         return pause_file_path
 
     def set_post_pause(self, post_pause_ms: int) -> None:

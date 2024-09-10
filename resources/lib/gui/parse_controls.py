@@ -6,12 +6,10 @@ from enum import auto, Enum
 from typing import Callable, Dict, ForwardRef, List, Tuple, Union
 
 from common.logger import BasicLogger
-from gui.base_control import BaseControl
 from gui.base_parser import BaseParser
 from gui.base_tags import (AttribInfo, BaseAttributeType, control_elements,
-                           control_elements, ControlType,
+                           control_elements, ControlElement,
                            ElementKeywords, ElementType, Item, Items, Tag)
-from gui.base_tags import BaseAttributeType as BAT
 from gui.base_tags import ElementKeywords as EK
 from gui.element_parser import BaseElementParser, ElementHandler
 from gui.exceptions import ParseError
@@ -21,7 +19,7 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 class ParseControls(BaseParser):
     _logger: BasicLogger = None
-    item: Item = control_elements[ControlType.CONTROLS.name]
+    item: Item = control_elements[ControlElement.CONTROLS]
 
     @classmethod
     def init_class(cls) -> None:
@@ -32,7 +30,6 @@ class ParseControls(BaseParser):
     def __init__(self, parent: BaseParser) -> None:
         super().__init__(parent)
         clz = type(self)
-        self.parent: BaseParser = parent
         self.item: Item = clz.item
         self.control_id: int = -1
         self.children: List[ForwardRef('ParseControl')] = []
@@ -43,6 +40,14 @@ class ParseControls(BaseParser):
         self = ParseControls(parent=parent)
         self.parse_controls(el_child)
         return self
+
+    @property
+    def control_type(self) -> ControlElement:
+        return BaseParser.control_type.fget(self)
+
+    @control_type.setter
+    def control_type(self, value: ControlElement) -> None:
+        BaseParser.control_type.fset(self, value)
 
     def parse_controls(self, controls_el: ET.Element) -> None:
         """
@@ -79,12 +84,13 @@ class ParseControls(BaseParser):
         control_id: str = ''
         if self.control_id != -1:
             control_id = f' id: {self.control_id}'
-        result: str = f'Controls{control_id}'
+        result: str = f'Controls {control_id}'
         results.append(result)
-        for control in self.children:
-            control: ParseControl
-            result = str(control)
-            results.append(result)
+        if False:
+            for control in self.children:
+                control: ParseControl
+                result = str(control)
+                results.append(result)
 
         return '\n'.join(results)
 
@@ -105,11 +111,7 @@ class CreateControl(BaseParser):
          """
         # Current element should be a control. Determine control type
 
-        # attribs: List[AttribInfo] = BaseControl.get_all_immediate_attribs(control_el)
-        # if len(attribs) > 0:
-        #     cls._logger.debug(f'attribs: {attribs}')
-
-        control_type: ControlType = cls.get_control_type(control_el)
+        control_type: ControlElement = cls.get_control_type(control_el)
         if control_type is None:
             raise ParseError(f'Expected {Tag.CONTROL.value} not {control_el.tag}')
         if control_type.name not in control_elements.keys():
@@ -117,7 +119,7 @@ class CreateControl(BaseParser):
             return
         # Once the control's type is determined, call the appropriate handler
 
-        item: Item = control_elements[control_type.name]
+        item: Item = control_elements[control_type]
         # cls._logger.debug(f'item: type: {type(item.key)} {item}')
         parser: BaseElementParser = ElementHandler.get_handler(item.key)
         child: ForwardRef('ParseControl') = parser(parent, control_el)

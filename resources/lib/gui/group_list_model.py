@@ -8,19 +8,14 @@ import xbmcgui
 from common.logger import BasicLogger
 from common.messages import Messages
 from common.phrases import Phrase, PhraseList
-from gui.base_label_model import BaseLabelModel
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
-from gui.base_tags import control_elements, ControlType, Item, WindowType
+from gui.base_tags import control_elements, ControlElement, Item, WindowType
 from gui.element_parser import (BaseElementParser,
                                 ElementHandler)
-from gui.group_list_no_topic_model import NoGroupListTopicModel
 from gui.group_list_topic_model import GroupListTopicModel
-from gui.label_model import LabelModel
-from gui.parse_group import ParseGroup
+from gui.no_topic_models import NoGroupListTopicModel
 from gui.parse_group_list import ParseGroupList
-from gui.parse_topic import ParseTopic
-from gui.old_topic_model import TopicModel
 from gui.statements import Statements
 from gui.topic_model import TopicModel
 from windows.ui_constants import AltCtrlType, UIConstants
@@ -32,7 +27,7 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 class GroupListModel(BaseModel):
 
     _logger: BasicLogger = None
-    item: Item = control_elements[ControlType.GROUP_LIST.name]
+    item: Item = control_elements[ControlElement.GROUP_LIST]
 
     def __init__(self, parent: BaseModel,
                  parsed_group_list: ParseGroupList) -> None:
@@ -68,7 +63,6 @@ class GroupListModel(BaseModel):
             self.topic = NoGroupListTopicModel(self)
 
         self.convert_children(parsed_group_list)
-
 
     @property
     def supports_label(self) -> bool:
@@ -121,7 +115,7 @@ class GroupListModel(BaseModel):
 
         if parsed_group_list.topic is not None:
             model_handler: Callable[[BaseModel, BaseModel, BaseParser],
-            TopicModel | BaseModel]
+                                    TopicModel | BaseModel]
             self.topic = GroupListTopicModel(self, parsed_group_list.topic)
         else:
             self.topic = NoGroupListTopicModel(self)
@@ -179,7 +173,7 @@ class GroupListModel(BaseModel):
                    picture on how to handle.
              """
             temp_phrases: PhraseList = PhraseList(check_expired=False)
-            orientation_str: str = self.get_list_orientation()
+            orientation_str: str = self.get_orientation()
             control_type: str
              control_type = topic.get_alt_control_name()
             if control_type == '':
@@ -241,7 +235,7 @@ class GroupListModel(BaseModel):
         success: bool = self.voice_labeled_by(stmts)
         if not success:
             success = self.voice_topic_label_expr(stmts)
-        orientation_str: str = self.get_list_orientation()
+        orientation_str: str = self.get_orientation()
         control_name: str = ''
         control_name = self.get_control_name()
         success = self.voice_number_of_items(stmts, control_name,
@@ -252,7 +246,7 @@ class GroupListModel(BaseModel):
         stmts.last.phrases.append(Phrase(text='get_heading_without_text not implemented'))
         return True
 
-    def get_list_orientation(self) -> str:
+    def get_orientation(self) -> str:
         msg_id: int = 32809
         if self.orientation_expr == UIConstants.VERTICAL:
             msg_id = 32808
@@ -282,8 +276,9 @@ class GroupListModel(BaseModel):
 
     def voice_active_item(self, stmts: Statements) -> bool:
         """
-        Only used when chain of Topics are not available from Window to
-         focused/active control.
+        Voices the currently focused item # as well as the focused control #.
+        TODO: The actual voicing of the control/label is done elsewhere. Should
+            be moved here to reduce some spagehtti code.
 
         :param stmts:
         :return:
@@ -414,7 +409,7 @@ class GroupListModel(BaseModel):
         if include_children:
             for child in self.children:
                 child: BaseModel
-                results.append(child.to_string(include_children))
-
+                result: str = child.to_string(include_children=include_children)
+                results.append(result)
         results.append('END GroupListModel')
         return '\n'.join(results)

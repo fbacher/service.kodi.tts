@@ -45,11 +45,14 @@ class HelpManager(threading.Thread):
         #  self.do_modal_queue = queue.SimpleQueue()
         self.is_modal: threading.Condition = threading.Condition()
         self.wants_modal: bool = False
+        self.thread: threading.Thread | None = None
+        self.help_dialog_thread: threading.Thread | None = None
 
         clz.logger.debug(f'Initialized HelpManager')
         self.thread = threading.Thread(target=self.help_queue_processor,
                                        name=f'help_queue')
         self.thread.start()
+        GarbageCollector.add_thread(self.thread)
         # self.dialog_thread = threading.Thread(target=self.dialog_baby_sitter,
         #                                       name=f'help_baby_sitter')
         # self.dialog_thread.start()
@@ -62,13 +65,13 @@ class HelpManager(threading.Thread):
         :return:
         """
         clz = type(self)
-        GarbageCollector.add_thread(self.thread)
 
         # Launch and doModal
         try:
-            self.thread = threading.Thread(target=self.launch,
-                                           name=f'help_dialog')
-            self.thread.start()
+            self.help_dialog_thread = threading.Thread(target=self.launch,
+                                                       name=f'help_dialog')
+            self.help_dialog_thread.start()
+            GarbageCollector.add_thread(self.help_dialog_thread)
         except AbortException:
             return   # Let thread die
         except Exception:

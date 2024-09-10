@@ -10,10 +10,10 @@ from common.phrases import Phrase, PhraseList
 from gui.base_label_model import BaseLabelModel
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
-from gui.base_tags import control_elements, ControlType, Item
-from gui.button_no_topic_model import NoButtonTopicModel
+from gui.base_tags import control_elements, ControlElement, Item
 from gui.button_topic_model import ButtonTopicModel
 from gui.element_parser import ElementHandler
+from gui.no_topic_models import NoButtonTopicModel
 from gui.parse_button import ParseButton
 from gui.topic_model import TopicModel
 from windows.window_state_monitor import WinDialog, WinDialogState
@@ -24,7 +24,7 @@ module_logger = BasicLogger.get_module_logger(module_path=__file__)
 class ButtonModel(BaseLabelModel):
 
     _logger: BasicLogger = None
-    item: Item = control_elements[ControlType.BUTTON.name]
+    item: Item = control_elements[ControlElement.BUTTON]
 
     def __init__(self, parent: BaseModel, parsed_button: ParseButton) -> None:
         clz = ButtonModel
@@ -37,12 +37,10 @@ class ButtonModel(BaseLabelModel):
         self.label_expr: str = ''
         self.wrap_multiline: bool = False
         self.description: str = ''
-        self.alt_label_expr: str = ''
         # self.on_click
         self.on_focus_expr: str = ''
         self.on_unfocus_expr: str = ''
         self.enable_expr: str = ''
-        self.hint_text_expr: str = ''
 
         self.convert(parsed_button)
 
@@ -61,8 +59,6 @@ class ButtonModel(BaseLabelModel):
         # self.attributes: List[str]
         self.label_expr = parsed_button.label_expr
         self.description = parsed_button.description
-        self.hint_text_expr = parsed_button.hint_text_expr
-        self.alt_label_expr = parsed_button.alt_label_expr
         self.enable_expr = parsed_button.enable_expr
 
         if parsed_button.topic is not None:
@@ -70,14 +66,9 @@ class ButtonModel(BaseLabelModel):
             self.topic = ButtonTopicModel(self, parsed_button.topic)
         else:
             self.topic = NoButtonTopicModel(self)
-
-        clz._logger.debug(f'# parsed children: {len(parsed_button.get_children())}')
-
         for child in parsed_button.children:
             child: BaseParser
-            clz._logger.debug(f'child: {child}')
             model_handler:  Callable[[BaseModel, BaseParser], BaseModel]
-            clz._logger.debug(f'About to create model from {type(child).item}')
             model_handler = ElementHandler.get_model_handler(child.item)
             child_model: BaseModel = model_handler(self, child)
             self.children.append(child_model)
@@ -243,14 +234,6 @@ class ButtonModel(BaseLabelModel):
         if self.label_expr != '':
             label_expr = f'\n label_expr: {self.label_expr}'
 
-        alt_label_expr: str = ''
-        if self.alt_label_expr != '':
-            alt_label_expr = f'\n alt_label_expr: {self.alt_label_expr}'
-
-        hint_text_str: str = ''
-        if self.hint_text_expr != '':
-            hint_text_str = f'\n hint_text: {self.hint_text_expr}'
-
         topic_str: str = ''
         if self.topic is not None:
             topic_str = f'\n  {self.topic}'
@@ -259,7 +242,7 @@ class ButtonModel(BaseLabelModel):
         result: str = (f'\nButtonModel type: {self.control_type} '
                        f'id: {self.control_id} '
                        f'{description_str}'
-                       f'{visible_expr}{label_expr}{alt_label_expr}{hint_text_str}'
+                       f'{visible_expr}{label_expr}'
                        f'{on_focus_expr}{on_unfocus_expr}'
                        f'\n wrap_multiline: {self.wrap_multiline}'
                        f'{topic_str}'

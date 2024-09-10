@@ -163,7 +163,7 @@ def setSetting(key, value, backend_id: str = None):
 def runInThread(func: Callable, args: List[Any] = [], name: str = '?',
                 delay: float = 0.0, **kwargs) -> None:
     import threading
-    thread = threading.Thread(target=thread_wrapper, name=f'TTSThread: {name}',
+    thread = threading.Thread(target=thread_wrapper, name=f'TTSThrd_{name}',
                               args=args, kwargs={'target': func,
                                                  'delay' : delay, **kwargs})
     xbmc.log(f'util.runInThread starting thread {name}', xbmc.LOGINFO)
