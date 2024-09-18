@@ -13,7 +13,7 @@ from common.constants import Constants
 from common.logger import *
 from common.settings import Settings
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 DATAPATH = os.path.join(Constants.PROFILE_PATH, 'addon_data.json')
 BASE = '{ "jsonrpc": "2.0", "id": 1, "method": "Addons.GetAddons", "params": {' \

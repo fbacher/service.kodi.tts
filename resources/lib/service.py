@@ -3,6 +3,8 @@ from __future__ import annotations  # For union operator |
 
 import faulthandler
 import io
+import logging
+from typing import Dict, Final
 #
 import os
 import signal
@@ -25,8 +27,48 @@ xbmc.log(f'new engine value: {a_string}')
 addon.setSettingString('engine', 'Festival')
 '''
 
-from common import *
+#   C O N F I G U R E   L O G G E R
+
+#  MUST be done BEFORE importing BasicLogger
 from common.critical_settings import CriticalSettings
+
+CriticalSettings.set_plugin_name('tts')
+
+definitions: Dict[str, int]
+
+# Goal: to reduce logging in every section except gui and windows family of
+# loggers. Also, leave logging of gui.parser family as default
+
+
+from common.logger import BasicLogger
+
+
+DEBUG_VERBOSE: Final[int] = 8
+DEBUG_EXTRA_VERBOSE: Final[int] = 6
+
+
+# Default logging is info, otherwise debug_verbose
+definitions = {
+    'tts': logging.INFO,
+    'tts.gui': DEBUG_VERBOSE,
+    'tts.windows': logging.DEBUG,
+    'tts.windows.custom_tts': DEBUG_VERBOSE,
+    'tts.gui.parser': logging.INFO,
+    'tts.windowNavigation.help_dialog': logging.DEBUG
+            }
+xbmc.log(f'configuring debug_levels INFO: {logging.INFO} DEBUG: {logging.DEBUG} '
+         f'VERBOSE: {DEBUG_VERBOSE} EXTRA_VERBOSE: '
+         f'{DEBUG_EXTRA_VERBOSE}')
+BasicLogger.config_debug_levels(replace=False, default_log_level=logging.INFO,
+                                definitions=definitions)
+xbmc.log(f'Using service_worker')
+service_worker_logger: BasicLogger = BasicLogger.get_logger(f'tts.service_worker')
+service_worker_logger.info('hi info')
+service_worker_logger.debug(f'hi debug')
+service_worker_logger.debug_verbose(f'hi verbose')
+service_worker_logger.debug_extra_verbose(f'hi extra verbose')
+
+from common import *
 from common.minimal_monitor import MinimalMonitor
 from common.python_debugger import PythonDebugger
 
@@ -65,7 +107,8 @@ except Exception as e:
 
 from common.logger import *
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
+module_logger = BasicLogger.get_logger(__name__)
 
 from backends import audio
 from common.settings import Settings
@@ -79,12 +122,6 @@ __version__ = Constants.VERSION
 
 module_logger.info(__version__)
 module_logger.info('Platform: {0}'.format(sys.platform))
-
-if audio.PLAYSFX_HAS_USECACHED:
-    module_logger.info('playSFX() has useCached')
-else:
-    module_logger.info('playSFX() does NOT have useCached')
-
 
 def resetAddon():
     global DO_RESET
@@ -249,7 +286,7 @@ class MainThreadLoop:
         try:
             cls.thread = threading.Thread(
                     target=startService,
-                    name='tts_service',
+                    name='tts_svc',
                     daemon=False)
             cls.thread.start()
             from common.garbage_collector import GarbageCollector
@@ -275,25 +312,29 @@ if __name__ == '__main__':
     except Exception as e:
         module_logger.exception('')
     try:
+        pending_threads: int = GarbageCollector.reap_the_dead()
         tmp_path: str = xbmcvfs.translatePath("special://home/temp/kodi.threads")
         debug_file = io.open(tmp_path,
                              mode='w',
                              buffering=1,
                              newline=None,
                              encoding='ASCII')
-        for tries in range(0, 40):
-            pending_threads: int = GarbageCollector.reap_the_dead()
-            GarbageCollector.garbage_collector.join(timeout=0.001)
-            if GarbageCollector.garbage_collector.is_alive():
-                xbmc.log(f'GC still alive', xbmc.LOGDEBUG)
-            else:
-                xbmc.log(f'GC reaped')
+        for tries in range(0, 10):
+            #  pending_threads: int = GarbageCollector.reap_the_dead()
+            pending_threads: int = 0
+            for a_thread in threading.enumerate():
+                if a_thread.is_alive():
+                    pending_threads += 1
+                    xbmc.log(f'Still alive thread: {a_thread.name}')
+                else:
+                    a_thread.join()
+                    xbmc.log(f'Joined thread: {a_thread.name}')
             unaccounted_for_threads: int = threading.active_count()
-            if unaccounted_for_threads > 0:
+            if unaccounted_for_threads > 0:  # Main
                 xbmc.log(f'Threads remaining: {unaccounted_for_threads} '
                          f'pending: {pending_threads}', xbmc.LOGDEBUG)
                 faulthandler.dump_traceback(file=debug_file, all_threads=True)
-            if pending_threads == 0:
+            if pending_threads < 2:  # Main will still be present
                 break
         debug_file.close()
     except Exception as e:

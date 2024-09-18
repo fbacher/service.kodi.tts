@@ -164,8 +164,9 @@ class CriticalSettings:
 
     @classmethod
     def set_log_level(cls, level: int) -> None:
-        CriticalSettings.KODI_SETTINGS.setInt(CriticalSettings.DEBUG_LOG_LEVEL_SETTING,
-                                              level)
+        return
+        # CriticalSettings.KODI_SETTINGS.setInt(CriticalSettings.DEBUG_LOG_LEVEL_SETTING,
+        #                                       level)
 
     @classmethod
     def set_plugin_name(cls, plugin_name: str):
@@ -173,7 +174,7 @@ class CriticalSettings:
         Debug-Log friendly name for addon. Since multiple plugins/scripts, etc.
         can exist in an addon, there must be a configurable way to set it at startup.
         It is the responsibility of the app to do this at startup and preferably
-        BEFORE import logger.
+        BEFORE import get.
 
         """
         cls._plugin_name = plugin_name

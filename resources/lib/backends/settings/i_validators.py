@@ -18,9 +18,9 @@ from backends.settings.i_constraints import IConstraints
 from common.setting_constants import Channels, Genders, PlayerMode
 
 if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = BasicLogger.get_module_logger(module_path=__file__)
+    module_logger = BasicLogger.get_logger(__name__)
 else:
-    module_logger = BasicLogger.get_module_logger()
+    module_logger = BasicLogger.get_logger(__name__)
 
 
 class UIValues(NamedTuple):

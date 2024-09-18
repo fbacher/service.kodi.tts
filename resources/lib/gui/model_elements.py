@@ -22,17 +22,17 @@ from gui.base_tags import ControlElement, Tag
 from gui.base_tags import BaseAttributeType as BAT
 from gui.base_tags import ElementKeywords as EK
 from gui.exceptions import ParseError
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class BaseModelElement:
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = None
 
     @classmethod
     def init_class(cls) -> None:
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__class__.__name__)
+            cls._logger = module_logger
 
     def __init__(self, parent: BaseParser) -> None:
         self.parent: BaseParser = parent
@@ -51,12 +51,12 @@ class BaseModelElement:
 
 
 class ModelElement:
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
 
     @classmethod
     def init_class(cls) -> None:
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__class__.__name__)
+            cls._logger = module_logger
 
     @classmethod
     def parse_default_control(cls, parent: BaseParser | None = None,
@@ -224,13 +224,13 @@ class ModelElement:
         return None
 
 class ModelElementHandler:
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     element_handlers: Dict[str, ForwardRef('BaseModelElement')] = {}
 
     @classmethod
     def init_class(cls) -> None:
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__class__.__name__)
+            cls._logger = module_logger
 
     @classmethod
     def add_handler(cls, item: Item,
@@ -273,7 +273,7 @@ class ModelElementHandler:
 
 
 class ModelHandler:
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     # parse_info(cls, parent: BaseParser | None = None,
     # el_info: ET.Element = None) -> str | None:
     #  Callable[[BaseModel, BaseParser], BaseModel]:
@@ -283,7 +283,7 @@ class ModelHandler:
     @classmethod
     def init_class(cls) -> None:
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__class__.__name__)
+            cls._logger = module_logger
         cls.add_handler(EK.INFO.value, ModelElement.parse_info)
         cls.add_handler(EK.ACTION.value, ModelElement.parse_action)
         cls.add_handler(EK.ORIENTATION.value, ModelElement.parse_orientation)

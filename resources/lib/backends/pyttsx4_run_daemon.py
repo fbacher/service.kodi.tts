@@ -16,7 +16,7 @@ from common.logger import *
 from common.monitor import Monitor
 from common.simple_run_command import RunState
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class Pyttsx4RunDaemon:
@@ -35,7 +35,7 @@ class Pyttsx4RunDaemon:
         :param args: arguments to be passed to exec command
         """
         clz = type(self)
-        Pyttsx4RunDaemon.logger = module_logger.getChild(clz.__name__)
+        Pyttsx4RunDaemon.logger = module_logger
         self.thread_name: str = 'pyttsx4_daemon'
         self.rc = 0
         self.run_state: RunState = RunState.NOT_STARTED
@@ -233,7 +233,7 @@ class Pyttsx4RunDaemon:
                     if finished or self.cmd_finished:
                         break
                     line = self.process.stdout.readline()
-                    clz.logger.debug(f'cmd_out: {line}')
+                    clz.get.debug(f'cmd_out: {line}')
                 except ValueError as e:
                     rc = self.process.poll()
                     if rc is not None:
@@ -241,10 +241,10 @@ class Pyttsx4RunDaemon:
                         # Command complete
                         break
                     else:
-                        clz.logger.exception('')
+                        clz.get.exception('')
                         finished = True
                 except Exception as e:
-                    clz.logger.exception('')
+                    clz.get.exception('')
                     finished = True
                     line: str = ''
 
@@ -252,6 +252,6 @@ class Pyttsx4RunDaemon:
             self.process.stdout.close()
             return
         except Exception as e:
-            clz.logger.exception('')
+            clz.get.exception('')
             return
     '''

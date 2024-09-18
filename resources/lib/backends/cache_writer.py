@@ -16,7 +16,7 @@ from common.phrases import Phrase
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 """
 Overview:
@@ -322,7 +322,7 @@ class CacheWriter(BaseCache):
         super().__init__()
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz._class_name)
+            clz._logger = module_logger
         if not clz._initialized:
             clz.register(self)
             clz._initialized = True
@@ -351,7 +351,7 @@ class CacheReader(BaseCache):
         clz = type(self)
         clz._class_name = self.__class__.__name__
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz._class_name)
+            clz._logger = module_logger
         if not clz._initialized:
             clz.register(self)
             clz._initialized = True

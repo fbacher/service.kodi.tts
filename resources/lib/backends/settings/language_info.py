@@ -14,9 +14,9 @@ from common.base_services import BaseServices
 from common.logger import BasicLogger, DEBUG_EXTRA_VERBOSE, DEBUG_VERBOSE
 from common.message_ids import MessageId, MessageUtils
 from common.messages import Message, Messages
-from common.setting_constants import Genders, GenderSettingsMap, Languages
+from common.setting_constants import Genders, GenderSettingsMap
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class LanguageInfo:
@@ -127,7 +127,7 @@ class LanguageInfo:
     @classmethod
     def class_init(cls):
         if cls._logger is None:
-            cls._logger = module_logger.getChild(LanguageInfo.__name__)
+            cls._logger = module_logger
 
     def __init__(self, engine_id: str,
                  language_id: str,

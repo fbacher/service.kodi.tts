@@ -11,9 +11,9 @@ from gui.base_tags import (control_elements, ControlElement,
                            Item, Tag)
 from gui.element_parser import BaseElementParser, ElementHandler
 from gui.exceptions import ParseError
-from gui.parse_controls import ParseControls
+from gui.parser.parse_controls import ParseControls
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 AttribInfo = namedtuple('attrib_info', ['attrib_name', 'attrib_value',
                                         'status'])
@@ -21,13 +21,13 @@ AttribInfo = namedtuple('attrib_info', ['attrib_name', 'attrib_value',
 
 class ParseControl(BaseParser):
 
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.CONTROL]
 
     @classmethod
     def init_class(cls) -> None:
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__class__.__name__)
+            cls._logger = module_logger
         ElementHandler.add_handler(cls.item.key, cls.get_instance)
 
     def __init__(self,

@@ -122,7 +122,7 @@ class TTSBackendBridge(ITTSBackendBase):
     def get_backend_id(cls) -> str:
         raise Exception('Not Implemented')
 
-    def isSpeaking(self) -> bool:
+    def is_speaking(self) -> bool:
         raise Exception('Not Implemented')
 
     def getWavStream(self, text):

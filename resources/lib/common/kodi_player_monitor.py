@@ -11,7 +11,7 @@ from common import *
 from common.monitor import *
 from utils.util import runInThread
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class KodiPlayerState(StrEnum):
@@ -45,7 +45,7 @@ class KodiPlayerMonitor(Player):
         super().__init__()
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__name__)
+            clz._logger = module_logger
         self.playing: bool = False
 
     @classmethod
@@ -53,7 +53,7 @@ class KodiPlayerMonitor(Player):
         if cls._instance is None:
             cls._instance = KodiPlayerMonitor()
             args = []
-            runInThread(cls._instance.poll_for_change, args, name='player_monitor',
+            runInThread(cls._instance.poll_for_change, args, name='plyrMon',
                         delay=0.0)
         return cls._instance
 

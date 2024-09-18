@@ -8,7 +8,7 @@ from cache.prefetch_movie_data.movie import LibraryMovie
 from cache.prefetch_movie_data.movie_constants import MovieField, MovieType
 from common.logger import *
 
-module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class ParseLibrary:
@@ -26,7 +26,7 @@ class ParseLibrary:
     @classmethod
     def class_init(cls):
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__name__)
+            cls._logger = module_logger
 
     def get_movie(self) -> LibraryMovie:
         return self._movie

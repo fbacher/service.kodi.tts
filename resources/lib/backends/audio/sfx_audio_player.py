@@ -16,7 +16,7 @@ from common.base_services import BaseServices
 from common.logger import BasicLogger
 from common.setting_constants import Players
 
-module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class PlaySFXAudioPlayer(AudioPlayer):
@@ -41,7 +41,7 @@ class PlaySFXAudioPlayer(AudioPlayer):
         super().__init__()
         cls = type(self)
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__name__)
+            cls._logger = module_logger
 
         self._isPlaying: bool = False
         self.event: threading.Event = threading.Event()

@@ -13,7 +13,7 @@ from common import *
 from cache.prefetch_movie_data.movie_constants import MovieField, MovieType
 from common.logger import *
 
-module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger: BasicLogger = BasicLogger.get_logger(__name__)
 CHECK_FOR_NULLS: bool = True
 
 
@@ -37,7 +37,7 @@ class BaseMovie:
     @classmethod
     def class_init(cls):
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__name__)
+            cls._logger = module_logger
 
     def __str__(self) -> str:
         return f'{type(self).__name__} id: {self._movie_id} tmdb_id: {self._tmdb_id}'
@@ -72,7 +72,7 @@ class AbstractMovieId(BaseMovie):
     @classmethod
     def class_init(cls):
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__name__)
+            cls._logger = module_logger
 
     def get_id(self) -> str:
         return str(self._movie_id)
@@ -156,7 +156,7 @@ class RawMovie(BaseMovie):
     @classmethod
     def class_init(cls):
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__name__)
+            cls._logger = module_logger
 
     def get_property_with_default(self, property_name: str,
                                   default_value: Any = None) -> Any:
@@ -217,7 +217,7 @@ class AbstractMovie(RawMovie):
     @classmethod
     def class_init(cls):
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__name__)
+            cls._logger = module_logger
 
     def get_property_with_default(self, property_name: str,
                                   default_value: Any = None) -> Any:
@@ -523,7 +523,7 @@ class LibraryMovie(AbstractMovie):
     @classmethod
     def class_init(cls):
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__name__)
+            cls._logger = module_logger
 
     def get_id(self) -> str:
         return str(self.get_property(MovieField.MOVIEID))

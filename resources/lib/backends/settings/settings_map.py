@@ -22,7 +22,7 @@ from backends.settings.i_validators import (AllowedValue, IBoolValidator,
 from backends.settings.service_types import ServiceType
 from common.logger import BasicLogger
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class Reason(StrEnum):
@@ -80,7 +80,7 @@ class SettingsMap:
         if cls._initialized:
             return
         cls._initialized = True
-        cls._logger = module_logger.getChild(cls.__name__)
+        cls._logger = module_logger
 
     @classmethod
     def define_service(cls, service_type: ServiceType, service_id: str,

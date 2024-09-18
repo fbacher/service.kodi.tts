@@ -36,9 +36,9 @@ from windowNavigation.choice import Choice
 from windowNavigation.selection_dialog import SelectionDialog
 
 if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = BasicLogger.get_module_logger(module_path=__file__)
+    module_logger = BasicLogger.get_logger(__name__)
 else:
-    module_logger = BasicLogger.get_module_logger()
+    module_logger = BasicLogger.get_logger(__name__)
 
 
 class SettingsDialog(xbmcgui.WindowXMLDialog):
@@ -98,7 +98,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         """
         # xbmc.executebuiltin('Skin.ToggleDebug')
 
-        self._logger: BasicLogger = module_logger.getChild(self.__class__.__name__)
+        self._logger: BasicLogger = module_logger
         Monitor.register_abort_listener(self.on_abort_requested)
 
         self.closing = False

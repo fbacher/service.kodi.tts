@@ -36,7 +36,7 @@ from common.settings import Settings
 from common.simple_run_command import SimpleRunCommand
 from utils.util import runInThread
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class WaveToMpg3Encoder(Enum):
@@ -95,7 +95,7 @@ class SpeechGenerator:
     def __init__(self) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__name__)
+            clz._logger = module_logger
         self.generate_results: Results = Results()
         self.simple_cmd: SimpleRunCommand
 
@@ -130,7 +130,7 @@ class SpeechGenerator:
 
         unchecked_phrase: Phrase = phrase.clone(check_expired=False)
         self.set_phrase(unchecked_phrase)
-        runInThread(self._generate_speech, name='download_speech', delay=0.0,
+        runInThread(self._generate_speech, name='XprGen', delay=0.0,
                     phrase=unchecked_phrase)
         max_wait: int = int(timeout / 0.1)
         while Monitor.exception_on_abort(timeout=0.1):
@@ -213,7 +213,7 @@ class SpeechGenerator:
                 # occur and cached for later use.
                 self.generate_results: Results = Results()
 
-                runInThread(self.tts_generate, name='tts_generate', delay=0.0,
+                runInThread(self.tts_generate, name='Xgenr', delay=0.0,
                             phrase=phrase)
                 thirty_seconds: int = int(30 / 0.1)
                 while Monitor.exception_on_abort(timeout=0.1):
@@ -329,7 +329,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
         super().__init__(*args, **kwargs)
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__name__)
+            clz._logger = module_logger
 
         self.process = None
         self.stop_processing = False

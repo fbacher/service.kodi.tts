@@ -9,7 +9,7 @@ from common.phrases import Phrase, PhraseList
 
 from . import base, DefaultWindowReader
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class VideoInfoDialogReader(base.DefaultWindowReader):
@@ -18,7 +18,7 @@ class VideoInfoDialogReader(base.DefaultWindowReader):
     def __init__(self, win_id=None, service: ForwardRef('TTSService') = None) -> None:
         cls = type(self)
         super().__init__(win_id, service)
-        cls._logger = module_logger.getChild(cls.__class__.__name__)
+        cls._logger = module_logger
         self.listMap: Dict[int, str] = None
 
     def init(self):

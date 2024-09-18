@@ -14,7 +14,7 @@ from common.logger import BasicLogger
 from common.setting_constants import Backends
 from common.system_queries import SystemQueries
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class FliteSettings:
@@ -44,7 +44,7 @@ class FliteSettings:
             return
         FliteSettings.initialized = True
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__name__)
+            clz._logger = module_logger
         FliteSettings.init_settings()
         SettingsMap.set_is_available(clz.service_ID, Reason.AVAILABLE)
 

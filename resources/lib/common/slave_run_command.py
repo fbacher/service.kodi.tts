@@ -25,7 +25,7 @@ from common.phrases import Phrase
 from common.simple_run_command import RunState
 from common.utils import sleep
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class SlaveRunCommand:
@@ -42,16 +42,16 @@ class SlaveRunCommand:
         :param args: arguments to be passed to exec command
         """
         clz = type(self)
-        SlaveRunCommand.logger = module_logger.getChild(clz.__name__)
+        SlaveRunCommand.logger = module_logger
 
         self.args: List[str] = args
         # self.phrase_serial: int = phrase_serial
         self.thread_name = thread_name
         self.rc = 0
-        # clz.logger.debug(f'Setting runstate to NOT_STARTED')
+        # clz.get.debug(f'Setting runstate to NOT_STARTED')
         self.run_state: RunState = RunState.NOT_STARTED
         self.cmd_finished: bool = False
-        self._thread: threading.Thread | None = None
+        # self._thread: threading.Thread | None = None
         #  self.fifo_in = None;
         #  self.fifo_out = None
         #  self.fifo_initialized: bool = False
@@ -62,12 +62,13 @@ class SlaveRunCommand:
         self.run_thread: threading.Thread | None = None
         #  self.fifo_sequence_number: int = 0
         #  self.observer_sequence_number: int = 0
-        self.stdout_thread: threading.Thread | None = None
+        #  self.stdout_thread: threading.Thread | None = None
         #  self.stdout_lines: List[str] = []
         #  self.play_count: int = 0
         self.post_start_callback: Callable[[None], bool] = post_start_callback
 
-        Monitor.register_abort_listener(self.abort_listener, name=thread_name)
+        Monitor.register_abort_listener(self.abort_listener, name=thread_name,
+                                        garbage_collect=False)
 
     def terminate(self):
         if self.process is not None and self.run_state.value <= RunState.RUNNING.value:
@@ -80,7 +81,7 @@ class SlaveRunCommand:
 
     def get_state(self) -> RunState:
         clz = type(self)
-        # clz.logger.debug(f'run_state: {self.run_state}')
+        # clz.get.debug(f'run_state: {self.run_state}')
         return self.run_state
 
     def abort_listener(self) -> None:
@@ -98,7 +99,6 @@ class SlaveRunCommand:
         clz = type(self)
         clz.logger.debug(f'In destroy')
         self.cmd_finished = True
-        self.process.kill()
         try:
             self.process.stdout.close()
             self.process.stdout = None
@@ -110,6 +110,10 @@ class SlaveRunCommand:
         except:
             pass
         # self.process.wait(0.1)
+        try:
+            self.process.kill()
+        except:
+            pass
         clz.logger.debug('Slave Destroyed')
 
     def start_service(self) -> int:
@@ -132,7 +136,7 @@ class SlaveRunCommand:
             attempts: int = 300  # Approx one second
             while not Monitor.wait_for_abort(timeout=0.02):
                 if self.run_state == RunState.PIPES_CONNECTED or attempts < 0:
-                    # clz.logger.debug(f'attempts: {attempts} state: {self.run_state}')
+                    # clz.get.debug(f'attempts: {attempts} state: {self.run_state}')
                     self.run_state = RunState.RUNNING
                     break
                 attempts -= 1
@@ -151,7 +155,7 @@ class SlaveRunCommand:
     def run_service(self) -> None:
         clz = type(self)
         self.rc = 0
-        # clz.logger.debug(f'run_service started')
+        # clz.get.debug(f'run_service started')
         env = os.environ.copy()
         try:
             if Constants.PLATFORM_WINDOWS:
@@ -197,7 +201,7 @@ class SlaveRunCommand:
             # self.stderr_thread.start()
             Monitor.exception_on_abort(timeout=1.0)
         except AbortException:
-            reraise(*sys.exc_info())
+            return  # We are in the top of the thread
         except Exception as e:
             clz.logger.exception('')
         return
@@ -213,10 +217,10 @@ class SlaveRunCommand:
                     line: str
                     line, _ = self.process.communicate(input='',
                                                        timeout=0.0)
-                    # clz.logger.debug(f'Setting run_state RUNNING')
+                    # clz.get.debug(f'Setting run_state RUNNING')
                     self.run_state = RunState.RUNNING
                     # if len(line) > 0:
-                    #     clz.logger.debug(f'STDOUT: {line}')
+                    #     clz.get.debug(f'STDOUT: {line}')
                 except subprocess.TimeoutExpired:
                     Monitor.exception_on_abort(timeout=0.1)
                 except ValueError as e:

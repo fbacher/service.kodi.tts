@@ -11,7 +11,7 @@ from backends.settings.validators import (BoolValidator, GenderValidator, IntVal
 from common.logger import BasicLogger
 from common.setting_constants import Backends, Genders
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class BaseEngineSettings:
@@ -42,7 +42,7 @@ class BaseEngineSettings:
             return
         BaseEngineSettings.initialized[service_ID] = True
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__name__)
+            clz._logger = module_logger
         BaseEngineSettings.init_settings(service_ID)
 
     @classmethod

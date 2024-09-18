@@ -15,7 +15,7 @@ from common.logger import BasicLogger, DEBUG_EXTRA_VERBOSE
 from common.monitor import Monitor
 from utils import util
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class WinDialog(StrEnum):
@@ -34,14 +34,6 @@ ListenerInfo = namedtuple(typename='ListenerInfo',
 
 class WindowMonitor(xbmcgui.Window):
     """
-        Monitors some onAction events that are relevent to voicing. For example,
-        if in a SliderControl, the sliding action does not alter the Focus, which
-        is what we normally rely on to tell when something should or should not be
-        voiced. If we capture cursor movements (left-right, for horizontal slider)
-        then we can infer that the value changed.
-
-        To keep things simple, we detect if cursor has moved (left-right, up-down)
-        as well as significant mouse movement (that should be interesting).
 
     """
     _logger: BasicLogger = None
@@ -50,95 +42,45 @@ class WindowMonitor(xbmcgui.Window):
         super().__init__(existingWindowId=existingWindowId)
         clz = WindowMonitor
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            # clz._logger = module_logger
+            clz._logger = module_logger
 
-        clz._logger.debug(f'__init__')
+        self.window_id: int = existingWindowId
         self.start_focus: int = -1
+        self.start_visible: bool = False
         self.focus_changed: bool = False
         self.current_focus: int = -1
-
-        self.clicked: bool = False
-        self.click_focus: int = -1
-        self.start_click_focus: int = -1
-
-        self.cursor_moved_right: bool = False
-        self.start_cursor_moved_right: bool = False
-
-        self.cursor_moved_left: bool = False
-        self.start_cursor_moved_left: bool = False
+        self.current_visible: bool = False
         return
+
+    def getFocusId(self) -> int:
+        focus_id: int
+        focus_id = super().getFocusId()
+        focus_id = abs(focus_id)
+        self.current_focus = focus_id
+        return focus_id
+
+    def isVisible(self) -> bool:
+        visible: bool = xbmc.getCondVisibility(f'Control.IsVisible('
+                                               f'{self.current_focus})')
+        self.current_visible = visible
+        return visible
 
     def get_changed(self) -> WindowChanges:
         clz = WindowMonitor
         current_focus: int = -1
-        last_focus_click: int = -1
 
         focus_changed: bool = self.focus_changed
         if focus_changed:
             current_focus = self.current_focus
             # clz._logger.debug(f'focus_changed current_focus: {current_focus}')
-        clicked: bool = self.clicked
-        if clicked:
-            last_focus_click = self.click_focus
-            # clz._logger.debug(f'last_focus_click: {last_focus_click}')
-        cursor_right: bool = self.cursor_moved_right
-        cursor_left: bool = self.cursor_moved_left
-        #  if cursor_left or cursor_right:
-        #    clz._logger.debug(f'cursor_right: {cursor_right} cursor_left: {cursor_left}')
 
         changes: WindowChanges = WindowChanges(focus_changed=focus_changed,
-                                               focus_change=current_focus,
-                                               clicked=clicked,
-                                               click_focus=last_focus_click,
-                                               cursor_right=cursor_right,
-                                               cursor_left=cursor_left)
+                                               focus_change=current_focus)
         self.start_focus = self.current_focus
         self.focus_changed = False
         current_focus = self.current_focus
-
-        self.clicked = False
-        self.start_click_focus = self.click_focus
-        self.cursor_moved_right = False
-        self.cursor_moved_left = False
         return changes
-
-    def onClick(self, control_id: int):
-        clz = WindowMonitor
-        # clz._logger.debug(f'onClick')
-        self.clicked = True
-        self.click_focus: int = control_id
-
-    def onFocus(self, control_id: int):
-        clz = WindowMonitor
-        # clz._logger.debug(f'onFocus')
-        self.focus_changed = True
-        self.current_focus = control_id
-
-    def onAction(self, action) -> None:
-        """
-
-        :param action:
-        :return:
-        """
-        clz = WindowMonitor
-        try:
-            action_id: int = action.getId()
-            clz._logger.debug(f'action_id: {action_id}')
-            if action_id == xbmcgui.ACTION_MOUSE_MOVE:
-                return
-            if action_id == xbmcgui.ACTION_CURSOR_RIGHT:
-                self.cursor_moved_right = True
-                clz._logger.debug(f'cursor right')
-                return
-            if action_id == xbmcgui.ACTION_CURSOR_LEFT:
-                self.cursor_moved_left = True
-                clz._logger.debug(f'cursor left')
-                return
-            if (action_id == xbmcgui.ACTION_PREVIOUS_MENU
-                    or action_id == xbmcgui.ACTION_NAV_BACK):
-                return
-        except Exception as e:
-            self._logger.exception('')
 
 
 class WinDialogState:
@@ -191,20 +133,32 @@ class WinDialogState:
         #     self._cursor_moved_left = changes.cursor_left
 
     def copy(self) -> ForwardRef('WinDialogState'):
-        copy: ForwardRef('WinDialogState')
-        copy = WinDialogState(window_id=self.window_id,
-                              window_instance=self.window_instance,
-                              window_focus_id=self.focus_id,
-                              is_control_visible=self.is_control_visible,
-                              changed=self.changed)
-        return copy
+        my_copy: ForwardRef('WinDialogState')
+        my_copy = WinDialogState(window_id=self.window_id,
+                                 window_instance=self.window_instance,
+                                 window_focus_id=self.focus_id,
+                                 is_control_visible=self.is_control_visible,
+                                 changed=self.changed)
+        return my_copy
 
     @property
     def changed(self) -> int:
         return self._changed
 
+    def set_changed(self, changed: int) -> None:
+        """
+        Did not make a setter to make it more awkard to set. Only
+        WindowStateMonitor should be doing that.
+
+        :param changed:
+        :return:
+        """
+        self._changed = changed
+
     @property
     def control_focus_changed(self) -> bool:
+        if self.is_bad_window:
+            return False
         return (self._changed & WindowStateMonitor.WINDOW_FOCUS_CHANGED) != 0
 
     @property
@@ -214,6 +168,8 @@ class WinDialogState:
 
         :return: True if control_fucus_changed or window_changed
         """
+        if self.is_bad_window:
+            return False
         return self.control_focus_changed or self.window_changed
 
     '''
@@ -231,14 +187,33 @@ class WinDialogState:
 
         :return:
         """
+        if self.is_bad_window:
+            return False
         return self._changed == 0 and self._window_focus_id != 0
 
     @property
+    def difficult_to_detect(self) -> bool:
+        """
+        Without a detected focus, window change nor anything with focus then
+        there still be undetected changes in non-focusable controls (labels),
+        but without hints, they will be difficut to find.
+
+        :return:
+        """
+        if self.is_bad_window:
+            return False
+        return self._changed == 0 and self._window_focus_id == 0
+
+    @property
     def window_changed(self) -> bool:
+        if self.is_bad_window:
+            return False
         return (self._changed & WindowStateMonitor.WINDOW_CHANGED) != 0
 
     @property
     def visibility_changed(self) -> bool:
+        if self.is_bad_window:
+            return False
         return (self._changed & WindowStateMonitor.CONTROL_VISIBILITY_CHANGED) != 0
 
     @property
@@ -259,40 +234,27 @@ class WinDialogState:
 
     @property
     def is_control_visible(self) -> bool:
+        if self.is_bad_window:
+            return False
         return self._is_control_visible
 
     @property
     def revoice(self) -> bool:
+        if self.is_bad_window:
+            return False
         revoice_trigger: bool = self._revoice
         return revoice_trigger
+
+    @property
+    def is_bad_window(self):
+        return self._changed == WindowStateMonitor.BAD_WINDOW
+
 
     @revoice.setter
     def revoice(self, value: bool) -> None:
         self._revoice = value
         self._changed |= WindowStateMonitor.REVOICE_CONTEXT
         self._changed |= WindowStateMonitor.WINDOW_FOCUS_CHANGED
-
-    '''
-    @property
-    def focus_changed_action(self) -> bool:
-        return self._focus_changed_action
-
-    @property
-    def click_focus_occurred(self) -> bool:
-        """
-        This may not be that useful
-        :return:
-        """
-        return self._clicked
-
-    @property
-    def cursor_moved_right(self) -> bool:
-        return self._cursor_moved_right
-
-    @property
-    def cursor_moved_left(self) -> bool:
-        return self._cursor_moved_left
-    '''
 
     def __repr__(self) -> str:
         changed_str: str = f'\n changed: {self._changed} '
@@ -306,6 +268,33 @@ class WinDialogState:
                 f'{focus_id_str}{visible_str}'
                 # f'{focus_changed_action_str}'
                 f'{dialog_changed_str}')
+    @property
+    def succinct(self) -> str:
+        msg: str = ''
+        if self.is_bad_window:
+            msg = f'{msg}BAD window '
+        if self.focus_changed:
+            msg = f'{msg}focus_chg: window: {self.window_id} focus: {self.focus_id} '
+        if self.is_control_visible:
+            msg = f'{msg} visible '
+        if self.revoice:
+            msg = f'{msg} revoice '
+        if self.potential_change:
+            msg = f'{msg} pot_change '
+        return msg
+
+    @property
+    def verbose(self) -> str:
+        msg: str = self.succinct
+        if self.control_focus_changed:
+            msg = f'{msg} ctrl_focus_chng '
+        if self.difficult_to_detect:
+            msg = f'{msg} difficult_detection '
+        if self.window_changed:
+            msg = f'{msg} window_chng '
+        if self.visibility_changed:
+            msg = f'{msg} visibility_chng '
+        return msg
 
 
 class WindowStateMonitor:
@@ -347,13 +336,13 @@ class WindowStateMonitor:
 
         """
         if cls._logger is None:
-            cls._logger: BasicLogger = module_logger.getChild(cls.__class__.__name__)
+            cls._logger: BasicLogger = module_logger
             cls._window_state_listener_lock = threading.RLock()
             cls._window_state_lock = threading.RLock()
 
             # Weird problems with recursion if we make requests to the super
             util.runInThread(cls.monitor_gui_state, args=[],
-                             name='monitor_gui_state',
+                             name='MonGuSt',
                              delay=0.0)
 
     @classmethod
@@ -361,27 +350,26 @@ class WindowStateMonitor:
         with cls._window_state_lock:
             window_state: WinDialogState = cls.previous_chosen_state.copy()
             window_state.revoice = True
-            changed_state: int = window_state.changed
             # cls._logger.debug(f'Revoice')
-            cls._notify_listeners(changed_state, window_state)
+            cls._notify_listeners(window_state)
 
     @classmethod
     def monitor_gui_state(cls) -> None:
         while not Monitor.wait_for_abort(timeout=cls.current_polling_interval):
             changed_state: int
             window_state: WinDialogState
-            changed_state, window_state = cls.check_win_dialog_state()
+            window_state = cls.check_win_dialog_state()
             if window_state.focus_changed:
                 cls.current_polling_interval = cls.POLLING_INTERVAL
             else:
                 cls.current_polling_interval = cls.NON_FOCUSED_POLLING_INTERVAL
 
             # notify_listeners does additional filtering
-            if changed_state != WindowStateMonitor.BAD_WINDOW:
-                cls._notify_listeners(changed_state, window_state)
+            if not window_state.is_bad_window:
+                cls._notify_listeners(window_state)
 
     @classmethod
-    def check_win_dialog_state(cls) -> Tuple[int, WinDialogState]:
+    def check_win_dialog_state(cls) -> WinDialogState:
         """
         Detects if current window, dialog or focus has changed.
 
@@ -396,43 +384,52 @@ class WindowStateMonitor:
         changed: int = 0
         window_changed: int
         new_window_state: WinDialogState
-        window_changed, new_window_state = cls.check_window_state()
+        new_window_state = cls.check_window_state()
+        window_changed = new_window_state.changed
         dialog_changed: int
         new_dialog_state: WinDialogState
-        dialog_changed, new_dialog_state = cls.check_dialog_state()
+        new_dialog_state = cls.check_dialog_state()
+        dialog_changed = new_dialog_state.changed
         cls.previous_dialog_state = new_dialog_state
         cls.previous_window_state = new_window_state
 
         # if either dialog or window is BAD (perhaps there is no current dialog)
         # then ignore the bad one and work on the good one.
         #
-        # But if BOTH bad, then ignore both.
-
+        window_state: WinDialogState = None
         if dialog_changed == 0 and window_changed == 0:
-            return 0, new_window_state  # Both are marked the same
+            window_state = new_dialog_state
+            if (new_dialog_state.window_id !=
+                    WindowStateMonitor.previous_chosen_state.window_id):
+                window_state = new_window_state
+            WindowStateMonitor.previous_chosen_state = window_state
+            return window_state  # Both are marked the same
 
         # We can't be certain which window / dialog is visible. See is_visible.
         # if (not WinDialogState.current_dialog_focus_visible or
         #         not WinDialogState.current_window_focus_visible):
         #     return WindowStateMonitor
 
-        window_state: WinDialogState
         if dialog_changed != WindowStateMonitor.BAD_WINDOW:
             # cls._logger.debug(f'Setting WINDOW_CHANGED and windialog to DIALOG')
-            changed = dialog_changed
             window_state = new_dialog_state
         elif window_changed != WindowStateMonitor.BAD_WINDOW:
             # cls._logger.debug(f'Setting WINDOW_CHANGED and windialog to WINDOW')
-            changed = window_changed
             window_state = new_window_state
         else:
-            changed = WindowStateMonitor.BAD_WINDOW  # Either BAD state will do.
-            window_state = new_dialog_state
+            changed = WindowStateMonitor.BAD_WINDOW
+            previous_window_id = WindowStateMonitor.previous_chosen_state.window_id
+            window_state = new_window_state
+            if previous_window_id == new_dialog_state.window_id:
+                window_state = new_dialog_state
+            new_dialog_state.set_changed(changed)
+
+        #  cls._logger.debug(f'{window_state.verbose}')
         WindowStateMonitor.previous_chosen_state = window_state
-        return changed, window_state
+        return window_state
 
     @classmethod
-    def check_window_state(cls) -> Tuple[int, WinDialogState]:
+    def check_window_state(cls) -> WinDialogState:
         new_window_id: int = xbmcgui.getCurrentWindowId()
         changed: int = 0x00
         new_window_instance: WindowMonitor
@@ -446,7 +443,7 @@ class WindowStateMonitor:
         #       be read, like a window?
 
         new_windialog: WinDialog = WinDialog.WINDOW
-        visible: bool = False
+        new_visible: bool = False
         other_changes: WindowChanges | None = None
         with cls._window_state_lock:
             # cls._logger.debug(f'win_id: {new_window_id}')
@@ -467,19 +464,25 @@ class WindowStateMonitor:
 
             # other_changes: WindowChanges = new_window_instance.get_changed()
             new_window_focus_id = abs(new_window_instance.getFocusId())
+            new_visible = cls.is_visible(new_window_focus_id)
             # cls._logger.debug(f'new_window_focus_id: {new_window_focus_id}')
             # TODO: verify
             #
             if new_window_id != cls.previous_window_state.window_id:
                 # cls._logger.debug(f'WINDOW_ID changed')
                 changed |= WindowStateMonitor.WINDOW_CHANGED
+            # The visibility of the focused item has changed:
+            #  - The focused item has changed
+            #  - The focused item has not changed but is_control_visible
+            #    has changed
             if new_window_focus_id != 0:
                 if new_window_focus_id != cls.previous_window_state.focus_id:
                     changed |= WindowStateMonitor.WINDOW_FOCUS_CHANGED
-                    # cls._logger.debug(f'focus_changed. windialog is WINDOW')
-                visible = cls.is_visible(new_window_focus_id)
-                if visible != WinDialogState.is_control_visible:
                     changed |= WindowStateMonitor.CONTROL_VISIBILITY_CHANGED
+                    # cls._logger.debug(f'focus_changed. windialog is WINDOW')
+                else:
+                    if new_visible != cls.previous_window_state.is_control_visible:
+                        changed |= WindowStateMonitor.CONTROL_VISIBILITY_CHANGED
 
             # Check for subtle changes: Are there cursor right/left changes
             # that didn't show up in focus changes because the control,
@@ -504,16 +507,16 @@ class WindowStateMonitor:
                                    window_id=new_window_id,
                                    window_instance=new_window_instance,
                                    window_focus_id=new_window_focus_id,
-                                   is_control_visible=visible,
+                                   is_control_visible=new_visible,
                                    changed=changed)
 
         # cls._logger.debug(f'changed: {changed} '
         #                   f'window_id: {WinDialogState.current_window_id} '
         #                   f'focus: {WinDialogState.current_window_focus_id} ')
-        return changed, new_state
+        return new_state
 
     @classmethod
-    def handle_bad_window(cls) -> Tuple[int, WinDialogState]:
+    def handle_bad_window(cls) -> WinDialogState:
         # Something ain't right. Reset our state so that on the next call
         # it is just like going to a new dialog. Returning BAD_DATA will
         # tell monitor to omit informing listeners.
@@ -523,13 +526,13 @@ class WindowStateMonitor:
                                           window_id=WindowStateMonitor.INVALID_DIALOG,
                                           window_instance=None,
                                           window_focus_id=0,
-                                          is_control_visible=False)
-        changed = WindowStateMonitor.BAD_WINDOW
+                                          is_control_visible=False,
+                                          changed=WindowStateMonitor.BAD_WINDOW)
 
-        return changed, bad_window_state
+        return bad_window_state
 
     @classmethod
-    def check_dialog_state(cls) -> Tuple[int, WinDialogState]:
+    def check_dialog_state(cls) -> WinDialogState:
         new_dialog_id: int | None = xbmcgui.getCurrentWindowDialogId()
         new_dialog_instance: WindowMonitor = None
         new_dialog_focus_id: int = 0
@@ -562,7 +565,8 @@ class WindowStateMonitor:
             # brand new one
 
             # other_changes: WindowChanges = new_dialog_instance.get_changed()
-            new_dialog_focus_id: int = abs(new_dialog_instance.getFocusId())
+            new_dialog_focus_id: int = new_dialog_instance.getFocusId()
+            new_visible = cls.is_visible(new_dialog_focus_id)
             # cls._logger.debug(f'new_dialog_focus_id: {new_dialog_focus_id}')
 
             # TODO: verify
@@ -571,26 +575,32 @@ class WindowStateMonitor:
                 # cls._logger.debug(f'DIALOG_WINDOW changed')
                 changed |= (WindowStateMonitor.WINDOW_CHANGED
                             | WindowStateMonitor.WINDOW_FOCUS_CHANGED)
+            # The visibility of the focused item has changed:
+            #  - The focused item has changed
+            #  - The focused item has not changed but is_control_visible
+            #    has changed
             if new_dialog_focus_id != 0:
                 if new_dialog_focus_id != cls.previous_dialog_state.focus_id:
                     changed |= WindowStateMonitor.WINDOW_FOCUS_CHANGED
+                    changed |= WindowStateMonitor.CONTROL_VISIBILITY_CHANGED
+                else:
+                    if new_visible != cls.previous_dialog_state.is_control_visible:
+                        changed |= WindowStateMonitor.CONTROL_VISIBILITY_CHANGED
+
                     # cls._logger.debug(f'focus_changed. windialog is DIALOG')
                     cls.previous_dialog_state.current_windialog = WinDialog.DIALOG
-                visible: bool = cls.is_visible(new_dialog_focus_id)
-                if visible != cls.previous_dialog_state.is_control_visible:
-                    changed |= WindowStateMonitor.CONTROL_VISIBILITY_CHANGED
         new_state: WinDialogState
         new_state = WinDialogState(windialog=WinDialog.DIALOG,
                                    window_id=new_dialog_id,
                                    window_instance=new_dialog_instance,
                                    window_focus_id=new_dialog_focus_id,
-                                   is_control_visible=visible,
+                                   is_control_visible=new_visible,
                                    changed=changed)
-        return changed, new_state
+        return new_state
 
     @classmethod
     def register_window_state_listener(cls,
-                                       listener: Callable[[int, WinDialogState], bool],
+                                       listener: Callable[[WinDialogState], bool],
                                        name: str = None,
                                        require_focus_change: bool = True,
                                        window_id: int = -1,
@@ -648,7 +658,7 @@ class WindowStateMonitor:
 
     @classmethod
     def unregister_window_state_listener(cls, name: str = '',
-                                         listener: Callable[[int, WinDialogState],
+                                         listener: Callable[[WinDialogState],
                                                             bool] = None) -> None:
         """
         :param name: Same name as used for creation
@@ -670,9 +680,8 @@ class WindowStateMonitor:
                 pass
 
     @classmethod
-    def _notify_listeners(cls, changed: int, window_state: WinDialogState) -> None:
+    def _notify_listeners(cls, window_state: WinDialogState) -> None:
         """
-        :param changed: bit-mask value of window/control state. See WinDialogState
         :param window_state: contains detailed change state as well as useful
             properties to access the state.
         :return:
@@ -688,7 +697,7 @@ class WindowStateMonitor:
         for listener_name, listener_info in listeners.items():
             listener_info: ListenerInfo
             listener_name: str
-            listener: Callable[[int, WinDialogState], bool]
+            listener: Callable[[WinDialogState], bool]
             listener = listener_info.listener
             window_id_filter: int = listener_info.window_id_filter
             focus_id_filter: int = listener_info.focus_id_filter
@@ -706,7 +715,7 @@ class WindowStateMonitor:
                     continue
                 if focus_id_filter != -1 and focus_id_filter != window_state.focus_id:
                     continue
-                handled: bool = listener(changed, window_state)
+                handled: bool = listener(window_state)
                 #  cls._logger.debug(f'handled: {handled}')
                 if handled:
                     break

@@ -18,7 +18,7 @@ try:
 except:
     xbmc = None
 
-module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger: BasicLogger = BasicLogger.get_logger(__name__)
 PLAYSFX_HAS_USECACHED: bool = False
 
 
@@ -51,7 +51,7 @@ class AudioConverter(IConverter):
     def __init__(self) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__name__)
+            clz._logger = module_logger
 
     def canSetPipe(self) -> bool:
         return False
@@ -97,7 +97,7 @@ class WindowsAudioConverter(AudioConverter):
     @classmethod
     def init_class(cls):
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__name__)
+            cls._logger = module_logger
 
     def __init__(self, *args, **kwargs):
         super().__init__()
@@ -162,7 +162,7 @@ class BaseAudioConverter(AudioConverter):
     def __init__(self):
         super().__init__()
         clz = type(self)
-        clz._logger = module_logger.getChild(
+        clz._logger = module_logger
                 self.__class__.__name__)
         self._convert_process = None
         self.speed: float = 0.0
@@ -253,7 +253,7 @@ class SOXAudioConverter(BaseAudioConverter):
 
     def __init__(self):
         super().__init__()
-        self._logger = module_logger.getChild(
+        self._logger = module_logger
                 self.__class__.__name__)  # type: module_logger
 
     def playArgs(self, path):
@@ -358,7 +358,7 @@ class MPlayerAudioConverter(BaseAudioConverter, BaseServices):
         super().__init__()
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(self.__class__.__name__)
+            clz._logger = module_logger
             clz.register(self)
 
         self.configVolume: bool = False
@@ -469,7 +469,7 @@ class Mpg123AudioConverter(BaseAudioConverter, BaseServices):
         super().__init__()
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(self.__class__.__name__)
+            clz._logger = module_logger
             clz.register(self)
 
     def canSetSpeed(self) -> bool:
@@ -504,7 +504,7 @@ class Mpg321AudioConverter(BaseAudioConverter):
                                             _supported_output_formats)
     def __init__(self):
         super().__init__()
-        self._logger = module_logger.getChild(
+        self._logger = module_logger
                 self.__class__.__name__)  # type: module_logger
 
     def canSetVolume(self):
@@ -538,7 +538,7 @@ class Mpg321OEPiAudioConverter(BaseAudioConverter):
 
     def __init__(self):
         super().__init__()
-        self._logger = module_logger.getChild(
+        self._logger = module_logger
                 self.__class__.__name__)  # type: module_logger
         self._convert_process = None
         try:
@@ -609,7 +609,7 @@ class ConverterHandlerType:
     def __init__(self):
         clz = type(self)
         self.hasAdvancedPlayer: bool
-        clz._logger = module_logger.getChild(self.__class__.__name__)
+        clz._logger = module_logger
         self.availablePlayers: List[Type[AudioConverter]] | None
 
     @classmethod
@@ -680,7 +680,7 @@ class BaseConverterHandler(ConverterHandlerType):
     def __init__(self):
         super().__init__()
         clz = type(self)
-        clz._logger = module_logger.getChild(self.__class__.__name__)
+        clz._logger = module_logger
         self.availablePlayers: List[Type[AudioConverter]] | None = None
         clz.set_sound_dir()
 
@@ -756,7 +756,7 @@ class WavAudioConverterHandler(BaseConverterHandler):
         super().__init__()
         cls = type(self)
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__name__)
+            cls._logger = module_logger
         self.preferred = None
         self.advanced = advanced
         self.set_sound_dir()
@@ -904,7 +904,7 @@ class MP3AudioConverterHandler(WavAudioConverterHandler):
         super().__init__(preferred, advanced)
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__name__)
+            clz._logger = module_logger
         clz.set_sound_dir()
 
     @classmethod

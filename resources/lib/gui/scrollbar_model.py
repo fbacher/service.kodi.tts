@@ -6,26 +6,23 @@ from common.logger import BasicLogger
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
 from gui.base_tags import control_elements, ControlElement, Item
-from gui.element_parser import (BaseElementParser,
-                                ElementHandler)
+from gui.element_parser import (ElementHandler)
 from gui.no_topic_models import NoScrollbarTopicModel
-from gui.parse_group import ParseGroup
-from gui.parse_scrollbar import ScrollbarParser
-from gui.parse_topic import ParseTopic
+from gui.parser.parse_scrollbar import ScrollbarParser
 from gui.scrollbar_topic_model import ScrollbarTopicModel
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class ScrollbarModel(BaseModel):
 
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.SCROLL_BAR]
 
     def __init__(self, parent: BaseModel, parsed_scrollbar: ScrollbarParser) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         super().__init__(parent.window_model, parsed_scrollbar)
 
         self.orientation_expr: str = 'vertical'

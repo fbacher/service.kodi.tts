@@ -7,7 +7,7 @@ from common import *
 from common.logger import BasicLogger
 from common.setting_constants import Converters
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class BootstrapConverters:
@@ -29,7 +29,7 @@ class BootstrapConverters:
         if not cls._initialized:
             cls.initialized = True
             if cls._logger is None:
-                cls._logger = module_logger.getChild(cls.__name__)
+                cls._logger = module_logger
             cls.load_converters()
 
     @classmethod

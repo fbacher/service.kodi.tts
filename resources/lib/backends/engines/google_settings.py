@@ -19,7 +19,7 @@ from common.settings import Settings
 from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 '''
 class PlayerModeValidator(StringValidator):
@@ -102,7 +102,7 @@ class GoogleSettings(BaseServiceSettings):
             return
         GoogleSettings.initialized = True
         if GoogleSettings._logger is None:
-            GoogleSettings._logger = module_logger.getChild(GoogleSettings.__name__)
+            GoogleSettings._logger = module_logger
         GoogleSettings.init_settings()
         installed: bool = GoogleSettings.isInstalled()
         SettingsMap.set_is_available(GoogleSettings.service_ID, Reason.AVAILABLE)

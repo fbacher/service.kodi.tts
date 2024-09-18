@@ -14,9 +14,9 @@ from windowNavigation.help_dialog import HelpDialog
 
 
 if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = BasicLogger.get_module_logger(module_path=__file__)
+    module_logger = BasicLogger.get_logger(__name__)
 else:
-    module_logger = BasicLogger.get_module_logger()
+    module_logger = BasicLogger.get_logger(__name__)
 
 
 class HelpManager(threading.Thread):
@@ -36,7 +36,7 @@ class HelpManager(threading.Thread):
         Constructor
         """
         clz = type(self)
-        clz.logger = module_logger.getChild(self.__class__.__name__)
+        clz.logger = module_logger
         HelpManager.instance = self
         self.gui: HelpDialog = None
         self.dialog_ready: bool = False
@@ -50,12 +50,9 @@ class HelpManager(threading.Thread):
 
         clz.logger.debug(f'Initialized HelpManager')
         self.thread = threading.Thread(target=self.help_queue_processor,
-                                       name=f'help_queue')
+                                       name=f'help_q')
         self.thread.start()
         GarbageCollector.add_thread(self.thread)
-        # self.dialog_thread = threading.Thread(target=self.dialog_baby_sitter,
-        #                                       name=f'help_baby_sitter')
-        # self.dialog_thread.start()
 
     def help_queue_processor(self):
         """
@@ -69,7 +66,7 @@ class HelpManager(threading.Thread):
         # Launch and doModal
         try:
             self.help_dialog_thread = threading.Thread(target=self.launch,
-                                                       name=f'help_dialog')
+                                                       name=f'help_dlg')
             self.help_dialog_thread.start()
             GarbageCollector.add_thread(self.help_dialog_thread)
         except AbortException:
@@ -124,7 +121,7 @@ class HelpManager(threading.Thread):
             except AbortException:
                 return  # Let thread die
             except Exception:
-                self.logger.exception('')
+                self.get.exception('')
         '''
 
     def gui_callback(self, **kwargs):
@@ -163,7 +160,6 @@ class HelpManager(threading.Thread):
                 self.dialog_ready = False
                 # HelpManager.instance.gui.doModal()
         except AbortException:
-            del HelpManager.instance
             return  # Let thread die
         except Exception as e:
             self.gui = None

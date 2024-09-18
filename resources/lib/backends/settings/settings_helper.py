@@ -20,7 +20,7 @@ from common.setting_constants import GenderSettingsMap, PlayerMode
 from common.settings import Settings
 from windowNavigation.choice import Choice
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class SettingsHelper:
@@ -33,7 +33,7 @@ class SettingsHelper:
     @classmethod
     def init_class(cls) -> None:
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__name__)
+            cls._logger = module_logger
             #  cls.get_engines_supporting_lang()
             cls.initialized = True
 

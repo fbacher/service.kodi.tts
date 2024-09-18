@@ -19,7 +19,7 @@ from cache.prefetch_movie_data.json_utils_basic import JsonUtilsBasic
 from common.logger import *
 from common.monitor import Monitor
 
-module_logger: Final[BasicLogger] = BasicLogger.get_module_logger(module_path=__file__)
+module_logger: Final[BasicLogger] = BasicLogger.get_logger(__name__)
 
 
 class DBAccess:
@@ -70,7 +70,7 @@ class DBAccess:
     @classmethod
     def _class_init_(cls):
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__name__)
+            cls._logger = module_logger
 
     @classmethod
     def create_details_query(cls) -> str:

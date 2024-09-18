@@ -13,7 +13,7 @@ from common.monitor import Monitor
 from utils import addoninfo
 from .base import WindowHandlerBase
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class NoticeDialog(WindowHandlerBase):
@@ -92,7 +92,7 @@ class NoticeDialog(WindowHandlerBase):
 #        message = self.win.getControl(402).getLabel()
 #        #print repr(message)
 #        self.addNotice(heading,message)
-#        if not isSpeaking: return self.takeNoticesForSpeech()
+#        if not is_speaking: return self.takeNoticesForSpeech()
 #        return None
 
 

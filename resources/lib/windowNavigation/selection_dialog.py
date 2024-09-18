@@ -18,10 +18,10 @@ from common.monitor import Monitor
 from windowNavigation.choice import Choice
 
 if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = BasicLogger.get_module_logger(module_path=__file__)
+    module_logger = BasicLogger.get_logger(__name__)
 
 else:
-    module_logger = BasicLogger.get_module_logger()
+    module_logger = BasicLogger.get_logger(__name__)
 
 
 class SelectionDialog(xbmcgui.WindowXMLDialog):
@@ -44,7 +44,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         super().__init__(*args, **kwargs)
         self.initialized: bool = False
         clz = type(self)
-        clz._logger = module_logger.getChild(self.__class__.__name__)
+        clz._logger = module_logger
         clz._logger.debug('SelectionDialog.__init__')
         Monitor.register_abort_listener(self.on_abort_requested)
         empty_display_values: List[Choice] = []

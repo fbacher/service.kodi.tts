@@ -45,7 +45,7 @@ from common.settings import Settings
 from common.simple_run_command import SimpleRunCommand
 from utils.util import runInThread
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 DEFAULT_MODEL: Final[str] = 'en_US-ryan-medium.onnx'
 #  'en_US-lessac-medium.onnx'
 
@@ -148,7 +148,7 @@ class PiperSpeechGenerator(ISpeechGenerator):
     def __init__(self) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__name__)
+            clz._logger = module_logger
         self.download_results: Results = Results()
 
         if clz.piper_cmd is None:
@@ -428,7 +428,7 @@ class Voice:
     def __init__(self, lang: str, country: str, name: str, quality: str):
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__name__)
+            clz._logger = module_logger
         self.lang: str = lang
         self.country: str = country
         self.name: str = name
@@ -468,7 +468,7 @@ class Voice:
     @classmethod
     def load_voices(cls) -> None:
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__name__)
+            cls._logger = module_logger
         voices_path_validator: StringValidator
         voices_path_validator = PiperTTSBackend.get_validator(PiperTTSBackend.service_ID,
                                                   property_id=SettingsProperties.VOICE_PATH)
@@ -500,7 +500,7 @@ class PiperTTSBackend(SimpleTTSBackend):
         super().__init__(*args, **kwargs)
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__name__)
+            clz._logger = module_logger
 
         self.process = None
         self.stop_processing = False

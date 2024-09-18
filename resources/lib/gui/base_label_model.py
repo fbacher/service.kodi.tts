@@ -16,20 +16,21 @@ from gui.base_tags import control_elements, ControlElement, Item, WindowType
 from gui.base_parser import BaseParser
 from gui.base_tags import ElementKeywords as EK
 from gui.statements import Statements
+from utils import util
 from windows.ui_constants import UIConstants
 from windows.window_state_monitor import WinDialogState
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class BaseLabelModel(BaseModel):
 
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
 
     def __init__(self, window_model: BaseModel, parser: BaseParser) -> None:
         clz = BaseLabelModel
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         super().__init__(window_model, parser)
 
         self.label_expr: str = ''
@@ -45,6 +46,7 @@ class BaseLabelModel(BaseModel):
         #  ControlCapabilities.LABEL2
         return False
 
+    '''
     def voice_labelx(self, stmts: Statements) -> bool:
         """
             Gets the text value from this label.
@@ -89,6 +91,7 @@ class BaseLabelModel(BaseModel):
         clz._logger.debug(f'Phrases: {new_phrases}')
         stmts.last.phrases.extend(new_phrases)
         return success
+    '''
 
     def voice_control_label(self, stmts: Statements,
                             control_id_expr: int | str | None = None,
@@ -112,7 +115,7 @@ class BaseLabelModel(BaseModel):
         success: bool = False
         control_id: int = -1
         if control_id_expr is not None:
-            control_id = BaseModel.get_non_negative_int(control_id_expr)
+            control_id = util.get_non_negative_int(control_id_expr)
         else:
             control_id = self.control_id
 
@@ -149,7 +152,7 @@ class BaseLabelModel(BaseModel):
         success: bool = False
         control_id: int = -1
         if control_id_expr is not None:
-            control_id = BaseModel.get_non_negative_int(control_id_expr)
+            control_id = util.get_non_negative_int(control_id_expr)
         else:
             control_id = self.control_id
         if self.control_id != -1:

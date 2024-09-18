@@ -16,7 +16,7 @@ from common.setting_constants import Backends, Mode, Players
 from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
 
-module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class FliteTTSBackend(SimpleTTSBackend):
@@ -42,7 +42,7 @@ class FliteTTSBackend(SimpleTTSBackend):
         super().__init__(*args, **kwargs)
         clz._class_name = self.__class__.__name__
         if type(self)._logger is None:
-            type(self)._logger = module_logger.getChild(clz._class_name)
+            type(self)._logger = module_logger
         if not clz._initialized:
             clz._initialized = True
             self.register(self)

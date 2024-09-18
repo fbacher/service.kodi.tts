@@ -13,7 +13,7 @@ from common.settings import Settings
 from common.settings_low_level import SettingsProperties
 
 T = xbmcaddon.Addon(Constants.ADDON_ID).getLocalizedString
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class ConfigUtils:
@@ -32,7 +32,7 @@ class ConfigUtils:
     @classmethod
     def init_class(cls):
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__name__)
+            cls._logger = module_logger
 
     @classmethod
     def selectBackend(cls):

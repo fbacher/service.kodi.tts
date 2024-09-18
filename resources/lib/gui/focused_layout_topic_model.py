@@ -4,25 +4,23 @@ from typing import ForwardRef, List
 from common.logger import BasicLogger
 from common.phrases import PhraseList
 from gui.base_model import BaseModel
-from gui.base_tags import ValueFromType
 from gui.gui_globals import GuiGlobals
 from gui.label_model import LabelModel
-from gui.parse_topic import ParseTopic
+from gui.parser.parse_topic import ParseTopic
 from gui.statements import Statement, Statements, StatementType
 from gui.topic_model import TopicModel
-from windows.window_state_monitor import WinDialogState
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class FocusedLayoutTopicModel(TopicModel):
 
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
 
     def __init__(self, parent: BaseModel, parsed_focused_layout_topic: ParseTopic) -> None:
         clz = FocusedLayoutTopicModel
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
 
         super().__init__(parent=parent, parsed_topic=parsed_focused_layout_topic)
 

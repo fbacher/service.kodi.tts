@@ -22,10 +22,10 @@ from common.critical_settings import CriticalSettings
 from common.logger import BasicLogger
 
 if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = BasicLogger.get_module_logger(module_path=__file__)
+    module_logger = BasicLogger.get_logger(__name__)
 
 else:
-    module_logger = BasicLogger.get_module_logger()
+    module_logger = BasicLogger.get_logger(__name__)
 
 
 class MessageRef(Enum):
@@ -82,30 +82,30 @@ class SubjectRef(StrEnum):
     WINDOWS_TTS = auto()
     WELCOME_TTS = auto()
     KEYBOARD_MAPPINGS = auto()
-    KEYBOARD_MAPPINGS_TEXT = auto()
+    # KEYBOARD_MAPPINGS_TEXT = auto()
     PREDEFINED_MAPPINGS = auto()
     PREDEFINED_OPEN_SETTINGS = auto()
-    PREDEFINED_OPEN_SETTINGS_TEXT = auto()
+    # PREDEFINED_OPEN_SETTINGS_TEXT = auto()
     PREDEFINED_VOICE_HINTS = auto()
-    PREDEFINED_VOICE_HINTS_TEXT = auto()
+    # PREDEFINED_VOICE_HINTS_TEXT = auto()
     PREDEFINED_REPEAT = auto()
-    PREDEFINED_REPEAT_TEXT = auto()
+    # PREDEFINED_REPEAT_TEXT = auto()
     PREDEFINED_VERBOSITY = auto()
-    PREDEFINED_VERBOSITY_TEXT = auto()
+    # PREDEFINED_VERBOSITY_TEXT = auto()
     PREDEFINED_HELP = auto()
-    PREDEFINED_HELP_TEXT = auto()
+    # PREDEFINED_HELP_TEXT = auto()
     PREDEFINED_TOGGLE_VOICING = auto()
-    PREDEFINED_TOGGLE_VOICING_TEXT = auto()
+    # PREDEFINED_TOGGLE_VOICING_TEXT = auto()
     PREDEFINED_TOGGLE_TTS = auto()
-    PREDEFINED_TOGGLE_TTS_TEXT = auto()
+    # PREDEFINED_TOGGLE_TTS_TEXT = auto()
     PREDEFINED_INCREASE_VOLUME = auto()
-    PREDEFINED_INCREASE_VOLUME_TEXT = auto()
+    # PREDEFINED_INCREASE_VOLUME_TEXT = auto()
     PREDEFINED_DECREASE_VOLUME = auto()
-    PREDEFINED_DECREASE_VOLUME_TEXT = auto()
+    # PREDEFINED_DECREASE_VOLUME_TEXT = auto()
     PREDEFINED_INCREASE_SPEED = auto()
-    PREDEFINED_INCREASE_SPEED_TEXT = auto()
+    # PREDEFINED_INCREASE_SPEED_TEXT = auto()
     PREDEFINED_DECREASE_SPEED = auto()
-    PREDEFINED_DECREASE_SPEED_TEXT = auto()
+    # PREDEFINED_DECREASE_SPEED_TEXT = auto()
 
 
 class CategoryRef(StrEnum):

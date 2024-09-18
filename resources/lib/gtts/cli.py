@@ -87,7 +87,7 @@ def print_languages(ctx, param, value):
 
 def set_debug(ctx, param, debug):
     """Callback for <debug> flag.
-    Sets logger level to DEBUG
+    Sets get level to DEBUG
     """
     if debug:
         log.setLevel(logging.DEBUG)

@@ -95,6 +95,9 @@ class ITTSBackendBase(IBackend):
     def say(self, phrases: PhraseList):
         raise Exception('Not Implemented')
 
+    def isSpeaking(self) -> bool:
+        raise NotImplementedError()
+
     @classmethod
     def get_constraints(cls, setting: str) -> Constraints | None:
         raise Exception('Not Implemented')
@@ -187,7 +190,7 @@ class ITTSBackendBase(IBackend):
     def get_backend_id(cls) -> str:
         raise Exception('Not Implemented')
 
-    def isSpeaking(self) -> bool:
+    def is_speaking(self) -> bool:
         raise Exception('Not Implemented')
 
     def getWavStream(self, text):
@@ -200,6 +203,9 @@ class ITTSBackendBase(IBackend):
         raise Exception('Not Implemented')
 
     def stop(self) -> None:
+        raise Exception('Not Implemented')
+
+    def _close(self):
         raise Exception('Not Implemented')
 
     def close(self) -> None:

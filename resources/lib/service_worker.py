@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+"""
+
+"""
 from __future__ import annotations  # For union operator |
 
 import datetime
@@ -14,14 +17,13 @@ from common.exceptions import ExpiredException
 from common.globals import Globals
 from common.kodi_player_monitor import KodiPlayerMonitor, KodiPlayerState
 from common.logger import *
+from common.message_ids import MessageId
 from common.phrases import Phrase, PhraseList
 from utils.util import runInThread
 from windowNavigation.help_manager import HelpManager
 from windows.notice import NoticeDialog
 from windows.ui_constants import UIConstants
 from windows.window_state_monitor import WinDialog, WinDialogState, WindowStateMonitor
-
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
 
 # TODO Remove after eliminating util.getCommand
 
@@ -57,13 +59,30 @@ import enabler
 
 __version__ = Constants.VERSION
 
-module_logger.info(__version__)
-module_logger.info('Platform: {0}'.format(sys.platform))
+
+class TTSLogger:
+    module_logger: BasicLogger = None
+    module_change_cnt: int = 0
+
+    @classmethod
+    def logger(cls) -> BasicLogger:
+        """
+
+        :return:
+        """
+        if BasicLogger.change_cnt > cls.module_change_cnt:
+            BasicLogger.change_cnt = cls.module_change_cnt
+            cls.module_logger = BasicLogger.get_logger(__name__)
+        return cls.module_logger
+
+
+TTSLogger.logger().info(__version__)
+TTSLogger.logger().info('Platform: {0}'.format(sys.platform))
 
 if audio.PLAYSFX_HAS_USECACHED:
-    module_logger.info('playSFX() has useCached')
+    TTSLogger.logger().info('playSFX() has useCached')
 else:
-    module_logger.info('playSFX() does NOT have useCached')
+    TTSLogger.logger().info('playSFX() does NOT have useCached')
 
 # util.initCommands()
 BaseServiceSettings()
@@ -76,21 +95,31 @@ DO_RESET = False
 
 
 def resetAddon():
+    """
+
+    :return:
+    """
     global DO_RESET
     if DO_RESET:
         return
     DO_RESET = True
-    module_logger.info('Resetting addon...')
+    TTSLogger.logger().info('Resetting addon...')
     xbmc.executebuiltin(
             'RunScript(special://home/addons/service.kodi.tts/resources/lib/tools'
             '/enabler.py,RESET)')
 
 
 class TTSClosedException(Exception):
+    """
+
+    """
     pass
 
 
 class Commands:
+    """
+
+    """
     DUMP_THREADS: Final[str] = 'DUMP_THREADS'
     TOGGLE_ON_OFF: Final[str] = 'TOGGLE_ON_OFF'
     CYCLE_DEBUG: Final[str] = 'CYCLE_DEBUG'
@@ -124,14 +153,13 @@ class TTSService:
     instance: ForwardRef('TTSService') = None
     _is_configuring: bool = False
     _help_running: bool = False
-    _logger: BasicLogger = None
     msg_timestamp: datetime.datetime = None
     _initialized: bool = False
     speakListCount = None
     readerOn: bool = True
     stop: bool = False
     disable: bool = False
-    noticeQueue: queue.Queue[PhraseList] = queue.Queue(20)
+    notice_queue: queue.Queue[PhraseList] = queue.Queue(20)
     noticeQueueCount: int = 0
     noticeQueueFullCount: int = 0
     active_backend: ITTSBackendBase | None = None
@@ -139,8 +167,9 @@ class TTSService:
     playerStatus = playerstatus.PlayerStatus(10115).init()
     bgProgress = backgroundprogress.BackgroundProgress(10151).init()
     noticeDialog: NoticeDialog = NoticeDialog(10107).init()
-    winID = None
-    dialogID = None
+    window_state: WinDialogState | None = None
+    window_id: int | None = None
+    dialog_id: int | None = None
     windowReader: WindowReaderBase | None = None
     current_control_id = None
     _previous_primary_text: str | None = None
@@ -156,6 +185,9 @@ class TTSService:
     background_driver_instance: BackgroundDriver = None
 
     def __init__(self):
+        """
+
+        """
         clz = type(self)
         super().__init__()  # Appears to not do anything
         if not clz._initialized:
@@ -165,14 +197,17 @@ class TTSService:
 
     @classmethod
     def init(cls):
+        """
+
+        :return:
+        """
         cls.instance_count += 1
         cls.speakListCount = None
-        cls._logger = module_logger.getChild(cls.__class__.__class__.__name__)
         cls.readerOn: bool = True
         cls.stop: bool = False
         cls.disable: bool = False
-        del cls.noticeQueue
-        cls.noticeQueue: queue.Queue = queue.Queue(20)
+        del cls.notice_queue
+        cls.notice_queue: queue.Queue = queue.Queue(20)
         cls.noticeQueueFullCount: int = 0
         cls.noticeQueueCount: int = 0
         cls.initState()
@@ -183,7 +218,8 @@ class TTSService:
         cls.playerStatus = playerstatus.PlayerStatus(10115).init()
         cls.bgProgress = backgroundprogress.BackgroundProgress(10151).init()
         cls.noticeDialog = NoticeDialog(10107).init()
-        cls.winID = None
+        cls.window_state = None
+        cls.window_id = None
         cls.windowReader = None
         cls.current_control_id = None
         cls._previous_primary_text = None
@@ -201,19 +237,31 @@ class TTSService:
         #                                            'tts_service aborting')
 
         # module_logger.info(f'SERVICE STARTED :: Interval: {cls.get_tts().interval}')
-        # cls._logger.info(f'TTSService.init instance_count: {cls.instance_count}')
+        # TTSLogger.logger().info(f'TTSService.init instance_count: {cls.instance_count}')
         # Debug.dump_all_threads()
 
     @classmethod
     def interval_ms(cls):
+        """
+
+        :return:
+        """
         return cls.interval / 1000.0
 
     @staticmethod
     def get_instance() -> 'TTSService':
+        """
+
+        :return:
+        """
         return TTSService.instance
 
     @classmethod
     def onAbortRequested(cls):
+        """
+
+        :return:
+        """
         cls.stop = True
         try:
             xbmc.log('Received AbortRequested', xbmc.LOGINFO)
@@ -223,6 +271,10 @@ class TTSService:
 
     @property
     def tts(self) -> ITTSBackendBase:
+        """
+
+        :return:
+        """
         clz = type(self)
         if clz.is_tts_closed():
             raise TTSClosedException()
@@ -230,6 +282,10 @@ class TTSService:
 
     @classmethod
     def get_tts(cls) -> ITTSBackendBase:
+        """
+
+        :return:
+        """
         if cls.is_tts_closed():
             raise TTSClosedException()
         return cls.active_backend
@@ -244,6 +300,10 @@ class TTSService:
 
     @classmethod
     def close_tts(cls) -> None:
+        """
+
+        :return:
+        """
         if cls.active_backend is not None:
             cls.active_backend.close()
         else:
@@ -251,15 +311,26 @@ class TTSService:
 
     @classmethod
     def is_tts_closed(cls) -> bool:
+        """
+
+        :return:
+        """
         if cls.active_backend is not None:
             return cls.active_backend._closed
         else:
             return True
 
     @classmethod
-    def processCommand(cls, command, data=None):
+    def process_command(cls, command, data=None):
+        """
+
+        :param command:
+        :param data:
+        :return:
+        """
         from utils import util
-        cls._logger.debug(f'command: {command} toggle_on: {cls.toggle_on}')
+        if TTSLogger.logger().isEnabledFor(DEBUG):
+            TTSLogger.logger().debug(f'command: {command} toggle_on: {cls.toggle_on}')
         if command == Commands.TOGGLE_ON_OFF:
             if cls.toggle_on:
                 cls.toggle_on = False
@@ -275,9 +346,9 @@ class TTSService:
             #  cls.repeatText()
             WindowStateMonitor.revoice_current_focus()
         elif command == Commands.EXTRA:
-            cls.sayExtra()
+            cls.sayExtra(window_state=cls.window_state)
         elif command == Commands.ITEM_EXTRA:  # What is this?
-            cls.sayItemExtra()
+            cls.sayItemExtra(cls.window_state)
         elif command == Commands.VOL_UP:
             cls.volumeUp()
         elif command == Commands.VOL_DOWN:
@@ -305,18 +376,22 @@ class TTSService:
             # incorrect
 
             phrases: PhraseList = PhraseList()
-            phrase_args: Dict[str, List[Phrase]]
-            phrase_args = json.loads(data, object_hook=Phrase.from_json)
-            if not phrase_args:
-                return
+            phrase_args: Dict[str, List[Phrase]] | None = None
             try:
+                phrase_args = json.loads(data, object_hook=Phrase.from_json)
+                # TTSLogger.logger().debug(f'phrases: {phrase_args}')
+                if not phrase_args:
+                    return
                 phrase: Phrase
                 for phrase in phrase_args.get('phrases'):
                     phrases.append(phrase)
-                cls.queueNotice(phrases)
+                if not phrases.is_empty():
+                    cls.queueNotice(phrases)
             except ExpiredException:
-                cls._logger.debug(f'incoming phrases expired on arrival')
-                pass
+                if TTSLogger.logger().isEnabledFor(DEBUG):
+                    TTSLogger.logger().debug(f'incoming phrases EXPIRED on arrival')
+            except Exception:
+                TTSLogger.logger().exception(f'Bad Phrase2: {data}')
         elif command == Commands.DUMP_THREADS:
             Debug.dump_all_threads()
         elif command == Commands.PREPARE_TO_SAY:
@@ -337,21 +412,23 @@ class TTSService:
             except AbortException:
                 reraise(*sys.exc_info())
             except ExpiredException:
-                cls._logger.debug(f'incoming text expired on arrival')
+                if TTSLogger.logger().isEnabledFor(DEBUG):
+                    TTSLogger.logger().debug(f'incoming text EXPIRED on arrival')
         elif command == Commands.SETTINGS_BACKEND_GUI:
-
             if cls._is_configuring:
-                if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                    cls._logger.debug_verbose("Ignoring Duplicate SETTINGS_BACKEND_GUI")
+                if TTSLogger.logger().isEnabledFor(DEBUG_VERBOSE):
+                    TTSLogger.logger().debug_verbose(
+                            "Ignoring Duplicate SETTINGS_BACKEND_GUI")
             else:
                 try:
                     cls._is_configuring = True
-                    cls._logger.debug('Starting Backend_GUI')
+                    if TTSLogger.logger().isEnabledFor(DEBUG):
+                        TTSLogger.logger().debug('Starting Backend_GUI')
                     cls.config_settings()
                 except AbortException:
                     reraise(*sys.exc_info())
                 except Exception:
-                    cls._logger.exception("")
+                    TTSLogger.logger().exception("")
                 finally:
                     cls._is_configuring = False
 
@@ -367,13 +444,18 @@ class TTSService:
             # ConfigUtils.selectPlayer(backend_id)
 
         elif command == Commands.RELOAD_ENGINE:
-            # cls._logger.debug("Ignoring RELOAD_ENGINE")
+            # TTSLogger.logger().debug("Ignoring RELOAD_ENGINE")
             cls.checkBackend()
 
     @classmethod
-    def reloadSettings(cls):
+    def reload_settings(cls):
+        """
+
+        :return:
+        """
         cls.readerOn = Settings.get_reader_on(True)
-        cls._logger.debug(f'readerOn: {cls.readerOn}')
+        if TTSLogger.logger().isEnabledFor(DEBUG):
+            TTSLogger.logger().debug(f'READER_ON: {cls.readerOn}')
         cls.speakListCount = Settings.get_speak_list_count(True)
         cls.autoItemExtra = 0
 
@@ -382,6 +464,10 @@ class TTSService:
 
     @classmethod
     def voice_hint(cls):
+        """
+
+        :return:
+        """
         """
         Toggle voicing hint-info for voiced controls.
 
@@ -392,45 +478,96 @@ class TTSService:
 
     @classmethod
     def config_settings(cls):
+        """
+
+        :return:
+        """
         from utils import util
-        cls._logger.debug(f'enter config_settings')
         SettingsGUI.notify(cmd=SettingsGUI.START)
 
     @classmethod
     def help(cls):
+        """
+
+        :return:
+        """
         from utils import util
-        cls._logger.debug(f'enter help')
         HelpManager.notify(cmd=HelpManager.HELP, text='')
-        cls._logger.debug(f'ext help')
 
     @classmethod
     def introduction(cls):
+        """
+
+        :return:
+        """
         pass
 
     @classmethod
     def help_config(cls):
+        """
+
+        :return:
+        """
         pass
 
-    '''
     @classmethod
-    def onDatabaseScanStarted(cls, database):
-        module_logger.info(
-                'DB SCAN STARTED: {0} - Notifying...'.format(database))
-        cls.queueNotice('{0}: {1}'
-                        .format(database,
-                                Messages.get_msg(Messages.DATABASE_SCAN_STARTED)))
+    def onDatabaseScanStartStop(cls, start: bool, database: str):
+        """
+
+        :param start: True if this is a START operation, False is STOP
+        :param database: Name of database
+        """
+        msg: str = ''
+        if start:
+            operation: str = 'STARTED'
+            msg = MessageId.DATABASE_SCAN_STARTED.get_formatted_msg(database)
+        else:
+            operation: str = 'STOPPED'
+            msg =MessageId.DATABASE_SCAN_FINISHED.get_formatted_msg(database)
+
+        TTSLogger.logger().info(f'DB SCAN {operation}: {database} - Notifying...')
+        cls.queueNotice(PhraseList.create(texts=msg))
 
     @classmethod
-    def onDatabaseUpdated(cls, database):
-        module_logger.info(
-                'DB SCAN UPDATED: {0} - Notifying...'.format(database))
-        cls.queueNotice('{0}: {1}'
-                        .format(database,
-                                Messages.get_msg(Messages.DATABASE_SCAN_STARTED)))
-    '''
+    def onLibraryCleanStartStop(cls, start: bool, database):
+        """
+
+        :param start:
+        :param database:
+        """
+        if start:
+            operation: str = 'STARTED'
+            msg = MessageId.LIBRARY_CLEAN_START.get_msg()
+        else:
+            operation: str = 'STOPPED'
+            msg = MessageId.LIBRARY_CLEAN_COMPLETE.get_msg()
+
+        TTSLogger.logger().info(f'LIBRARY CLEAN {operation} - Notifying...')
+        cls.queueNotice(PhraseList.create(texts=msg))
+
+    @classmethod
+    def onScreensaverActivated(cls, start: bool):
+        """
+
+        :param start:
+        """
+        if start:
+            operation: str = 'STARTED'
+            msg = MessageId.SCREEN_SAVER_START.get_msg()
+        else:
+            operation: str = 'STOPPED'
+            msg = MessageId.SCREEN_SAVER_INTERRUPTED.get_msg()
+
+        TTSLogger.logger().info(f'SCREENSAVER {operation}: - Notifying...')
+        cls.queueNotice(PhraseList.create(texts=msg))
 
     @classmethod
     def onNotification(cls, **kwargs):
+        """
+
+        :param kwargs:
+        :return:
+        """
         kwargs.setdefault('sender', 'invalid')
         kwargs.setdefault('method', 'invalid')
         kwargs.setdefault('data', 'invalid')
@@ -438,67 +575,106 @@ class TTSService:
         method: str = kwargs['method']
         data: str = kwargs['data']
         try:
+            if sender == 'kodi':
+                if method == 'onScanStarted':
+                    database: str = data
+                    cls.onDatabaseScanStartStop(start=True, database=database)
+                elif method == 'onScanFinished':
+                    database: str = data
+                    cls.onDatabaseScanStartStop(start=False, database=database)
+                elif method == 'onCleanStarted':
+                    database: str = data
+                    cls.onLibraryCleanStartStop(start=True, database=database)
+                elif method == 'onCleanFinished':
+                    database: str = data
+                    cls.onLibraryCleanStartStop(start=False, database=database)
+                elif method == 'onScreensaverActivated':
+                    cls.onScreensaverActivated(start=True)
+                elif method == 'onScreensaverDeactivated':
+                    cls.onScreensaverActivated(start=False)
             if sender != Constants.ADDON_ID:
                 return
             # Remove the "Other." prefix
-            cls.processCommand(method.split('.', 1)[-1], data)
+            cls.process_command(method.split('.', 1)[-1], data)
         except AbortException:
             pass  # run in separate thread that is going to exit
         except Exception as e:
-            cls._logger.exception('')
+            TTSLogger.logger().exception('')
 
     @classmethod
     def queueNotice(cls, phrases: PhraseList):
+        """
+
+        :param phrases:
+        :return:
+        """
         try:
-            if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                cls._logger.debug_verbose(f'phrases: {len(phrases)} phrase: {phrases[0]}')
+            if TTSLogger.logger().isEnabledFor(DEBUG_VERBOSE):
+                TTSLogger.logger().debug_verbose(f'phrases: {len(phrases)} phrase: '
+                                                 f'{phrases[0]}')
             if phrases[0].get_interrupt():
-                if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                    cls._logger.debug_verbose(f'INTERRUPT: clearNoticeQueue')
+                if TTSLogger.logger().isEnabledFor(DEBUG_VERBOSE):
+                    TTSLogger.logger().debug_verbose(f'INTERRUPT: clearing NoticeQueue')
                 cls.clearNoticeQueue()
             while not Monitor.exception_on_abort(timeout=0.01):
                 try:
-                    cls.noticeQueue.put_nowait(phrases)
+                    cls.notice_queue.put_nowait(phrases)
                     break
                 except queue.Full:
-                    cls._logger.debug(f'queueNotice full')
+                    if TTSLogger.logger().isEnabledFor(DEBUG):
+                        TTSLogger.logger().debug(f'queueNotice full')
         except ExpiredException:
-            cls._logger.debug('Expired msg from queue')
+            if TTSLogger.logger().isEnabledFor(DEBUG):
+                TTSLogger.logger().debug('EXPIRED msg from queue')
 
     @classmethod
     def clearNoticeQueue(cls):
+        """
+
+        :return:
+        """
         try:
-            while not cls.noticeQueue.empty():
-                cls.noticeQueue.get()
-                cls.noticeQueue.task_done()
+            while not cls.notice_queue.empty():
+                cls.notice_queue.task_done()
         except queue.Empty:
             return
 
     @classmethod
-    def checkNoticeQueue(cls):
-        if cls.noticeQueue.empty():
+    def checkNoticeQueue(cls, window_state: WinDialogState) -> bool:
+        """
+
+        :param window_state:
+        :return:
+        """
+        if cls.notice_queue.empty():
             return False
-        while not cls.noticeQueue.empty():
+        while not cls.notice_queue.empty():
             try:
                 phrases: PhraseList
-                phrases = cls.noticeQueue.get()
+                phrases = cls.notice_queue.get()
+                cls.notice_queue.task_done()
                 if phrases.is_expired():
+                    if TTSLogger.logger().isEnabledFor(DEBUG):
+                        TTSLogger.logger().debug(f'Phrase EXPIRED: {phrases[0]}')
                     continue
-                if cls._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                    cls._logger.debug_extra_verbose(
+                if TTSLogger.logger().isEnabledFor(DEBUG_EXTRA_VERBOSE):
+                    TTSLogger.logger().debug_extra_verbose(
                         f'# phrases: {len(phrases)} {phrases}')
                 cls.sayText(phrases)
             except ExpiredException:
-                cls._logger.debug(f'Expired just before sayText')
-            finally:
-                cls.noticeQueue.task_done()
+                if TTSLogger.logger().isEnabledFor(DEBUG):
+                    TTSLogger.logger().debug(f'EXPIRED just before sayText')
         return True
 
     @classmethod
     def initState(cls):
+        """
+
+        :return:
+        """
         if Monitor.is_abort_requested() or cls.stop:
             return
-        cls.winID = None
+        cls.window_id = None
         cls.windowReader = None
         cls.current_control_id = None
         cls._previous_primary_text = None
@@ -509,15 +685,21 @@ class TTSService:
         cls.interval = 400
         cls.listIndex = None
         cls.waitingToReadItemExtra = None
-        cls.reloadSettings()
+        cls.reload_settings()
         cls.background_driver: BackgroundDriver | None = None
 
     @classmethod
     def initTTS(cls, backend_id: str = None) -> TTSService:
+        """
+
+        :param backend_id:
+        :return:
+        """
         clz = type(cls)
         if backend_id is None:
             backend_id = Settings.get_engine_id()
-            cls._logger.debug(f'backend_id: {backend_id}')
+            if TTSLogger.logger().isEnabledFor(DEBUG):
+                TTSLogger.logger().debug(f'backend_id: {backend_id}')
         else:
             Settings.set_backend_id(backend_id)
         new_active_backend = BaseServices.getService(backend_id)
@@ -527,16 +709,21 @@ class TTSService:
 
         backend_id = cls.set_active_backend(new_active_backend)
         cls.updateInterval()  # Poll interval
-        cls._logger.info(f'New active backend: {backend_id}')
+        TTSLogger.logger().info(f'New active backend: {backend_id}')
         cls.start_background_driver()
         return cls.get_instance()
 
     @classmethod
     def fallbackTTS(cls, reason=None):
+        """
+
+        :param reason:
+        :return:
+        """
         if reason == Commands.RESET:
             return resetAddon()
         backend: Type[ITTSBackendBase | None] = BackendInfoBridge.getBackendFallback()
-        cls._logger.info(f'Backend falling back to: {backend.backend_id}')
+        TTSLogger.logger().info(f'Backend falling back to: {backend.backend_id}')
         cls.initTTS(backend.backend_id)
         try:
             phrases: PhraseList = PhraseList()
@@ -549,19 +736,29 @@ class TTSService:
                                 interrupt=False)
             cls.sayText(phrases)
         except ExpiredException:
-            cls._logger.debug(f'Expired just before SayText in FallbackTTS')
+            if TTSLogger.logger().isEnabledFor(DEBUG):
+                TTSLogger.logger().debug(f'EXPIRED just before SayText in FallbackTTS')
 
     @classmethod
     def firstRun(cls):
+        """
+
+        :return:
+        """
         from utils import keymapeditor
-        module_logger.info('FIRST RUN')
-        module_logger.info('Installing default keymap')
+        TTSLogger.logger().info('FIRST RUN')
+        TTSLogger.logger().info('Installing default keymap')
         keymapeditor.installDefaultKeymap(quiet=True)
 
     @classmethod
     def start(cls):
-        cls._logger.debug(f'starting TTSService.start. '
-                          f'instance_count: {cls.instance_count}')
+        """
+
+        :return:
+        """
+        if TTSLogger.logger().isEnabledFor(DEBUG):
+            TTSLogger.logger().debug(f'starting TTSService.start. '
+                                    f'instance_count: {cls.instance_count}')
         cls.initTTS()
         seed_cache: bool = False  # True
         engine_id: str = cls.get_active_backend().backend_id
@@ -573,48 +770,45 @@ class TTSService:
             runInThread(call, args=[engine_id],
                         name='seed_cache', delay=360)
 
-        WindowStateMonitor.register_window_state_listener(cls.handle_window_changes,
-                                                          "main")
+        WindowStateMonitor.register_window_state_listener(cls.handle_ui_changes,
+                                                          "main",
+                                                          require_focus_change=False)
 
     @classmethod
-    def handle_window_changes(cls, changed: int, window_state: WinDialogState) -> bool:
+    def handle_ui_changes(cls, window_state: WinDialogState) -> bool:
         """
 
-        :param changed: Indicates what has changed. See WindowStateMonitor
         :param window_state: Contains information about the window at the time
                              of the check for state (window_id, control_id, etc.)
         :return:
         """
-        # cls._logger.debug(f'TTSService initialized. Now waiting for events'
+        #  TTSLogger.logger().debug(f'{window_state.verbose}')
+        # TTSLogger.logger().debug(f'TTSService initialized. Now waiting for events'
         #                   f'stop: {cls.stop} readerOn: {cls.readerOn}')
         try:
             current_window_id: int = window_state.window_id
-            # cls._logger.debug(f'current_window_id: {current_window_id}')
-            # focus_id: str = f'{window_state.window_focus_id}'
-            # if focus_id == '0':  # No control on dialog has focus (Kodi may not have focus)
-            #     return False
-
+            cls.window_state = window_state
             if cls.stop:
                 pass
             # if cls.readerOn:
             #    try:
             if window_state.revoice:
-                cls.repeatText()
+                cls.repeatText(window_state)
             else:
-                cls.checkForText()
+                cls.checkForText(window_state)
             return True
 
         except RuntimeError:
-            module_logger.exception('start()')
+            TTSLogger.logger().exception('start()')
         except SystemExit:
-            module_logger.info('SystemExit: Quitting')
+            TTSLogger.logger().info('SystemExit: Quitting')
         except TTSClosedException:
-            module_logger.info('TTSCLOSED')
+            TTSLogger.logger().info('TTSCLOSED')
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
             # Because we don't want to kill speech on an error
-            cls._logger.exception("")
+            TTSLogger.logger().exception("")
             cls.initState()  # To help keep errors from repeating on the loop
 
         """
@@ -623,26 +817,26 @@ class TTSService:
                    (not Monitor.exception_on_abort(timeout=cls.interval_ms())) and (
                            not cls.stop)):
                 try:
-                    phrases: PhraseList = cls.noticeQueue.get_nowait()
+                    phrases: PhraseList = cls.notice_queue.get_nowait()
                     cls.sayText(phrases)
-                    cls.noticeQueue.task_done()
+                    cls.notice_queue.task_done()
                 except AbortException:
                     reraise(*sys.exc_info())
                 except queue.Empty:
                     pass
                 except RuntimeError:
-                    module_logger.error('start()')
+                    TTSLogger.logger().error('start()')
                 except SystemExit:
-                    module_logger.info('SystemExit: Quitting')
+                    TTSLogger.logger().info('SystemExit: Quitting')
                     break
                 except TTSClosedException:
-                    module_logger.info('TTSCLOSED')
+                    TTSLogger.logger().info('TTSCLOSED')
                 except:  # Because we don't want to kill speech on an error
-                    module_logger.error('start()', notify=True)
+                    TTSLogger.logger().error('start()', notify=True)
                     cls.initState()  # To help keep errors from repeating on the loop
                 for x in range(
                         5):  # Check the queue every 100ms, check state every 500ms
-                    if cls.noticeQueue.empty():
+                    if cls.notice_queue.empty():
                         Monitor.wait_for_abort(timeout=0.1)
                 break
         
@@ -651,31 +845,38 @@ class TTSService:
             cls.close_tts()
             cls.end()
             utils.playSound('off')
-            module_logger.info('SERVICE STOPPED')
+            TTSLogger.logger().info('SERVICE STOPPED')
             if cls.disable:
                 enabler.disableAddon()
         """
 
     @classmethod
     def end(cls):
-        if module_logger.isEnabledFor(DEBUG):
-            xbmc.sleep(200)  # Give threads a chance to finish
-            import threading
-            module_logger.info('Remaining Threads:')
-            for t in threading.enumerate():
-                module_logger.debug(f'  {t.name}')
+        """
+
+        :return:
+        """
+        return
 
     @classmethod
     def shutdown(cls):
+        """
+
+        :return:
+        """
         cls.stop = True
         cls.disable = True
 
     @classmethod
     def updateInterval(cls):
+        """
+
+        :return:
+        """
         if Settings.getSetting(SettingsProperties.OVERRIDE_POLL_INTERVAL,
                                service_id=SettingsProperties.TTS_SERVICE,
                                default_value=False):
-            engine: ITTSBackendBase = cls.tts
+            engine: ITTSBackendBase = cls.get_tts()
             cls.interval = Settings.getSetting(
                     SettingsProperties.POLL_INTERVAL,
                     service_id=SettingsProperties.TTS_SERVICE,
@@ -689,8 +890,13 @@ class TTSService:
 
     @classmethod
     def set_active_backend(cls, backend: ITTSBackendBase) -> str:
+        """
+
+        :param backend:
+        :return:
+        """
         if isinstance(backend, str):
-            module_logger.debug(f'backend is string: {backend}')
+            TTSLogger.logger().debug(f'backend is string: {backend}')
         else:
             backend.init()
             pass
@@ -698,8 +904,8 @@ class TTSService:
             cls.close_tts()
 
         #  backend.init()
-        # module_logger.debug(f'setting active_backend: {str(backend)}')
-        # module_logger.debug(f'backend_id: {backend.backend_id}')
+        # TTSLogger.logger().debug(f'setting active_backend: {str(backend)}')
+        # TTSLogger.logger().debug(f'backend_id: {backend.backend_id}')
         cls.active_backend = backend
         if cls.driver is None:
             cls.driver = Driver()
@@ -707,12 +913,20 @@ class TTSService:
 
     @classmethod
     def start_background_driver(cls) -> None:
+        """
+
+        :return:
+        """
         if cls.background_driver_instance is None:
             cls.background_driver_instance = BackgroundDriver()
-            cls.background_driver = type(cls.background_driver_instance)
+            cls.background_driver = cls.background_driver_instance
 
     @classmethod
     def checkBackend(cls) -> None:
+        """
+
+        :return:
+        """
         backend_id = Settings.get_engine_id()
         if (cls.active_backend is not None
                 and backend_id == cls.active_backend.backend_id):
@@ -721,15 +935,25 @@ class TTSService:
 
     @classmethod
     def is_primary_text_changed(cls, phrases: PhraseList) -> bool:
-        # cls._logger.debug(f'phrases: {phrases} empty: {phrases.is_empty()} '
+        """
+
+        :param phrases:
+        :return:
+        """
+        # TTSLogger.logger().debug(f'phrases: {phrases} empty: {phrases.is_empty()} '
         #                   f'previous_primary_text: {cls._previous_primary_text}')
         if phrases.is_empty():
             return cls._previous_primary_text is None
-        #  cls._logger.debug(f'equals: {phrases[0].text_equals(cls._previous_primary_text)}')
+        #  TTSLogger.logger().debug(f'equals: {phrases[0].text_equals(cls._previous_primary_text)}')
         return not phrases[0].text_equals(cls._previous_primary_text)
 
     @classmethod
     def set_previous_primary_text(cls, phrases: PhraseList) -> None:
+        """
+
+        :param phrases:
+        :return:
+        """
         if phrases is not None and not phrases.is_empty():
             cls._previous_primary_text = phrases[0].get_text()
         else:
@@ -737,46 +961,61 @@ class TTSService:
 
     @classmethod
     def is_secondary_text_changed(cls, phrases: PhraseList) -> bool:
+        """
+
+        :param phrases:
+        :return:
+        """
         result: bool
         if phrases.is_empty():
             result = cls._previous_secondary_text != ''
         else:
             result = not phrases[0].text_equals(cls._previous_secondary_text)
-        if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-            cls._logger.debug_verbose(f'previous_secondary_text:'
+        if TTSLogger.logger().isEnabledFor(DEBUG_VERBOSE):
+            TTSLogger.logger().debug_verbose(f'previous_secondary_text:'
                                       f' {cls._previous_secondary_text} '
                                       f'phrases: {phrases} result: {result}')
         return result
 
     @classmethod
     def set_previous_secondary_text(cls, phrases: PhraseList) -> None:
+        """
+
+        :param phrases:
+        :return:
+        """
         if phrases.is_empty():
             cls._previous_secondary_text = ''
         else:
             cls._previous_secondary_text = phrases[0].get_text()
 
     @classmethod
-    def checkForText(cls):
-        #  cls._logger.debug(f'In checkForText')
+    def checkForText(cls, window_state: WinDialogState):
+        """
+
+        :param window_state:
+        :return:
+        """
+        #  TTSLogger.logger().debug(f'In checkForText')
         cls.checkAutoRead()  # Readers seem to flag text that they want read after the
                              # the current reading. Perhaps more cpu is_required?
                              # Perhaps to give user a chance to skip? Also seems
                              # to be able to be triggered externally.
-        newN = cls.checkNoticeQueue()  # Any incoming notifications from cmd line or addon?
-        newW = cls.checkWindow(newN)   # Window changed?
-        newC = cls.checkControl(newW)  # Control Changed?
+        newN = cls.checkNoticeQueue(window_state)  # Any incoming notifications from cmd line or addon?
+        newW = cls.checkWindow(newN, window_state)   # Window changed?
+        newC = cls.checkControl(newW, window_state)  # Control Changed?
         #
         # Read Description of the control, or any other context prior to reading
         # the actual text in any changed control.
 
-        newD = newC and cls.checkControlDescription(newW) or False
-        #  cls._logger.debug(f'Calling windowReader')
+        newD = newC and cls.checkControlDescription(newW, window_state) or False
+        TTSLogger.logger().debug(f'Calling: windowReader')
         phrases: PhraseList = PhraseList()
         success: bool = cls.windowReader.getControlText(cls.current_control_id, phrases)
         if not success or phrases.is_empty():
             compare = ''
         else:
-            # cls._logger.debug(f'CHECK getControlText: {phrases}'
+            # TTSLogger.logger().debug(f'CHECK getControlText: {phrases}'
             #                   f' reader: {cls.windowReader.__class__.__name__}')
             compare: str = phrases[0].get_text()
         # Secondary text is typically some detail (like progress status) that
@@ -788,13 +1027,13 @@ class TTSService:
         success = cls.windowReader.getSecondaryText(secondary)
         if not cls.is_secondary_text_changed(secondary):
             if not secondary.is_empty():
-                cls._logger.debug(f'CHECK: secondaryText {secondary} not changed '
+                TTSLogger.logger().debug(f'CHECK: secondaryText {secondary} not changed '
                                   f'reader: {cls.windowReader.__class__.__name__}')
             secondary.clear()
 
-        if cls._logger.isEnabledFor(DEBUG_VERBOSE):
+        if TTSLogger.logger().isEnabledFor(DEBUG_VERBOSE):
             if not phrases.is_empty() or compare != '' or len(secondary) > 0:
-                cls._logger.debug_verbose(f'control_id: {cls.current_control_id} '
+                TTSLogger.logger().debug_verbose(f'control_id: {cls.current_control_id} '
                                           f'phrases: {phrases} '
                                           f'compare: {compare} secondary: {secondary} '
                                           f'previous_secondaryText: '
@@ -805,26 +1044,33 @@ class TTSService:
 
         if (not phrases.is_empty()
                 and phrases.ends_with(secondary)):
-            cls._logger.debug(f'ends_with')
+            if TTSLogger.logger().isEnabledFor(DEBUG):
+                TTSLogger.logger().debug('ends_with')
             secondary.clear()
 
-        if cls._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-            cls._logger.debug_extra_verbose(f'newN: {newN} newW: {newW} newC: {newC}'
+        if TTSLogger.logger().isEnabledFor(DEBUG_EXTRA_VERBOSE):
+            TTSLogger.logger().debug_extra_verbose(f'newN: {newN} newW: {newW} newC: {newC}'
                                             f' newD: {newD}')
 
         if cls.is_primary_text_changed(phrases) or newC:
+            if TTSLogger.logger().isEnabledFor(DEBUG):
+                TTSLogger.logger().debug(f'secondary_text_changed')
             # Any new secondary text also voiced
-            cls.voiceText(compare, phrases, newD, secondary)
+            cls.voiceText(window_state, compare, phrases, newD, secondary)
         elif cls.is_secondary_text_changed(secondary):
-            if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                cls._logger.debug(f'voice secondary: {secondary}')
-            cls.voiceSecondaryText(secondary)
+            if TTSLogger.logger().isEnabledFor(DEBUG):
+                TTSLogger.logger().debug(f'voice secondary: {secondary}')
+            cls.voiceSecondaryText(window_state, secondary)
         else:
             cls.checkMonitored()
 
     @classmethod
     def checkMonitored(cls):
-        #  cls._logger.debug(f'checkMonitored')
+        """
+
+        :return:
+        """
+        #  TTSLogger.logger().debug(f'checkMonitored')
         monitored: str | None = None
 
         if cls.playerStatus.visible():
@@ -841,16 +1087,20 @@ class TTSService:
         if monitored:
             try:
                 phrases: PhraseList = PhraseList.create(monitored, interrupt=True)
-                if cls._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                    cls._logger.debug_extra_verbose(
+                if TTSLogger.logger().isEnabledFor(DEBUG_EXTRA_VERBOSE):
+                    TTSLogger.logger().debug_extra_verbose(
                         f'# phrases: {len(phrases)} texts: {phrases}')
                 cls.sayText(phrases)
             except ExpiredException:
-                cls._logger.debug(f'Expired before sayText')
+                TTSLogger.logger().debug(f'EXPIRED before sayText')
 
     @classmethod
     def checkAutoRead(cls):
-        #  cls._logger.debug('checkAutoRead')
+        """
+
+        :return:
+        """
+        #  TTSLogger.logger().debug('checkAutoRead')
         if not cls.waitingToReadItemExtra:
             return
         if cls.get_tts().isSpeaking():
@@ -861,25 +1111,41 @@ class TTSService:
             cls.sayItemExtra(interrupt=False)
 
     @classmethod
-    def repeatText(cls):
-        cls.winID = None
+    def repeatText(cls, window_state: WinDialogState):
+        """
+
+        :param window_state:
+        :return:
+        """
+        cls.window_id = None
         cls.current_control_id = None
-        cls.checkForText()
+        cls.checkForText(window_state)
 
     @classmethod
-    def sayExtra(cls):
+    def sayExtra(cls, window_state: WinDialogState):
+        """
+
+        :param window_state:
+        :return:
+        """
         phrases: PhraseList = PhraseList()
         success: bool = cls.windowReader.getWindowExtraTexts(phrases)
         try:
-            if cls._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                cls._logger.debug_extra_verbose(
+            if TTSLogger.logger().isEnabledFor(DEBUG_EXTRA_VERBOSE):
+                TTSLogger.logger().debug_extra_verbose(
                     f'# texts: {len(phrases)} phrases: {phrases}')
             cls.sayText(phrases)
         except ExpiredException:
-            cls._logger.debug(f'Expired at sayText')
+            TTSLogger.logger().debug(f'EXPIRED at sayText')
 
     @classmethod
-    def sayItemExtra(cls, interrupt=True):
+    def sayItemExtra(cls, window_state: WinDialogState, interrupt=True):
+        """
+
+        :param window_state:
+        :param interrupt:
+        :return:
+        """
         # See if window readers have anything that it wanted to say after the
         # current text spoke. Perhaps due to cost of generating it?
 
@@ -889,49 +1155,58 @@ class TTSService:
             return
         phrases.set_interrupt(interrupt)
         try:
-            if cls._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                cls._logger.debug_extra_verbose(f'# phrases: {len(phrases)} '
+            if TTSLogger.logger().isEnabledFor(DEBUG_EXTRA_VERBOSE):
+                TTSLogger.logger().debug_extra_verbose(f'# phrases: {len(phrases)} '
                                                 f'phrase: {phrases}')
             if not phrases.is_empty():
-                cls._logger.debug(f'CHECK phrases: {phrases} '
+                if TTSLogger.logger().isEnabledFor(DEBUG):
+                    TTSLogger.logger().debug(f'CHECK phrases: {phrases} '
                                   f'reader: {cls.windowReader.__class__.__name__}')
             cls.sayText(phrases)
         except AbortException:
             reraise(*sys.exc_info())
         except ExpiredException:
-            cls._logger.debug(f'Expired at sayText')
+            if TTSLogger.logger().isEnabledFor(DEBUG):
+                TTSLogger.logger().debug(f'EXPIRED at sayText')
         except Exception as e:
-            cls._logger.exception('')
+            TTSLogger.logger().exception('')
 
     @classmethod
     def sayText(cls, phrases: PhraseList, preload_cache=False):
+        """
+
+        :param phrases:
+        :param preload_cache:
+        :return:
+        """
         Monitor.exception_on_abort()
-        # cls._logger.debug(f'engine: {cls.instance.active_backend.backend_id}')
-        # cls._logger.debug(f'engine from settings: {Settings.get_engine_id()}')
+        # TTSLogger.logger().debug(f'engine: {cls.instance.active_backend.backend_id}')
+        # TTSLogger.logger().debug(f'engine from settings: {Settings.get_engine_id()}')
         if KodiPlayerMonitor.player_status == KodiPlayerState.PLAYING_VIDEO:
-            if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                cls._logger.debug_verbose('Ignoring text, PLAYING_VIDEO')
+            if TTSLogger.logger().isEnabledFor(DEBUG_VERBOSE):
+                TTSLogger.logger().debug_verbose('Ignoring text, PLAYING_VIDEO')
             return
         if phrases.is_empty():
-            if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                cls._logger.debug_verbose('Empty phrases')
+            if TTSLogger.logger().isEnabledFor(DEBUG_VERBOSE):
+                TTSLogger.logger().debug_verbose('Empty phrases')
             return
 
         if cls.get_tts().dead:
             return cls.fallbackTTS(cls.get_tts().deadReason)
         try:
-            if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                cls._logger.debug_verbose(f'sayText # phrases: {len(phrases)} '
+            if TTSLogger.logger().isEnabledFor(DEBUG_VERBOSE):
+                TTSLogger.logger().debug_verbose(f'sayText # phrases: {len(phrases)} '
                                           f'{phrases} '
                                           f'interrupt: {str(phrases[0].get_interrupt())} '
                                           f'preload: {str(preload_cache)}')
-                cls._logger.debug_verbose(phrases[0].get_debug_info())
+                TTSLogger.logger().debug_verbose(phrases[0].get_debug_info())
 
             phrases.set_all_preload_cache(preload_cache)
             phrases.enable_check_expired()
             cls.driver.say(phrases)
         except ExpiredException:
-            cls._logger.debug(f'Before driver.say')
+            if TTSLogger.logger().isEnabledFor(DEBUG):
+                TTSLogger.logger().debug(f'Before driver.say')
 
     @classmethod
     def volumeUp(cls) -> None:
@@ -947,7 +1222,8 @@ class TTSService:
             phrases: PhraseList = PhraseList.create(texts=msg, interrupt=True)
             cls.sayText(phrases)
         except ExpiredException:
-            cls._logger.debug(f'Expired at VolumeUp')
+            if TTSLogger.logger().isEnabledFor(DEBUG):
+                TTSLogger.logger().debug(f'EXPIRED at VolumeUp')
 
     @classmethod
     def volumeDown(cls) -> None:
@@ -963,7 +1239,8 @@ class TTSService:
             phrases: PhraseList = PhraseList.create(texts=msg, interrupt=True)
             cls.sayText(phrases)
         except ExpiredException:
-            cls._logger.debug(f'Expired at VolumeDown')
+            if TTSLogger.logger().isEnabledFor(DEBUG):
+                TTSLogger.logger().debug(f'EXPIRED at VolumeDown')
 
     @classmethod
     def stopSpeech(cls) -> None:
@@ -990,59 +1267,70 @@ class TTSService:
         TTSService.sayText(phrases)
         CriticalSettings.set_log_level(level_setting)
         python_log_level: int = CriticalSettings.get_logging_level()
-        BasicLogger.set_log_level(python_log_level)
+        #  BasicLogger.set_log_level(python_log_level)
 
     @classmethod
-    def updateWindowReader(cls) -> None:
-        #  if module_logger.isEnabledFor(DEBUG):
-        #      cls._logger.debug(f'winID: {cls.winID}')
-        readerClass: Type[WindowReaderBase] = windows.getWindowReader(cls.winID)
+    def updateWindowReader(cls, window_state: WinDialogState) -> None:
+        """
+
+        :param window_state:
+        :return:
+        """
+        #  if TTSLogger.logger().isEnabledFor(DEBUG):
+        #      TTSLogger.logger().debug(f'window_id: {cls.window_id}')
+        readerClass: Type[WindowReaderBase] = windows.getWindowReader(cls.window_id)
         if cls.windowReader:
             cls.windowReader.close()
             if readerClass.ID == cls.windowReader.ID:
-                cls.windowReader._reset(cls.winID)
+                cls.windowReader._reset(cls.window_id)
                 return
         try:
-            cls.windowReader = readerClass(cls.winID, cls.get_instance())
+            cls.windowReader = readerClass(cls.window_id, cls.get_instance())
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            cls._logger.exception('')
+            TTSLogger.logger().exception('')
 
     @classmethod
-    def window(cls):
+    def window(cls, window_state: WinDialogState):
+        """
+
+        :param window_state:
+        :return:
+        """
         try:
-            return WindowStateMonitor.get_window(cls.winID)
+            return WindowStateMonitor.get_window(window_state.window_id)
         except AbortException:
             reraise(*sys.exc_info())
         except RuntimeError as e:
-            cls._logger.exception(f'Invalid winID: {cls.winID}')
+            TTSLogger.logger().exception(f'Invalid winID: {cls.window_id}')
         return None
 
     @classmethod
-    def checkWindow(cls, newN: bool) -> bool:
+    def checkWindow(cls, newN: bool, window_state: WinDialogState) -> bool:
         """
         Detect if window has changed, if so, read the basic
         window info ('Window <window_name>...'). Also update ids, etc.
 
+        :param window_state:
         :param newN:
         :return:
         """
-        #  cls._logger.debug(f'checkWindow: {newN}')
+        #  TTSLogger.logger().debug(f'checkWindow: {newN}')
         Monitor.exception_on_abort()
         winID: int = xbmcgui.getCurrentWindowId()
         dialogID: int = xbmcgui.getCurrentWindowDialogId()
         if dialogID != 9999:
             winID = dialogID
-        if winID == cls.winID:
-            #  cls._logger.debug(f'Same winID: {winID} newN:{newN}')
+        if winID == cls.window_id:
+            #  TTSLogger.logger().debug(f'Same window_id: {window_id} newN:{newN}')
             return newN
         xml_file = xbmc.getInfoLabel('Window.Property(xmlfile)')
-        # cls._logger.debug(f'winID: {winID} previous winID {cls.winID} '
-        #                   f'dialogID: {dialogID} xml_file: {xml_file}')
-        cls.winID = winID
-        cls.dialogID = dialogID
-        cls.updateWindowReader()
+        # TTSLogger.logger().debug(f'window_id: {window_id} previous window_id {cls.window_id} '
+        #                   f'dialog_id: {dialog_id} xml_file: {xml_file}')
+        cls.window_id = winID
+        cls.dialog_id = dialogID
+        cls.updateWindowReader(window_state)
         TTSService.msg_timestamp = datetime.datetime.now()
         try:
             success: bool = False
@@ -1062,89 +1350,107 @@ class TTSService:
             success = cls.windowReader.getWindowTexts(phrases)
             if success:
                 phrases[numb_phrases].set_pre_pause(Phrase.PAUSE_NORMAL)
-            if cls._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                cls._logger.debug_extra_verbose(
+            if TTSLogger.logger().isEnabledFor(DEBUG_EXTRA_VERBOSE):
+                TTSLogger.logger().debug_extra_verbose(
                         f'# phrases: {len(phrases)} texts: {phrases}')
-                cls._logger.debug_extra_verbose(phrases[0].get_debug_info())
+                TTSLogger.logger().debug_extra_verbose(phrases[0].get_debug_info())
+            if TTSLogger.logger().isEnabledFor(DEBUG):
+                TTSLogger.logger().debug(f'Say: {phrases}')
             cls.sayText(phrases)
         except ExpiredException:
-            cls._logger.debug(f'Expired about to say window texts')
+            if TTSLogger.logger().isEnabledFor(DEBUG):
+                TTSLogger.logger().debug(f'EXPIRED about to say window texts')
         return True
 
     @classmethod
-    def checkControl(cls, newW) -> bool:
+    def checkControl(cls, newW, window_state: WinDialogState) -> bool:
         """
             Determine if the control has changed. If so, update the id and
             return True.
+        :param window_state:
         :param newW: True if the window has changed.
         :return: True if newW or if the control has changed
         """
-        if not cls.winID:
+        if not cls.window_id:
+            if TTSLogger.logger().isEnabledFor(DEBUG):
+                TTSLogger.logger().debug(f'no winID')
             return newW
         control_id: int = cls.current_control_id
         try:
-            control_id = abs(cls.window().getFocusId())
-            if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                cls._logger.debug_verbose(f'CHECK Focus control_id: {control_id}')
+            control_id = abs(cls.window(window_state).getFocusId())
+            if TTSLogger.logger().isEnabledFor(DEBUG_VERBOSE):
+                TTSLogger.logger().debug_verbose(f'CHECK Focus control_id: {control_id}')
             control = xbmc.getInfoLabel("System.CurrentControl()")
-            # cls._logger.debug(f'winID: {cls.winID} control_id: {control_id} '
-            #                   f'info label: {control}')
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            cls._logger.exception('')
+            TTSLogger.logger().exception('')
 
+        if control_id == 0:
+            control_id = None
         if control_id == cls.current_control_id:
-            # cls._logger.debug(f'control_id: {control_id}')
             return newW
         cls.current_control_id = control_id
-        if not control_id:
+        if control_id is None:
             return newW
         return True
 
     @classmethod
-    def checkControlDescription(cls, newW: bool) -> bool:
+    def checkControlDescription(cls, newW: bool, window_state: WinDialogState) -> bool:
         """
            See if anything needs to be said before the contents of the
            control (control name, context).
 
+        :param window_state:
         :param newW: True if anything else has changed requiring reading
                      prior to this. (window, control, etc.)
         :return:   True if anything is_required voicing here, or prior to
                    this call (window, control, control's description, etc.)
         """
-        #  cls._logger.debug(f'windowReader: {cls.windowReader}')
+        #  TTSLogger.logger().debug(f'windowReader: {cls.windowReader}')
         try:
             phrases: PhraseList = PhraseList()
             success = cls.windowReader.getControlDescription(
                     cls.current_control_id, phrases)
-            if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                cls._logger.debug_verbose(f'CHECK: checkControlDescription: {phrases} '
+            if TTSLogger.logger().isEnabledFor(DEBUG_VERBOSE):
+                TTSLogger.logger().debug_verbose(f'CHECK: checkControlDescription: {phrases} '
                                           f'reader:'
                                           f' {cls.windowReader.__class__.__name__}')
             success: bool = cls.windowReader.getControlPostfix(cls.current_control_id,
                                                                phrases)
             if not success:
-                if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                    cls._logger.debug_verbose(f'CHECK ControlPostfix: {phrases}   '
+                if TTSLogger.logger().isEnabledFor(DEBUG_VERBOSE):
+                    TTSLogger.logger().debug_verbose(f'CHECK ControlPostfix: {phrases}   '
                                   f'reader: {cls.windowReader.__class__.__name__}')
             if phrases.is_empty():
                 return newW
 
-            if cls._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                cls._logger.debug_extra_verbose(
+            if TTSLogger.logger().isEnabledFor(DEBUG_EXTRA_VERBOSE):
+                TTSLogger.logger().debug_extra_verbose(
                     f'previous_control_id: {cls.current_control_id} '
                     f'# phrases: {len(phrases)} '
                     f'texts: {phrases}')
+            if TTSLogger.logger().isEnabledFor(DEBUG):
+                TTSLogger.logger().debug(f'{phrases}')
             cls.sayText(phrases)
         except ExpiredException:
-            cls._logger.debug(f'Expired')
+            if TTSLogger.logger().isEnabledFor(DEBUG):
+                TTSLogger.logger().debug(f'EXPIRED')
         return True
 
     @classmethod
-    def voiceText(cls, compare: str, phrases: PhraseList, newD: bool,
+    def voiceText(cls, window_state: WinDialogState, compare: str, phrases: PhraseList, newD: bool,
                   secondary: PhraseList):
-        # cls._logger.debug(f'primary: {phrases}\nsecondary: {secondary}')
+        """
+
+        :param window_state:
+        :param compare:
+        :param phrases:
+        :param newD:
+        :param secondary:
+        :return:
+        """
+        # TTSLogger.logger().debug(f'primary: {phrases}\nsecondary: {secondary}')
         cls.set_previous_primary_text(phrases)
         cls.set_previous_secondary_text(secondary)
 
@@ -1168,21 +1474,28 @@ class TTSService:
             if not phrases.is_empty():
                 phrases.set_interrupt(not newD)
                 try:
-                    if cls._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                        cls._logger.debug_extra_verbose(
+                    if TTSLogger.logger().isEnabledFor(DEBUG):
+                        TTSLogger.logger().debug(
                             f'# phrases: {len(phrases)} phrase[0]: {phrases[0]}')
                     cls.sayText(phrases)
                 except ExpiredException:
-                    cls._logger.debug(f'Expired in voiceText')
+                    if TTSLogger.logger().isEnabledFor(DEBUG):
+                        TTSLogger.logger().debug(f'EXPIRED in voiceText')
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            cls._logger.exception('')
+            TTSLogger.logger().exception('')
         if cls.autoItemExtra:
             cls.waitingToReadItemExtra = time.time()
 
     @classmethod
-    def voiceSecondaryText(cls, phrases: PhraseList) -> None:
+    def voiceSecondaryText(cls, window_state: WinDialogState, phrases: PhraseList) -> None:
+        """
+
+        :param window_state:
+        :param phrases:
+        :return:
+        """
         cls.set_previous_secondary_text(phrases)
         if (phrases.is_empty() or (len(phrases[0].get_text()) == 0)
                 or cls.get_tts().isSpeaking()):
@@ -1191,24 +1504,30 @@ class TTSService:
             phrase: Phrase = phrases[0]
             if phrase.get_text().endswith('%'):
                 # Get just the percent part, so we don't keep saying downloading
-                if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                    cls._logger.debug_verbose(f'secondary text with %: {phrase.get_text()}')
+                if TTSLogger.logger().isEnabledFor(DEBUG_VERBOSE):
+                    TTSLogger.logger().debug_verbose(f'secondary text with %: {phrase.get_text()}')
                 text: str = phrase.get_text().rsplit(' ', 1)[-1]
                 phrase.set_text(text)
             try:
-                if cls._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                    cls._logger.debug_extra_verbose(
+                if TTSLogger.logger().isEnabledFor(DEBUG_EXTRA_VERBOSE):
+                    TTSLogger.logger().debug_extra_verbose(
                         f'# phrases: {len(phrases)} texts: {phrases}')
                 cls.sayText(phrases)
             except ExpiredException:
-                cls._logger.debug(f'Expired in voiceSecondaryText')
+                if TTSLogger.logger().isEnabledFor(DEBUG):
+                    TTSLogger.logger().debug(f'EXPIRED in voiceSecondaryText')
         except AbortException:
             reraise(*sys.exc_info())
         except Exception:
-            cls._logger.exception('')
+            TTSLogger.logger().exception('')
 
     @classmethod
     def formatSeasonEp(cls, seasEp: str) -> str:
+        """
+
+        :param seasEp:
+        :return:
+        """
         if not seasEp:
             return ''
         return seasEp.replace('S', f'{Messages.get_msg(Messages.SEASON)}')\
@@ -1216,6 +1535,11 @@ class TTSService:
 
     @classmethod
     def _cleanText(cls, text):
+        """
+
+        :param text:
+        :return:
+        """
         text = UIConstants.FORMAT_TAG_RE.sub('', text)
         text = UIConstants.COLOR_TAG_RE.sub('', text)
         # Some speech engines say OK as Oklahoma
@@ -1231,6 +1555,11 @@ class TTSService:
 
     @classmethod
     def cleanText(cls, text):
+        """
+
+        :param text:
+        :return:
+        """
         if isinstance(text, str):
             return cls._cleanText(text)
         else:

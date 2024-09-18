@@ -30,7 +30,7 @@ from common.logger import *
 
 import xml.etree.ElementTree as ET
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 USE_NEW_FUNCTIONS: Final[bool] = True
@@ -233,7 +233,7 @@ class WindowParser:
         clz = type(self)
         self.xml_path = xml_path
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         # clz._logger.debug(f'Parsing: {xml_path}')
         self.current_window_path: Path = xml_path
         if USE_OLD_FUNCTIONS:
@@ -1367,7 +1367,7 @@ class Includes:
     def __init__(self):
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         path = get_xbmc_skin_path('Includes.xml')
         clz._logger.debug_verbose(f'includes path: {path}')
         self.xml = minidom.parse(str(path))

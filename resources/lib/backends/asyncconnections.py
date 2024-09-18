@@ -11,7 +11,7 @@ from common import *
 from common.logger import *
 from common.monitor import Monitor
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 STOP_REQUESTED = False
 STOPPABLE = False
@@ -62,7 +62,7 @@ class _AsyncHTTPResponse(http.client.HTTPResponse):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._logger = module_logger.getChild(
+        self._logger = module_logger
             self.__class__.__name__)  # type: BasicLogger
 
     def _read_status(self):

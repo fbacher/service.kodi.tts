@@ -9,7 +9,7 @@ from backends.settings.service_types import Services
 from common.logger import BasicLogger
 from common.setting_constants import Players
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class MessageId(Enum):
@@ -42,6 +42,12 @@ class MessageId(Enum):
     PLAYER_MPG123 = 32306
     PLAYER_MPG321_OE_PI = 32307
     PLAYER_INTERNAL = 32313
+    LIBRARY_CLEAN_START = 32340
+    LIBRARY_CLEAN_COMPLETE = 32341
+    SCREEN_SAVER_START = 32342
+    SCREEN_SAVER_INTERRUPTED = 32343
+    DATABASE_SCAN_STARTED = 32100
+    DATABASE_SCAN_FINISHED = 32101
     # PLAYER_WAVE_HANDLER = -1
     # PLAYER_MP3_AUDIO_PLAYER_HANDLER = -1
     # PLAYER_BUILTINAUDIOPLAYERHANDLER = -1

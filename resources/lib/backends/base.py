@@ -34,7 +34,7 @@ from common.setting_constants import Genders, PlayerMode, Players
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class EngineQueue:
@@ -65,12 +65,12 @@ class EngineQueue:
     def __init__(self):
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(self.__class__.__name__)
+            clz._logger = module_logger
 
         # active_queue is True as long as there is a configured active_queue engine
 
         self.active_queue: bool = False
-        self.tts_queue: queue.Queue = queue.Queue(50)
+        self.tts_queue: queue.Queue = queue.Queue(100)
         self._threadedIsSpeaking = False  # True if engine is ThreadedTTSBackend
         self.queue_processor: threading.Thread | None = None
 
@@ -137,7 +137,7 @@ class EngineQueue:
                 except ValueError as e:
                     clz._logger.exception('')
                 except ExpiredException:
-                    clz._logger.debug(f'Expired {item.phrase.debug_data} ',
+                    clz._logger.debug(f'EXPIRED {item.phrase.debug_data} ',
                                       trace=Trace.TRACE_AUDIO_START_STOP)
                 except Exception:
                     clz._logger.exception('')
@@ -297,7 +297,7 @@ class BaseEngineService(BaseServices):
     volumeStep = 1
     volumeSuffix = 'dB'
     speedInt = True
-    _logger = module_logger.getChild('BaseEngineService')  # type: BasicLogger
+    _logger = module_logger
     _current_engine: ITTSBackendBase = None
 
     _class_name: str = None
@@ -313,7 +313,7 @@ class BaseEngineService(BaseServices):
 
         clz._class_name = self.__class__.__name__
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz._class_name)
+            clz._logger = module_logger
         self.initialized: bool = False
         self.dead: bool = False  # Backend should flag this true if it's no longer usable
         self.deadReason = ''  # Backend should set this reason when marking itself dead
@@ -820,7 +820,7 @@ class ThreadedTTSBackend(BaseEngineService):
         super().__init__(*args, **kwargs)
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz._class_name)
+            clz._logger = module_logger
         self.process = None
         BaseServices.register(self)
         KodiPlayerMonitor.register_player_status_listener(
@@ -921,7 +921,7 @@ class SimpleTTSBackend(ThreadedTTSBackend):
         clz = type(self)
         clz._class_name = self.__class__.__name__
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz._class_name)
+            clz._logger = module_logger
         clz._simpleIsSpeaking = False
         BaseServices.register(self)
 
@@ -1211,7 +1211,7 @@ class LogOnlyTTSBackend(BaseEngineService):
         clz = type(self)
         clz._class_name = self.__class__.__name__
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz._class_name)
+            clz._logger = module_logger
         BaseServices.register(self)
 
     @staticmethod

@@ -5,14 +5,14 @@ from enum import StrEnum
 from typing import ForwardRef, List, Tuple
 
 from common.logger import BasicLogger, DEBUG_EXTRA_VERBOSE
-from gui import BaseParser, ParseError
+from gui import BaseParser
 from gui.base_tags import (control_elements, BaseAttributeType as BAT,
                            ControlElement, ElementKeywords as EK, Item)
 from gui.element_parser import BaseElementParser, ElementHandler
-from gui.parse_control import ParseControl
-from gui.parse_topic import ParseTopic
+from gui.parser.parse_control import ParseControl
+from gui.parser.parse_topic import ParseTopic
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class ParseItemLayout(ParseControl):
@@ -30,7 +30,7 @@ class ParseItemLayout(ParseControl):
     @classmethod
     def init_class(cls) -> None:
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__class__.__name__)
+            cls._logger = module_logger
         cls._logger.debug(f'Registering with ElementHandler')
         ElementHandler.add_handler(ControlElement.ITEM_LAYOUT, cls.get_instance)
 
@@ -132,7 +132,9 @@ class ParseItemLayout(ParseControl):
                 item: Item = control_elements[str_enum]
                 info_handler: BaseElementParser = ElementHandler.get_handler(str_enum)
                 parsed_instance: BaseParser = info_handler(self, element)
-                clz._logger.debug(f'parsed_item_instance: {parsed_instance}')
+                if clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
+                    clz._logger.debug_extra_verbose(f'parsed_item_instance: '
+                                                    f'{parsed_instance}')
                 if parsed_instance is not None:
                     if control_type is not None:
                         self.children.append(parsed_instance)

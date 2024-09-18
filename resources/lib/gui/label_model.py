@@ -2,32 +2,29 @@
 
 from typing import Callable, List
 
-from common.debug import Debug
 from common.logger import BasicLogger
-from common.phrases import PhraseList
-from gui.base_label_model import BaseLabelModel
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
 from gui.base_tags import (control_elements, ControlElement, Item)
 from gui.element_parser import ElementHandler
 from gui.label_topic_model import LabelTopicModel
 from gui.no_topic_models import NoLabelTopicModel
-from gui.parse_label import ParseLabel
+from gui.parser.parse_label import ParseLabel
 from gui.statements import Statements, StatementType
 from windows.window_state_monitor import WinDialogState
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
-class LabelModel(BaseLabelModel):
+class LabelModel(BaseModel):
 
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.LABEL_CONTROL]
 
     def __init__(self, parent: BaseModel, parsed_label: ParseLabel) -> None:
         clz = LabelModel
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         super().__init__(window_model=parent.window_model, parser=parsed_label)
         # self.parent = parent
         self.label_for: str = ''
@@ -138,10 +135,10 @@ class LabelModel(BaseLabelModel):
         :return: True if anything appended to phrases, otherwise False
 
 
-     Note that focus_changed = False can occur even when a value has changed.
-     One example is when user users cursor to select different values in a
-     slider, but never leaves the control's focus.
-     """
+        Note that focus_changed = False can occur even when a value has changed.
+        One example is when user users cursor to select different values in a
+        slider, but never leaves the control's focus.
+        """
         clz = LabelModel
         success: bool = True
         if self.topic is not None:
@@ -160,6 +157,7 @@ class LabelModel(BaseLabelModel):
         # TODO, incomplete
         return success
 
+    '''
     def voice_controls_labels(self, stmts: Statements) -> bool:
         """
             Voices ONLY label, since ControlLabel does not support label2
@@ -169,6 +167,7 @@ class LabelModel(BaseLabelModel):
         """
         result: bool = self.voice_label(stmts)
         return result
+    '''
 
     def voice_labels(self, stmts: Statements, voice_label: bool = True,
                      voice_label_2: bool = True) -> bool:
@@ -277,7 +276,6 @@ class LabelModel(BaseLabelModel):
 
         results: List[str] = []
         result: str = (f'\nLabelModel type: {self.control_type}'
-                       #  f' item: {clz.item} key: {clz.item.key}'
                        f'{control_id}'
                        f'{description_str}'
                        f'{label_for_str}'
@@ -295,6 +293,7 @@ class LabelModel(BaseLabelModel):
             for child in self.children:
                 child: BaseModel
                 results.append(child.to_string(include_children))
+        results.append(f'is visible: {self.is_visible()}')
         results.append(f'\nEND LabelModel')
 
         return '\n'.join(results)

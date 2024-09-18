@@ -20,7 +20,7 @@ from common.logger import *
 from common.monitor import Monitor
 from common.settings import Settings
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 ADDON_ID = 'service.kodi.tts'
 ADDON = xbmcaddon.Addon(ADDON_ID)
@@ -163,7 +163,7 @@ def setSetting(key, value, backend_id: str = None):
 def runInThread(func: Callable, args: List[Any] = [], name: str = '?',
                 delay: float = 0.0, **kwargs) -> None:
     import threading
-    thread = threading.Thread(target=thread_wrapper, name=f'TTSThrd_{name}',
+    thread = threading.Thread(target=thread_wrapper, name=f'Utl_{name}',
                               args=args, kwargs={'target': func,
                                                  'delay' : delay, **kwargs})
     xbmc.log(f'util.runInThread starting thread {name}', xbmc.LOGINFO)
@@ -201,6 +201,21 @@ def notifySayText(text, interrupt=False):
               f'"{{\\"text\\":\\"{text}\\",\\"interrupt\\":{interrupt}}}")'.lower()
     # print command
     xbmc.executebuiltin(command)
+
+
+def get_non_negative_int(control_expr: str) -> int:
+    """
+    Attempts to convert control_expr to an int
+
+    :param control_expr: String representation of an int id, or
+    some non-control-id
+    :return: abs(int value of control_expr), or -1 if control_expr
+        is not an int
+    """
+    try:
+        return abs(int(control_expr))
+    except ValueError:
+        return -1
 
 
 def init():

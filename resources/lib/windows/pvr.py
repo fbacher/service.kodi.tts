@@ -13,7 +13,7 @@ from . import guitables
 from .base import WindowReaderBase
 
 str_or_int: TypeAlias = str | int
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class PVRWindowReaderBase(WindowReaderBase):

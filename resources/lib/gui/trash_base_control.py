@@ -12,16 +12,16 @@ from gui.window import Window
 
 ControlInfo = namedtuple('ControlInfo', ['win_dialog_id', 'control_id',
                                          'is_current_window'])
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class BaseControlx:
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
 
     @classmethod
     def class_init(cls):
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__class__.__name__)
+            cls._logger = module_logger
 
     def __init__(self, control_type: ControlElement, win_dialog_id: int, id_val: int = None,
                  visible: bool = False):

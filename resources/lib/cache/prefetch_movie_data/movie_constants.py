@@ -11,7 +11,7 @@ from common import *
 
 from common.logger import *
 
-module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger: BasicLogger = BasicLogger.get_logger(__name__)
 CHECK_FOR_NULLS: bool = True
 
 MovieType = Dict[str, Any]

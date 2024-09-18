@@ -1,41 +1,38 @@
 # coding=utf-8
 
-from typing import Callable, List, Tuple
+from typing import Callable, List
 
 import xbmc
 import xbmcgui
 
 from common.logger import BasicLogger, DEBUG_EXTRA_VERBOSE
 from common.messages import Messages
-from common.phrases import Phrase, PhraseList
+from common.phrases import Phrase
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
-from gui.base_tags import (control_elements, ControlElement, Item, Requires, Units,
-                           UnitsType,
-                           ValueUnits)
+from gui.base_tags import (control_elements, ControlElement, Item)
 from gui.element_parser import (ElementHandler)
 from gui.focused_layout_model import FocusedLayoutModel
 from gui.item_layout_model import ItemLayoutModel
 from gui.list_topic_model import ListTopicModel
 from gui.no_topic_models import NoListTopicModel
-from gui.parse_list import ParseList
-from gui.statements import Statement, Statements, StatementType
-from gui.topic_model import TopicModel
+from gui.parser.parse_list import ParseList
+from gui.statements import Statements
+from utils import util
 from windows.ui_constants import UIConstants
-from windows.window_state_monitor import WinDialogState, WindowStateMonitor
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class ListModel(BaseModel):
 
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.LIST]
 
     def __init__(self, parent: BaseModel, parsed_list: ParseList) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         super().__init__(window_model=parent.window_model, parser=parsed_list)
         self.parent: BaseModel = parent
         self.visible_expr: str = ''
@@ -182,7 +179,7 @@ class ListModel(BaseModel):
         if container_id > 0:
             #  position is zero-based
             # pos_str: str = xbmc.getInfoLabel(f'Container({container_id}).Position')
-            # pos: int = BaseModel.get_non_negative_int(pos_str)
+            # pos: int = util.get_non_negative_int(pos_str)
             # pos += 1  # Convert to one-based item #
             # clz._logger.debug(f'container position: {pos} container_id: {container_id}')
             current_item: str = xbmc.getInfoLabel(f'Container({container_id}).CurrentItem')
@@ -206,11 +203,21 @@ class ListModel(BaseModel):
         :return: Current topic number, or -1
         """
         clz = ListModel
+        #  TODO: Open defect against kodi. There is no means to get the absolute
+        #        position (row) of a list control via info label. Instead you
+        #        get the item number of the VISIBLE items in whatever space is
+        #        the list allows. Useless for my purpose.
         container_id = self.control_id
         pos_str: str = xbmc.getInfoLabel(f'Container({container_id}).Position')
-        pos: int = BaseModel.get_non_negative_int(pos_str)
+        # num_all_items: str = xbmc.getInfoLabel(f'Container({container_id}).NumAllItems')
+        # num_items: str = xbmc.getInfoLabel(f'Container({container_id}).NumItems')
+        # num_pages: str = xbmc.getInfoLabel(f'Container({container_id}).NumPages')
+
+        pos: int = util.get_non_negative_int(pos_str)
         pos += 1  # Convert to one-based item #
         clz._logger.debug(f'container position: {pos} container_id: {container_id}')
+        #  clz._logger.debug(f'num_all_items: {num_all_items} num_items: {num_items} '
+        #                    f'')
         return pos
 
     def get_working_value(self, item_number: int = 0) -> float | List[str]:

@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations  # For union operator |
 
+import pathlib
+
 """
 Created on 2/3/22
 
@@ -57,6 +59,7 @@ DISABLED = NOTSET  # Simply to be able to use DISABLED to clearly mark non-logge
 # DEBUG_VERBOSE = 8
 # DEBUG_EXTRA_VERBOSE = 6
 NOTSET = logging.NOTSET  # 0
+# INFO: 20 DEBUG: 10 VERBOSE: 8 EXTRA_VERBOSE: 6
 
 #  XBMC levels
 LOGDEBUG: Final[int] = xbmc.LOGDEBUG
@@ -70,8 +73,14 @@ LOGNONE: Final[int] = xbmc.LOGNONE
 
 DEBUG_VERBOSE: Final[int] = 8
 DEBUG_EXTRA_VERBOSE: Final[int] = 6
+logging.addLevelName(INFO, 'I')
+logging.addLevelName(DEBUG, 'D')
+logging.addLevelName(DEBUG_VERBOSE, 'V')
+logging.addLevelName(DEBUG_EXTRA_VERBOSE, 'X')
+logging.addLevelName(LOGWARNING, 'W')
+logging.addLevelName(ERROR, 'E')
 
-INCLUDE_MODULE_PATH_IN_LOGGER: bool = True
+INCLUDE_MODULE_PATH_IN_LOGGER: bool = False
 
 # DEBUG, DEBUG_VERBOSE AND DEBUG_EXTRA_VERBOSE will all print as xbmc.DEBUG
 # messages, however the message text will indicate their debug level.
@@ -88,7 +97,7 @@ logging_to_kodi_level = {DISABLED: 100,
 
 def get_kodi_level(logging_level: int) -> int:
     """
-    Transforms logger logging level to Kodi log level
+    Transforms get logging level to Kodi log level
 
     :param logging_level:
     :return:
@@ -120,6 +129,25 @@ class BasicLogger(Logger):
           messages for searching the logs.
 
       """
+
+    class LoggerWrapper:
+        """
+            Provides a means for logging to get the get's name
+        """
+        def __init__(self, name: str ) -> None:
+            self.name = name
+
+        def __name__(self) -> str:
+            return self.name
+
+    addon_logger: BasicLogger = None
+
+    #
+    #  Allows for pre-defining the logging levels for different loggers.
+    #  At some point I'll do this the right way with Python logging config.
+    #  See config_debug_levels
+    debug_level_config: Dict[str, int] = {}
+    change_cnt: int = 0  # incremented on each set of changes to the loggers
 
     @classmethod
     def _class_init_(cls):
@@ -156,7 +184,7 @@ class BasicLogger(Logger):
         To pass exception information, use the keyword argument exc_info with
         a true value, e.g.
 
-        logger.log(level, "We have a %s", "mysterious problem", exc_info=1)
+        get.log(level, "We have a %s", "mysterious problem", exc_info=1)
         """
         if not isinstance(level, int):
             if raiseExceptions:
@@ -186,73 +214,250 @@ class BasicLogger(Logger):
             super()._log(level, msg, args, **kwargs)
 
     @classmethod
-    def get_logger(cls,
-                   file_path: str = None,
-                   class_name: str = None,
-                   clz=None) -> ForwardRef('BasicLogger'):
-        module_logger: BasicLogger = cls.get_module_logger(module_path=file_path)
-        if module_logger is None:
-            return None
-        elif clz is not None:
-            return module_logger.getChild(clz.__name__)
-        elif class_name is not None:
-            return module_logger.getChild(class_name)
+    def config_debug_levels(cls, replace: bool = True,
+                            default_log_level: int = INFO,
+                            definitions: Dict[str, int]
+                                         | None = None) -> None:
+        """
+        Allows get's debug levels to be defined by get. Changes the
+        logging levels to the ones passed in, or can replace existing
+        defined the logging to match those passed in.
+        Assumes that the handlers and filters remain the same, and that they
+        are defined by get_new_handlers and get_new_filters.
+
+        Loggers are defined for every module. The default configuration is for
+        only the addon get ('tts') will have handlers and filters defined
+        as well as get.propogate=False and the logging level.
+        The other loggers will not have any handlers nor filters nor
+        logging level. This will also leave propogate as the default value of
+        True. This will cause every other get to delegate all handling of
+        logging to the addon get.
+
+        To change logging levels for a single module, simply add a get for
+        that module in a manner similar to what was done for the addon get.
+        That is, add the same handlers and filters, as well as assign a specific
+        logging level and set propgate =False. The same can be done for
+        a whole subtree of modules. Just define a get for a module for the
+        directory that they are in. Finally, you may need to define or modify
+        more loggers to override some that you just created.
+
+        To un-do some changes you can simply strip a get of its handlers
+        and filters, reset the logging level and propagate property.
+
+        :param default_log_level:
+        :param replace: Resets every get to its default configuration
+                        before applying the changes.
+        :param definitions:
+        :return:
+        """
+        if replace:
+            for name, previous_level in cls.debug_level_config.items():
+                name: str
+                xbmc.log(f'unconfiguring {name}')
+                logger: BasicLogger = cls.get_logger(name)
+                # logger.debug_verbose(f'Test logger {name}')
+                # logger.info(f'Test logger {name} level: {level} INFO')
+                # logger.debug(f'Test logger {name} DEBUG')
+                logger.setLevel(NOTSET)
+                # logger.debug_verbose(f'Test logger log level NOTSET {name}')
+                # logger.info(f'Test logger {name} level: {level} INFO')
+                # logger.debug(f'Test logger {name} NOTSET  DEBUG')
+                logger.propagate = True
+                # logger.debug_verbose(f'Test logger {name} propagate TRUE')
+                # logger.info(f'Test logger {name} level: {level} INFO')
+                # logger.debug(f'Test logger {name}  propagate TRUE DEBUG')
+
+                if logger.hasHandlers():
+                    xbmc.log(f'logger {name} has {len(logger.handlers)} handlers')
+                    handlers_to_remove: List[Handler] = logger.handlers.copy()
+                    for handler in handlers_to_remove:
+                        logger.removeHandler(handler)
+                    # handler = None
+                    '''
+                    # If the handler and filter aren't going to be replaced in the next
+                    # step, the add the default ones here.
+                    if name not in definitions:
+                        handler = cls.get_new_handler()
+                        get.addHandler(handler)
+                        xbmc.log(f'{name} replaced handlers')
+                    else:
+                        xbmc.log(f'{name} removed handlers')
+                    '''
+                # if logger_filter is not None:
+                #     logger.removeFilter(logger_filter)
+                #     # logger.debug(f'Test filter {name}')
+                #     logger_filter = None
+                    '''
+                    if name not in definitions:
+                        logger_filter = cls.get_new_filter()
+                        get.addFilter(logger_filter)
+                    '''
+                cls.debug_level_config[name] = NOTSET
+                xbmc.log(f'get {name} stripped of handler, NOTSET level, propagate')
+
+        for name, log_level in definitions.items():
+            name: str
+            log_level: int
+            logger: BasicLogger = cls.get_logger(name)
+            logger.setLevel(log_level)
+            # logger.debug_verbose(f'Test logger {name}  redefine level {log_level}')
+            # logger.info(f'Test logger {name} redefine level: {log_level} INFO')
+            # logger.debug(f'Test logger {name}  redefine level DEBUG')
+            logger.propagate = False
+            # logger.debug_verbose(f'Test logger {name} propagate FALSE')
+            # logger.info(f'Test logger {name} level: {log_level} INFO')
+            # logger.debug(f'Test logger {name}  propagate FALSE DEBUG')
+            if logger.hasHandlers():
+                if len(logger.handlers) > 1:
+                    xbmc.log(f'logger with multiple handlers: {len(logger.handlers)}')
+                for handler in logger.handlers:
+                    handler.setLevel(log_level)
+            else:
+                handler = cls.get_new_handler()
+                handler.setLevel(log_level)
+
+                handler_filter = cls.get_new_filter()
+                handler.addFilter(handler_filter)
+                logger.addHandler(handler)
+                logger.debug(f'Test logger {name}')
+            xbmc.log(f'Updated get: {name} with handlers and get level: '
+                     f'{log_level}, propagate= False')
+            logger.debug_verbose(f'Test logger {name} finish config')
+            logger.info(f'Test logger {name} finish config INFO')
+            logger.debug(f'Test logger {name} finish config')
+            cls.debug_level_config[name] = log_level
+        cls.change_cnt += 1
+
+    @classmethod
+    def get_logger(cls, name: str = None) -> ForwardRef('BasicLogger'):
+        plugin_name: str = CriticalSettings.get_plugin_name()
+        xbmc.log(f'In get_logger with name: {name}')
+        if name is None:
+            xbmc.log(f'Logger does not have a name', LOGINFO)
+            name = plugin_name
+        if name.endswith('.py'):
+            name = name[1:-3]
+        logger_name: str = ''
+        if name != '' and name != plugin_name:
+            if not name.startswith(f'{plugin_name}.'):
+                logger_name = f'{plugin_name}.{name}'
+                xbmc.log(f'Set logger_name to plugin + name name: |{name}|')
+            else:
+                logger_name = name
         else:
-            return module_logger
+            logger_name = plugin_name
+            xbmc.log(f'Set logger_name to plugin_name')
+        xbmc.log(f'logger_name: |{logger_name}| plugin_name: |{plugin_name}|')
+        logger = getLogger(logger_name)
+        logger.info(f'Test new logger INFO {logger_name}')
+        logger.debug(f'Test new logger DEBUG {logger_name}')
+        if cls.debug_level_config.get(logger_name) is not None:
+            xbmc.log(f'get already exists: {logger_name} NO CHANGES')
+            return logger
+
+        my_handler: Handler = None
+        my_filter: Filter = None
+        logging_level: int = -1
+        if logger_name == plugin_name:
+            logging_level = CriticalSettings.get_logging_level()
+            logger.setLevel(logging_level)
+            logger.propogate = False
+            my_handler = BasicLogger.get_new_handler()
+            my_handler.setLevel(logging_level)
+            my_filter = BasicLogger.get_new_filter()
+            my_handler.addFilter(my_filter)
+            logger.addHandler(my_handler)
+
+            logger.info(f'Test plugin logger after add filter: {logger_name}')
+            logger.debug(f'Test plugin logger after add filter: {logger_name}')
+            BasicLogger.addon_logger = logger
+            xbmc.log(f'new addon get: {logger_name} with handlers and level')
+        else:
+            xbmc.log(f'new get: {logger_name} without handlers and no level')
+        cls.debug_level_config[logger_name] = logging_level
+        cls.change_cnt += 1
+        return logger
+
+    @staticmethod
+    def get_new_handler() -> Handler:
+        handlers: List[Handler] = []
+        kodi_handler: Handler = KodiHandler(level=CriticalSettings.get_logging_level())
+        kodi_handler.setFormatter(KodiFormatter(style='{'))
+        return kodi_handler
+
+    @staticmethod
+    def get_handler(level: int) -> Handler:
+        handler: Handler = Handler(level=level)
+        #  my_filter = BasicLogger.get_filter()
+        #  handler.addFilter(my_filter)
+        formatter = BasicLogger.get_formatter()
+        handler.setFormatter(formatter)
+        return handler
+
+    @staticmethod
+    def get_filter() -> Filter:
+        return Filter()
+
+    @staticmethod
+    def get_formatter(fmt=None, datefmt=None, style='{', validate=True, *, defaults=None):
+        """
+        Responsible for converting a LogRecord to an output string to be interpreted
+        by a human or external system.
+
+        Parameters:
+            fmt (str) – A format string in the given style for the logged output
+                  as a whole. The possible mapping keys are drawn from the LogRecord
+                  object’s LogRecord attributes. If not specified, '%(message)s' is
+                  used, which is just the logged message.
+
+            datefmt (str) – A format string in the given style for the date/time
+                  portion of the logged output. If not specified, the default
+                  described in formatTime() is used.
+
+            style (str) – Can be one of '%', '{' or '$' and determines how the
+               format string will be merged with its data: using one of printf-style
+               String Formatting (%), str.format() ({) or string.Template ($).
+               This only applies to fmt and datefmt (e.g. '%(message)s' versus
+               '{message}'), not to the actual log messages passed to the logging
+               methods. However, there are other ways to use {- and $-formatting
+               for log messages.
+
+            validate (bool) – If True (the default), incorrect or mismatched fmt
+              and style will raise a ValueError; for example,
+              logging.Formatter('%(asctime)s - %(message)s', style='{').
+
+            defaults (dict[str, Any]) – A dictionary with default values to use in
+              custom fields. For example, logging.Formatter('%(ip)s %(message)s',
+              defaults={"ip": None})
+        """
+        formatter = Formatter(fmt=fmt, datefmt=datefmt, style=style, validate=validate,
+                              defaults=defaults)
+        return formatter
+
+
+
+    @staticmethod
+    def get_new_filter() -> Filter:
+        return Trace()
 
     @staticmethod
     def get_addon_logger() -> ForwardRef('BasicLogger'):
-        root_logger: BasicLogger | Logger = getLogger()
-        addon_logger: BasicLogger = root_logger.getChild(
-            CriticalSettings.get_plugin_name())
-        return addon_logger
-
-    @staticmethod
-    def set_log_level(log_level: int) -> None:
-        # root_logger: BasicLogger | Logger = getLogger()
-        # root_logger.setLevel(log_level)
-        addon_logger: BasicLogger = BasicLogger.get_addon_logger()
-        addon_logger.setLevel(log_level)
-        for my_handler in addon_logger.handlers:
-            my_handler.setLevel(log_level)
+        if BasicLogger.addon_logger is None:
+            addon_logger: BasicLogger = BasicLogger.get_logger(None)
+        return BasicLogger.addon_logger
 
     @classmethod
     def get_module_logger(cls,
                           module_path: str | Path = None) -> ForwardRef('BasicLogger'):
         """
-            Creates a logger based upon something like the python module naming
+            Creates a get based upon something like the python module naming
             convention. Ex: lib.common.playlist.<classname>
 
             module_path is path to the module (typically use value of __file__)
             addon_name only needs to be supplied as the very first
         :return:
         """
-        logger: BasicLogger = None
-
-        root_logger = getLogger()
-        addon_logger: BasicLogger | Logger = root_logger.getChild(
-            CriticalSettings.get_plugin_name())
-
-        # Calculate the module path relative to the TOP_PACKAGE_PATH
-
-        if INCLUDE_MODULE_PATH_IN_LOGGER:
-            if module_path is not None:
-                file_path: str = str(module_path).replace('.py', '', 1)
-                # xbmc.log(f'TOP_PACKAGE_PATH: {TOP_PACKAGE_PATH} '
-                #          f'file_path: {file_path}')
-                suffix = file_path.replace(str(CriticalSettings.TOP_PACKAGE_PATH), '', 1)
-                suffix = suffix.replace('/', '.')
-                if suffix.startswith('.'):
-                    suffix = suffix.replace('.', '', 1)
-                    # xbmc.log(f'suffix: {suffix}')
-
-                logger = addon_logger.getChild(suffix)
-                #  xbmc.log(f'Created logger: {logger}')
-            else:
-                root_logger.debug('Expected file_path')
-
-            # xbmc.log(f'Returning logger: {logger}')
-        return logger
+        return BasicLogger.get_logger(module_path)
 
     def debug(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """
@@ -261,7 +466,7 @@ class BasicLogger(Logger):
         To pass exception information, use the keyword argument exc_info with
         a true value, e.g.
 
-        logger.debug("Houston, we have a %s", "thorny problem", exc_info=1)
+        get.debug("Houston, we have a %s", "thorny problem", exc_info=1)
         """
         if self.isEnabledFor(DEBUG):
             kwargs.setdefault('ignore_frames', 0)
@@ -307,7 +512,7 @@ class BasicLogger(Logger):
         To pass exception information, use the keyword argument exc_info with
         a true value, e.g.
 
-        logger.info("Houston, we have a %s", "interesting problem", exc_info=1)
+        get.info("Houston, we have a %s", "interesting problem", exc_info=1)
         """
         if self.isEnabledFor(INFO):
             kwargs.setdefault('ignore_frames', 0)
@@ -322,7 +527,7 @@ class BasicLogger(Logger):
         To pass exception information, use the keyword argument exc_info with
         a true value, e.g.
 
-        logger.warning("Houston, we have a %s", "bit of a problem", exc_info=1)
+        get.warning("Houston, we have a %s", "bit of a problem", exc_info=1)
         """
         if self.isEnabledFor(WARNING):
             kwargs.setdefault('ignore_frames', 0)
@@ -345,7 +550,7 @@ class BasicLogger(Logger):
         To pass exception information, use the keyword argument exc_info with
         a true value, e.g.
 
-        logger.error("Houston, we have a %s", "major problem", exc_info=1)
+        get.error("Houston, we have a %s", "major problem", exc_info=1)
         """
         if self.isEnabledFor(ERROR):
             kwargs.setdefault('ignore_frames', 0)
@@ -373,7 +578,7 @@ class BasicLogger(Logger):
         To pass exception information, use the keyword argument exc_info with
         a true value, e.g.
 
-        logger.critical("Houston, we have a %s", "major disaster", exc_info=1)
+        get.critical("Houston, we have a %s", "major disaster", exc_info=1)
         """
         if self.isEnabledFor(CRITICAL):
             kwargs.setdefault('ignore_frames', 0)
@@ -428,7 +633,7 @@ class BasicLogger(Logger):
                 traceback.print_stack(th, file=sio)
 
             '''
-            # Remove the logger's frames from it's thread.
+            # Remove the get's frames from it's thread.
                 # frames: List[inspect.FrameInfo] = inspect.stack(context=1)
 
                 if th == current_thread:
@@ -466,6 +671,7 @@ class BasicLogger(Logger):
         :return:
         """
         logging_level = CriticalSettings.get_logging_level()
+        xbmc.log(f'Setting addon log level: {logging_level}', xbmc.LOGINFO)
         get_addon_logger().setLevel(logging_level)
 
 
@@ -522,8 +728,7 @@ class KodiHandler(logging.Handler):
         try:
             icon_path = icon_path or xbmcvfs.translatePath(
                     xbmcaddon.Addon(CriticalSettings.ADDON_ID).getAddonInfo('icon'))
-            xbmc.executebuiltin('Notification({0},{1},{2},{3})'.format(
-                    header, message, time_ms, icon_path))
+            xbmc.executebuiltin(f'Notification({header},{message},{time_ms},{icon_path})')
         except RuntimeError:  # Happens when disabling the addon
             pass
 
@@ -550,7 +755,7 @@ class KodiHandler(logging.Handler):
                 traceback.print_exception(t, v, tb, None, sys.stderr)
                 sio.write('Call stack:\n')
                 # Walk the stack frame up until we're out of logging,
-                # so as to print the calling context.
+                # then print the calling context.
                 frame = tb.tb_frame
                 while (frame and os.path.dirname(frame.f_code.co_filename) ==
                        __file__[0]):
@@ -559,13 +764,11 @@ class KodiHandler(logging.Handler):
                     traceback.print_stack(frame, file=sio)
                 else:
                     # couldn't find the right stack frame, for some reason
-                    sio.write('Logged from file %s, line %s\n' % (
-                        record.filename, record.lineno))
+                    sio.write(f'Logged from file {record.filename}, line {record.lineno}\n')
                 # Issue 18671: output logging message and arguments
                 try:
-                    sio.write('Message: %r\n'
-                              'Arguments: %s\n' % (record.msg,
-                                                   record.args))
+                    sio.write(f'Message: {record.msg}\n'
+                              f'Arguments: {record.args}\n')
                 except RecursionError:  # See issue 36272
                     raise
                 except Exception:
@@ -587,7 +790,7 @@ class KodiFormatter(logging.Formatter):
 
     """
 
-    def __init__(self, fmt=None, datefmt=None, style='%', validate=True):
+    def __init__(self, fmt=None, datefmt=None, style='{', validate=True):
         """
         Initialize the formatter with specified format strings.
 
@@ -682,7 +885,7 @@ class KodiFormatter(logging.Formatter):
             record.funcName = func
             '''
 
-            addon_name: str = record.__dict__.get('addon_name', None)
+            # addon_name: str = record.__dict__.get('addon_name', None)
 
             suffix = super().format(record)
             thread_field: str = ''
@@ -700,18 +903,18 @@ class KodiFormatter(logging.Formatter):
 
             module_path: str = ''
             addon_label: str = ''
-            if addon_name is not None:
-                addon_label = f'{addon_name} '
+            #  if addon_name is not None:
+            #      addon_label = f'{addon_name} '
 
                 # In addition to having addon_name to print, the addon_name
                 # is also the first level node name of the record.name.
                 # To keep from looking stupid, and to reduce line length,
                 # remove the addon_name from the record.name.
 
-                if record.name.startswith(addon_name):
-                    module_path = record.name[len(addon_name) + 1:]  # Add 1 for '.'
-            else:
-                module_path = record.name
+                # if record.name.startswith(addon_name):
+                #     module_path = record.name[len(addon_name) + 1:]  # Add 1 for '.'
+            #  else:
+            module_path = record.name
 
             func_name: str = ''
             if record.funcName != '<module>':
@@ -842,8 +1045,6 @@ class Trace(logging.Filter):
         TRACE_SHUTDOWN: TRACE_DISABLED
     }
 
-    _logger = None
-
     def __init__(self, name: str = '') -> None:
         """
         Dummy
@@ -861,7 +1062,10 @@ class Trace(logging.Filter):
             if flag in cls._trace_map:
                 cls._trace_map[flag] = cls.TRACE_ENABLED
             else:
-                cls._logger.debug(f'Invalid TRACE flag: {flag}')
+                if BasicLogger.addon_logger is not None:
+                    BasicLogger.addon_logger.debug(f'Invalid TRACE flag: {flag}')
+                else:
+                    xbmc.log(f'Invalid TRACE flag: {flag}', LOGDEBUG)
 
     @classmethod
     def enable_all(cls) -> None:
@@ -884,8 +1088,10 @@ class Trace(logging.Filter):
             if flag in cls._trace_map:
                 cls._trace_map[flag] = cls.TRACE_DISABLED
             else:
-                cls._logger.debug(f'Invalid TRACE flag: {flag}')
-
+                if BasicLogger.addon_logger is not None:
+                    BasicLogger.addon_logger.debug(f'Invalid TRACE flag: {flag}')
+                else:
+                    xbmc.log(f'Invalid TRACE flag: {flag}', LOGDEBUG)
     @classmethod
     def is_enabled(cls, trace_flags: Union[str, List[str]]) -> bool:
         try:
@@ -898,7 +1104,7 @@ class Trace(logging.Filter):
             for trace in trace_flags:
                 enabled = cls._trace_map.get(trace, None)
                 if enabled is None:
-                    cls._logger.warn(f'Invalid TRACE flag: {trace}')
+                    BasicLogger.addon_logger.warning(f'Invalid TRACE flag: {trace}')
                 elif enabled:
                     return True
 
@@ -924,7 +1130,7 @@ class Trace(logging.Filter):
             for trace in passed_traces:
                 is_enabled = cls._trace_map.get(trace, None)
                 if is_enabled is None:
-                    cls._logger.debug(f'Invalid TRACE flag: {trace}')
+                    BasicLogger.addon_logger.debug(f'Invalid TRACE flag: {trace}')
                 elif is_enabled:
                     filtered_traces.append(trace)
 
@@ -944,7 +1150,7 @@ class Trace(logging.Filter):
 
 """
 
-    %(name)s            Name of the logger (logging channel)
+    %(name)s            Name of the get (logging channel)
     %(levelno)s         Numeric logging level for the message (DEBUG, INFO,
                         WARNING, ERROR, CRITICAL)
     %(levelname)s       Text logging level for the message ("DEBUG", "INFO",
@@ -1001,9 +1207,7 @@ _STYLES = {
 
 
 def get_addon_logger() -> BasicLogger:
-    root_logger: BasicLogger | Logger = getLogger()
-    addon_logger: BasicLogger = root_logger.getChild(CriticalSettings.get_plugin_name())
-    return addon_logger
+    return BasicLogger.get_addon_logger()
 
 
 thread_info: str = ''
@@ -1024,6 +1228,7 @@ else:
 # format_str: str = ''  # f'[{thread_info}{{filename}}.{{funcName}}:{{lineno}}:{
 # level_field}]'
 
+'''
 handler: Handler = KodiHandler(level=CriticalSettings.get_logging_level())
 handler.setFormatter(KodiFormatter(style='{'))
 handlers: List[Handler] = [handler]
@@ -1039,8 +1244,9 @@ my_kwargs: Dict[str, str] = {'style'   : '{',
                              'level'   : CriticalSettings.get_logging_level(),
                              'handlers': handlers}
 #  'force': True}
-
+# Configures root get
 basicConfig(**my_kwargs)
+'''
 
 
 def print_exception(etype: Type = None,
@@ -1070,14 +1276,10 @@ def print_exception(etype: Type = None,
         log_file_created_here = True
 
     log_file.write('LEAK Traceback StackTrace StackDump (most recent call last)\n')
-
     log_file.write('NORMAL TB:\n')
-
     traceback.print_exception(etype, value, tb, limit=None, file=log_file, chain=True)
-
     log_file.write('PRINT_TB: \n')
     traceback.print_tb(tb, file=log_file)
-
     log_file.write('OUTER FRAMES:\n')
     try:
         for item in reversed(inspect.getouterframes(tb.tb_frame)[1:]):

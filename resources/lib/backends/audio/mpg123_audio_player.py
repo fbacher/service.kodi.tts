@@ -9,7 +9,7 @@ from common.base_services import BaseServices
 from common.logger import BasicLogger
 from common.setting_constants import Players
 
-module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class Mpg123AudioPlayer(SubprocessAudioPlayer, BaseServices):
@@ -33,7 +33,7 @@ class Mpg123AudioPlayer(SubprocessAudioPlayer, BaseServices):
         super().__init__()
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(self.__class__.__name__)
+            clz._logger = module_logger
             clz.register(clz)
 
     def canSetSpeed(self) -> bool:

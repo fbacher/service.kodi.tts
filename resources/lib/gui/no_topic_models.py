@@ -11,7 +11,7 @@ from gui.base_tags import (BaseAttributeType as BAT, control_elements, Item)
 from gui.base_topic_model import BaseTopicModel
 from common.logger import BasicLogger
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class BaseFakeTopic(BaseTopicModel):
@@ -21,7 +21,7 @@ class BaseFakeTopic(BaseTopicModel):
     item: Item = control_elements[BAT.TOPIC]
 
     def __init__(self, parent: BaseModel, topic_name: str) -> None:
-        super().__init__(parent=parent, topic_name=topic_name, real_topic=False)
+        super().__init__(parent=parent, parsed_topic=None, real_topic=False)
         self.is_real_topic: bool = False
         self.is_new_topic: bool = True
 
@@ -32,8 +32,6 @@ class BaseFakeTopic(BaseTopicModel):
 
     @property
     def name(self) -> str:
-        if super().name == '':
-            super()._name = super().parent.tree_id
         return super().name
 
     def voice_info_label(self, phrases: PhraseList) -> bool:
@@ -67,13 +65,13 @@ class NoButtonTopicModel(BaseFakeTopic):
     """
         Provides a skeletal Topic implementation
     """
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[BAT.TOPIC]
 
     def __init__(self, parent: BaseModel) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         fake_name: str = 'Fake_topic'  # patch up later
         super().__init__(parent=parent, topic_name=fake_name)
 
@@ -82,13 +80,13 @@ class NoEditTopicModel(BaseFakeTopic):
     """
         Provides a skeletal Topic implementation
     """
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[BAT.TOPIC]
 
     def __init__(self, parent: BaseModel) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         fake_name: str = 'Fake_topic'  # patch up later
         super().__init__(parent=parent, topic_name=fake_name)
 
@@ -97,13 +95,13 @@ class NoGroupTopicModel(BaseFakeTopic):
     """
         Provides a skeletal Topic implementation
     """
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[BAT.TOPIC]
 
     def __init__(self, parent: BaseModel) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         fake_name: str = 'Fake_topic'  # patch up later
         super().__init__(parent=parent, topic_name=fake_name)
 
@@ -112,13 +110,13 @@ class NoGroupListTopicModel(BaseFakeTopic):
     """
         Provides a skeletal Topic implementation
     """
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[BAT.TOPIC]
 
     def __init__(self, parent: BaseModel) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         fake_name: str = 'Fake_topic'  # patch up later
         super().__init__(parent=parent, topic_name=fake_name)
 
@@ -127,13 +125,13 @@ class NoLabelTopicModel(BaseFakeTopic):
     """
         Provides a skeletal Topic implementation
     """
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[BAT.TOPIC]
 
     def __init__(self, parent: BaseModel) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         fake_name: str = 'Fake_topic'  # patch up later
         super().__init__(parent=parent, topic_name=fake_name)
 
@@ -142,13 +140,13 @@ class NoRadioButtonTopicModel(BaseFakeTopic):
     """
         Provides a skeletal Topic implementation
     """
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[BAT.TOPIC]
 
     def __init__(self, parent: BaseModel) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         fake_name: str = 'Fake_topic'  # patch up later
         super().__init__(parent=parent, topic_name=fake_name)
 
@@ -157,13 +155,13 @@ class NoSpinTopicModel(BaseFakeTopic):
     """
         Provides a skeletal Topic implementation
     """
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[BAT.TOPIC]
 
     def __init__(self, parent: BaseModel) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         fake_name: str = 'Fake_topic'  # patch up later
         super().__init__(parent=parent, topic_name=fake_name)
 
@@ -172,13 +170,13 @@ class NoSpinexTopicModel(BaseFakeTopic):
     """
         Provides a skeletal Topic implementation
     """
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[BAT.TOPIC]
 
     def __init__(self, parent: BaseModel) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         fake_name: str = 'Fake_topic'  # patch up later
         super().__init__(parent=parent, topic_name=fake_name)
 
@@ -187,13 +185,13 @@ class NoFocusedLayoutTopicModel(BaseFakeTopic):
     """
         Provides a skeletal Topic implementation
     """
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[BAT.TOPIC]
 
     def __init__(self, parent: BaseModel) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         fake_name: str = 'Fake_topic'  # patch up later
         super().__init__(parent=parent, topic_name=fake_name)
 
@@ -202,13 +200,13 @@ class NoItemLayoutTopicModel(BaseFakeTopic):
     """
         Provides a skeletal Topic implementation
     """
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[BAT.TOPIC]
 
     def __init__(self, parent: BaseModel) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         fake_name: str = 'Fake_topic'  # patch up later
         super().__init__(parent=parent, topic_name=fake_name)
 
@@ -217,13 +215,13 @@ class NoScrollbarTopicModel(BaseFakeTopic):
     """
         Provides a skeletal Topic implementation
     """
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[BAT.TOPIC]
 
     def __init__(self, parent: BaseModel) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         fake_name: str = 'Fake_topic'  # patch up later
         super().__init__(parent=parent, topic_name=fake_name)
 
@@ -232,13 +230,13 @@ class NoSliderTopicModel(BaseFakeTopic):
     """
         Provides a skeletal Topic implementation
     """
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[BAT.TOPIC]
 
     def __init__(self, parent: BaseModel) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         fake_name: str = 'Fake_topic'  # patch up later
         super().__init__(parent=parent, topic_name=fake_name)
 
@@ -247,13 +245,13 @@ class NoSpinTopicModel(BaseFakeTopic):
     """
         Provides a skeletal Topic implementation
     """
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[BAT.TOPIC]
 
     def __init__(self, parent: BaseModel) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         fake_name: str = 'Fake_topic'  # patch up later
         super().__init__(parent=parent, topic_name=fake_name)
 
@@ -262,13 +260,13 @@ class NoListTopicModel(BaseFakeTopic):
     """
         Provides a skeletal Topic implementation
     """
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[BAT.TOPIC]
 
     def __init__(self, parent: BaseModel) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         fake_name: str = 'Fake_topic'  # patch up later
         super().__init__(parent=parent, topic_name=fake_name)
 
@@ -277,12 +275,12 @@ class NoWindowTopicModel(BaseFakeTopic):
     """
         Provides a skeletal Topic implementation
     """
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[BAT.TOPIC]
 
     def __init__(self, parent: BaseModel) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         fake_name: str = 'Fake_topic'  # patch up later
         super().__init__(parent=parent, topic_name=fake_name)

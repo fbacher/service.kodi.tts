@@ -16,14 +16,13 @@ from common.messages import Messages
 from common.settings import Settings
 from windows.base import WindowHandlerBase, WindowReaderBase
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class ProgressNotice(xbmcgui.Window):
 
     def __init__(self, winID: str):
-        self._logger = module_logger.getChild(
-                self.__class__.__name__)  # type: BasicLogger
+        self._logger = module_logger
         self.winID = winID
         xbmcgui.Window.__init__(self, winID)
 
@@ -130,7 +129,7 @@ class BackgroundProgress(WindowHandlerBase):
     def __init__(self, win_id=None, service: ForwardRef('TTSService') = None) -> None:
         cls = type(self)
         super().__init__(win_id, service)
-        cls._logger = module_logger.getChild(cls.__class__.__name__)
+        cls._logger = module_logger
 
     def init(self):
         self._win = None

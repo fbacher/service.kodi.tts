@@ -6,7 +6,7 @@ from common import *
 from common.logger import *
 from common.settings import Settings
 
-module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class PlayerHandlerType:
@@ -20,7 +20,7 @@ class PlayerHandlerType:
     def __init__(self):
         clz = type(self)
         self.hasAdvancedPlayer: bool
-        clz._logger = module_logger.getChild(self.__class__.__name__)
+        clz._logger = module_logger
         self.availablePlayers: List[Type[IPlayer]] | None
 
     @classmethod

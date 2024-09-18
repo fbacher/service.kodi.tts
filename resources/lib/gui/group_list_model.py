@@ -1,39 +1,39 @@
 # coding=utf-8
 
-from typing import Callable, ForwardRef, List
+from typing import Callable, List
 
 import xbmc
 import xbmcgui
 
 from common.logger import BasicLogger
 from common.messages import Messages
-from common.phrases import Phrase, PhraseList
+from common.phrases import Phrase
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
-from gui.base_tags import control_elements, ControlElement, Item, WindowType
-from gui.element_parser import (BaseElementParser,
-                                ElementHandler)
+from gui.base_tags import control_elements, ControlElement, Item
+from gui.element_parser import (ElementHandler)
 from gui.group_list_topic_model import GroupListTopicModel
 from gui.no_topic_models import NoGroupListTopicModel
-from gui.parse_group_list import ParseGroupList
+from gui.parser.parse_group_list import ParseGroupList
 from gui.statements import Statements
 from gui.topic_model import TopicModel
-from windows.ui_constants import AltCtrlType, UIConstants
-from windows.window_state_monitor import WinDialog, WinDialogState, WindowStateMonitor
+from utils import util
+from windows.ui_constants import UIConstants
+from windows.window_state_monitor import WinDialogState
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class GroupListModel(BaseModel):
 
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.GROUP_LIST]
 
     def __init__(self, parent: BaseModel,
                  parsed_group_list: ParseGroupList) -> None:
         clz = GroupListModel
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         super().__init__(window_model=parent.window_model, parser=parsed_group_list)
         # TODO: Super should take control_type as param
         # self.control_id: str = parsed_group_list.control_id
@@ -293,7 +293,7 @@ class GroupListModel(BaseModel):
         if container_id > 0:
             #  position is zero-based
             pos_str: str = xbmc.getInfoLabel(f'Container({container_id}).Position')
-            pos: int = BaseModel.get_non_negative_int(pos_str)
+            pos: int = util.get_non_negative_int(pos_str)
             pos += 1  # Convert to one-based item #
             clz._logger.debug(f'container position: {pos} container_id: {container_id}')
             current_item: str = xbmc.getInfoLabel(f'Container({container_id}).CurrentItem')

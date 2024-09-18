@@ -12,7 +12,7 @@ import xbmc
 
 from common import *
 
-#  from common.logger import *
+#  from common.get import *
 from common.monitor import Monitor
 
 
@@ -51,7 +51,7 @@ class GarbageCollector:
     @classmethod
     def init_class(cls):
         # if cls._logger is None:
-        #     cls._logger = module_logger.getChild(cls.__name__)
+        #     cls._logger = module_logger
 
         cls.garbage_collector = threading.Thread(
                 target=cls.join_dead_threads,
@@ -68,8 +68,11 @@ class GarbageCollector:
         finished = False
         # Sometimes thread name doesn't get set.
         threading.current_thread.__name__ = cls.GARBAGE_COLLECTOR_THREAD_NAME
-        while Monitor.exception_on_abort(timeout=2.0):
-            cls.reap_the_dead()
+        try:
+            while Monitor.exception_on_abort(timeout=2.0):
+                cls.reap_the_dead()
+        except AbortException:
+            cls.abort_notification()
 
     @classmethod
     def reap_the_dead(cls) -> int:
@@ -77,7 +80,7 @@ class GarbageCollector:
         with cls._lock:
             joined_threads: List[threading.Thread] = []
             for thread in cls._threads_to_join:
-                if not thread.is_alive():
+                if not thread.is_alive() and thread.name != cls.GARBAGE_COLLECTOR_THREAD_NAME:
                     # if cls._logger.isEnabledFor(DISABLED):
                     #     cls._logger.debug_extra_verbose(
                     #             f'Purging dead thread: {thread.name} '
@@ -102,27 +105,11 @@ class GarbageCollector:
         ABORT HAS OCCURRED. Shut down fast and capture dump of stragglers
         :return:
         """
+        xbmc.log(f'In GarbageCollector abort_notification')
         with cls._lock:
-            joined_threads: List[threading.Thread] = []
+            cls.reap_the_dead()
             for thread in cls._threads_to_join:
-                if thread.is_alive() and thread.name != cls.GARBAGE_COLLECTOR_THREAD_NAME:
-                    xbmc.log(f'garbage_collector Thread alive after ABORT '
-                             f'{thread.name}', xbmc.LOGDEBUG)
-                else:
-                    # if cls._logger.isEnabledFor(DISABLED):
-                    #     cls._logger.debug_extra_verbose(
-                    #             f'Purging dead thread: {thread.name} '
-                    #             f'{thread.ident}')
-                    thread.join(0.001)
-                    if not thread.is_alive():
-                        joined_threads.append(thread)
-            for thread in joined_threads:
-                # if cls._logger.isEnabledFor(DISABLED):
-                #     cls._logger.debug_extra_verbose(f'Removing dead thread: '
-                #                                     f'{thread.name} '
-                #                                    f'{thread.ident}')
-                xbmc.log(f'garbage_collector purged {thread.name}', xbmc.LOGDEBUG)
-                cls._threads_to_join.remove(thread)
+                xbmc.log(f'garbage_collector remaining thread: {thread.name}')
         # cls._stopped = True
         finished = True
         # del cls._threads_to_join

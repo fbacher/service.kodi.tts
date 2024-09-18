@@ -6,7 +6,6 @@ import xbmc
 import xbmcgui
 
 from common.logger import BasicLogger, DEBUG_VERBOSE
-from common.phrases import PhraseList
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
 from gui.base_tags import control_elements, ControlElement, Item, WindowType
@@ -22,7 +21,7 @@ from gui.item_layout_model import ItemLayoutModel
 from gui.label_model import LabelModel
 from gui.list_model import ListModel
 from gui.no_topic_models import NoWindowTopicModel
-from gui.parse_window import ParseWindow
+from gui.parser.parse_window import ParseWindow
 from gui.radio_button_model import RadioButtonModel
 from gui.scrollbar_model import ScrollbarModel
 from gui.slider_model import SliderModel
@@ -49,19 +48,18 @@ ElementHandler.add_model_handler(SpinModel.item, SpinModel)
 ElementHandler.add_model_handler(ListModel.item, ListModel)
 
 
-
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class WindowModel(BaseModel):
 
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.WINDOW]
 
     def __init__(self, parsed_window: ParseWindow) -> None:
         clz = WindowModel
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         super().__init__(window_model=self, parser=parsed_window)
         clz._logger.debug(f'I am here in WindowModel')
 
@@ -69,7 +67,6 @@ class WindowModel(BaseModel):
         # Detect when there has been a change to a new window, or when the focus
         # has changed.
 
-        self.changed: bool = True
         self._windialog_state: WinDialogState = WinDialogState()
         self.xml_path: pathlib.Path = parsed_window.xml_path
         self.window_type: WindowType = parsed_window.window_type
@@ -81,33 +78,8 @@ class WindowModel(BaseModel):
         self.menu_control: int = parsed_window.menu_control
         self.visible_expr: str = parsed_window.visible_expr
 
-        """
-            All Topics in this window. The first one is for this control
-        """
-
-        self.topics: List[TopicModel] = []
-
-        """
-            Map of all Controls in Window, indexed by it's 'tree_id'.
-            A tree_id is same as it's control_id, but when there is no
-            control_id, it is L<control_depth>C<child#>
-            The control_id is most useful, but the other form allows other
-            controls to be looked-up, even if awkwardly
-        """
-
-        self.window_id_map: Dict[str, BaseModel] = {}
-        """     
-            Map of all Controls in Window, which have a control_id
-            Many controls don't have a control_id
-        """
-        self.model_for_control_id: Dict[int, BaseModel] = {}
-
         self.best_alt_label: str = ''
         self.best_hint_text: str = ''
-        self.control_stack_map: Dict[str, List[BaseModel]] = {self.tree_id: self}
-        self.topic_by_tree_id: Dict[str, TopicModel] = {}
-        self.topic_by_topic_name: Dict[str, TopicModel] = {}
-        self.ordered_topics_by_name: Dict[str, TopicModel] = {}
 
         # window: xbmcgui.Window = WindowStateMonitor.get_dialog()
         # control = window.getControl(100)
@@ -117,13 +89,6 @@ class WindowModel(BaseModel):
         # Uses depth-first search though the controls
 
         self.convert_controls(parsed_window)
-
-        # Now, build the dictionary for the tree of controls.
-
-        self.build_control_tree(window=self, level=0)
-        parents: List[BaseModel] = [self]
-        self.build_parent_list_map(self, parents)
-        self.build_topic_maps(window=self)
 
         #  Contains child controls
         #  parsed_window.children: List[BaseParser] = []
@@ -138,7 +103,8 @@ class WindowModel(BaseModel):
         # clz._logger.debug(f'# children: {len(parsed_window.children)}')
 
         if parsed_window.topic is not None:
-            self.topic = WindowTopicModel(parent=self, parsed_topic=parsed_window.topic)
+            self.topic = WindowTopicModel(parent=self,
+                                          parsed_topic=parsed_window.topic)
         else:
             self.topic = NoWindowTopicModel(self)
 
@@ -153,65 +119,6 @@ class WindowModel(BaseModel):
                 if (child.item.key in (ControlElement.CONTROLS.name,
                                        ControlElement.CONTROL.name)):
                     self.children.append(value_or_control)
-    '''
-    def build_control_tree(self):
-        """
-        Build a tree of controls. Ideally there would be 'topic' nodes that have
-        labels appropriate for the topic (heading, hint, alt-lable, etc) and then
-        would contain the immediate members of the topic as immediate children.
-        Subtopics would be contained in childen of type topic, or topic grandchildren.
-        But, this would require major rework and is not likely necessary.
-
-        Any control which has labels, hints, etc. can be considered a topic. Leaf
-        nodes are topics with one member, itself. Groups, in particular, can be topics
-        with labels, etc. that apply to all members of the group (and decendents).
-
-        label_for and labeled_by tend to identify topics. topic_id attributes
-        explicitly define one. Without the presence of these on a window, a best-
-        guesse is used. Basically, if there is a label associated with an
-        enclosing group, then it will be assumed to be a topic label. Hard-coded
-        rules will be made for specific windows/dialogs.
-
-        :return:
-        """
-
-        """
-         Every control has a list of all it's direct children. In addition, every
-         control has a link to its parent. Assign a unique ID to every control 
-         Controls are NOT is_required to have ids. Ids are ultimately positive integers,
-         but names can be used. For those without an assigned ID, label them 
-         according to their tree depth and their index in the list of children 
-         for their parent. In other words, if a Node is contained in a group
-         which is a direct child of the Window. Further, if the node is the 
-         fifth child of this group, then the node's id will be: "L1C5" for
-         "level1, child 4".  To reduce confusion, this ID will be kept in 
-         the tree_id: str field. For controls which already have ids, the 
-         control_id will be copied to tree_id.
-        """
-        clz = WindowModel
-        # Window control ALWAYS has an ID. Tree_id assigned in constructor
-        level: int = 0
-        if self.control_id >= 0:
-            self.control_id_map[self.control_id] = self
-
-        #  For each node, track the stack of nodes above to the root
-        #  self.control_stack_map[self.tree_id] = self.
-        child_idx: int = 0
-        for child in self.children:
-            child: BaseModel
-            if child.control_id < 0:
-                child.tree_id = f'L{level}C{child_idx}'
-            else:
-                child.tree_id = f'{child.control_id}'
-            #  clz._logger.debug(f'child: {type(child)} tree_id: {child.tree_id}')
-            child.build_control_tree(self, level=level)
-            child_idx += 1
-            clz._logger.debug(f'isinstance of TopicModel: {isinstance(child, 
-            TopicModel)} '
-                              f'type: {type(child)} parent: {type(self)}')
-            if isinstance(child, TopicModel):
-                self.topics.append(child)
-    '''
 
     @property
     def window_model(self) -> ForwardRef('WindowModel'):
@@ -225,14 +132,7 @@ class WindowModel(BaseModel):
     def focus_changed(self) -> bool:
         return self._windialog_state.focus_changed
 
-    @property
-    def root_topic(self) -> TopicModel | None:
-        if len(self.topics) == 0:
-            return None
-        return self.topics[0]
-
-    def set_changed(self, changed: int, windialog_state: WinDialogState) -> None:
-        self.changed: int = changed
+    def set_changed(self, windialog_state: WinDialogState) -> None:
         self._windialog_state: WinDialogState = windialog_state
 
     def voice_control(self, stmts: Statements,
@@ -295,44 +195,6 @@ class WindowModel(BaseModel):
             success = self.voice_control_heading(stmts)
         return success
 
-    def build_parent_list_map(self, parent: BaseModel, parents: List[BaseModel]):
-        """
-        This time, record the parent chain for each child
-        """
-
-        clz = WindowModel
-        self.control_stack_map[parent.tree_id] = parents
-        #  clz._logger.debug(f'parents: # {len(parents)}')
-        for child in parent.children:
-            child: BaseModel
-            new_parents = parents.copy()
-            new_parents.append(child)
-            self.build_parent_list_map(child, new_parents)
-
-    def get_control_model(self, control_id_expr: str) -> BaseModel | None:
-        """
-          Map of all Controls in Window, which have a control_id
-          Many controls don't have a control_id
-        :param control_id_expr:
-        :return:
-        """
-        clz = WindowModel
-        control_id: int = BaseModel.get_non_negative_int(control_id_expr)
-        if control_id < 0:
-            return None
-        clz._logger.debug(f'control_id: {control_id}')
-        result = self.model_for_control_id.get(control_id)
-        return result
-
-    def get_control_model_by_tree_id(self, tree_id: str) -> BaseModel | None:
-        return self.window_id_map.get(tree_id)
-
-    def get_current_control_model(self) -> BaseModel | None:
-        try:
-            control_id_str: str = xbmc.getInfoLabel('System.CurrentControlId')
-            return self.get_control_model(control_id_str)
-        except Exception as e:
-            return None
 
     previously_voiced_items: Dict[str, BaseModel] = {}
     about_to_voice_items: Dict[str, BaseModel] = {}
@@ -367,7 +229,8 @@ class WindowModel(BaseModel):
             topic_str = f'\n  {self.topic}'
 
         results: List[str] = []
-        result = f'{window_str}{default_control_str}{visible_expr_str}{window_modality}'
+        result = (f'{window_str}{default_control_str}{visible_expr_str}'
+                  f'{window_modality}')
         results.append(result)
         results.append(f'{topic_str}')
 

@@ -17,7 +17,7 @@ from common.setting_constants import Backends, Players
 from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class ExperimentalSettings(BaseServiceSettings):
@@ -74,7 +74,7 @@ class ExperimentalSettings(BaseServiceSettings):
             return
         ExperimentalSettings.initialized = True
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__name__)
+            clz._logger = module_logger
         ExperimentalSettings.init_settings()
         installed: bool = clz.isInstalled()
         SettingsMap.set_is_available(clz.service_ID, Reason.AVAILABLE)

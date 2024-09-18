@@ -1,29 +1,35 @@
 # coding=utf-8
-from typing import List, Tuple
+import faulthandler
+import io
+from typing import List
+
+import xbmcvfs
 
 from common.logger import BasicLogger
 from common.phrases import PhraseList
 from gui.base_model import BaseModel
 from gui.gui_globals import GuiGlobals
-from gui.parse_topic import ParseTopic
+from gui.parser.parse_topic import ParseTopic
 from gui.statements import Statement, Statements, StatementType
 from gui.topic_model import TopicModel
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class ListTopicModel(TopicModel):
     """
     Provides vocing for the List Container decorated with a Topic
     """
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
 
     def __init__(self, parent: BaseModel, parsed_topic: ParseTopic) -> None:
         clz = ListTopicModel
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
 
         super().__init__(parent=parent, parsed_topic=parsed_topic)
+
+    done_once: bool = False
 
     @property
     def supports_container(self) -> bool:
@@ -109,42 +115,32 @@ class ListTopicModel(TopicModel):
         clz = ListTopicModel
         clz._logger.debug(f'In voice_active_item')
         success: bool = False
-        item_number: int = self.get_item_number()
+        # Can't get a usable item number. See get_item_number
+        #  item_number: int = self.get_item_number()
         result: List[str]
-        result = self.parent.get_working_value(item_number)
+        result = self.parent.get_working_value(-1)
         phrases: PhraseList = PhraseList(check_expired=False)
         #
+        # There is NO useable item number
         # The voicing of an 'item' is a unit. It makes no sense to
         # voice the item number separately from its value(s). The risk
         # is that the item # would be voiced, but not its value.
         old_value_key: str = f'{self.name}_value'
-        old_item_number_key: str = f'{self.name}_old_item_number'
+        # old_item_number_key: str = f'{self.name}_old_item_number'
         old_values: List[str] = GuiGlobals.saved_states.get(old_value_key, [])
-        old_item_number: int = GuiGlobals.saved_states.get(old_item_number_key, -1)
         same: bool = False
-        if (old_values == result) and (old_item_number == item_number):
+        if old_values == result:
             same = True
         clz._logger.debug(f'same: {same} old_values: {old_values}\n '
-                          f'result: {result} old_item: {old_item_number} '
-                          f'item: {item_number}')
-        GuiGlobals.saved_states[old_item_number_key] = item_number
+                          f'result: {result}')
         GuiGlobals.saved_states[old_value_key] = result
         if not same:
             phrases = PhraseList(check_expired=False)
-            phrases.add_text(f'item: {item_number}')
+            phrases.add_text(f'item:')
             for item_value in result:
                 phrases.add_text(item_value)
             stmts.append(Statement(phrases, stmt_type=StatementType.VALUE))
         clz._logger.debug(f'phrases: {phrases}\n {stmts}')
-
-        # We want to voice any side effects to changes made here,
-        # but ONLY when a change is also made in the list container's
-        # selection. We can't detect an arbitrary control's Selection
-        # events.
-        if self.flows_to != '':   # and not self.focus_changed:
-            # Here where we have a case where an additional
-            # value(s) may need to be voiced
-            success = self.voice_flows_to(stmts, stmt_type=StatementType.VALUE)
 
         # Cause WindowStateMonitor to process events whether
         # there was a focus change or not. Normally only
@@ -153,7 +149,18 @@ class ListTopicModel(TopicModel):
         # focus change event occurs under the assumption that the newly
         # focused control will not need it.
 
+        clz._logger.debug(f'FOCUS CHANGED requried = False')
         GuiGlobals.require_focus_change = False
+
+        # We want to voice any side effects to changes made here,
+        # but ONLY when a change is also made in the list container's
+        # selection. We can't detect an arbitrary control's Selection
+        # events.
+        clz._logger.debug(f'flows_to_expr: {self.flows_to_expr}')
+        if self.flows_to_expr != '':   # and not self.focus_changed:
+            # Here we have a case where an additional
+            # value(s) may need to be voiced
+            success = self.voice_flows_to(stmts, stmt_type=StatementType.VALUE)
         return success
 
     def voice_any_additional_values(self, stmts: Statements) -> bool:
@@ -164,6 +171,10 @@ class ListTopicModel(TopicModel):
 
     def get_item_number(self) -> int:
         """
+        NOTE: The item number is next to useless for a list container because
+              it is relative to the viewable items. There is NO way to get this
+              except from List Container itself via getSelectedPosition.
+
         Used to get the current item number from a List type topic. Called from
         a child topic of the list
 

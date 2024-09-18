@@ -28,7 +28,7 @@ from common.logger import BasicLogger
 from common.setting_constants import Players
 from common.settings import Settings
 
-module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class BasePlayerHandler(PlayerHandlerType):
@@ -42,7 +42,7 @@ class BasePlayerHandler(PlayerHandlerType):
     def __init__(self):
         super().__init__()
         clz = type(self)
-        clz._logger = module_logger.getChild(self.__class__.__name__)
+        clz._logger = module_logger
         self.availablePlayers: List[Type[AudioPlayer]] | None = None
         clz.set_sound_dir()
         clz.register()
@@ -129,7 +129,7 @@ class WavAudioPlayerHandler(BasePlayerHandler):
         super().__init__()
         cls = type(self)
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__name__)
+            cls._logger = module_logger
         self.preferred = None
         self.advanced = advanced
         self.set_sound_dir()
@@ -284,7 +284,7 @@ class MP3AudioPlayerHandler(WavAudioPlayerHandler):
         super().__init__(preferred, advanced)
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__name__)
+            clz._logger = module_logger
         clz.set_sound_dir()
 
     @classmethod

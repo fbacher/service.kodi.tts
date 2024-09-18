@@ -32,14 +32,14 @@ import xbmc
 from common.constants import Constants
 from common.logger import *
 
-module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class Debug:
     """
         Define several methods useful for debugging
     """
-    _logger: BasicLogger = module_logger.getChild('Debug')
+    _logger: BasicLogger = module_logger
     _currentAddonName = CriticalSettings.get_plugin_name()
 
     @classmethod

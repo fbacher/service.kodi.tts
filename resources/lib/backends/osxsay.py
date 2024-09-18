@@ -15,7 +15,7 @@ from common.system_queries import SystemQueries
 from backends.base import ThreadedTTSBackend
 from backends.settings.constraints import Constraints
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class OSXSayTTSBackend_Internal(ThreadedTTSBackend):
@@ -51,7 +51,7 @@ class OSXSayTTSBackend_Internal(ThreadedTTSBackend):
         clz = type(self)
         clz._logger_name = self.__class__.__name__
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz._logger_name)
+            clz._logger = module_logger
 
         from . import cocoapy
         self.cocoapy = cocoapy
@@ -66,7 +66,7 @@ class OSXSayTTSBackend_Internal(ThreadedTTSBackend):
         if not text:
             return
         self.synth.startSpeakingString_(self.cocoapy.get_NSString(text))
-        while self.synth.isSpeaking():
+        while self.synth.is_speaking():
             utils.sleep(10)
 
     def getWavStream(self, text):
@@ -77,7 +77,7 @@ class OSXSayTTSBackend_Internal(ThreadedTTSBackend):
         return open(wav_path, 'rb')
 
     def isSpeaking(self):
-        return self.synth.isSpeaking()
+        return self.synth.is_speaking()
 
     def longVoices(self):
         vNSCFArray = self.synth.availableVoices()
@@ -144,7 +144,7 @@ class OSXSayTTSBackend(ThreadedTTSBackend):
         clz = type(self)
         clz._logger_name = self.__class__.__name__
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz._logger_name)
+            clz._logger = module_logger
         self.process = None
 
     @staticmethod

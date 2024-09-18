@@ -5,7 +5,7 @@ from common import *
 
 from common.logger import *
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class MyPopen(Popen):
@@ -40,7 +40,7 @@ class MyPopen(Popen):
                        process_group=process_group)
         clz = type(self)
         if clz._logger is None:
-            self._logger: BasicLogger = module_logger.getChild(clz.__name__)
+            self._logger: BasicLogger = module_logger
 
     @classmethod
     def run(cls, args, *, stdin=None, input=None, stdout=None, stderr=None,

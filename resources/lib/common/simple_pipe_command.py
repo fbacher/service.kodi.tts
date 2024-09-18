@@ -19,7 +19,7 @@ from common.logger import *
 from common.monitor import Monitor
 from common.phrases import PhraseList
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class RunState(Enum):
@@ -51,7 +51,7 @@ class SimplePipeCommand:
         self.stderr: TextIO | int | None = stderr
         self.stdout: TextIO | int | None = stdout
         clz = type(self)
-        SimplePipeCommand.logger = module_logger.getChild(clz.__name__)
+        SimplePipeCommand.logger = module_logger
         self.args: List[str] = args
         self.phrase_serial: int = phrase_serial
         self.thread_name = name

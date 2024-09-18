@@ -1,37 +1,31 @@
 # coding=utf-8
 
-from typing import Callable, List, Tuple
-
-import xbmcgui
+from typing import Callable, List
 
 from common.logger import BasicLogger
-from common.messages import Messages
-from common.phrases import Phrase, PhraseList
+from common.phrases import PhraseList
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
-from gui.base_tags import (control_elements, ControlElement, Item, Requires, Units,
-                           UnitsType,
-                           ValueUnits)
+from gui.base_tags import (control_elements, ControlElement, Item)
 from gui.element_parser import (ElementHandler)
 from gui.no_topic_models import NoSpinexTopicModel
-from gui.parse_spinex import ParseSpinex
+from gui.parser.parse_spinex import ParseSpinex
 from gui.spinex_topic_model import SpinexTopicModel
 from gui.topic_model import TopicModel
-from windows.ui_constants import UIConstants
-from windows.window_state_monitor import WinDialogState, WindowStateMonitor
+from windows.window_state_monitor import WinDialogState
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class SpinexModel(BaseModel):
 
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.SPIN_CONTROL_EX]
 
     def __init__(self, parent: BaseModel, parsed_spinex: ParseSpinex) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         super().__init__(window_model=parent.window_model, parser=parsed_spinex)
         self.parent: BaseModel = parent
         self.broken: bool = False

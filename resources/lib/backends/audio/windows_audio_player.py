@@ -15,7 +15,7 @@ from common.logger import BasicLogger
 from common.setting_constants import Players
 from common.system_queries import SystemQueries
 
-module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class WindowsAudioPlayer(AudioPlayer):
@@ -36,7 +36,7 @@ class WindowsAudioPlayer(AudioPlayer):
     @classmethod
     def init_class(cls):
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__name__)
+            cls._logger = module_logger
 
     def __init__(self, *args, **kwargs):
         super().__init__()

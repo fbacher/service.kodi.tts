@@ -15,7 +15,7 @@ if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
     module_logger = BasicLogger.get_module_logger(
     ).getChild('lib.windowNavigation')
 else:
-    module_logger = BasicLogger.get_module_logger()
+    module_logger = BasicLogger.get_logger(__name__)
 
 
 class WindowTraversal:
@@ -24,7 +24,7 @@ class WindowTraversal:
     """
 
     def __init__(self):
-        self._logger = module_logger.getChild(self.__class__.__name__)
+        self._logger = module_logger
 
     def voice_focused_control(self):  # Not called?
 

@@ -34,7 +34,7 @@ from windows.guitables import window_map
 from windows.window_state_monitor import WinDialog, WinDialogState, WindowStateMonitor
 from windows.windowparser import WindowParser
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class Window:
@@ -49,13 +49,13 @@ class Window:
 
     """
 
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     _active_win_dialog_id: int | None = None
 
     def __init__(self, win_dialog_id: int, addon_id: str = None):
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
 
         self.stop: bool = False
         self.win_dialog_id: int = win_dialog_id

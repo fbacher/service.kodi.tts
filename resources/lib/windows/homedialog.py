@@ -11,7 +11,7 @@ from common.messages import Messages
 from common.phrases import Phrase, PhraseList
 from .base import WindowReaderBase
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class HomeDialogReader(WindowReaderBase):
@@ -21,7 +21,7 @@ class HomeDialogReader(WindowReaderBase):
     def __init__(self, win_id=None, service: ForwardRef('TTSService') = None) -> None:
         cls = type(self)
         super().__init__(win_id, service)
-        cls._logger = module_logger.getChild(cls.__class__.__name__)
+        cls._logger = module_logger
 
     def getControlText(self, control_id, phrases: PhraseList) -> bool:
         cls = type(self)
@@ -35,8 +35,8 @@ class HomeDialogReader(WindowReaderBase):
         #                   f'service.current_control_id: {self.service.current_control_id} '
         #                   f'text: {text}')
 
-        #  winID = xbmcgui.getCurrentWindowId()
-        #  window = xbmcgui.Window(winID)
+        #  window_id = xbmcgui.getCurrentWindowId()
+        #  window = xbmcgui.Window(window_id)
         # label_id = 1732
         # label: xbmcgui.ControlLabel = window.getControl(label_id)
         #  x = xbmc.getInfoLabel(f'Control.GetLabel({label_id})')
@@ -59,7 +59,7 @@ class HomeDialogReader(WindowReaderBase):
         # run-time
         #
         """
-        win: xbmcgui.Window = xbmcgui.Window(self.winID)
+        win: xbmcgui.Window = xbmcgui.Window(self.window_id)
         for ctl_id in (314159, 314160, 314161):
             control: xbmcgui.Control = win.getControl(ctl_id)
             control: xbmcgui.ControlLabel

@@ -1,10 +1,8 @@
 # coding=utf-8
 
-from typing import Callable, List, Tuple
+from typing import Callable, List
 
 from common.logger import BasicLogger, DEBUG_VERBOSE
-from common.messages import Messages
-from common.phrases import Phrase, PhraseList
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
 from gui.base_tags import (control_elements, ControlElement, Item)
@@ -12,24 +10,21 @@ from gui.element_parser import (ElementHandler)
 from gui.focused_layout_topic_model import FocusedLayoutTopicModel
 from gui.label_model import LabelModel
 from gui.no_topic_models import NoFocusedLayoutTopicModel
-from gui.parse_focused_layout import ParseFocusedLayout
-from gui.topic_model import TopicModel
-from windows.ui_constants import UIConstants
-from windows.window_state_monitor import WinDialogState, WindowStateMonitor
+from gui.parser.parse_focused_layout import ParseFocusedLayout
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class FocusedLayoutModel(BaseModel):
 
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.FOCUSED_LAYOUT]
 
     def __init__(self, parent: BaseModel,
                  parsed_focused_layout: ParseFocusedLayout) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         super().__init__(window_model=parent.window_model,
                          parser=parsed_focused_layout)
         self.parent: BaseModel = parent

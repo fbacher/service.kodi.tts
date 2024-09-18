@@ -14,7 +14,7 @@ from backends.settings.service_types import Services
 from backends.settings.setting_properties import SettingsProperties
 from common.messages import Message, Messages
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class BaseSettingsConstants:
@@ -167,7 +167,7 @@ class Languages(BaseSettingsConstants):
     LOCALE_ZH_CN: Final[str] = 'zh-cn'
     LOCALE_ZH_HK: Final[str] = 'zh-hk'
     LOCALE_ZH_TW: Final[str] = 'zh-tw'
-
+    '''
     locale_msg_map = {
         LOCALE_AF   : Messages.LOCALE_AF,
         LOCALE_AF_ZA: Messages.LOCALE_AF_ZA,
@@ -230,6 +230,7 @@ class Languages(BaseSettingsConstants):
         LOCALE_ZH_HK: Messages.LOCALE_ZH_HK,
         LOCALE_ZH_TW: Messages.LOCALE_ZH_TW
     }
+    '''
 
     COUNTRY_AL: Final[str] = 'al'
     COUNTRY_AM: Final[str] = 'am'
@@ -277,6 +278,7 @@ class Languages(BaseSettingsConstants):
     COUNTRY_VN: Final[str] = 'vn'
     COUNTRY_ZA: Final[str] = 'za'
 
+    '''
     country_msg_map: Dict[str, int] = {
         COUNTRY_AL: 32340,
         COUNTRY_AM: 32341,
@@ -323,6 +325,7 @@ class Languages(BaseSettingsConstants):
         COUNTRY_VN: 32382,
         COUNTRY_ZA: 32383
     }
+    '''
 
     LANG_AF: Final[str] = 'af'
     LANG_AR: Final[str] = 'ar'
@@ -366,6 +369,7 @@ class Languages(BaseSettingsConstants):
     LANG_VI: Final[str] = 'vi'
     LANG_ZH: Final[str] = 'ch'
 
+    '''
     lang_msg_map: Dict[str, int] = {
         LANG_AF: 32384,
         LANG_AR: 32385,
@@ -409,6 +413,7 @@ class Languages(BaseSettingsConstants):
         LANG_VI: 32423,
         LANG_ZH: 32424
     }
+    '''
 
 
 # Most settings are stored using TTS-defined values. Each user

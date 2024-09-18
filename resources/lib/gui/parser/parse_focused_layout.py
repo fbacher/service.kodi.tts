@@ -1,17 +1,17 @@
 # coding=utf-8
 
 import xml.etree.ElementTree as ET
-from typing import ForwardRef, List, Tuple
+from typing import ForwardRef, List
 
 from common.logger import BasicLogger
 from gui import BaseParser
-from gui.base_tags import control_elements, ControlElement, ElementKeywords as EK, Item
-from gui.element_parser import BaseElementParser, ElementHandler
-from gui.parse_control import ParseControl
-from gui.parse_item_layout import ParseItemLayout
-from gui.parse_topic import ParseTopic
+from gui.base_tags import control_elements, ControlElement, Item
+from gui.element_parser import ElementHandler
+from gui.parser.parse_control import ParseControl
+from gui.parser.parse_item_layout import ParseItemLayout
+from gui.parser.parse_topic import ParseTopic
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class ParseFocusedLayout(ParseItemLayout):
@@ -30,8 +30,8 @@ class ParseFocusedLayout(ParseItemLayout):
     @classmethod
     def init_class(cls) -> None:
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__class__.__name__)
-        cls._logger.debug(f'Registering with ElementHandler')
+            cls._logger = module_logger
+        #  cls._logger.debug(f'Registering with ElementHandler')
         ElementHandler.add_handler(ControlElement.FOCUSED_LAYOUT,
                                    cls.get_instance)
 

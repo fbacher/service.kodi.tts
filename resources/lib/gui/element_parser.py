@@ -23,20 +23,20 @@ from gui.base_tags import TopicElement as TE
 from gui.exceptions import ParseError
 from windows.ui_constants import AltCtrlType
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class ElementTextAccess:
     """
        Utility to get the text field of an arbitrary element
     """
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
 
     def __init__(self, parent: BaseParser, tag_name: str,
                  default_value: str | None = None) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         self.parent = parent
         self.tag_name: str = tag_name
         self.default_value: str | None = default_value
@@ -83,14 +83,14 @@ class ElementAttribAccess:
     """
        Utility to get an attribute of an arbitrary element
     """
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
 
     def __init__(self, parent: BaseParser, tag_name, attrib_name: str,
                  default_value: str | None = None) -> None:
         super().__init__(parent)
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         self.parent = parent
         self.tag_name: str = tag_name
         self.attrib_name: str = attrib_name
@@ -147,12 +147,12 @@ class ElementAttribAccess:
 
 
 class BaseElementParser:
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
 
     @classmethod
     def init_class(cls) -> None:
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__class__.__name__)
+            cls._logger = module_logger
 
     def __init__(self, parent: BaseParser) -> None:
         self.parent: BaseParser = parent
@@ -171,12 +171,12 @@ class BaseElementParser:
 
 
 class ElementParser:
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
 
     @classmethod
     def init_class(cls) -> None:
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__class__.__name__)
+            cls._logger = module_logger
 
     @classmethod
     def parse_info(cls, parent: BaseParser | None = None,
@@ -207,6 +207,8 @@ class ElementParser:
                                                            tag_name=EK.ACTION.value,
                                                            default_value='')
         action_expr: str = text_access.get_value(el_info)
+        if action_expr is None:
+            action_expr = ''
         if parent is not None:
             parent.action_expr = action_expr
         return action_expr
@@ -222,6 +224,7 @@ class ElementParser:
             orientation_expr: str = el_orientation.text
             if orientation_expr is None:
                 cls._logger.debug_verbose(f'orientation value not specified. Ignored')
+                orientation_expr = 'vertical'
         parent.orientation_expr = orientation_expr
         return orientation_expr
 
@@ -266,6 +269,7 @@ class ElementParser:
         on_focus_value: str = el_on_focus.text
         if on_focus_value is None:
             cls._logger.debug_verbose(f'onFocus value not specified')
+            on_focus_value = ''
         parent.on_focus_expr = on_focus_value
         return on_focus_value
 
@@ -275,6 +279,7 @@ class ElementParser:
         enable_value: str = el_enable.text
         if enable_value is None:
             cls._logger.debug_verbose(f'enable value not specified')
+            enable_value = ''
         parent.enable_value_expr = enable_value
         return enable_value
 
@@ -285,6 +290,7 @@ class ElementParser:
         on_unfocus_expr: str = el_on_unfocus.text
         if on_unfocus_expr is None:
             cls._logger.debug_verbose(f'onUnFocus value not specified')
+            on_unfocus_expr = ''
         parent.on_unfocus_expr = on_unfocus_expr
         return on_unfocus_expr
 
@@ -294,6 +300,7 @@ class ElementParser:
         visible_expr: str = el_visible.text
         if visible_expr is None:
             cls._logger.debug_verbose(f'{el_visible} value not specified')
+            visible_expr = ''
         parent.visible_expr = visible_expr
         return visible_expr
 
@@ -624,6 +631,8 @@ class ElementParser:
     def parse_topic_value_format(cls, parent: BaseParser | None = None,
                                  el_topic_value_format: ET.Element = None) -> str | None:
         value_format: str = el_topic_value_format.text
+        if value_format is None:
+            value_format = ''
         parent.value_format = value_format
         return None
 
@@ -675,7 +684,8 @@ class ElementParser:
         """
         number_expr: str = el_number.text
         if number_expr is None:
-             cls._logger.debug_verbose(f'{el_number} value not specified')
+            cls._logger.debug_verbose(f'{el_number} value not specified')
+            number_expr = ''
         parent.number_expr = number_expr
         return number_expr
 
@@ -694,6 +704,7 @@ class ElementParser:
         selected_expr: str = el_selected.text
         if selected_expr is None:
             cls._logger.debug_verbose(f'{selected_expr} value not specified')
+            selected_expr = ''
         parent.selected_expr = selected_expr
         return selected_expr
 
@@ -773,13 +784,13 @@ class ElementParser:
         return None
 
 class ControlElementHandler:
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     element_handlers: Dict[str, ForwardRef('BaseElementParser')] = {}
 
     @classmethod
     def init_class(cls) -> None:
         if cls._logger is None:
-             cls._logger = module_logger.getChild(cls.__class__.__name__)
+             cls._logger = module_logger
 
     @classmethod
     def add_handler(cls, item: Item,
@@ -802,7 +813,7 @@ class ControlElementHandler:
 
 
 class ElementHandler:
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     # parse_info(cls, parent: BaseParser | None = None,
     # el_info: ET.Element = None) -> str | None:
     #  Callable[[BaseModel, BaseParser], BaseModel]:
@@ -812,7 +823,7 @@ class ElementHandler:
     @classmethod
     def init_class(cls) -> None:
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__class__.__name__)
+            cls._logger = module_logger
         cls.add_handler(EK.INFO, ElementParser.parse_info)
         cls.add_handler(EK.INFO2, ElementParser.parse_info2)
         cls.add_handler(EK.ACTION, ElementParser.parse_action)

@@ -282,6 +282,7 @@
                      <height>550</height>
                      <alignx>left</alignx>
                      <aligny>top</aligny>
+                     <label></label>
                      <textoffsetx>30</textoffsetx>
                      <textoffsety>30</textoffsety>
                      <shadowcolor>black</shadowcolor>
@@ -291,7 +292,7 @@
                      <onright>100</onright>
                      <onup>201</onup>
                      <ondown>1006</ondown>
-                     <visible>true</visible>
+                     <visible></visible>
                   </control>
                </control>
             </control>

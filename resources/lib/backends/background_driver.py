@@ -23,7 +23,7 @@ from common.phrases import Phrase
 from common.settings import Settings
 from utils.util import runInThread
 
-module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class BackgroundDriver(BaseServices):
@@ -38,7 +38,7 @@ class BackgroundDriver(BaseServices):
     def __init__(self):
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(self.__class__.__name__)
+            clz._logger = module_logger
 
         self.cache_directory: Path = None
         self.delay: Delay = None
@@ -85,7 +85,7 @@ class BackgroundDriver(BaseServices):
 
     def start(self):
         self.stop = False
-        runInThread(self.create_voice_files, name='create_voice_files',
+        runInThread(self.create_voice_files, name='crtVcFil',
                     delay=0.0)
 
     def stop(self):

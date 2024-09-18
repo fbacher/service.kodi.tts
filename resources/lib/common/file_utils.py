@@ -14,7 +14,7 @@ from common.minimal_monitor import MinimalMonitor
 from common.monitor import Monitor
 from utils.util import runInThread
 
-module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class Delay:
@@ -36,7 +36,7 @@ class Delay:
 
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
 
         self._bias: float = bias
         self._call_scale_factor = call_scale_factor
@@ -104,7 +104,7 @@ class FindTextToVoice:
     def __init__(self, top: Path) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         self.unvoiced_files: queue.Queue = queue.Queue(maxsize=200)
         self.glob_pattern: str = '**/*.txt'
         self.finder: FindFiles = FindFiles(top, self.glob_pattern)
@@ -160,7 +160,7 @@ class FindFiles(Iterable[Path]):
         """
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
 
         self._die: bool = False
         self._top: Path = top
@@ -175,7 +175,7 @@ class FindFiles(Iterable[Path]):
         # it before it can be used.
 
         self._file_queue: Queue = Queue(20)
-        runInThread(self._run, name=f'Find Files: {top}',
+        runInThread(self._run, name=f'FndFil',
                     delay=0.0)
 
     def _run(self) -> None:
@@ -270,7 +270,7 @@ class FindFilesIterator(Iterator):
     def __init__(self, files: FindFiles):
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         #  clz._logger.debug(f'In __init__')
 
         self._files: FindFiles = files

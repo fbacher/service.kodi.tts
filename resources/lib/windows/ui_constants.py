@@ -12,7 +12,7 @@ from common.messages import Messages
 from common.phrases import Phrase, PhraseList
 from gui import ControlElement
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class AltCtrlType(Enum):
@@ -45,6 +45,7 @@ class AltCtrlType(Enum):
     RESIZE = 1
     RSS = 1
     SCROLL_BAR = 32713
+    SLIDER = 32706
     SLIDER_EX = 32718
     SPIN_CONTROL_EX = 32719
     SPIN_CONTROL = 32710
@@ -55,7 +56,6 @@ class AltCtrlType(Enum):
     LABEL = 32703
     RADIO_BUTTON = 32704
     TEXT_BOX = 32705
-    SLIDER = 32706
     TOGGLE = 32707
     BUTTON_LIST = 32708
     DIALOG = 32709
@@ -74,7 +74,7 @@ class AltCtrlType(Enum):
             module_logger.debug(f'alt_type_name: {alt_type_name} AltCtrltype: '
                                 f'result: {result}')
             return result
-        except ValueError | KeyError:
+        except Exception | KeyError:
             module_logger.exception(f'alt_type_name: {alt_type_name}')
             raise ValueError('Invalid alt_ctrl_type name: {alt_type_name}')
 

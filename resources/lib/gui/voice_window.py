@@ -23,7 +23,7 @@ from common.logger import BasicLogger
 from windows import guitables
 from windows.guitables import window_map
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class VoiceWindow:
@@ -39,7 +39,7 @@ class VoiceWindow:
     def __init__(self, win_dialog_id: int, addon_id: str = None):
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
 
         self.win_dialog_id: int = win_dialog_id
         self.addon_id: str | None = addon_id

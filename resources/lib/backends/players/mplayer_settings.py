@@ -14,7 +14,7 @@ from common.logger import BasicLogger
 from common.setting_constants import PlayerMode, Players
 from common.settings_low_level import SettingsProperties
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class MPlayerSettings:
@@ -75,7 +75,7 @@ class MPlayerSettings:
         # it is saved.
         #
         if MPlayerSettings._logger is None:
-            MPlayerSettings._logger = module_logger.getChild(MPlayerSettings.__name__)
+            MPlayerSettings._logger = module_logger
 
         service_properties = {Constants.NAME: cls.displayName}
         SettingsMap.define_service(ServiceType.PLAYER, cls.service_ID,

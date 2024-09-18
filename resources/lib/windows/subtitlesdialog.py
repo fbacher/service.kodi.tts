@@ -9,7 +9,7 @@ from common.phrases import PhraseList
 
 from .base import WindowReaderBase
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class SubtitlesDialogReader(WindowReaderBase):

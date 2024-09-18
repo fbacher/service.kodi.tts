@@ -13,7 +13,7 @@ from common.constants import Constants
 from common.logger import BasicLogger
 from common.setting_constants import Backends
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class SpeechDispatcherSettings:
@@ -65,7 +65,7 @@ class SpeechDispatcherSettings:
             return
         self.initialized = True
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__name__)
+            clz._logger = module_logger
         self.init_settings()
 
     def init_settings(self):

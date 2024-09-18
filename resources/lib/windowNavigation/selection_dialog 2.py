@@ -14,10 +14,10 @@ from common.messages import Messages
 from windowNavigation.choice import Choice
 
 if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = BasicLogger.get_module_logger(module_path=__file__)
+    module_logger = BasicLogger.get_logger(__name__)
 
 else:
-    module_logger = BasicLogger.get_module_logger()
+    module_logger = BasicLogger.get_logger(__name__)
 
 
 class SelectionDialog(xbmcgui.WindowXMLDialog):
@@ -32,7 +32,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         super().__init__(*args, **kwargs)
         clz = type(self)
         self.exit_dialog: bool = False
-        clz._logger = module_logger.getChild(self.__class__.__name__)
+        clz._logger = module_logger
         clz._logger.debug('SelectionDialog.__init__')
         empty_display_values: List[Choice] = []
         self.list_position: int = 0

@@ -26,7 +26,7 @@ from common.simple_pipe_command import SimplePipeCommand
 from common.simple_run_command import SimpleRunCommand
 from common.slave_communication import SlaveCommunication
 
-module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class AudioPlayer(IPlayer, BaseServices):
@@ -41,7 +41,7 @@ class AudioPlayer(IPlayer, BaseServices):
     def __init__(self) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__name__)
+            clz._logger = module_logger
 
         clz.set_sound_dir()
         super().__init__()
@@ -137,8 +137,7 @@ class SubprocessAudioPlayer(AudioPlayer):
     def __init__(self):
         super().__init__()
         clz = type(self)
-        clz._logger = module_logger.getChild(
-                self.__class__.__name__)
+        clz._logger = module_logger
         self._player_busy: bool = False
         self.player_mode: PlayerMode | None = None
         self._simple_player_busy: bool = False

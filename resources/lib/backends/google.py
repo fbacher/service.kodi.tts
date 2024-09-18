@@ -29,7 +29,7 @@ from common.logger import *
 from common.messages import Message, Messages
 from common.monitor import Monitor
 from common.phrases import Phrase, PhraseList, PhraseUtils
-from common.setting_constants import Backends, Genders, Languages, Mode, PlayerMode
+from common.setting_constants import Backends, Genders, PlayerMode
 from common.settings import Settings
 import langcodes
 from gtts import gTTS, gTTSError, lang
@@ -39,7 +39,7 @@ import xbmc
 
 from windowNavigation.choice import Choice
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class Results:
@@ -94,7 +94,7 @@ class GoogleSpeechGenerator(ISpeechGenerator):
     def __init__(self) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__name__)
+            clz._logger = module_logger
         self.download_results: Results = Results()
         self.voice_cache: VoiceCache = VoiceCache()
 
@@ -143,7 +143,7 @@ class GoogleSpeechGenerator(ISpeechGenerator):
         phrase_chunks: PhraseList = PhraseUtils.split_into_chunks(phrase,
                                                                   max_phrase_length)
         unchecked_phrase_chunks: PhraseList = phrase_chunks.clone(check_expired=False)
-        runInThread(self._generate_speech, name='download_speech', delay=0.0,
+        runInThread(self._generate_speech, name='dwnldGoo', delay=0.0,
                     phrase_chunks=unchecked_phrase_chunks, original_phrase=phrase,
                     timeout=timeout, gender=phrase.gender)
 
@@ -456,7 +456,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         def load_lang_info(cls):
             if not cls.initialized:
                 if cls._logger is None:
-                    cls._logger = module_logger.getChild(cls.__name__)
+                    cls._logger = module_logger
                 cls.initialized = True
                 lang_map = gtts.lang.tts_langs()
 
@@ -550,7 +550,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         super().__init__(*args, **kwargs)
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__name__)
+            clz._logger = module_logger
 
         # self.simple_cmd: SimpleRunCommand = None
         self.f = False
@@ -883,11 +883,15 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
                     longest_match = idx
                 choice: Choice
                 # lang_info: LangInfo = LangInfo.get(locale_id)
-                locale_msg: Message = Languages.locale_msg_map.get(locale_id)
-                if locale_msg is None:
+                # locale_msg: Message = Languages.locale_msg_map.get(locale_id)
+                # language_str is a human understandable string for a language
+                #
+                # lang_str: str = langcodes.Language.get(locale_id).display_name(kodi_lang)
+                lang_str = 'I made this up'
+                if lang_str is None:
                     choice = Choice(locale_id, locale_id, choice_index=idx)
                 else:
-                    choice = Choice(Messages.get_msg(locale_msg),
+                    choice = Choice(lang_str,
                                     locale_id, choice_index=idx)
                 languages.append(choice)
                 idx += 1

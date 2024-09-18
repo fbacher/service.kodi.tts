@@ -1,32 +1,29 @@
 # coding=utf-8
 
-from typing import ForwardRef, List
-
-import xbmc
+from typing import ForwardRef
 
 from common.logger import BasicLogger
 from common.messages import Messages
 from common.phrases import Phrase, PhraseList
 from gui.base_model import BaseModel
-from gui.base_parser import BaseParser
 from gui.base_tags import (BaseAttributeType as BAT, control_elements, Item)
-from gui.parse_topic import ParseTopic
+from gui.parser.parse_topic import ParseTopic
 from gui.statements import Statements
 from gui.topic_model import TopicModel
 from windows.ui_constants import AltCtrlType
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class EditTopicModel(TopicModel):
 
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[BAT.TOPIC]
 
     def __init__(self, parent: BaseModel, parsed_topic: ParseTopic) -> None:
         clz = EditTopicModel
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
 
         super().__init__(parent=parent, parsed_topic=parsed_topic)
 
@@ -218,7 +215,9 @@ class EditTopicModel(TopicModel):
         if self.read_next_expr == '':
             return success
 
-        next_topic: TopicModel = self.parent.get_topic_for_id(self.read_next_expr)
+        control_model: BaseModel
+        next_topic: TopicModel
+        control_model, next_topic = self.parent.get_topic_for_id(self.read_next_expr)
         if next_topic is None:
             clz._logger.debug(f"Can't find read_next_expr {self.read_next_expr}")
             return False
@@ -242,10 +241,12 @@ class EditTopicModel(TopicModel):
         # then the control 'flows_to' another (TODO: perhaps more than one?) control.
         # When voicing a control's label, see if another control also needs to be voiced
         #
-        if self.flows_to != '':
+        if self.flows_to_expr != '':
             # flows_to can be a control_id or a topic name
-            clz._logger.debug(f'flows_to: {self.flows_to}')
-            topic_to: TopicModel = self.parent.get_topic_for_id(self.flows_to)
+            clz._logger.debug(f'flows_to: {self.flows_to_expr}')
+            control_model: BaseModel
+            topic_to: TopicModel
+            control_model, topic_to = self.parent.get_topic_for_id(self.flows_to_expr)
             clz._logger.debug(f'topic_to: {topic_to}')
             success = topic_to.voice_value(stmts)
             return success

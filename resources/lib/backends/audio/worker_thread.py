@@ -12,7 +12,7 @@ from common.logger import *
 from common.monitor import Monitor
 from common.phrases import Phrase, PhraseList
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class TTSQueueData:
@@ -54,7 +54,7 @@ class WorkerThread:
         self.thread = Thread(target=self.process_queue, name=thread_name)
         self.thread_started: bool = False
         if clz._logger is None:
-            clz._logger = module_logger.getChild(self.__class__.__name__)
+            clz._logger = module_logger
         pass
 
     '''

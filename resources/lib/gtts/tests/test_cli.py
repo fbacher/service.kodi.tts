@@ -7,7 +7,7 @@ from gtts.cli import tts_cli
 
 # Need to look into gTTS' log output to test proper instantiation
 # - Use testfixtures.LogCapture() b/c TestCase.assertLogs() needs py3.4+
-# - Clear 'gtts' logger handlers (set in gtts.cli) to reduce test noise
+# - Clear 'gtts' get handlers (set in gtts.cli) to reduce test noise
 import logging
 from testfixtures import LogCapture
 

@@ -30,9 +30,9 @@ from common.settings import Settings
 from common.settings_low_level import SettingsProperties
 
 if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = BasicLogger.get_module_logger(module_path=__file__)
+    module_logger = BasicLogger.get_logger(__name__)
 else:
-    module_logger = BasicLogger.get_module_logger()
+    module_logger = BasicLogger.get_logger(__name__)
 
 
 class VoiceCache:
@@ -50,8 +50,7 @@ class VoiceCache:
         Creates a VoiceCache instance meant to be used by a particular TTS engine.
         """
         clz = type(self)
-        VoiceCache._logger = module_logger.getChild(
-                self.__class__.__name__)
+        VoiceCache._logger = module_logger
 
     def get_cache_directory(self) -> pathlib.Path:
         clz = type(self)

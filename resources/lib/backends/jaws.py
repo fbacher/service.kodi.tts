@@ -9,7 +9,7 @@ from common.logger import *
 from common.system_queries import SystemQueries
 from .base import ThreadedTTSBackend
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class JAWSTTSBackend(ThreadedTTSBackend):
@@ -24,7 +24,7 @@ class JAWSTTSBackend(ThreadedTTSBackend):
         super().__init__(*args, **kwargs)
         type(self)._class_name = self.__class__.__name__
         if type(self)._logger is None:
-            type(self)._logger = module_logger.getChild(type(self)._class_name)
+            type(self)._logger = module_logger
         self.jaws = None
 
     def init(self):

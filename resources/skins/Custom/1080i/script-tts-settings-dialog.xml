@@ -605,7 +605,7 @@
                         <topic name="volume_group" rank="6">
                            <topic_type>heading</topic_type>
                            <alt_label/>
-                           <alt_type>slider</alt_type>
+                           <alt_type>SLIDER</alt_type>
                            <outer_topic>engine_settings</outer_topic>
                         </topic>
                         <height>34</height>

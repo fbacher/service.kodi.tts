@@ -13,22 +13,23 @@ from gui.base_parser import BaseParser
 from gui.base_tags import BaseAttributeType as BAT, control_elements, Item, Requires
 from gui.base_topic_model import BaseTopicModel
 from gui.element_parser import ElementHandler
-from gui.parse_topic import ParseTopic
+from gui.parser.parse_topic import ParseTopic
 from gui.topic_model import TopicModel
+from utils import util
 from windows.ui_constants import AltCtrlType, UIConstants
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class OldTopicModel(BaseTopicModel):
 
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[BAT.TOPIC]
 
     def __init__(self, parent: BaseModel, parsed_topic: ParseTopic) -> None:
         clz = TopicModel
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
 
         # Must be set prior to super
         self.parent: BaseModel = parent
@@ -251,7 +252,7 @@ class OldTopicModel(BaseTopicModel):
         clz = OldTopicModel
         success: bool = False
         if self.labeled_by_expr != '':
-            control_id: int = BaseModel.get_non_negative_int(self.labeled_by_expr)
+            control_id: int = util.get_non_negative_int(self.labeled_by_expr)
             if control_id == -1:
                 clz._logger.debug(
                         f"Can't find labeled by for {self.labeled_by_expr}")

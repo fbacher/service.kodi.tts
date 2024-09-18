@@ -28,7 +28,7 @@ from typing import Callable, ForwardRef, List, Tuple, Union
 
 from common.logger import BasicLogger
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 AttribInfo = namedtuple('attrib_info', ['attrib_name', 'attrib_value',
                                          'status'])
@@ -435,110 +435,6 @@ pulseonselect 	This specifies whether or not a button type will "pulse" when it 
 focus. This is done by varying the alpha channel of the button. Defaults to true. 
 """
 
-'''
-class KeywordInfo:
-
-    def __init__(self, keyword: str, only_focusable: bool, tts_ignored: bool,
-                 element_type: ElementType):
-        self.keyword: str = keyword
-        self.only_focusable: bool = only_focusable
-        self.tts_ignored: bool = tts_ignored
-        self.element_type: ElementType = element_type
-
-
-KeywordInfo("description", only_focusable=False, tts_ignored=False,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("left", only_focusable=False, tts_ignored=True,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("top", only_focusable=False, tts_ignored=True,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("right", only_focusable=False, tts_ignored=True,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("bottom", only_focusable=False, tts_ignored=True,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("centerleft", only_focusable=False, tts_ignored=True,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("centerright", only_focusable=False, tts_ignored=True,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("centertop", only_focusable=False, tts_ignored=True,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("centerbottom", only_focusable=False, tts_ignored=True,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("width", only_focusable=False, tts_ignored=True,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("height", only_focusable=False, tts_ignored=True,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("visible", only_focusable=False, tts_ignored=False,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("animation", only_focusable=False, tts_ignored=True,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("camera", only_focusable=False, tts_ignored=True,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("depth", only_focusable=False, tts_ignored=True,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("colordiffuse", only_focusable=False, tts_ignored=True,
-            element_type=ElementType.NON_CONTROL)
-
-KeywordInfo("onup", only_focusable=True, tts_ignored=True,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("ondown", only_focusable=True, tts_ignored=True,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("onleft", only_focusable=True, tts_ignored=True,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("onright", only_focusable=True, tts_ignored=True,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("onback", only_focusable=True, tts_ignored=True,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("oninfo", only_focusable=True, tts_ignored=False,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("onfocus", only_focusable=True, tts_ignored=False,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("onunfocus", only_focusable=True, tts_ignored=False,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("hitrect", only_focusable=True, tts_ignored=True,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("hitrectcolor", only_focusable=True, tts_ignored=True,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("enable", only_focusable=True, tts_ignored=False,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("pulseonselect", only_focusable=True, tts_ignored=True,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("control", only_focusable=False, tts_ignored=False,
-            element_type=ElementType.CONTROL)
-KeywordInfo("controls", only_focusable=False, tts_ignored=False,
-            element_type=ElementType.CONTROL)
-KeywordInfo("action", only_focusable=False, tts_ignored=False,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("default_control", only_focusable=False, tts_ignored=False,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("onclick", only_focusable=False, tts_ignored=False,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("visible", only_focusable=False, tts_ignored=False,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("label", only_focusable=False, tts_ignored=False,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo(ControlElement.LABEL.name, only_focusable=False, tts_ignored=False,
-            element_type=ElementType.CONTROL)
-KeywordInfo("label2", only_focusable=False, tts_ignored=False,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("menucontrol", only_focusable=False, tts_ignored=False,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("visible", only_focusable=False, tts_ignored=False,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("info", only_focusable=False, tts_ignored=False,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("number", only_focusable=False, tts_ignored=False,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("haspath", only_focusable=False, tts_ignored=False,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("scrollsuffix", only_focusable=False, tts_ignored=True,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("orientation", only_focusable=False, tts_ignored=False,
-            element_type=ElementType.NON_CONTROL)
-KeywordInfo("scroll", only_focusable=False, tts_ignored=False,
-            element_type=ElementType.NON_CONTROL)
-'''
-
 
 class Item:
     """
@@ -623,24 +519,6 @@ class Item:
         registered_str: str = ''
         if not self.registered:
             registered_str = f' registered: {self.registered} tag: {self.element_tag}'
-
-        """
-        attribs: List[str] = []
-        if attributes is not None:
-            if not isinstance(attributes, list):
-                attribs = [attributes]
-            else:
-                attribs = attributes
-        self.attributes: List[str] = attribs
-
-        attribs_with_values: List[str] = []
-        if attributes_with_values is not None:
-            if not isinstance(attributes_with_values, list):
-                attribs_with_values = [attributes_with_values]
-            else:
-                attribs_with_values = attributes_with_values
-        self.attributes_with_values: List[str] = attribs_with_values
-        """
         result = (f'{keyword_str} {ignore_str} {focusable_str} {element_type_str} '
                   f'{is_control_str}{registered_str}')
         return result
@@ -958,17 +836,9 @@ control_items_list: List[Item] = [
          attributes_with_values=['type', 'tts', 'label'],
          element_type=ElementType.WINDOW),
     Item(ControlElement.WRAP_LIST, is_control=True, element_type=ElementType.CONTROL),
-    # ]
-    # control_elements.add_all(control_items_list)
 
-    # non_default: List[Item] = [
     Item('angle', ignore=True),
-    # ]
 
-    # non_default_items: Items = Items()
-    # non_default_items.add_all(non_default)
-
-    # tmp: List[Item] = [
     # The only ones we care about
     Item(ElementKeywords.ACTION),
     Item(ElementKeywords.ENABLE),

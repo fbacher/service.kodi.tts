@@ -25,7 +25,7 @@ from windowNavigation.choice import Choice
 
 # from speechutil import SpeechUtilComTTSBackend
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class BootstrapEngines:
@@ -61,7 +61,7 @@ class BootstrapEngines:
     def init(cls) -> None:
         module_logger.debug(f'initializing')
         cls._initialized = True
-        cls._logger = module_logger.getChild(cls.__class__.__name__)
+        cls._logger = module_logger
         addon = xbmcaddon.Addon(Constants.ADDON_ID)
         all_settings: xbmcaddon.Settings = addon.getSettings()
         # bval: bool = all_settings.getBool('gui.tts')
@@ -90,7 +90,7 @@ class BootstrapEngines:
         if not cls._initialized:
             module_logger.debug(f'initializing')
             cls._initialized = True
-            cls._logger = module_logger.getChild(cls.__class__.__name__)
+            cls._logger = module_logger
             cls._logger.debug(f'About to load_base')
             cls.load_base()
             cls._logger.debug(f'About to determine_available_engines')
@@ -100,7 +100,7 @@ class BootstrapEngines:
             # Load all settings for current backend
             # Can be called multiple times
             Settings.load_settings()
-            util.runInThread(cls.load_other_engines, name='load_other_engines')
+            util.runInThread(cls.load_other_engines, name='bootLd')
 
     @classmethod
     def load_base(cls):

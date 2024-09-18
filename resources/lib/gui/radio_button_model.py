@@ -1,29 +1,25 @@
 # coding=utf-8
 
-from typing import Callable, ForwardRef, List, Union
+from typing import Callable, List
 
 import xbmc
-import xbmcgui
 
-from common.constants import Constants
 from common.logger import BasicLogger, DEBUG_VERBOSE
 from common.messages import Messages
-from common.phrases import Phrase, PhraseList
+from common.phrases import Phrase
 from gui.base_label_model import BaseLabelModel
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
 from gui.base_tags import control_elements, ControlElement, Item
 from gui.element_parser import (ElementHandler)
 from gui.no_topic_models import NoRadioButtonTopicModel
-from gui.parse_radio_button import ParseRadioButton
-from gui.parse_topic import ParseTopic
+from gui.parser.parse_radio_button import ParseRadioButton
 from gui.radio_button_topic_model import RadioButtonTopicModel
 from gui.statements import Statements
 from gui.topic_model import TopicModel
-from gui.window import Window
 from windows.window_state_monitor import WinDialogState
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class NoRadioButonTopicModel:
@@ -32,13 +28,13 @@ class NoRadioButonTopicModel:
 
 class RadioButtonModel(BaseLabelModel):
 
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.RADIO_BUTTON]
 
     def __init__(self, parent: BaseModel, parsed_radio_button: ParseRadioButton) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         super().__init__(parent.window_model, parsed_radio_button)
         self.parent = parent
         self.description: str = ''

@@ -2,18 +2,19 @@
 
 import xml.etree.ElementTree as ET
 from enum import StrEnum
+from logging import DEBUG
 from typing import Callable, List, Tuple
 
 from common.logger import BasicLogger
 from gui import BaseParser
-from gui.base_tags import (BaseAttributeType as BAT, control_elements, ControlElement,
+from gui.base_tags import (control_elements, ControlElement,
                            ControlElement as CE, ElementKeywords as EK, Item,
                            TopicElement as TE)
 from gui.element_parser import ElementHandler
-from gui.parse_control import ParseControl
-from gui.parse_topic import ParseTopic
+from gui.parser.parse_control import ParseControl
+from gui.parser.parse_topic import ParseTopic
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class ParseLabel(ParseControl):
@@ -61,7 +62,7 @@ class ParseLabel(ParseControl):
     @classmethod
     def init_class(cls) -> None:
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__class__.__name__)
+            cls._logger = module_logger
 
     def __init__(self, parent: BaseParser) -> None:
         super().__init__(parent)
@@ -133,7 +134,7 @@ class ParseLabel(ParseControl):
         el_scroll_suffix: ET.Element = el_label.find(f'./{EK.SCROLL_SUFFIX}')
         if el_scroll_suffix is not None:
             scroll_suffix: str = el_scroll_suffix.text
-            if scroll_suffix is None:
+            if scroll_suffix is None and clz._logger.isEnabledFor(DEBUG):
                 clz._logger.debug(f'scrollsuffix value not specified. Ignored')
             self.scroll_suffix = scroll_suffix
 

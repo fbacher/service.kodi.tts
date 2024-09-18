@@ -23,11 +23,10 @@ every remaining topic until the focused topic is reached.
 This simple rule works even if the focus changes. You only voice what changes.
 """
 from logging import DEBUG
-from typing import Callable, Final, ForwardRef, List, Tuple
+from typing import Callable, Final, ForwardRef, List
 
 import xbmc
 
-from common.critical_settings import CriticalSettings
 from common.logger import BasicLogger, DEBUG_EXTRA_VERBOSE, DEBUG_VERBOSE
 from common.message_ids import MessageUtils
 from common.messages import Messages
@@ -36,50 +35,42 @@ from gui import BaseParser
 from gui.base_model import BaseModel
 from gui.base_tags import (BaseAttributeType as BAT, control_elements, ControlElement, Item,
                            Requires,
-                           TopicType, UnitsType, ValueFromType, ValueUnits)
+                           TopicType, ValueFromType, ValueUnits)
 from gui.base_topic_model import BaseTopicModel
 from gui.element_parser import ElementHandler
-from gui.parse_topic import ParseTopic
+from gui.gui_globals import GuiGlobals
+from gui.interfaces import IWindowStructure
+from gui.parser.parse_topic import ParseTopic
 from gui.statements import Statement, Statements, StatementType
-from windows.ui_constants import AltCtrlType, UIConstants
 from windows.window_state_monitor import WinDialogState
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class TopicModel(BaseTopicModel):
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[BAT.TOPIC]
 
     def __init__(self, parent: BaseModel, parsed_topic: ParseTopic) -> None:
-        super().__init__(parent=parent, topic_name=parsed_topic.name,
+        super().__init__(parent=parent, parsed_topic=parsed_topic,
                          rank=parsed_topic.rank)
         clz = TopicModel
         # Glue this node to it's parent BaseModel
         self._control_id: Final[int] = parent.control_id
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         self.alt_label_expr: Final[str] = parsed_topic.alt_label_expr
         # if self.alt_label_expr == '':
         #     AltCtrlType.get_ctrl_type_for_control(self.parent.control_type)
         self.container_topic: str = parsed_topic.container_topic
         self._container_topic: TopicModel | None = None
-        self.label_expr: Final[str] = parsed_topic.label_expr
-        self.labeled_by_expr: Final[str] = parsed_topic.labeled_by_expr
-        self.label_for_expr: Final[str] = parsed_topic.label_for_expr
-        self.description: Final[str] = parsed_topic.description
-        self.hint_text_expr: Final[str] = parsed_topic.hint_text_expr
-        self.info_expr: Final[str] = parsed_topic.info_expr
-        self.inner_topic: Final[str] = parsed_topic.inner_topic
-        self.outer_topic: Final[str] = parsed_topic.outer_topic
-        self.flows_from: Final[str] = parsed_topic.flows_from
-        self._flows_from: TopicModel | None = None
-        self.flows_to: Final[str] = parsed_topic.flows_to
-        self._flows_to: TopicModel | None = None
-        self.topic_left: Final[str] = parsed_topic.topic_left
-        self.topic_right: Final[str] = parsed_topic.topic_right
-        self.topic_up: Final[str] = parsed_topic.topic_up
-        self.topic_down: Final[str] = parsed_topic.topic_down
+
+        #  TODO Move to base_topic_model
+        self.flows_to_topic: TopicModel | None = None
+        self.flows_to_model: BaseModel | None = None
+        self.flows_from_topic: TopicModel | None = None
+        self.flows_from_model: BaseModel | None = None
+
         tmp_topic_type: TopicType = parsed_topic.topic_type
 
         # Don't voice Groups which have no content
@@ -96,8 +87,6 @@ class TopicModel(BaseTopicModel):
         #  TODO- Revisit this ugly alt_type
         self.alt_type: Final[str] = parsed_topic.alt_type
         clz._logger.debug(f'Just set alt_type from parsed_topic: {self.alt_type}')
-        self.read_next_expr: Final[str] = parsed_topic.read_next_expr
-        self._read_next: TopicModel | None = None
         tmp_msg_id: int = -1
         if parsed_topic.true_msg_id is not None:
             tmp_msg_id = parsed_topic.true_msg_id
@@ -116,6 +105,7 @@ class TopicModel(BaseTopicModel):
         self.value_from: Final[ValueFromType] = parsed_topic.value_from
         self.value_format: Final[str] = parsed_topic.value_format
         self.children: List[BaseModel] = []
+        self._window_struct: IWindowStructure = None
 
         # Type provides a means to voice what kind of control this is other than just
         # the Kodi standard controls, group, groupList, etc.
@@ -136,6 +126,18 @@ class TopicModel(BaseTopicModel):
     @property
     def parent(self) -> BaseModel:
         return self._parent
+
+    @property
+    def window_struct(self) -> IWindowStructure:
+        clz = type(self)
+        if self._window_struct is not None:
+            return self._window_struct
+        proxy: IWindowStructure = IWindowStructure.get_window_struct(self.parent.window_id)
+        clz._logger.debug(f'window_id: {self.parent.window_id}')
+        clz._logger.debug(f'proxy: {type(proxy)}')
+        self._window_struct = proxy
+        clz._logger.debug(f'window_struct: {self._window_struct}')
+        return self._window_struct
 
     def convert(self, parsed_topic: ParseTopic) -> None:
         """
@@ -161,10 +163,9 @@ class TopicModel(BaseTopicModel):
         self.parent.topic = self
         #  clz._logger.debug(f'parent topic: {self.parent.topic.name}')
 
-    # @property
-    # def name(self) -> str:
-    #     return self._name
-
+    @property
+    def name(self) -> str:
+        return super().name
 
     @property
     def supports_heading_label(self) -> bool:
@@ -675,7 +676,7 @@ class TopicModel(BaseTopicModel):
             success: bool = False
             control: BaseModel | None
             topic: TopicModel | None
-            control, topic = self.parent.get_control_and_topic_for_id(
+            control, topic = self.window_struct.get_control_and_topic_for_id(
                     self.heading_labeled_by)
             if topic is not None:
                 success = topic.voice_heading_label(stmts, chain)
@@ -987,7 +988,8 @@ class TopicModel(BaseTopicModel):
         success: bool = False
         control: BaseModel | None
         topic: TopicModel | None
-        control, topic = self.parent.get_control_and_topic_for_id(self.labeled_by_expr)
+        control, topic = self.window_struct.get_control_and_topic_for_id(
+                self.labeled_by_expr)
         if topic is not None:
             success = topic.voice_control_labels(stmts)
         else:
@@ -1023,7 +1025,8 @@ class TopicModel(BaseTopicModel):
         success: bool = False
         control: BaseModel | None
         topic: TopicModel | None
-        control, topic = self.parent.get_control_and_topic_for_id(self.heading_labeled_by)
+        control, topic = self.window_struct.get_control_and_topic_for_id(
+                self.heading_labeled_by)
         if topic is not None:
             success = topic.voice_heading_label(stmts)
         else:
@@ -1107,7 +1110,7 @@ class TopicModel(BaseTopicModel):
         if not success:
             success = self.voice_control_labels(stmts)
             if success and clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                clz._logger.debug_verbose (f'from voice_control_labels {stmts.last}')
+                clz._logger.debug_verbose(f'from voice_control_labels {stmts.last}')
 
         if chain:
             # If this topic has a 'read_next' value, then voice the label(s)
@@ -1127,6 +1130,7 @@ class TopicModel(BaseTopicModel):
         clz = TopicModel
         if clz._logger.isEnabledFor(DEBUG):
             clz._logger.debug(f'In TopicModel.voice_generic_value')
+            clz._logger.debug(f'trace: {GuiGlobals.saved_states.get("TRACE")}')
         success: bool = False
         success = self.voice_topic_value(stmts)
         return success
@@ -1157,7 +1161,7 @@ class TopicModel(BaseTopicModel):
             if self.container_topic != '':
                 #  type(self)._logger.debug('Resolved container_topic')
                 if self._container_topic is None:
-                    self._container_topic = self.parent.get_topic_for_id(
+                    control_model, self._container_topic = self.window_struct.get_topic_for_id(
                             self.container_topic)
         if self._container_topic is None:
             return False
@@ -1218,7 +1222,7 @@ class TopicModel(BaseTopicModel):
             return success
 
         if self._heading_next is None and self.heading_next != '':
-            control, topic = self.parent.get_control_and_topic_for_id(
+            control, topic = self.window_struct.get_control_and_topic_for_id(
                     self.heading_next)
             if topic is not None:
                 self._heading_next = topic
@@ -1236,6 +1240,13 @@ class TopicModel(BaseTopicModel):
         Voice a control's value. Used primarily when a control's value comes from
         another control ('flows_to'). Let the control using the value decide
         whether it should be voiced.
+
+        TODO: flows_to_expr can refer to:
+                a topic
+                a model
+                a control
+                an info_label
+                For now, this routine only handles topic and model
 
         When a control, like a button, impacts the value of another control, a label,
         then the button 'flows_to' the label (TODO: perhaps more than one?) control.
@@ -1264,7 +1275,7 @@ class TopicModel(BaseTopicModel):
         clz = TopicModel
         success: bool = False
 
-        if self.flows_to == '':
+        if self.flows_to_expr == '':
             return False
 
         # flows_to can be a control_id or a topic name
@@ -1274,12 +1285,35 @@ class TopicModel(BaseTopicModel):
         #    clz._logger.debug(f'Already voiced by labeled_by')
         #   return False
         if clz._logger.isEnabledFor(DEBUG):
-            clz._logger.debug(f'flows_to: {self.flows_to}')
-        if self._flows_to is None:
-            self._flows_to = self.parent.get_topic_for_id(self.flows_to)
-        if self._flows_to is None:
-            clz._logger.info(f'Can not find flows_to topic for id: {self.flows_to}')
-            return False
+            clz._logger.debug(f'flows_to: {self.flows_to_expr}')
+
+        # Get the destination topic/model
+        if self.flows_to_topic is None and self.flows_to_model is None:
+            self.flows_to_model, self.flows_to_topic =\
+                self.window_struct.get_topic_for_id(self.flows_to_expr)
+
+            if self.flows_to_topic is None and self.flows_to_model is None:
+                clz._logger.info(f'Can not find flows_to topic NOR model for id: '
+                                 f'{self.flows_to_topic}')
+                return False
+
+        control_id: str | int = -1
+        visible: bool = False
+        if self.flows_to_topic is not None:
+            control_id = self.flows_to_topic.control_id
+            visible = self.flows_to_topic.is_visible()
+            if visible:
+                success = self.flows_to_topic.parent.voice_label(stmts, control_id,
+                                                                 stmt_type=stmt_type)
+        else:
+            control_id = self.flows_to_model.control_id
+            visible = self.flows_to_model.is_visible()
+            if visible:
+                success = self.flows_to_model.voice_label(stmts, control_id,
+                                                          stmt_type=stmt_type)
+        clz._logger.debug(f'control_id: {control_id} visible: {visible}')
+        return success
+
         # labeled_by: TopicModel | None
         # labeled_by = self.parent.get_topic_for_id(self.labeled_by_expr)
         # if labeled_by is not None and flows_to == labeled_by:
@@ -1287,11 +1321,6 @@ class TopicModel(BaseTopicModel):
         #     return False
         # Labels don't support a value, but here we are using the label
         # as a value or a label. It is a bit murky.
-        control_id: int = self._flows_to.control_id
-        if self._flows_to.parent.is_visible():
-            success = self._flows_to.parent.voice_label(stmts, control_id,
-                                                        stmt_type=stmt_type)
-        return success
 
     def voice_topic_value(self, stmts: Statements) -> bool:
         """
@@ -1311,7 +1340,7 @@ class TopicModel(BaseTopicModel):
         """
         clz = TopicModel
         success: bool = False
-        if self.flows_to != '':
+        if self.flows_to_expr != '':
             success = self.voice_flows_to(stmts)
             if success:
                 return success
@@ -1372,6 +1401,9 @@ class TopicModel(BaseTopicModel):
             name_str = (f'\n  name: {self.name} control_id: {self.control_id} '
                         f'parent_control: '
                         f'{self.parent.control_id}')
+        parent_model_str: str = '\n None'
+        if self.parent is not None:
+            parent_model_str = f'\n  parentref {self.parent.control_id}'
 
         label_expr: str = ''
         if self.label_expr != '':
@@ -1406,12 +1438,12 @@ class TopicModel(BaseTopicModel):
             outer_topic_str = f'\n  outer_topic: {self.outer_topic}'
 
         flows_to_str: str = ''
-        if self.flows_to != '':
-            flows_to_str = f'\n  flows_to: {self.flows_to}'
+        if self.flows_to_expr != '':
+            flows_to_str = f'\n  flows_to: {self.flows_to_expr}'
 
         flow_from_str: str = ''
-        if self.flows_from != '':
-            flow_from_str = f'\n  flows_from: {self.flows_from}'
+        if self.flows_from_expr != '':
+            flow_from_str = f'\n  flows_from: {self.flows_from_expr}'
 
         topic_heading_str: str = ''
         if self.topic_heading != '':
@@ -1483,6 +1515,7 @@ class TopicModel(BaseTopicModel):
 
         results: List[str] = []
         result: str = (f'\n{class_name}:  {name_str}'
+                       f'{parent_model_str}'
                        f'{label_expr}'
                        f'{labeled_by_str}'
                        f'{alt_label_expr}'

@@ -21,7 +21,7 @@ from common.logger import BasicLogger
 from common.phrases import Phrase
 from common.setting_constants import Channels, Players
 
-module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
@@ -118,10 +118,10 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
 
     def __init__(self):
         clz = MPVAudioPlayer
-        # Set logger here size super also sets clz.logger. And clz is the same for
+        # Set get here size super also sets clz.get. And clz is the same for
         # both. This messes up register
         if clz._logger is None:
-            clz._logger = module_logger.getChild(self.__class__.__name__)
+            clz._logger = module_logger
             clz.register(self)
         super().__init__()
 

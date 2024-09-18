@@ -12,7 +12,7 @@ from common.logger import BasicLogger
 from common.phrases import Phrase, PhraseList
 from common.settings import Settings
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class IServices:
@@ -58,7 +58,7 @@ class BaseServices(IServices):
 
     @classmethod
     def class_init(cls):
-        BaseServices._logger = module_logger.getChild(cls.__name__)
+        BaseServices._logger = module_logger
 
     @classmethod
     def register(cls, service: Type['BaseServices']) -> None:

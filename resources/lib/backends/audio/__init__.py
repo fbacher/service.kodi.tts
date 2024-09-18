@@ -14,7 +14,7 @@ try:
 except:
     xbmc = None
 
-module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger: BasicLogger = BasicLogger.get_logger(__name__)
 PLAYSFX_HAS_USECACHED: bool = False
 BCM_2835_AVAIL: bool = None
 

@@ -6,7 +6,7 @@ from common.base_services import BaseServices
 from common.logger import BasicLogger
 from common.setting_constants import Players
 
-module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class PaplayAudioPlayer(SubprocessAudioPlayer):
@@ -24,7 +24,7 @@ class PaplayAudioPlayer(SubprocessAudioPlayer):
 
     def __init__(self):
         super().__init__()
-        self._logger = module_logger.getChild(
+        self._logger = module_logger
                 self.__class__.__name__)  # type: module_logger
 
     def playArgs(self, path):

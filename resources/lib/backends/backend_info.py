@@ -19,7 +19,7 @@ from windowNavigation.choice import Choice
 
 class BackendInfo(IBackendInfo):
 
-    module_logger = BasicLogger.get_module_logger(module_path=__file__)
+    module_logger = BasicLogger.get_logger(__name__)
     backendsByPriority: List[ITTSBackendBase] = []
     backendsById: Dict[str, ITTSBackendBase] = {}
     backendByClassName: Dict[str, Type[ITTSBackendBase]] = {}
@@ -31,7 +31,7 @@ class BackendInfo(IBackendInfo):
     def init(cls):
         if not cls._initialized:
             cls._initialized = True
-            cls._logger = BackendInfo.module_logger.get_logger(file_path=cls.__name__)
+            cls._logger = BasicLogger.get_logger(__name__)
             cls._logger.debug(f'Setting BackendInfoBridge backend Ref')
             BackendInfoBridge.setBackendInfo(BackendInfo)
 

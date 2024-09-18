@@ -10,20 +10,20 @@ from gui.base_tags import control_elements, ControlElement, Item
 from gui.element_parser import (ElementHandler)
 from gui.group_topic_model import GroupTopicModel
 from gui.no_topic_models import NoGroupTopicModel
-from gui.parse_group import ParseGroup
+from gui.parser.parse_group import ParseGroup
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class GroupModel(BaseLabelModel):
 
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.GROUP]
 
     def __init__(self, parent: BaseLabelModel, parsed_group: ParseGroup) -> None:
         clz = GroupModel
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
 
         super().__init__(window_model=parent.window_model, parser=parsed_group)
 

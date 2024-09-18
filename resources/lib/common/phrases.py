@@ -26,7 +26,7 @@ from common.messages import Message, Messages
 from common.monitor import Monitor
 from simplejson import JSONEncoder
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class Phrase:
@@ -129,7 +129,7 @@ class Phrase:
         clz = type(self)
         Monitor.exception_on_abort()
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         debug_context += 1
         self.text: str = clz.clean_phrase_text(text)
         # if self.text == '':
@@ -376,6 +376,8 @@ class Phrase:
 
     def get_interrupt(self) -> bool:
         self.test_expired()
+        clz = Phrase
+        clz._logger.debug(f'INTERRUPT PHRASE: {self.text}')
         return self.interrupt
 
     def _set_interrupt(self, interrupt: bool) -> None:
@@ -530,6 +532,12 @@ class Phrase:
                               f'global serial: {PhraseList.expired_serial_number}')
 
     def is_expired(self) -> bool:
+        """
+        Checks for expiration without throwing an ExpiredException.
+
+        See test_expired, which does throw an exception
+        :return:
+        """
         clz = type(self)
         if not self.check_expired:
             return False
@@ -575,7 +583,7 @@ class PhraseList(UserList):
         clz = type(self)
         Monitor.exception_on_abort()
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
 
         clz.global_serial_number += 1
         self.serial_number: int = clz.global_serial_number
@@ -1160,7 +1168,7 @@ class PhraseUtils:
     def __init__(self):
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         clz._initialized = True
 
     @classmethod

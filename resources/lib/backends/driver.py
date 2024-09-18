@@ -33,7 +33,7 @@ from common.setting_constants import Mode
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
 
-module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class Result:
@@ -49,7 +49,7 @@ class Driver(BaseServices):
     def __init__(self):
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(self.__class__.__name__)
+            clz._logger = module_logger
             self.worker_thread: WorkerThread = WorkerThread('worker', task=None)
             self.cache_reader = CacheReader()
 
@@ -221,7 +221,7 @@ class Driver(BaseServices):
         try:
             engine_id: str = Settings.get_engine_id()
             active_engine = BaseServices.getService(engine_id)
-            return active_engine.isSpeaking()
+            return active_engine.is_speaking()
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:

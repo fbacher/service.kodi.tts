@@ -27,7 +27,7 @@ from common.simple_run_command import RunState
 from common.slave_run_command import SlaveRunCommand
 from common.utils import sleep
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class SlaveCommunication:
@@ -57,7 +57,7 @@ class SlaveCommunication:
 
         """
         clz = type(self)
-        SlaveCommunication.logger = module_logger.getChild(clz.__name__)
+        SlaveCommunication.logger = module_logger
         if volume < 0:  # mplayer interpreted -1 as no-change
             volume = 100  # mpv interprets it as 0 (no volume). Set to default
 
@@ -66,7 +66,7 @@ class SlaveCommunication:
         self.thread_name = thread_name
         self.rc = 0
         self.run_state: RunState = RunState.NOT_STARTED
-        # clz.logger.debug(f'run_state now NOT_STARTED')
+        # clz.get.debug(f'run_state now NOT_STARTED')
         self.idle_on_play_video: bool = stop_on_play
         # This player is inactive due to Kodi exclusive access (ex: playing movie)
         self.tts_player_idle: bool = False
@@ -87,7 +87,7 @@ class SlaveCommunication:
         self.play_count: int = 0
 
         Monitor.register_abort_listener(self.abort_listener, name=thread_name)
-        # clz.logger.debug(f'Starting slave player args: {args}')
+        # clz.get.debug(f'Starting slave player args: {args}')
         if self.idle_on_play_video:
             KodiPlayerMonitor.register_player_status_listener(
                     self.kodi_player_status_listener,
@@ -172,7 +172,7 @@ class SlaveCommunication:
                 return
             if clz.logger.isEnabledFor(DEBUG_VERBOSE):
                 clz.logger.debug_verbose(f'run_state.value: {self.run_state.value}'
-                                 f' < RUNNING.value: {RunState.RUNNING.value}')
+                                         f' < RUNNING.value: {RunState.RUNNING.value}')
             if (self.run_state.value < RunState.RUNNING.value
                     and self.fifo_out is None):
                 #
@@ -199,7 +199,7 @@ class SlaveCommunication:
 
         except Exception as e:
             clz.logger.exception('')
-        # clz.logger.debug(f'Exiting add_phrase: {phrase}')
+        # clz.get.debug(f'Exiting add_phrase: {phrase}')
 
     def set_speed(self, speed: float):
         self.speed = speed
@@ -209,7 +209,7 @@ class SlaveCommunication:
         if volume == -1:
             volume = 100
         self.volume = volume
-        # self.logger.debug(f'Sending FIFO volume {volume} to player')
+        # self.get.debug(f'Sending FIFO volume {volume} to player')
         self.send_volume()
 
     def set_channels(self, channels: Channels):
@@ -297,8 +297,8 @@ class SlaveCommunication:
         clz = type(self)
         try:
             if self.fifo_out is not None:
-                # if clz.logger.isEnabledFor(DEBUG):
-                #     clz.logger.debug(f'FIFO_OUT: {text}')
+                # if clz.get.isEnabledFor(DEBUG):
+                #     clz.get.debug(f'FIFO_OUT: {text}')
                 self.fifo_out.write(f'{text}\n')
                 self.fifo_out.flush()
         except Exception as e:
@@ -332,15 +332,10 @@ class SlaveCommunication:
         clz.logger.debug(f'In destroy')
         if self.cmd_finished:
             return
-        try:
-            # quit[<keep-playlist>]
-            # code: str = '0'
-            # quit_str: str = f'quit {code}'
-            #  self.send_line(quit_str)
-            self.slave.destroy()
-        except Exception as e:
-            clz.logger.exception('')
-
+        #  NOTE: it is the job of SlaveRunCommand to
+        #  die on abort. Doing so here ends up causing the
+        # thread killer try to kill it twice, which hangs.
+        # Will address that problem later
         try:
             self.cmd_finished = True
             if self.fifo_in is not None:
@@ -361,7 +356,7 @@ class SlaveCommunication:
     def kodi_player_status_listener(self, video_player_state: KodiPlayerState) -> bool:
         clz = type(self)
         clz.video_player_state = video_player_state
-        # clz.logger.debug(f'PlayerStatus: {video_player_state} idle_tts_player: '
+        # clz.get.debug(f'PlayerStatus: {video_player_state} idle_tts_player: '
         #                  f'{self.idle_tts_player} args: {self.args} '
         #                 f'serial: {self.phrase_serial}')
         if self.idle_on_play_video:
@@ -399,7 +394,7 @@ class SlaveCommunication:
             while limit > 0:
                 try:
                     fifo_sock.connect(str(self.slave_pipe_path))
-                    # self.logger.debug(f'Socket connected')
+                    # self.get.debug(f'Socket connected')
                     success = True
                     break
                 except TimeoutError:
@@ -533,7 +528,7 @@ class SlaveCommunication:
                      '''
                     if line and len(line) > 0:
                         data: dict = json.loads(line)
-                        #  clz.logger.debug(f'data: {data}')
+                        #  clz.get.debug(f'data: {data}')
 
                         #  Debug.dump_json('line_out:', data, DEBUG)
                         mpv_error: str = data.get('error', None)

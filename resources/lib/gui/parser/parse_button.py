@@ -4,27 +4,27 @@ from typing import Callable, List, Tuple
 import xml.etree.ElementTree as ET
 from gui.base_tags import ElementKeywords as EK
 
-from common.logger import BasicLogger, DEBUG_VERBOSE
+from common.logger import BasicLogger
 from gui import ControlElement
 from gui.base_parser import BaseParser
 from gui.base_tags import control_elements, Item
 from gui.element_parser import ElementHandler
-from gui.parse_control import ParseControl
-from gui.parse_topic import ParseTopic
+from gui.parser.parse_control import ParseControl
+from gui.parser.parse_topic import ParseTopic
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class ParseButton(ParseControl):
 
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.BUTTON]
 
     @classmethod
     def init_class(cls) -> None:
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__class__.__name__)
-            ElementHandler.add_handler(cls.item.key, cls.get_instance)
+            cls._logger = module_logger
+        ElementHandler.add_handler(cls.item.key, cls.get_instance)
 
     def __init__(self, parent: ParseControl) -> None:
         """
@@ -90,7 +90,7 @@ class ParseButton(ParseControl):
                 #  clz._logger.debug(f'child_tag: {child.tag}')
                 key: str = child.tag
                 control_type: ControlElement = clz.get_control_type(child)
-                clz._logger.debug(f'control_type: {control_type}')
+                # clz._logger.debug(f'control_type: {control_type}')
                 str_enum: StrEnum = None
                 if control_type is not None:
                     str_enum = control_type

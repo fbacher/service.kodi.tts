@@ -9,7 +9,7 @@ from common.logger import BasicLogger
 
 from common.messages import Messages
 from common.phrases import Phrase, PhraseList
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 quartz = {10000:
               {301: {'name': 20342, 'prefix': Messages.get_msg(Messages.SECTION)},

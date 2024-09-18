@@ -1,30 +1,28 @@
 # coding=utf-8
 
 import xml.etree.ElementTree as ET
-from collections import namedtuple
-from enum import auto, Enum
-from typing import Callable, Dict, ForwardRef, List, Tuple, Union
+from logging import DEBUG
+from typing import ForwardRef, List
 
 from common.logger import BasicLogger
 from gui.base_parser import BaseParser
-from gui.base_tags import (AttribInfo, BaseAttributeType, control_elements,
-                           control_elements, ControlElement,
-                           ElementKeywords, ElementType, Item, Items, Tag)
+from gui.base_tags import (BaseAttributeType, control_elements, ControlElement,
+                           Item, Tag)
 from gui.base_tags import ElementKeywords as EK
 from gui.element_parser import BaseElementParser, ElementHandler
 from gui.exceptions import ParseError
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class ParseControls(BaseParser):
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.CONTROLS]
 
     @classmethod
     def init_class(cls) -> None:
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__class__.__name__)
+            cls._logger = module_logger
         ElementHandler.add_handler(cls.item.key, cls.get_instance)
 
     def __init__(self, parent: BaseParser) -> None:
@@ -78,7 +76,6 @@ class ParseControls(BaseParser):
         return self.children
 
     def __repr__(self) -> str:
-        from gui.parse_control import ParseControl
 
         results: List[str] = []
         control_id: str = ''
@@ -97,7 +94,7 @@ class ParseControls(BaseParser):
 
 class CreateControl(BaseParser):
 
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
 
     @classmethod
     def get_instance(cls,  parent: BaseParser,
@@ -115,7 +112,8 @@ class CreateControl(BaseParser):
         if control_type is None:
             raise ParseError(f'Expected {Tag.CONTROL.value} not {control_el.tag}')
         if control_type.name not in control_elements.keys():
-            cls._logger.debug(f'Expected a controltype not {control_type}')
+            if cls._logger.isEnabledFor(DEBUG):
+                cls._logger.debug(f'Expected a controltype not {control_type}')
             return
         # Once the control's type is determined, call the appropriate handler
 

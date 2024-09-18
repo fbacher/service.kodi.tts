@@ -10,7 +10,7 @@ from common.setting_constants import Players
 from common.settings_low_level import SettingsLowLevel
 from common.system_queries import SystemQueries
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class BootstrapPlayers:
@@ -39,7 +39,7 @@ class BootstrapPlayers:
     def init(cls) -> None:
         if not cls._initialized:
             if cls._logger is None:
-                cls._logger = module_logger.getChild(cls.__name__)
+                cls._logger = module_logger
             cls.initialized = True
             if Constants.PLATFORM_WINDOWS:
                 cls.player_ids.append(Players.MPLAYER)

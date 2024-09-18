@@ -8,7 +8,7 @@ from common import *
 from common.base_services import BaseServices
 from common.logger import BasicLogger
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class BackendInfoBridge(IBackendInfo):

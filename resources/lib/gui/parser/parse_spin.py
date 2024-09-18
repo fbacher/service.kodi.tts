@@ -8,10 +8,10 @@ from common.logger import BasicLogger
 from gui import BaseParser
 from gui.base_tags import control_elements, ControlElement, ElementKeywords as EK, Item
 from gui.element_parser import BaseElementParser, ElementHandler
-from gui.parse_control import ParseControl
-from gui.parse_topic import ParseTopic
+from gui.parser.parse_control import ParseControl
+from gui.parser.parse_topic import ParseTopic
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class ParseSpin(ParseControl):
@@ -45,7 +45,7 @@ class ParseSpin(ParseControl):
     @classmethod
     def init_class(cls) -> None:
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__class__.__name__)
+            cls._logger = module_logger
         ElementHandler.add_handler(cls.item.key, cls.get_instance)
 
     def __init__(self, parent: ParseControl) -> None:

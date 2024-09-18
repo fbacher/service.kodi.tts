@@ -13,13 +13,13 @@ import threading
 from common import *
 
 from common.constants import Constants
-from common.logger import (BasicLogger)
+from common.get import (BasicLogger)
 from windowNavigation.settings_dialog import SettingsDialog
 
 if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = BasicLogger.get_module_logger(module_path=__file__)
+    module_logger = BasicLogger.get_logger(__name__)
 else:
-    module_logger = BasicLogger.get_module_logger()
+    module_logger = BasicLogger.get_logger(__name__)
 
 
 class SettingsGUI:
@@ -34,7 +34,7 @@ class SettingsGUI:
         Constructor
         """
         clz = type(self)
-        self._logger = module_logger.getChild(self.__class__.__name__)
+        self._logger = module_logger
         clz.gui = None
 
     @staticmethod
@@ -76,9 +76,9 @@ from common.monitor import Monitor
 
 
 if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = BasicLogger.get_module_logger(module_path=__file__)
+    module_logger = BasicLogger.get_logger(__name__)
 else:
-    module_logger = BasicLogger.get_module_logger()
+    module_logger = BasicLogger.get_logger(__name__)
 
 
 class SettingsGUI(threading.Thread):
@@ -98,7 +98,7 @@ class SettingsGUI(threading.Thread):
         Constructor
         """
         clz = type(self)
-        clz.logger = module_logger.getChild(self.__class__.__name__)
+        clz.logger = module_logger  # .getChild(self.__class__.__name__)
         SettingsGUI.instance = self
         self.gui: SettingsDialog = None
         self.dialog_ready: bool = False

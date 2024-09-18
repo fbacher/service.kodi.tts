@@ -37,7 +37,7 @@ from common.globals import Globals
 from common.logger import BasicLogger, DEBUG_VERBOSE
 from common.phrases import PhraseList
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class StatementType(Enum):
@@ -73,13 +73,13 @@ class Statement:
     OMITTABLE: Tuple[StatementType, StatementType, StatementType]
     OMITTABLE = StatementType.HINT_TEXT, StatementType.DETAILS, StatementType.SILENT
 
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
 
     def __init__(self, phrases: PhraseList,
                  stmt_type: StatementType = StatementType.NORMAL):
         clz = Statement
         if clz._logger is None:
-            clz._logger = module_logger.getChild(self.__class__.__name__)
+            clz._logger = module_logger
 
         self.phrases: PhraseList = phrases
         self.stmt_type: StatementType = stmt_type
@@ -149,13 +149,13 @@ class Statements:
     """
 
     global_serial_number: int = 0
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
 
     def __init__(self, stmt: Statement | None, topic_id: str | None) -> None:
 
         clz = Statements
         if clz._logger is None:
-            clz._logger = module_logger.getChild(self.__class__.__name__)
+            clz._logger = module_logger
 
         clz.global_serial_number += 1
         self.serial_number: int = clz.global_serial_number

@@ -24,7 +24,7 @@ from common.critical_settings import CriticalSettings
 from common.logger import *
 from common.minimal_monitor import MinimalMonitor
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class Monitor(MinimalMonitor):
@@ -56,6 +56,54 @@ class Monitor(MinimalMonitor):
                 data = ''
             Monitor._inform_notification_listeners(sender, method, data)
 
+        def onScanStarted(self, database):
+            sender: str = 'kodi'
+            method = 'onScanStarted'
+            data: str = database
+            Monitor._inform_notification_listeners(sender, method, data)
+
+        def onScanFinished(self, database):
+            sender: str = 'kodi'
+            method = 'onScanFinished'
+            data: str = database
+            Monitor._inform_notification_listeners(sender, method, data)
+
+        def onCleanStarted(self, database):
+            sender: str = 'kodi'
+            method = 'onCleanStarted'
+            data: str = database
+            Monitor._inform_notification_listeners(sender, method, data)
+
+        def onCleanFinished(self, database):
+            sender: str = 'kodi'
+            method = 'onCleanFinished'
+            data: str = database
+            Monitor._inform_notification_listeners(sender, method, data)
+
+        def onScreensaverActivated(self) -> None:
+            """
+            onScreensaverActivated method.
+
+            Will be called when screensaver kicks in
+            """
+            sender: str = 'kodi'
+            method = 'onScreensaverActivated'
+            data: str = ''
+            Monitor._inform_notification_listeners(sender, method, data)
+
+        def onScreensaverDeactivated(self) -> None:
+            """
+            onScreensaverDeactivated method.
+
+            Will be called when screensaver goes off
+            """
+            sender: str = 'kodi'
+            method = 'onScreensaverDeactivated'
+            data: str = ''
+            Monitor._inform_notification_listeners(sender, method, data)
+
+    # End class NotificationMonitor
+
     _NotificationMonitor = NotificationMonitor()
     startup_complete_event: threading.Event = None
     _monitor_changes_in_settings_thread: threading.Thread = None
@@ -66,7 +114,7 @@ class Monitor(MinimalMonitor):
     _screen_saver_listener_lock: threading.RLock = None
     _settings_changed_listeners: Dict[Callable[[None], None], str] = None
     _settings_changed_listener_lock: threading.RLock = None
-    _abort_listeners: Dict[Callable[[None], None], str] = None
+    _abort_listeners: Dict[Callable[[None], None], Tuple[str, bool]] = None
     _abort_listener_lock: threading.RLock = None
     _abort_listeners_informed: bool = False
     _wait_return_count_map: Dict[str, int] = {}  # thread_id, returns from wait
@@ -86,14 +134,14 @@ class Monitor(MinimalMonitor):
 
         """
         if cls._logger is None:
-            cls._logger: BasicLogger = module_logger.getChild(cls.__class__.__name__)
+            cls._logger: BasicLogger = module_logger
             # Weird problems with recursion if we make requests to the super
 
             cls._screen_saver_listeners = {}
             cls._screen_saver_listener_lock = threading.RLock()
             cls._settings_changed_listeners = {}
             cls._settings_changed_listener_lock = threading.RLock()
-            cls._abort_listeners: Dict[Callable[[None], None], str] = {}
+            cls._abort_listeners: Dict[Callable[[None], None], Tuple[str, bool]] = {}
             cls._abort_listener_lock = threading.RLock()
             cls._abort_listeners_informed: bool = False
             cls._notification_listeners = {}
@@ -266,7 +314,7 @@ class Monitor(MinimalMonitor):
     def runInThread(cls, func: Callable, args: List[Any] = [], name: str = '?',
                     delay: float = 0.0, **kwargs) -> None:
         import threading
-        thread = threading.Thread(target=cls.thread_wrapper, name=f'TTSThread: {name}',
+        thread = threading.Thread(target=cls.thread_wrapper, name=f'MonHlpr: {name}',
                                   args=args, kwargs={'target': func,
                                                      'delay' : delay, **kwargs})
         xbmc.log(f'util.runInThread starting thread {name}', xbmc.LOGINFO)
@@ -375,19 +423,25 @@ class Monitor(MinimalMonitor):
     @classmethod
     def register_abort_listener(cls,
                                 listener: Callable[[None], None],
-                                name: str = None) -> None:
+                                name: str = None,
+                                garbage_collect: bool = True) -> None:
         """
 
         :param listener:
         :param name:
+        :param garbage_collect: Have the garbage collector run after calling
+                        listener. (May prevent hang when trying to
+                        garbage collect twice).
         :return:
+
+        TODO: Fix the garbage collect hang problem.
         """
         with cls._abort_listener_lock:
             if not (cls.is_abort_requested()
                     or listener in cls._abort_listeners):
                 listener_name = cls.get_listener_name(listener, name)
 
-                cls._abort_listeners[listener] = listener_name
+                cls._abort_listeners[listener] = (listener_name, garbage_collect)
             else:
                 raise AbortException()
 
@@ -398,6 +452,8 @@ class Monitor(MinimalMonitor):
 
         :param listener:
         :return:
+
+        TODO: Fix the garbage collect prolem
         """
         with cls._abort_listener_lock:
             try:
@@ -431,11 +487,22 @@ class Monitor(MinimalMonitor):
             cls._abort_listeners.clear()  # Unregister all
             cls._abort_listeners_informed = True
 
-        for listener, listener_name in listeners_copy.items():
+        for listener, listener_data in listeners_copy.items():
             # noinspection PyTypeChecker
+            listener_name: str
+            garbage_collect: bool
+            listener_name, garbage_collect = listener_data
+            '''
+            if garbage_collect:
+                xbmc.log(f'Skipping calling abort listener and garbage collect '
+                         f'Due to "garbage_collect=False"')
+            else:
+                xbmc.log(f'Starting abort listener: {listener_name} {listener}')
+            '''
             thread = threading.Thread(
                     target=cls._listener_wrapper, name=listener_name,
                     args=(), kwargs={'listener': listener})
+            xbmc.log(f'SHUTDOWN Informing thread {listener_name} to shutdown')
             thread.start()
             from common.garbage_collector import GarbageCollector
             GarbageCollector.add_thread(thread)
@@ -446,14 +513,6 @@ class Monitor(MinimalMonitor):
 
         with cls._screen_saver_listener_lock:
             cls._screen_saver_listeners.clear()
-        from common.garbage_collector import GarbageCollector
-        thread = threading.Thread(
-                target=cls._listener_wrapper, name='grbg_abrt_notfy',
-                args=(), kwargs={'listener': GarbageCollector.abort_notification})
-        xbmc.log('Adding monitor notification listener to GC')
-        thread.start()
-        GarbageCollector.add_thread(thread)
-        xbmc.log('Added monitor listener')
 
     @classmethod
     def _listener_wrapper(cls, listener):
@@ -463,7 +522,6 @@ class Monitor(MinimalMonitor):
         except AbortException:
             pass
         except Exception as e:
-            reraise(*sys.exc_info())
             xbmc.log(f'Exception in _listener_wrapper {e}', xbmc.LOGINFO)
 
     @classmethod

@@ -13,7 +13,7 @@ from common.logger import *
 from common.monitor import Monitor
 from common.phrases import Phrase
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class SeedCache:
@@ -22,7 +22,7 @@ class SeedCache:
     @classmethod
     def init(cls):
         if cls._logger is None:
-            cls._logger: BasicLogger = module_logger.getChild(cls.__name__)
+            cls._logger: BasicLogger = module_logger
 
     @classmethod
     def discover_movie_info(cls, engine_id: str) -> None:

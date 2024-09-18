@@ -17,7 +17,7 @@ from common.logger import *
 from common.messages import Messages
 from common.system_queries import SystemQueries
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 ACTIONS = (
     ('REPEAT', 'f1'),

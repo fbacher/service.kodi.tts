@@ -6,23 +6,22 @@ from common.logger import BasicLogger, DEBUG_EXTRA_VERBOSE
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
 from gui.base_tags import control_elements, ControlElement, Item
-from gui.element_parser import (BaseElementParser,
-                                ElementHandler)
-from gui.parse_control import ParseControl
-from gui.parse_controls import ParseControls
+from gui.element_parser import (ElementHandler)
+from gui.parser.parse_control import ParseControl
+from gui.parser.parse_controls import ParseControls
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class ControlsModel(BaseModel):
 
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.CONTROLS]
 
     def __init__(self, parent, parsed_controls: ParseControls) -> None:
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         super().__init__(parent.window_model, parsed_controls)
         self.parent: BaseModel = parent
         # self.topic: TopicModel = None

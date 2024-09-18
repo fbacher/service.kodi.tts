@@ -34,7 +34,7 @@ import sys
 from common.logger import *
 import xbmc
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 def main():

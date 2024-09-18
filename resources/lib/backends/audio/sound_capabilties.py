@@ -10,7 +10,7 @@ from common import *
 from backends.settings.service_types import ServiceType
 from common.logger import BasicLogger
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class SoundCapabilities:
@@ -35,7 +35,7 @@ class SoundCapabilities:
     def init_class(cls):
         class_name = cls.__class__.__name__
         if cls._logger is None:
-            cls._logger = module_logger.getChild(class_name)
+            cls._logger = module_logger
 
     @classmethod
     def add_service(cls, service_id: str, service_types: List[ServiceType],

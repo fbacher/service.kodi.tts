@@ -11,14 +11,14 @@ from common import *
 from common.logger import *
 from common.monitor import Monitor
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class RunCommand:
     logger: BasicLogger = None
 
     def __init__(self, args: List[str], movie_name: str) -> None:
-        RunCommand.logger = module_logger.getChild(RunCommand.__name__)
+        RunCommand.logger = module_logger
         self.args = args
         self.movie_name = movie_name
         self.rc = 0

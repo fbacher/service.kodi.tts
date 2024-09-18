@@ -11,7 +11,7 @@ from common import *
 from common.constants import Constants
 from common.logger import *
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class SystemQueries:
@@ -21,8 +21,7 @@ class SystemQueries:
     is_osx: bool | None = None
 
     def __init__(self):
-        SystemQueries._logger = module_logger.getChild(
-                self.__class__.__name__)  # type: BasicLogger
+        SystemQueries._logger = module_logger
 
     @classmethod
     def isWindows(cls):
@@ -111,4 +110,4 @@ class SystemQueries:
         return False
 
 
-instance = SystemQueries()  # Initialize logger
+instance = SystemQueries()  # Initialize get

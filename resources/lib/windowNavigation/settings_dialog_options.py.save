@@ -15,7 +15,7 @@ from backends.settings.i_validators import (IConstraintsValidator, IConstraints,
                                             INumericValidator, UIValues)
 from backends.settings.settings_map import SettingsMap
 from common.constants import Constants
-from common.logger import *
+from common.get import *
 from common.messages import Messages
 from common.setting_constants import Backends, Genders, Players
 from common.settings import Settings
@@ -108,7 +108,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             initial_backend = BackendInfo.getAvailableBackends()[0].backend_id
             self.set_engine_id(initial_backend)
         else:
-            self.getEngineClass(engine_id=initial_backend)
+            self.getEngineInstance(engine_id=initial_backend)
 
         self._logger.debug_extra_verbose('SettingsDialog.__init__')
         self.header: ControlLabel | None = None
@@ -170,7 +170,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 self.header = self.get_control_label(clz.HEADER_LABEL)
                 addon_id = xbmcaddon.Addon(Constants.ADDON_ID).getAddonInfo('id')
                 addon_name = xbmcaddon.Addon(Constants.ADDON_ID).getAddonInfo('id')
-                self.header.setLabel(f'{Messages.get_msg(Messages.SETTINGS)} ' 
+                self.header.setLabel(f'{Messages.get_msg(Messages.SETTINGS)} '
                                      f'- {addon_name}')
                 self._logger.debug(f'Header: {self.header.getLabel()}')
                 self.engine_tab = self.get_control_radio_button(clz.ENGINE_TAB)
@@ -1714,7 +1714,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         """
         try:
             if self.previous_engine != engine_id:
-                self.engine_instance: ITTSBackendBase = self.getEngineClass(
+                self.engine_instance: ITTSBackendBase = self.getEngineInstance(
                     engine_id=engine_id)
 
                 # Throw away all changes and switch to the current
@@ -1729,7 +1729,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         except Exception as e:
             self._logger.exception('')
 
-    def getEngineClass(self, engine_id=None) -> ITTSBackendBase:
+    def getEngineInstance(self, engine_id=None) -> ITTSBackendBase:
         """
 
         :param engine_id:
@@ -1748,7 +1748,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         """
         if self.engine_instance is None or self.engine_instance.backend_id != \
                 self.engine_id:
-            self.engine_instance: ITTSBackendBase = self.getEngineClass()
+            self.engine_instance: ITTSBackendBase = self.getEngineInstance()
 
         return self.engine_instance
 
@@ -1759,7 +1759,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         :param default:
         :return:
         """
-        engine: ITTSBackendBase = self.getEngineClass(self.engine_id)
+        engine: ITTSBackendBase = self.getEngineInstance(self.engine_id)
         value = None
         try:
             if default is None:
@@ -1776,10 +1776,10 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         :param value:
         """
         try:
-            #  engine: ITTSBackendBase = self.getEngineClass(self.engine_id)
+            #  engine: ITTSBackendBase = self.getEngineInstance(self.engine_id)
             changed: bool = Settings.setSetting(key, value, self.engine_id)
 
-            # changed = self.getEngineClass().setSetting(key, value)
+            # changed = self.getEngineInstance().setSetting(key, value)
             if changed:
                 self.settings_changed = True
         except Exception as e:
@@ -1804,7 +1804,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         :param default:
         :return:
         """
-        engine: ITTSBackendBase = self.getEngineClass(self.engine_id)
+        engine: ITTSBackendBase = self.getEngineInstance(self.engine_id)
         if default is None:
             default = engine.get_setting_default(SettingsProperties.MODULE)
         value = engine.getSetting(SettingsProperties.MODULE, default)

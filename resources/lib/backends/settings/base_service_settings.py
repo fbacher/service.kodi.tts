@@ -17,7 +17,7 @@ from common.setting_constants import Backends, Genders, PlayerMode
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class BaseServiceSettings:
@@ -82,7 +82,7 @@ class BaseServiceSettings:
             return
         BaseServiceSettings.initialized = True
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__name__)
+            clz._logger = module_logger
         # Explicitly init this class. Self would initialize the self class
         BaseServiceSettings.init_settings()
         if not clz.global_settings_initialized:

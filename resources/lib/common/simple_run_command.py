@@ -18,7 +18,7 @@ from common.logger import *
 from common.monitor import Monitor
 from common.phrases import PhraseList
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class RunState(Enum):
@@ -44,7 +44,7 @@ class SimpleRunCommand:
         :param args: arguments to be passed to exec command
         """
         clz = type(self)
-        SimpleRunCommand.logger = module_logger.getChild(clz.__name__)
+        SimpleRunCommand.logger = module_logger
         self.args: List[str] = args
         self.phrase_serial: int = phrase_serial
         self.thread_name = name

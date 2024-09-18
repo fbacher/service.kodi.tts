@@ -20,7 +20,7 @@ from backends.base import SimpleTTSBackend
 from common import utils
 from common.logger import *
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class SpeechUtilComTTSBackend(SimpleTTSBackend):
@@ -41,7 +41,7 @@ class SpeechUtilComTTSBackend(SimpleTTSBackend):
         super().__init__(*args, **kwargs)
         type(self)._class_name = self.__class__.__name__
         if type(self)._logger is None:
-            type(self)._logger = module_logger.getChild(type(self)._class_name)
+            type(self)._logger = module_logger
 
     def init(self):
         self.process = None

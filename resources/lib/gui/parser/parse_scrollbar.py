@@ -8,10 +8,10 @@ from common.logger import BasicLogger, DEBUG_VERBOSE
 from gui import BaseParser
 from gui.base_tags import control_elements, ControlElement, ElementKeywords as EK, Item
 from gui.element_parser import ElementHandler
-from gui.parse_control import ParseControl
-from gui.parse_topic import ParseTopic
+from gui.parser.parse_control import ParseControl
+from gui.parser.parse_topic import ParseTopic
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class ScrollbarParser(ParseControl):
@@ -34,8 +34,8 @@ class ScrollbarParser(ParseControl):
     @classmethod
     def init_class(cls) -> None:
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__class__.__name__)
-            ElementHandler.add_handler(cls.item.key, cls.get_instance)
+            cls._logger = module_logger
+        ElementHandler.add_handler(cls.item.key, cls.get_instance)
 
     def __init__(self, parent: ParseControl) -> None:
         super().__init__(parent)
@@ -114,8 +114,8 @@ class ScrollbarParser(ParseControl):
                         self.topic = parsed_instance
             elif clz._logger.isEnabledFor(DEBUG_VERBOSE):
                 if element.tag not in ('top', 'left', 'width', 'height', 'bottom'):
-                    clz._logger.debug_verbose(f'ParseScrollbar ignored element: '
-                                              f'{element.tag}')
+                    clz._logger.debug(f'ParseScrollbar ignored element: '
+                                      f'{element.tag}')
 
     def __repr__(self) -> str:
         clz = type(self)

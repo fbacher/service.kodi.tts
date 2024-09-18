@@ -17,7 +17,7 @@ from common.logger import BasicLogger
 from common.setting_constants import Channels, Genders
 from common.settings_low_level import SettingsLowLevel
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class ConvertType(enum.Enum):

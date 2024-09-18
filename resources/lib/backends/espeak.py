@@ -36,7 +36,7 @@ from common.settings_low_level import SettingsProperties
 from langcodes import LanguageTagError
 from windowNavigation.choice import Choice
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class ESpeakTTSBackend(SimpleTTSBackend):
@@ -78,7 +78,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         clz = type(self)
         clz._class_name = self.__class__.__name__
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz._class_name)
+            clz._logger = module_logger
         self.process: subprocess.Popen = None
         self.voice_cache: VoiceCache = VoiceCache()
 

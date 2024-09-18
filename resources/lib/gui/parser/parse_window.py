@@ -3,33 +3,33 @@
 import xml.etree.ElementTree as ET
 from enum import StrEnum
 from pathlib import Path
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, List, Tuple
 
 from common.logger import BasicLogger, DEBUG_VERBOSE
-from gui.base_tags import control_elements, ControlElement, Item, Tag, WindowType
+from gui.base_tags import control_elements, ControlElement, Item, WindowType
 from gui.element_parser import ( BaseElementParser,
                                 ElementHandler)
-from gui.parse_button import ParseButton
-from gui.parse_controls import CreateControl, ParseControls
-from gui.parse_control import ParseControl
+from gui.parser.parse_button import ParseButton
+from gui.parser.parse_controls import CreateControl, ParseControls
+from gui.parser.parse_control import ParseControl
 from gui.base_parser import BaseParser
-from gui.parse_edit import ParseEdit
-from gui.parse_focused_layout import ParseFocusedLayout
-from gui.parse_group import ParseGroup
-from gui.parse_group_list import ParseGroupList
-from gui.parse_item_layout import ParseItemLayout
-from gui.parse_label import ParseLabel
-from gui.parse_list import ParseList
-from gui.parse_radio_button import ParseRadioButton
-from gui.parse_scrollbar import ScrollbarParser
-from gui.parse_slider import ParseSlider
-from gui.parse_spin import ParseSpin
-from gui.parse_spinex import ParseSpinex
-from gui.parse_topic import ParseTopic
+from gui.parser.parse_edit import ParseEdit
+from gui.parser.parse_focused_layout import ParseFocusedLayout
+from gui.parser.parse_group import ParseGroup
+from gui.parser.parse_group_list import ParseGroupList
+from gui.parser.parse_item_layout import ParseItemLayout
+from gui.parser.parse_label import ParseLabel
+from gui.parser.parse_list import ParseList
+from gui.parser.parse_radio_button import ParseRadioButton
+from gui.parser.parse_scrollbar import ScrollbarParser
+from gui.parser.parse_slider import ParseSlider
+from gui.parser.parse_spin import ParseSpin
+from gui.parser.parse_spinex import ParseSpinex
+from gui.parser.parse_topic import ParseTopic
 from windows.windowparser import WindowParser
 from gui.base_tags import ElementKeywords as EK
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class InitParsers:
@@ -129,13 +129,13 @@ class ParseWindow(BaseParser):
         This is the block the defines all controls that will appear on this window.
 
     """
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.WINDOW]
 
     @classmethod
     def init_class(cls) -> None:
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__class__.__name__)
+            cls._logger = module_logger
 
     def __init__(self):
         super().__init__(parent=None, window_parser=self)

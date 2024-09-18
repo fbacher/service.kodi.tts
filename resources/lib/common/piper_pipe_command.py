@@ -22,7 +22,7 @@ from common.logger import *
 from common.monitor import Monitor
 from common.phrases import Phrase, PhraseList
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class RunState(Enum):
@@ -103,7 +103,7 @@ class PiperPipeCommand:
         :param args: arguments to be passed to exec command
         """
         clz = type(self)
-        PiperPipeCommand.logger = module_logger.getChild(clz.__name__)
+        PiperPipeCommand.logger = module_logger
         top: pathlib.Path = pathlib.Path('/home/fbacher/piper_env/')
         data_dir: pathlib.Path = top
         python_path: pathlib.Path = top.joinpath('bin/python3.11')
@@ -134,7 +134,7 @@ class PiperPipeCommand:
         failed = False
         stdout: str = ''
         try:
-            #  clz.logger.debug(f'args: {args_cpp}')
+            #  clz.get.debug(f'args: {args_cpp}')
             if Constants.PLATFORM_WINDOWS:
                 # Prevent console for ffmpeg from opening
                 #

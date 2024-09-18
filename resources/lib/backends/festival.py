@@ -19,7 +19,7 @@ from common.setting_constants import Backends, Players
 from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class FestivalTTSBackend(SimpleTTSBackend):
@@ -88,7 +88,7 @@ class FestivalTTSBackend(SimpleTTSBackend):
         clz = type(self)
         clz._class_name = self.__class__.__name__
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz._class_name)
+            clz._logger = module_logger
             self.register(self)
         self.festivalProcess = None
 

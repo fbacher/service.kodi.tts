@@ -10,7 +10,7 @@ from common.logger import BasicLogger
 from common.messages import Messages
 from common.phrases import Phrase, PhraseList
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 '''
 Table data format:
@@ -549,7 +549,7 @@ def getWindowName(winID: int) -> str:
         if isinstance(name_id, int):
             name = xbmc.getLocalizedString(name_id)
             window_name: str = window_map[winID].window_name
-        module_logger.debug(f'winID: {winID} name_id: {name_id} window '
+        module_logger.debug(f'window_id: {winID} name_id: {name_id} window '
                             f"name: {name} currentWindow: "
                             f"{xbmc.getInfoLabel('System.CurrentWindow')}")
     elif winID > 12999:

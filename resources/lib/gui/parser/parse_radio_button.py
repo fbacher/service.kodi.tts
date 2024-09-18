@@ -9,10 +9,10 @@ from gui import ControlElement
 from gui.base_parser import BaseParser
 from gui.base_tags import control_elements, ElementKeywords as EK, TopicElement as TE, Item
 from gui.element_parser import ElementHandler
-from gui.parse_control import ParseControl
-from gui.parse_topic import ParseTopic
+from gui.parser.parse_control import ParseControl
+from gui.parser.parse_topic import ParseTopic
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class ParseRadioButton(ParseControl):
@@ -29,14 +29,14 @@ class ParseRadioButton(ParseControl):
         onunfocus 	Specifies the action to perform when the button loses focus. Should
                     be a built in function.
     """
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.RADIO_BUTTON]
 
     @classmethod
     def init_class(cls) -> None:
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__class__.__name__)
-            ElementHandler.add_handler(cls.item.key, cls.get_instance)
+            cls._logger = module_logger
+        ElementHandler.add_handler(cls.item.key, cls.get_instance)
 
     def __init__(self, parent: ParseControl) -> None:
         """
@@ -106,8 +106,6 @@ class ParseRadioButton(ParseControl):
                 # clz._logger.debug(f'element_tag: {element.tag}')
                 key: str = element.tag
                 control_type: ControlElement = clz.get_control_type(element)
-                clz._logger.debug(f'control_type: {control_type} self: '
-                                  f'{self.control_type}')
                 str_enum: StrEnum = None
                 if control_type is not None:
                     str_enum = control_type
@@ -118,8 +116,6 @@ class ParseRadioButton(ParseControl):
                 # Values copied to self
                 handler: Callable[[BaseParser, ET.Element], str | BaseParser]
                 handler = ElementHandler.get_handler(item.key)
-                clz._logger.debug(f'item.key: {item.key} '
-                                  f'handler: {type(handler)}')
                 parsed_instance: BaseParser = handler(self, element)
                 if parsed_instance is not None:
                     if control_type is not None:

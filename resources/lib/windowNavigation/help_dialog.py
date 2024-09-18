@@ -2,6 +2,7 @@
 from __future__ import annotations  # For union operator |
 
 import queue
+import sys
 from collections import namedtuple
 
 import xbmc
@@ -22,17 +23,13 @@ from welcome.subjects import (Category, CategoryRef, Load, MessageRef, Subject,
                               Utils)
 from windowNavigation.choice import Choice
 
-if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = BasicLogger.get_module_logger(module_path=__file__)
-
-else:
-    module_logger = BasicLogger.get_module_logger()
+module_logger = BasicLogger.get_logger(__name__)
 
 ParentStack = namedtuple('ParentStack', ['cat_ref', 'item_idx'])
 
 
 class HelpDialog(xbmcgui.WindowXMLDialog):
-    _logger: BasicLogger
+    _logger: BasicLogger = module_logger
     HEADING_CONTROL_ID: Final[int] = 1
     SUB_HEADING_CONTROL_ID: Final[int] = 4
     FULL_SCREEN_GROUP_ID: Final[int] = 1000
@@ -54,12 +51,12 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
         :param args:
         """
         super().__init__(*args, **kwargs)
+        self.abort: bool = False  # Set to True after abort received
         self.initialized: bool = False
         clz = type(self)
         Load.load_help()
-        clz._logger = module_logger.getChild(self.__class__.__name__)
         clz._logger.debug('HelpDialog.__init__')
-        Monitor.register_abort_listener(self.on_abort_requested)
+        Monitor.register_abort_listener(self.hlp_dialg_abrt, name='hlp_dialg_abrt')
         empty_display_values: List[Choice] = []
         self.list_position: int = 0
         self.full_window_group: xbmcgui.ControlGroup | None = None
@@ -127,6 +124,7 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
         clz._logger.debug('HelpDialog.onInit enter')
         self.initialized = False
         try:
+            Monitor.exception_on_abort(timeout=0.01)
             self.configure_heading()
             # self.help_button = self.getControlButton(HelpDialog.HELP_CONTROL_ID)
             self.help_label = self.getControlLabel(HelpDialog.HELP_CONTROL_ID)
@@ -138,6 +136,10 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
                                 sub_title=self.sub_title,
                                 initial_choice=self._initial_choice,
                                 call_on_focus=self._call_on_focus)
+        except AbortException:
+            self.abort = True
+            self.close()
+            reraise(*sys.exc_info())
         except Exception as e:
             clz._logger.exception("Failed to initialize")
             self.close()
@@ -145,11 +147,15 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
         clz._logger.debug('HelpDialog.onInit exiting')
 
     def configure_heading(self) -> None:
+        """
+        Called by OnInit to configure the Window heading
+
+        :return:
+        """
         clz = HelpDialog
         self.full_window_group = self.getControlGroup(HelpDialog.FULL_SCREEN_GROUP_ID)
-        if self.full_window_group is None:
-            clz._logger.debug(f'full_window_group is None')
-        self.full_window_group.setVisible(False)
+        #  DON'T completely blank screen. Impacts voicing and flickers screen.
+        # self.full_window_group.setVisible(False)
 
         self.heading_group_control = self.getControlGroup(
                 clz.HEADER_SUB_HEADER_GROUP_ID)
@@ -158,21 +164,35 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
         self.sub_heading_control = (self.getControlLabel
                                     (HelpDialog.SUB_HEADING_CONTROL_ID))
         clz._logger.debug(f'Got heading ctrl: 4')
+        Monitor.exception_on_abort(timeout=0.01)
 
     def configure_ok(self) -> None:
+        """
+        Called by OnInit to configure the OK button
+
+        :return:
+        """
         clz = HelpDialog
         self.ok_group = self.getControlGroup(self.OK_CONTROL_ID)
         self.ok_group.setVisible(False)
         self.ok_radio_button = self.getControlRadioButton(clz.OK_CONTROL_ID)
         self.ok_radio_button.setLabel(Messages.get_msg(Messages.OK))
         self.ok_radio_button.setVisible(True)
+        self.ok_group.setVisible(True)
 
     def configure_selection_list(self) -> None:
+        """
+        Called by onInit to configure the list control for selecting subjects
+        to view.
+
+        :return:
+        """
         clz = HelpDialog
         self.selection_group = self.getControlGroup(clz.SELECTION_GROUP_ID)
         self.seletion_list_group = self.getControlGroup(
                 clz.SELECTION_LIST_GROUP_ID)
-        self.selection_group.setVisible(False)
+        #  Can't Lose focus on this control
+        #  self.selection_group.setVisible(False)
         self.list_control = self.getControlList(clz.LIST_CONTROL_ID)
 
     def update_choices(self, title: str,
@@ -181,7 +201,8 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
                        call_on_focus: Callable[Choice, None] | None = None,
                        call_on_select: Callable[Choice, None] | None = None):
         """
-        Provides a means for HelpDialog to be a single shared instance.
+        Called by onInit to supply data to be displayed as well as some
+        optional callbacks to an external caller.
 
         :param title:  Heading for the dialog
         :param choices:  List of available choices to present
@@ -213,23 +234,29 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
             idx = 0
         self.update_selection_list(self.current_category, idx)
 
-        # self.setProperty('help_title', 'Great Ideas')
-        # self.help_button.setLabel(self.help_text)
-        # self.help_button.setVisible(True)
-        self.help_label.setLabel(self.help_text)
-        self.help_label.setVisible(True)
-        #  self._previous_num_items = len(self._choices)
+        self.help_label.setLabel('')
+        self.help_label.setVisible(False)
+        clz._logger.debug(f'help_label NOT visible {self.help_text}')
         self.full_window_group.setVisible(True)
         self.initialized = True
         self.gui_updates_allowed = True
+        Monitor.exception_on_abort(timeout=0.01)
+
         #
         #  TODO: Change to be like custom_settings-ui so that new window
         #        is not created on every launch.
         #
         utils.util.runInThread(func=self.notification_queue_handler,
-                               name='help_notification')
+                               name='helpNot')
 
     def update_heading(self, title: str, sub_title: str = ''):
+        """
+        Called during onInit to update the heading values and make visible
+
+        :param title:
+        :param sub_title:
+        :return:
+        """
         clz = HelpDialog
         self.title = title
         self.sub_title = sub_title
@@ -246,6 +273,7 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
             self.sub_heading_control.setVisible(False)
         clz = HelpDialog
         self.heading_group_control.setVisible(True)
+        Monitor.exception_on_abort(timeout=0.01)
 
     def update_selection_list(self, parent_category: Category,
                               selected_idx: int = 0):
@@ -258,15 +286,15 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
 
         """
         clz = HelpDialog
-        clz._logger.debug(f'parent_category: {parent_category.category_id} name: {parent_category.get_name()}')
+        clz._logger.debug(f'parent_category: {parent_category.category_id} '
+                          f'name: {parent_category.get_name()}')
+        Monitor.exception_on_abort(timeout=0.01)
 
         new_list_items = []
         cat_name: str
         cat_text: str
         subject_refs: List[SubjectRef | CategoryRef]
         cat_name, cat_text, subject_refs = parent_category.get_choices()
-        self.list_control.reset()  # Blow away any existing ListItems
-
         # If list is not at the top level, then add a list-item for
         # returning to the previous category (like parent directory)
         clz._logger.debug(f'FRED parent_category: {parent_category.category_id} '
@@ -277,12 +305,12 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
             # Add the marker for returning up a level
             # Fill out which item to return to later
             # most_recent_cat: CategoryRef =
-            #  list_item.setProperty('key', most_recent_cat)
             clz._logger.debug(f'FRED pushing {parent_category.category_id} '
                               f'value: PopStack')
             list_item.setProperty(parent_category.category_id, 'PopStack')
             new_list_items.append(list_item)
         for sub_cat_ref in subject_refs:
+            Monitor.exception_on_abort(timeout=0.01)
             sub_cat_ref: SubjectRef | CategoryRef
             subject_ref: SubjectRef | None = None
             cat_ref: CategoryRef | None = None
@@ -313,6 +341,11 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
             list_item.setProperty('type', sub_cat_ref.__class__.__name__)
             new_list_items.append(list_item)
 
+        # About to change help text
+        self.help_label.setVisible(False)
+        self.help_text = ''  # Ensure that old contents can't be read
+        self.help_label.setLabel(self.help_text)
+        clz._logger.debug(f'help_label NOT visible {self.help_text}')
         self.list_control.reset()
         self.list_control.addItems(new_list_items)
         self.list_items = new_list_items
@@ -321,17 +354,22 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
         self.seletion_list_group.setVisible(True)
         self.setFocus(self.list_control)
         self.selection_group.setVisible(True)
-        self.help_label.setVisible(False)
-        self.help_label.setLabel(self.help_text)
 
     def process_selection(self, select_idx: int) -> None:
+        """
+        Called when a user selects something from the subject/category list.
+
+        :param select_idx: Item selected
+        :return:
+        """
         clz = HelpDialog
         # Voice the text for this selection
         choice: int = self.list_control.getSelectedPosition()
+        clz._logger.debug(f'list_control position: {choice}')
         choice_value: str = ''
         choice_type: str = ''
         """
-         The 'help' menus arranged hiearchecally. Catalog nodes have child nodes
+         The 'help' menus are arranged hiearchecally. Catalog nodes have child nodes
          while Subject nodes are leaf nodes. Selecting a Subject node causes
          the help to displayed in a Label. Selecting a Catalog node cause the 
          menu to be replaced by the members of the Catalog node. NOTE that the
@@ -352,6 +390,8 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
          get to this menu.
          
         """
+        Monitor.exception_on_abort(timeout=0.01)
+
         if choice == 0 and len(self.parent_stack) > 1:
             choice_type = 'PopStack'  # Special
         else:
@@ -416,6 +456,14 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
                         subject=subject)
 
     def setProperty(self, key, value):
+        """
+        Sets Window properties so that the screen scraper can detect and
+        use the values.
+
+        :param key:
+        :param value:
+        :return:
+        """
         clz = type(self)
         clz._logger.debug_verbose(f'SelectionDialog.setProperty key: {key} '
                                   f'value: {value}')
@@ -426,9 +474,16 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
         clz = type(self)
         clz._logger.debug(f'Notify cmd: {cmd} text {text}')
         item: Tuple[str, str, SubjectRef | CategoryRef] = (cmd, text, subject)
+        Monitor.exception_on_abort(timeout=0.01)
         self.notification_queue.put(item)
 
     def notification_queue_handler(self) -> None:
+        """
+        Processes external and internal requests
+
+        :return:
+        """
+        clz = HelpDialog
         try:
             from windowNavigation.help_manager import HelpManager
 
@@ -438,20 +493,29 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
                     try:
                         cmd, text, subject_ref = self.notification_queue.get(block=False)
                         if cmd == 'ShowManual':
+                            # Display the details for the given subject
                             subject_ref: SubjectRef
                             subject: Subject = Subject.get_subject(subject_ref)
                             self.help_text = subject.get_text()
                             # self.help_button.setLabel(subject.get_text())
-                            self.help_label.setLabel(subject.get_text())
+                            self.help_label.setLabel(self.help_text)
+                            self.help_label.setVisible(True)
+                            clz._logger.debug(f'help_label visible {self.help_text}')
                         elif cmd == HelpManager.HELP:
                             self.help_text = text
                             # self.help_button.setLabel(text)
-                            self.help_label.setLabel(text)
+                            # self.help_label.setLabel(self.help_text)
+                            #  self.help_label.setVisible(True)
+                            # clz._logger.debug(f'help_label visible {self.help_text}')
                         # self.help_button.setVisible(True)
-                        self.help_label.setVisible(True)
                     except queue.Empty:
                         pass
         except AbortException:
+            self.abort = True
+            self.close()
+            reraise(*sys.exc_info())
+
+            # End thread
             return
 
     def getControlButton(self, iControlId: int) -> ControlButton:
@@ -498,6 +562,7 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
         """
         clz = type(self)
         try:
+            Monitor.exception_on_abort(timeout=0.01)
             clz._logger.debug('HelpDialog.doModal about to call super')
             self.is_modal = True
             super().doModal()
@@ -513,6 +578,8 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
         :return:
         """
         clz = type(self)
+        if self.abort:
+            return
         clz._logger.debug('HelpDialog.show about to call super')
         super().show()
         clz._logger.debug('HelpDialog.show returned from super.')
@@ -527,7 +594,8 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
         :return:
         """
         clz = type(self)
-        clz._logger.debug('HelpDialog.close')
+        if not self.abort:
+            clz._logger.debug('HelpDialog.close')
         self.gui_updates_allowed = True
         self.is_modal = False
         super().close()
@@ -552,6 +620,8 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
             if not self.initialized:
                 return
 
+            Monitor.exception_on_abort(timeout=0.01)
+
             action_id = action.getId()
             if action_id == 107:  # Mouse Move
                 return
@@ -569,9 +639,17 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
                 # self.setFocus(self.help_button)
 
             if action_id in (xbmcgui.ACTION_MOVE_DOWN, xbmcgui.ACTION_MOVE_UP):
+                # Cursor up/down will almost certainly change the position
+                # of the list container. Could add check to see if selected
+                # position changed.
                 self.help_label.setLabel('')
                 self.help_label.setVisible(False)
+                clz._logger.debug(f'help_label NOT visible {self.help_text}')
 
+        except AbortException:
+            self.abort = True
+            self.close()
+            reraise(*sys.exc_info())
         except Exception as e:
             clz._logger.exception('')
 
@@ -588,6 +666,13 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
                 'HelpDialog.onControl controlId: {:d}'.format(controlId))
 
     def onClick(self, controlId):
+        """
+        Called when a 'clickable' control is 'clicked' by a mouse. Typically
+        a button or anything selectable.
+
+        :param controlId:
+        :return:
+        """
         clz = type(self)
         try:
             clz._logger.debug(
@@ -603,7 +688,11 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
                 self.close()
 
             elif controlId == clz.LIST_CONTROL_ID:
-                self.process_selection(self.close_selected_idx)
+                self.process_selection(self.selection_index)
+        except AbortException:
+            self.abort = True
+            self.close()
+            reraise(*sys.exc_info())
 
         except Exception as e:
             clz._logger.exception('')
@@ -622,15 +711,22 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
             # Stop any reading of help text
             self.help_label.setLabel('')
             self.help_label.setVisible(False)
+            clz._logger.debug(f'help_label NOT visible {self.help_text}')
+
             if self._call_on_focus is not None:
                 pass
                 #  self._call_on_focus(choice, idx)
+        except AbortException:
+            self.abort = True
+            self.close()
+            reraise(*sys.exc_info())
         except Exception as e:
             clz._logger.exception('')
 
-    def on_abort_requested(self):
+    def hlp_dialg_abrt(self):  # Short name that shows up in debug log
         try:
-            xbmc.log('Received AbortRequested', xbmc.LOGINFO)
+            self.abort = True
+            xbmc.log('HelpDialog Received AbortRequested', xbmc.LOGINFO)
             self.close()
         except Exception:
             pass
@@ -653,8 +749,7 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
         """
         clz = type(self)
         clz._logger.debug(
-                f'HelpDialog.addItem unexpected call item: {item}'
-        )
+                f'HelpDialog.addItem unexpected call item: {item}')
         '''
         self.list_control.addItem(item)
         if position is None:
@@ -714,23 +809,12 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
 
     def getCurrentListPosition(self) -> int:
         """
-        Gets the current position in the WindowList.
+        Gets the current position in the list container.
 
-        Example::
-
+        Example:
             pos = self.getCurrentListPosition()
         """
-        number_selected = 0
-        selected = -1
-        # for idx in range(0, self.list_control.size() - 1):
-        #    if self.list_control.getListItem(idx).isSelected():
-        #        number_selected += 1
-        #        selected = idx
 
-        # selected_position = int(self.getProperty('selected'))
-
-        # self.debug_display_values('HelpDialog.getCurrentListPosition # selected: {:d}'
-        #                      .format(number_selected))
         clz = type(self)
         clz._logger.debug(
                 f'HelpDialog.getCurrentListPosition selected position: '

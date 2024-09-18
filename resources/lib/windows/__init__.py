@@ -30,7 +30,7 @@ from .weather import WeatherReader
 from .yesnodialog import YesNoDialogReader
 from windows.custom_tts import CustomTTSReader
 
-module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger: BasicLogger = BasicLogger.get_logger(__name__)
 
 READERS: Tuple[Type[WindowReaderBase], ...] = (
     HomeDialogReader,

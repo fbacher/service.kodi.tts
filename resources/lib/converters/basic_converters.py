@@ -28,7 +28,7 @@ try:
 except:
     xbmc = None
 
-module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger: BasicLogger = BasicLogger.get_logger(__name__)
 PLAYSFX_HAS_USECACHED: bool = False
 
 
@@ -50,7 +50,7 @@ class WindowsAudioConverter(AudioConverter):
     @classmethod
     def init_class(cls):
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__name__)
+            cls._logger = module_logger
 
     def __init__(self, *args, **kwargs):
         super().__init__()
@@ -114,7 +114,7 @@ class BaseAudioConverter(AudioConverter):
     def __init__(self):
         super().__init__()
         clz = type(self)
-        clz._logger = module_logger.getChild(
+        clz._logger = module_logger
                 self.__class__.__name__)
         self._convert_process = None
         self.speed: float = 0.0
@@ -207,7 +207,7 @@ class SOXAudioConverter(AudioConverter):
 
     def __init__(self):
         super().__init__()
-        self._logger = module_logger.getChild(
+        self._logger = module_logger
                 self.__class__.__name__)  # type: module_logger
 
     def playArgs(self, path):
@@ -314,7 +314,7 @@ class MPlayerAudioConverter(AudioConverter, BaseServices):
         super().__init__()
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(self.__class__.__name__)
+            clz._logger = module_logger
             clz.register(self)
 
         self.configVolume: bool = False
@@ -425,7 +425,7 @@ class Mpg123AudioConverter(AudioConverter, BaseServices):
         super().__init__()
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger.getChild(self.__class__.__name__)
+            clz._logger = module_logger
             clz.register(self)
 
     def canSetSpeed(self) -> bool:
@@ -462,7 +462,7 @@ class Mpg321AudioConverter(AudioConverter):
 
     def __init__(self):
         super().__init__()
-        self._logger = module_logger.getChild(
+        self._logger = module_logger
                 self.__class__.__name__)  # type: module_logger
 
     def canSetVolume(self):
@@ -496,7 +496,7 @@ class Mpg321OEPiAudioConverter(AudioConverter):
 
     def __init__(self):
         super().__init__()
-        self._logger: BasicLogger = module_logger.getChild(self.__class__.__name__)
+        self._logger: BasicLogger = module_logger
         self._convert_process = None
         try:
             import OEPiExtras

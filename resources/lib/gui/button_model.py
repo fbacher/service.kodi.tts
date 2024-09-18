@@ -1,6 +1,6 @@
 # coding=utf-8
 
-from typing import Callable, ForwardRef, List, Union
+from typing import Callable, List
 
 import xbmc
 import xbmcgui
@@ -14,22 +14,23 @@ from gui.base_tags import control_elements, ControlElement, Item
 from gui.button_topic_model import ButtonTopicModel
 from gui.element_parser import ElementHandler
 from gui.no_topic_models import NoButtonTopicModel
-from gui.parse_button import ParseButton
+from gui.parser.parse_button import ParseButton
 from gui.topic_model import TopicModel
-from windows.window_state_monitor import WinDialog, WinDialogState
+from utils import util
+from windows.window_state_monitor import WinDialogState
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class ButtonModel(BaseLabelModel):
 
-    _logger: BasicLogger = None
+    _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.BUTTON]
 
     def __init__(self, parent: BaseModel, parsed_button: ParseButton) -> None:
         clz = ButtonModel
         if clz._logger is None:
-            clz._logger = module_logger.getChild(clz.__class__.__name__)
+            clz._logger = module_logger
         super().__init__(window_model=parent.window_model, parser=parsed_button)
         self.attributes_with_values: List[str] = clz.item.attributes_with_values
         self.attributes: List[str] = clz.item.attributes
@@ -172,7 +173,7 @@ class ButtonModel(BaseLabelModel):
         success: bool = False
         control_id: int = -1
         if control_id_expr is not None:
-            control_id = BaseModel.get_non_negative_int(control_id_expr)
+            control_id = util.get_non_negative_int(control_id_expr)
         else:
             control_id = self.control_id
 

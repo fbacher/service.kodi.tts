@@ -15,7 +15,7 @@ from . import guitables, skintables, windowparser
 
 CURRENT_SKIN = skintables.CURRENT_SKIN
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 def parseItemExtra(control_id, excludes: PhraseList, phrases: PhraseList) -> bool:
@@ -84,7 +84,7 @@ class WindowReaderBase(WindowHandlerBase):
         cls = type(self)
         super().__init__(win_id, service)
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__class__.__name__)
+            cls._logger = module_logger
             # x = Window(WINDOW_HOME)
             # x.create_model()
 
@@ -215,6 +215,7 @@ class DefaultWindowReader(WindowReaderBase):
                 clz._logger.debug_extra_verbose(f'text: {text} text2: {text2}')
         if text == '':
             text = xbmc.getInfoLabel(f'Control.GetLabel({control_id})')
+            #  clz._logger.debug(f'Control.GetLabel: {text}')
             if text is not None and clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
                 clz._logger.debug_extra_verbose(f'text: {text}')
         if text == '':

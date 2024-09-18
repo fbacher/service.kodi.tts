@@ -19,7 +19,7 @@ from common.setting_constants import Genders, PlayerMode
 from common.settings_bridge import SettingsBridge
 from common.settings_low_level import SettingsLowLevel
 
-module_logger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger = BasicLogger.get_logger(__name__)
 
 
 class Settings(SettingsLowLevel):
@@ -48,7 +48,7 @@ class Settings(SettingsLowLevel):
         if not cls._initialized:
             cls._initialized = True
             SettingsBridge.set_settings_ref(cls)
-            cls._logger = module_logger.getChild(cls.__name__)
+            cls._logger = module_logger
 
     @staticmethod
     def on_settings_changed() -> None:

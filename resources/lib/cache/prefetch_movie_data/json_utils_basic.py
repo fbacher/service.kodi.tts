@@ -21,7 +21,7 @@ from common.logger import *
 from common.monitor import Monitor
 from cache.prefetch_movie_data.movie_constants import MovieType
 
-module_logger: BasicLogger = BasicLogger.get_module_logger(module_path=__file__)
+module_logger: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class JsonReturnCode(Enum):
@@ -141,7 +141,7 @@ class JsonUtilsBasic:
 
         """
         if cls._logger is None:
-            cls._logger = module_logger.getChild(cls.__name__)
+            cls._logger = module_logger
 
     @classmethod
     def get_kodi_json(cls,
