@@ -94,21 +94,12 @@ class BaseLabelModel(BaseModel):
     '''
 
     def voice_control_label(self, stmts: Statements,
-                            control_id_expr: int | str | None = None,
-                            focus_change: bool = True,
-                            windialog_state: WinDialogState = None) -> bool:
+                            control_id_expr: int | str | None = None) -> bool:
         """
 
         :param stmts: Statements to append to
         :param control_id_expr: control_id (int)
-        :param focus_change: If True, then voice changed heading, labels and all
-                              If False, then only voice a change in value.
-        :param windialog_state: Contains usful information on the window's state
         :return: True if anything appended to stmts, otherwise False
-
-        Note that focus_changed = False can occur even when a value has changed.
-        One example is when user users cursor to select different values in a
-        slider, but never leaves the control's focus.
         """
         clz = BaseLabelModel
         # Control ID should be an integer

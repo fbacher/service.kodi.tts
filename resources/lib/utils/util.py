@@ -203,7 +203,7 @@ def notifySayText(text, interrupt=False):
     xbmc.executebuiltin(command)
 
 
-def get_non_negative_int(control_expr: str) -> int:
+def get_non_negative_int(control_expr: str | int) -> int:
     """
     Attempts to convert control_expr to an int
 

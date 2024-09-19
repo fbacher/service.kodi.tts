@@ -1426,7 +1426,7 @@ msgid "Introduction"
 msgstr ""
 
 msgctxt "#32825"
-msgid "Welcome to an early release of Kodi Text To Speech which provides basic TTS functionality. It is based\nupon an earlier version which is no longer supported. This version of Kodi TTS is maintained by a different team.\nThe primary goal of this early release is to provide basic functionality and to get feedback. Currently, only\ntwo TTS engines: E Speak-NG and Google TTS; as well as two platforms:  Windows and Linux, are supported\nat this time."
+msgid "Welcome to an early release of Kodi Text To Speech which provides basic TTS functionality. It is based\nupon an earlier version which is no longer supported. This version of Kodi TTS is maintained by\na different team.  The primary goal of this early release is to provide basic functionality\nand to get feedback. Currently, only two TTS engines: E Speak-NG and Google TTS; as well\nas two platforms:  Windows and Linux, are supported at this time."
 msgstr ""
 
 msgctxt "#32826"
@@ -1469,7 +1469,7 @@ msgctxt "#32835"
 msgid "Voice Hints"
 msgstr ""
 
-mstctxt "#32836"
+msgctxt "#32836"
 msgid "Voice hints toggles voicing hint text which is currently only embedded in the kodi.tts settings dialogs.\n\nKeyboard shortcut: ALT-H"
 msgstr ""
 
@@ -1478,15 +1478,15 @@ msgid "Repeat"
 msgstr ""
 
 msgctxt "#32838"
-msgid "Repeat voicing the previous item, including complete context (Window name, heading, etc. on down to the item itself).\n\nKeyboard shortcut: SHIFT-F12"
+msgid "Repeat voicing the previous item, including complete context (Window name, heading, etc. on down\nto the item itself).\n\nKeyboard shortcut: SHIFT-F12"
 msgstr ""
 
 msgctxt "#32839"
 msgid "Verbosity"
 msgstr ""
 
-mstctxt "#32840"
-msgid "Toggles how much detail is voiced. VAGUE- SPLIT INTO MULTIPLE SETTINGS."
+msgctxt "#32840"
+msgid  "Toggles how much detail is voiced. VAGUE- SPLIT INTO MULTIPLE SETTINGS"
 msgstr ""
 
 msgctxt "#32841"
@@ -1526,7 +1526,7 @@ msgid "Decrease TTS volume"
 msgstr ""
 
 msgctxt "#32850"
-msgid "Temporarily decrease the volume of voiced text. NOTE: Ignored while changing TTS settings.\n\nKeyboard Shortcut: Control -"
+msgid "Temporarily decrease the volume of voiced text. NOTE: Ignored while changing TTS settings.\n\nKeyboard Shortcut: Control - (minus)"
 msgstr ""
 
 msgctxt "#32851"
@@ -1542,7 +1542,7 @@ msgid "Decrease the speed of voiced text"
 msgstr ""
 
 msgctxt "#32854"
-msgid "Temporarily decrease the speed of voiced text.  Note: Ignored while changing TTS settings.\n\nKeyboard Shortcut: ALT -"
+msgid "Temporarily decrease the speed of voiced text.  Note: Ignored while changing TTS settings.\n\nKeyboard Shortcut: ALT - (minus)"
 msgstr ""
 
 
@@ -1555,7 +1555,7 @@ msgid "Choose Subject"
 msgstr ""
 
 msgctxt "#32857"
-msgid "Use cursor up/down buttons to scroll through subjects. Press Select (enter) to read about the subject"
+msgid "Use cursor up/down buttons to scroll through subjects. Press Select (enter) to read about\nthe subject"
 msgstr ""
 
 msgctxt "#32858"

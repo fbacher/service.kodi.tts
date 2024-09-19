@@ -13,6 +13,7 @@ from gui.base_tags import ControlElement, Requires, WindowType
 
 from gui.base_parser import BaseParser
 from gui.i_model import IModel
+from gui.interfaces import IWindowStructure
 from gui.statements import Statement, Statements, StatementType
 from utils import util
 from windows.ui_constants import AltCtrlType, UIConstants
@@ -31,9 +32,11 @@ class BaseModel(IModel):
         if clz._logger is None:
             clz._logger = module_logger
 
+        self._windialog_state: WinDialogState | None = None
         self._window_model: ForwardRef('WindowModel') = window_model
-
         self._control_id: int = parser.control_id
+        self._window_id: int | None = None
+        self._window_struct: IWindowStructure = None
         self._control_type: ControlElement = parser.control_type
         self._tree_id: str = f'JUNK'
         self._topic: ForwardRef('TopicModel') = None
@@ -43,7 +46,6 @@ class BaseModel(IModel):
         # Example, Sliders require that it's topic MUST define the units, scale,
         # etc. for the slider, since there is no way to get this from kodi api
         self._requires: List[Requires] = []
-
         self._children: List[BaseModel] = []
 
     @property
@@ -56,6 +58,14 @@ class BaseModel(IModel):
     @property
     def window_id(self) -> int:
         return self.windialog_state.window_id
+
+    @property
+    def window_struct(self) -> IWindowStructure:
+        return self._window_model.window_struct
+
+    @property
+    def windialog_state(self) -> WinDialogState:
+        return self._window_model.windialog_state
 
     # @property
     # def parent(self) -> ForwardRef('BaseModel'):
@@ -180,10 +190,6 @@ class BaseModel(IModel):
         return self._window_model
 
     @property
-    def windialog_state(self) -> WinDialogState:
-        return self.window_model.windialog_state
-
-    @property
     def focus_changed(self) -> bool:
         return self.windialog_state.focus_changed
 
@@ -226,20 +232,11 @@ class BaseModel(IModel):
         self.parent.control_id = new_control_id
     '''
 
-    def voice_control(self, stmts: Statements,
-                      focus_changed: bool,
-                      windialog_state: WinDialogState) -> bool:
+    def voice_control(self, stmts: Statements) -> bool:
         """
 
         :param stmts: Statements to append to
-        :param focus_changed: If True, then voice changed heading, labels and all
-                              If False, then only voice a change in value.
-        :param windialog_state: contains some useful state information
         :return: True if anything appended to phrases, otherwise False
-
-        Note that focus_changed = False can occur even when a value has changed.
-        One example is when user users cursor to select different values in a
-        slider, but never leaves the control's focus.
         """
         clz = BaseModel
         # TODO, incomplete

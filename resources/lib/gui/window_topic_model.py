@@ -32,9 +32,6 @@ class WindowTopicModel(TopicModel):
     @property
     def control_id(self) -> int:
         clz = type(self)
-        clz._logger.debug(f'self: {self.__class__.__name__} '
-                          f'parent: {self.parent.__class__.__name__} '
-                          f'control_id: {super().control_id}')
         return super().control_id
 
     '''
@@ -61,9 +58,7 @@ class WindowTopicModel(TopicModel):
     def get_topic_name(self) -> Phrase:
         return Phrase(text=self.name)
 
-    def voice_control(self, stmts: Statements,
-                      focus_changed: bool,
-                      windialog_state: WinDialogState) -> bool:
+    def voice_control(self, stmts: Statements) -> bool:
         """
         Generate the speech for the window itself. Takes into account
         whether this was previously voiced.
@@ -80,9 +75,6 @@ class WindowTopicModel(TopicModel):
         Window's 'header'. Other controls have other logical sections.
 
         :param stmts: Statements to append to
-        :param focus_changed: If True, then voice changed heading, labels and all
-                              If False, then only voice a change in value.
-        :param windialog_state: contains some useful state information
         :return: True if anything appended to phrases, otherwise False
         """
 
@@ -91,7 +83,7 @@ class WindowTopicModel(TopicModel):
         if self.alt_type == '':
             clz._logger.debug(f'{self.alt_type} not set')
             return False
-        success = super().voice_control(stmts, focus_changed, windialog_state)
+        success = super().voice_control(stmts)
         # TODO, incomplete
         # clz._logger.debug(f'{phrases}')
         return success

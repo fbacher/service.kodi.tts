@@ -20,6 +20,7 @@ from gui.parser.parse_list import ParseList
 from gui.statements import Statements
 from utils import util
 from windows.ui_constants import UIConstants
+from windows.window_state_monitor import WinDialogState
 
 module_logger = BasicLogger.get_logger(__name__)
 

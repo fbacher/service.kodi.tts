@@ -39,7 +39,9 @@ class CustomTTSReader(WindowReaderBase):
 
 
     @classmethod
-    def get_instance(cls, window_id: int) -> ForwardRef('CustomTTSReader') | None:
+    def get_instance(cls, window_id: int,
+                     windialog_state: WinDialogState)\
+            -> Union[ForwardRef('CustomTTSReader'),  None]:
         if cls._logger is None:
             cls._logger = module_logger
 
@@ -54,13 +56,15 @@ class CustomTTSReader(WindowReaderBase):
         #  cls._logger.debug(f'window_id: {window_id}')
         if cls.current_reader is None:
             from service_worker import TTSService
-            cls.current_reader = CustomTTSReader(window_id, TTSService.instance)
+            cls.current_reader = CustomTTSReader(window_id, TTSService.instance,
+                                                 windialog_state)
         if cls.current_reader is not None:
             #  cls._logger.debug(f'running: {cls.current_reader.is_running(window_id)}')
             return cls.current_reader
         return None
 
-    def __init__(self, win_id=None, service: ForwardRef('TTSService') = None) -> None:
+    def __init__(self, win_id=None, service: ForwardRef('TTSService') = None,
+                 windialog_state: WinDialogState = None) -> None:
         super().__init__(win_id, service)
         clz = CustomTTSReader
         if clz._logger is None:
@@ -70,8 +74,6 @@ class CustomTTSReader(WindowReaderBase):
         simple_path: Path = Path(xbmc.getInfoLabel('Window.Property(xmlfile)'))
         # Refresh Window, Dialog, control and focus info
         changed: int
-        windialog_state: WinDialogState
-        windialog_state = WindowStateMonitor.check_win_dialog_state()
         clz._logger.debug(f'simple_path: {simple_path}')
         clz._logger.debug(f'simple_path.name: {simple_path.name}')
         self.control_id = win_id
@@ -96,9 +98,13 @@ class CustomTTSReader(WindowReaderBase):
                 clz._logger.debug_extra_verbose('finished DUMP PARSED')
             window_parser = parser
             #  clz._logger.debug(f'Number of parsers2: {len(parser.parsers)}')
-
+            # Builds entire window model and topic models
             self.window_model: WindowModel = WindowModel(window_parser)
+            self.window_model.window_struct = self.window_struct
+            self.window_model.windialog_state = windialog_state
+            # Need window id in order to build WindowStructure
             self.window_struct = WindowStructure(self.window_model)
+
             if clz._logger.isEnabledFor(DEBUG_VERBOSE):
                 clz._logger.debug_verbose(f'DUMP MODEL:'
                               f' \n{self.window_model.to_string(include_children=True)}')
@@ -153,11 +159,15 @@ class CustomTTSReader(WindowReaderBase):
         if clz._logger.isEnabledFor(debug_high_verbosity):
             clz._logger.debug(f'windialog_state {windialog_state}')
 
-        topic: TopicModel
+        topic: TopicModel = topics_to_voice[0]
+        # Update the window state before evaluation
+        topic.parent.windialog_state = windialog_state
+
         if windialog_state.window_changed:  # or windialog_state.revoice:
             clz._previous_stmts_chain = [Statements(stmt=None, topic_id=None)]
         debug_msg_not_voiced: List[str] = []
         debug_msg_voiced: List[str] = []
+
         for topic in topics_to_voice:
             if clz._logger.isEnabledFor(debug_high_verbosity) and focus_changed:
                 clz._logger.debug_verbose(f'topic: {topic}')
@@ -181,8 +191,7 @@ class CustomTTSReader(WindowReaderBase):
                             f'\nfocus: {windialog_state.focus_id} '
                             f'\nfocus_changed: {focus_changed}')
                     #  clz._logger.debug(f'Topic is real')
-                    success = topic.voice_control(stmts, focus_changed,
-                                                  windialog_state)
+                    success = topic.voice_control(stmts)
                     debug_msg_voiced.append(topic.name)
                 else:
                     if clz._logger.isEnabledFor(debug_high_verbosity) and focus_changed:
@@ -192,8 +201,7 @@ class CustomTTSReader(WindowReaderBase):
                                 f'About to call {parent.__class__.__name__} '
                                 f'\nfocus_changed: {focus_changed} '
                                 f'\n{windialog_state}')
-                        success = parent.voice_control(stmts, focus_changed,
-                                                       windialog_state)
+                        success = parent.voice_control(stmts)
             except Exception as e:
                 clz._logger.exception('')
             new_stmt_chain.append(stmts)

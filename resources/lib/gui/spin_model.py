@@ -104,14 +104,9 @@ class SpinModel(BaseModel):
         """
         return True
 
-    def voice_control(self, phrases: PhraseList,
-                      focus_changed: bool,
-                      windialog_state: WinDialogState) -> bool:
+    def voice_control(self, phrases: PhraseList) -> bool:
         """
         :param phrases: PhraseList to append to
-        :param focus_changed: If True, then voice changed heading, labels and all
-                              If False, then only voice a change in value.
-        :param windialog_state: contains some useful state information
         :return: True if anything appended to phrases, otherwise False
 
         Note that focus_changed = False can occur even when a value has changed.
@@ -120,6 +115,7 @@ class SpinModel(BaseModel):
         """
         clz = type(self)
         success: bool = True
+        focus_changed: bool = self.windialog_state.focus_changed
         if not focus_changed:
             # Only voice change in value
             success = self.voice_value(phrases, focus_changed)

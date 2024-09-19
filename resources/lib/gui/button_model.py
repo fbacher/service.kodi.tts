@@ -95,27 +95,20 @@ class ButtonModel(BaseLabelModel):
         """
         return False
 
-    def voice_control(self, phrases: PhraseList,
-                      focus_changed: bool,
-                      windialog_state: WinDialogState) -> bool:
+    def voice_control(self, phrases: PhraseList) -> bool:
         """
 
         :param phrases: PhraseList to append to
-        :param focus_changed: If True, then voice changed heading, labels and all
-                              If False, then only voice a change in value.
-        :param windialog_state: contains some useful state information
         :return: True if anything appended to phrases, otherwise False
-
-        Note that focus_changed = False can occur even when a value has changed.
-        One example is when user users cursor to select different values in a
-        slider, but never leaves the control's focus.
         """
         clz = ButtonModel
+
         if self.control_id is not None:
             if not self.is_visible():
                 clz._logger.debug(f'not visible, exiting')
                 return False
 
+        focus_changed = self.windialog_state.focus_changed
         success: bool = True
         if self.topic is not None:
             topic: TopicModel = self.topic

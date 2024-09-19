@@ -127,7 +127,8 @@ class GuiWorkerQueue:
         current_windialog_id: int = windialog_state.window_id
         from windows import CustomTTSReader
         current_reader: CustomTTSReader
-        current_reader = CustomTTSReader.get_instance(current_windialog_id)
+        current_reader = CustomTTSReader.get_instance(current_windialog_id,
+                                                      windialog_state=windialog_state)
         if current_reader is None:
             return  # Reader does not apply (xml file not ours)
         window_model: WindowModel = current_reader.window_model
@@ -191,7 +192,7 @@ class GuiWorker:
         return self.service_prop
 
     @staticmethod
-    def determine_focus_change(window_state: WinDialogState) -> bool:
+    def determine_focus_change(windialog_state: WinDialogState) -> bool:
         """
         class WinDialogState:
         current_windialog: WinDialog = WinDialog.WINDOW
@@ -201,7 +202,7 @@ class GuiWorker:
         current_dialog_instance: xbmcgui.WindowDialog | None = None
         current_dialog_focus_id: int = 9999  # Windows don't have focus
 
-        :param window_state: is the WinDialogStatus for the current window/dialog
+        :param windialog_state: is the WinDialogStatus for the current window/dialog
 
         :return: True if handled and no further listeners need be called
                  False if change not handled
@@ -216,26 +217,27 @@ class GuiWorker:
         #  occasionally to catch windows that don't need input (all labels).
         #  But very expensive to do all of the time when changed = 0 is probably right.
 
-        #  clz._logger.debug(f'window_state: {window_state.verbose}')
+        #  clz._logger.debug(f'windialog_state: {windialog_state.verbose}')
 
         from windows import CustomTTSReader
         current_reader: CustomTTSReader
-        current_reader = CustomTTSReader.get_instance(window_state.window_id)
+        current_reader = CustomTTSReader.get_instance(windialog_state.window_id,
+                                                      windialog_state)
         if current_reader is None:
             GuiWorkerQueue.empty_queue()
             return False  # This Reader does not apply (xml file not ours)
 
-        if GuiGlobals.require_focus_change and not window_state.focus_changed:
+        if GuiGlobals.require_focus_change and not windialog_state.focus_changed:
             return True
-        if not GuiGlobals.require_focus_change and window_state.focus_changed:
+        if not GuiGlobals.require_focus_change and windialog_state.focus_changed:
             clz._logger.debug(f'require_focus_change = True because FOCUS CHANGED '
-                              f'{window_state.focus_id} window: {window_state.window_id}')
+                              f'{windialog_state.focus_id} window: {windialog_state.window_id}')
             GuiGlobals.require_focus_change = True
 
-        if window_state.difficult_to_detect:
+        if windialog_state.difficult_to_detect:
             return True
 
-        clz._logger.debug(f'In determine_focus_changed window_state: {window_state}')
+        clz._logger.debug(f'In determine_focus_changed windialog_state: {windialog_state}')
         """
         if focus_id == '0':  # No control on dialog has focus (Kodi may not have focus)
             # clz._logger.debug(f'focus_id == 0, window_id: {current_windialog_id} '
@@ -245,21 +247,21 @@ class GuiWorker:
         """
 
         if clz._logger.isEnabledFor(DEBUG):
-            clz._logger.debug(f'{window_state.succinct}')
+            clz._logger.debug(f'{windialog_state.succinct}')
         try:
-            if window_state.window_changed or window_state.revoice:
+            if windialog_state.window_changed or windialog_state.revoice:
                 # May later change to be specific to window vs dialog
                 GuiWorker.previous_topic_chain.clear()
                 GuiWorkerQueue.empty_queue()
-            elif window_state.focus_changed:
+            elif windialog_state.focus_changed:
                 GuiWorkerQueue.empty_queue()
-            elif window_state.visibility_changed:
+            elif windialog_state.visibility_changed:
                 GuiWorkerQueue.empty_queue()
-            elif window_state.focus_changed:
+            elif windialog_state.focus_changed:
                 GuiWorkerQueue.empty_queue()
 
             clz._logger.debug(f'Calling add_task')
-            GuiWorkerQueue.add_task(window_state)
+            GuiWorkerQueue.add_task(windialog_state)
         except Exception:
             clz._logger.exception('')
         return True
@@ -290,7 +292,8 @@ class GuiWorker:
         window_id: int = windialog_state.window_id
         from windows import CustomTTSReader
         current_reader: CustomTTSReader
-        current_reader = CustomTTSReader.get_instance(window_id)
+        current_reader = CustomTTSReader.get_instance(window_id,
+                                                      windialog_state=windialog_state)
         if current_reader is None:
             if clz._logger.isEnabledFor(DEBUG_VERBOSE):
                 clz._logger.debug_verbose('reader is None')
@@ -318,11 +321,15 @@ class GuiWorker:
                 focused_topic_id: str = ''
                 if focused_topic is not None:
                     focused_topic_id = focused_topic.name
+                # Using the structure of the window (not the state), determine
+                # what topics are involved and in what order.
+
                 topics_to_voice = GuiWorker.get_topics_for_voicing(window_struct,
                                                                    focused_topic_id,
                                                                    focus_changed=False)
                 clz._logger.debug(f'windialog_state focus: {windialog_state.focus_id} '
                                   f'revoice: {windialog_state.revoice}')
+                # Now, take the state of the window into account
                 current_reader.direct_voicing_topics(topics_to_voice,
                                                      windialog_state=windialog_state,
                                                      sequence_number=sequence_number)
@@ -343,7 +350,6 @@ class GuiWorker:
                               f' topic_id: {focused_topic_id} {focused_topic}')
             #  Must look for window header and see where that takes us
 
-        window.set_changed(windialog_state)
         topics_to_voice: List[TopicModel]
         topics_to_voice = GuiWorker.get_topics_for_voicing(window_struct,
                                                            focused_topic_id)

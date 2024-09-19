@@ -17,6 +17,7 @@ from gui.element_parser import (ElementHandler)
 from gui.focused_layout_model import FocusedLayoutModel
 from gui.group_list_model import GroupListModel
 from gui.group_model import GroupModel
+from gui.interfaces import IWindowStructure
 from gui.item_layout_model import ItemLayoutModel
 from gui.label_model import LabelModel
 from gui.list_model import ListModel
@@ -67,12 +68,8 @@ class WindowModel(BaseModel):
         # Detect when there has been a change to a new window, or when the focus
         # has changed.
 
-        self._windialog_state: WinDialogState = WinDialogState()
         self.xml_path: pathlib.Path = parsed_window.xml_path
         self.window_type: WindowType = parsed_window.window_type
-        self.win_or_dialog: xbmcgui.Window | xbmcgui.WindowDialog
-        self.win_dialog_id: int = WindowStateMonitor.previous_chosen_state.window_id
-        self.win_or_dialog = WindowStateMonitor.previous_chosen_state.window_instance
         self.default_control_id: str = parsed_window.default_control_id
         self.window_modality: str = parsed_window.window_modality  # Only dialogs
         self.menu_control: int = parsed_window.menu_control
@@ -89,12 +86,8 @@ class WindowModel(BaseModel):
         # Uses depth-first search though the controls
 
         self.convert_controls(parsed_window)
-
-        #  Contains child controls
-        #  parsed_window.children: List[BaseParser] = []
-        #
-        #  Contains additional elements for this control
-        #  parsed_window.parsers: List[BaseElementParser] = []
+        self._windialog_state: WinDialogState = None
+        self._window_struct: IWindowStructure = None
 
     def convert_controls(self, parsed_window: ParseWindow) -> None:
         clz = WindowModel
@@ -125,19 +118,39 @@ class WindowModel(BaseModel):
         return self
 
     @property
+    def window_struct(self) -> IWindowStructure:
+        if self._window_model == self:
+            return self._window_struct
+        return self._window_model.window_struct
+
+    @window_struct.setter
+    def window_struct(self, window_struct: IWindowStructure) -> None:
+        self._window_struct = window_struct
+
+    @property
     def windialog_state(self) -> WinDialogState:
         return self._windialog_state
 
-    @property
-    def focus_changed(self) -> bool:
-        return self._windialog_state.focus_changed
+    @windialog_state.setter
+    def windialog_state(self, updated_value: WinDialogState) -> None:
+        """
+           The WinDialogState changes for every evaluation of the window.
+        :param updated_value:
+        :return:
+        """
+        self._windialog_state = updated_value
 
-    def set_changed(self, windialog_state: WinDialogState) -> None:
-        self._windialog_state: WinDialogState = windialog_state
+    # @property
+    # def windialog_state(self) -> WinDialogState:
+    #     return self._windialog_state
 
-    def voice_control(self, stmts: Statements,
-                      focus_changed: bool,
-                      windialog_state: WinDialogState) -> bool:
+    # @windialog_state.setter
+    # def windialog_state(self, windialog_state: WinDialogState) -> None:
+    #     clz = WindowModel
+    #     clz._logger.debug(f'super: {super().__class__.__name__}')
+    #     super().windialog_state = windialog_state
+
+    def voice_control(self, stmts: Statements) -> bool:
         """
         Generate the speech for the window itself. Takes into account
         whether this was previously voiced.
@@ -154,9 +167,6 @@ class WindowModel(BaseModel):
         Window's 'header'. Other controls have other logical sections.
 
         :param stmts: Statements to append to
-        :param focus_changed: If True, then voice changed heading, labels and all
-                              If False, then only voice a change in value.
-        :param windialog_state: contains some useful state information
         :return: True if anything appended to stmts, otherwise False
         """
         clz = WindowModel
@@ -166,8 +176,8 @@ class WindowModel(BaseModel):
         # such as when there is an interruption (focus change occurs before this
         # window info is announced, causing the window not being announced when
         # focus change announced).
-        clz._logger.debug(f'changed: {windialog_state.changed}')
-        if not windialog_state.window_changed:
+        clz._logger.debug(f'changed: {self.windialog_state.changed}')
+        if not self.windialog_state.window_changed:
             return False
         # TODO, incomplete
         return success
@@ -194,13 +204,6 @@ class WindowModel(BaseModel):
         if not success:
             success = self.voice_control_heading(stmts)
         return success
-
-
-    previously_voiced_items: Dict[str, BaseModel] = {}
-    about_to_voice_items: Dict[str, BaseModel] = {}
-
-    def is_already_voiced(self, model: BaseModel) -> bool:
-        previously_voiced: BaseModel = None
 
     def __repr__(self) -> str:
         return self.to_string(include_children=False)

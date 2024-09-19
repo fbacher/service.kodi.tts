@@ -16,27 +16,6 @@ from utils import util
 from windows.window_state_monitor import WinDialogState
 
 module_logger = BasicLogger.get_logger(__name__)
-tts_logger: BasicLogger = BasicLogger.get_addon_logger()
-scraper_logger = tts_logger.getChild('gui')
-
-
-scraper_logger.info(f'scraper_logger: {scraper_logger.name}'
-                    f' parent: {scraper_logger.parent}')
-scraper_logger.debug(f'scraper_logger: {scraper_logger.name}'
-                     f' parent: {scraper_logger.parent}')
-
-scraper_logger.debug_verbose('debug_verbose')
-scraper_logger.debug_extra_verbose('extra_verbose')
-
-tts_logger.info('tts_logger info')
-tts_logger.debug_verbose('tts_logger debug_verbose')
-tts_logger.debug_extra_verbose('tts_logger extra_verbose')
-
-module_logger.info(f'module_logger: {module_logger.name} '
-                   f'parent: {module_logger.parent}')
-module_logger.debug(f'Ho imo')
-module_logger.debug_verbose('verbose')
-module_logger.debug_extra_verbose('extra verbose')
 
 
 class WindowStructure:
@@ -54,15 +33,27 @@ class WindowStructure:
     _window_struct_map: Dict[int, ForwardRef('WindowStructure')] = {}
 
     def __init__(self, window: IModel) -> None:
+        """
+        Builds the window structures. DO NOT CALL prior to all windows and topics have
+        been created.
+
+        :param window: The top of the window tree, WindowModel. The entire window and
+                        topics are expected to be created prior to this call.
+        """
         clz = WindowStructure
         if clz._logger is None:
             clz._logger = module_logger
 
         self.window: IModel = window
-        clz._logger.debug(f'window_id: {window.control_id}')
-        clz._window_struct_map[window.control_id] = self
+        window.window_struct = self
+        topic_id: str = ''
+        if window.topic is not None:
+            topic_id = window.topic.name
+        clz._logger.debug(f'window_id: {window.windialog_state.window_id} '
+                          f'control_id: {window.control_id} topic: {topic_id}')
+        clz._window_struct_map[window.control_id] = self.window
         self._root_topic: BaseTopicModel = window.topic
-        self.window_topic_id: str = window.topic.topic_id
+        self.window_topic_id: str = topic_id
 
         self.test_node_list: List[IModel] = []  # For testing
         self.topic_by_tree_id: Dict[str, BaseTopicModel] = {}
@@ -100,7 +91,7 @@ class WindowStructure:
 
     @classmethod
     def get_window_struct(cls, window_id: int) -> ForwardRef('WindowStructure'):
-        cls._logger.debug(f'window_id: {window_id}')
+        #  cls._logger.debug(f'window_id: {window_id}')
         return cls._window_struct_map.get(window_id, None)
 
     @property
@@ -159,7 +150,7 @@ class WindowStructure:
                 test_node_list: List[IModel] = node
 
         Each node's tree_id is used as the index. The tree_id is assigned during
-        the traversal. The tree_id is set to the node's control_id, if it exiss (>0)
+        the traversal. The tree_id is set to the node's control_id, if it exists (>-1)
         Otherwise, it is manufatured from the position of the node in the tree.
 
         :param node: BasicModel node to add to the tree.
@@ -184,9 +175,8 @@ class WindowStructure:
         clz._logger.debug_verbose(
                 f'topic: {topic_str} '
                 f' control_id: {node.control_id}'
-                f' control_id type: {type(node.control_id)} '
-                f' type: {type(node)} parent: {type(node)}')
-        if node.control_id >= 0:
+                f' parent: {node}')
+        if node.control_id >= 0:  # Control_id 0 is for window control
             self.set_model_for_control_id(node.control_id, node)
             node.tree_id = f'{node.control_id}'
             clz._logger.debug(f'added node: {node.control_id} to model_for_control_id')
@@ -311,7 +301,7 @@ class WindowStructure:
     '''
 
     def get_control_and_topic_for_id(self,
-                                     control_topic_id_or_tree_id: str) \
+                                     control_topic_or_tree_id: str | int) \
             -> Tuple[ForwardRef('IModel'), ForwardRef('BaseBaseTopicModel')]:
         """
             Fetches any control and/or topic that has a matching:
@@ -319,14 +309,12 @@ class WindowStructure:
                 topic_id (topic name)
                 tree_id (rarely used)
 
-        :param control_topic_id_or_tree_id:
+        :param control_topic_or_tree_id:
         :return:  control, topic
         """
         clz = WindowStructure
-
-        search_id: str = control_topic_id_or_tree_id
+        search_id: str = control_topic_or_tree_id
         clz._logger.debug(f'In get_control_and_topic_for_id search: {search_id}')
-        clz._logger.debug(f'{self}')
 
         if search_id == '':
             return None, None
@@ -342,7 +330,7 @@ class WindowStructure:
                               f'window.control_id: {self.window.control_id}')
         if control is not None:
             topic = control.topic
-            clz._logger.debug(f'get_control_model returns: control: {control} topic {topic}')
+            clz._logger.debug(f'get_control_model returns: control: {control}')
         else:
             # Perhaps search_id is actually a topic name or tree-id.
             # There is no search for controls by that, but probably not
@@ -468,7 +456,7 @@ class WindowStructure:
             if node.topic is not None:
                 expected_topic_name = node.topic.name
 
-            if node.control_id > 0:
+            if node.control_id > -1:
                 node_id = f'{node.control_id}'
                 control, topic = self.get_control_and_topic_for_id(node_id)
                 if control is None:
@@ -494,7 +482,7 @@ class WindowStructure:
             if node.topic is not None:
                 expected_topic_name = node.topic.name
 
-            if node.control_id > 0:
+            if node.control_id > -1:
                 node_id = f'{node.control_id}'
                 control, topic = self.get_control_and_topic_for_id(node_id)
                 if control is None:
@@ -514,8 +502,8 @@ class WindowStructure:
                 topic = node.topic
                 found_topic: BaseTopicModel
                 self.test_find_topic(topic.name)
-                self.test_find_topic(topic.flows_to)
-                self.test_find_topic(topic.flows_from)
+                self.test_find_topic(topic.flows_to_expr)
+                self.test_find_topic(topic.flows_from_expr)
                 self.test_find_topic(topic.labeled_by)
                 self.test_find_topic(topic.label_for)
                 self.test_find_topic(topic.outer_topic)

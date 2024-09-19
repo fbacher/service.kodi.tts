@@ -123,21 +123,11 @@ class LabelModel(BaseModel):
         """
         return False
 
-    def voice_control(self, stmts: Statements,
-                      focus_changed: bool,
-                      windialog_state: WinDialogState) -> bool:
+    def voice_control(self, stmts: Statements) -> bool:
         """
 
         :param stmts: Statements to append to
-        :param focus_changed: If True, then voice changed heading, labels and all
-                              If False, then only voice a change in value.
-        :param windialog_state: contains some useful state information
         :return: True if anything appended to phrases, otherwise False
-
-
-        Note that focus_changed = False can occur even when a value has changed.
-        One example is when user users cursor to select different values in a
-        slider, but never leaves the control's focus.
         """
         clz = LabelModel
         success: bool = True

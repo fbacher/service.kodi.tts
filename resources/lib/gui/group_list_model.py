@@ -132,15 +132,10 @@ class GroupListModel(BaseModel):
             #                   f'{child_model.topic}')
             self.children.append(child_model)
 
-    def voice_control(self, stmts: Statements,
-                      focus_changed: bool,
-                      windialog_state: WinDialogState) -> bool:
+    def voice_control(self, stmts: Statements) -> bool:
         """
 
         :param stmts: Statements to append to
-        :param focus_changed: If True, then voice changed heading, labels and all
-                              If False, then only voice a change in value.
-        :param windialog_state: contains some useful state information
         :return: True if anything appended to stmts, otherwise False
 
         Note that focus_changed = False can occur even when a value has changed.
@@ -148,7 +143,10 @@ class GroupListModel(BaseModel):
         slider, but never leaves the control's focus.
         """
         clz = GroupListModel
+
+        # Update the state
         success: bool = True
+        focus_changed: bool = self.windialog_state.focus_changed
         if not focus_changed:
             return True
 

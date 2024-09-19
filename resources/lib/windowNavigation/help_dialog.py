@@ -132,9 +132,9 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
             self.configure_ok()
             self.configure_selection_list()
             self.update_choices(title=self.title,
-                                choices=self._choices,
+                                choices=None,
                                 sub_title=self.sub_title,
-                                initial_choice=self._initial_choice,
+                                initial_choice=-1,
                                 call_on_focus=self._call_on_focus)
         except AbortException:
             self.abort = True

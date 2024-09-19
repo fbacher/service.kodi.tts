@@ -192,7 +192,7 @@ class ParseWindow(BaseParser):
             if clz._logger.isEnabledFor(DEBUG_VERBOSE):
                 clz._logger.debug_verbose(f'xml_path path not found: {self.xml_path}. Now what?')
             return
-        self.control_id = control_id
+        self.control_id = 0  # Windows do not have a control
         #  clz._logger.debug(f'About to parse: {self.xml_path}')
         self.win_parser: WindowParser = WindowParser(self.xml_path)
         self.xml_root = self.win_parser.get_xml_root()
@@ -231,43 +231,6 @@ class ParseWindow(BaseParser):
                         self.children.append(parsed_instance)
                     if str_enum == EK.TOPIC:
                         self.topic = parsed_instance
-        '''   
-        parser: Callable[[BaseParser, ET.Element], BaseParser]
-        # acceptable_tags: Tuple[str] = (EK.CONTROLS.value, EK.CONTROL.value)
-        children_el: List[ET.Element] = self.xml_root.findall('./*')
-        #  clz._logger.debug(f'# children_el: {len(children_el)}')
-        # For children nodes, simple run their handlers. The results are copied
-        # to self. They are also in the return value, which generally is not
-        # too useful.
-        for child_el in children_el:
-            child_el: ET.Element
-            control_type: ControlType = clz.get_control_type(child_el)
-            key: str = ''
-            if control_type is not None:
-                clz._logger.debug(f'ControlType: {control_type}')
-                if control_type.name not in control_elements.keys():
-                    clz._logger.debug(f'Expected a controltype not {control_type}')
-                    continue
-            # Once the control's type is determined, call the appropriate handler
-
-                key = control_type.name
-            else:
-                key = child_el.tag
-                #  clz._logger.debug(f'item: type: {type(item.key)} {item}')
-            # parser: BaseElementParser = ElementHandler.get_handler(item.key)
-            # child: ForwardRef('ParseControl') = parser(parent, control_el)
-            parser: Callable[[BaseParser, ET.Element], str | BaseParser]
-            parser = ElementHandler.get_handler(key)
-            clz._logger.debug(f'child_el.tag: {key} parser: {parser}')
-            value_or_control = parser(self, child_el)
-            if (key in (ControlType.CONTROLS.name, ControlType.CONTROL.name)
-                    and value_or_control is not None):
-                clz._logger.debug(f'Appending Controls to window')
-                self.children.append(value_or_control)
-
-            # if element is not None:
-            #     self.children.append(element)
-        '''
 
     def get_default_control(self) -> str:
         default_control_element: ET.Element

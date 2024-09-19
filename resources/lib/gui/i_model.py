@@ -1,6 +1,8 @@
 # coding=utf-8
 from typing import ForwardRef, List
 
+from windows.window_state_monitor import WinDialogState
+
 
 class IModel:
     def __init__(self) -> None:
@@ -13,4 +15,8 @@ class IModel:
 
     @property
     def control_id(self) -> int:
+        raise NotImplementedError('IModel does not implement')
+
+    @property
+    def windialog_state(self) -> WinDialogState:
         raise NotImplementedError('IModel does not implement')

@@ -55,6 +55,9 @@ class TopicModel(BaseTopicModel):
         super().__init__(parent=parent, parsed_topic=parsed_topic,
                          rank=parsed_topic.rank)
         clz = TopicModel
+        clz._logger.debug(f'flows_from_expr: {self.flows_from_expr}')
+        clz._logger.debug(f'flows_to_expr: {self.flows_to_expr}')
+
         # Glue this node to it's parent BaseModel
         self._control_id: Final[int] = parent.control_id
         if clz._logger is None:
@@ -64,12 +67,6 @@ class TopicModel(BaseTopicModel):
         #     AltCtrlType.get_ctrl_type_for_control(self.parent.control_type)
         self.container_topic: str = parsed_topic.container_topic
         self._container_topic: TopicModel | None = None
-
-        #  TODO Move to base_topic_model
-        self.flows_to_topic: TopicModel | None = None
-        self.flows_to_model: BaseModel | None = None
-        self.flows_from_topic: TopicModel | None = None
-        self.flows_from_model: BaseModel | None = None
 
         tmp_topic_type: TopicType = parsed_topic.topic_type
 
@@ -114,8 +111,6 @@ class TopicModel(BaseTopicModel):
 
         self.attributes_with_values: List[str] = clz.item.attributes_with_values
         self.attributes: List[str] = clz.item.attributes
-        clz._logger.debug(f'me, so far: {self}')
-        clz._logger.debug(f'them: {parsed_topic}')
         self.convert(parsed_topic)
         #  self._container_topic: TopicModel | None = None  # Can not initialize in init
 
@@ -126,18 +121,6 @@ class TopicModel(BaseTopicModel):
     @property
     def parent(self) -> BaseModel:
         return self._parent
-
-    @property
-    def window_struct(self) -> IWindowStructure:
-        clz = type(self)
-        if self._window_struct is not None:
-            return self._window_struct
-        proxy: IWindowStructure = IWindowStructure.get_window_struct(self.parent.window_id)
-        clz._logger.debug(f'window_id: {self.parent.window_id}')
-        clz._logger.debug(f'proxy: {type(proxy)}')
-        self._window_struct = proxy
-        clz._logger.debug(f'window_struct: {self._window_struct}')
-        return self._window_struct
 
     def convert(self, parsed_topic: ParseTopic) -> None:
         """
@@ -293,17 +276,13 @@ class TopicModel(BaseTopicModel):
     def get_topic_name(self) -> Phrase:
         return Phrase(text=self.name)
 
-    def voice_control(self, stmts: Statements,
-                      focus_changed: bool,
-                      windialog_state: WinDialogState) -> bool:
+    def voice_control(self, stmts: Statements) -> bool:
         """
 
         :param stmts: Statements to append to
-        :param focus_changed: If True, then voice changed heading, labels and all
-                              If False, then only voice a change in value.
-        :param windialog_state: contains some useful state information
         :return: True if anything appended to phrases, otherwise False
-
+        """
+        """
         Note that focus_changed = False can occur even when a value has changed.
         One example is when user uses cursor to select different values in a
         slider, but never leaves the control's focus.
@@ -406,7 +385,8 @@ class TopicModel(BaseTopicModel):
         """
         clz = TopicModel
         #  type(self)._logger.debug(f'on entry to voice_control: {phrases}')
-        focus_changed: bool = windialog_state.focus_changed
+        # Update the state
+        focus_changed: bool = self.windialog_state.focus_changed
         if self.control_id is not None and self.control_id > 0:
             if not self.is_visible():
                 clz._logger.debug(f'not visible, '
@@ -414,7 +394,7 @@ class TopicModel(BaseTopicModel):
                 return False
         clz._logger.debug(f'visible control_id {self.control_id} '
                           f'focus_changed: {focus_changed} '
-                          f'focus_id: {windialog_state.focus_id}\n'
+                          f'focus_id: {self.windialog_state.focus_id}\n'
                           f'  {self}')
         '''
             One problem with voicing without a focus change is that
@@ -444,7 +424,7 @@ class TopicModel(BaseTopicModel):
             success = self.voice_topic_hint(stmts)
         elif self.supports_change_without_focus_change:
             # Control with focus, most likely has value
-            if windialog_state.focus_id == self.control_id:
+            if self.windialog_state.focus_id == self.control_id:
                 #  clz._logger.debug(f'Calling voice_working_value')
                 # success = self.voice_item_number(stmts)
                 # success = self.voice_topic_heading(stmts)
@@ -643,7 +623,8 @@ class TopicModel(BaseTopicModel):
         interpreted as an infolabel.
 
         If heading_labeled_by is an int, then it is assumed to be a
-        control_id.  If a str, then it is assumed to be a topic_id.
+        control_id.  If a str, then it is assumed to be a topic_id
+        (name).
         If a topic_id is referenced, then voice the heading_label
         from that topic.
 
@@ -684,7 +665,6 @@ class TopicModel(BaseTopicModel):
             elif control is not None:
                 control: BaseModel
                 success = control.voice_heading_without_topic(stmts)
-                clz._logger.debug(f'{stmts.last}')
 
         '''
         Be careful voicing standard labels because it can lead to duplicate
@@ -1130,7 +1110,6 @@ class TopicModel(BaseTopicModel):
         clz = TopicModel
         if clz._logger.isEnabledFor(DEBUG):
             clz._logger.debug(f'In TopicModel.voice_generic_value')
-            clz._logger.debug(f'trace: {GuiGlobals.saved_states.get("TRACE")}')
         success: bool = False
         success = self.voice_topic_value(stmts)
         return success

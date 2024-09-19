@@ -9,6 +9,7 @@ from typing import Callable, Final, ForwardRef, List, Tuple
 from common.logger import BasicLogger
 from gui.base_model import BaseModel
 from gui.base_tags import (BaseAttributeType as BAT, control_elements, Item, Requires)
+from gui.interfaces import IWindowStructure
 from gui.parser.parse_topic import ParseTopic
 from windows.window_state_monitor import WinDialogState
 
@@ -46,7 +47,6 @@ class BaseTopicModel:
             self._topic_left:  Final[str] = ''
             self._topic_up:  Final[str] = ''
             self._topic_down: Final[str] = ''
-            self._topic_id: str = ''
 
             self._description: Final[str] = ''
             self._hint_text_expr: Final[str] = ''
@@ -85,7 +85,6 @@ class BaseTopicModel:
         self._topic_left:  Final[str] = parsed_topic.topic_left
         self._topic_up:  Final[str] = parsed_topic.topic_up
         self._topic_down: Final[str] = parsed_topic.topic_down
-        self._topic_id: str = ''
 
         self._description: Final[str] = parsed_topic.description
         self._hint_text_expr: Final[str] = parsed_topic.hint_text_expr
@@ -95,14 +94,19 @@ class BaseTopicModel:
         # flow. Therefore, the flows_to_topic will actually be the one
         # with a flows_from = to the topic with flows_to in it.
         # Similar for flows_to_model
-        self._flows_from_expr:  Final[str] = parsed_topic.flows_from
+        clz._logger.debug(f'parsed_topic.flows_from: {parsed_topic.flows_from}')
+        self._flows_from_expr: str = parsed_topic.flows_from
+        self._flows_to_expr: str = parsed_topic.flows_to
 
         # flows_to_expr can reference EITHER a topic or a control
         # So we have a home for both. Makes it much more clear than
         # a union.
         #
-        self._flows_to: Final[str] = parsed_topic.flows_to
-        self._flows_to_expr: str = ''
+        self._flows_to_topic: BaseTopicModel | None = None
+        self._flows_to_model: BaseModel | None = None
+        self._flows_from_topic: BaseTopicModel | None = None
+        self._flows_from_model: BaseModel | None = None
+
         self._labeled_by_expr:  Final[str] = parsed_topic.labeled_by_expr
         self._labeled_by: str = ''
         self._label_for: str = ''
@@ -147,7 +151,15 @@ class BaseTopicModel:
 
         :return:
         """
-        return self.window_model.windialog_state
+        return self.parent.windialog_state
+
+    @windialog_state.setter
+    def windialog_state(self, updated_state: WinDialogState) -> None:
+        self.parent.windialog_state = updated_state
+
+    @property
+    def window_struct(self) -> IWindowStructure:
+        return self._parent.window_struct
 
     @property
     def window_id(self) -> int:
@@ -174,28 +186,12 @@ class BaseTopicModel:
         return self._topic_right
 
     @property
-    def topic_id(self) -> str:
-        """
-
-        :return:
-        """
-        return self._topic_id
-
-    @property
     def topic_left(self) -> str:
         """
 
         :return:
         """
         return self._topic_left
-
-    @property
-    def flows_from(self) -> str:
-        """
-
-        :return:
-        """
-        return 'Use flows_from_expr, flows_from_topic, flows_from_model'
 
     @property
     def flows_from_expr(self) -> str:
@@ -206,12 +202,36 @@ class BaseTopicModel:
         return self._flows_from_expr
 
     @property
-    def flows_to(self) -> str:
+    def flows_from_topic(self) -> ForwardRef('TopicModel') | None:
         """
 
         :return:
         """
-        return 'Use flows_to_expr, flows_to_topic, flows_to_model'
+        return self._flows_from_topic
+
+    @flows_from_topic.setter
+    def flows_from_topic(self, topic: ForwardRef('TopicModel')) -> None:
+        """
+
+        :return:
+        """
+        self._flows_from_topic = topic
+
+    @property
+    def flows_from_model(self) -> BaseModel | None:
+        """
+
+        :return:
+        """
+        return self._flows_from_model
+
+    @flows_from_model.setter
+    def flows_from_model(self, model: BaseModel) -> None:
+        """
+
+        :return:
+        """
+        self._flows_from_model = model
 
     @property
     def flows_to_expr(self) -> str:
@@ -220,6 +240,38 @@ class BaseTopicModel:
         :return:
         """
         return self._flows_to_expr
+
+    @property
+    def flows_to_topic(self) -> ForwardRef('TopicModel'):
+        """
+
+        :return:
+        """
+        return self._flows_to_topic
+
+    @flows_to_topic.setter
+    def flows_to_topic(self, topic: ForwardRef('TopicModel')) -> None:
+        """
+
+        :return:
+        """
+        self._flows_to_topic = topic
+
+    @property
+    def flows_to_model(self) -> BaseModel | None:
+        """
+
+        :return:
+        """
+        return self._flows_to_model
+
+    @flows_to_model.setter
+    def flows_to_model(self, model: BaseModel) -> None:
+        """
+
+        :return:
+        """
+        self._flows_to_topic = model
 
     @property
     def labeled_by(self) -> str:
