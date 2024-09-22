@@ -142,7 +142,7 @@ class SpeechGenerator:
         self.set_rc(ReturnCode.OK)
         text_file_path: pathlib.Path = None
         try:
-            clz._logger.debug_extra_verbose(f'Text len: {len(phrase.get_text())} '
+            clz._logger.debug_xv(f'Text len: {len(phrase.get_text())} '
                                             f'{phrase.get_text()}')
             Monitor.exception_on_abort()
             save_copy_of_text: bool = True
@@ -177,7 +177,7 @@ class SpeechGenerator:
                                 expiration_time):
                             clz._logger.debug(f'voice_file_path.unlink(')
                         else:
-                            clz._logger.debug_extra_verbose(
+                            clz._logger.debug_xv(
                                     'Previous attempt to get speech failed. '
                                     'Skipping.')
                             self.set_rc(ReturnCode.MINOR)
@@ -202,8 +202,8 @@ class SpeechGenerator:
                 # Break long phrases into chunk of 250
 
                 phrase_chunks: PhraseList[Phrase] = self.split_into_chunks(phrase)
-                if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                    clz._logger.debug_verbose(f'phrase_chunks len: '
+                if clz._logger.isEnabledFor(DEBUG_V):
+                    clz._logger.debug_v(f'phrase_chunks len: '
                                               f'{len(phrase_chunks)}')
 
                 # Pass means for results to be communicated back. Caller can
@@ -269,8 +269,8 @@ class SpeechGenerator:
                 for phrase in phrases:
                     try:
                         Monitor.exception_on_abort()
-                        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                            clz._logger.debug_verbose(f'phrase: '
+                        if clz._logger.isEnabledFor(DEBUG_V):
+                            clz._logger.debug_v(f'phrase: '
                                                       f'{phrase.get_text()}')
                         params["t"] = phrase.get_text()
                         r = requests.get(clz.RESPONSIVE_VOICE_URL, params=params,
@@ -308,8 +308,8 @@ class SpeechGenerator:
                                     clz._logger.exception(f'Unable to delete '
                                                           f'{str(text_path)}')
                                 '''
-                        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                            clz._logger.debug_extra_verbose(
+                        if clz._logger.isEnabledFor(DEBUG_V):
+                            clz._logger.debug_xv(
                                     f'Request status: {r.status_code}'
                                     f' elapsed: {r.elapsed}'
                                     f' content len: {len(r.content)}')
@@ -356,8 +356,8 @@ class SpeechGenerator:
         out_chunks: List[str] = []
         try:
             chunks: List[str] = re.split(UIConstants.PUNCTUATION_PATTERN, phrase.get_text())
-            if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                clz._logger.debug_verbose(f'len chunks: {len(chunks)}')
+            if clz._logger.isEnabledFor(DEBUG_V):
+                clz._logger.debug_v(f'len chunks: {len(chunks)}')
             text_file_path: pathlib.Path
             text_file_path = phrase.get_cache_path().with_suffix('.txt')
             with text_file_path.open('at', encoding='utf-8') as text_file:
@@ -368,8 +368,8 @@ class SpeechGenerator:
                     # go ahead and return the over-length chunk.
 
                     if (len(chunk) >= clz.MAXIMUM_PHRASE_LENGTH):
-                        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                            clz._logger.debug_verbose(f'Long chunk: {chunk}'
+                        if clz._logger.isEnabledFor(DEBUG_V):
+                            clz._logger.debug_v(f'Long chunk: {chunk}'
                                                       f' length: {len(chunk)}')
                             try:
                                 text_file.write(f'\nPhrase: {chunk}')
@@ -388,8 +388,8 @@ class SpeechGenerator:
                             next_chunk = chunks[0]  # Don't pop yet
                             if ((len(next_chunk) + len(
                                     next_chunk)) <= clz.MAXIMUM_PHRASE_LENGTH):
-                                if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                                    clz._logger.debug_verbose(f'Appending to chunk:'
+                                if clz._logger.isEnabledFor(DEBUG_V):
+                                    clz._logger.debug_v(f'Appending to chunk:'
                                                               f' {next_chunk}'
                                                               f' len: {len(next_chunk)}')
                                 xbmc.log(f'Appending to next_chunk:'
@@ -398,8 +398,8 @@ class SpeechGenerator:
                                 chunk += chunks.pop(0)
                             else:
                                 out_chunks.append(chunk)
-                                if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                                    clz._logger.debug_verbose(f'Normal chunk: {chunk}'
+                                if clz._logger.isEnabledFor(DEBUG_V):
+                                    clz._logger.debug_v(f'Normal chunk: {chunk}'
                                                               f' length: {len(chunk)}')
                                 xbmc.log(f'Normal chunk: {chunk}'
                                          f' length: {len(chunk)}', xbmc.LOGDEBUG)
@@ -407,8 +407,8 @@ class SpeechGenerator:
                                 break
                     if len(chunk) > 0:
                         out_chunks.append(chunk)
-                        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                            clz._logger.debug_verbose(f'Last chunk: {chunk}'
+                        if clz._logger.isEnabledFor(DEBUG_V):
+                            clz._logger.debug_v(f'Last chunk: {chunk}'
                                                       f' length: {len(chunk)}')
                 phrases: PhraseList[Phrase] = PhraseList()
                 # Force these phrases have the same serial # as the original
@@ -695,7 +695,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackend):
                     if not phrase.exists():
                         text_to_voice: str = phrase.get_text()
                         voice_file_path: pathlib.Path = phrase.get_cache_path()
-                        clz._logger.debug_extra_verbose(f'PHRASE Text {text_to_voice}')
+                        clz._logger.debug_xv(f'PHRASE Text {text_to_voice}')
                         rc: int = 0
                         try:
                             # Should only get here if voiced file (.wav, .mp3,
@@ -741,14 +741,14 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackend):
 
     def stop(self):
         clz = type(self)
-        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose('stop')
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v('stop')
         self.stop_processing = True
         if not self.process:
             return
         try:
-            if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                clz._logger.debug_verbose('terminate')
+            if clz._logger.isEnabledFor(DEBUG_V):
+                clz._logger.debug_v('terminate')
             self.process.terminate()  # Could use self.process.kill()
         except AbortException:
             reraise(*sys.exc_info())

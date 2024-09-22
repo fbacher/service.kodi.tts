@@ -39,12 +39,12 @@ class GarbageCollector:
                     cls._threads_to_join.append(thread)
                     xbmc.log(f'garbage_collector adding {thread.name}')
                     # if cls._logger.isEnabledFor(DISABLED):
-                    #     cls._logger.debug_extra_verbose(f'Adding thread: {thread.name} '
+                    #     cls._logger.debug_xv(f'Adding thread: {thread.name} '
                     #                                     f'{thread.ident}')
                 else:
                     pass
-                    # if cls._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                    #     cls._logger.debug_extra_verbose(
+                    # if cls._logger.isEnabledFor(DEBUG_XV):
+                    #     cls._logger.debug_xv(
                     #         f'Duplicate thread: {thread.name} '
                     #         f'{thread.ident}')
 
@@ -82,7 +82,7 @@ class GarbageCollector:
             for thread in cls._threads_to_join:
                 if not thread.is_alive() and thread.name != cls.GARBAGE_COLLECTOR_THREAD_NAME:
                     # if cls._logger.isEnabledFor(DISABLED):
-                    #     cls._logger.debug_extra_verbose(
+                    #     cls._logger.debug_xv(
                     #             f'Purging dead thread: {thread.name} '
                     #             f'{thread.ident}')
                     thread.join(timeout=0.001)
@@ -91,7 +91,7 @@ class GarbageCollector:
                     live_threads += 1
             for thread in joined_threads:
                 # if cls._logger.isEnabledFor(DISABLED):
-                #     cls._logger.debug_extra_verbose(f'Removing dead thread: '
+                #     cls._logger.debug_xv(f'Removing dead thread: '
                 #                                     f'{thread.name} '
                 #                                     f'{thread.ident}')
                 xbmc.log(f'garbage_collector joined: {thread.name} live: {live_threads}',

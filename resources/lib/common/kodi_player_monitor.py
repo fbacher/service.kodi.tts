@@ -125,10 +125,10 @@ class KodiPlayerMonitor(Player):
         listener_id: str
         listener: KodiPlayerMonitorListener
         for listener_id, listener in listeners.items():
-            if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                cls._logger.debug_verbose(f'Notifying listener: {listener_id} '
+            if cls._logger.isEnabledFor(DEBUG_V):
+                cls._logger.debug_v(f'Notifying listener: {listener_id} '
                                           f'status: {status}',
-                                          trace=Trace.TRACE_AUDIO_START_STOP)
+                                    trace=Trace.TRACE_AUDIO_START_STOP)
             try:
                 Monitor.exception_on_abort()
                 delete_after_call = listener.listener(status)
@@ -156,7 +156,7 @@ class KodiPlayerMonitor(Player):
             play_state = 'paused'
         else:
             play_state = 'stopped'
-        clz._logger.debug_extra_verbose('play_state: ' + play_state)
+        clz._logger.debug_xv('play_state: ' + play_state)
         # self._dump_state()  # TODO: remove
         return play_state
 

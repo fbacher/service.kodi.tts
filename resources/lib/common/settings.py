@@ -492,8 +492,8 @@ class Settings(SettingsLowLevel):
         player_validator = SettingsMap.get_validator(engine_id,
                                                      property_id=SettingsProperties.PLAYER)
         player_id: str = player_validator.get_tts_value()
-        if cls._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-            cls._logger.debug_extra_verbose(f'player.{engine_id} = {player_id}')
+        if cls._logger.isEnabledFor(DEBUG_XV):
+            cls._logger.debug_xv(f'player.{engine_id} = {player_id}')
         return player_id
 
     @classmethod

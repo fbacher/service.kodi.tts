@@ -751,7 +751,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
                     if not phrase.cache_path_exists():
                         text_to_voice: str = phrase.get_text()
                         voice_file_path: pathlib.Path = phrase.get_cache_path()
-                        clz._logger.debug_extra_verbose(f'PHRASE Text {text_to_voice}')
+                        clz._logger.debug_xv(f'PHRASE Text {text_to_voice}')
                         rc: int = 0
                         try:
                             # Should only get here if voiced file (.wav, .mp3,
@@ -803,8 +803,8 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         :return:
         """
         clz = type(self)
-        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose('stop')
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v('stop')
 
     @classmethod
     def get_speech_generator(cls) -> GoogleSpeechGenerator:

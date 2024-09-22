@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations  # For union operator |
 
+import sys
 import time
 
 import xbmc
@@ -78,6 +79,8 @@ class ProgressNotice(xbmcgui.Window):
                         return None
             self.progress = new_prog
             self.currentProgress = '{0}%'.format(self.progress)
+        except AbortException:
+            reraise(*sys.exc_info())
         except:
             self._logger.error('BG Progress')
 

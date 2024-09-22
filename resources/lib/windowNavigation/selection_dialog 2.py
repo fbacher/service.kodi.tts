@@ -102,7 +102,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
                 radio_button_control.setSelected(True)
                 self.setFocusId(radio_button_control.getId())
                 label: str = choice.label
-                clz._logger.debug_verbose(f'SelectionDialog.onInit setting focus on'
+                clz._logger.debug_v(f'SelectionDialog.onInit setting focus on'
                                           f' control: {101 + self._initial_choice:d}'
                                           f' value: {label}')
 
@@ -123,7 +123,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
             clz._logger.exception("Failed to initialize")
             self.close()
 
-        clz._logger.debug_verbose('SelectionDialog.onInit exiting')
+        clz._logger.debug_v('SelectionDialog.onInit exiting')
 
     def update_choices(self, title: str,
                        choices: List[Choice], initial_choice: int,
@@ -150,7 +150,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         radio_button_control.setSelected(True)
         self.setFocusId(radio_button_control.getId())
         label: str = choice.label
-        clz._logger.debug_verbose(f'SelectionDialog.onInit setting focus on'
+        clz._logger.debug_v(f'SelectionDialog.onInit setting focus on'
                                   f' control: {101 + self._initial_choice:d}'
                                   f' value: {label}')
 
@@ -202,12 +202,12 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         :return:
         """
         clz = type(self)
-        clz._logger.debug_verbose('SelectionDialog.doModal enter. About to call show')
+        clz._logger.debug_v('SelectionDialog.doModal enter. About to call show')
         try:
             self.group_list.setVisible(True)
             self.show()
             # xbmc.sleep(10000)
-            clz._logger.debug_verbose('SelectionDialog.doModal about to call super')
+            clz._logger.debug_v('SelectionDialog.doModal about to call super')
             super().doModal()
         except Exception as e:
             clz._logger.exception('SelectionDialog.show')
@@ -219,9 +219,9 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         :return:
         """
         clz = type(self)
-        clz._logger.debug_verbose('SelectionDialog.show about to call super')
+        clz._logger.debug_v('SelectionDialog.show about to call super')
         super().show()
-        clz._logger.debug_verbose('SelectionDialog.show returned from super.')
+        clz._logger.debug_v('SelectionDialog.show returned from super.')
         # control 1 heading label
         # control 3 list of available options
         # control 5 radio_button OK
@@ -230,7 +230,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
 
         # self.ok_radio_button.setVisible(True)
         # self.cancel_radio_button.setVisible(True)
-        # clz._logger.debug_verbose('SelectionDialog.show exiting')
+        # clz._logger.debug_v('SelectionDialog.show exiting')
 
     def close(self) -> None:
         """
@@ -238,7 +238,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         :return:
         """
         clz = type(self)
-        clz._logger.debug_verbose('SelectionDialog.close')
+        clz._logger.debug_v('SelectionDialog.close')
         super().close()
 
     def getFocus(self) -> None:
@@ -276,29 +276,29 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         except Exception as e:
             clz._logger.exception('')
 
-        # clz._logger.debug_verbose('SelectionDialog.onAction selectedPosition: {:d}'
+        # clz._logger.debug_v('SelectionDialog.onAction selectedPosition: {:d}'
         #                 .format(self.list_control.getSelectedPosition()))
         # display_value = self.list_control.getSelectedItem()
         # if display_value is not None:
-        #    clz._logger.debug_verbose('SelectionDialog.onAction selectedItem: {}'.
+        #    clz._logger.debug_v('SelectionDialog.onAction selectedItem: {}'.
         #                     format(display_value.getLabel()))
 
     def onControl(self, controlId):
         clz = type(self)
-        clz._logger.debug_verbose(
+        clz._logger.debug_v(
                 'SelectionDialog.onControl controlId: {:d}'.format(controlId))
 
     def onClick(self, controlId):
         clz = type(self)
         try:
-            clz._logger.debug_verbose(
+            clz._logger.debug_v(
                     'SelectionDialog.onClick controlId: {:d}'.format(controlId))
 
             focus_id = self.getFocusId()
-            clz._logger.debug_verbose('SelectionDialog.onClick FocusId: ' + str(focus_id))
+            clz._logger.debug_v('SelectionDialog.onClick FocusId: ' + str(focus_id))
 
             # if controlId == self.list_control.getId():
-            #    clz._logger.debug_verbose('SelectionDialog List control 3 pressed')
+            #    clz._logger.debug_v('SelectionDialog List control 3 pressed')
             # x = xbmc.executebuiltin('Skin.String(category)',True)
 
             if controlId == 5:
@@ -323,22 +323,22 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
                 radio_button.setSelected(True)
                 '''
                 # Invisible radio_button that relays onClick from list control 3,
-                clz._logger.debug_verbose('SelectionDialog.onClick list size: {:d}'
+                clz._logger.debug_v('SelectionDialog.onClick list size: {:d}'
                                  .format(self.list_control.size()))
                 selected_position = -1
                 try:
-                    clz._logger.debug_verbose('selected index: {}'.format(
+                    clz._logger.debug_v('selected index: {}'.format(
                     self.getProperty('selected')))
                     selected_position = int(self.getProperty('selected'))
                 except Exception as e:
                     pass
-                clz._logger.debug_verbose('Skin.String(selected: {})'
+                clz._logger.debug_v('Skin.String(selected: {})'
                                  .format(xbmc.getInfoLabel('Skin.String(selected)')))
     
                 display_value = self.list_control.getListItem(selected_position)
                 # display_value = self._choices[selected_position]
                 if display_value is not None:
-                    clz._logger.debug_verbose('SelectionDialog.onClick(100) list 
+                    clz._logger.debug_v('SelectionDialog.onClick(100) list 
                     selectedItem: {} selected: {:b}'.
                                      format(display_value.getLabel(), display_value.isSelected()))
                     # Clear prior selections. Storing selection in ListItem is used by
@@ -356,7 +356,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
 
     def onDoubleClick(self, controlId):
         clz = type(self)
-        clz._logger.debug_verbose(
+        clz._logger.debug_v(
                 f'SelectionDialog.onDoubleClick controlId: {controlId:d}')
 
     def onFocus(self, controlId: int):
@@ -375,7 +375,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
 
     def setProperty(self, key, value):
         clz = type(self)
-        clz._logger.debug_verbose(f'SelectionDialog.setProperty key: {key} '
+        clz._logger.debug_v(f'SelectionDialog.setProperty key: {key} '
                                   f'value: {value}')
         super(key, value)
 
@@ -396,7 +396,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
             self.addItem('Reboot Kodi', 0)
         """
         clz = type(self)
-        clz._logger.debug_verbose(
+        clz._logger.debug_v(
                 f'SelectionDialog.addItem unexpected call item: {item}'
         )
         '''
@@ -422,7 +422,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
             self.addItems(['Reboot Kodi', 'Restart Kodi'])
         """
         clz = type(self)
-        clz._logger.debug_verbose(
+        clz._logger.debug_v(
                 f'SelectionDialog.addItems unexpected call item length: {len(items)}')
         '''
         # self.list_control.addItems(items)
@@ -444,8 +444,8 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
             self.removeItem(5)
         """
         clz = type(self)
-        clz._logger.debug_verbose('SelectionDialog.removeItem unexpected call item: {:d}'
-                                  .format(position))
+        clz._logger.debug_v('SelectionDialog.removeItem unexpected call item: {:d}'
+                            .format(position))
         '''
         self.list_control.removeItem(position)
 
@@ -476,7 +476,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         # self.debug_display_values('SelectionDialog.getCurrentListPosition # selected: {:d}'
         #                      .format(number_selected))
         clz = type(self)
-        clz._logger.debug_verbose(
+        clz._logger.debug_v(
                 f'SelectionDialog.getCurrentListPosition selected position: '
                 f'{self.selection_index}')
         return self.selection_index
@@ -529,10 +529,10 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         """
         # self.list_control.reset()
         clz = type(self)
-        clz._logger.debug_verbose('SelectionDialog.clearList')
+        clz._logger.debug_v('SelectionDialog.clearList')
         self.debug_display_values('clearList')
 
     def debug_display_values(self, text: str) -> None:
         pass
-        # clz._logger.debug_verbose('{} len display_values: {:d}'
+        # clz._logger.debug_v('{} len display_values: {:d}'
         #                 .format(text, self.list_control.size()))

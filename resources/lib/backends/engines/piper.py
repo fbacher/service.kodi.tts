@@ -263,8 +263,8 @@ class PiperSpeechGenerator(ISpeechGenerator):
             for phrase_chunk in phrase_chunks:
                 try:
                     Monitor.exception_on_abort()
-                    if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                        clz._logger.debug_verbose(f'phrase: '
+                    if clz._logger.isEnabledFor(DEBUG_V):
+                        clz._logger.debug_v(f'phrase: '
                                                   f'{phrase_chunk.get_text()}')
 
                     failed = clz.piper_cmd.say(phrase_chunk, model=DEFAULT_MODEL)
@@ -576,8 +576,8 @@ class PiperTTSBackend(SimpleTTSBackend):
                 rc: ReturnCode = clz.generator.tts_generate(phrase)
 
             if self.stop_processing:
-                if clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                    clz._logger.debug_extra_verbose('stop_processing')
+                if clz._logger.isEnabledFor(DEBUG_XV):
+                    clz._logger.debug_xv('stop_processing')
                 return False
 
             try:
@@ -611,7 +611,7 @@ class PiperTTSBackend(SimpleTTSBackend):
                     if not phrase.exists():
                         text_to_voice: str = phrase.get_text()
                         voice_file_path: pathlib.Path = phrase.get_cache_path()
-                        clz._logger.debug_extra_verbose(f'PHRASE Text {text_to_voice}')
+                        clz._logger.debug_xv(f'PHRASE Text {text_to_voice}')
                         rc: int = 0
                         try:
                             # Should only get here if voiced file (.wav, .mp3,
@@ -670,14 +670,14 @@ class PiperTTSBackend(SimpleTTSBackend):
     def stop(self):
         # Review this. google does not use stop. Doesn't seem to restart
         clz = type(self)
-        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose('stop')
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v('stop')
         super().stop()
         self.stop_processing = True
         try:
             if self.process is not None:
-                if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                    clz._logger.debug_verbose('terminate')
+                if clz._logger.isEnabledFor(DEBUG_V):
+                    clz._logger.debug_v('terminate')
                 if self.stop_urgent:
                     self.process.kill()
                 else:

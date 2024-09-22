@@ -620,8 +620,8 @@ class SettingsLowLevel:
 
             if previous_value != current_value:
                 changed = True
-                if module_logger.isEnabledFor(DEBUG_VERBOSE):
-                    SettingsLowLevel._logger.debug_verbose(f'setting changed: {setting_id} '
+                if module_logger.isEnabledFor(DEBUG_V):
+                    SettingsLowLevel._logger.debug_v(f'setting changed: {setting_id} '
                                                    f'previous_value: {previous_value} '
                                                    f'current_value: {current_value}')
             else:
@@ -642,20 +642,20 @@ class SettingsLowLevel:
         engine_id: str = None
         type_error: bool = False
         expected_type: str = ''
-        if SettingsLowLevel._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-            SettingsLowLevel._logger.debug_extra_verbose(f'full_setting_id:'
+        if SettingsLowLevel._logger.isEnabledFor(DEBUG_XV):
+            SettingsLowLevel._logger.debug_xv(f'full_setting_id:'
                                                          f' {full_setting_id} '
                                                          f'value: {value}')
         engine_id, setting_id = cls.splitSettingId(full_setting_id)
         if full_setting_id in SettingsProperties.TTS_SETTINGS:
             engine_id = Services.TTS_SERVICE
 
-        if SettingsLowLevel._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-            SettingsLowLevel._logger.debug_extra_verbose(f'setting_id: {setting_id}'
+        if SettingsLowLevel._logger.isEnabledFor(DEBUG_XV):
+            SettingsLowLevel._logger.debug_xv(f'setting_id: {setting_id}'
                                                          f' engine_id: {engine_id}')
         if not SettingsMap.is_valid_property(engine_id, setting_id):
-            if SettingsLowLevel._logger.isEnabledFor(DEBUG_VERBOSE):
-                SettingsLowLevel._logger.debug_verbose(
+            if SettingsLowLevel._logger.isEnabledFor(DEBUG_V):
+                SettingsLowLevel._logger.debug_v(
                     f'TRACE Setting {setting_id} NOT supported for {engine_id}')
         if setting_id is None or len(setting_id) == 0:
             setting_id = engine_id
@@ -725,8 +725,8 @@ class SettingsLowLevel:
 
         Ignore any other changes to settings until finished
         """
-        if SettingsLowLevel._logger.isEnabledFor(DEBUG_VERBOSE):
-            SettingsLowLevel._logger.debug_verbose('Tload_settingsRACE load_settings')
+        if SettingsLowLevel._logger.isEnabledFor(DEBUG_V):
+            SettingsLowLevel._logger.debug_v('Tload_settingsRACE load_settings')
         blocked: bool = False
         while not SettingsLowLevel._loading.is_set():
             # If some other thread is loading, wait until finished, then exit.
@@ -1046,8 +1046,8 @@ class SettingsLowLevel:
         Ignore any other changes to settings until finished
         """
 
-        if SettingsLowLevel._logger.isEnabledFor(DEBUG_VERBOSE):
-            SettingsLowLevel._logger.debug_verbose('TRACE load_settings')
+        if SettingsLowLevel._logger.isEnabledFor(DEBUG_V):
+            SettingsLowLevel._logger.debug_v('TRACE load_settings')
         # Get Lock
         force_load: bool = False
         for setting_id in SettingsProperties.ALL_SETTINGS:
@@ -1057,8 +1057,8 @@ class SettingsLowLevel:
             if key in cls.ignore:
                continue
             else:
-                if cls._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                    cls._logger.debug_extra_verbose(f'key: {key} not in cls.ignore')
+                if cls._logger.isEnabledFor(DEBUG_XV):
+                    cls._logger.debug_xv(f'key: {key} not in cls.ignore')
 
             if setting_id in SettingsProperties.TOP_LEVEL_SETTINGS:
                 continue
@@ -1070,12 +1070,12 @@ class SettingsLowLevel:
                 SettingsLowLevel._logger.debug(f'FORCED load of property: {setting_id}')
                 key, value = cls.load_setting(setting_id, service_id)
             else:
-                SettingsLowLevel._logger.debug_extra_verbose(f'Skipping load of property: {setting_id} '
+                SettingsLowLevel._logger.debug_xv(f'Skipping load of property: {setting_id} '
                                   f'for service_id: {service_id} key: {key}')
                 continue
             if value is not None:
-                if SettingsLowLevel._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                    SettingsLowLevel._logger.debug_extra_verbose(f'Adding {key} '
+                if SettingsLowLevel._logger.isEnabledFor(DEBUG_XV):
+                    SettingsLowLevel._logger.debug_xv(f'Adding {key} '
                                                                  f'value: {value} '
                                                                  f'to settings cache')
                 new_settings[key] = value
@@ -1090,8 +1090,8 @@ class SettingsLowLevel:
         force_load: bool = False
         if not force_load and not SettingsMap.is_valid_property(engine_id, setting_id):
             found = False
-            if SettingsLowLevel._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                SettingsLowLevel._logger.debug_extra_verbose(f'Setting {setting_id} '
+            if SettingsLowLevel._logger.isEnabledFor(DEBUG_XV):
+                SettingsLowLevel._logger.debug_xv(f'Setting {setting_id} '
                                                              f'NOT supported for '
                                                              f'{engine_id}')
         key: str = cls.getExpandedSettingId(setting_id, engine_id)
@@ -1184,8 +1184,8 @@ class SettingsLowLevel:
             except Exception as e:
                 SettingsLowLevel._logger.exception(f'Can not set default for '
                                       f'{setting_id} {engine_id}')
-        if value and SettingsLowLevel._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-            SettingsLowLevel._logger.debug_extra_verbose(f'Read {key} value: {value}')
+        if value and SettingsLowLevel._logger.isEnabledFor(DEBUG_XV):
+            SettingsLowLevel._logger.debug_xv(f'Read {key} value: {value}')
         #  SettingsLowLevel._logger.debug(f'Read {key} value: {value}')
         return key, value
 
@@ -1308,11 +1308,11 @@ class SettingsLowLevel:
             try:
                 str_value = str(value)
                 if full_setting_id == SettingsProperties.ENGINE:
-                    if SettingsLowLevel._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                        SettingsLowLevel._logger.debug_extra_verbose(f'TRACE Commiting ENGINE value: {str_value}')
+                    if SettingsLowLevel._logger.isEnabledFor(DEBUG_XV):
+                        SettingsLowLevel._logger.debug_xv(f'TRACE Commiting ENGINE value: {str_value}')
 
-                if SettingsLowLevel._logger.isEnabledFor(DEBUG_VERBOSE):
-                    SettingsLowLevel._logger.debug_verbose(f'id: {full_setting_id} '
+                if SettingsLowLevel._logger.isEnabledFor(DEBUG_V):
+                    SettingsLowLevel._logger.debug_v(f'id: {full_setting_id} '
                                                            f'value: {str_value}')
                 prefix: str = cls.getSettingIdPrefix(full_setting_id)
                 value_type = SettingsProperties.SettingTypes.get(prefix, None)
@@ -1450,8 +1450,8 @@ class SettingsLowLevel:
     def set_setting_str(cls, setting_id: str, value: str, engine_id: str = None) -> bool:
         real_key = cls.getExpandedSettingId(setting_id, engine_id)
         if setting_id == SettingsProperties.ENGINE:
-            if SettingsLowLevel._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                SettingsLowLevel._logger.debug_extra_verbose(f'TRACE engine_id: '
+            if SettingsLowLevel._logger.isEnabledFor(DEBUG_XV):
+                SettingsLowLevel._logger.debug_xv(f'TRACE engine_id: '
                                                              f'{value} real_key: '
                                                              f'{real_key} '
                                                              f'value: {value}')
@@ -1466,8 +1466,8 @@ class SettingsLowLevel:
         force_load: bool = False
         real_key = cls.getExpandedSettingId(setting_id, engine_id)
         if ignore_cache and setting_id == SettingsProperties.ENGINE:
-            if SettingsLowLevel._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                SettingsLowLevel._logger.debug_extra_verbose(
+            if SettingsLowLevel._logger.isEnabledFor(DEBUG_XV):
+                SettingsLowLevel._logger.debug_xv(
                     f'TRACE get_setting_str IGNORING CACHE id: {setting_id}'
                     f' {engine_id} -> {real_key}')
         if ignore_cache:
@@ -1488,8 +1488,8 @@ class SettingsLowLevel:
         :return:
         """
         if ignore_cache and setting_id == SettingsProperties.ENGINE:
-            if SettingsLowLevel._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                SettingsLowLevel._logger.debug_extra_verbose(
+            if SettingsLowLevel._logger.isEnabledFor(DEBUG_XV):
+                SettingsLowLevel._logger.debug_xv(
                         f'TRACE get_setting_str IGNORING CACHE id: {setting_id}')
         real_key = cls.getExpandedSettingId(setting_id, engine_id)
         value: bool = None

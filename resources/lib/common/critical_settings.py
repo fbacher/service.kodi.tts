@@ -100,14 +100,14 @@ class CriticalSettings:
         # level_setting 0 -> xbmc.LOGWARNING
         # level_setting 1 => xbmc.LOGINFO
         # level_setting 2 => xbmc.LOGDEBUG
-        # level_setting 3 => DEBUG_VERBOSE
-        # level_setting 4 => DEBUG_EXTRA_VERBOSE
+        # level_setting 3 => DEBUG_V
+        # level_setting 4 => DEBUG_XV
 
         # python_logging_value is a transformation to values that Logger uses:
         #
         # Critical is most important.
         # DISABLED is least important
-        # DEBUG_EXTRA_VERBOSE less important that DEBUG
+        # DEBUG_XV less important that DEBUG
 
         python_logging_value = None
 

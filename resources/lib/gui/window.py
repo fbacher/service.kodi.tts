@@ -27,7 +27,7 @@ from typing import Tuple
 import xbmc
 import xbmcgui
 
-from common.logger import BasicLogger, DEBUG_VERBOSE
+from common.logger import BasicLogger, DEBUG_V
 from gui.base_tags import WindowType
 from windows import guitables
 from windows.guitables import window_map
@@ -139,7 +139,7 @@ class Window:
             if isinstance(name_id, int):
                 name = xbmc.getLocalizedString(name_id)
                 window_name: str = window_map[win_dialog_id].window_name
-            if Window._logger.isEnabledFor(DEBUG_VERBOSE):
+            if Window._logger.isEnabledFor(DEBUG_V):
                 Window._logger.debug(f'winID: {win_dialog_id} name_id: {name_id} window '
                                      f"name: {name} currentWindow: "
                                      f"{xbmc.getInfoLabel('System.CurrentWindow')}")

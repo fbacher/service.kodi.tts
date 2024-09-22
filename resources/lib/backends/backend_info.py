@@ -58,7 +58,7 @@ class BackendInfo(IBackendInfo):
     def getAvailableBackends(cls,
                              can_stream_wav: bool = False) -> List[ITTSBackendBase]:
         available: List[ITTSBackendBase] = []
-        cls._logger.debug_verbose(
+        cls._logger.debug_v(
                 f'backends.__init__.getAvailableBackends can_stream_wav: '
                 f'{str(can_stream_wav)}')
         for engine_id in Backends.ALL_ENGINE_IDS:
@@ -70,8 +70,8 @@ class BackendInfo(IBackendInfo):
             except AttributeError:
                 continue
 
-            if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                cls._logger.debug_verbose(
+            if cls._logger.isEnabledFor(DEBUG_V):
+                cls._logger.debug_v(
                     f'Available engine: {engine.__class__.__name__}')
             available.append(engine)
         return available
@@ -133,8 +133,8 @@ class BackendInfo(IBackendInfo):
     @classmethod
     def getBackend(cls, backend_id: str = SettingsBridge.BACKEND_DEFAULT) \
             -> ITTSBackendBase | None:
-        if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-            cls._logger.debug_verbose(f'getBackend backend_id: {backend_id}')
+        if cls._logger.isEnabledFor(DEBUG_V):
+            cls._logger.debug_v(f'getBackend backend_id: {backend_id}')
 
         backend_id = SettingsBridge.get_engine_id() or backend_id
         b = cls.getBackendByProvider(backend_id)

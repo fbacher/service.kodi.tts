@@ -5,7 +5,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Callable, List, Tuple
 
-from common.logger import BasicLogger, DEBUG_VERBOSE
+from common.logger import BasicLogger, DEBUG_V
 from gui.base_tags import control_elements, ControlElement, Item, WindowType
 from gui.element_parser import ( BaseElementParser,
                                 ElementHandler)
@@ -156,8 +156,8 @@ class ParseWindow(BaseParser):
         self.visible_expr: str = ''
 
         self.control_type = ControlElement.WINDOW
-        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose(f'control_type.label: {self.control_type} '
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v(f'control_type.label: {self.control_type} '
                           f'name: {self.control_type.name} '
                           f'value: {self.control_type.value}'
                           f'str: {str(self.control_type)}')
@@ -183,14 +183,14 @@ class ParseWindow(BaseParser):
          and pass back relevent information for Window
         """
         clz = type(self)
-        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_extra_verbose(f'In create_model xml_path: {xml_path}')
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_xv(f'In create_model xml_path: {xml_path}')
         if xml_path is None:
             xml_path: Path = Path('/home/fbacher/.kodi/addons/skin.estuary/xml/Home.xml')
         self.xml_path = xml_path
         if self.xml_path is None:
-            if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                clz._logger.debug_verbose(f'xml_path path not found: {self.xml_path}. Now what?')
+            if clz._logger.isEnabledFor(DEBUG_V):
+                clz._logger.debug_v(f'xml_path path not found: {self.xml_path}. Now what?')
             return
         self.control_id = 0  # Windows do not have a control
         #  clz._logger.debug(f'About to parse: {self.xml_path}')
@@ -265,8 +265,8 @@ class ParseWindow(BaseParser):
                   f'{menu_ctrl_str}{visible_expr_str}{window_modality}'
                   f'{topic_str}')
         results.append(result)
-        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose(f'\n # children: {len(self.children)}')
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v(f'\n # children: {len(self.children)}')
         for control in self.children:
             control: BaseParser
             result: str = str(control)

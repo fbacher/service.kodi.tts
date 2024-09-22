@@ -99,8 +99,8 @@ class BaseParser:
         xml_file: str = xbmc.getInfoLabel('Window.Property(xmlfile)')
         xml_path: Path = Path(xml_file)
         if not (xml_path.is_file() and xml_path.exists()):
-            if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                cls._logger.debug_verbose(f'Window xml file not found: {xml_path}')
+            if cls._logger.isEnabledFor(DEBUG_V):
+                cls._logger.debug_v(f'Window xml file not found: {xml_path}')
             return None
         return xml_path
 
@@ -108,13 +108,13 @@ class BaseParser:
     def get_xml_file_for_window(cls, win_dialog_id: int | str) -> Path | None:
         xml_file: str = xbmc.getInfoLabel('Window(win_dialog_id).Property(xmlfile)')
         if xml_file is None:
-            if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                cls._logger.debug_verbose( f'xml file not defined: for win_dialog_id:'
+            if cls._logger.isEnabledFor(DEBUG_V):
+                cls._logger.debug_v(f'xml file not defined: for win_dialog_id:'
                                            f' {win_dialog_id}')
             return None
         xml_path: Path = Path(xml_file)
         if not (xml_path.is_file() and xml_path.exists()):
-            if cls._logger.isEnabledFor(DEBUG_VERBOSE):
+            if cls._logger.isEnabledFor(DEBUG_V):
                 cls._logger.debug(f'xml file not found: for win_dialog_id: {win_dialog_id}'
                                   f' {xml_path}')
             return None
@@ -125,8 +125,8 @@ class BaseParser:
         Monitor.exception_on_abort()
         skin_path: Path
         base_path: Path = Path(xbmcvfs.translatePath('special://skin'))
-        if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-            cls._logger.debug_verbose(f'base_path: {base_path}')
+        if cls._logger.isEnabledFor(DEBUG_V):
+            cls._logger.debug_v(f'base_path: {base_path}')
         for res in ('720p', '1080i'):
             skin_path = base_path / res
             if skin_path.is_file() and skin_path.exists():
@@ -148,7 +148,7 @@ class BaseParser:
         if not (path.is_file() and path.exists()):
             path = Path('')
         if module_logger.isEnabledFor(DEBUG):
-            module_logger.debug_verbose(f'Including: {path}')
+            module_logger.debug_v(f'Including: {path}')
         return path
 
     @classmethod
@@ -177,13 +177,13 @@ class BaseParser:
         if element.tag == EK.CONTROLS.value:
             return ControlElement.CONTROLS
         control_type_str: str = element.attrib.get(BAT.CONTROL_TYPE)
-        if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose(f'control_type_str: {control_type_str}')
+        if cls._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v(f'control_type_str: {control_type_str}')
         if control_type_str is None:
             raise ParseError(f'Missing Control Type')
         control_type: ControlElement = ControlElement(control_type_str)
-        if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose(f'done: {control_type.value} orig: {control_type_str}')
+        if cls._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v(f'done: {control_type.value} orig: {control_type_str}')
         return control_type
 
     @classmethod
@@ -205,8 +205,8 @@ class BaseParser:
         """
         clz = BaseParser
         expressions: List[str] = units.split(',')
-        if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose(f'units: {units} split: {expressions}')
+        if cls._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v(f'units: {units} split: {expressions}')
         result: List[Any] = []
         scale_value: Units | None = None
         type_value: Units | None = None
@@ -216,20 +216,20 @@ class BaseParser:
         failed: bool = False
         for expr in expressions:
             tokes: List[str] = expr.split('=')
-            #  clz._logger.debug_verbose(f'expr: {expr} tokes: {tokes}')
+            #  clz._logger.debug_v(f'expr: {expr} tokes: {tokes}')
             try:
                 tokes[0] = tokes[0].strip()
                 tokes[1] = tokes[1].strip()
-                # clz._logger.debug_verbose(f'tokes: {tokes[0]} {tokes[1]}')
+                # clz._logger.debug_v(f'tokes: {tokes[0]} {tokes[1]}')
                 if tokes[0] == 'scale':
                     scale_value = Units(tokes[1])
                 if tokes[0] == 'type':
                     if tokes[1] in ('float', 'int'):
                         type_value = Units(tokes[1])
-                        # clz._logger.debug_verbose(f'type_value = {tokes[1]} {type_value}')
+                        # clz._logger.debug_v(f'type_value = {tokes[1]} {type_value}')
                 if tokes[0] == 'step':
                     step_value = float(tokes[1])
-                    # clz._logger.debug_verbose(f'step_value = {tokes[1]} {step_value}')
+                    # clz._logger.debug_v(f'step_value = {tokes[1]} {step_value}')
                 if tokes[0] == 'min':
                     min_value = float(tokes[1])
                 if tokes[0] == 'max':

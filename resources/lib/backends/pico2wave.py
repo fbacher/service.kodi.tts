@@ -72,7 +72,7 @@ class Pico2WaveTTSBackend(SimpleTTSBackend):
 
         voice_file, exists = self.get_path_to_voice_file(text_to_voice,
                                                          use_cache=Settings.is_use_cache())
-        self._logger.debug_verbose('pico2wave.runCommand text: ' + text_to_voice +
+        self._logger.debug_v('pico2wave.runCommand text: ' + text_to_voice +
                                    ' language: ' + self.language)
         args = ['pico2wave']
         if self.language:
@@ -93,7 +93,7 @@ class Pico2WaveTTSBackend(SimpleTTSBackend):
             return False
 
         if self.stop_processing:
-            self._logger.debug_verbose('runCommand stop_processing')
+            self._logger.debug_v('runCommand stop_processing')
             return False
 
         return True

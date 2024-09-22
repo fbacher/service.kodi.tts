@@ -1,6 +1,6 @@
 # coding=utf-8
 
-from common.logger import BasicLogger, DEBUG_VERBOSE
+from common.logger import BasicLogger, DEBUG_V
 from gui.base_model import BaseModel
 from gui.parser.parse_topic import ParseTopic
 from gui.topic_model import TopicModel
@@ -22,8 +22,8 @@ class GroupTopicModel(TopicModel):
     @property
     def control_id(self) -> int:
         clz = GroupTopicModel
-        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose(f'self: {self.__class__.__name__} '
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v(f'self: {self.__class__.__name__} '
                               f'parent: {self.parent.__class__.__name__} '
                               f'control_id: {super().control_id}')
         return super().control_id

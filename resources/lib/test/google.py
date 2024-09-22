@@ -13,7 +13,7 @@ from gtts import gTTS, gTTSError
 
 # from common.constants import ReturnCode
 # from common.exceptions import ExpiredException
-# from common.logger import *
+# from common.get import *
 # from common.monitor import Monitor
 
 from test.google_data import GoogleData
@@ -110,8 +110,8 @@ class SpeechGenerator:
             with mp3_path.open('wb') as sound_file:
                 try:
                     # Monitor.exception_on_abort()
-                    # if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                    #     cls._logger.debug_verbose(f'phrase: '
+                    # if cls._logger.isEnabledFor(DEBUG_V):
+                    #     cls._logger.debug_v(f'phrase: '
                     #                               f'{phrase}')
 
                     gtts: MyGTTS = MyGTTS(phrase, locale=locale_id)

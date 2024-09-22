@@ -214,8 +214,8 @@ class SAPIBackend(SimpleTTSBackend):
             if phrase.get_interrupt():
                 self.stop_current_phrases()
             out_file: Path = phrase.get_cache_path()
-            if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                clz._logger.debug_verbose(f'sapi.runCommand outFile: {out_file}\n'
+            if clz._logger.isEnabledFor(DEBUG_V):
+                clz._logger.debug_v(f'sapi.runCommand outFile: {out_file}\n'
                                           f'text: {phrase.text}')
             clz.pytts_engine.save_to_file(phrase.text, out_file)
             clz.pytts_engine.runAndWait()

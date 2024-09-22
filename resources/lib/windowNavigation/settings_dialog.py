@@ -130,7 +130,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             initial_backend = BackendInfo.getAvailableBackends()[0].backend_id
         self.getEngineInstance(engine_id=initial_backend)
 
-        self._logger.debug_extra_verbose('SettingsDialog.__init__')
+        self._logger.debug_xv('SettingsDialog.__init__')
         self.header: ControlLabel | None = None
         # self.engine_tab: ControlRadioButton | None = None
         # self.options_tab: ControlButton | None = None
@@ -219,7 +219,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             self.getEngineInstance(engine_id=initial_backend)
         """
 
-        self._logger.debug_extra_verbose('SettingsDialog.__init__')
+        self._logger.debug_xv('SettingsDialog.__init__')
         self.header = None
         # self.engine_tab: ControlRadioButton | None = None
         # self.options_tab: ControlButton | None = None
@@ -288,7 +288,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         """
         #  super().onInit()
         clz = type(self)
-        self._logger.debug_verbose('SettingsDialog.onInit')
+        self._logger.debug_v('SettingsDialog.onInit')
         self.re_init()
 
         try:
@@ -702,7 +702,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 matches = action_mapper.getKeyIDInfo(action)
 
                 # for line in matches:
-                #     self._logger.debug_extra_verbose(line)
+                #     self._logger.debug_xv(line)
 
                 button_code: int = action.getButtonCode()
                 # These return empty string if not found
@@ -748,7 +748,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             '''
             focus_id = self.getFocusId()
             if controlId == 100:
-                # self._logger.debug_verbose('Button 100 pressed')
+                # self._logger.debug_v('Button 100 pressed')
                 # self.engine_tab.setSelected(True)
                 # self.options_group.setVisible(False)
                 # self.keymap_group.setVisible(False)
@@ -756,7 +756,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 # self.engine_group.setVisible(True)
 
             elif controlId == 200:
-                # self._logger.debug_verbose('Button 200 pressed')
+                # self._logger.debug_v('Button 200 pressed')
                 # self.engine_tab.setSelected(False)
                 # self.engine_group.setVisible(False)
                 # self.keymap_group.setVisible(False)
@@ -764,7 +764,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 # self.options_group.setVisible(True)
 
             elif controlId == 300:
-                # self._logger.debug_verbose('Button 300 pressed')
+                # self._logger.debug_v('Button 300 pressed')
                 # self.engine_tab.setSelected(False)
                 # self.engine_group.setVisible(False)
                 # self.options_group.setVisible(False)
@@ -772,7 +772,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 # self.keymap_group.setVisible(True)
 
             elif controlId == 400:
-                # self._logger.debug_verbose('Button 400 pressed')
+                # self._logger.debug_v('Button 400 pressed')
                 # self.engine_tab.setSelected(False)
                 # self.engine_group.setVisible(False)
                 # self.options_group.setVisible(False)
@@ -897,8 +897,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 choice.label = SettingsHelper.get_formatted_label(choice.lang_info,
                                                                   'short')
 
-            if self._logger.isEnabledFor(DEBUG_VERBOSE):
-                self._logger.debug_verbose(f'get_engine_choices: {choices}')
+            if self._logger.isEnabledFor(DEBUG_V):
+                self._logger.debug_v(f'get_engine_choices: {choices}')
             self.save_current_choices(choices, current_engine_idx)
             # auto_choice_label: str = Messages.get_msg(Messages.AUTO)
             # current_value = Settings.get_engine_id()
@@ -956,15 +956,15 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             self.restore_settings()  # resets settings prior to SelectionDialog
             previous_engine_id: str = self.engine_id
             idx = dialog.close_selected_idx
-            self._logger.debug_verbose(f'SelectionDialog value: '
+            self._logger.debug_v(f'SelectionDialog value: '
                                        f'{Messages.get_msg(Messages.CHOOSE_BACKEND)} '
                                        f'idx: {str(idx)}')
             if idx < 0:  # No selection made or CANCELED
                 return
 
             choice: Choice = choices[idx]
-            if self._logger.isEnabledFor(DEBUG_VERBOSE):
-                self._logger.debug_verbose(f'select_language value: '
+            if self._logger.isEnabledFor(DEBUG_V):
+                self._logger.debug_v(f'select_language value: '
                                            f'{choice.lang_info.language_id} setting: '
                                            f'{choice.lang_info.locale_label} idx: {idx:d}')
             # From setLanguage:
@@ -1450,14 +1450,14 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             dialog.doModal()
             self.restore_settings()  # resets settings prior to SelectionDialog
             idx = dialog.close_selected_idx
-            #  self._logger.debug_verbose(
+            #  self._logger.debug_v(
             #         'SelectionDialog voice idx: {}'.format(str(idx)))
             if idx < 0:
                 return
 
             choice: Choice = choices[idx]
-            if self._logger.isEnabledFor(DEBUG_VERBOSE):
-                self._logger.debug_verbose(f'select_voice value: {choice.label} '
+            if self._logger.isEnabledFor(DEBUG_V):
+                self._logger.debug_v(f'select_voice value: {choice.label} '
                                            f'setting: {choice.value} idx: {idx:d}')
 
             self.engine_voice_value.setLabel(choice.label)
@@ -1628,8 +1628,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
             choice: Choice = choices[idx]
             gender: Genders = Genders(choice.value)
-            if self._logger.isEnabledFor(DEBUG_VERBOSE):
-                self._logger.debug_verbose(f'select_gender label: {choice.label} '
+            if self._logger.isEnabledFor(DEBUG_V):
+                self._logger.debug_v(f'select_gender label: {choice.label} '
                                            f'setting: {choice.value} idx: {idx:d}')
             self.engine_gender_value.setLabel(choice.label)
             Settings.set_gender(gender)
@@ -1763,8 +1763,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             player_id: str = choice.value
             enabled: bool = choice.enabled
             player_label: str = choice.label
-            if self._logger.isEnabledFor(DEBUG_VERBOSE):
-                self._logger.debug_verbose(f'select_player value: {player_label} '
+            if self._logger.isEnabledFor(DEBUG_V):
+                self._logger.debug_v(f'select_player value: {player_label} '
                                            f'setting: {player_id} idx: {idx:d} '
                                            f'enabled: {enabled}')
             engine_id: str = self.engine_id
@@ -1897,8 +1897,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 return
 
             choice: Choice= choices[idx]
-            if self._logger.isEnabledFor(DEBUG_VERBOSE):
-                self._logger.debug_verbose(f'value: {choice.label} '
+            if self._logger.isEnabledFor(DEBUG_V):
+                self._logger.debug_v(f'value: {choice.label} '
                                            f'setting: {choice.value} idx: {idx:d}')
             self.engine_module_value.setLabel(choice.label)
             Settings.set_module(choice.value)
@@ -2096,8 +2096,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             dialog.doModal()
             self.restore_settings()  # resets settings prior to SelectionDialog
             idx = dialog.close_selected_idx
-            if self._logger.isEnabledFor(DEBUG_VERBOSE):
-                self._logger.debug_verbose(f'SelectionDialog value: '
+            if self._logger.isEnabledFor(DEBUG_V):
+                self._logger.debug_v(f'SelectionDialog value: '
                                        f'{Messages.get_msg(Messages.SELECT_PLAYER_MODE)} '
                                        f'idx: {str(idx)}')
             if idx < 0:

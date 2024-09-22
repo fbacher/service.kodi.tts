@@ -106,8 +106,8 @@ class Messages:
     KEYMAP_REMOVED = Message('Keymap removed.', 32117)
     PRESS_KEY_TO_ASSIGN = Message('Press the key you want to assign now.', 32118)
     TIMEOUT_IN_X_SECONDS = Message('Timeout in {0} seconds', 32119)
-    ITEM = Message('item', 32106)
-    ITEMS = Message('items', 32107)
+    # ITEM = Message('item', 32106)
+    # ITEMS = Message('items', 32107)
     PRESS_THE_KEY_TO_ASSIGN = Message('Press the key you want to assign now.', 32124)
 
     IMPORTING_PVR_EPG = Message('Importing P.V.R. E.P.G.', 32120)
@@ -255,7 +255,7 @@ class Messages:
     UI_DISMISS_DIALOG_HINT = Message('Select to dismiss dialog', 32804)
     #  control_name, orientation, visible_items
     UI_ITEMS = Message('{0} {1} {2} items', 32805)
-    UI_ITEM = Message('item {0}', 32806)
+    # UI_ITEM = Message('item {0}', 32806)
     UN_NO_ITEMS = Message('{0} {1}', 328)
 
     MSG_NOT_FOUND_ERROR: Final[int] = 32335

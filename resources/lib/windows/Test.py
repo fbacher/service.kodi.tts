@@ -355,6 +355,8 @@ class Includes:
                             printed_one = True
                     # else:
                     #    clz._logger.debug(f'old == new key: {old_key}')
+            except AbortException:
+                reraise(*sys.exc_info())
             except Exception as e:
                 clz._logger.exception('Boom Boom!')
 
@@ -434,6 +436,8 @@ class Includes:
                         clz._old_includes_map[name_attrib.value] = i.cloneNode(True)
                         # clz._logger.debug(f'old name entry: {name_attrib.value}')
                         # clz._logger.debug(f'{dump_dom(i)}')
+        except AbortException:
+            reraise(*sys.exc_info())
         except Exception as e:
             clz._logger.exception('Boom!')
 
@@ -712,6 +716,8 @@ class Includes:
             new_includes_tree: ET.ElementTree = ET.ElementTree(new_includes_root)
 
             self.parse_includes_tree(includes_root, new_includes_tree.getroot())
+        except AbortException:
+            reraise(*sys.exc_info())
         except Exception as e:
             clz._logger.debug(f'Exception: {e}')
         clz._new_includes_files_loaded = True
@@ -827,6 +833,8 @@ class Includes:
 
         except StopIteration:
             pass
+        except AbortException:
+            reraise(*sys.exc_info())
         except Exception as e:
             clz._logger.exception('Boom!')
 
@@ -852,6 +860,8 @@ class Includes:
             text: str = ''
             # text = dump_subtree(dest_node)
             # clz._logger.debug(f'changed: {text}')
+        except AbortException:
+            reraise(*sys.exc_info())
         except Exception as e:
             clz._logger.exception('Boom!')
         if VERBOSE_DEBUG:
@@ -945,6 +955,8 @@ class Includes:
 
         except StopIteration:
             pass
+        except AbortException:
+            reraise(*sys.exc_info())
         except Exception as e:
             clz._logger.exception('Boom!')
         return
@@ -967,6 +979,8 @@ class Includes:
             text: str = ''
             # text = dump_subtree(dest_node)
             # clz._logger.debug(f'changed: {text}')
+        except AbortException:
+            reraise(*sys.exc_info())
         except Exception as e:
             clz._logger.exception('Boom!')
 

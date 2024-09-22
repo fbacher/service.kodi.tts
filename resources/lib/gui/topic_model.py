@@ -27,8 +27,8 @@ from typing import Callable, Final, ForwardRef, List
 
 import xbmc
 
-from common.logger import BasicLogger, DEBUG_EXTRA_VERBOSE, DEBUG_VERBOSE
-from common.message_ids import MessageUtils
+from common.logger import BasicLogger, DEBUG_XV, DEBUG_V
+from common.message_ids import MessageId, MessageUtils
 from common.messages import Messages
 from common.phrases import Phrase, PhraseList
 from gui import BaseParser
@@ -547,11 +547,11 @@ class TopicModel(BaseTopicModel):
         # Don't voice anything for a control-type marked NONE
 
         if self.topic_type == TopicType.NONE:
-            clz._logger.debug_verbose(f'Not voicing topic: {self.name} due to'
+            clz._logger.debug_v(f'Not voicing topic: {self.name} due to'
                                       f' TopicType.NONE')
             return False
-        if clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-            clz._logger.debug_extra_verbose(f'on entry to voice_topic_heading: {stmts}')
+        if clz._logger.isEnabledFor(DEBUG_XV):
+            clz._logger.debug_xv(f'on entry to voice_topic_heading: {stmts}')
         #
         #  Voice the control name, orientation and # items.
         #  Formatting occurs in voice_control_name_heading
@@ -559,8 +559,8 @@ class TopicModel(BaseTopicModel):
         control_name: str = self.get_best_control_name()
         orientation: str = self.get_orientation()
         visible_item_count: int = self.visible_item_count()
-        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose(f'control_id: {self.control_id} '
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v(f'control_id: {self.control_id} '
                                       f'control_name: {control_name} '
                                       f'orientation: {orientation}')
         success = self.voice_control_name_heading(stmts, control_name,
@@ -588,10 +588,10 @@ class TopicModel(BaseTopicModel):
         clz = TopicModel
         text: str = ''
         if visible_item_count > 0:
-            text = Messages.get_formatted_msg_by_id(Messages.UI_ITEMS.msg_id,
-                                                    orientation,
-                                                    control_name,
-                                                    f'{visible_item_count}')
+            text = MessageId.ITEMS_WITH_NUMBER.get_formatted_msg(
+                    orientation,
+                    control_name,
+                    f'{visible_item_count}')
         elif orientation != '':
             text = f'{orientation} {control_name}'
         else:
@@ -650,8 +650,8 @@ class TopicModel(BaseTopicModel):
             else:
                 success = self.voice_info_label(stmts, self.heading_label)
 
-            if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                clz._logger.debug_verbose(f'heading_label: {self.heading_label} {stmts}')
+            if clz._logger.isEnabledFor(DEBUG_V):
+                clz._logger.debug_v(f'heading_label: {self.heading_label} {stmts}')
         # Otherwise, read any heading_labeled_by
         elif self.heading_labeled_by != '':
             success: bool = False
@@ -686,23 +686,23 @@ class TopicModel(BaseTopicModel):
             clz._logger.debug(f'Considering normal labels for heading')
         if not success:
             success = self.voice_alt_label(stmts)
-            if success and clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                clz._logger.debug_verbose(f'post voice_alt_label: {stmts.last}')
+            if success and clz._logger.isEnabledFor(DEBUG_V):
+                clz._logger.debug_v(f'post voice_alt_label: {stmts.last}')
         if not success:
             success = self.voice_labeled_by(stmts)
-            if success and clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                clz._logger.debug_verbose(f'post voice_labeled_by: {stmts.last}')
+            if success and clz._logger.isEnabledFor(DEBUG_V):
+                clz._logger.debug_v(f'post voice_labeled_by: {stmts.last}')
         if not success:
             success = self.voice_label_expr(stmts)
-            if success and clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                clz._logger.debug_verbose(f'post voice_label_expr: {stmts.last}')
+            if success and clz._logger.isEnabledFor(DEBUG_V):
+                clz._logger.debug_v(f'post voice_label_expr: {stmts.last}')
         if not success:
             # label_2 is generally for value. We just want label
             success = self.voice_control_labels(stmts, voice_label=True,
                                                 voice_label_2=False,
                                                 control_id_expr=str(self.control_id))
-            if success and clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                clz._logger.debug_verbose(f'post voice_control_labels: {stmts.last}')
+            if success and clz._logger.isEnabledFor(DEBUG_V):
+                clz._logger.debug_v(f'post voice_control_labels: {stmts.last}')
         '''
         '''
         if chain and self.heading_next != '':
@@ -711,8 +711,8 @@ class TopicModel(BaseTopicModel):
 
 
             _ = self.voice_chained_headings(stmts)
-            if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                self._logger.debug_verbose(f'post voice_chained_headings: {stmts.last}')
+            if clz._logger.isEnabledFor(DEBUG_V):
+                self._logger.debug_v(f'post voice_chained_headings: {stmts.last}')
         return success
 
     def get_orientation(self) -> str:
@@ -1075,8 +1075,8 @@ class TopicModel(BaseTopicModel):
         success: bool = True
         if self.alt_label_expr != '':
             success = self.voice_info_label(stmts, self.alt_label_expr)
-            if success and clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                clz._logger.debug_verbose(f'from voice_info_label {stmts.last}')
+            if success and clz._logger.isEnabledFor(DEBUG_V):
+                clz._logger.debug_v(f'from voice_info_label {stmts.last}')
 
         else:
             success = False
@@ -1084,13 +1084,13 @@ class TopicModel(BaseTopicModel):
             # If a Topic has the same id for labeled_by and flows_to,
             # then do only one of them.
             success = self.voice_labeled_by(stmts)
-            if success and clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                clz._logger.debug_verbose(f'from voice_labeled_by {stmts.last}')
+            if success and clz._logger.isEnabledFor(DEBUG_V):
+                clz._logger.debug_v(f'from voice_labeled_by {stmts.last}')
 
         if not success:
             success = self.voice_control_labels(stmts)
-            if success and clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                clz._logger.debug_verbose(f'from voice_control_labels {stmts.last}')
+            if success and clz._logger.isEnabledFor(DEBUG_V):
+                clz._logger.debug_v(f'from voice_control_labels {stmts.last}')
 
         if chain:
             # If this topic has a 'read_next' value, then voice the label(s)
@@ -1117,11 +1117,26 @@ class TopicModel(BaseTopicModel):
     def get_item_number(self) -> int:
         """
         Used to get the current item number from a List type topic. Called from
-        a child topic of the list.
+        a child topc of the list
 
         :return: Current topic number, or -1
         """
-        return -1
+        clz = TopicModel
+        if not self.supports_item_count:
+            return -1
+
+        container_id: int = self.control_id
+        curr_item: str = ''
+        try:
+            curr_item = xbmc.getInfoLabel(f'Container({container_id}).CurrentItem')
+        except Exception:
+            clz._logger.exception('')
+
+        item_number: int = -1
+        if curr_item.isdigit():
+            item_number = int(curr_item)
+            clz._logger.debug(f'Item # {item_number}')
+        return item_number
 
     def voice_item_number(self, stmts: Statements) -> bool:
         """
@@ -1149,8 +1164,7 @@ class TopicModel(BaseTopicModel):
         if item_number < 1:
             return False
 
-        text = Messages.get_formatted_msg(Messages.UI_ITEM,
-                                          f'{item_number}')
+        text = MessageId.ITEM_WITH_NUMBER.get_formatted_msg(f'{item_number}')
         stmts.last.phrases.add_text(texts=text)
         return True
 
@@ -1263,8 +1277,8 @@ class TopicModel(BaseTopicModel):
         # labeled_by, so skip this
         #    clz._logger.debug(f'Already voiced by labeled_by')
         #   return False
-        if clz._logger.isEnabledFor(DEBUG):
-            clz._logger.debug(f'flows_to: {self.flows_to_expr}')
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v(f'flows_to: {self.flows_to_expr}')
 
         # Get the destination topic/model
         if self.flows_to_topic is None and self.flows_to_model is None:

@@ -13,6 +13,10 @@ module_logger = BasicLogger.get_logger(__name__)
 
 
 class MessageId(Enum):
+    # The following tree values MUST be the same as in VoiceHintToggle
+    VOICE_HINT_OFF = 32050
+    VOICE_HINT_ON = 32051
+    VOICE_HINT_PAUSE = 32052
 
     ENGINE_AUTO_ID = 32184
     ENGINE_ESPEAK_ID = 32314
@@ -48,6 +52,10 @@ class MessageId(Enum):
     SCREEN_SAVER_INTERRUPTED = 32343
     DATABASE_SCAN_STARTED = 32100
     DATABASE_SCAN_FINISHED = 32101
+    ITEM_WITH_NUMBER = 32106   # item {number}
+    ITEMS_WITH_NUMBER = 32107  # items {number}
+    HEADING_WITH_ITEM_COUNT = 32720
+    ITEM = 32237  # item (use when you can't get the number)
     # PLAYER_WAVE_HANDLER = -1
     # PLAYER_MP3_AUDIO_PLAYER_HANDLER = -1
     # PLAYER_BUILTINAUDIOPLAYERHANDLER = -1

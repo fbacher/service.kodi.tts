@@ -107,7 +107,7 @@ class ParseButton(ParseControl):
                     if key == EK.TOPIC:
                         self.topic = parsed_instance
             # else:
-            #     if clz._logger.isEnabledFor(DEBUG_VERBOSE):
+            #     if clz._logger.isEnabledFor(DEBUG_V):
             #         if child.tag not in ('top', 'left', 'width', 'height', 'bottom'):
             #             clz._logger.debug(f'ParseButton ignored element: {child.tag}')
 

@@ -166,7 +166,7 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
                 args.append(f'{phrase.get_cache_path()}')
         except ExpiredException:
             reraise(*sys.exc_info())
-        self._logger.debug_verbose(f'args: {" ".join(args)}')
+        self._logger.debug_v(f'args: {" ".join(args)}')
         return args
 
     def get_slave_pipe_path(self) -> Path:
@@ -211,7 +211,7 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
             args.append(
                     f'{MPVAudioPlayer.MPV_AUDIO_FILTER}{",".join(filters)}')
         '''
-        self._logger.debug_verbose(f'args: {" ".join(args)}')
+        self._logger.debug_v(f'args: {" ".join(args)}')
         return args
 
     def get_pipe_args(self) -> List[str]:
@@ -234,7 +234,7 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
                 args.append(f'--speed={speed}')
         except ExpiredException:
             reraise(*sys.exc_info())
-        self._logger.debug_verbose(f'args: {" ".join(args)}')
+        self._logger.debug_v(f'args: {" ".join(args)}')
         return args
 
     def canSetSpeed(self) -> bool:

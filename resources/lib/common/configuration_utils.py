@@ -36,20 +36,20 @@ class ConfigUtils:
 
     @classmethod
     def selectBackend(cls):
-        cls._logger.debug_verbose('selectBackend')
+        cls._logger.debug_v('selectBackend')
         choices = ['auto']
         display = [T(32184)]
 
         available = BackendInfoBridge.getAvailableBackends()
         for b in available:
-            cls._logger.debug_verbose('backend: ' + b.displayName)
+            cls._logger.debug_v('backend: ' + b.displayName)
             choices.append(b.backend_id)
             display.append(b.displayName)
         idx = xbmcgui.Dialog().select(T(32181), display)
         if idx < 0:
             return
-        cls._logger.debug_verbose('service.kodi.tts.util.selectBackend value: ' +
-                                  choices[idx] + ' idx: ' + str(idx))
+        cls._logger.debug_v('service.kodi.tts.util.selectBackend value: ' +
+                            choices[idx] + ' idx: ' + str(idx))
         Settings.setSetting(SettingsProperties.ENGINE, choices[idx], None)
 
     @classmethod

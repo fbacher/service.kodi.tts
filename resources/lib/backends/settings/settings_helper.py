@@ -14,7 +14,7 @@ from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import StringValidator
 from common.base_services import BaseServices
 from common.exceptions import LogicError
-from common.logger import BasicLogger, DEBUG_EXTRA_VERBOSE
+from common.logger import BasicLogger, DEBUG_XV
 from common.messages import Message, Messages
 from common.setting_constants import GenderSettingsMap, PlayerMode
 from common.settings import Settings
@@ -656,8 +656,8 @@ class SettingsHelper:
                 current_choice_index = idx
 
             choices.append(choice)
-            if cls._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                cls._logger.debug_extra_verbose(f'{choice}')
+            if cls._logger.isEnabledFor(DEBUG_XV):
+                cls._logger.debug_xv(f'{choice}')
             idx += 1
 
         # cls._logger.debug(f'current_choice_index: {current_choice_index} '

@@ -130,7 +130,7 @@ class EngineQueue:
                     #                    trace=Trace.TRACE_AUDIO_START_STOP)
                     self._threadedIsSpeaking = False
                 except queue.Empty:
-                    # self._logger.debug_verbose('queue empty')
+                    # self._logger.debug_v('queue empty')
                     pass
                 except AbortException:
                     return  # Let thread die
@@ -1053,8 +1053,8 @@ class SimpleTTSBackend(ThreadedTTSBackend):
         @return:
         """
         fpath = os.path.join(utils.getTmpfs(), 'speech.wav')
-        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose('tmpfile: ' + fpath)
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v('tmpfile: ' + fpath)
 
         self.runCommand(text, fpath)
         return open(fpath, 'rb')

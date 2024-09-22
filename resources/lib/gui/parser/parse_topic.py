@@ -8,7 +8,7 @@ from gui.base_tags import (ElementKeywords as EK, TopicElement, TopicType, Value
                            ValueUnits)
 from gui.base_tags import BaseAttributeType as BAT, TopicElement as TE
 
-from common.logger import BasicLogger, DEBUG_VERBOSE
+from common.logger import BasicLogger, DEBUG_V
 from gui import ControlElement, ParseError
 from gui.base_parser import BaseParser
 from gui.base_tags import control_elements, Item
@@ -157,8 +157,8 @@ class ParseTopic(BaseParser):
             alt_ctrl_type: AltCtrlType
             alt_ctrl_type = AltCtrlType.get_default_alt_ctrl_type(self.parent.control_type)
             msg_id = alt_ctrl_type.value
-            if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                clz._logger.debug_verbose(f'default alt_type for control '
+            if clz._logger.isEnabledFor(DEBUG_V):
+                clz._logger.debug_v(f'default alt_type for control '
                                           f'{self.parent.control_type} '
                                           f'alt_ctrl_type: {alt_ctrl_type} '
                                           f'msg_id: {msg_id}')
@@ -168,8 +168,8 @@ class ParseTopic(BaseParser):
             try:
                 alt_type: AltCtrlType
                 alt_type = AltCtrlType.get_alt_type_for_name(self.alt_type_expr)
-                if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                    clz._logger.debug_verbose(f'alt_type: {alt_type} alt_type_str: '
+                if clz._logger.isEnabledFor(DEBUG_V):
+                    clz._logger.debug_v(f'alt_type: {alt_type} alt_type_str: '
                                               f'{alt_type.get_message_str()}')
                 self._alt_type = alt_type.get_message_str()
             except ValueError:

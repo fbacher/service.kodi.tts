@@ -74,8 +74,8 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
 
         self.gui_updates_allowed: bool = False
 
-        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose(f'sub_title: {self.sub_title}')
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v(f'sub_title: {self.sub_title}')
         self._choices: List[Choice]
         self._choices = kwargs.get('choices', empty_display_values)
         self._initial_choice: int = kwargs.get('initial_choice', -1)
@@ -260,12 +260,12 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
         clz = HelpDialog
         self.title = title
         self.sub_title = sub_title
-        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose(f'sub_title: {sub_title}')
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v(f'sub_title: {sub_title}')
         self.heading_control.setLabel(self.title)
         self.heading_control.setVisible(True)
-        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose(f'HEADING set to title: {self.title}')
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v(f'HEADING set to title: {self.title}')
         if self.sub_title is not None:
             self.sub_heading_control.setLabel(self.sub_title)
             self.sub_heading_control.setVisible(True)
@@ -297,7 +297,7 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
         cat_name, cat_text, subject_refs = parent_category.get_choices()
         # If list is not at the top level, then add a list-item for
         # returning to the previous category (like parent directory)
-        clz._logger.debug(f'FRED parent_category: {parent_category.category_id} '
+        clz._logger.debug(f'parent_category: {parent_category.category_id} '
                           f'stack_depth: {len(self.parent_stack)}')
         if len(self.parent_stack) != 1:
             list_item: ListItem
@@ -305,7 +305,7 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
             # Add the marker for returning up a level
             # Fill out which item to return to later
             # most_recent_cat: CategoryRef =
-            clz._logger.debug(f'FRED pushing {parent_category.category_id} '
+            clz._logger.debug(f'pushing {parent_category.category_id} '
                               f'value: PopStack')
             list_item.setProperty(parent_category.category_id, 'PopStack')
             new_list_items.append(list_item)
@@ -397,8 +397,8 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
         else:
             choice_value = self.list_items[choice].getProperty(f'key')
             choice_type = self.list_items[choice].getProperty(f'type')
-        clz._logger.debug(f'FRED pushing cat: {self.current_category.category_id}')
-        clz._logger.debug(f'FRED choice: {choice} '
+        clz._logger.debug(f'pushing cat: {self.current_category.category_id}')
+        clz._logger.debug(f'choice: {choice} '
                           f'{self.list_items[choice].getLabel()} '
                           f'key: {choice_value} type: {choice_type}')
         failed: bool = False
@@ -431,10 +431,10 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
             parent_item_index: int = self.parent_stack[-1].item_idx
             parent_ref: CategoryRef = CategoryRef(choice_value)
             self.parent_stack.pop()  # pops copy of current position
-            clz._logger.debug(f'FRED PopStack cat: {parent_ref} '
+            clz._logger.debug(f'PopStack cat: {parent_ref} '
                               f'parent: {parent_ref} idx: {parent_item_index}')
-            clz._logger.debug(f'FRED popped cat: {self.current_category.category_id}')
-            clz._logger.debug(f'FRED Updating selection_list category: {parent_ref}')
+            clz._logger.debug(f'popped cat: {self.current_category.category_id}')
+            clz._logger.debug(f'Updating selection_list category: {parent_ref}')
             self.current_category = Category.get_category(parent_ref)
             self.update_selection_list(self.current_category, parent_item_index)
             category_ref = None   # Don't want any changes due to this.
@@ -448,7 +448,7 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
             self.current_category = category
             self.parent_stack.append(ParentStack(cat_ref=category_ref,
                                                  item_idx=choice))
-            clz._logger.debug(f'FRED pushing cat: {category_ref}')
+            clz._logger.debug(f'pushing cat: {category_ref}')
             self.update_selection_list(self.current_category, select_idx)
         elif subject is not None:
             clz._logger.debug(f'ShowManual subject: {subject}')
@@ -465,7 +465,7 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
         :return:
         """
         clz = type(self)
-        clz._logger.debug_verbose(f'SelectionDialog.setProperty key: {key} '
+        clz._logger.debug_v(f'SelectionDialog.setProperty key: {key} '
                                   f'value: {value}')
         super().setProperty(key, value)
 

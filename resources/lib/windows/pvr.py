@@ -104,8 +104,8 @@ class PVRChannelsWindowReader(PVRWindowReaderBase):
 
     def getControlText(self, control_id, phrases: PhraseList) -> bool:
         cls = type(self)
-        if cls._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-            cls._logger.debug_extra_verbose(f'control_id: {control_id}')
+        if cls._logger.isEnabledFor(DEBUG_XV):
+            cls._logger.debug_xv(f'control_id: {control_id}')
         compare: str
         text: str
         if not control_id:

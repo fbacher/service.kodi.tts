@@ -93,7 +93,7 @@ class DBAccess:
         query = f'{prefix}{query_properties}{query_suffix}'
 
         if cls._logger.isEnabledFor(DISABLED):
-            cls._logger.debug_verbose(f'query: {query}')
+            cls._logger.debug_v(f'query: {query}')
 
         return query
 
@@ -105,7 +105,7 @@ class DBAccess:
                 import simplejson as json
                 # json_encoded: Dict = json.loads(query)
                 dump: str = json.dumps(query, indent=3, sort_keys=True)
-                cls._logger.debug_extra_verbose(f'JASON DUMP: {dump}')
+                cls._logger.debug_xv(f'JASON DUMP: {dump}')
         except AbortException:
             reraise(*sys.exc_info())
         except Exception:
@@ -146,7 +146,7 @@ class DBAccess:
                 import simplejson as json
                 # json_encoded: Dict = json.loads(query)
                 dump: str = json.dumps(query, indent=3, sort_keys=True)
-                cls._logger.debug_extra_verbose(f'JASON DUMP: {dump}')
+                cls._logger.debug_xv(f'JASON DUMP: {dump}')
             except Exception:
                 movies = []
 
@@ -195,12 +195,12 @@ class DBAccess:
                 f'] }} }}, "id": 1}}'
 
         if cls._logger.isEnabledFor(DISABLED):
-            cls._logger.debug_verbose(f'title: {title} year: {year}')
-            cls._logger.debug_verbose(f'query: {query}')
+            cls._logger.debug_v(f'title: {title} year: {year}')
+            cls._logger.debug_v(f'query: {query}')
             try:
                 x = simplejson.loads(query)
                 query_str = simplejson.dumps(x, indent=4, sort_keys=True)
-                cls._logger.debug_extra_verbose(f'query: {query_str}')
+                cls._logger.debug_xv(f'query: {query_str}')
             except Exception:
                 pass
 

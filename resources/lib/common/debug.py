@@ -188,7 +188,7 @@ class Debug:
             s = getsizeof(o, default_size)
 
             if verbose:
-                cls._logger.debug_verbose(f'size: {s} type: {type(o)} repr: {repr(o)}')
+                cls._logger.debug_v(f'size: {s} type: {type(o)} repr: {repr(o)}')
 
             for typ, handler in all_handlers.items():
                 if isinstance(o, typ):

@@ -80,7 +80,7 @@ class Delay:
         self._call_count += 1
 
         if clz._logger.isEnabledFor(DISABLED):
-            clz._logger.debug_extra_verbose(f' bias: {bias} call_count: '
+            clz._logger.debug_xv(f' bias: {bias} call_count: '
                                             f'{self._call_count} call_scale_factor: '
                                             f'{self._call_scale_factor:f} scale_factor: '
                                             f'{self._scale_factor}')

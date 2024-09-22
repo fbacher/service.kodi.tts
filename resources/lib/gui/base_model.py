@@ -6,7 +6,7 @@ from typing import Dict, ForwardRef, List, Tuple, Union
 import xbmc
 import xbmcgui
 
-from common.logger import BasicLogger, DEBUG_VERBOSE, DISABLED
+from common.logger import BasicLogger, DEBUG_V, DISABLED
 from common.messages import Messages
 from common.phrases import Phrase, PhraseList
 from gui.base_tags import ControlElement, Requires, WindowType
@@ -35,7 +35,7 @@ class BaseModel(IModel):
         self._windialog_state: WinDialogState | None = None
         self._window_model: ForwardRef('WindowModel') = window_model
         self._control_id: int = parser.control_id
-        self._window_id: int | None = None
+        #  self._window_id: int | None = None
         self._window_struct: IWindowStructure = None
         self._control_type: ControlElement = parser.control_type
         self._tree_id: str = f'JUNK'
@@ -373,12 +373,12 @@ class BaseModel(IModel):
             label_cntrl: BaseModel
             label_cntrl = self.window_model.get_control_model(control_id)
             label_cntrl: ForwardRef('LabelModel')
-            if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                clz._logger.debug_verbose(f'labeled_by: {self.topic.labeled_by_expr}')
+            if clz._logger.isEnabledFor(DEBUG_V):
+                clz._logger.debug_v(f'labeled_by: {self.topic.labeled_by_expr}')
             if label_cntrl is not None:
                 control_type: str = label_cntrl.control_type
-                if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                    clz._logger.debug_verbose(f'label_cntrl: {control_type}')
+                if clz._logger.isEnabledFor(DEBUG_V):
+                    clz._logger.debug_v(f'label_cntrl: {control_type}')
                 if label_cntrl.control_type != ControlElement.LABEL_CONTROL:
                     success = label_cntrl.voice_labels(stmts)  # Label and Label 2
                 else:
@@ -488,7 +488,7 @@ class BaseModel(IModel):
         success: bool = False
         clz = BaseModel
         if clz._logger.isEnabledFor(DISABLED):
-            clz._logger.debug_verbose(f'control_id: {control_id} self.control_id: {self.control_id}')
+            clz._logger.debug_v(f'control_id: {control_id} self.control_id: {self.control_id}')
         if control_id is None:
             control_id = self.control_id
 
@@ -497,8 +497,8 @@ class BaseModel(IModel):
             label_1 = False
         success = self.get_label_ll(stmts, label_expr=str(control_id),
                                     label_1=label_1,  label_2=True)
-        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose(f'{stmts.last.phrases}')
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v(f'{stmts.last.phrases}')
         return success
 
     def visible_item_count(self) -> int:

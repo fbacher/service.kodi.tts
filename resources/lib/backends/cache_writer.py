@@ -224,14 +224,14 @@ class BaseCache(BaseServices):
 
     def stop(self):
         clz = type(self)
-        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose('stop')
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v('stop')
         self.stop_processing = True
         if not self.process:
             return
         try:
-            if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                clz._logger.debug_verbose('terminate')
+            if clz._logger.isEnabledFor(DEBUG_V):
+                clz._logger.debug_v('terminate')
             self.process.terminate()  # Could use self.process.kill()
         except AbortException:
             reraise(*sys.exc_info())

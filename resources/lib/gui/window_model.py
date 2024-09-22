@@ -5,7 +5,7 @@ from typing import Callable, Dict, ForwardRef, List
 import xbmc
 import xbmcgui
 
-from common.logger import BasicLogger, DEBUG_VERBOSE
+from common.logger import BasicLogger, DEBUG_V
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
 from gui.base_tags import control_elements, ControlElement, Item, WindowType
@@ -106,8 +106,8 @@ class WindowModel(BaseModel):
             model_handler: Callable[[BaseModel, BaseParser], BaseModel]
             model_handler = ElementHandler.get_model_handler(child.item)
             value_or_control = model_handler(self, child)
-            if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                clz._logger.debug_verbose(f'value_or_control: {value_or_control}')
+            if clz._logger.isEnabledFor(DEBUG_V):
+                clz._logger.debug_v(f'value_or_control: {value_or_control}')
             if value_or_control is not None:
                 if (child.item.key in (ControlElement.CONTROLS.name,
                                        ControlElement.CONTROL.name)):
@@ -214,7 +214,7 @@ class WindowModel(BaseModel):
 
         #  Start with this window
         window_str: str = (f'\nWindowModel window: {self.control_type} id: '
-                           f'{self.control_id}')
+                           f'{self.window_id}')
         if self.menu_control != -1:
             menu_ctrl_str = f'\n menu_ctrl: {self.menu_control}'
         default_control_str: str = f''

@@ -1,11 +1,13 @@
 # coding=utf-8
 import re
+import sys
 from enum import Enum
 from typing import Dict, ForwardRef
 
 import xbmc
 import xbmcgui
 
+from common import AbortException, reraise
 from common.critical_settings import CriticalSettings
 from common.logger import BasicLogger
 from common.messages import Messages
@@ -74,6 +76,8 @@ class AltCtrlType(Enum):
             module_logger.debug(f'alt_type_name: {alt_type_name} AltCtrltype: '
                                 f'result: {result}')
             return result
+        except AbortException:
+            reraise(*sys.exc_info())
         except Exception | KeyError:
             module_logger.exception(f'alt_type_name: {alt_type_name}')
             raise ValueError('Invalid alt_ctrl_type name: {alt_type_name}')

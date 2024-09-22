@@ -4,7 +4,7 @@ from typing import Callable, List, Tuple
 import xml.etree.ElementTree as ET
 from gui.base_tags import ElementKeywords as EK, TopicElement as TE
 
-from common.logger import BasicLogger, DEBUG_VERBOSE
+from common.logger import BasicLogger, DEBUG_V
 from gui import ControlElement
 from gui.base_parser import BaseParser
 from gui.base_tags import control_elements, Item
@@ -121,8 +121,8 @@ class ParseGroupList(ParseControl):
         for child in children:
             #  clz._logger.debug(f'element.tag: {element.tag} text: {element.text}')
             if child.tag in tags_to_parse:
-                if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                    clz._logger.debug_verbose(f'element_tag: {child.tag}')
+                if clz._logger.isEnabledFor(DEBUG_V):
+                    clz._logger.debug_v(f'element_tag: {child.tag}')
                 key: str = child.tag
                 control_type: ControlElement = clz.get_control_type(child)
                 str_enum: StrEnum = None

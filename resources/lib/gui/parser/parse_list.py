@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 from enum import StrEnum
 from typing import ForwardRef, List, Tuple
 
-from common.logger import BasicLogger, DEBUG_VERBOSE
+from common.logger import BasicLogger, DEBUG_V
 from gui import BaseParser
 from gui.base_tags import (control_elements, ControlElement,
                            ControlElement as CE,
@@ -116,13 +116,13 @@ class ParseList(ParseControl):
         element: ET.Element
         for element in elements:
             if element.tag in tags_to_parse:
-                if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                    clz._logger.debug_verbose(f'element_tag: {element.tag}')
+                if clz._logger.isEnabledFor(DEBUG_V):
+                    clz._logger.debug_v(f'element_tag: {element.tag}')
                 key: str = element.tag
                 control_type: ControlElement
                 control_type = clz.get_control_type(element)
-                if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                    clz._logger.debug_verbose(f'control_type: {control_type} self: '
+                if clz._logger.isEnabledFor(DEBUG_V):
+                    clz._logger.debug_v(f'control_type: {control_type} self: '
                                               f'{self.control_type} key: {key}')
                 str_enum: StrEnum = None
                 if control_type is not None:
@@ -133,15 +133,15 @@ class ParseList(ParseControl):
                 info_handler: BaseElementParser
                 info_handler = ElementHandler.get_handler(item.key)
                 parsed_instance: BaseParser = info_handler(self, element)
-                if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                    clz._logger.debug_verbose(f'adding parsed_instance:'
+                if clz._logger.isEnabledFor(DEBUG_V):
+                    clz._logger.debug_v(f'adding parsed_instance:'
                                               f' {parsed_instance}')
                 if parsed_instance is not None:
                     if str_enum == CE.FOCUSED_LAYOUT:
                         self.focused_layouts.append(parsed_instance)
                     elif str_enum == CE.ITEM_LAYOUT:
-                        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                            clz._logger.debug_verbose(f'Adding to item_layouts:'
+                        if clz._logger.isEnabledFor(DEBUG_V):
+                            clz._logger.debug_v(f'Adding to item_layouts:'
                                                       f' {parsed_instance}')
                         self.item_layouts.append(parsed_instance)
                     elif control_type is not None:

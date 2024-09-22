@@ -26,8 +26,8 @@ import xbmcvfs
 
 from common import *
 
-__all__ = ['BASIC_FORMAT', 'CRITICAL', 'DEBUG', 'DEBUG_VERBOSE',
-           'DEBUG_EXTRA_VERBOSE', 'ERROR', 'DISABLED',
+__all__ = ['BASIC_FORMAT', 'CRITICAL', 'DEBUG', 'DEBUG_V',
+           'DEBUG_XV', 'ERROR', 'DISABLED',
            'FATAL', 'FileHandler', 'Filter', 'Formatter', 'Handler', 'INFO',
            'LogRecord', 'BasicLogger', 'LoggerAdapter', 'NOTSET', 'NullHandler',
            'StreamHandler', 'WARN', 'WARNING', 'addLevelName', 'basicConfig',
@@ -56,8 +56,8 @@ INCLUDE_DEBUG_LEVEL: bool = True
 # Define extra log levels in between predefined values.
 
 DISABLED = NOTSET  # Simply to be able to use DISABLED to clearly mark non-logged code
-# DEBUG_VERBOSE = 8
-# DEBUG_EXTRA_VERBOSE = 6
+# DEBUG_V = 8
+# DEBUG_XV = 6
 NOTSET = logging.NOTSET  # 0
 # INFO: 20 DEBUG: 10 VERBOSE: 8 EXTRA_VERBOSE: 6
 
@@ -71,28 +71,28 @@ LOGNONE: Final[int] = xbmc.LOGNONE
 
 #  Kodi BasicLogger values (in addition to those defined in logging)
 
-DEBUG_VERBOSE: Final[int] = 8
-DEBUG_EXTRA_VERBOSE: Final[int] = 6
+DEBUG_V: Final[int] = 8
+DEBUG_XV: Final[int] = 6
 logging.addLevelName(INFO, 'I')
 logging.addLevelName(DEBUG, 'D')
-logging.addLevelName(DEBUG_VERBOSE, 'V')
-logging.addLevelName(DEBUG_EXTRA_VERBOSE, 'X')
+logging.addLevelName(DEBUG_V, 'V')
+logging.addLevelName(DEBUG_XV, 'X')
 logging.addLevelName(LOGWARNING, 'W')
 logging.addLevelName(ERROR, 'E')
 
 INCLUDE_MODULE_PATH_IN_LOGGER: bool = False
 
-# DEBUG, DEBUG_VERBOSE AND DEBUG_EXTRA_VERBOSE will all print as xbmc.DEBUG
+# DEBUG, DEBUG_V AND DEBUG_XV will all print as xbmc.DEBUG
 # messages, however the message text will indicate their debug level.
 
 logging_to_kodi_level = {DISABLED: 100,
-                         FATAL: xbmc.LOGFATAL,
-                         ERROR: xbmc.LOGERROR,
-                         WARNING: xbmc.LOGWARNING,
-                         INFO: xbmc.LOGINFO,
-                         DEBUG_EXTRA_VERBOSE: xbmc.LOGDEBUG,
-                         DEBUG_VERBOSE: xbmc.LOGDEBUG,
-                         DEBUG: xbmc.LOGDEBUG}
+                         FATAL   : xbmc.LOGFATAL,
+                         ERROR   : xbmc.LOGERROR,
+                         WARNING : xbmc.LOGWARNING,
+                         INFO    : xbmc.LOGINFO,
+                         DEBUG_XV: xbmc.LOGDEBUG,
+                         DEBUG_V : xbmc.LOGDEBUG,
+                         DEBUG   : xbmc.LOGDEBUG}
 
 
 def get_kodi_level(logging_level: int) -> int:
@@ -255,15 +255,15 @@ class BasicLogger(Logger):
                 name: str
                 #  xbmc.log(f'unconfiguring {name}')
                 logger: BasicLogger = cls.get_logger(name)
-                # logger.debug_verbose(f'Test logger {name}')
+                # logger.debug_v(f'Test logger {name}')
                 # logger.info(f'Test logger {name} level: {level} INFO')
                 # logger.debug(f'Test logger {name} DEBUG')
                 logger.setLevel(NOTSET)
-                # logger.debug_verbose(f'Test logger log level NOTSET {name}')
+                # logger.debug_v(f'Test logger log level NOTSET {name}')
                 # logger.info(f'Test logger {name} level: {level} INFO')
                 # logger.debug(f'Test logger {name} NOTSET  DEBUG')
                 logger.propagate = True
-                # logger.debug_verbose(f'Test logger {name} propagate TRUE')
+                # logger.debug_v(f'Test logger {name} propagate TRUE')
                 # logger.info(f'Test logger {name} level: {level} INFO')
                 # logger.debug(f'Test logger {name}  propagate TRUE DEBUG')
 
@@ -280,11 +280,11 @@ class BasicLogger(Logger):
             log_level: int
             logger: BasicLogger = cls.get_logger(name)
             logger.setLevel(log_level)
-            # logger.debug_verbose(f'Test logger {name}  redefine level {log_level}')
+            # logger.debug_v(f'Test logger {name}  redefine level {log_level}')
             # logger.info(f'Test logger {name} redefine level: {log_level} INFO')
             # logger.debug(f'Test logger {name}  redefine level DEBUG')
             logger.propagate = False
-            # logger.debug_verbose(f'Test logger {name} propagate FALSE')
+            # logger.debug_v(f'Test logger {name} propagate FALSE')
             # logger.info(f'Test logger {name} level: {log_level} INFO')
             # logger.debug(f'Test logger {name}  propagate FALSE DEBUG')
             if logger.hasHandlers():
@@ -302,7 +302,7 @@ class BasicLogger(Logger):
                 #  logger.debug(f'Test logger {name}')
             #  xbmc.log(f'Updated get: {name} with handlers and get level: '
             #           f'{log_level}, propagate= False')
-            #  logger.debug_verbose(f'Test logger {name} finish config')
+            #  logger.debug_v(f'Test logger {name} finish config')
             #  logger.info(f'Test logger {name} finish config INFO')
             #  logger.debug(f'Test logger {name} finish config')
             cls.debug_level_config[name] = log_level
@@ -455,7 +455,7 @@ class BasicLogger(Logger):
             kwargs['ignore_frames'] = ignore_frames
             self.log(DEBUG, msg, *args, **kwargs)
 
-    def debug_verbose(self, msg: str, *args: Any, **kwargs: Any) -> None:
+    def debug_v(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """
             Convenience method for log(xxx kwargs['level' : xbmc.LOGDEBUG)
         :param msg: Message to log
@@ -463,26 +463,26 @@ class BasicLogger(Logger):
         :param kwargs: str  Meant for Trace usage:
         :return:
         """
-        if self.isEnabledFor(DEBUG_VERBOSE):
+        if self.isEnabledFor(DEBUG_V):
             ignore_frames: int = kwargs.setdefault('ignore_frames', 0) + 1
             kwargs['ignore_frames'] = ignore_frames
 
-        self.log(DEBUG_VERBOSE, msg, *args, **kwargs)
+        self.log(DEBUG_V, msg, *args, **kwargs)
 
-    def debug_extra_verbose(self, msg: str, *args: Any, **kwargs: Any) -> None:
+    def debug_xv(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """
             Convenience method for log(xxx kwargs['level' : xbmc.LOGDEBUG)
         :param msg: Message to log
-        :param args: Any (almost) arbitrary arguments. Typically "msg:", value
+        :param args: Any (almost) arbitrary arguments. Typicaly "msg:", value
         :param kwargs: str  Meant for Trace usage:
         :return:
         """
-        if self.isEnabledFor(DEBUG_EXTRA_VERBOSE):
+        if self.isEnabledFor(DEBUG_XV):
             kwargs.setdefault('ignore_frames', 0)
             ignore_frames = kwargs['ignore_frames'] + 1
             kwargs['ignore_frames'] = ignore_frames
 
-            self.log(DEBUG_EXTRA_VERBOSE, msg, *args, **kwargs)
+            self.log(DEBUG_XV, msg, *args, **kwargs)
 
     def info(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """

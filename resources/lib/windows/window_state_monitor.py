@@ -11,7 +11,7 @@ import xbmc
 import xbmcgui
 
 from common import AbortException, reraise
-from common.logger import BasicLogger, DEBUG_EXTRA_VERBOSE
+from common.logger import BasicLogger, DEBUG_XV
 from common.monitor import Monitor
 from utils import util
 
@@ -725,8 +725,8 @@ class WindowStateMonitor:
                 cls._logger.exception('')
                 break
 
-            # if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-            #     cls._logger.debug_verbose(
+            # if cls._logger.isEnabledFor(DEBUG_V):
+            #     cls._logger.debug_v(
             #             f'Notifying listener: {listener_name}')
             # thread = threading.Thread(
             #         target=listener, name='Monitor.inform_' + listener_name)
@@ -739,11 +739,15 @@ class WindowStateMonitor:
         if hasattr(listener, '__name__'):
             try:
                 listener_name = listener.__name__
+            except AbortException:
+                reraise(*sys.exc_info())
             except:
                 pass
         elif hasattr(listener, 'name'):
             try:
                 listener_name = listener.name
+            except AbortException:
+                reraise(*sys.exc_info())
             except:
                 pass
 

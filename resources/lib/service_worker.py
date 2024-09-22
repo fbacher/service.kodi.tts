@@ -14,11 +14,12 @@ from common import *
 from cache.prefetch_movie_data.seed_cache import SeedCache
 from common.critical_settings import CriticalSettings
 from common.exceptions import ExpiredException
-from common.globals import Globals
+from common.globals import Globals, VoiceHintToggle
 from common.kodi_player_monitor import KodiPlayerMonitor, KodiPlayerState
 from common.logger import *
 from common.message_ids import MessageId
 from common.phrases import Phrase, PhraseList
+from common.strenum import StrEnum
 from utils.util import runInThread
 from windowNavigation.help_manager import HelpManager
 from windows.notice import NoticeDialog
@@ -61,7 +62,8 @@ __version__ = Constants.VERSION
 
 
 class TTSLogger:
-    module_logger: BasicLogger = None
+
+    module_logger: BasicLogger = BasicLogger.get_logger(__name__)
     module_change_cnt: int = 0
 
     @classmethod
@@ -70,9 +72,6 @@ class TTSLogger:
 
         :return:
         """
-        if BasicLogger.change_cnt > cls.module_change_cnt:
-            BasicLogger.change_cnt = cls.module_change_cnt
-            cls.module_logger = BasicLogger.get_logger(__name__)
         return cls.module_logger
 
 
@@ -116,35 +115,35 @@ class TTSClosedException(Exception):
     pass
 
 
-class Commands:
+class Commands(StrEnum):
     """
 
     """
-    DUMP_THREADS: Final[str] = 'DUMP_THREADS'
-    TOGGLE_ON_OFF: Final[str] = 'TOGGLE_ON_OFF'
-    CYCLE_DEBUG: Final[str] = 'CYCLE_DEBUG'
-    VOICE_HINT: Final[str] = 'VOICE_HINT'
-    HELP_DIALOG: Final[str] = 'HELP_DIALOG'
-    INTRODUCTION: Final[str] = 'INTRODUCTION'
-    HELP_CONFIG: Final[str] = 'HELP_CONFIG'
-    RESET: Final[str] = 'RESET'
-    REPEAT: Final[str] = 'REPEAT'
-    EXTRA: Final[str] = 'EXTRA'
-    ITEM_EXTRA: Final[str] = 'ITEM_EXTRA'
-    VOL_UP: Final[str] = 'VOL_UP'
-    VOL_DOWN: Final[str] = 'VOL_DOWN'
-    SPEED_UP: Final[str] = 'SPEED_UP'
-    SLOW_DOWN: Final[str] = 'SLOW_DOWN'
-    STOP: Final[str] = 'STOP'
-    SHUTDOWN: Final[str] = 'SHUTDOWN'
-    SAY: Final[str] = 'SAY'
-    PREPARE_TO_SAY: Final[str] = 'PREPARE_TO_SAY'
-    RELOAD_ENGINE: Final[str] = 'RELOAD_ENGINE'
-    SETTINGS_BACKEND_GUI: Final[str] = 'SETTINGS.BACKEND_GUI'
-    #  SETTINGS_BACKEND_DIALOG: Final[str] = 'SETTINGS.BACKEND_DIALOG'
-    #  SETTINGS_PLAYER_DIALOG: Final[str] = 'SETTINGS.PLAYER_DIALOG'
-    #  SETTINGS_SETTING_DIALOG: Final[str] = 'SETTINGS.SETTING_DIALOG'
-    #  SETTINGS_SETTING_SLIDER: Final[str] = 'SETTINGS.SETTING_SLIDER'
+    DUMP_THREADS = 'DUMP_THREADS'
+    TOGGLE_ON_OFF = 'TOGGLE_ON_OFF'
+    CYCLE_DEBUG = 'CYCLE_DEBUG'
+    VOICE_HINT = 'VOICE_HINT'
+    HELP_DIALOG = 'HELP_DIALOG'
+    INTRODUCTION = 'INTRODUCTION'
+    HELP_CONFIG = 'HELP_CONFIG'
+    RESET = 'RESET'
+    REPEAT = 'REPEAT'
+    EXTRA = 'EXTRA'
+    ITEM_EXTRA = 'ITEM_EXTRA'
+    VOL_UP = 'VOL_UP'
+    VOL_DOWN = 'VOL_DOWN'
+    SPEED_UP = 'SPEED_UP'
+    SLOW_DOWN = 'SLOW_DOWN'
+    STOP = 'STOP'
+    SHUTDOWN = 'SHUTDOWN'
+    SAY = 'SAY'
+    PREPARE_TO_SAY = 'PREPARE_TO_SAY'
+    RELOAD_ENGINE = 'RELOAD_ENGINE'
+    SETTINGS_BACKEND_GUI = 'SETTINGS.BACKEND_GUI'
+    #  SETTINGS_BACKEND_DIALOG = 'SETTINGS.BACKEND_DIALOG'
+    #  SETTINGS_PLAYER_DIALOG = 'SETTINGS.PLAYER_DIALOG'
+    #  SETTINGS_SETTING_DIALOG = 'SETTINGS.SETTING_DIALOG'
+    #  SETTINGS_SETTING_SLIDER = 'SETTINGS.SETTING_SLIDER'
 
 
 class TTSService:
@@ -360,7 +359,7 @@ class TTSService:
         elif command == Commands.CYCLE_DEBUG:
             cls.cycle_debug()
         elif command == Commands.VOICE_HINT:
-            cls.voice_hint()
+            cls.toggle_voice_hint()
         elif command == Commands.HELP_DIALOG:
             cls.help()
         elif command == Commands.INTRODUCTION:
@@ -416,8 +415,8 @@ class TTSService:
                     TTSLogger.logger().debug(f'incoming text EXPIRED on arrival')
         elif command == Commands.SETTINGS_BACKEND_GUI:
             if cls._is_configuring:
-                if TTSLogger.logger().isEnabledFor(DEBUG_VERBOSE):
-                    TTSLogger.logger().debug_verbose(
+                if TTSLogger.logger().isEnabledFor(DEBUG_V):
+                    TTSLogger.logger().debug_v(
                             "Ignoring Duplicate SETTINGS_BACKEND_GUI")
             else:
                 try:
@@ -463,7 +462,7 @@ class TTSService:
         #     cls.autoItemExtra = Settings.get_auto_item_extra_delay(2)
 
     @classmethod
-    def voice_hint(cls):
+    def toggle_voice_hint(cls):
         """
 
         :return:
@@ -473,8 +472,11 @@ class TTSService:
 
         :return:
         """
-        Globals.voice_hint = not Globals.voice_hint
-        WindowStateMonitor.revoice_current_focus()
+        Globals.voice_hint.toggle_value()
+        phrase: Phrase = Phrase(text=Globals.voice_hint.get_msg(), interrupt=True)
+        phrases: PhraseList = PhraseList()
+        phrases.append(phrase)
+        cls.queueNotice(phrases)
 
     @classmethod
     def config_settings(cls):
@@ -609,12 +611,16 @@ class TTSService:
         :return:
         """
         try:
-            if TTSLogger.logger().isEnabledFor(DEBUG_VERBOSE):
-                TTSLogger.logger().debug_verbose(f'phrases: {len(phrases)} phrase: '
+            if Globals.using_new_reader:
+                cls.sayText(phrases)
+                return
+
+            if TTSLogger.logger().isEnabledFor(DEBUG_V):
+                TTSLogger.logger().debug_v(f'phrases: {len(phrases)} phrase: '
                                                  f'{phrases[0]}')
             if phrases[0].get_interrupt():
-                if TTSLogger.logger().isEnabledFor(DEBUG_VERBOSE):
-                    TTSLogger.logger().debug_verbose(f'INTERRUPT: clearing NoticeQueue')
+                if TTSLogger.logger().isEnabledFor(DEBUG_V):
+                    TTSLogger.logger().debug_v(f'INTERRUPT: clearing NoticeQueue')
                 cls.clearNoticeQueue()
             while not Monitor.exception_on_abort(timeout=0.01):
                 try:
@@ -657,8 +663,8 @@ class TTSService:
                     if TTSLogger.logger().isEnabledFor(DEBUG):
                         TTSLogger.logger().debug(f'Phrase EXPIRED: {phrases[0]}')
                     continue
-                if TTSLogger.logger().isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                    TTSLogger.logger().debug_extra_verbose(
+                if TTSLogger.logger().isEnabledFor(DEBUG_XV):
+                    TTSLogger.logger().debug_xv(
                         f'# phrases: {len(phrases)} {phrases}')
                 cls.sayText(phrases)
             except ExpiredException:
@@ -785,6 +791,11 @@ class TTSService:
         #  TTSLogger.logger().debug(f'{window_state.verbose}')
         # TTSLogger.logger().debug(f'TTSService initialized. Now waiting for events'
         #                   f'stop: {cls.stop} readerOn: {cls.readerOn}')
+        try:
+            Monitor.exception_on_abort(timeout=0.001)
+        except AbortException:
+            cls.shutdown()
+            reraise(*sys.exc_info())
         try:
             current_window_id: int = window_state.window_id
             cls.window_state = window_state
@@ -971,8 +982,8 @@ class TTSService:
             result = cls._previous_secondary_text != ''
         else:
             result = not phrases[0].text_equals(cls._previous_secondary_text)
-        if TTSLogger.logger().isEnabledFor(DEBUG_VERBOSE):
-            TTSLogger.logger().debug_verbose(f'previous_secondary_text:'
+        if TTSLogger.logger().isEnabledFor(DEBUG_V):
+            TTSLogger.logger().debug_v(f'previous_secondary_text:'
                                       f' {cls._previous_secondary_text} '
                                       f'phrases: {phrases} result: {result}')
         return result
@@ -1031,9 +1042,9 @@ class TTSService:
                                   f'reader: {cls.windowReader.__class__.__name__}')
             secondary.clear()
 
-        if TTSLogger.logger().isEnabledFor(DEBUG_VERBOSE):
+        if TTSLogger.logger().isEnabledFor(DEBUG_V):
             if not phrases.is_empty() or compare != '' or len(secondary) > 0:
-                TTSLogger.logger().debug_verbose(f'control_id: {cls.current_control_id} '
+                TTSLogger.logger().debug_v(f'control_id: {cls.current_control_id} '
                                           f'phrases: {phrases} '
                                           f'compare: {compare} secondary: {secondary} '
                                           f'previous_secondaryText: '
@@ -1048,8 +1059,8 @@ class TTSService:
                 TTSLogger.logger().debug('ends_with')
             secondary.clear()
 
-        if TTSLogger.logger().isEnabledFor(DEBUG_EXTRA_VERBOSE):
-            TTSLogger.logger().debug_extra_verbose(f'newN: {newN} newW: {newW} newC: {newC}'
+        if TTSLogger.logger().isEnabledFor(DEBUG_XV):
+            TTSLogger.logger().debug_xv(f'newN: {newN} newW: {newW} newC: {newC}'
                                             f' newD: {newD}')
 
         if cls.is_primary_text_changed(phrases) or newC:
@@ -1087,8 +1098,8 @@ class TTSService:
         if monitored:
             try:
                 phrases: PhraseList = PhraseList.create(monitored, interrupt=True)
-                if TTSLogger.logger().isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                    TTSLogger.logger().debug_extra_verbose(
+                if TTSLogger.logger().isEnabledFor(DEBUG_XV):
+                    TTSLogger.logger().debug_xv(
                         f'# phrases: {len(phrases)} texts: {phrases}')
                 cls.sayText(phrases)
             except ExpiredException:
@@ -1131,8 +1142,8 @@ class TTSService:
         phrases: PhraseList = PhraseList()
         success: bool = cls.windowReader.getWindowExtraTexts(phrases)
         try:
-            if TTSLogger.logger().isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                TTSLogger.logger().debug_extra_verbose(
+            if TTSLogger.logger().isEnabledFor(DEBUG_XV):
+                TTSLogger.logger().debug_xv(
                     f'# texts: {len(phrases)} phrases: {phrases}')
             cls.sayText(phrases)
         except ExpiredException:
@@ -1155,8 +1166,8 @@ class TTSService:
             return
         phrases.set_interrupt(interrupt)
         try:
-            if TTSLogger.logger().isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                TTSLogger.logger().debug_extra_verbose(f'# phrases: {len(phrases)} '
+            if TTSLogger.logger().isEnabledFor(DEBUG_XV):
+                TTSLogger.logger().debug_xv(f'# phrases: {len(phrases)} '
                                                 f'phrase: {phrases}')
             if not phrases.is_empty():
                 if TTSLogger.logger().isEnabledFor(DEBUG):
@@ -1183,23 +1194,21 @@ class TTSService:
         # TTSLogger.logger().debug(f'engine: {cls.instance.active_backend.backend_id}')
         # TTSLogger.logger().debug(f'engine from settings: {Settings.get_engine_id()}')
         if KodiPlayerMonitor.player_status == KodiPlayerState.PLAYING_VIDEO:
-            if TTSLogger.logger().isEnabledFor(DEBUG_VERBOSE):
-                TTSLogger.logger().debug_verbose('Ignoring text, PLAYING_VIDEO')
+            if TTSLogger.logger().isEnabledFor(DEBUG_V):
+                TTSLogger.logger().debug_v('Ignoring text, PLAYING_VIDEO')
             return
         if phrases.is_empty():
-            if TTSLogger.logger().isEnabledFor(DEBUG_VERBOSE):
-                TTSLogger.logger().debug_verbose('Empty phrases')
+            if TTSLogger.logger().isEnabledFor(DEBUG_V):
+                TTSLogger.logger().debug_v('Empty phrases')
             return
 
         if cls.get_tts().dead:
             return cls.fallbackTTS(cls.get_tts().deadReason)
         try:
-            if TTSLogger.logger().isEnabledFor(DEBUG_VERBOSE):
-                TTSLogger.logger().debug_verbose(f'sayText # phrases: {len(phrases)} '
-                                          f'{phrases} '
-                                          f'interrupt: {str(phrases[0].get_interrupt())} '
-                                          f'preload: {str(preload_cache)}')
-                TTSLogger.logger().debug_verbose(phrases[0].get_debug_info())
+            if TTSLogger.logger().isEnabledFor(DEBUG_V):
+                if phrases[0].get_interrupt():
+                    TTSLogger.module_logger.debug_v(f'INTERRUPT {phrases}')
+                TTSLogger.logger().debug_v(phrases[0].get_debug_info())
 
             phrases.set_all_preload_cache(preload_cache)
             phrases.enable_check_expired()
@@ -1350,10 +1359,10 @@ class TTSService:
             success = cls.windowReader.getWindowTexts(phrases)
             if success:
                 phrases[numb_phrases].set_pre_pause(Phrase.PAUSE_NORMAL)
-            if TTSLogger.logger().isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                TTSLogger.logger().debug_extra_verbose(
+            if TTSLogger.logger().isEnabledFor(DEBUG_XV):
+                TTSLogger.logger().debug_xv(
                         f'# phrases: {len(phrases)} texts: {phrases}')
-                TTSLogger.logger().debug_extra_verbose(phrases[0].get_debug_info())
+                TTSLogger.logger().debug_xv(phrases[0].get_debug_info())
             if TTSLogger.logger().isEnabledFor(DEBUG):
                 TTSLogger.logger().debug(f'Say: {phrases}')
             cls.sayText(phrases)
@@ -1378,8 +1387,8 @@ class TTSService:
         control_id: int = cls.current_control_id
         try:
             control_id = abs(cls.window(window_state).getFocusId())
-            if TTSLogger.logger().isEnabledFor(DEBUG_VERBOSE):
-                TTSLogger.logger().debug_verbose(f'CHECK Focus control_id: {control_id}')
+            if TTSLogger.logger().isEnabledFor(DEBUG_V):
+                TTSLogger.logger().debug_v(f'CHECK Focus control_id: {control_id}')
             control = xbmc.getInfoLabel("System.CurrentControl()")
         except AbortException:
             reraise(*sys.exc_info())
@@ -1412,21 +1421,22 @@ class TTSService:
             phrases: PhraseList = PhraseList()
             success = cls.windowReader.getControlDescription(
                     cls.current_control_id, phrases)
-            if TTSLogger.logger().isEnabledFor(DEBUG_VERBOSE):
-                TTSLogger.logger().debug_verbose(f'CHECK: checkControlDescription: {phrases} '
+            if TTSLogger.logger().isEnabledFor(DEBUG_V):
+                TTSLogger.logger().debug_v(f'CHECK: checkControlDescription: {phrases} '
                                           f'reader:'
                                           f' {cls.windowReader.__class__.__name__}')
+            # Checks to see if any item # needs to be voiced, etc.
             success: bool = cls.windowReader.getControlPostfix(cls.current_control_id,
                                                                phrases)
             if not success:
-                if TTSLogger.logger().isEnabledFor(DEBUG_VERBOSE):
-                    TTSLogger.logger().debug_verbose(f'CHECK ControlPostfix: {phrases}   '
+                if TTSLogger.logger().isEnabledFor(DEBUG_V):
+                    TTSLogger.logger().debug_v(f'CHECK ControlPostfix: {phrases}   '
                                   f'reader: {cls.windowReader.__class__.__name__}')
             if phrases.is_empty():
                 return newW
 
-            if TTSLogger.logger().isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                TTSLogger.logger().debug_extra_verbose(
+            if TTSLogger.logger().isEnabledFor(DEBUG_XV):
+                TTSLogger.logger().debug_xv(
                     f'previous_control_id: {cls.current_control_id} '
                     f'# phrases: {len(phrases)} '
                     f'texts: {phrases}')
@@ -1504,13 +1514,13 @@ class TTSService:
             phrase: Phrase = phrases[0]
             if phrase.get_text().endswith('%'):
                 # Get just the percent part, so we don't keep saying downloading
-                if TTSLogger.logger().isEnabledFor(DEBUG_VERBOSE):
-                    TTSLogger.logger().debug_verbose(f'secondary text with %: {phrase.get_text()}')
+                if TTSLogger.logger().isEnabledFor(DEBUG_V):
+                    TTSLogger.logger().debug_v(f'secondary text with %: {phrase.get_text()}')
                 text: str = phrase.get_text().rsplit(' ', 1)[-1]
                 phrase.set_text(text)
             try:
-                if TTSLogger.logger().isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                    TTSLogger.logger().debug_extra_verbose(
+                if TTSLogger.logger().isEnabledFor(DEBUG_XV):
+                    TTSLogger.logger().debug_xv(
                         f'# phrases: {len(phrases)} texts: {phrases}')
                 cls.sayText(phrases)
             except ExpiredException:

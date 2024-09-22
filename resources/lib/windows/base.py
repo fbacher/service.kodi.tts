@@ -9,6 +9,7 @@ from common import *
 from common.constants import Constants
 from common.logger import *
 from common.logger import BasicLogger
+from common.message_ids import MessageId
 from common.messages import Messages
 from common.phrases import Phrase, PhraseList
 from . import guitables, skintables, windowparser
@@ -118,9 +119,9 @@ class WindowReaderBase(WindowHandlerBase):
         if numItems:
             tmp: str = ''
             if numItems == 1:
-                tmp = Messages.get_msg(Messages.ITEM)
+                tmp = MessageId.ITEM_WITH_NUMBER.get_formatted_msg(numItems)
             else:
-                tmp = Messages.get_msg(Messages.ITEMS)
+                tmp = MessageId.ITEMS_WITH_NUMBER.get_formatted_msg(numItems)
             phrase: Phrase = Phrase(text=tmp, pre_pause_ms=Phrase.PAUSE_NORMAL)
             phrases.add_text(texts=tmp, pre_pause_ms=Phrase.PAUSE_NORMAL)
         return True
@@ -195,39 +196,39 @@ class DefaultWindowReader(WindowReaderBase):
         success: bool = False
         if self.slideoutHasFocus():
             success = self.getSlideoutText(control_id, phrases)
-            if not success and clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                clz._logger.debug_extra_verbose(f'slideoutHasFocus: {success}')
+            if not success and clz._logger.isEnabledFor(DEBUG_XV):
+                clz._logger.debug_xv(f'slideoutHasFocus: {success}')
             return True   # TODO: Change?
         if control_id is None:
-            if clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                clz._logger.debug_verbose(f'control_id {control_id} not found')
+            if clz._logger.isEnabledFor(DEBUG_XV):
+                clz._logger.debug_v(f'control_id {control_id} not found')
             return False
         text: str | None = xbmc.getInfoLabel('ListItem.Title')
         text2: str | None = None
 
-        if text and clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-            clz._logger.debug_extra_verbose(f'text: |{text}|')
+        if text and clz._logger.isEnabledFor(DEBUG_XV):
+            clz._logger.debug_xv(f'text: |{text}|')
 
         if text == '':
             text = xbmc.getInfoLabel(f'Container({control_id}).ListItem.Label')
             text2 = xbmc.getInfoLabel(f'Container({control_id}).ListItem.Label2')
-            if text and clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                clz._logger.debug_extra_verbose(f'text: {text} text2: {text2}')
+            if text and clz._logger.isEnabledFor(DEBUG_XV):
+                clz._logger.debug_xv(f'text: {text} text2: {text2}')
         if text == '':
             text = xbmc.getInfoLabel(f'Control.GetLabel({control_id})')
             #  clz._logger.debug(f'Control.GetLabel: {text}')
-            if text is not None and clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                clz._logger.debug_extra_verbose(f'text: {text}')
+            if text is not None and clz._logger.isEnabledFor(DEBUG_XV):
+                clz._logger.debug_xv(f'text: {text}')
         if text == '':
             text = xbmc.getInfoLabel('System.CurrentControl')
-            if text and clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                clz._logger.debug_extra_verbose(f'text: {text}')
+            if text and clz._logger.isEnabledFor(DEBUG_XV):
+                clz._logger.debug_xv(f'text: {text}')
         if text == '':
             return False
         text_id: str = (f"{text}{xbmc.getInfoLabel('ListItem.StartTime')}"
                         f"{xbmc.getInfoLabel('ListItem.EndTime')}")
-        if text and clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-            clz._logger.debug_extra_verbose(f'text_id: {text_id}')
+        if text and clz._logger.isEnabledFor(DEBUG_XV):
+            clz._logger.debug_xv(f'text_id: {text_id}')
         texts: List[str] = [text]
         if text2 is not None:
             texts.append(text2)
@@ -241,8 +242,8 @@ class DefaultWindowReader(WindowReaderBase):
     def getSecondaryText(self, phrases: PhraseList) -> bool:
         clz = type(self)
         success: bool = guitables.getListItemProperty(self.winID, phrases)
-        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose(f'secondaryText: {phrases}')
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v(f'secondaryText: {phrases}')
         return success
 
     def getItemExtraTexts(self, phrases: PhraseList, control_id: int) -> bool:

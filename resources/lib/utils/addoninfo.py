@@ -26,12 +26,12 @@ def getAddonsMD5():
 
 
 def saveAddonsMD5(md5):
-    module_logger.debug_verbose('addoninfo.saveAddonsMD5')
+    module_logger.debug_v('addoninfo.saveAddonsMD5')
     Settings.set_addons_md5(md5)
 
 
 def loadAddonsMD5():
-    module_logger.debug_verbose('addoninfo.loadAddonsMD5')
+    module_logger.debug_v('addoninfo.loadAddonsMD5')
     return Settings.get_addons_md5()
 
 

@@ -14,6 +14,8 @@ import xbmc
 import xbmcaddon
 import xbmcvfs
 
+from common.debug import Debug
+
 '''
 addon = xbmcaddon.Addon('service.kodi.tts')
 all_settings: xbmcaddon.Settings = addon.getSettings()
@@ -47,13 +49,15 @@ DEBUG_VERBOSE: Final[int] = 8
 DEBUG_EXTRA_VERBOSE: Final[int] = 6
 
 
-# Default logging is info, otherwise debug_verbose
+# Default logging is info, otherwise debug_v
 definitions = {
     'tts': logging.INFO,
+    'tts.backends': logging.DEBUG,
     'tts.gui': DEBUG_VERBOSE,
     'tts.windows': logging.DEBUG,
     'tts.windows.custom_tts': DEBUG_VERBOSE,
     'tts.gui.parser': logging.INFO,
+    'tts.service_worker': DEBUG_VERBOSE,
     'tts.windowNavigation.help_dialog': logging.DEBUG
             }
 xbmc.log(f'configuring debug_levels INFO: {logging.INFO} DEBUG: {logging.DEBUG} '
@@ -65,8 +69,8 @@ xbmc.log(f'Using service_worker')
 service_worker_logger: BasicLogger = BasicLogger.get_logger(f'tts.service_worker')
 service_worker_logger.info('hi info')
 service_worker_logger.debug(f'hi debug')
-service_worker_logger.debug_verbose(f'hi verbose')
-service_worker_logger.debug_extra_verbose(f'hi extra verbose')
+service_worker_logger.debug_v(f'hi verbose')
+service_worker_logger.debug_xv(f'hi extra verbose')
 
 from common import *
 from common.minimal_monitor import MinimalMonitor
@@ -276,7 +280,7 @@ class MainThreadLoop:
             MinimalMonitor.exception_on_abort(timeout=timeout)
 
         except AbortException:
-            reraise(*sys.exc_info())
+            return
         except Exception as e:
             # xbmc.log('xbmc.log Exception: ' + str(e), xbmc.LOGERROR)
             module_logger.exception(e)
@@ -291,6 +295,8 @@ class MainThreadLoop:
             cls.thread.start()
             from common.garbage_collector import GarbageCollector
             GarbageCollector.add_thread(cls.thread)
+        except AbortException:
+            reraise(*sys.exc_info())
         except Exception as e:
             xbmc.log('Exception: ' + str(e), xbmc.LOGERROR)
             module_logger.exception('')
@@ -312,6 +318,7 @@ if __name__ == '__main__':
     except Exception as e:
         module_logger.exception('')
     try:
+        Debug.dump_all_threads()
         pending_threads: int = GarbageCollector.reap_the_dead()
         tmp_path: str = xbmcvfs.translatePath("special://home/temp/kodi.threads")
         debug_file = io.open(tmp_path,
@@ -320,6 +327,7 @@ if __name__ == '__main__':
                              newline=None,
                              encoding='ASCII')
         for tries in range(0, 10):
+            Debug.dump_all_threads()
             #  pending_threads: int = GarbageCollector.reap_the_dead()
             pending_threads: int = 0
             for a_thread in threading.enumerate():

@@ -110,7 +110,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         else:
             self.getEngineInstance(engine_id=initial_backend)
 
-        self._logger.debug_extra_verbose('SettingsDialog.__init__')
+        self._logger.debug_xv('SettingsDialog.__init__')
         self.header: ControlLabel | None = None
         self.engine_tab: ControlRadioButton | None = None
         self.options_tab: ControlButton | None = None
@@ -164,7 +164,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         """
         # super().onInit()
         clz = type(self)
-        self._logger.debug_verbose('SettingsDialog.onInit')
+        self._logger.debug_v('SettingsDialog.onInit')
         try:
             if not self._initialized:
                 self.header = self.get_control_label(clz.HEADER_LABEL)
@@ -484,7 +484,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
         :return:
         """
-        self._logger.debug_verbose('SettingsDialog.show')
+        self._logger.debug_v('SettingsDialog.show')
         super().show()
 
     def close(self) -> None:
@@ -522,7 +522,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 matches = action_mapper.getKeyIDInfo(action)
 
                 # for line in matches:
-                #     self._logger.debug_extra_verbose(line)
+                #     self._logger.debug_xv(line)
 
                 button_code: int = action.getButtonCode()
                 # These return empty string if not found
@@ -543,10 +543,10 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                     key_codes.append(remote_key_id)
                 if len(key_codes) == 0:
                     key_codes.append(str(action_button))
-                # self._logger.debug_extra_verbose(
+                # self._logger.debug_xv(
                 #         f'Key found: {",".join(key_codes)}')
 
-            #  self._logger.debug_verbose(f'action_id: {action_id}')
+            #  self._logger.debug_v(f'action_id: {action_id}')
             if (action_id == xbmcgui.ACTION_PREVIOUS_MENU
                     or action_id == xbmcgui.ACTION_NAV_BACK):
                 exit_dialog = True
@@ -564,12 +564,12 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             return
 
         try:
-            self._logger.debug_verbose(
+            self._logger.debug_v(
                     'SettingsDialog.onClick id: {:d}'.format(controlId))
             focus_id = self.getFocusId()
-            self._logger.debug_verbose('FocusId: ' + str(focus_id))
+            self._logger.debug_v('FocusId: ' + str(focus_id))
             if controlId == 100:
-                self._logger.debug_verbose('Button 100 pressed')
+                self._logger.debug_v('Button 100 pressed')
                 self.engine_tab.setSelected(True)
                 # self.options_group.setVisible(False)
                 # self.keymap_group.setVisible(False)
@@ -577,7 +577,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 # self.engine_group.setVisible(True)
 
             elif controlId == 200:
-                self._logger.debug_verbose('Button 200 pressed')
+                self._logger.debug_v('Button 200 pressed')
                 self.engine_tab.setSelected(False)
                 # self.engine_group.setVisible(False)
                 # self.keymap_group.setVisible(False)
@@ -585,7 +585,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 # self.options_group.setVisible(True)
 
             elif controlId == 300:
-                self._logger.debug_verbose('Button 300 pressed')
+                self._logger.debug_v('Button 300 pressed')
                 self.engine_tab.setSelected(False)
                 # self.engine_group.setVisible(False)
                 # self.options_group.setVisible(False)
@@ -593,7 +593,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 # self.keymap_group.setVisible(True)
 
             elif controlId == 400:
-                self._logger.debug_verbose('Button 400 pressed')
+                self._logger.debug_v('Button 400 pressed')
                 self.engine_tab.setSelected(False)
                 # self.engine_group.setVisible(False)
                 # self.options_group.setVisible(False)
@@ -683,7 +683,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         :return:
         """
         try:
-            self._logger.debug_verbose('getEngineChoices')
+            self._logger.debug_v('getEngineChoices')
             auto_choice_label = Messages.get_msg(Messages.AUTO)
             choices: List[xbmcgui.ListItem] = list()
             list_item = xbmcgui.ListItem(auto_choice_label)
@@ -716,7 +716,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             if current_choice_index < 0:
                 current_choice_index = 0
             script_path = Constants.ADDON_PATH
-            self._logger.debug_verbose(
+            self._logger.debug_v(
                     f'SettingsDialog ADDON_PATH: {Constants.ADDON_PATH}')
             selection_dialog = SelectionDialog('selection-dialog.xml',
                                                script_path, 'Default',
@@ -728,14 +728,14 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             selection_dialog.show()
             selection_dialog.doModal()
             idx = selection_dialog.getCurrentListPosition()
-            self._logger.debug_verbose(f'SelectionDialog value: '
+            self._logger.debug_v(f'SelectionDialog value: '
                                        f'{Messages.get_msg(Messages.CHOOSE_BACKEND)} '
                                        f'idx: {str(idx)}')
             if idx < 0:
                 return None
 
             engine_list_item: ListItem = choices[idx]
-            self._logger.debug_verbose(
+            self._logger.debug_v(
                 f'selectEngine value: {engine_list_item.getLabel()} idx: {str(idx)}')
             self.engine_engine_value.setLabel(engine_list_item.getLabel())
             new_engine = engine_list_item.getLabel2()
@@ -847,11 +847,11 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                                                initial_choice=current_choice_index)
 
             selection_dialog.show()
-            self._logger.debug_verbose('SelectionDialog doModal start')
+            self._logger.debug_v('SelectionDialog doModal start')
             selection_dialog.doModal()
-            self._logger.debug_verbose('SelectionDialog doModal finished')
+            self._logger.debug_v('SelectionDialog doModal finished')
             idx = selection_dialog.getCurrentListPosition()
-            self._logger.debug_verbose('SelectionDialog value:',
+            self._logger.debug_v('SelectionDialog value:',
                                        Messages.get_msg(Messages.SELECT_LANGUAGE),
                                        'idx:', str(idx))
             if idx < 0:
@@ -859,7 +859,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
             language = choices[idx].getLabel()
             locale = choices[idx].getLabel2()
-            self._logger.debug_verbose('select_language value: {} setting: {} idx: {:d}'
+            self._logger.debug_v('select_language value: {} setting: {} idx: {:d}'
                                        .format(language, locale, idx))
 
             self.engine_language_value.setLabel(language)
@@ -951,14 +951,14 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             selection_dialog.show()
             selection_dialog.doModal()
             idx = selection_dialog.getCurrentListPosition()
-            self._logger.debug_verbose(
+            self._logger.debug_v(
                     'SelectionDialog voice idx: {}'.format(str(idx)))
             if idx < 0:
                 return
 
             voice = choices[idx].getLabel()
             voice_id = choices[idx].getLabel2()
-            self._logger.debug_verbose('select_voice value: {} setting: {} idx: {:d}'
+            self._logger.debug_v('select_voice value: {} setting: {} idx: {:d}'
                                        .format(voice, voice_id, idx))
 
             self.engine_voice_value.setLabel(voice)
@@ -1113,7 +1113,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             gender_li: ListItem = choices[idx]
             gender_id: int = int(gender_li.getLabel2())
             gender_label = Genders.get_label(gender_id)
-            self._logger.debug_verbose(f'select_gender value: {gender_label} '
+            self._logger.debug_v(f'select_gender value: {gender_label} '
                                        f'setting: {gender_id} idx: {idx:d}')
             self.engine_gender_value.setLabel(gender_label)
             self.setSetting(SettingsProperties.GENDER, gender_id)
@@ -1191,7 +1191,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
             player_label = choices[idx].getLabel()
             player_id = choices[idx].getLabel2()
-            self._logger.debug_verbose('select_player value: {} setting: {} idx: {:d}'
+            self._logger.debug_v('select_player value: {} setting: {} idx: {:d}'
                                        .format(player_label, player_id, idx))
 
             self.engine_player_value.setLabel(player_label)
@@ -1317,7 +1317,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
             module_label = choices[idx].getLabel()
             module_id = choices[idx].getLabel2()
-            self._logger.debug_verbose('value: {} setting: {} idx: {:d}'
+            self._logger.debug_v('value: {} setting: {} idx: {:d}'
                                        .format(module_label, module_id, idx))
 
             self.engine_module_value.setLabel(module_label)

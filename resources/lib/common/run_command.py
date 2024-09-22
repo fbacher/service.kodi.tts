@@ -164,8 +164,8 @@ class RunCommand:
             if self.rc != 0:
                 clz.logger.debug(
                         f'ffmpeg failed for {self.movie_name} rc: {self.rc}')
-            if clz.logger.isEnabledFor(DEBUG_VERBOSE):
+            if clz.logger.isEnabledFor(DEBUG_V):
                 stdout = '\n'.join(self.stdout_lines)
-                clz.logger.debug_verbose(f'STDOUT: {stdout}')
+                clz.logger.debug_v(f'STDOUT: {stdout}')
                 stderr = '\n'.join(self.stderr_lines)
-                clz.logger.debug_verbose(f'STDERR: {stderr}')
+                clz.logger.debug_v(f'STDERR: {stderr}')

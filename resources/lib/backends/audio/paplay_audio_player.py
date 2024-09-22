@@ -34,7 +34,7 @@ class PaplayAudioPlayer(SubprocessAudioPlayer):
             # Convert dB to paplay value
             args[args.index(None)] = str(
                     int(65536 * (10 ** (self.volume / 20.0))))
-            self._logger.debug_verbose(f'args: {" ".join(args)}')
+            self._logger.debug_v(f'args: {" ".join(args)}')
         return args
 
     def canSetVolume(self):

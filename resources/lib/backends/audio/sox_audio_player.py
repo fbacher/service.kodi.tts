@@ -47,7 +47,7 @@ class SOXAudioPlayer(SubprocessAudioPlayer):
         if self.speed:
             args.extend(self._speedArgs)
             args[args.index(None)] = self.speedArg(self.speed)
-        self._logger.debug_verbose(f'args: {" ".join(args)}')
+        self._logger.debug_v(f'args: {" ".join(args)}')
         return args
 
     def canSetVolume(self):

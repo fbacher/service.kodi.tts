@@ -2,7 +2,7 @@
 
 from typing import Callable, List
 
-from common.logger import BasicLogger, DEBUG_VERBOSE
+from common.logger import BasicLogger, DEBUG_V
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
 from gui.base_tags import (control_elements, ControlElement, Item)
@@ -87,8 +87,8 @@ class FocusedLayoutModel(BaseModel):
         """
         clz = FocusedLayoutModel
         list_items: List[str] = []
-        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose(f'# children: {len(self.children)}')
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v(f'# children: {len(self.children)}')
         for layout_item in self.children:
             layout_item: LabelModel
             #  clz._logger.debug(f'item: {layout_item} visible: {layout_item.is_visible()}')

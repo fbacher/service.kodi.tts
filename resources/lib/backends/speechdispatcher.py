@@ -194,7 +194,7 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
             self.speechdObject.set_pitch(pitch)
             vol: int = int(clz.getEngineVolume())
             self.speechdObject.set_volume(vol)
-            clz._logger.debug_verbose(f'module: {module} voice: {voice} volume: {vol} '
+            clz._logger.debug_v(f'module: {module} voice: {voice} volume: {vol} '
                                       f'speed: {rate} pitch: {pitch}')
         except SSIPCommunicationError:
             self._logger.exception('SpeechDispatcher')

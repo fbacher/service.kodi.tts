@@ -4,7 +4,7 @@ from typing import Callable, List
 
 import xbmc
 
-from common.logger import BasicLogger, DEBUG_VERBOSE
+from common.logger import BasicLogger, DEBUG_V
 from common.messages import Messages
 from common.phrases import Phrase
 from gui.base_label_model import BaseLabelModel
@@ -85,8 +85,8 @@ class RadioButtonModel(BaseLabelModel):
             self.topic = RadioButtonTopicModel(self, parsed_radio_button.topic)
         else:
             self.topic = NoRadioButtonTopicModel(self)
-            if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                clz._logger.debug_verbose(f'# parsed children: '
+            if clz._logger.isEnabledFor(DEBUG_V):
+                clz._logger.debug_v(f'# parsed children: '
                                           f'{len(parsed_radio_button.get_children())}')
         for child in parsed_radio_button.children:
             child: BaseParser

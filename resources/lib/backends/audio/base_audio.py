@@ -51,7 +51,7 @@ class AudioPlayer(IPlayer, BaseServices):
         tmpfs = utils.getTmpfs()
         if Settings.getSetting(SettingsProperties.USE_TEMPFS,
                                SettingsProperties.TTS_SERVICE, True) and tmpfs:
-            #  cls._logger.debug_extra_verbose(f'Using tmpfs at: {tmpfs}')
+            #  cls._logger.debug_xv(f'Using tmpfs at: {tmpfs}')
             cls.sound_dir = os.path.join(tmpfs, 'kodi_speech')
         else:
             cls.sound_dir = os.path.join(Constants.PROFILE_PATH, 'kodi_speech')
@@ -234,7 +234,7 @@ class SubprocessAudioPlayer(AudioPlayer):
         Monitor.exception_on_abort()
         clz = type(self)
         pipe_args: List[str] = list(self.get_pipe_args())
-        # clz._logger.debug_verbose(f'pipeArgs: {" ".join(pipe_args)}')
+        # clz._logger.debug_v(f'pipeArgs: {" ".join(pipe_args)}')
         try:
             self._player_busy = True
             stop_on_play: bool = not phrase.speak_over_kodi
@@ -249,7 +249,7 @@ class SubprocessAudioPlayer(AudioPlayer):
                                                      name='mplayer',
                                                      stop_on_play=stop_on_play)
             # shutil.copyfileobj(source, self._player_process.stdin)
-            # clz._logger.debug_verbose(
+            # clz._logger.debug_v(
             #         f'START Running player to voice PIPE args: {" ".join(pipe_args)}')
             self._player_process.run_cmd()
         except subprocess.CalledProcessError as e:
@@ -398,7 +398,7 @@ class SubprocessAudioPlayer(AudioPlayer):
                                                     delete_after_run=delete_after_run,
                                                     name='mplayer',
                                                     stop_on_play=stop_on_play)
-            clz._logger.debug_verbose(
+            clz._logger.debug_v(
                     f'START Running player to voice NOW args: {" ".join(args)}')
             self._player_process.run_cmd()
         except subprocess.CalledProcessError:

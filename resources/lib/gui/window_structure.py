@@ -1,12 +1,13 @@
 # coding=utf-8
-
+import sys
 import xml.etree.ElementTree as ET
 from logging import DEBUG
 from typing import Dict, ForwardRef, List, Tuple, Union
 
 import xbmc
 
-from common.logger import BasicLogger, DEBUG_VERBOSE, DISABLED
+from common import AbortException, reraise
+from common.logger import BasicLogger, DEBUG_V, DISABLED
 from gui import ParseError
 from gui.i_model import IModel
 
@@ -46,6 +47,9 @@ class WindowStructure:
 
         self.window: IModel = window
         window.window_struct = self
+        clz._logger.debug(f'window: {window} windialog_state: {window.windialog_state}')
+        self._windialog_state: WinDialogState = window.windialog_state
+
         topic_id: str = ''
         if window.topic is not None:
             topic_id = window.topic.name
@@ -59,7 +63,6 @@ class WindowStructure:
         self.topic_by_tree_id: Dict[str, BaseTopicModel] = {}
         self.topic_by_topic_name: Dict[str, BaseTopicModel] = {}
         #  self.ordered_topics_by_name: Dict[str, BaseTopicModel] = {}
-        self._windialog_state: WinDialogState = None
 
         """
           Map of all Controls in Window, indexed by it's 'tree_id'.
@@ -85,6 +88,20 @@ class WindowStructure:
         self.test_window_id_map()
         self.test_get_control_and_topic_for_id()
         clz._logger.debug(f'Finished WindowStructure init')
+
+    def _destroy(self):
+        clz = type(self)
+        del clz._logger
+        del clz._window_struct_map
+        del self.window
+        del clz._window_struct_map
+        del self._root_topic
+        del self.window_topic_id
+        del self.test_node_list
+        del self.topic_by_tree_id
+        del self.topic_by_topic_name
+        del self.window_id_map
+        del self._model_for_control_id
 
     def set_windialog_state(self, windialog_state: WinDialogState) -> None:
         self._windialog_state: WinDialogState = windialog_state
@@ -172,7 +189,7 @@ class WindowStructure:
             clz._logger.debug(f'UNREAL TOPIC: {node.topic} control_id:'
                               f' {node.control_id} node: {node}')
 
-        clz._logger.debug_verbose(
+        clz._logger.debug_v(
                 f'topic: {topic_str} '
                 f' control_id: {node.control_id}'
                 f' parent: {node}')
@@ -212,7 +229,7 @@ class WindowStructure:
 
                 clz._logger.debug(f'Adding topic: {node.topic.name} id:'
                                   f' {node.tree_id}')
-                clz._logger.debug_verbose(f'{node.topic}\n{node.topic.parent}')
+                clz._logger.debug_v(f'{node.topic}\n{node.topic.parent}')
 
                 if node.topic.name in self.topic_by_topic_name.keys():
                     raise ET.ParseError(f'Duplicate topic name: {node.topic.name}')
@@ -228,6 +245,9 @@ class WindowStructure:
                 clz._logger.debug(f'UNREAL TOPIC: {node.topic}')
         except ET.ParseError:
             clz._logger.exception(f'Ignoring topic {node.topic.name}')
+        except AbortException:
+            self._destroy()
+            reraise(*sys.exc_info())
         except Exception:
             clz._logger.exception(f'Ignoring topic {node.topic.name}')
 
@@ -296,7 +316,7 @@ class WindowStructure:
                                     f'topic: {topic}\n size of topic_by_topic_name: '
                                     f'{len(self.topic_by_topic_name)}')
             if topic.name == root_topic.name:
-                clz._logger.debug_verbose(f'Reached root topic.')
+                clz._logger.debug_v(f'Reached root topic.')
                 break
     '''
 
@@ -314,8 +334,6 @@ class WindowStructure:
         """
         clz = WindowStructure
         search_id: str = control_topic_or_tree_id
-        clz._logger.debug(f'In get_control_and_topic_for_id search: {search_id}')
-
         if search_id == '':
             return None, None
 
@@ -327,10 +345,15 @@ class WindowStructure:
         control = self.get_control_model(control_id)
         if control is None:
             clz._logger.debug(f'Did NOT find control {control_id} '
-                              f'window.control_id: {self.window.control_id}')
+                              f'window_id: {self.window.window_id}')
+
         if control is not None:
             topic = control.topic
-            clz._logger.debug(f'get_control_model returns: control: {control}')
+            topic_name: str = ''
+            if topic is not None:
+                topic_name = topic.name
+            clz._logger.debug_xv(f'get_control_model rtns ctrl_id: {control.control_id} '
+                                 f'topic: {topic_name}')
         else:
             # Perhaps search_id is actually a topic name or tree-id.
             # There is no search for controls by that, but probably not
@@ -345,7 +368,7 @@ class WindowStructure:
         if topic is not None:
             # clz._logger.debug(f'topic {topic}')
             if not topic.is_real_topic or not topic.is_new_topic:
-                clz._logger.debug_verbose(f'topic is_real: {topic.is_real_topic} '
+                clz._logger.debug_v(f'topic is_real: {topic.is_real_topic} '
                                           f'{topic.is_new_topic}')
                 topic = None
         return control, topic
@@ -363,8 +386,8 @@ class WindowStructure:
         """
         clz = WindowStructure
         control_model: IModel = None
-        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose(f'ctrl_topic_or_tree_id: {ctrl_topic_or_tree_id}')
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v(f'ctrl_topic_or_tree_id: {ctrl_topic_or_tree_id}')
         control_id: int = util.get_non_negative_int(ctrl_topic_or_tree_id)
         if control_id != -1:
             clz._logger.debug(f'got model for {ctrl_topic_or_tree_id}')
@@ -411,6 +434,9 @@ class WindowStructure:
         try:
             control_id_str: str = xbmc.getInfoLabel('System.CurrentControlId')
             return self.get_control_model(control_id_str)
+        except AbortException:
+            self._destroy()
+            reraise(*sys.exc_info())
         except Exception as e:
             return None
 

@@ -175,7 +175,7 @@ class BaseAudioConverter(AudioConverter):
     def pipe(self, source):
         clz = type(self)
         pipe_args = self.get_pipe_args()
-        clz._logger.debug_verbose('pipeArgs: {" ".join(pipe_args)}')
+        clz._logger.debug_v('pipeArgs: {" ".join(pipe_args)}')
 
         with subprocess.Popen(pipe_args, stdin=subprocess.PIPE,
                               stdout=subprocess.DEVNULL,
@@ -264,7 +264,7 @@ class SOXAudioConverter(BaseAudioConverter):
         if self.speed:
             args.extend(self._speedArgs)
             args[args.index(None)] = self.speedArg(self.speed)
-        self._logger.debug_verbose(f'args: {" ".join(args)}')
+        self._logger.debug_v(f'args: {" ".join(args)}')
         return args
 
     def canSetVolume(self):
@@ -394,7 +394,7 @@ class MPlayerAudioConverter(BaseAudioConverter, BaseServices):
             if self.configVolume:
                 filters.append(self._volumeArgs.format(volume))
             args.append(','.join(filters))
-        self._logger.debug_verbose(f'args: {" ".join(args)}')
+        self._logger.debug_v(f'args: {" ".join(args)}')
         return args
 
     def get_pipe_args(self) -> List[str]:
@@ -417,7 +417,7 @@ class MPlayerAudioConverter(BaseAudioConverter, BaseServices):
             if self.configVolume:
                 filters.append(self._volumeArgs.format(volume))
             args.append(','.join(filters))
-        self._logger.debug_verbose(f'args: {" ".join(args)}')
+        self._logger.debug_v(f'args: {" ".join(args)}')
         return args
 
     def canSetSpeed(self) -> bool:
@@ -725,7 +725,7 @@ class BaseConverterHandler(ConverterHandlerType):
     def set_sound_dir(cls):
         tmpfs = utils.getTmpfs()
         if Settings.getSetting(SettingsProperties.USE_TEMPFS, None, True) and tmpfs:
-            cls._logger.debug_extra_verbose(f'Using tmpfs at: {tmpfs}')
+            cls._logger.debug_xv(f'Using tmpfs at: {tmpfs}')
             cls.sound_dir = os.path.join(tmpfs, 'kodi_speech')
         else:
             cls.sound_dir = os.path.join(Constants.PROFILE_PATH, 'kodi_speech')
@@ -918,7 +918,7 @@ class MP3AudioConverterHandler(WavAudioConverterHandler):
     def set_sound_dir(cls):
         tmpfs = utils.getTmpfs()
         if Settings.getSetting(SettingsProperties.USE_TEMPFS, None, True) and tmpfs:
-            cls._logger.debug_extra_verbose(f'Using tmpfs at: {tmpfs}')
+            cls._logger.debug_xv(f'Using tmpfs at: {tmpfs}')
             cls.sound_dir = os.path.join(tmpfs, 'kodi_speech')
         else:
             cls.sound_dir = os.path.join(Constants.PROFILE_PATH, 'kodi_speech')

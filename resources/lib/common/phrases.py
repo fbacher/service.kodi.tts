@@ -38,7 +38,7 @@ class Phrase:
     that there are not possibly hundreds of copies of nearly the same message
     with only the time being different.
 
-    When caching is not used, then phrases be merged with other non-interrupting
+    When caching is not used, then phrases can be merged with other non-interrupting
     phrases.
     """
     # Units in milliseconds
@@ -61,6 +61,8 @@ class Phrase:
     PAUSE_LONG: int = 150
     PAUSE_PRE_HINT: int = 400
     PAUSE_POST_HINT: int = 400
+    # Used for VoiceHintToggle.PAUSE. Only voice after inactivity for the delay
+    PAUSE_PRE_HINT_INACTIVITY: int = 500
 
 
     _remove_multiple_whitespace_re: Final[regex.Pattern] = regex.compile(r'(\s{2,})')
@@ -172,13 +174,16 @@ class Phrase:
         self.set_text_id(text_id)  # Keeps md5
 
     def __repr__(self) -> str:
+        interrupt_str = ''
+        if self.interrupt:
+            interrupt_str = 'Interrupt'
         pre_pause_str = ''
         if self.pre_pause_ms != 0:
             pre_pause_str = f' pre_pause: {self.pre_pause_ms}'
         post_pause_str: str = ''
         if self.post_pause_ms != 0:
             post_pause_str = f' post_pause: {self.post_pause_ms}'
-        return f'Phrase: {self.text} {pre_pause_str}{post_pause_str}'
+        return f'Phrase: {self.text} {interrupt_str} {pre_pause_str}{post_pause_str}'
 
     '''
     @classmethod
@@ -326,8 +331,8 @@ class Phrase:
         if not preserve_debug_info:
             self.set_debug_info(context=context)
         self.test_expired()
-        if clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-            clz._logger.debug_extra_verbose(f'Phrase: {self}')
+        if clz._logger.isEnabledFor(DEBUG_XV):
+            clz._logger.debug_xv(f'Phrase: {self}')
 
         self.text = text
 
@@ -412,7 +417,7 @@ class Phrase:
         found_pause_ms: int | None = None
         # Pauses from 10ms - 1990 ms available.
         if (pause_ms < Phrase.MINIMUM_PAUSE) or (pause_ms > Phrase.MAXIMUM_PAUSE):
-            clz._logger.debug_verbose(f'pause out of range: {pause_ms}')
+            clz._logger.debug_v(f'pause out of range: {pause_ms}')
             if pause_ms < Phrase.MINIMUM_PAUSE:
                 found_pause_ms = Phrase.MINIMUM_PAUSE
             elif pause_ms > Phrase.MAXIMUM_PAUSE:
@@ -514,8 +519,8 @@ class Phrase:
             phrase: Phrase = phrase_or_list
             if PhraseList.expired_serial_number < phrase.serial_number:
                 cls.expired_serial_number = phrase.serial_number
-            if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                cls._logger.debug_verbose(f'Set Phrase EXPIRED: {phrase.debug_data()} '
+            if cls._logger.isEnabledFor(DEBUG_V):
+                cls._logger.debug_v(f'Set Phrase EXPIRED: {phrase.debug_data()} '
                                   f'global serial: {PhraseList.expired_serial_number}')
 
         elif isinstance(phrase_or_list, PhraseList):
@@ -527,7 +532,7 @@ class Phrase:
 
         if PhraseList.expired_serial_number >= PhraseList.global_serial_number:
             PhraseList.global_serial_number = PhraseList.expired_serial_number + 1
-        if cls._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
+        if cls._logger.isEnabledFor(DEBUG_XV):
             cls._logger.debug(f'Set Phrase EXPIRED: {phrase_or_list.debug_data()} '
                               f'global serial: {PhraseList.expired_serial_number}')
 
@@ -677,8 +682,8 @@ class PhraseList(UserList):
                     pre_pause = Phrase.PAUSE_NORMAL
                 else:
                     fragment: str = Phrase.clean_phrase_text(fragment)
-                    if cls._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                        cls._logger.debug_extra_verbose(
+                    if cls._logger.isEnabledFor(DEBUG_XV):
+                        cls._logger.debug_xv(
                                 f'# fragment: {fragment} pre_pause: {pre_pause}')
                     phrase: Phrase = Phrase(text=fragment, preload_cache=preload_cache,
                                             pre_pause_ms=pre_pause,
@@ -1178,8 +1183,8 @@ class PhraseUtils:
         out_chunks: List[str] = []
         try:
             chunks: List[str] = regex.split(cls.PUNCTUATION_PATTERN, phrase.get_text())
-            if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                cls._logger.debug_verbose(f'len chunks: {len(chunks)}')
+            if cls._logger.isEnabledFor(DEBUG_V):
+                cls._logger.debug_v(f'len chunks: {len(chunks)}')
             text_file_path: pathlib.Path
             text_file_path = phrase.get_cache_path().with_suffix('.txt')
             with text_file_path.open('at', encoding='utf-8') as text_file:
@@ -1190,8 +1195,8 @@ class PhraseUtils:
                     # go ahead and return the over-length chunk.
 
                     if len(chunk) >= chunk_size:
-                        if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                            cls._logger.debug_verbose(f'Long chunk: {chunk}'
+                        if cls._logger.isEnabledFor(DEBUG_V):
+                            cls._logger.debug_v(f'Long chunk: {chunk}'
                                                       f' length: {len(chunk)}')
                             try:
                                 text_file.write(f'\nPhrase: {chunk}')
@@ -1210,22 +1215,22 @@ class PhraseUtils:
                             next_chunk = chunks[0]  # Don't pop yet
                             if ((len(next_chunk) + len(
                                     next_chunk)) <= chunk_size):
-                                if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                                    cls._logger.debug_verbose(f'Appending to chunk:'
+                                if cls._logger.isEnabledFor(DEBUG_V):
+                                    cls._logger.debug_v(f'Appending to chunk:'
                                                               f' {next_chunk}'
                                                               f' len: {len(next_chunk)}')
                                 chunk += chunks.pop(0)
                             else:
                                 out_chunks.append(chunk)
-                                if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                                    cls._logger.debug_verbose(f'Normal chunk: {chunk}'
+                                if cls._logger.isEnabledFor(DEBUG_V):
+                                    cls._logger.debug_v(f'Normal chunk: {chunk}'
                                                               f' length: {len(chunk)}')
                                 chunk = ''
                                 break
                     if len(chunk) > 0:
                         out_chunks.append(chunk)
-                        if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                            cls._logger.debug_verbose(f'Last chunk: {chunk}'
+                        if cls._logger.isEnabledFor(DEBUG_V):
+                            cls._logger.debug_v(f'Last chunk: {chunk}'
                                                       f' length: {len(chunk)}')
                 phrases: PhraseList[Phrase] = PhraseList()
                 # Force these phrases have the same serial # as the original

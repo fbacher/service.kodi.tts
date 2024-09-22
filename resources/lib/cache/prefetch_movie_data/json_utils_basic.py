@@ -158,9 +158,9 @@ class JsonUtilsBasic:
         Monitor.exception_on_abort()
         movie_results = json.loads(json_text, encoding='utf-8',
                                    object_hook=JsonUtilsBasic.abort_checker)
-        if dump_results and cls._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
+        if dump_results and cls._logger.isEnabledFor(DEBUG_XV):
             Monitor.exception_on_abort()
-            cls._logger.debug_extra_verbose(f'JASON DUMP: '
+            cls._logger.debug_xv(f'JASON DUMP: '
                                             f'{json.dumps(json_text, indent=3, sort_keys=True)}')
         return movie_results
 

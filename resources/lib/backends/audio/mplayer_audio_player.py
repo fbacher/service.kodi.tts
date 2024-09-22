@@ -124,7 +124,7 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
                 self._logger.debug(f'args: {args}')
             except ExpiredException:
                 reraise(*sys.exc_info())
-        self._logger.debug_verbose(f'args: {" ".join(args)}')
+        self._logger.debug_v(f'args: {" ".join(args)}')
         return args
 
     def get_pipe_args(self) -> List[str]:
@@ -149,7 +149,7 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
             audio_filter.append(",".join(filters))
             clz._logger.debug(f'audio_filter: {audio_filter}')
             args.extend(audio_filter)
-        self._logger.debug_verbose(f'args: {" ".join(args)}')
+        self._logger.debug_v(f'args: {" ".join(args)}')
         # Debug.dump_all_threads(0.0)
         return args
 

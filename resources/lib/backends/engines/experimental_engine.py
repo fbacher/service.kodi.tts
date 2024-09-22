@@ -147,7 +147,7 @@ class SpeechGenerator:
         self.set_rc(ReturnCode.OK)
         text_file_path: pathlib.Path = None
         try:
-            clz._logger.debug_extra_verbose(f'Text len: {len(phrase.get_text())} '
+            clz._logger.debug_xv(f'Text len: {len(phrase.get_text())} '
                                             f'{phrase.get_text()}')
             Monitor.exception_on_abort()
             save_copy_of_text: bool = True
@@ -182,7 +182,7 @@ class SpeechGenerator:
                                 expiration_time):
                             clz._logger.debug(f'voice_file_path.unlink(')
                         else:
-                            clz._logger.debug_extra_verbose(
+                            clz._logger.debug_xv(
                                     'Previous attempt to get speech failed. '
                                     'Skipping.')
                             self.set_rc(ReturnCode.MINOR)
@@ -204,8 +204,8 @@ class SpeechGenerator:
                                                   f'{text_file_path} Exception: '
                                                   f'{str(e)}')
 
-                if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                    clz._logger.debug_verbose(f'phrase len: '
+                if clz._logger.isEnabledFor(DEBUG_V):
+                    clz._logger.debug_v(f'phrase len: '
                                               f'{len(phrase.get_text())}')
 
                 # Pass means for results to be communicated back. Caller can
@@ -359,8 +359,8 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
         # If caching disabled, then exists is always false. file_path
         # always contains path to cached file, or path where to download to
         if self.stop_processing:
-            if clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                clz._logger.debug_extra_verbose('stop_processing')
+            if clz._logger.isEnabledFor(DEBUG_XV):
+                clz._logger.debug_xv('stop_processing')
             return False
 
         exists: bool
@@ -397,8 +397,8 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
                 rc = self.generate_speech(phrase)
 
             if self.stop_processing:
-                if clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                    clz._logger.debug_extra_verbose('stop_processing')
+                if clz._logger.isEnabledFor(DEBUG_XV):
+                    clz._logger.debug_xv('stop_processing')
                 return False
 
             try:
@@ -431,7 +431,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
                     if not phrase.exists():
                         text_to_voice: str = phrase.get_text()
                         voice_file_path: pathlib.Path = phrase.get_cache_path()
-                        clz._logger.debug_extra_verbose(f'PHRASE Text {text_to_voice}')
+                        clz._logger.debug_xv(f'PHRASE Text {text_to_voice}')
                         rc: int = 0
                         try:
                             # Should only get here if voiced file (.wav, .mp3,
@@ -475,7 +475,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
         try:
             text_to_voice: str = phrase.get_text()
             voice_file_path = phrase.get_cache_path()
-            clz._logger.debug_extra_verbose(f'PHRASE Text {text_to_voice}')
+            clz._logger.debug_xv(f'PHRASE Text {text_to_voice}')
         except ExpiredException:
             return ReturnCode.EXPIRED
 
@@ -513,7 +513,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
                                 expiration_time):
                             clz._logger.debug(f'voice_file_path.unlink(missing_ok=True)')
                         else:
-                            clz._logger.debug_extra_verbose(
+                            clz._logger.debug_xv(
                                     'Previous attempt to get speech failed. Skipping.')
                             rc = ReturnCode.MINOR
                             return rc
@@ -630,8 +630,8 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
                             'Failed to download voice: {}'.format(str(e)))
                 voice_file_path = None
                 aggregate_voiced_bytes = b''
-        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose(f'aggregate_voiced_bytes:'
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v(f'aggregate_voiced_bytes:'
                                       f' {len(aggregate_voiced_bytes)}')
         return rc
 
@@ -650,14 +650,14 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
 
     def stop(self):
         clz = type(self)
-        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose('stop')
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v('stop')
         super().stop()
         self.stop_processing = True
         try:
             if self.process is not None:
-                if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                    clz._logger.debug_verbose('terminate')
+                if clz._logger.isEnabledFor(DEBUG_V):
+                    clz._logger.debug_v('terminate')
                 if self.stop_urgent:
                     self.process.kill()
                 else:

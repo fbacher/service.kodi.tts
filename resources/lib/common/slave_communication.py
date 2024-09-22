@@ -108,8 +108,8 @@ class SlaveCommunication:
         # fifo_file_in = os.open(self.slave_pipe_path, os.O_RDONLY | os.O_NONBLOCK)
         # fifo_file_out = os.open(self.slave_pipe_path, os.O_WRONLY)
 
-        if clz.logger.isEnabledFor(DEBUG_VERBOSE):
-            clz.logger.debug_verbose(f'Slave started, in callback')
+        if clz.logger.isEnabledFor(DEBUG_V):
+            clz.logger.debug_v(f'Slave started, in callback')
         fifo_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         fifo_sock.settimeout(0.0)
         finished: bool = False
@@ -117,11 +117,11 @@ class SlaveCommunication:
 
         while limit > 0:
             try:
-                if clz.logger.isEnabledFor(DEBUG_VERBOSE):
-                    clz.logger.debug_verbose(f'fifo_sock.connect path: {self.slave_pipe_path}')
+                if clz.logger.isEnabledFor(DEBUG_V):
+                    clz.logger.debug_v(f'fifo_sock.connect path: {self.slave_pipe_path}')
                 fifo_sock.connect(str(self.slave_pipe_path))
-                if clz.logger.isEnabledFor(DEBUG_VERBOSE):
-                    clz.logger.debug_verbose(f'Connected')
+                if clz.logger.isEnabledFor(DEBUG_V):
+                    clz.logger.debug_v(f'Connected')
                 break
             except TimeoutError:
                 limit -= 1
@@ -138,8 +138,8 @@ class SlaveCommunication:
                 break
             Monitor.exception_on_abort(timeout=0.1)
         try:
-            if clz.logger.isEnabledFor(DEBUG_VERBOSE):
-                clz.logger.debug_verbose(f'Unlinking {self.slave_pipe_path}')
+            if clz.logger.isEnabledFor(DEBUG_V):
+                clz.logger.debug_v(f'Unlinking {self.slave_pipe_path}')
             self.slave_pipe_path.unlink(missing_ok=True)
             pass
         except Exception as e:
@@ -170,8 +170,8 @@ class SlaveCommunication:
                 if clz.logger.isEnabledFor(DEBUG):
                     clz.logger.debug(f'player is idle')
                 return
-            if clz.logger.isEnabledFor(DEBUG_VERBOSE):
-                clz.logger.debug_verbose(f'run_state.value: {self.run_state.value}'
+            if clz.logger.isEnabledFor(DEBUG_V):
+                clz.logger.debug_v(f'run_state.value: {self.run_state.value}'
                                          f' < RUNNING.value: {RunState.RUNNING.value}')
             if (self.run_state.value < RunState.RUNNING.value
                     and self.fifo_out is None):
@@ -461,8 +461,8 @@ class SlaveCommunication:
                     line = self.fifo_in.readline()
                     if len(line) > 0:
                         self.fifo_initialized = True
-                        if clz.logger.isEnabledFor(DEBUG_VERBOSE):
-                            clz.logger.debug_verbose(f'FIFO_IN: {line}')
+                        if clz.logger.isEnabledFor(DEBUG_V):
+                            clz.logger.debug_v(f'FIFO_IN: {line}')
                 except ValueError as e:
                     rc = self.slave.rc
                     if rc is not None:

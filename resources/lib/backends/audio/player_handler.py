@@ -88,7 +88,7 @@ class BasePlayerHandler(PlayerHandlerType):
         tmpfs = utils.getTmpfs()
         if Settings.getSetting(SettingsProperties.USE_TEMPFS,
                                None, True) and tmpfs:
-            cls._logger.debug_extra_verbose(f'Using tmpfs at: {tmpfs}')
+            cls._logger.debug_xv(f'Using tmpfs at: {tmpfs}')
             cls.sound_dir = os.path.join(tmpfs, 'kodi_speech')
         else:
             cls.sound_dir = os.path.join(Constants.PROFILE_PATH, 'kodi_speech')
@@ -299,7 +299,7 @@ class MP3AudioPlayerHandler(WavAudioPlayerHandler):
         tmpfs = utils.getTmpfs()
         if Settings.getSetting(SettingsProperties.USE_TEMPFS, None,
                                True) and tmpfs:
-            cls._logger.debug_extra_verbose(f'Using tmpfs at: {tmpfs}')
+            cls._logger.debug_xv(f'Using tmpfs at: {tmpfs}')
             cls.sound_dir = os.path.join(tmpfs, 'kodi_speech')
         else:
             cls.sound_dir = os.path.join(Constants.PROFILE_PATH, 'kodi_speech')

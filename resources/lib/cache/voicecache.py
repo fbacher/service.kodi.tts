@@ -233,7 +233,7 @@ class VoiceCache:
                                                       SettingsProperties.CACHE_EXPIRATION_DEFAULT)).total_seconds()
 
                             if os.stat(path).st_mtime < expiration_time:
-                                clz._logger.debug_verbose(
+                                clz._logger.debug_v(
                                         f'Expired sound file: {path}')
                                 delete = True
                         except Exception as e:
@@ -406,7 +406,7 @@ class VoiceCache:
                     try:
                         path = os.path.join(root, file)
                         if purge or os.stat(path).st_mtime < expiration_time:
-                            cls._logger.debug_verbose('Deleting: {}'.format(path))
+                            cls._logger.debug_v('Deleting: {}'.format(path))
                             os.remove(path)
                     except Exception as e:
                         pass

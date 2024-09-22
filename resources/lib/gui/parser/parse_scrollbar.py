@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 from enum import StrEnum
 from typing import Callable, ForwardRef, List, Tuple
 
-from common.logger import BasicLogger, DEBUG_VERBOSE
+from common.logger import BasicLogger, DEBUG_V
 from gui import BaseParser
 from gui.base_tags import control_elements, ControlElement, ElementKeywords as EK, Item
 from gui.element_parser import ElementHandler
@@ -75,8 +75,8 @@ class ScrollbarParser(ParseControl):
         :return:
         """
         clz = type(self)
-        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose(f'In parse_scrollbar')
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v(f'In parse_scrollbar')
         self.control_type = ControlElement.SCROLL_BAR
         control_id_str: str = el_scrollbar.attrib.get('id')
         if control_id_str is not None:
@@ -105,14 +105,14 @@ class ScrollbarParser(ParseControl):
                 handler = ElementHandler.get_handler(item.key)
                 parsed_instance: BaseParser = handler(self, element)
                 if parsed_instance is None:
-                    if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-                        clz._logger.debug_verbose(f'None parser for {item.key}')
+                    if clz._logger.isEnabledFor(DEBUG_V):
+                        clz._logger.debug_v(f'None parser for {item.key}')
                 if parsed_instance is not None:
                     if control_type is not None:
                         self.children.append(parsed_instance)
                     if str_enum == EK.TOPIC:
                         self.topic = parsed_instance
-            elif clz._logger.isEnabledFor(DEBUG_VERBOSE):
+            elif clz._logger.isEnabledFor(DEBUG_V):
                 if element.tag not in ('top', 'left', 'width', 'height', 'bottom'):
                     clz._logger.debug(f'ParseScrollbar ignored element: '
                                       f'{element.tag}')

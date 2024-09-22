@@ -52,7 +52,7 @@ class AfplayPlayer(SubprocessAudioPlayer):  # OSX
 
         args.extend(self._speedArgs)
         args[args.index(None)] = str(speed)
-        self._logger.debug_verbose(f'args: {" ".join(args)}')
+        self._logger.debug_v(f'args: {" ".join(args)}')
         return args
 
     def canSetSpeed(self) -> bool:

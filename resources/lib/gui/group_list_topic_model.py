@@ -29,29 +29,6 @@ class GroupListTopicModel(TopicModel):
         parent: ForwardRef('GroupListModel')
         return parent
 
-    def get_item_number(self) -> int:
-        """
-        Used to get the current item number from a List type topic. Called from
-        a child topicof the list
-
-        :return: Current topic number, or -1
-        """
-        clz = GroupListTopicModel
-        if not self.supports_item_count:
-            return -1
-
-        container_id: int = self.control_id
-        curr_item: str = ''
-        try:
-            curr_item = xbmc.getInfoLabel(f'Container({container_id}).CurrentItem')
-        except Exception:
-            clz._logger.exception('')
-
-        item_number: int = -1
-        if curr_item.isdigit():
-            item_number = int(curr_item)
-        return item_number
-
     def voice_active_item(self, stmts: Statements) -> bool:
         return self.parent.voice_active_item(stmts)
 

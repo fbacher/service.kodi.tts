@@ -2,7 +2,7 @@
 
 from typing import Callable, List
 
-from common.logger import BasicLogger, DEBUG_EXTRA_VERBOSE
+from common.logger import BasicLogger, DEBUG_XV
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
 from gui.base_tags import control_elements, ControlElement, Item
@@ -62,8 +62,8 @@ class ControlsModel(BaseModel):
             model_handler = ElementHandler.get_model_handler(parser.item)
             #  clz._logger.debug(f'About to create model from {parser.item}')
             child_model: BaseModel = model_handler(self, parser)
-            if clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                clz._logger.debug_extra_verbose(f'adding child: {child_model}')
+            if clz._logger.isEnabledFor(DEBUG_XV):
+                clz._logger.debug_xv(f'adding child: {child_model}')
             self.children.append(child_model)
 
     def __repr__(self) -> str:

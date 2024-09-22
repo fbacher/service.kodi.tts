@@ -11,7 +11,7 @@ from backends.settings.service_types import ServiceType
 from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import SettingsMap
 from common.base_services import BaseServices
-from common.logger import BasicLogger, DEBUG_EXTRA_VERBOSE, DEBUG_VERBOSE
+from common.logger import BasicLogger, DEBUG_XV, DEBUG_V
 from common.message_ids import MessageId, MessageUtils
 from common.messages import Message, Messages
 from common.setting_constants import Genders, GenderSettingsMap
@@ -284,7 +284,7 @@ class LanguageInfo:
                                 lang_info.gender == gender and
                                 lang_info.engine_lang_id == engine_lang_id and
                                 lang_info.engine_voice_id == engine_voice_id):
-                            cls._logger.debug_verbose(f'Dupe: ignored')
+                            cls._logger.debug_v(f'Dupe: ignored')
                             return
 
         LanguageInfo(engine_id,
@@ -308,8 +308,8 @@ class LanguageInfo:
 
         entries:  Dict[str, Dict[str, List[ForwardRef('LanguageInfo')]]]
         entries = cls.get_entries(engine_id=engine_id, lang_family=lang_id)
-        if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-            cls._logger.debug_verbose(f'# entries: {len(entries.keys())} keys:'
+        if cls._logger.isEnabledFor(DEBUG_V):
+            cls._logger.debug_v(f'# entries: {len(entries.keys())} keys:'
                                       f' {entries.keys()}')
         if entries is None:
             cls._logger.error(f"Can't find voice entry for engine: {engine_id} "
@@ -552,14 +552,14 @@ class LanguageInfo:
         services = SettingsMap.get_services_for_service_type(ServiceType.ENGINE)
         # Each tuple contains [Service_Id, service_display_name]
 
-        if cls._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-            cls._logger.debug_extra_verbose(f'get_all_lang_info engine_ids:'
+        if cls._logger.isEnabledFor(DEBUG_XV):
+            cls._logger.debug_xv(f'get_all_lang_info engine_ids:'
                                             f' {len(engine_ids)}')
         for service_info in services:
             service_info: Tuple[str, str]
             engine_id: str = service_info[0]
-            if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                cls._logger.debug_verbose(f'getting lang for {engine_id}')
+            if cls._logger.isEnabledFor(DEBUG_V):
+                cls._logger.debug_v(f'getting lang for {engine_id}')
             new_active_engine = BaseServices.getService(engine_id)
             new_active_engine.settingList(SettingsProperties.LANGUAGE)
 

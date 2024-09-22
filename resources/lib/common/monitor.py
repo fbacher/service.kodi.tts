@@ -301,8 +301,8 @@ class Monitor(MinimalMonitor):
                 delta: datetime.timedelta = now - mod_time
 
                 if delta.total_seconds() > 60:
-                    if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                        cls._logger.debug_verbose('Settings Changed!')
+                    if cls._logger.isEnabledFor(DEBUG_V):
+                        cls._logger.debug_v('Settings Changed!')
                     last_time_changed = mod_time
                     cls.on_settings_changed()
 
@@ -481,8 +481,8 @@ class Monitor(MinimalMonitor):
         with cls._abort_listener_lock:
             if cls._abort_listeners_informed:
                 return
-            if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                cls._logger.debug_verbose('Entered')
+            if cls._logger.isEnabledFor(DEBUG_V):
+                cls._logger.debug_v('Entered')
             listeners_copy = copy.copy(cls._abort_listeners)
             cls._abort_listeners.clear()  # Unregister all
             cls._abort_listeners_informed = True
@@ -536,8 +536,8 @@ class Monitor(MinimalMonitor):
                 cls._settings_changed_listeners.clear()
 
         for listener, listener_name in listeners.items():
-            if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-                cls._logger.debug_verbose(
+            if cls._logger.isEnabledFor(DEBUG_V):
+                cls._logger.debug_v(
                         f'Notifying listener: {listener_name}')
             thread = threading.Thread(
                     target=listener, name=f'nform_{listener_name}')
@@ -558,8 +558,8 @@ class Monitor(MinimalMonitor):
             if cls.is_abort_requested():
                 cls._screen_saver_listeners.clear()
 
-        if cls._logger.isEnabledFor(DEBUG_VERBOSE):
-            cls._logger.debug_verbose(f'Screensaver activated: {activated}')
+        if cls._logger.isEnabledFor(DEBUG_V):
+            cls._logger.debug_v(f'Screensaver activated: {activated}')
         for listener, listener_name in listeners_copy.items():
             thread = threading.Thread(
                     target=listener, name=f'nform_{listener_name}',
@@ -642,8 +642,8 @@ class Monitor(MinimalMonitor):
             if cls.is_abort_requested():
                 cls._notification_listeners.clear()
 
-        if cls._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-            cls._logger.debug_verbose(f'Notification received sender: {sender}'
+        if cls._logger.isEnabledFor(DEBUG_XV):
+            cls._logger.debug_v(f'Notification received sender: {sender}'
                                       f' method: {method} data: {data}')
         for listener, listener_name in listeners_copy.items():
             try:

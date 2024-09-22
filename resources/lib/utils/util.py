@@ -143,8 +143,8 @@ def get_language_code() -> str:
         language_code, encoding = locale.getdefaultlocale()
 
         language = xbmc.getInfoLabel('System.Language')
-        module_logger.debug_verbose('locale: ' + language_code)
-        module_logger.debug_verbose('System.Language:' + language)
+        module_logger.debug_v('locale: ' + language_code)
+        module_logger.debug_v('System.Language:' + language)
     return language_code
 
 

@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 from enum import StrEnum
 from typing import ForwardRef, List, Tuple
 
-from common.logger import BasicLogger, DEBUG_EXTRA_VERBOSE
+from common.logger import BasicLogger, DEBUG_XV
 from gui import BaseParser
 from gui.base_tags import (control_elements, BaseAttributeType as BAT,
                            ControlElement, ElementKeywords as EK, Item)
@@ -111,8 +111,8 @@ class ParseItemLayout(ParseControl):
         elements: [ET.Element] = el_item_layout.findall(f'./*')
         element: ET.Element
         for element in elements:
-            if clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                clz._logger.debug_extra_verbose(f'element: {element.tag}'
+            if clz._logger.isEnabledFor(DEBUG_XV):
+                clz._logger.debug_xv(f'element: {element.tag}'
                                                 f' {element.attrib.get("type")}')
             if element.tag in tags_to_parse:
                 key: str = element.tag
@@ -132,8 +132,8 @@ class ParseItemLayout(ParseControl):
                 item: Item = control_elements[str_enum]
                 info_handler: BaseElementParser = ElementHandler.get_handler(str_enum)
                 parsed_instance: BaseParser = info_handler(self, element)
-                if clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                    clz._logger.debug_extra_verbose(f'parsed_item_instance: '
+                if clz._logger.isEnabledFor(DEBUG_XV):
+                    clz._logger.debug_xv(f'parsed_item_instance: '
                                                     f'{parsed_instance}')
                 if parsed_instance is not None:
                     if control_type is not None:

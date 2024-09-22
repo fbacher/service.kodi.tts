@@ -5,7 +5,7 @@ from typing import Callable, List
 import xbmc
 import xbmcgui
 
-from common.logger import BasicLogger, DEBUG_EXTRA_VERBOSE
+from common.logger import BasicLogger, DEBUG_XV
 from common.messages import Messages
 from common.phrases import Phrase
 from gui.base_model import BaseModel
@@ -158,8 +158,8 @@ class ListModel(BaseModel):
         if self.orientation_expr == UIConstants.VERTICAL:
             msg_id = 32808
         orientation: str = Messages.get_msg_by_id(msg_id=msg_id)
-        if clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-            clz._logger.debug_extra_verbose(f'Orientation: {orientation}')
+        if clz._logger.isEnabledFor(DEBUG_XV):
+            clz._logger.debug_xv(f'Orientation: {orientation}')
         return orientation
 
     def voice_active_item(self, stmts: Statements) -> bool:
@@ -186,7 +186,7 @@ class ListModel(BaseModel):
             current_item: str = xbmc.getInfoLabel(f'Container({container_id}).CurrentItem')
             clz._logger.debug(f'current_item: {current_item}')
             stmts.last.phrases.append(Phrase(text=f'Item: {current_item}'))
-            win: xbmcgui.Window = self.window_model.win_or_dialog
+            win: xbmcgui.Window = self.windialog_state.window_instance
             focused_control: int = win.getFocusId()
             clz._logger.debug(f'Focused control: {focused_control}')
             return True

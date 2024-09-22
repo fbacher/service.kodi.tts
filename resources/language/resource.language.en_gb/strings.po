@@ -209,6 +209,22 @@ msgctxt "#32049"
 msgid "Verbose"
 msgstr "Verbose"
 
+# The next three values MUST be kept in sync in code with VoiceHintToggle
+msgctxt "#32050"
+msgid "Voice hints OFF"
+msgstr ""
+
+msgctxt "#32051"
+msgid "Voice hints ALWAYS"
+msgstr ""
+
+# As long as user keeps sending Kodi events (keystrokes, mouse movement, ir-control, etc.)
+# OR Kodi speaks wtihin a certain amount of time (~ a second) THEN no hints will be
+# voiced.
+msgctxt "#32052"
+msgid "Voice hints after inactivity"
+msgstr ""
+
 msgctxt "#32100"
 msgid "{0} database scan started."
 msgstr "{0} database scan started."
@@ -236,13 +252,17 @@ msgctxt "#32105"
 msgid "Window"
 msgstr "Window"
 
+# Gives the item number in a list
+# ex. item 5
 msgctxt "#32106"
-msgid "item"
-msgstr "item"
+msgid "item {0}"
+msgstr ""
 
+# Gives the number of items in a list
+# ex 5 items
 msgctxt "#32107"
-msgid "items"
-msgstr "items"
+msgid "{0} items"
+msgstr ""
 
 msgctxt "#32108"
 msgid "Season"
@@ -763,247 +783,11 @@ msgctxt "#32236"
 msgid "Contact the vendor to get an API key"
 msgstr "Contact the vendor to get an API key"
 
-# Locales
-
+# Announces that a container item is about to be voiced. The item
+# number is unknown (due to limitaton of Kodi screen-scraping)
 msgctxt "#32237"
-msgid "Afrikans"
-msgstr "Afrikans"
-
-msgctxt "#32238"
-msgid "Afrikans (South Africa)"
-msgstr "Afrikans (South Africa)"
-
-msgctxt "#32239"
-msgid "Arabic (Saudi Arabia)"
-msgstr "Arabic (Saudi Arabia)"
-
-msgctxt "#32240"
-msgid "Bosnian"
-msgstr "Bosnian"
-
-msgctxt "#32241"
-msgid "Catalan"
-msgstr "Catalan"
-
-msgctxt "#32242"
-msgid "Catalan (Spain)"
-msgstr "Catalan (Spain)"
-
-msgctxt "#32243"
-msgid "Czech"
-msgstr "Czech"
-
-msgctxt "#32244"
-msgid "Welsh"
-msgstr "Welsh"
-
-msgctxt "#32245"
-msgid "Danish (Denmark)"
-msgstr "Danish (Denmark)"
-
-msgctxt "#32246"
-msgid "German (Germany)"
-msgstr "German (Germany)"
-
-msgctxt "#32247"
-msgid "Greek (Greece)"
-msgstr "Greek (Greece)"
-
-msgctxt "#32248"
-msgid "English (Australia)"
-msgstr "English (Australia)"
-
-msgctxt "#32249"
-msgid "English (United Kingdom)"
-msgstr "English (United Kingdom)"
-
-msgctxt "#32250"
-msgid "English (Ireland)"
-msgstr "English (Ireland)"
-
-msgctxt "#32251"
-msgid "English (India)"
-msgstr "English (India)"
-
-msgctxt "#32252"
-msgid "English (United States)"
-msgstr "English (United States)"
-
-msgctxt "#32253"
-msgid "English (South Africa)"
-msgstr "English (South Africa)"
-
-msgctxt "#32254"
-msgid "Esperanto"
-msgstr "Esperanto"
-
-msgctxt "#32255"
-msgid "Spanish"
-msgstr "Spanish"
-
-msgctxt "#32256"
-msgid "Spanish (Castilian, Spain)"
-msgstr "Spanish (Castilian, Spain)"
-
-msgctxt "#32257"
-msgid "Spanish (Mexico)"
-msgstr "Spanish (Mexico)"
-
-msgctxt "#32258"
-msgid "Spanish (United States)"
-msgstr "Spanish (United States)"
-
-msgctxt "#32259"
-msgid "Finnish (Finland)"
-msgstr "Finnish (Finland)"
-
-msgctxt "#32260
-msgid "French"
-msgstr "French"
-
-msgctxt "#32261"
-msgid "French (Belgium)"
-msgstr "French (Belgium)"
-
-msgctxt "#32262"
-msgid "French (France)"
-msgstr "French (France)"
-
-msgctxt "#32263"
-msgid "French (Canada)"
-msgstr "French (Canada)"
-
-msgctxt "#32264"
-msgid "Hindi"
-msgstr "Hindi"
-
-msgctxt "#32265"
-msgid "Hindi (India)"
-msgstr "Hindi (India)"
-
-msgctxt "#32266"
-msgid "Croatian (Croatia)"
-msgstr "Croatian (Croatia)"
-
-msgctxt "#32267"
-msgid "Hungarian (Hungary)"
-msgstr "Hungarian (Hungary)"
-
-msgctxt "#32268"
-msgid "Armenian (Armenia)"
-msgstr "Armenian (Armenia)"
-
-msgctxt "#32269"
-msgid "Indonesian (Indonesia)"
-msgstr "Indonesian (Indonesia)"
-
-msgctxt "#32270"
-msgid "Icelandic (Iceland)"
-msgstr "Icelandic (Iceland)"
-
-msgctxt "#32271"
-msgid "Italian (Italy)"
-msgstr "Italian (Italy)"
-
-msgctxt "#32272"
-msgid "Japanese (Japan)"
-msgstr "Japanese (Japan)"
-
-msgctxt "#32273"
-msgid "Korean (Korea)"
-msgstr "Korean (Korea)"
-
-msgctxt "#32274"
-msgid "Latin"
-msgstr "Latin"
-
-msgctxt "#32275"
-msgid "Latvian (Latvia)"
-msgstr "Latvian (Latvia)"
-
-msgctxt "#32276"
-msgid "Norwegian (Norway)"
-msgstr "Norwegian (Norway)"
-
-msgctxt "#32277"
-msgid "Dutch (Belgium)"
-msgstr "Dutch (Belgium)"
-
-msgctxt "#32278"
-msgid "Dutch (Netherlands)"
-msgstr "Dutch (Netherlands)"
-
-msgctxt "#32279"
-msgid "Norwegian (Norway)"
-msgstr "Norwegian (Norway)"
-
-msgctxt "#32280"
-msgid "Polish (Poland)"
-msgstr "Polish (Poland)"
-
-msgctxt "#32281"
-msgid "Portuguese (Brazil)"
-msgstr "Portuguese (Brazil)"
-
-msgctxt "#32282"
-msgid "Portuguese (Portugal)"
-msgstr "Portuguese (Portugal)"
-
-msgctxt "#32283"
-msgid "Romanian (Romania)"
-msgstr "Romanian (Romania)"
-
-msgctxt "#32284"
-msgid "Russian (Russia)"
-msgstr "Russian (Russia)"
-
-msgctxt "#32285"
-msgid "Slovak (Slovakia)"
-msgstr "Slovak (Slovakia)"
-
-msgctxt "#32286"
-msgid "Albanian (Albania)"
-msgstr "Albanian (Albania)"
-
-msgctxt "#32287"
-msgid "Serbian (Montenegro)"
-msgstr "Serbian (Montenegro)"
-
-msgctxt "#32288"
-msgid "Serbian (Serbia)"
-msgstr "Serbian (Serbia)"
-
-msgctxt "#32289"
-msgid "Swahili (Kenya)"
-msgstr "Swahili (Kenya)"
-
-msgctxt "#32290"
-msgid "Tamil"
-msgstr "Tamil"
-
-msgctxt "#32291"
-msgid "Thai (Thailand)"
-msgstr "Thai (Thailand)"
-
-msgctxt "#32292"
-msgid "Turkish (Turkey)"
-msgstr "Turkish (Turkey)"
-
-msgctxt "#32293"
-msgid "Vietnamese (Viet Nam)"
-msgstr "Vietnamese (Viet Nam)"
-
-msgctxt "#32294"
-msgid "Chinese (S)"
-msgstr "Chinese (S)"
-
-msgctxt "#32295"
-msgid "Chinese (Hong Kong)"
-msgstr "Chinese (Hong Kong)"
-
-msgctxt "#32296"
-msgid "Chinese (T)"
-msgstr "Chinese (T)"
+msgid "item"
+msgstr ""
 
 # Audio Players. Translation may not apply to all
 
@@ -1303,6 +1087,14 @@ msgctxt "#32719"
 msgid "Settings Spin-List"
 msgstr ""
 
+# Used to voice: "{orientation} {control_name} {# items} items"
+# Typically the type of control, its orientation (if any) and number of items
+# (if any) are voiced before voicing the value
+# ex: "Vertical group list 5 items"
+#     (followed by) "TTS Engine. GoogleTTS"
+msgctxt "#32720"
+msgid "{0} {1} {2} items"
+msgstr ""
 
 
 
@@ -1328,16 +1120,6 @@ msgctxt "#32804"
 msgid "Select to dismiss dialog"
 msgstr "Select to dismiss dialog"
 
-# Example "15 Vertical items." Can also be Horizontal
-
-# control_name, visible_items, orientation
-# Example: orientation = "Vertical"
-#          control_name = 'GroupList'
-#          visible_items = "15"
-# English result: "Vertical GroupList, 15 items."
-msgctxt "#32805"
-msgid "{0} {1} {2} items."
-msgstr "{0} {1} {2} items."
 
 msgctxt "#32806"
 msgid "item {0}"

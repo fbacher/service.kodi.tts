@@ -194,8 +194,8 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             lang: langcodes.Language = None
             try:
                 lang = langcodes.Language.get(lang_str)
-                if cls._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
-                    cls._logger.debug_extra_verbose(f'orig: {lang_str} '
+                if cls._logger.isEnabledFor(DEBUG_XV):
+                    cls._logger.debug_xv(f'orig: {lang_str} '
                                                     f'language: {lang.language} '
                                                     f'script: {lang.script} '
                                                     f'territory: {lang.territory} '
@@ -282,8 +282,8 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         out_file: Path = phrase.get_cache_path()
         if out_file is None:
             out_file, exists = self.voice_cache.get_path_to_voice_file(phrase)
-        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose(f'espeak.runCommand outFile: {out_file}\n'
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v(f'espeak.runCommand outFile: {out_file}\n'
                                       f'text: {phrase.text}')
         clz._logger.debug(f'espeak.runCommand outFile: {out_file}\n'
                           f'text: {phrase.text}')

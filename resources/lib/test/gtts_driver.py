@@ -4,7 +4,7 @@ import logging
 import gtts
 
 from common import *
-# from common.logger import *
+# from common.get import *
 from gtts import gTTS, lang
 from test.google_data import GoogleData
 

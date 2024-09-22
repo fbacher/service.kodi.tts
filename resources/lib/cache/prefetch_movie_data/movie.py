@@ -149,9 +149,9 @@ class RawMovie(BaseMovie):
             if value is None:
                 nulls_found.append(key)
 
-        if clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
+        if clz._logger.isEnabledFor(DEBUG_XV):
             if len(nulls_found) > 0:
-                clz._logger.debug_extra_verbose(', '.join(nulls_found))
+                clz._logger.debug_xv(', '.join(nulls_found))
 
     @classmethod
     def class_init(cls):
@@ -210,9 +210,9 @@ class AbstractMovie(RawMovie):
             if value is None:
                 nulls_found.append(key)
 
-        if clz._logger.isEnabledFor(DEBUG_EXTRA_VERBOSE):
+        if clz._logger.isEnabledFor(DEBUG_XV):
             if len(nulls_found) > 0:
-                clz._logger.debug_extra_verbose(', '.join(nulls_found))
+                clz._logger.debug_xv(', '.join(nulls_found))
 
     @classmethod
     def class_init(cls):

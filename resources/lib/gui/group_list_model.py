@@ -5,7 +5,7 @@ from typing import Callable, List
 import xbmc
 import xbmcgui
 
-from common.logger import BasicLogger
+from common.logger import BasicLogger, DEBUG_V, DEBUG_XV
 from common.messages import Messages
 from common.phrases import Phrase
 from gui.base_model import BaseModel
@@ -150,12 +150,12 @@ class GroupListModel(BaseModel):
         if not focus_changed:
             return True
 
-        self._logger.debug(f'In voice_control control_id {self.control_id}')
         if self.control_id is not None:
             if not self.is_visible():
                 return False
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v(f'control_id {self.control_id} visible')
 
-        self._logger.debug(f'visible')
         success = self.voice_control_heading(stmts)
         success = self.voice_active_item(stmts)
         return success
@@ -283,7 +283,6 @@ class GroupListModel(BaseModel):
         """
         clz = GroupListModel
         # Ignore voicing some non-focused text at the moment
-        # focused_control_id: int = self.window_model.win_or_dialog.
         if not self.focus_changed:
             return False
 
@@ -293,13 +292,20 @@ class GroupListModel(BaseModel):
             pos_str: str = xbmc.getInfoLabel(f'Container({container_id}).Position')
             pos: int = util.get_non_negative_int(pos_str)
             pos += 1  # Convert to one-based item #
-            clz._logger.debug(f'container position: {pos} container_id: {container_id}')
+            if clz._logger.isEnabledFor(DEBUG_XV):
+                clz._logger.debug_xv(f'container position: {pos} container_id: {container_id}')
             current_item: str = xbmc.getInfoLabel(f'Container({container_id}).CurrentItem')
-            clz._logger.debug(f'current_item: {current_item}')
-            stmts.last.phrases.append(Phrase(text=f'Item: {pos}'))
-            win: xbmcgui.Window = self.window_model.win_or_dialog
+            if clz._logger.isEnabledFor(DEBUG_XV):
+                clz._logger.debug_xv(f'current_item: {current_item}')
+            phrase: Phrase = Phrase(text=f'Item: {pos}')
+            stmts.last.phrases.append(phrase)
+            if clz._logger.isEnabledFor(DEBUG_V):
+                clz._logger.debug_v(f'phrase: {phrase}')
+
+            win: xbmcgui.Window = self.windialog_state.window_instance
             focused_control: int = win.getFocusId()
-            clz._logger.debug(f'Focused control: {focused_control}')
+            if clz._logger.isEnabledFor(DEBUG_XV):
+                clz._logger.debug_xv(f'Focused control: {focused_control}')
             return True
 
         # TODO START HERE!!

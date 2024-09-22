@@ -33,8 +33,8 @@ from logging import DEBUG
 from typing import ForwardRef, List, Tuple, Union
 
 from common.exceptions import ExpiredException
-from common.globals import Globals
-from common.logger import BasicLogger, DEBUG_VERBOSE
+from common.globals import Globals, VoiceHintToggle
+from common.logger import BasicLogger, DEBUG_V, DEBUG_XV, DISABLED
 from common.phrases import PhraseList
 
 module_logger = BasicLogger.get_logger(__name__)
@@ -78,9 +78,6 @@ class Statement:
     def __init__(self, phrases: PhraseList,
                  stmt_type: StatementType = StatementType.NORMAL):
         clz = Statement
-        if clz._logger is None:
-            clz._logger = module_logger
-
         self.phrases: PhraseList = phrases
         self.stmt_type: StatementType = stmt_type
         self.serial_number: int = 0
@@ -95,8 +92,8 @@ class Statement:
             voiced to be sure. Otherwise False, no interest in voicing.
         """
         clz = Statement
-        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose(f'stmt_type: {self.stmt_type} '
+        if clz._logger.isEnabledFor(DEBUG_XV):
+            clz._logger.debug_xv(f'stmt_type: {self.stmt_type} '
                                       f'required_types: {required_types} '
                                       f'{self.stmt_type in required_types}')
         return self.stmt_type in required_types
@@ -104,15 +101,15 @@ class Statement:
     @classmethod
     def create_filter(cls) -> List[StatementType]:
         stmt_filter: List[StatementType] = []
-        if Globals.voice_hint:
+        if Globals.voice_hint != VoiceHintToggle.OFF:
             stmt_filter.append(StatementType.HINT_TEXT)
         return stmt_filter
 
     @property
     def omittable(self) -> bool:
         clz = Statement
-        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose(f'omittable stmt_type: {self.stmt_type} '
+        if clz._logger.isEnabledFor(DEBUG_XV):
+            clz._logger.debug_xv(f'omittable stmt_type: {self.stmt_type} '
                                       f'omittable: {self.stmt_type in clz.OMITTABLE}')
         return self.stmt_type in clz.OMITTABLE
 
@@ -127,7 +124,7 @@ class Statement:
         return self.phrases.equal_text(other.phrases)
 
     def __repr__(self) -> str:
-        value: str = (f'stmt_type: {self.stmt_type} \n  '
+        value: str = (f' {self.stmt_type}  '
                       f'{self. phrases}')
         return value
 
@@ -154,9 +151,6 @@ class Statements:
     def __init__(self, stmt: Statement | None, topic_id: str | None) -> None:
 
         clz = Statements
-        if clz._logger is None:
-            clz._logger = module_logger
-
         clz.global_serial_number += 1
         self.serial_number: int = clz.global_serial_number
 
@@ -260,28 +254,30 @@ class Statements:
         :return:
         """
         clz = Statements
-        if clz._logger.isEnabledFor(DEBUG_VERBOSE):
-            clz._logger.debug_verbose(f'source: {self.stmts}')
-            clz._logger.debug_verbose(f'last_voiced: {last_voiced}')
-            clz._logger.debug_verbose(f'required_stmt_types: {stmt_filter}')
+        if clz._logger.isEnabledFor(DISABLED):
+            clz._logger.debug_v(f'source: {self.stmts}')
+            clz._logger.debug_v(f'last_voiced: {last_voiced}')
+            clz._logger.debug_v(f'required_stmt_types: {stmt_filter}')
 
         # A few quick checks
         if (last_voiced is None
                 or self.topic_id != last_voiced.topic_id
                 or len(last_voiced.stmts) == 0):
-            clz._logger.debug(f'controls different. Revoice = True')
-            last_none: str = ''
-            topic_ids_diff: str = ''
-            zero_len: str = ''
-            if last_voiced is None:
-                last_none = 'last voiced was none '
-            elif self.topic_id != last_voiced.topic_id:
-                topic_ids_diff = (f'topic ids different {self.topic_id} vs '
-                                  f'{last_voiced.topic_id} ')
-            elif len(last_voiced.stmts) == 0:
-                zero_len = 'last_voiced zero len'
-            if clz._logger.isEnabledFor(DEBUG):
-                clz._logger.debug(f'Reasons: {last_none}{topic_ids_diff}{zero_len}')
+            if clz._logger.isEnabledFor(DEBUG_V):
+                clz._logger.debug_v('controls different. Revoice = True')
+                last_none: str = ''
+                topic_ids_diff: str = ''
+                zero_len: str = ''
+                if last_voiced is None:
+                    last_none = 'last voiced was none '
+                elif self.topic_id != last_voiced.topic_id:
+                    last_voice: Statements
+                    topic_ids_diff = (f'topic ids different {self.topic_id} vs '
+                                      f'{last_voiced.topic_id} ')
+                elif len(last_voiced.stmts) == 0:
+                    zero_len = 'last_voiced zero len'
+                if clz._logger.isEnabledFor(DEBUG_V):
+                    clz._logger.debug_v(f'Reasons: {last_none}{topic_ids_diff}{zero_len}')
             return True
         else:  # Compare the statements
             new_iter: StatementIterator = StatementIterator(self, stmt_filter)
@@ -300,11 +296,11 @@ class Statements:
                     if new_stmt.stmt_type != old_stmt.stmt_type:
                         if (new_stmt.stmt_type != StatementType.SILENT
                                 and old_stmt.stmt_type != StatementType.SILENT):
-                            if clz._logger.isEnabledFor(DEBUG):
-                                clz._logger.debug(f'Statement types different revoice:'
-                                                  f' True'
-                                                  f'\n  new_stmt: {new_stmt}\n  '
-                                                  f'prevous_stmt: {old_stmt}')
+                            if clz._logger.isEnabledFor(DEBUG_V):
+                                clz._logger.debug_v(f'Statement types different revoice:'
+                                                    f' True'
+                                                    f'\n  new_stmt: {new_stmt}\n  '
+                                                    f'prevous_stmt: {old_stmt}')
                             return True
                     if not new_stmt.variant and new_stmt != old_stmt:
                         return True
@@ -314,26 +310,38 @@ class Statements:
                     # to revoice.
                     return False
 
-    def as_phrases(self, stmt_filter: List[StatementType] = None) -> PhraseList:
+    def as_phrases(self,
+                   stmt_filter: List[StatementType] = None)\
+            -> Tuple[PhraseList, PhraseList]:
         """
-        Converts the Statements to one PhraseList
-        :return:
+        Converts the Statements to two PhraseLists: text and hint-text
+        :return: If VoiceHintToggle.OFF, then hint-text will be empty
+                if VoiceHintToggle.ON, then text will contain a mixture of
+                text and hint-text; hint-text will be empty
+                if VoiceHintToggle.PAUSE, then text will contain text and
+                hint-text will contain the hint text, so that they can be voiced
+                separately.
         """
         clz = Statements
         if stmt_filter is None:
             stmt_filter = []
 
         phrases: PhraseList = PhraseList(check_expired=False)
-        clz._logger.debug(f'topic: {self.topic_id}')
+        hint_phrases: PhraseList = PhraseList(check_expired=False)
+        if clz._logger.isEnabledFor(DEBUG):
+            clz._logger.debug(f'topic: {self.topic_id}')
         new_iter: StatementIterator = StatementIterator(self, stmt_filter)
         while True:
             try:
                 stmt: Statement
                 stmt = next(new_iter)
-                phrases.extend(copy.deepcopy(stmt.phrases))
+                if stmt.stmt_type == StatementType.HINT_TEXT:
+                    hint_phrases.extend(copy.deepcopy(stmt.phrases))
+                else:
+                    phrases.extend(copy.deepcopy(stmt.phrases))
             except StopIteration:
                 break
-        return phrases
+        return phrases, hint_phrases
 
     def __repr__(self) -> str:
         clz = Statements
