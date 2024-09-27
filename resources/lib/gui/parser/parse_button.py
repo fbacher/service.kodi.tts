@@ -39,6 +39,10 @@ class ParseButton(ParseControl):
             </control>
         """
         super().__init__(parent)
+        clz = ParseButton
+        clz._logger.debug(f'SETTING control_type and control_id: Unknonw, -1')
+        self.control_id = -1
+        self.control_type: ControlElement = ControlElement.UNKNOWN
         self.label_expr: str = ''
         self.topic: ParseTopic | None = None
         self.alt_label_expr: str = ''
@@ -52,7 +56,6 @@ class ParseButton(ParseControl):
         self.hint_text_expr: str = ''
         # self.info_expr: str = ''
         # self.on_info_expr: str = ''
-
 
     @classmethod
     def get_instance(cls, parent: ParseControl,
@@ -69,11 +72,14 @@ class ParseButton(ParseControl):
         :return:
         """
         clz = type(self)
+        clz._logger.debug(f'SETTING self.control_type to BUTTON')
         self.control_type = ControlElement.BUTTON
         control_id_str: str = el_button.attrib.get('id')
         if control_id_str is not None:
             control_id: int = int(control_id_str)
             self.control_id = control_id
+            clz._logger.debug(f'SETTING BUTTON self.control_id to {control_id} '
+                              f'control_id_str: {control_id_str}')
 
         DEFAULT_TAGS: Tuple[str, ...] = (EK.DESCRIPTION, EK.VISIBLE)
         DEFAULT_FOCUS_TAGS: Tuple[str, ...] = (EK.ENABLE, EK.ON_FOCUS, EK.ON_UNFOCUS)
@@ -90,7 +96,7 @@ class ParseButton(ParseControl):
                 #  clz._logger.debug(f'child_tag: {child.tag}')
                 key: str = child.tag
                 control_type: ControlElement = clz.get_control_type(child)
-                # clz._logger.debug(f'control_type: {control_type}')
+                clz._logger.debug(f'self.control_type: {self._control_type} control_type: {control_type}')
                 str_enum: StrEnum = None
                 if control_type is not None:
                     str_enum = control_type
@@ -99,13 +105,19 @@ class ParseButton(ParseControl):
                 item: Item = control_elements[str_enum]
                 # Values copied to self
                 handler: Callable[[BaseParser, ET.Element], str | BaseParser]
+                clz._logger.debug(f'handler key: {item.key} control_type before: '
+                                  f'{self._control_type} control_id: {self.control_id}')
                 handler = ElementHandler.get_handler(item.key)
                 parsed_instance: BaseParser = handler(self, child)
                 if parsed_instance is not None:
+                    self._logger.debug(f'control_type after: {self._control_type} '
+                                       f'and {self.control_type}')
                     if control_type is not None:
                         self.children.append(parsed_instance)
                     if key == EK.TOPIC:
                         self.topic = parsed_instance
+        if self.control_id == 102:
+            clz._logger.debug(f'button: {self}')
             # else:
             #     if clz._logger.isEnabledFor(DEBUG_V):
             #         if child.tag not in ('top', 'left', 'width', 'height', 'bottom'):
@@ -150,6 +162,7 @@ class ParseButton(ParseControl):
         results: List[str] = []
         result: str = (f'\nParseButton type: {self.control_type} '
                        f'id: {self.control_id} '
+                       f'\n control_type: {self.control_type} '
                        f'{description_str}'
                        f'{visible_expr}{label_expr}{alt_label_expr}{hint_text_str}'
                        f'{on_focus_expr}{on_unfocus_expr}'

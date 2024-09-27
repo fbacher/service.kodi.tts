@@ -35,6 +35,7 @@ class ParseControl(BaseParser):
                  ) -> None:
         super().__init__(parent)
         clz = type(self)
+        clz._logger.debug(f'SETTING control_id and control_type to -1 Unknown')
         self.control_id: int = -1
         self.control_type: ControlElement = ControlElement.UNKNOWN
         self.children: List[BaseParser] = []
@@ -43,6 +44,15 @@ class ParseControl(BaseParser):
         #  self.parent: Union[ForwardRef('ParseControl'), ParseControls] = parent
         self.visible_expr: str = ''
 
+    '''
+    @property
+    def control_id(self) -> ControlElement:
+        return BaseParser.control_type.fget(self)
+
+    @control_id.setter
+    def control_id(self, value: ControlElement) -> None:
+        BaseParser.control_type.fset(self, value)
+
     @property
     def control_type(self) -> ControlElement:
         return BaseParser.control_type.fget(self)
@@ -50,6 +60,7 @@ class ParseControl(BaseParser):
     @control_type.setter
     def control_type(self, value: ControlElement) -> None:
         BaseParser.control_type.fset(self, value)
+    '''
 
     @classmethod
     def get_instance(cls, parent: BaseParser,
@@ -57,7 +68,6 @@ class ParseControl(BaseParser):
         """
              Determines the type of control and calls the appropriate parser to handle it
 
-             :param item:
              :param parent:
              :param control_el: Contains a Control element as determined by the caller
              :return:

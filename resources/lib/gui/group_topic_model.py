@@ -1,6 +1,6 @@
 # coding=utf-8
 
-from common.logger import BasicLogger, DEBUG_V
+from common.logger import BasicLogger, DEBUG_V, DISABLED
 from gui.base_model import BaseModel
 from gui.parser.parse_topic import ParseTopic
 from gui.topic_model import TopicModel
@@ -22,7 +22,7 @@ class GroupTopicModel(TopicModel):
     @property
     def control_id(self) -> int:
         clz = GroupTopicModel
-        if clz._logger.isEnabledFor(DEBUG_V):
+        if clz._logger.isEnabledFor(DISABLED):
             clz._logger.debug_v(f'self: {self.__class__.__name__} '
                               f'parent: {self.parent.__class__.__name__} '
                               f'control_id: {super().control_id}')
@@ -64,7 +64,7 @@ class GroupTopicModel(TopicModel):
 
             success = self.parent.voice_number_of_items(phrases)
             # Voice either focused control, or label/text
-            # success = self.voice_active_item(phrases)
+            # success = self.voice_active_item_value(phrases)
             # Voice either next Topic down or focus item
 
             # success = self.voice_controlx(phrases)

@@ -117,8 +117,8 @@ class Monitor(MinimalMonitor):
     _abort_listeners: Dict[Callable[[None], None], Tuple[str, bool]] = None
     _abort_listener_lock: threading.RLock = None
     _abort_listeners_informed: bool = False
-    _wait_return_count_map: Dict[str, int] = {}  # thread_id, returns from wait
-    _wait_call_count_map: Dict[str, int] = {}  # thread_id, calls to wait
+    #  _wait_return_count_map: Dict[str, int] = {}  # thread_id, returns from wait
+    #  _wait_call_count_map: Dict[str, int] = {}  # thread_id, calls to wait
     _inform_abort_listeners_thread: threading.Thread = None
 
     """
@@ -755,16 +755,17 @@ class Monitor(MinimalMonitor):
         approximate_wait_time = 0.0
         while not is_set:
             is_set = cls.startup_complete_event.wait(timeout=None)
-            cls.track_wait_call_counts()
+            #  cls.track_wait_call_counts()
             Monitor.real_waitForAbort(timeout=0.2)
             # Monitor.exception_on_abort(timeout=0.2)
-            cls.track_wait_return_counts()
+            #  cls.track_wait_return_counts()
             approximate_wait_time += 0.2
             if timeout is not None and approximate_wait_time >= timeout:
                 break
 
         return is_set
 
+    '''
     @classmethod
     def track_wait_call_counts(cls, thread_name: str = None) -> None:
         if thread_name is None:
@@ -815,9 +816,7 @@ class Monitor(MinimalMonitor):
         for k, v in cls._wait_return_count_map.items():
             xbmc.log(str(k) + ': ' + str(v), xbmc.LOGDEBUG)
 
-        from common.debug import Debug
-        Debug.dump_all_threads()
-
+    '''
 
 # Initialize class:
 #

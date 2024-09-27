@@ -50,6 +50,9 @@ class ParseSpin(ParseControl):
 
     def __init__(self, parent: ParseControl) -> None:
         super().__init__(parent)
+        clz = ParseSpin
+        clz._logger.debug(f'SETTING self.control_type to SPIN_CONTROL')
+        self.control_type = ControlElement.SPIN_CONTROL
         self.topic: ParseTopic | None = None
         self.labeled_by_expr: str = ''
         self.label_expr: str = ''
@@ -103,7 +106,7 @@ class ParseSpin(ParseControl):
         if control_id_str is not None:
             control_id: int = int(control_id_str)
             self.control_id = control_id
-
+            clz._logger.debug(f'SETTING control_id to {control_id}')
         DEFAULT_TAGS: Tuple[str, ...] = (EK.DESCRIPTION, EK.VISIBLE)
         DEFAULT_FOCUS_TAGS: Tuple[str, ...] = (EK.ENABLE, EK.ON_FOCUS, EK.ON_UNFOCUS)
         SPIN_CONTROL_TAGS: Tuple[str, ...] = (EK.LABEL,)

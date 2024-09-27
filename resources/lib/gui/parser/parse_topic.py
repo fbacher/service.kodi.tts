@@ -1,5 +1,6 @@
 # coding=utf-8
 from enum import StrEnum
+from logging import DEBUG
 from typing import Callable, ForwardRef, List, Tuple
 import xml.etree.ElementTree as ET
 
@@ -8,7 +9,7 @@ from gui.base_tags import (ElementKeywords as EK, TopicElement, TopicType, Value
                            ValueUnits)
 from gui.base_tags import BaseAttributeType as BAT, TopicElement as TE
 
-from common.logger import BasicLogger, DEBUG_V
+from common.logger import BasicLogger, DEBUG_V, DEBUG_XV, DISABLED
 from gui import ControlElement, ParseError
 from gui.base_parser import BaseParser
 from gui.base_tags import control_elements, Item
@@ -51,7 +52,8 @@ class ParseTopic(BaseParser):
 
     def __init__(self, parent: BaseParser, el_topic: ET.Element = None) -> None:
         super().__init__(parent)
-        clz = type(self)
+        clz = ParseTopic
+        clz._logger.debug(f'SETTING self.control_id to parent: {parent.control_id}')
         self.control_id = parent.control_id
         self.name: str = ''
         self.alt_label_expr: str = ''
@@ -150,32 +152,39 @@ class ParseTopic(BaseParser):
         :return:
         """
         clz = ParseTopic
-        self._alt_type: str = ''
         msg_id: int = -1
+        clz._logger.debug_xv(f'alt_type_expr: |{self.alt_type_expr}|')
         # If not defined, get default translated value for control
         if self.alt_type_expr is None or self.alt_type_expr == '':
             alt_ctrl_type: AltCtrlType
             alt_ctrl_type = AltCtrlType.get_default_alt_ctrl_type(self.parent.control_type)
+            if clz._logger.isEnabledFor(DISABLED):
+                clz._logger.debug(f'alt_type based on atl_type_expr: {self.alt_type_expr} '
+                                  f'now: {alt_ctrl_type} parent.control_type: '
+                                  f'{self.parent.control_type}')
             msg_id = alt_ctrl_type.value
-            if clz._logger.isEnabledFor(DEBUG_V):
-                clz._logger.debug_v(f'default alt_type for control '
+            if clz._logger.isEnabledFor(DISABLED):
+                clz._logger.debug(f'default alt_type for control ctrl_id: '
+                                  f'{self.parent.control_id} '
                                           f'{self.parent.control_type} '
                                           f'alt_ctrl_type: {alt_ctrl_type} '
                                           f'msg_id: {msg_id}')
         elif self.alt_type_expr.isdigit():
             msg_id = int(self.alt_type_expr)
+            clz._logger.debug_xv(f'isdigit msg_id: {msg_id}')
         else:
             try:
                 alt_type: AltCtrlType
                 alt_type = AltCtrlType.get_alt_type_for_name(self.alt_type_expr)
-                if clz._logger.isEnabledFor(DEBUG_V):
-                    clz._logger.debug_v(f'alt_type: {alt_type} alt_type_str: '
+                if clz._logger.isEnabledFor(DEBUG):
+                    clz._logger.debug(f'alt_type: {alt_type} alt_type_str: '
                                               f'{alt_type.get_message_str()}')
                 self._alt_type = alt_type.get_message_str()
             except ValueError:
                 msg_id = -1
         if msg_id > 0:
             self._alt_type = Messages.get_msg_by_id(msg_id)
+            clz._logger.debug(f'final alt_type: {self._alt_type}')
         return self._alt_type
 
     def __repr__(self) -> str:

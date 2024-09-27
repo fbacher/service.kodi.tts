@@ -66,7 +66,7 @@ class Messages:
     OK = Message('OK', 32220)
     CANCEL = Message('OK', 32221)
     DEFAULTS = Message('Defaults', 32222)
-    ENGINE = Message('Engine', 32001)
+    #  ENGINE = Message('Engine', 32001)
     DEFAULT_TTS_ENGINE = Message('Default TTS Engine', 32002)
     # SELECT_LANGUAGE = Message('Available Voices for', 32227)
     SELECT_VOICE = Message('Voice', 32308)
@@ -254,7 +254,7 @@ class Messages:
     UI_SETTINGS_CATEGORIES = Message('Settings Categories', 32802)
     UI_DISMISS_DIALOG_HINT = Message('Select to dismiss dialog', 32804)
     #  control_name, orientation, visible_items
-    UI_ITEMS = Message('{0} {1} {2} items', 32805)
+    # UI_ITEMS = Message('{0} {1} {2} items', 32805)
     # UI_ITEM = Message('item {0}', 32806)
     UN_NO_ITEMS = Message('{0} {1}', 328)
 

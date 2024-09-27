@@ -154,8 +154,12 @@ class BasicLogger(Logger):
         setLoggerClass(cls)
         Logger.manager.setLoggerClass(cls)
 
-    def __init__(self, name, level=DEFAULT_LOG_LEVEL):
-        super().__init__(name, level)
+    #  TODO: you are NEVER supposed to override logger. Need proper solution
+    #   Probably mostly an issue with DEBUG_V and DEBUG_XV, but there appear to
+    #   be proper ways to do it.
+
+    def __init__(self, name):
+        super().__init__(name)
 
     def log(self, level: int, msg: str, *args: Any, **kwargs: Any) -> None:
         """
@@ -227,9 +231,9 @@ class BasicLogger(Logger):
 
         Loggers are defined for every module. The default configuration is for
         only the addon get ('tts') will have handlers and filters defined
-        as well as get.propogate=False and the logging level.
+        as well as get.propagate=False and the logging level.
         The other loggers will not have any handlers nor filters nor
-        logging level. This will also leave propogate as the default value of
+        logging level. This will also leave propagate as the default value of
         True. This will cause every other get to delegate all handling of
         logging to the addon get.
 
@@ -268,12 +272,12 @@ class BasicLogger(Logger):
                 # logger.debug(f'Test logger {name}  propagate TRUE DEBUG')
 
                 if logger.hasHandlers():
-                    #  xbmc.log(f'logger {name} has {len(logger.handlers)} handlers')
+                    xbmc.log(f'logger {name} has {len(logger.handlers)} handlers')
                     handlers_to_remove: List[Handler] = logger.handlers.copy()
                     for handler in handlers_to_remove:
                         logger.removeHandler(handler)
                 cls.debug_level_config[name] = NOTSET
-                #  xbmc.log(f'get {name} stripped of handler, NOTSET level, propagate')
+                xbmc.log(f'get {name} stripped of handler, NOTSET level, propagate')
 
         for name, log_level in definitions.items():
             name: str
@@ -302,9 +306,11 @@ class BasicLogger(Logger):
                 #  logger.debug(f'Test logger {name}')
             #  xbmc.log(f'Updated get: {name} with handlers and get level: '
             #           f'{log_level}, propagate= False')
-            #  logger.debug_v(f'Test logger {name} finish config')
-            #  logger.info(f'Test logger {name} finish config INFO')
-            #  logger.debug(f'Test logger {name} finish config')
+            '''
+            logger.debug_v(f'Test logger {name} finish config')
+            logger.info(f'Test logger {name} finish config INFO')
+            logger.debug(f'Test logger {name} finish config')
+            '''
             cls.debug_level_config[name] = log_level
         cls.change_cnt += 1
 
@@ -327,12 +333,28 @@ class BasicLogger(Logger):
         else:
             logger_name = plugin_name
             #  xbmc.log(f'Set logger_name to plugin_name')
-        #  xbmc.log(f'logger_name: |{logger_name}| plugin_name: |{plugin_name}|')
         logger = getLogger(logger_name)
-        #  logger.info(f'Test new logger INFO {logger_name}')
-        #  logger.debug(f'Test new logger DEBUG {logger_name}')
+        '''
+        xbmc.log(f'logger_name: |{logger_name}| plugin_name: |{plugin_name}|')
+        logger: BasicLogger
+        logger.info(f'Test new logger INFO {logger_name} level {logger.level}'
+                    f' propagate: {logger.propagate}')
+        logger.debug(f'Test new logger DEBUG {logger_name}')
+        logger.debug_v(f'Test new logger DEBUG_V {logger_name}')
+        logger.debug_xv(f'Test new logger DEBUG_XV {logger_name}')
+
+        logger.parent.info(f'Test parent logger {logger.parent.name} INFO level: '
+                           f'{logger.parent.level}')
+        logger.parent.debug(f'Test parent logger DEBUG {logger.parent.name}')
+        try:
+            logger.parent.debug_v(f'Test parent logger DEBUG_V {logger.parent.name}')
+            logger.parent.debug_xv(f'Test parent logger DEBUG_XV {logger.parent.name}')
+        except:
+            xbmc.log(f'Blew up callong debug_v or debug_xv')
+        '''
+
         if cls.debug_level_config.get(logger_name) is not None:
-        #      xbmc.log(f'get already exists: {logger_name} NO CHANGES')
+            #  xbmc.log(f'get already exists: {logger_name} NO CHANGES')
             return logger
 
         my_handler: Handler = None
@@ -341,7 +363,7 @@ class BasicLogger(Logger):
         if logger_name == plugin_name:
             logging_level = CriticalSettings.get_logging_level()
             logger.setLevel(logging_level)
-            logger.propogate = False
+            logger.propagate = False
             my_handler = BasicLogger.get_new_handler()
             my_handler.setLevel(logging_level)
             my_filter = BasicLogger.get_new_filter()
@@ -352,9 +374,13 @@ class BasicLogger(Logger):
             #  logger.debug(f'Test plugin logger after add filter: {logger_name}')
             BasicLogger.addon_logger = logger
             #  xbmc.log(f'new addon get: {logger_name} with handlers and level')
-        else:
-            pass
-            #  xbmc.log(f'new get: {logger_name} without handlers and no level')
+        '''
+        has_handlers: bool = False
+        if len(logger.handlers) > 0:
+            has_handlers = True
+        xbmc.log(f'{logger_name} level: {logging_level} has_handlers: {has_handlers}')
+        #  xbmc.log(f'new get: {logger_name} without handlers and no level')
+        '''
         cls.debug_level_config[logger_name] = logging_level
         cls.change_cnt += 1
         return logger

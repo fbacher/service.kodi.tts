@@ -2,7 +2,7 @@
 
 from typing import Callable, List
 
-from common.logger import BasicLogger, DEBUG_V
+from common.logger import BasicLogger, DEBUG_V, DISABLED
 from gui.base_label_model import BaseLabelModel
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
@@ -96,7 +96,7 @@ class GroupModel(BaseLabelModel):
         else:
             self.topic = NoGroupTopicModel(self)
 
-        if clz._logger.isEnabledFor(DEBUG_V):
+        if clz._logger.isEnabledFor(DISABLED):
             clz._logger.debug_v(f'parsed_group: {parsed_group}')
         parsers: List[BaseParser] = parsed_group.get_children()
 

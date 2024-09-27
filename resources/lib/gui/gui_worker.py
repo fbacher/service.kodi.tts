@@ -294,7 +294,7 @@ class GuiWorker:
         # clz._logger.debug(f'changed: {changed} revoice: {windialog_state.revoice}')
         if windialog_state.focus_changed or not GuiGlobals.require_focus_change:
             # clz._logger.debug(f'focus_id: {focus_id}')
-            focused_topic = window_struct.topic_by_tree_id.get(str(focus_id))
+            focused_topic = window_struct.get_topic_by_tree_id(str(focus_id))
             # clz._logger.debug(f'focused_topic: {focused_topic}')
 
         if GuiWorkerQueue.canceled_sequence_number >= sequence_number:
@@ -438,7 +438,7 @@ class GuiWorker:
                 clz._logger.debug_v(f'topic: {topic.name} ctrl: '
                                           f'{topic.parent.control_id} '
                                           f'outer_topic: {topic.outer_topic}')
-            topic = window_struct.topic_by_topic_name.get(topic.outer_topic)
+            topic = window_struct.get_topic_by_topic_name(topic.outer_topic)
 
         # Reverse to make head of list the first thing to voice (window header)
         current_focus_chain = list(reversed(current_focus_chain))

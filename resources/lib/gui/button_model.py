@@ -122,7 +122,7 @@ class ButtonModel(BaseLabelModel):
                 # Voice either focused control, or label/text
                 #temp_phrases.clear()
             temp_phrases: PhraseList = PhraseList(check_expired=False)
-            success = topic.voice_value(temp_phrases)
+            success = topic.voice_topic_value(temp_phrases)
             if focus_changed or not self.previous_value.equal_text(temp_phrases):
                 phrases.extend(temp_phrases)
             self.previous_value.clear()
@@ -245,7 +245,7 @@ class ButtonModel(BaseLabelModel):
 
         if include_children:
             for child in self.children:
-                child: BaseParser
+                child: BaseModel
                 results.append(str(child))
         results.append(f'END ButtonModel')
 

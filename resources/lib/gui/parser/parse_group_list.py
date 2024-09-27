@@ -40,7 +40,9 @@ class ParseGroupList(ParseControl):
             </control>
         """
         super().__init__(parent)
-
+        clz = ParseGroupList
+        clz._logger.debug(f'SETTING self.control_type to GroupList')
+        self.control_type = ControlElement.GROUP_LIST
         self.topic: ParseTopic | None = None
         self.default_control_always: bool = False
         self.default_control_id: int = -1
@@ -91,11 +93,12 @@ class ParseGroupList(ParseControl):
                 <ondown>100</ondown>
         """
         clz = type(self)
-        self.control_type = ControlElement.GROUP_LIST
         control_id_str: str = el_group_list.attrib.get('id')
         if control_id_str is not None:
             control_id: int = int(control_id_str)
             self.control_id = control_id
+            clz._logger.debug(f'SETTING self.control_id to {control_id}'
+                              f' control_id_str: {control_id_str}')
 
         alt_label_str: str = el_group_list.attrib.get(BAT.ALT_LABEL)
         if alt_label_str is not None:

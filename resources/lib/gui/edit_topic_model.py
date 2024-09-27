@@ -225,7 +225,7 @@ class EditTopicModel(TopicModel):
         clz._logger.debug(f'{stmts.last.phrases}')
         return success
 
-    def voice_value(self, stmts: Statements) -> bool:
+    def voice_topic_value(self, stmts: Statements) -> bool:
         """
         Voice a control's value. Used primarily when a control's value comes from
         another control ('flows_to'). Let the control using the value decide
@@ -248,7 +248,7 @@ class EditTopicModel(TopicModel):
             topic_to: TopicModel
             control_model, topic_to = self.parent.get_topic_for_id(self.flows_to_expr)
             clz._logger.debug(f'topic_to: {topic_to}')
-            success = topic_to.voice_value(stmts)
+            success = topic_to.voice_topic_value(stmts)
             return success
         control_model: ForwardRef('BasicModel')
         control_model = self.parent

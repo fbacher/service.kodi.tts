@@ -982,10 +982,10 @@ class TTSService:
             result = cls._previous_secondary_text != ''
         else:
             result = not phrases[0].text_equals(cls._previous_secondary_text)
-        if TTSLogger.logger().isEnabledFor(DEBUG_V):
-            TTSLogger.logger().debug_v(f'previous_secondary_text:'
-                                      f' {cls._previous_secondary_text} '
-                                      f'phrases: {phrases} result: {result}')
+        if TTSLogger.logger().isEnabledFor(DEBUG_XV):
+            TTSLogger.logger().debug_xv(f'previous_secondary_text:'
+                                       f' {cls._previous_secondary_text} '
+                                       f'phrases: {phrases} result: {result}')
         return result
 
     @classmethod
@@ -1020,7 +1020,7 @@ class TTSService:
         # the actual text in any changed control.
 
         newD = newC and cls.checkControlDescription(newW, window_state) or False
-        TTSLogger.logger().debug(f'Calling: windowReader')
+        #  TTSLogger.logger().debug(f'Calling: windowReader')
         phrases: PhraseList = PhraseList()
         success: bool = cls.windowReader.getControlText(cls.current_control_id, phrases)
         if not success or phrases.is_empty():
@@ -1387,8 +1387,8 @@ class TTSService:
         control_id: int = cls.current_control_id
         try:
             control_id = abs(cls.window(window_state).getFocusId())
-            if TTSLogger.logger().isEnabledFor(DEBUG_V):
-                TTSLogger.logger().debug_v(f'CHECK Focus control_id: {control_id}')
+            if TTSLogger.logger().isEnabledFor(DEBUG_XV):
+                TTSLogger.logger().debug_xv(f'CHECK Focus control_id: {control_id}')
             control = xbmc.getInfoLabel("System.CurrentControl()")
         except AbortException:
             reraise(*sys.exc_info())

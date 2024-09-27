@@ -3,50 +3,20 @@ import pathlib
 from typing import Callable, Dict, ForwardRef, List
 
 import xbmc
-import xbmcgui
 
 from common.logger import BasicLogger, DEBUG_V
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
 from gui.base_tags import control_elements, ControlElement, Item, WindowType
 from gui.base_topic_model import BaseTopicModel
-from gui.button_model import ButtonModel
-from gui.controls_model import ControlsModel
-from gui.edit_model import EditModel
 from gui.element_parser import (ElementHandler)
-from gui.focused_layout_model import FocusedLayoutModel
-from gui.group_list_model import GroupListModel
-from gui.group_model import GroupModel
 from gui.interfaces import IWindowStructure
-from gui.item_layout_model import ItemLayoutModel
-from gui.label_model import LabelModel
-from gui.list_model import ListModel
 from gui.no_topic_models import NoWindowTopicModel
 from gui.parser.parse_window import ParseWindow
-from gui.radio_button_model import RadioButtonModel
-from gui.scrollbar_model import ScrollbarModel
-from gui.slider_model import SliderModel
-from gui.spin_model import SpinModel
-from gui.spinex_model import SpinexModel
 from gui.statements import Statements
 from gui.topic_model import TopicModel
 from gui.window_topic_model import WindowTopicModel
-from windows.window_state_monitor import WinDialogState, WindowStateMonitor
-
-ElementHandler.add_model_handler(ControlsModel.item, ControlsModel)
-ElementHandler.add_model_handler(GroupModel.item, GroupModel)
-ElementHandler.add_model_handler(ButtonModel.item, ButtonModel)
-ElementHandler.add_model_handler(RadioButtonModel.item, RadioButtonModel)
-ElementHandler.add_model_handler(LabelModel.item, LabelModel)
-ElementHandler.add_model_handler(GroupListModel.item, GroupListModel)
-ElementHandler.add_model_handler(ScrollbarModel.item, ScrollbarModel)
-ElementHandler.add_model_handler(EditModel.item, EditModel)
-ElementHandler.add_model_handler(SliderModel.item, SliderModel)
-ElementHandler.add_model_handler(FocusedLayoutModel.item, FocusedLayoutModel)
-ElementHandler.add_model_handler(ItemLayoutModel.item, ItemLayoutModel)
-ElementHandler.add_model_handler(SpinexModel.item, SpinexModel)
-ElementHandler.add_model_handler(SpinModel.item, SpinModel)
-ElementHandler.add_model_handler(ListModel.item, ListModel)
+from windows.window_state_monitor import WinDialogState
 
 
 module_logger = BasicLogger.get_logger(__name__)

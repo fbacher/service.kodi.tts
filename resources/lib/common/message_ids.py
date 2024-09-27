@@ -14,11 +14,28 @@ module_logger = BasicLogger.get_logger(__name__)
 
 class MessageId(Enum):
     # The following tree values MUST be the same as in VoiceHintToggle
+    ENGINE_LABEL = 32001
+
     VOICE_HINT_OFF = 32050
     VOICE_HINT_ON = 32051
     VOICE_HINT_PAUSE = 32052
+    DATABASE_SCAN_STARTED = 32100
+    DATABASE_SCAN_FINISHED = 32101
+
+    ITEM_WITH_NUMBER = 32106  # item {number}
+    ITEMS_WITH_NUMBER = 32107  # {number} items
 
     ENGINE_AUTO_ID = 32184
+    ITEM = 32237  # item (use when you can't get the number)
+    CONTAINER_ITEM_NUMBER_CONTROL_AND_VALUE = 32238
+    BASIC_CONFIGURATION = 32239
+
+    # Separates the reading of the heading and the value
+    VALUE_PREFIX = 32240
+    # Separates the reading of the heading and the value
+    HEADING_VALUE_SEPARATOR = 32241  # {heading} value {value}
+
+
     ENGINE_ESPEAK_ID = 32314
     ENGINE_FESTIVAL = 32315
     ENGINE_FLITE = 32316
@@ -31,6 +48,9 @@ class MessageId(Enum):
     ENGINE_INTERNAL = 32326
     ENGINE_LOG_ONLY = 32327
     CONVERT_PICO_TO_WAV = 32328
+    # Voice a boolean control value as 'True' or 'False'
+    TRUE = 32820
+    FALSE = 32821
     ENGINE_PIPER = 32331
 
     PLAYER_NONE = 32304
@@ -41,26 +61,28 @@ class MessageId(Enum):
     PLAYER_AFPLAY = 32301
     PLAYER_SOX = 32302
     PLAYER_MPLAYER = 32303
-    PLAYER_MPV = 32330
     PLAYER_MPG321 = 32305
     PLAYER_MPG123 = 32306
     PLAYER_MPG321_OE_PI = 32307
+
     PLAYER_INTERNAL = 32313
+
+    PLAYER_MPV = 32330
+
+    MSG_NOT_FOUND_ERROR = 32335
+
     LIBRARY_CLEAN_START = 32340
     LIBRARY_CLEAN_COMPLETE = 32341
     SCREEN_SAVER_START = 32342
     SCREEN_SAVER_INTERRUPTED = 32343
-    DATABASE_SCAN_STARTED = 32100
-    DATABASE_SCAN_FINISHED = 32101
-    ITEM_WITH_NUMBER = 32106   # item {number}
-    ITEMS_WITH_NUMBER = 32107  # items {number}
-    HEADING_WITH_ITEM_COUNT = 32720
-    ITEM = 32237  # item (use when you can't get the number)
+    HEADING_WITH_ITEMS = 32344
+    HEADING_WITH_ORIENTATION = 32345
+    HEADING_WITH_ORIENTATION_AND_ITEMS = 32346
+
     # PLAYER_WAVE_HANDLER = -1
     # PLAYER_MP3_AUDIO_PLAYER_HANDLER = -1
     # PLAYER_BUILTINAUDIOPLAYERHANDLER = -1
 
-    MSG_NOT_FOUND_ERROR = 32335
     DIALOG_N_OF_M_ITEMS = 32714
 
     # "Begins with the closest match to current language."

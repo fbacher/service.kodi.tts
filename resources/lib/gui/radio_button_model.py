@@ -4,9 +4,9 @@ from typing import Callable, List
 
 import xbmc
 
-from common.logger import BasicLogger, DEBUG_V
+from common.logger import BasicLogger, DEBUG_V, DISABLED
 from common.messages import Messages
-from common.phrases import Phrase
+from common.phrases import Phrase, PhraseList
 from gui.base_label_model import BaseLabelModel
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
@@ -15,7 +15,7 @@ from gui.element_parser import (ElementHandler)
 from gui.no_topic_models import NoRadioButtonTopicModel
 from gui.parser.parse_radio_button import ParseRadioButton
 from gui.radio_button_topic_model import RadioButtonTopicModel
-from gui.statements import Statements
+from gui.statements import Statement, Statements, StatementType
 from gui.topic_model import TopicModel
 from windows.window_state_monitor import WinDialogState
 
@@ -101,14 +101,36 @@ class RadioButtonModel(BaseLabelModel):
         return True
 
     @property
-    def supports_label2(self) -> bool:
+    def supports_label_2(self) -> bool:
+        return True
+
+    @property
+    def supports_label_2_label(self) -> bool:
+        return False
+
+    @property
+    def supports_label2_value(self) -> bool:
         """
                RadioButton supports label2 dependent on its config. Will have to
-               write code to determine at run time. True only with RadioButton having
-               empty radiowidth and radioheight.
+               write code to determine at run time. There is a note from Kodi docs
+               that RadioButton only supports this when the RadioButton is zero
+               size. However, experiments show that when the RadioButtin is
+               non-zero and visible, the value of label2 is the same as for
+               label, but with a suffix indicating the boolean state of the
+               RadioButton. The suffix is '(*)' when True or '()' when False
          """
         #  ControlCapabilities.LABEL2
-        return False
+        return True
+
+    @property
+    def supports_boolean_value(self) -> bool:
+        """
+        Some controls, such as RadioButton, support a boolean value
+        (on/off, disabled/enabled, True/False, etc.). Such controls
+        Use the value "(*)" to indicate True and "()" to indicate False.
+        :return:
+        """
+        return True
 
     @property
     def supports_value(self) -> bool:
@@ -119,14 +141,14 @@ class RadioButtonModel(BaseLabelModel):
         then a value can be determined that way, but not using this method.
         :return:
         """
-        return False
+        return True
 
     def voice_control(self, stmts: Statements) -> bool:
         """
 
         :param stmts: Statements to append to
         :return: True if anything appended to stmts, otherwise False
-     """
+        """
         clz = type(self)
         focus_changed: bool = self.windialog_state.focus_changed
         success: bool = True
@@ -137,10 +159,12 @@ class RadioButtonModel(BaseLabelModel):
                 return success
             success = self.voice_heading(stmts)
             success = self.voice_radio_button_label(stmts, focus_changed)
+            success = self.voice_radio_button_value(stmts, focus_changed)
 
         # TODO, incomplete
         return success
 
+    '''
     def voice_heading(self, stmts: Statements) -> bool:
         """
 
@@ -152,7 +176,7 @@ class RadioButtonModel(BaseLabelModel):
         success = self.voice_control_name(stmts)
         topic: TopicModel | None = self.topic
         return success
-
+    '''
     def voice_radio_button_label(self, stmts: Statements, focus_changed) -> bool:
         clz = type(self)
         success = self.voice_labeled_by(stmts)
@@ -187,6 +211,9 @@ class RadioButtonModel(BaseLabelModel):
             try:
                 query: str = f'Control.GetLabel({self.control_id}).index(0)'
                 text: str = xbmc.getInfoLabel(query)
+                text2: str = xbmc.getInfoLabel(f'Control.GetLabel({self.control_id})'
+                                               f'.index(1)')
+                clz._logger.debug(f'text: {text} text2: {text2}')
                 # None is returned with no substitutions needed
                 new_text: str = Messages.format_boolean(text=text)
                 clz._logger.debug(f'text: {new_text} focus_changed: {focus_changed}')
@@ -196,8 +223,48 @@ class RadioButtonModel(BaseLabelModel):
                 pass
         return success
 
+    def voice_label_ll(self, stmts: Statements, label_expr: str | None,
+                       label_1: bool = True, label_2: bool = False,
+                       stmt_type: StatementType = StatementType.NORMAL) -> bool:
+        """
+            Converts a label expression which may be a simple integer string
+            or an infoList expression, etc.
+
+        :param stmts Any resulting label or list item text is added to phrases
+        :param label_expr: used for label query
+        :param label_1: If True then return the value of getLabel
+        :param label_2: If True, and the control supports label 2, then return
+                        it's value
+        :param stmt_type: StatementType to assign any Statements
+        :return: True if any text added to phrases, otherwise False
+
+        If both label and label_2 are False, then nothing is added to phrases.
+        If both label1 and label2 are True, then both values of label and label_2
+        are added to phrases.
+        """
+        clz = BaseModel
+        text_1: str
+        text_2: str
+        success_1: bool = False
+        success_2: bool = False
+        text_1, text_2 = self.get_label_ll(label_expr, label_1, label_2)
+        if text_1 != '':
+            stmts.append(Statement(PhraseList.create(texts=text_1,
+                                                     check_expired=False),
+                                   stmt_type=stmt_type))
+            success_1 = True
+        if text_2 != '':
+            success_2 = True
+            if text_1 != '':
+                stmts.last.phrases.add_text(texts=text_2)
+            else:
+                stmts.append(Statement(PhraseList.create(texts=text_2,
+                                                         check_expired=False),
+                                       stmt_type=stmt_type))
+        return success_1 or success_2
+
     '''
-    def format_value(self, text: str, phrases: PhraseList, focus_changed: bool,
+    def format_bool_value(self, text: str, phrases: PhraseList, focus_changed: bool,
                      enabled_msgid: int = Messages.ENABLED.get_msg_id(),
                      disabled_msgid: int = Messages.DISABLED.get_msg_id()) -> bool:
         clz = type(self)

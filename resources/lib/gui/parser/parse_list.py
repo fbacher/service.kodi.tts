@@ -51,6 +51,9 @@ class ParseList(ParseControl):
 
     def __init__(self, parent: ParseControl) -> None:
         super().__init__(parent)
+        clz = ParseList
+        clz._logger.debug(f'SETTING self.control_type to LIST')
+        self.control_type = ControlElement.LIST
         self.topic: ParseTopic | None = None
         self.item_layouts: List[ForwardRef('ParseItemLayout')] = []
         self.focused_layouts: List[ForwardRef('ParseFocusedLayout')] = []

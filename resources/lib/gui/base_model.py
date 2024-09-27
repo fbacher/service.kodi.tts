@@ -6,7 +6,9 @@ from typing import Dict, ForwardRef, List, Tuple, Union
 import xbmc
 import xbmcgui
 
+from common.constants import Constants
 from common.logger import BasicLogger, DEBUG_V, DISABLED
+from common.message_ids import MessageId, MessageUtils
 from common.messages import Messages
 from common.phrases import Phrase, PhraseList
 from gui.base_tags import ControlElement, Requires, WindowType
@@ -38,10 +40,18 @@ class BaseModel(IModel):
         #  self._window_id: int | None = None
         self._window_struct: IWindowStructure = None
         self._control_type: ControlElement = parser.control_type
+        #  clz._logger.debug(f'initial control_type: {self._control_type} '
+        #                   f'control_id: {self._control_id}')
         self._tree_id: str = f'JUNK'
         self._topic: ForwardRef('TopicModel') = None
         self._root_topic: ForwardRef('WindowTopicModel') = None
         self._topic_checked: bool = False
+        # Default msg_id for controls which return a boolean (such as a
+        # RadioButton). The value should be tailored for the control.
+        # Here, we choose simply 'True' and 'False'. Controls can override.
+        # If using Topics, the values can be specified there.
+        self.default_true_msg_id: int = MessageId.TRUE.value
+        self.default_false_msg_id: int = MessageId.FALSE.value
         # Parent models can specify that the topic MUST have something defined.
         # Example, Sliders require that it's topic MUST define the units, scale,
         # etc. for the slider, since there is no way to get this from kodi api
@@ -126,10 +136,78 @@ class BaseModel(IModel):
         return True
 
     @property
+    def supports_boolean_value(self) -> bool:
+        """
+        Some controls, such as RadioButton, support a boolean value
+        (on/off, disabled/enabled, True/False, etc.). Such controls
+        Use the value "(*)" to indicate True and "()" to indicate False.
+        :return:
+        """
+        return False
+
+    @property
+    def true_value(self) -> str:
+        clz = BaseModel
+        if not self.supports_boolean_value:
+            raise ValueError('Does not support boolean value')
+        true_msg: str = ''
+        if self.topic is not None:
+            true_msg = self.topic.true_value
+        else:
+            true_msg = MessageUtils.get_msg(self.default_true_msg_id)
+        clz._logger.debug(f'true_msg: {true_msg}')
+        return true_msg
+
+    @property
+    def false_value(self) -> str:
+        if not self.supports_boolean_value:
+            raise ValueError('Does not support boolean value')
+        false_msg: str = ''
+        if self.topic is not None:
+            false_msg = self.topic.false_value
+        else:
+            false_msg = MessageUtils.get_msg(self.default_false_msg_id)
+        return false_msg
+
+    @property
+    def supports_label_value(self) -> bool:
+        """
+            A control with a label that is frequently used as a value
+        :return:
+        """
+        # ControlCapabilities.LABEL
+
+        return False
+
+    @property
+    def supports_label2_value(self) -> bool:
+        """
+         A control that supports label2 that is frequently used as a value.
+
+        :return:
+        """
+        #  ControlCapabilities.LABEL2
+
+        return False
+
+    @property
     def supports_container(self) -> bool:
         """
            Only a few controls are containers and even then, some don't fully
            support containers.
+
+           Known Containers
+               FixedList?, List, Panel, WrapList
+           Known semi-containers
+               GroupList
+           :return:
+        """
+        return False
+
+    @property
+    def supports_orientation(self) -> bool:
+        """
+           List-type controls support orientation (vertical or horizontal)
 
            Known Containers
                FixedList?, List, Panel, WrapList
@@ -267,6 +345,7 @@ class BaseModel(IModel):
             control_type: AltCtrlType
             control_type = AltCtrlType.get_default_alt_ctrl_type(self.control_type)
             control_name = Messages.get_msg_by_id(control_type.value)
+            clz._logger.debug(f'control_name: {control_name}')
         return control_name
 
     def voice_control_name(self, stmts: Statements) -> bool:
@@ -284,6 +363,9 @@ class BaseModel(IModel):
             success = self.voice_label_expr(stmts)
         success = self.voice_chained_controls(stmts)
         return success
+
+    def voice_value(self, stmts: Statements) -> bool:
+        return False
 
     def get_item_number(self, control_id: int | None = None) -> int:
         """
@@ -338,7 +420,7 @@ class BaseModel(IModel):
         clz = BaseModel
         return ''
 
-    def voice_active_item(self, stmts: Statements) -> bool:
+    def voice_active_item_value(self, stmts: Statements) -> bool:
         """
         Only used when chain of Topics are not available from Window to
          focused/active control.
@@ -376,7 +458,7 @@ class BaseModel(IModel):
             if clz._logger.isEnabledFor(DEBUG_V):
                 clz._logger.debug_v(f'labeled_by: {self.topic.labeled_by_expr}')
             if label_cntrl is not None:
-                control_type: str = label_cntrl.control_type
+                control_type: ControlElement = label_cntrl.control_type
                 if clz._logger.isEnabledFor(DEBUG_V):
                     clz._logger.debug_v(f'label_cntrl: {control_type}')
                 if label_cntrl.control_type != ControlElement.LABEL_CONTROL:
@@ -409,9 +491,9 @@ class BaseModel(IModel):
 
         if control_id > 0:
             try:
-                success = self.get_label_ll(stmts, label_expr=str(control_id),
-                                            label_1=self.supports_label,
-                                            label_2=self.supports_label2)
+                success = self.voice_label_ll(stmts, label_expr=str(control_id),
+                                              label_1=self.supports_label,
+                                              label_2=self.supports_label2)
             except ValueError as e:
                 success = False
             except Exception:
@@ -439,8 +521,8 @@ class BaseModel(IModel):
             clz._logger.debug(f'control_id_expr: {control_id_expr}')
         if control_id != -1:
             try:
-                success = self.get_label_ll(stmts, label_expr=control_id_expr,
-                                            stmt_type=stmt_type)
+                success = self.voice_label_ll(stmts, label_expr=control_id_expr,
+                                              stmt_type=stmt_type)
             except ValueError as e:
                 success = False
             except Exception:
@@ -474,6 +556,94 @@ class BaseModel(IModel):
                 success = False
         return success
 
+    def voice_label_value(self, stmts: Statements,
+                    control_id_expr: int | str | None = None,
+                    stmt_type: StatementType = StatementType.NORMAL) -> bool:
+        """
+            Voices this control's label as the value of the control.
+            Generally, when voicing something like a RadioButton the label
+            is part of the heading for the control while label2 is the
+            value of the RaioButton. Further, at least in english, the
+            heading is usually voiced before the value.
+
+        :param stmts: Any found text is appended to stmts
+        :param control_id_expr:  If non-None, then used as the control_id instead
+               of self.control_id
+        :param stmt_type StatementType to assign any voiced Statements
+        :return:
+        """
+        clz = BaseModel
+        # Control ID should be an integer
+        success: bool = False
+        control_id: int = self.control_id
+        if control_id_expr is None:
+            control_id_expr = str(self.control_id)
+        if clz._logger.isEnabledFor(DEBUG):
+            clz._logger.debug(f'control_id_expr: {control_id_expr}')
+        if control_id != -1:
+            try:
+                success = self.voice_label_ll(stmts, label_expr=control_id_expr,
+                                              stmt_type=stmt_type)
+            except ValueError as e:
+                success = False
+            except Exception:
+                clz._logger.exception('')
+        return success
+
+    def voice_label2_value(self, stmts: Statements,
+                           control_id_expr: int | str | None = None,
+                           stmt_type: StatementType = StatementType.VALUE) -> bool:
+        """
+            Voices any label2 value as this control's value
+
+        :param stmts:
+        :param control_id_expr:
+        :param stmt_type:
+        :return:
+        """
+        """
+        :param stmts: 
+        :param control_id_expr: 
+        :param stmt_type: 
+        :return: 
+        """
+        clz = BaseModel
+        # Control ID should be an integer
+        success: bool = False
+        control_id: int = -1
+        if control_id_expr is not None:
+            control_id = util.get_non_negative_int(control_id_expr)
+        else:
+            control_id = self.control_id
+        if self.control_id != -1:
+            try:
+                query: str = f'Control.GetLabel({control_id}.index(1))'
+                text: str = xbmc.getInfoLabel(query)
+                bool_text: str = ''
+                if clz._logger.isEnabledFor(DEBUG):
+                    clz._logger.debug(f'Text: {text}')
+                if text != '':
+                    if self.supports_boolean_value:
+                        is_true: bool
+                        new_text: str
+                        is_true, new_text = self.is_true(text)
+                        clz._logger.debug(f'is_true: {is_true}')
+                        if is_true is not None:
+                            if is_true:
+                                bool_text = self.true_value
+                            else:
+                                bool_text = self.false_value
+                    clz._logger.debug(f'bool_text: {bool_text}')
+                    stmt: Statement = Statement(
+                            PhraseList.create(texts=bool_text),
+                            stmt_type=stmt_type)
+                    stmts.append(stmt)
+                    success = True
+            except ValueError as e:
+                clz._logger.exception('')
+                success = False
+        return success
+
     def voice_control_value(self, stmts: Statements,
                             control_id: int | None = None) -> bool:
         """
@@ -495,8 +665,8 @@ class BaseModel(IModel):
         label_1: bool = True
         if self.supports_label2:
             label_1 = False
-        success = self.get_label_ll(stmts, label_expr=str(control_id),
-                                    label_1=label_1,  label_2=True)
+        success = self.voice_label_ll(stmts, label_expr=str(control_id),
+                                      label_1=label_1, label_2=True)
         if clz._logger.isEnabledFor(DEBUG_V):
             clz._logger.debug_v(f'{stmts.last.phrases}')
         return success
@@ -524,6 +694,21 @@ class BaseModel(IModel):
         clz = BaseModel
         if label_expr == '':
             return None
+        try:
+            if label_expr.startswith('$LOCALIZE'):
+                label_expr = label_expr[10:-1]
+                if label_expr.isdigit():
+                    label_num: int = int(label_expr)
+                    text = MessageUtils.get_msg_by_id(label_num)
+                    return text
+                else:
+                    clz._logger.debug(f'ERROR: expected $LOCALIZE to contain '
+                                      f'a number not: {label_expr}')
+                    return ''
+        except ValueError:
+            clz._logger.exception('')
+            return ''
+
         if label_expr.startswith('$INFO['):
             label_expr = label_expr[6:-1]
         try:
@@ -577,6 +762,31 @@ class BaseModel(IModel):
                 item_count += 1
         return item_count
     """
+
+    def is_true(self, text: str) -> Tuple[bool | None, str]:
+        """
+        Inspects text to see if it has Kodi's encoded boolean value at the end.
+        '(*)' is True while '()' is False. RadioButton returns an encoded bool
+        in its Label2 value (even when the radiobutton is zero size).
+
+        :param text: Text to examine
+        :return: a Tuple with the
+                  -first value of None, indicating no boolean code was found,
+                   otherwise, the value is True if the embeded value was True
+                  -second value is the value of text, with any embedded value
+                   removed
+        """
+        clz = type(self)
+        value: bool | None = None
+        if text.endswith(')'):  # Skip this most of the time
+            # For boolean settings
+            if text.endswith('()'):
+                text = text[0:-4]
+                value = False
+            elif text.endswith('(*)'):
+                text = text[0:-4]
+                value = True
+        return value, text
 
     def is_visible(self) -> bool:
         clz = BaseModel
@@ -742,9 +952,9 @@ class BaseModel(IModel):
 
         return False
 
-    def get_label_ll(self, stmts: Statements, label_expr: str | None,
-                     label_1: bool = True, label_2: bool = False,
-                     stmt_type: StatementType = StatementType.NORMAL) -> bool:
+    def voice_label_ll(self, stmts: Statements, label_expr: str | None,
+                       label_1: bool = True, label_2: bool = False,
+                       stmt_type: StatementType = StatementType.NORMAL) -> bool:
         """
             Converts a label expression which may be a simple integer string
             or an infoList expression, etc.
@@ -755,6 +965,44 @@ class BaseModel(IModel):
         :param label_2: If True, and the control supports label 2, then return
                         it's value
         :param stmt_type: StatementType to assign any Statements
+        :return: True if any text added to phrases, otherwise False
+
+        If both label and label_2 are False, then nothing is added to phrases.
+        If both label1 and label2 are True, then both values of label and label_2
+        are added to phrases.
+        """
+        clz = BaseModel
+        text_1: str
+        text_2: str
+        success_1: bool = False
+        success_2: bool = False
+        text_1, text_2 = self.get_label_ll(label_expr, label_1, label_2)
+        if text_1 != '':
+            stmts.append(Statement(PhraseList.create(texts=text_1,
+                                                     check_expired=False),
+                                   stmt_type=stmt_type))
+            success_1 = True
+        if text_2 != '':
+            success_2 = True
+            if text_1 != '':
+                stmts.last.phrases.add_text(texts=text_2)
+            else:
+                stmts.append(Statement(PhraseList.create(texts=text_2,
+                                                         check_expired=False),
+                                       stmt_type=stmt_type))
+        return success_1 or success_2
+
+    def get_label_ll(self, label_expr: str | None,
+                     label_1: bool = True, label_2: bool = False,
+                     ) -> Tuple[str | None, str | None]:
+        """
+            Converts a label expression which may be a simple integer string
+            or an infoList expression, etc.
+
+        :param label_expr: used for label query
+        :param label_1: If True then return the value of getLabel
+        :param label_2: If True, and the control supports label 2, then return
+                        it's value
         :return: True if any text added to phrases, otherwise False
 
         If both label and label_2 are False, then nothing is added to phrases.
@@ -823,15 +1071,9 @@ class BaseModel(IModel):
             try:
                 text_1 = xbmc.getInfoLabel(f'{query_1}')  # TODO: May require post-processing
                 text_1 = text_1.strip()
-                text_2 = xbmc.getInfoLabel('Control.GetLabel(100)')
-                text_3 = xbmc.getInfoLabel('Control.GetLabel("100")')
                 visible: bool = xbmc.getCondVisibility(f'Control.IsVisible({control_id})')
                 clz._logger.debug(f'query_1: {query_1} text_1: {text_1} visible {visible}')
-                clz._logger.debug(f'text_2: {text_2} text_3: {text_3}')
-                if text_1 != '':
-                    stmts.append(Statement(PhraseList.create(texts=text_1,
-                                                             check_expired=False),
-                                       stmt_type=stmt_type))
+                clz._logger.debug(f'text_2: {text_2}')
             except:
                 clz._logger.exception(f'control_expr: {query_1} label_1')
                 success_1 = False
@@ -839,21 +1081,13 @@ class BaseModel(IModel):
             try:
                 text_2 = xbmc.getInfoLabel(query_2)  # TODO: May require post-processing
                 text_2 = text_2.strip()
-                if text_2 != '':
-                    if text_1 != '':
-                        stmts.last.phrases.add_text(texts=text_2)
-                    else:
-                        stmts.append(Statement(PhraseList.create(texts=text_2,
-                                                                 check_expired=False),
-                                               stmt_type=stmt_type))
-
             except:
                 clz._logger.exception(f'control_expr: {query_2} label_1')
                 success_2 = False
 
         if text_1 != '' or text_2 != '':
-            clz._logger.debug(f'text_1: {text_1} text_2: {text_2} \n  stmts: {stmts}')
-        return success_1 and success_2
+            clz._logger.debug(f'text_1: {text_1} text_2: {text_2}')
+        return text_1, text_2
 
     def get_info_label_ll(self, stmts: Statements, query: str) -> bool:
         """
@@ -875,3 +1109,6 @@ class BaseModel(IModel):
             except:
                 clz._logger.exception('')
         return False
+
+    def to_string(self, include_children: bool = False) -> str:
+        return ''

@@ -85,11 +85,14 @@ class ParseGroup(ParseControl):
         # Group control type. Get any ID
 
         #  clz._logger.debug(f'In ParseGroup.parse_group')
+        clz._logger.debug(f'SETTING self.control_type to GROUP')
         self.control_type = ControlElement.GROUP
+
         control_id_str: str = el_group.attrib.get('id')
         if control_id_str is not None:
             control_id: int = int(control_id_str)
             self.control_id = control_id
+            clz._logger.debug(f'SETTING self.control_id to {control_id}')
 
         DEFAULT_TAGS: Tuple[str, ...] = (EK.DESCRIPTION, EK.VISIBLE)
         GROUP_CONTROL_TAGS: Tuple[str, ...] = (TE.TOPIC,

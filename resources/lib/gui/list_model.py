@@ -132,6 +132,19 @@ class ListModel(BaseModel):
         return True
 
     @property
+    def supports_orientation(self) -> bool:
+        """
+           List-type controls support orientation (vertical or horizontal)
+
+           Known Containers
+               FixedList?, List, Panel, WrapList
+           Known semi-containers
+               GroupList
+           :return:
+        """
+        return True
+
+    @property
     def supports_item_count(self) -> bool:
         """
            Indicates if the container supports item_count. List type containers/
@@ -162,7 +175,7 @@ class ListModel(BaseModel):
             clz._logger.debug_xv(f'Orientation: {orientation}')
         return orientation
 
-    def voice_active_item(self, stmts: Statements) -> bool:
+    def voice_active_item_value(self, stmts: Statements) -> bool:
         """
         Only used when chain of Topics are not available from Window to
          focused/active control.

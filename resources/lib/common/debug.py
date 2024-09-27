@@ -41,6 +41,7 @@ class Debug:
     """
     _logger: BasicLogger = module_logger
     _currentAddonName = CriticalSettings.get_plugin_name()
+    _debug_file = None
 
     @classmethod
     def dump_json(cls, text: str = '', data: Any = '',
@@ -99,11 +100,12 @@ class Debug:
         :return:
         """
         try:
-            # debug_file = io.open("/home/fbacher/.kodi/temp/kodi.threads", mode='w',
-            #                      buffering=1,
-            #                      newline=None,
-            #                      encoding='ASCII')
-            faulthandler.dump_traceback(file=sys.stdout, all_threads=True)
+            if cls._debug_file is None:
+                cls._debug_file = io.open("/home/fbacher/.kodi/temp/kodi.threads", mode='w',
+                                          buffering=1,
+                                          newline=None,
+                                          encoding='ASCII')
+            faulthandler.dump_traceback(file=cls._debug_file, all_threads=True)
             '''
             # debug_file.close()
             addon_prefix = f'{Constants.ADDON_ID}/'

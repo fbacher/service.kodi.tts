@@ -40,6 +40,9 @@ class ParseEdit(ParseControl):
             </control>
         """
         super().__init__(parent)
+        clz = ParseEdit
+        clz._logger.debug(f'SETTING self.control_type to EDIT')
+        self.control_type = ControlElement.EDIT
         self.topic: ParseTopic | None = None
         self.action_expr: str = ''
         # self.button
@@ -55,14 +58,6 @@ class ParseEdit(ParseControl):
         # self.on_info_expr: str = ''
         self.on_unfocus_expr: str = ''
         self.visible_expr: str = ''
-
-    @property
-    def control_type(self) -> ControlElement:
-        return BaseParser.control_type.fget(self)
-
-    @control_type.setter
-    def control_type(self, value: ControlElement) -> None:
-        BaseParser.control_type.fset(self, value)
 
     @classmethod
     def get_instance(cls, parent: ParseControl,

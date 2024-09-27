@@ -92,7 +92,7 @@ class ListTopicModel(TopicModel):
                                stmt_type=StatementType.VALUE))
         return True
 
-    def voice_active_item(self, stmts: Statements) -> bool:
+    def voice_active_item_value(self, stmts: Statements) -> bool:
         """
         Voice the active/focused item(s).
 
@@ -113,7 +113,7 @@ class ListTopicModel(TopicModel):
         :return:
         """
         clz = ListTopicModel
-        clz._logger.debug(f'In voice_active_item')
+        clz._logger.debug(f'In voice_active_item_value')
         success: bool = False
         # Can't get a usable item number. See get_item_number
         #  item_number: int = self.get_item_number()

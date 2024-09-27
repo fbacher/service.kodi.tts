@@ -39,6 +39,7 @@ class ParseControls(BaseParser):
         self.parse_controls(el_child)
         return self
 
+    '''
     @property
     def control_type(self) -> ControlElement:
         return BaseParser.control_type.fget(self)
@@ -46,6 +47,7 @@ class ParseControls(BaseParser):
     @control_type.setter
     def control_type(self, value: ControlElement) -> None:
         BaseParser.control_type.fset(self, value)
+    '''
 
     def parse_controls(self, controls_el: ET.Element) -> None:
         """
@@ -56,13 +58,23 @@ class ParseControls(BaseParser):
         clz = type(self)
         # clz._logger.debug(f'In parse_controls tag: {controls_el.tag}')
         el_child: ET.Element
-        control_id: str = controls_el.attrib.get(BaseAttributeType.ID.value)
+        control_id: str = controls_el.attrib.get('id')  # BaseAttributeType.ID.value)
+        clz._logger.debug(f'SETTING control_id: {control_id}')
         if control_id is not None and len(control_id) > 0:
             self.control_id = int(control_id)
         el_children: List[ET.Element] = controls_el.findall(f'./{EK.CONTROLS.value}')
         el_children.extend(controls_el.findall(f'./{EK.CONTROL.value}'))
 
+        for el_child in controls_el:
+            clz._logger.debug(f'CONTROLS_EL child: {el_child.tag}')
+            for key, value in el_child.attrib.items():
+                clz._logger.debug(f'Attribute: {key} value: {value}')
+
         #  clz._logger.debug(f'# children {len(children)}')
+        for el_child in el_children:
+            clz._logger.debug(f'CONTROL child: {el_child.tag}')
+            for key, value in el_child.attrib.items():
+                clz._logger.debug(f'Attribute: {key} value: {value}')
         for el_child in el_children:
             if el_child.tag != EK.CONTROL.value:
                 raise ParseError(f'Expected {EK.CONTROL.value} not {el_child.tag}')
@@ -83,9 +95,9 @@ class ParseControls(BaseParser):
             control_id = f' id: {self.control_id}'
         result: str = f'Controls {control_id}'
         results.append(result)
-        if False:
+        if True:
             for control in self.children:
-                control: ParseControl
+                control: ForwardRef('ParseControl')
                 result = str(control)
                 results.append(result)
 

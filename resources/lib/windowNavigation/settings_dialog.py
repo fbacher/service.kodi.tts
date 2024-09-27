@@ -43,6 +43,7 @@ else:
 
 class SettingsDialog(xbmcgui.WindowXMLDialog):
     HEADER_LABEL: Final[int] = 1
+    BASIC_CONFIG_LABEL: Final[int] = 2
     # ENGINE_TAB: Final[int] = 100
     # OPTIONS_TAB: Final[int] = 200
     # KEYMAP_TAB: Final[int] = 300
@@ -132,6 +133,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
         self._logger.debug_xv('SettingsDialog.__init__')
         self.header: ControlLabel | None = None
+        self.basic_config_label: ControlLabel | None = None
         # self.engine_tab: ControlRadioButton | None = None
         # self.options_tab: ControlButton | None = None
         # self.keymap_tab: ControlButton | None = None
@@ -221,6 +223,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
         self._logger.debug_xv('SettingsDialog.__init__')
         self.header = None
+        self.basic_config_label = None
         # self.engine_tab: ControlRadioButton | None = None
         # self.options_tab: ControlButton | None = None
         # self.keymap_tab: ControlButton | None = None
@@ -336,6 +339,10 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 # self.engine_group = self.get_control_group(clz.ENGINE_GROUP_LIST)
                 # self.engine_group.setVisible(True)
 
+                self.basic_config_label = self.get_control_label(clz.BASIC_CONFIG_LABEL)
+                self.basic_config_label.setLabel(MessageId.BASIC_CONFIGURATION.get_msg())
+                self.basic_config_label.setVisible(True)
+
                 self.engine_engine_button = self.get_control_button(
                         clz.SELECT_ENGINE_BUTTON)
 
@@ -354,8 +361,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 voice_str: str
                 voice_str = SettingsHelper.get_formatted_label(lang_info,
                                                                'display_name')
-                self.engine_engine_button.setLabel(
-                        f'{Messages.get_msg(Messages.ENGINE)}')
+                self.engine_engine_button.setLabel(MessageId.ENGINE_LABEL.get_msg())
                 self.engine_language_group = self.get_control_group(
                         clz.SELECT_LANGUAGE_GROUP)
                 self.engine_language_button: ControlButton = self.get_control_button(

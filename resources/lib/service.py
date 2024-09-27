@@ -56,7 +56,7 @@ definitions = {
     'tts.gui': DEBUG_VERBOSE,
     'tts.windows': logging.DEBUG,
     'tts.windows.custom_tts': DEBUG_VERBOSE,
-    'tts.gui.parser': logging.INFO,
+    'tts.gui.parser': DEBUG_VERBOSE,
     'tts.service_worker': DEBUG_VERBOSE,
     'tts.windowNavigation.help_dialog': logging.DEBUG
             }
@@ -71,6 +71,11 @@ service_worker_logger.info('hi info')
 service_worker_logger.debug(f'hi debug')
 service_worker_logger.debug_v(f'hi verbose')
 service_worker_logger.debug_xv(f'hi extra verbose')
+other_logger: BasicLogger = BasicLogger.get_logger(f'tts.gui.group_list_model')
+other_logger.info('hi info')
+other_logger.debug(f'hi debug')
+other_logger.debug_v(f'hi verbose')
+other_logger.debug_xv(f'hi extra verbose')
 
 from common import *
 from common.minimal_monitor import MinimalMonitor
@@ -318,7 +323,7 @@ if __name__ == '__main__':
     except Exception as e:
         module_logger.exception('')
     try:
-        Debug.dump_all_threads()
+        #  Debug.dump_all_threads()
         pending_threads: int = GarbageCollector.reap_the_dead()
         tmp_path: str = xbmcvfs.translatePath("special://home/temp/kodi.threads")
         debug_file = io.open(tmp_path,
@@ -327,7 +332,7 @@ if __name__ == '__main__':
                              newline=None,
                              encoding='ASCII')
         for tries in range(0, 10):
-            Debug.dump_all_threads()
+            #  Debug.dump_all_threads()
             #  pending_threads: int = GarbageCollector.reap_the_dead()
             pending_threads: int = 0
             for a_thread in threading.enumerate():

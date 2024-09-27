@@ -66,6 +66,8 @@ class ParseLabel(ParseControl):
 
     def __init__(self, parent: BaseParser) -> None:
         super().__init__(parent)
+        clz = ParseLabel
+        clz._logger.debug(f'SETTING self.control_type to LABEL_CONTROL')
         self.control_type = ControlElement.LABEL_CONTROL
         self.topic: ParseTopic | None = None
         self.scroll: bool = False
@@ -124,12 +126,12 @@ class ParseLabel(ParseControl):
             * scrollsuffix 	Specifies the suffix used in scrolling labels. Defaults to 
             "¦".
         """
-
-        control_id_str: str = ''
-
-        if el_label.attrib.get('id') is not None:
-            control_id: int = int(el_label.attrib.get('id'))
+        control_id_str: str = el_label.attrib.get('id')
+        if control_id_str is not None:
+            control_id: int = int(control_id_str)
             self.control_id = control_id
+            clz._logger.debug(f'SETTING {self.control_type} self.control_id to {control_id} '
+                              f'control_id_str: {control_id_str}')
 
         el_scroll_suffix: ET.Element = el_label.find(f'./{EK.SCROLL_SUFFIX}')
         if el_scroll_suffix is not None:

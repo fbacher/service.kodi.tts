@@ -107,6 +107,19 @@ class SliderModel(BaseModel):
         return False
 
     @property
+    def supports_orientation(self) -> bool:
+        """
+           List-type controls support orientation (vertical or horizontal)
+
+           Known Containers
+               FixedList?, List, Panel, WrapList
+           Known semi-containers
+               GroupList
+           :return:
+        """
+        return True
+
+    @property
     def supports_change_without_focus_change(self) -> bool:
         """
             Indicates if the control supports changes that can occur without

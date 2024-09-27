@@ -13,17 +13,49 @@ from common.globals import Globals, VoiceHintToggle
 from common.logger import *
 from common.logger import BasicLogger
 from common.phrases import Phrase, PhraseList
-from gui.base_model import BaseModel
 from gui.gui_globals import GuiGlobals
 from gui.gui_worker import GuiWorkerQueue
-from gui.parser.parse_window import ParseWindow
 from gui.statements import Statement, Statements, StatementType
-from gui.topic_model import TopicModel
 from gui.window_model import WindowModel
 from gui.window_structure import WindowStructure
+from gui.base_model import BaseModel
+from gui.button_model import ButtonModel
+from gui.controls_model import ControlsModel
+from gui.edit_model import EditModel
+from gui.element_parser import (ElementHandler)
+from gui.focused_layout_model import FocusedLayoutModel
+from gui.group_list_model import GroupListModel
+from gui.group_model import GroupModel
+from gui.item_layout_model import ItemLayoutModel
+from gui.label_model import LabelModel
+from gui.list_model import ListModel
+from gui.parser.parse_window import ParseWindow
+from gui.radio_button_model import RadioButtonModel
+from gui.scrollbar_model import ScrollbarModel
+from gui.slider_model import SliderModel
+from gui.spin_model import SpinModel
+from gui.spinex_model import SpinexModel
+from gui.statements import Statements
+from gui.topic_model import TopicModel
+
 from windows import WindowReaderBase
 from . import skintables
 from .window_state_monitor import WinDialogState, WindowStateMonitor
+
+ElementHandler.add_model_handler(ControlsModel.item, ControlsModel)
+ElementHandler.add_model_handler(GroupModel.item, GroupModel)
+ElementHandler.add_model_handler(ButtonModel.item, ButtonModel)
+ElementHandler.add_model_handler(RadioButtonModel.item, RadioButtonModel)
+ElementHandler.add_model_handler(LabelModel.item, LabelModel)
+ElementHandler.add_model_handler(GroupListModel.item, GroupListModel)
+ElementHandler.add_model_handler(ScrollbarModel.item, ScrollbarModel)
+ElementHandler.add_model_handler(EditModel.item, EditModel)
+ElementHandler.add_model_handler(SliderModel.item, SliderModel)
+ElementHandler.add_model_handler(FocusedLayoutModel.item, FocusedLayoutModel)
+ElementHandler.add_model_handler(ItemLayoutModel.item, ItemLayoutModel)
+ElementHandler.add_model_handler(SpinexModel.item, SpinexModel)
+ElementHandler.add_model_handler(SpinModel.item, SpinModel)
+ElementHandler.add_model_handler(ListModel.item, ListModel)
 
 CURRENT_SKIN = skintables.CURRENT_SKIN
 
@@ -96,10 +128,10 @@ class CustomTTSReader(WindowReaderBase):
             parser.parse_window(control_id=self.control_id, xml_path=simple_path,
                                 is_addon=True)
             if clz._logger.isEnabledFor(DEBUG_XV):
-                clz._logger.debug_xv(f'DUMP PARSED:')
+                clz._logger.debug_v(f'DUMP PARSED:')
                 for result in parser.dump_parsed():
-                    clz._logger.debug_xv(result)
-                clz._logger.debug_xv('finished DUMP PARSED')
+                    clz._logger.debug_v(result)
+                clz._logger.debug_v('finished DUMP PARSED')
             window_parser = parser
             #  clz._logger.debug(f'Number of parsers2: {len(parser.parsers)}')
             # Builds entire window model and topic models
@@ -261,8 +293,8 @@ class CustomTTSReader(WindowReaderBase):
                                                                 stmt_filter=stmt_filter):
                 # if previous_stmts is None:
                 #     clz._logger.debug(f'previous_stmts is None')
-                if clz._logger.isEnabledFor(DEBUG_V):
-                    clz._logger.debug_v(f'Voicing {stmts}')
+                if clz._logger.isEnabledFor(DISABLED):
+                    clz._logger.debug_xv(f'Voicing {stmts}')
                 phrases: PhraseList
                 hint_phrases: PhraseList
                 phrases, hint_phrases = stmts.as_phrases(stmt_filter=stmt_filter)

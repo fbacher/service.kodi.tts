@@ -75,8 +75,6 @@ class BaseTopicModel:
             self._read_next: str = ''
             return
 
-        if clz._logger is None:
-            clz._logger = module_logger
         # Mark as a TopicModel. Used in BaseModel
         self.is_topic: bool = True
         self._name: str = parsed_topic.name
@@ -94,7 +92,6 @@ class BaseTopicModel:
         # flow. Therefore, the flows_to_topic will actually be the one
         # with a flows_from = to the topic with flows_to in it.
         # Similar for flows_to_model
-        clz._logger.debug(f'parsed_topic.flows_from: {parsed_topic.flows_from}')
         self._flows_from_expr: str = parsed_topic.flows_from
         self._flows_to_expr: str = parsed_topic.flows_to
 

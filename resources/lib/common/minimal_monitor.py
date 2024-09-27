@@ -129,7 +129,6 @@ class MinimalMonitor(xbmc.Monitor):
         """
         #  cls.track_wait_call_counts()
         if cls._abort_received.wait(timeout=timeout):
-            Debug.dump_all_threads()
             raise AbortException()
         #  cls.track_wait_return_counts()
         return False

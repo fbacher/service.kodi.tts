@@ -20,7 +20,7 @@ from backends.settings.i_validators import (AllowedValue, IBoolValidator,
                                             INumericValidator, IStrEnumValidator,
                                             IStringValidator, IValidator)
 from backends.settings.service_types import ServiceType
-from common.logger import BasicLogger
+from common.logger import BasicLogger, DEBUG_V
 
 module_logger = BasicLogger.get_logger(__name__)
 
@@ -247,8 +247,9 @@ class SettingsMap:
             return False
 
         if property_id not in settings_for_service.keys():
-            cls._logger.debug(f'{property_id} not in {service_id} settings: '
-                              f'{settings_for_service.keys()}')
+            if cls._logger.isEnabledFor(DEBUG_V):
+                cls._logger.debug(f'{property_id} not in {service_id} settings: '
+                                  f'{settings_for_service.keys()}')
             return False
         return True
 

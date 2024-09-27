@@ -62,25 +62,46 @@ class BaseParser:
             self._window_parser = window_parser
         elif self._parent is not None:
             self._window_parser: BaseParser = parent.window_parser
-        self.control_id: int = -1   # Dummy field
+        self._control_id: int = -1   # Dummy field
         self._control_type: ControlElement = ControlElement.UNKNOWN
         self.tree_id: str = 'DUMMY_BASE_PARSER'
         self.topic: ForwardRef('TopicModel') = None
 
     @property
+    def control_id(self) -> int:
+        return self._control_id
+
+    @control_id.setter
+    def control_id(self, value: int) -> None:
+        clz = BaseParser
+        clz._logger.debug(f'new: {value} old {self._control_id} {type(self)}')
+        self._control_id = value
+
+    @property
     def control_type(self) -> ControlElement:
         # Window has no parent. Probably should change that
+        clz = BaseParser
+
         if self.parent is not None:
-            return self.parent._control_type
+            return self._control_type
         else:
             return self._control_type
 
     @control_type.setter
     def control_type(self, value: ControlElement) -> None:
+        clz = BaseParser
         # Window has no parent
         if self.parent is not None:
-            self.parent._control_type = value
-        else:
+            if clz._logger.isEnabledFor(DISABLED):
+                clz._logger.debug_xv(f'parent: {self.parent.control_id} '
+                                     f'control_id: {self.control_id} '
+                                     f'parent control_type: '
+                                     f'{self.parent._control_type} self: '
+                                     f'{self._control_type} new: {value} '
+                                     f'{type(self)}')
+            self._control_type = value
+        elif clz._logger.isEnabledFor(DISABLED):
+            clz._logger.debug_xv(f'self: {self._control_type} new: {value}')
             self._control_type = value
 
     @property
@@ -174,6 +195,9 @@ class BaseParser:
         is_control: bool = element.tag in (EK.CONTROL.value, EK.CONTROLS.value)
         if not is_control:
             return None
+        for key, value in element.attrib.items():
+            clz._logger.debug(f'Key: {key} value: {value}')
+
         if element.tag == EK.CONTROLS.value:
             return ControlElement.CONTROLS
         control_type_str: str = element.attrib.get(BAT.CONTROL_TYPE)

@@ -50,6 +50,9 @@ class ParseSpinex(ParseControl):
 
     def __init__(self, parent: ParseControl) -> None:
         super().__init__(parent)
+        clz = ParseSpinex
+        clz._logger.debug(f'SETTING self.control_type to SPIN_CONTROL_EX')
+        self.control_type = ControlElement.SPIN_CONTROL_EX
         self.topic: ParseTopic | None = None
         self.action_expr: str = ''
         self.labeled_by_expr: str = ''
@@ -89,12 +92,13 @@ class ParseSpinex(ParseControl):
             action 	Can be volume to adjust the volume, seek to change the seek 
                      position, pvr.seek for timeshifting in PVR. 
         """
-
-        self.control_type = ControlElement.SPIN_CONTROL_EX
         control_id_str: str = el_spinex.attrib.get('id')
         if control_id_str is not None:
             control_id: int = int(control_id_str)
             self.control_id = control_id
+            clz._logger.debug(
+                    f'SETTING {self.control_type} self.control_id to {control_id} '
+                    f'control_id_str: {control_id_str}')
 
         DEFAULT_TAGS: Tuple[str, ...] = (EK.DESCRIPTION, EK.VISIBLE)
         DEFAULT_FOCUS_TAGS: Tuple[str, ...] = (EK.ENABLE, EK.ON_FOCUS, EK.ON_UNFOCUS)

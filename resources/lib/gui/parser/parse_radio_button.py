@@ -45,6 +45,9 @@ class ParseRadioButton(ParseControl):
 
         """
         super().__init__(parent)
+        clz = ParseRadioButton
+        clz._logger.debug(f'SETTING self.control_type to RADIO_BUTTON')
+        self.control_type = ControlElement.RADIO_BUTTON
         self.topic: ParseTopic | None = None
         self.description: str = ''
         self.enable_expr: str = ''
@@ -90,9 +93,9 @@ class ParseRadioButton(ParseControl):
         if control_id_str is not None:
             control_id: int = int(control_id_str)
             self.control_id = control_id
-        labeled_by_str: str = el_button.attrib.get('labeled_by')
-        if labeled_by_str is not None:
-            self.labeled_by_expr = labeled_by_str
+            clz._logger.debug(
+                f'SETTING {self.control_type} self.control_id to {control_id} '
+                f'control_id_str: {control_id_str}')
 
         tags_to_parse: Tuple[str, ...] = (TE.TOPIC, EK.VISIBLE, EK.SELECTED,
                                           EK.ENABLE, EK.WRAP_MULTILINE,

@@ -10,7 +10,7 @@ from common.logger import *
 from common.messages import Messages
 from gui import BaseParser
 from gui.base_model import BaseModel
-from gui.base_tags import (control_elements, Item, MessageType, TopicElement,
+from gui.base_tags import (control_elements, Item, BoolMessageType, TopicElement,
                            TopicKeyword, TopicType,
                            UnitsType,
                            ValueFromType, ValueUnits)
@@ -45,7 +45,7 @@ class ElementTextAccess:
         clz = type(self)
         value_str: str = el_element.text
         if value_str is None:
-            clz._logger.debug(f'{self.tag_name} value not specified')
+            clz._logger.debug_xv(f'{el_element.tag} value not specified')
             value_str = self.default_value
 
         return value_str
@@ -223,7 +223,7 @@ class ElementParser:
         if el_orientation is not None:
             orientation_expr: str = el_orientation.text
             if orientation_expr is None:
-                cls._logger.debug_v(f'orientation value not specified. Ignored')
+                cls._logger.debug_xv(f'orientation value not specified. Ignored')
                 orientation_expr = 'vertical'
         parent.orientation_expr = orientation_expr
         return orientation_expr
@@ -252,7 +252,7 @@ class ElementParser:
         if el_default_control is not None:
             default_control_str: str = el_default_control.text
             if default_control_str is None:
-                cls._logger.debug_v(f'default_control value not specified. Ignored')
+                cls._logger.debug_xv(f'default_control value not specified. Ignored')
         parent.default_control_always = default_control_always
         try:
             default_control_id = int(default_control_str)
@@ -268,7 +268,7 @@ class ElementParser:
         on_focus_expr: str = ''
         on_focus_value: str = el_on_focus.text
         if on_focus_value is None:
-            cls._logger.debug_v(f'onFocus value not specified')
+            cls._logger.debug_xv(f'onFocus value not specified')
             on_focus_value = ''
         parent.on_focus_expr = on_focus_value
         return on_focus_value
@@ -278,7 +278,7 @@ class ElementParser:
                      el_enable: ET.Element = None) -> str | None:
         enable_value: str = el_enable.text
         if enable_value is None:
-            cls._logger.debug_v(f'enable value not specified')
+            cls._logger.debug_xv(f'enable value not specified')
             enable_value = ''
         parent.enable_value_expr = enable_value
         return enable_value
@@ -289,7 +289,7 @@ class ElementParser:
         on_unfocus_expr: str = ''
         on_unfocus_expr: str = el_on_unfocus.text
         if on_unfocus_expr is None:
-            cls._logger.debug_v(f'onUnFocus value not specified')
+            cls._logger.debug_xv(f'onUnFocus value not specified')
             on_unfocus_expr = ''
         parent.on_unfocus_expr = on_unfocus_expr
         return on_unfocus_expr
@@ -299,7 +299,7 @@ class ElementParser:
                       el_visible: ET.Element = None) -> str | None:
         visible_expr: str = el_visible.text
         if visible_expr is None:
-            cls._logger.debug_v(f'{el_visible} value not specified')
+            cls._logger.debug_xv(f'{el_visible.tag} value not specified')
             visible_expr = ''
         parent.visible_expr = visible_expr
         return visible_expr
@@ -309,7 +309,7 @@ class ElementParser:
                            el_menu_control: ET.Element = None) -> int:
         menu_control_str: str = el_menu_control.text
         if menu_control_str is None:
-            cls._logger.debug_v(f'menu_control value not specified')
+            cls._logger.debug_xv(f'menu_control value not specified')
         menu_control: int = -1
         if len(menu_control_str) > 0:
             try:
@@ -358,7 +358,7 @@ class ElementParser:
 
     @classmethod
     def parse_alt_label(cls, parent: BaseParser | None = None,
-                        el_alt_label: ET.Element = None) -> str | None:
+                        el_alt_label: ET.Element = None) -> None:
         alt_label_expr: str = el_alt_label.text
         if alt_label_expr is None:
             alt_label_expr = ''
@@ -385,14 +385,19 @@ class ElementParser:
                             Kodi message id. Anything else is an error.
         :return:
         """
-        parent.alt_type_expr = el_alt_type.text
+        clz = ElementParser
+        alt_type: str | None = None
+        if el_alt_type is not None:
+            alt_type = el_alt_type.text
+        clz._logger.debug(f'alt_type: {alt_type} parent: {parent.control_id}')
+        parent.alt_type_expr = alt_type
 
     @classmethod
     def parse_heading_label(cls, parent: BaseParser | None = None,
                             el_heading_label: ET.Element = None) -> str | None:
         heading_label: str = el_heading_label.text
         if heading_label is None:
-            cls._logger.debug_v(f'{el_heading_label} value not specified')
+            cls._logger.debug_xv(f'{el_heading_label.tag} value not specified')
             heading_label = ''
         parent.heading_label = heading_label
         return None
@@ -402,7 +407,7 @@ class ElementParser:
                                  el_heading_labeled_by: ET.Element = None) -> str | None:
         heading_labeled_by: str = el_heading_labeled_by.text
         if heading_labeled_by is None:
-            cls._logger.debug_v(f'{el_heading_labeled_by} value not specified')
+            cls._logger.debug_xv(f'{el_heading_labeled_by.tag} value not specified')
             heading_labeled_by = ''
         parent.heading_labeled_by = heading_labeled_by
         return None
@@ -412,7 +417,7 @@ class ElementParser:
                            el_heading_next: ET.Element = None) -> str | None:
         heading_next: str = el_heading_next.text
         if heading_next is None:
-            cls._logger.debug_v(f'{el_heading_next} value not specified')
+            cls._logger.debug_xv(f'{el_heading_next.tag} value not specified')
             heading_next = ''
         parent.heading_next = heading_next
         return None
@@ -422,7 +427,7 @@ class ElementParser:
                         el_hint_text: ET.Element = None) -> str | None:
         hint_text_expr: str = el_hint_text.text
         if hint_text_expr is None:
-            cls._logger.debug_v(f'{el_hint_text} value not specified')
+            cls._logger.debug_xv(f'{el_hint_text.tag} value not specified')
             hint_text_expr = ''
         parent.hint_text_expr = hint_text_expr
         return None
@@ -432,7 +437,7 @@ class ElementParser:
                        el_flows_to: ET.Element = None) -> str | None:
         flows_to: str = el_flows_to.text
         if flows_to is None:
-            cls._logger.debug_v(f'{el_flows_to} value not specified')
+            cls._logger.debug_xv(f'{el_flows_to.tag} value not specified')
             flows_to = ''
         parent.flows_to = flows_to
         return None
@@ -442,7 +447,7 @@ class ElementParser:
                          el_flows_from: ET.Element = None) -> str | None:
         flows_from: str = el_flows_from.text
         if flows_from is None:
-            cls._logger.debug_v(f'{el_flows_from} value not specified')
+            cls._logger.debug_xv(f'{el_flows_from.tag} value not specified')
             flows_from = ''
         parent.flows_from = flows_from
         return None
@@ -453,13 +458,23 @@ class ElementParser:
                           el_true_msg_id: ET.Element = None) -> int | None:
         true_msg_id: str = el_true_msg_id.text
         if true_msg_id is None:
-            cls._logger.debug_v(f'{true_msg_id} value not specified')
+            cls._logger.debug_xv(f'{el_true_msg_id.tag} value not specified')
         try:
             if true_msg_id.isdigit():
                 parent.true_msg_id = int(true_msg_id)
+                cls._logger.debug(f'true_id: {true_msg_id}')
             else:
-                true_id: MessageType = MessageType(true_msg_id)
-                parent.true_msg_id = true_id.value
+                try:
+                    true_id: BoolMessageType = BoolMessageType[true_msg_id.upper()]
+                    cls._logger.debug(f'true_id: {true_id}')
+                    parent.true_msg_id = true_id.value
+                except ValueError:
+                    values: str = ''
+                    bool_type: BoolMessageType
+                    for bool_type in BoolMessageType:
+                        values = f'{values} {bool_type.name}'
+                    cls._logger.info(f'Invalid value for "true_msg_id". Must be a '
+                                     f'message id or one of: {values}')
         except ValueError:
             cls._logger.info(f'Non-numeric value specified for "true_msg_id":'
                              f' {true_msg_id}')
@@ -468,16 +483,28 @@ class ElementParser:
 
     @classmethod
     def parse_false_msg_id(cls, parent: BaseParser | None = None,
-                          el_flase_msg_id: ET.Element = None) -> int | None:
-        false_msg_id: str = el_flase_msg_id.text
+                          el_false_msg_id: ET.Element = None) -> int | None:
+        false_msg_id: str = el_false_msg_id.text
         if false_msg_id is None:
-            cls._logger.debug_v(f'{false_msg_id} value not specified')
+            cls._logger.debug_xv(f'{el_false_msg_id.tag} value not specified')
         try:
             if false_msg_id.isdigit():
                 parent.false_msg_id = int(false_msg_id)
+                cls._logger.debug(f'true_id: {false_msg_id}')
             else:
-                false_id: MessageType = MessageType(false_msg_id)
-                parent.false_msg_id = false_id.value
+                try:
+                    false_msg_str: str = false_msg_id.upper()
+                    false_id: BoolMessageType = BoolMessageType[false_msg_str]
+                    parent.false_msg_id = false_id.value
+                    cls._logger.debug(f'false_id: {false_id.value}')
+                except ValueError:
+                    values: str = ''
+                    bool_type: BoolMessageType
+                    for bool_type in BoolMessageType:
+                        values = f'{values} {bool_type.name}'
+                    cls._logger.info(f'Invalid value for "false_msg_id": '
+                                     f'{false_msg_id}. Must be a '
+                                     f'message id or one of: {values}')
         except ValueError:
             cls._logger.info(f'Non-numeric value specified for "false_msg_id":'
                              f' {false_msg_id}')
@@ -489,7 +516,7 @@ class ElementParser:
                           el_read_next: ET.Element = None) -> str | None:
         read_next_expr: str = el_read_next.text
         if read_next_expr is None:
-            cls._logger.debug_v(f'{el_read_next} value not specified')
+            cls._logger.debug_xv(f'{el_read_next.tag} value not specified')
             read_next_expr = ''
         parent.read_next_expr = read_next_expr
         return None
@@ -499,7 +526,7 @@ class ElementParser:
                           el_inner_topic: ET.Element = None) -> str | None:
         inner_topic: str = el_inner_topic.text
         if inner_topic is None:
-            cls._logger.debug_v(f'{el_inner_topic} value not specified')
+            cls._logger.debug_xv(f'{el_inner_topic.tag} value not specified')
             inner_topic = ''
         parent.inner_topic = inner_topic
         return None
@@ -509,7 +536,7 @@ class ElementParser:
                           el_outer_topic: ET.Element = None) -> str | None:
         outer_topic: str = el_outer_topic.text
         if outer_topic is None:
-            cls._logger.debug_v(f'{el_outer_topic} value not specified')
+            cls._logger.debug_xv(f'{el_outer_topic.tag} value not specified')
             outer_topic = ''
         parent.outer_topic = outer_topic
         return None
@@ -519,7 +546,7 @@ class ElementParser:
                           el_topic_left: ET.Element = None) -> str | None:
         topic_left: str = el_topic_left.text
         if topic_left is None:
-            cls._logger.debug_v(f'{el_topic_left} value not specified')
+            cls._logger.debug_xv(f'{el_topic_left.tag} value not specified')
             topic_left = ''
         parent.topic_left = topic_left
         return None
@@ -529,7 +556,7 @@ class ElementParser:
                          el_topic_right: ET.Element = None) -> str | None:
         topic_right: str = el_topic_right.text
         if topic_right is None:
-            cls._logger.debug_v(f'{el_topic_right} value not specified')
+            cls._logger.debug_xv(f'{el_topic_right.tag} value not specified')
             topic_right = ''
         parent.topic_right = topic_right
         return None
@@ -539,7 +566,7 @@ class ElementParser:
                          el_topic_up: ET.Element = None) -> str | None:
         topic_up: str = el_topic_up.text
         if topic_up is None:
-            cls._logger.debug_v(f'{el_topic_up} value not specified')
+            cls._logger.debug_xv(f'{el_topic_up.tag} value not specified')
             topic_up = ''
         parent.topic_up = topic_up
         return None
@@ -549,7 +576,7 @@ class ElementParser:
                          el_topic_down: ET.Element = None) -> str | None:
         topic_down: str = el_topic_down.text
         if topic_down is None:
-            cls._logger.debug_v(f'{el_topic_down} value not specified')
+            cls._logger.debug_xv(f'{el_topic_down.tag} value not specified')
             topic_down = ''
         parent.topic_down = topic_down
         return None
@@ -559,7 +586,7 @@ class ElementParser:
                          el_topic_rank: ET.Element = None) -> str | None:
         rank: str = el_topic_rank.text
         if rank is None:
-            cls._logger.debug_v(f'{el_topic_rank} value not specified')
+            cls._logger.debug_xv(f'{el_topic_rank.tag} value not specified')
             rank = ''
         parent.rank = rank
         return None
@@ -571,16 +598,16 @@ class ElementParser:
         topic_type_str: str = el_topic_type.text
         topic_type: TopicType = TopicType.DEFAULT
         if topic_type_str is None:
-            cls._logger.debug_v(f'{el_topic_type} value not specified')
+            cls._logger.debug_xv(f'{el_topic_type.tag} value not specified')
             topic_type_str = ''
         if topic_type_str == '':
             topic_type_str = TopicType.DEFAULT.value()
-            try:
-                topic_type = TopicType(topic_type_str)
-            except Exception:
-                clz._logger.info(f'Invalid topic_type specified: {topic_type_str} '
-                                 f'replacing with default')
-                topic_type = TopicType.DEFAULT
+        try:
+            topic_type = TopicType(topic_type_str)
+        except Exception:
+            clz._logger.info(f'Invalid topic_type specified: {topic_type_str} '
+                             f'replacing with default')
+            topic_type = TopicType.DEFAULT
         parent.topic_type = topic_type
         return None
 
@@ -590,7 +617,7 @@ class ElementParser:
         clz = ElementParser
         topic_heading: str = el_topic_heading.text
         if topic_heading is None:
-            cls._logger.debug_v(f'{topic_heading} value not specified')
+            cls._logger.debug_xv(f'{el_topic_heading.tag} value not specified')
             topic_heading = ''
         parent.topic_heading = topic_heading
         return None
@@ -600,12 +627,12 @@ class ElementParser:
                          el_topic_units: ET.Element = None) -> str | None:
         units_unit: str = el_topic_units.attrib.get(TopicKeyword.UNIT)
         if units_unit is None:
-            cls._logger.debug_v(f'{TopicKeyword.UNIT} value not specified')
+            cls._logger.debug_xv(f'{el_topic_units.tag} value not specified')
             unit = ''
         units_type_str: str = el_topic_units.attrib.get(TopicKeyword.TYPE)
         units_type: UnitsType = UnitsType.FLOAT
         if units_type_str is None:
-            cls._logger.debug_v(f'{TopicKeyword.TYPE} value not specified. '
+            cls._logger.debug_xv(f'{el_topic_units.tag} value not specified. '
                                       f'Assuming float')
         elif units_type_str in (UnitsType.INT.value, UnitsType.FLOAT.value):
             units_type = UnitsType(units_type_str)
@@ -643,7 +670,7 @@ class ElementParser:
         value_from_str: str = el_topic_value_from.text
         value_from: ValueFromType = ValueFromType.NONE
         if value_from_str is None:
-            cls._logger.debug_v(f'{el_topic_value_from} value not specified')
+            cls._logger.debug_xv(f'{el_topic_value_from.tag} value not specified')
         try:
             value_from = ValueFromType(value_from_str)
         except ValueError:
@@ -658,7 +685,7 @@ class ElementParser:
         clz = ElementParser
         container_topic: str = el_container_topic.text
         if container_topic is None:
-            cls._logger.debug_v(f'{el_container_topic} value not specified')
+            cls._logger.debug_xv(f'{el_container_topic.tag} value not specified')
 
         parent.container_topic = container_topic
         return None
@@ -668,7 +695,7 @@ class ElementParser:
                           el_description: ET.Element = None) -> str | None:
         description: str = el_description.text
         if description is None:
-            cls._logger.debug_v(f'{el_description} value not specified')
+            cls._logger.debug_xv(f'{el_description.tag} value not specified')
             description = ''
         parent.description = description
         return description
@@ -684,7 +711,7 @@ class ElementParser:
         """
         number_expr: str = el_number.text
         if number_expr is None:
-            cls._logger.debug_v(f'{el_number} value not specified')
+            cls._logger.debug_xv(f'{el_number.tag} value not specified')
             number_expr = ''
         parent.number_expr = number_expr
         return number_expr
@@ -694,7 +721,7 @@ class ElementParser:
                        el_has_path: ET.Element = None) -> str | bool:
         has_path_expr: str = el_has_path.text
         if has_path_expr is None:
-            cls._logger.debug_v(f'{has_path_expr} value not specified')
+            cls._logger.debug_xv(f'{el_has_path.tag} value not specified')
         parent.has_path_expr = has_path_expr.lower() == 'true'
         return parent.has_path_expr
 
@@ -703,7 +730,7 @@ class ElementParser:
                        el_selected: ET.Element = None) -> str | bool:
         selected_expr: str = el_selected.text
         if selected_expr is None:
-            cls._logger.debug_v(f'{selected_expr} value not specified')
+            cls._logger.debug_xv(f'{el_selected.tag} value not specified')
             selected_expr = ''
         parent.selected_expr = selected_expr
         return selected_expr
@@ -714,7 +741,7 @@ class ElementParser:
         page_control_id_str: str = el_page_control_id.text
         page_control_id: int | None
         if page_control_id_str is None:
-            cls._logger.debug_v(f'{page_control_id_str} value not specified')
+            cls._logger.debug_xv(f'{el_page_control_id.tag} value not specified')
             page_control_id = None
         else:
             page_control_id = int(page_control_id_str)
@@ -738,7 +765,7 @@ class ElementParser:
         scroll_time_str: str = el_scroll_time.text
         scroll_time: int
         if scroll_time_str is None:
-            cls._logger.debug_v(f'scrolltime value not specified')
+            cls._logger.debug_xv(f'scrolltime value not specified')
             scroll_time = 200
         else:
             scroll_time = int(scroll_time_str)
@@ -751,7 +778,7 @@ class ElementParser:
                             el_show_one_page: ET.Element = None) -> int | None:
         show_one_page_expr: str = el_show_one_page.text
         if show_one_page_expr is None:
-            cls._logger.debug_v(f'{show_one_page_expr} value not specified')
+            cls._logger.debug_xv(f'{show_one_page_expr} value not specified')
         parent.show_one_page = show_one_page_expr.lower() == 'true'
         return parent.show_one_page
 
@@ -760,7 +787,7 @@ class ElementParser:
                             el_show_one_page: ET.Element = None) -> int | None:
         wrap_multiline_expr: str = el_show_one_page.text
         if wrap_multiline_expr is None:
-            cls._logger.debug_v(f'{wrap_multiline_expr} value not specified')
+            cls._logger.debug_xv(f'{el_show_one_page.tag} value not specified')
         parent.wrap_multiline = wrap_multiline_expr.lower() == 'true'
         return parent.wrap_multiline
 
@@ -875,7 +902,7 @@ class ElementHandler:
     @classmethod
     def add_handler(cls, item_key: str | StrEnum,
                     element_parser: Callable[[BaseParser, ET.Element],
-                    str | int | BaseParser | Tuple[str, bool]]) -> None:
+                    None | str | int | BaseParser | Tuple[str | int, bool]]) -> None:
         if isinstance(item_key, StrEnum):
             enum_key: StrEnum = item_key
             item_key = enum_key.name
@@ -888,7 +915,7 @@ class ElementHandler:
                     item_key: str | StrEnum
                     ) -> Callable[[BaseParser,  ET.Element | TopicElement],
                                   str | BaseParser]:
-        item: Item = None
+        item: Item | None = None
         try:
             if isinstance(item_key, StrEnum):
                 enum_key: StrEnum = item_key
@@ -901,7 +928,7 @@ class ElementHandler:
         except KeyError:
             item = None
 
-        cls._logger.debug_v(f'item: {item_key}')
+        #  cls._logger.debug_v(f'item: {item_key}')
         if item is None or item.ignore:
             cls._logger.debug_v(f'about to call no-op')
             return ElementParser.no_op  # Acts as a Null parser

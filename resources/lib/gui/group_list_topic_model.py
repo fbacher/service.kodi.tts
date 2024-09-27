@@ -29,8 +29,8 @@ class GroupListTopicModel(TopicModel):
         parent: ForwardRef('GroupListModel')
         return parent
 
-    def voice_active_item(self, stmts: Statements) -> bool:
-        return self.parent.voice_active_item(stmts)
+    def voice_active_item_value(self, stmts: Statements) -> bool:
+        return self.parent.voice_active_item_value(stmts)
 
     def visible_item_count(self) -> int:
         """
@@ -40,3 +40,20 @@ class GroupListTopicModel(TopicModel):
         """
         clz = GroupListTopicModel
         return self.parent.visible_item_count()
+
+    @property
+    def supports_item_collection(self) -> bool:
+        """
+        Indicates that this control contains multiple items.
+        Used to influence how the heading for this control is read.
+
+        :return:
+        """
+        return True
+
+    def __repr__(self) -> str:
+        """
+            Don't print children by default
+        :return:
+        """
+        return self.to_string(include_children=False)

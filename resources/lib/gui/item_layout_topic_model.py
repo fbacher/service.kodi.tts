@@ -40,7 +40,7 @@ class ItemLayoutTopicModel(TopicModel):
         """
         return True
 
-    def voice_topic_value(self, stmts: Statements) -> bool:
+    def voice_topic_value_old(self, stmts: Statements) -> bool:
         # Get the value from here when control heading, etc. is voiced
         # But don't get the value when the control is not voiced.
 
@@ -98,7 +98,7 @@ class ItemLayoutTopicModel(TopicModel):
         phrases: PhraseList = PhraseList(check_expired=False)
         value_str: str = self.units.format_value(value)
         phrases.add_text(texts=value_str)
-        #  self.voice_topic_value(phrases)
+        #  self.voice_topic_value_old(phrases)
         if not phrases.is_empty():
             phrases.set_interrupt(True)
             clz._logger.debug(f'{phrases}')

@@ -6,11 +6,13 @@ import xbmc
 import xbmcgui
 
 from common.logger import BasicLogger, DEBUG_V, DEBUG_XV
+from common.message_ids import MessageId
 from common.messages import Messages
 from common.phrases import Phrase
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
 from gui.base_tags import control_elements, ControlElement, Item
+from gui.control_relationships import Topic
 from gui.element_parser import (ElementHandler)
 from gui.group_list_topic_model import GroupListTopicModel
 from gui.no_topic_models import NoGroupListTopicModel
@@ -32,8 +34,6 @@ class GroupListModel(BaseModel):
     def __init__(self, parent: BaseModel,
                  parsed_group_list: ParseGroupList) -> None:
         clz = GroupListModel
-        if clz._logger is None:
-            clz._logger = module_logger
         super().__init__(window_model=parent.window_model, parser=parsed_group_list)
         # TODO: Super should take control_type as param
         # self.control_id: str = parsed_group_list.control_id
@@ -85,6 +85,19 @@ class GroupListModel(BaseModel):
         Known semi-containers
             GroupList
         :return:
+        """
+        return True
+
+    @property
+    def supports_orientation(self) -> bool:
+        """
+           List-type controls support orientation (vertical or horizontal)
+
+           Known Containers
+               FixedList?, List, Panel, WrapList
+           Known semi-containers
+               GroupList
+           :return:
         """
         return True
 
@@ -157,7 +170,7 @@ class GroupListModel(BaseModel):
             clz._logger.debug_v(f'control_id {self.control_id} visible')
 
         success = self.voice_control_heading(stmts)
-        success = self.voice_active_item(stmts)
+        success = self.voice_active_item_value(stmts)
         return success
 
         '''
@@ -198,7 +211,7 @@ class GroupListModel(BaseModel):
                 phrases.extend(temp_phrases)
 
             # Voice either focused control, or label/text
-            success = self.voice_active_item(phrases)
+            success = self.voice_active_item_value(phrases)
             # Voice either next Topic down or focus item
 
             # success = self.voice_controlx(phrases)
@@ -272,11 +285,11 @@ class GroupListModel(BaseModel):
             success = False
         return success
 
-    def voice_active_item(self, stmts: Statements) -> bool:
+    def voice_active_item_value(self, stmts: Statements) -> bool:
         """
-        Voices the currently focused item # as well as the focused control #.
-        TODO: The actual voicing of the control/label is done elsewhere. Should
-            be moved here to reduce some spagehtti code.
+        If the control that 'owns' the active item (usually the one with focus)
+        is known, or it's topic, then have them voice it (with preference for
+        the topic). Otherwise, voice it here.
 
         :param stmts:
         :return:
@@ -286,18 +299,44 @@ class GroupListModel(BaseModel):
         if not self.focus_changed:
             return False
 
+        focused_control_id: int = self.windialog_state.focus_id
+        model: BaseModel = self.window_struct.get_model_for_control_id(focused_control_id)
+        control_id: int
+        topic: TopicModel
+        model, topic = self.window_struct.get_control_and_topic_for_id(focused_control_id)
+        if topic is not None and focused_control_id != self.control_id:
+            return False  # Assume that the topic is on the stack to evaluate this
+        if model is not None and focused_control_id != self.control_id:
+            return False  # Assume that the control's model will be called  FUTURE
+
         container_id = self.control_id
         if container_id > 0:
             #  position is zero-based
-            pos_str: str = xbmc.getInfoLabel(f'Container({container_id}).Position')
-            pos: int = util.get_non_negative_int(pos_str)
-            pos += 1  # Convert to one-based item #
-            if clz._logger.isEnabledFor(DEBUG_XV):
-                clz._logger.debug_xv(f'container position: {pos} container_id: {container_id}')
-            current_item: str = xbmc.getInfoLabel(f'Container({container_id}).CurrentItem')
-            if clz._logger.isEnabledFor(DEBUG_XV):
-                clz._logger.debug_xv(f'current_item: {current_item}')
-            phrase: Phrase = Phrase(text=f'Item: {pos}')
+            # pos_str: str = xbmc.getInfoLabel(f'Container({container_id}).Position')
+            # pos: int = util.get_non_negative_int(pos_str)
+            # pos += 1  # Convert to one-based item #
+            # if clz._logger.isEnabledFor(DEBUG_XV):
+            #     clz._logger.debug_xv(f'container position: {pos} container_id:'
+            #                          f' {container_id}')
+            #
+            #  TODO: Get the control and value using another call that gets it from
+            #     the control. Here we are getting it from the container without giving
+            #     the control the ability to customize
+
+            num_items: str = xbmc.getInfoLabel(f'Container({container_id}).NumItems')
+            item_num: str = xbmc.getInfoLabel(f'Container({container_id}).CurrentItem')
+            content: str = xbmc.getInfoLabel(f'Container({container_id}).Content')
+            # value: str = xbmc.getInfoLabel(
+            #         f'Container(container_id).ListItemPosition(0).Label')
+            value: str = xbmc.getInfoLabel('ListItem.Label')
+            control_type: ControlElement = ControlElement.UNKNOWN
+            if clz._logger.isEnabledFor(DEBUG_V):
+                clz._logger.debug_v(f'item_num: {item_num} control_type: {control_type} '
+                                    f'content: {content} value: {value} '
+                                    f'container_id: {container_id}')
+            text: str = (MessageId.CONTAINER_ITEM_NUMBER_CONTROL_AND_VALUE
+                         .get_formatted_msg(f'{item_num}', control_type, ''))
+            phrase: Phrase = Phrase(text=text)
             stmts.last.phrases.append(phrase)
             if clz._logger.isEnabledFor(DEBUG_V):
                 clz._logger.debug_v(f'phrase: {phrase}')

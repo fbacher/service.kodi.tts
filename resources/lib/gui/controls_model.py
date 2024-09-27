@@ -7,6 +7,7 @@ from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
 from gui.base_tags import control_elements, ControlElement, Item
 from gui.element_parser import (ElementHandler)
+from gui.no_topic_models import NoControlsTopicModel
 from gui.parser.parse_control import ParseControl
 from gui.parser.parse_controls import ParseControls
 
@@ -65,6 +66,7 @@ class ControlsModel(BaseModel):
             if clz._logger.isEnabledFor(DEBUG_XV):
                 clz._logger.debug_xv(f'adding child: {child_model}')
             self.children.append(child_model)
+            self.topic = NoControlsTopicModel(self)
 
     def __repr__(self) -> str:
         return self.to_string(include_children=False)

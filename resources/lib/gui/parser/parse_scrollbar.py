@@ -39,6 +39,9 @@ class ScrollbarParser(ParseControl):
 
     def __init__(self, parent: ParseControl) -> None:
         super().__init__(parent)
+        clz = ScrollbarParser
+        clz._logger.debug(f'SETTING self.control_type to SCROLL_BAR')
+        self.control_type = ControlElement.SCROLL_BAR
         self.topic: ParseTopic | None = None
         self.orientation_expr: str = 'vertical'
         self.show_one_page: bool = True
@@ -83,6 +86,7 @@ class ScrollbarParser(ParseControl):
             control_id: int = int(control_id_str)
             self.control_id = control_id
             self.control_id = control_id
+            clz._logger.debug(f'SETTING control_id to {control_id}')
 
         tags_to_parse: Tuple[str, ...] = (EK.TOPIC, EK.LABEL, EK.SCROLL, EK.NUMBER,
                                           EK.HAS_PATH, EK.INFO, EK.ACTION,

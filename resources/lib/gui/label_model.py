@@ -192,8 +192,8 @@ class LabelModel(BaseModel):
         success: bool = False
         control_id: int | None
         control_query: str | None
-        success = self.get_label_ll(stmts, label_expr=control_id_expr,
-                                    stmt_type=stmt_type)
+        success = self.voice_label_ll(stmts, label_expr=control_id_expr,
+                                      stmt_type=stmt_type)
         clz._logger.debug(f'{stmts}')
         return success
 

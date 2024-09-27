@@ -132,22 +132,18 @@ class ParseWindow(BaseParser):
     _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.WINDOW]
 
-    @classmethod
-    def init_class(cls) -> None:
-        if cls._logger is None:
-            cls._logger = module_logger
 
     def __init__(self):
         super().__init__(parent=None, window_parser=self)
         clz = type(self)
-        clz.init_class()
-
+        clz._logger.debug(f'SETTING self.control_type to WINDOW')
+        self.control_type = ControlElement.WINDOW
         self.topic: ParseTopic | None = None
         self.xml_path: Path = None  # Source path of current window xml
         self.win_parser: WindowParser = None
         self.window_type: WindowType = None
         # self.win_dialog_id: int = -1
-        self.control_id: int = -1
+        self.control_id: int = 0
         self.window_modality: str = ''   # Only applies to dialogs
         self.xml_root: ET.Element = None
         self.menu_control: int = -1
@@ -155,7 +151,6 @@ class ParseWindow(BaseParser):
         self.children: List[BaseParser] = []
         self.visible_expr: str = ''
 
-        self.control_type = ControlElement.WINDOW
         if clz._logger.isEnabledFor(DEBUG_V):
             clz._logger.debug_v(f'control_type.label: {self.control_type} '
                           f'name: {self.control_type.name} '

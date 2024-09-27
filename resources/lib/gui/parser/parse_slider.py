@@ -49,6 +49,9 @@ class ParseSlider(ParseControl):
 
     def __init__(self, parent: ParseControl) -> None:
         super().__init__(parent)
+        clz = ParseSlider
+        clz._logger.debug(f'SETTING self.control_type to SLIDER')
+        self.control_type = ControlElement.SLIDER
         self.topic: ParseTopic | None = None
         self.action_expr: str = ''
         self.labeled_by_expr: str = ''

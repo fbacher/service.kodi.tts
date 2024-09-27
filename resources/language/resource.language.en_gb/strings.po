@@ -789,6 +789,39 @@ msgctxt "#32237"
 msgid "item"
 msgstr ""
 
+# Announces a container item. The item number and container's value are known
+# Note: {control_type} can be empty when uninteresting
+# Note: pauses are added between phrases. There is no current grammer to add pauses
+# here, also not enough experience for guidance.
+#   item {item_number}. {control_type} value {item_value}
+# ex: item 15. TTS Engine value GoogleTTS
+msgctxt "#32238"
+msgid "item {0}. {1} value: {2}"
+msgstr ""
+
+# Label for Configuration Dialog
+msgctxt "#32239"
+msgid "Basic Configuration"
+msgstr ""
+
+# Separates the reading of the label from it's value,
+# Helps to clarify the context to the reader.
+# Example "Radio Button Cache Voice Files" "value" "Yes"
+# Used when it is difficult to capture the label and value.
+msgctxt "#32240"
+msgid "value:"
+msgstr ""
+
+# Separates the reading of the label from it's value,
+# Helps to clarify the context to the reader.
+# Example "Radio Button Cache Voice Files" "value" "Yes"
+# Used when the label and value are easily captured
+# TODO:  Come up with a delay marker to insert into text
+msgctxt "#32241"
+msgid "{0} value: {1}"
+msgstr ""
+
+# ----------------------------------
 # Audio Players. Translation may not apply to all
 
 msgctxt "#32297"
@@ -994,7 +1027,31 @@ msgctxt "#32343"
 msgid "Screensaver interrupted"
 msgstr ""
 
-"
+# Voices a control and number of items
+# {control_name} {number_of_items} items
+# ex: Group List 5 items
+msgctxt "#32344"
+msgid "{0} {1} items"
+msgstr ""
+
+# Voices a control and the control's orientation (vertical or horizontal).
+#  {orientation} {control_name}
+# ex: Vertical Group List
+msgctxt "#32345"
+msgid "{0} {1}"
+msgstr ""
+
+# Used to voice: "{orientation} {control_name} {# items} items"
+# Typically the type of control, its orientation (if any) and number of items
+# (if any) are voiced before voicing the value
+# ex: "Vertical group list 5 items"
+#     (followed by) "TTS Engine. GoogleTTS"
+msgctxt "#32346"
+msgid "{0} {1} {2} items"
+msgstr ""
+
+
+
 # BEGIN MESSAGES USED IN UI (WINDOWS, CONTROLS, etc.)
 
 # Voiced control element types, including pseudo-types
@@ -1087,14 +1144,6 @@ msgctxt "#32719"
 msgid "Settings Spin-List"
 msgstr ""
 
-# Used to voice: "{orientation} {control_name} {# items} items"
-# Typically the type of control, its orientation (if any) and number of items
-# (if any) are voiced before voicing the value
-# ex: "Vertical group list 5 items"
-#     (followed by) "TTS Engine. GoogleTTS"
-msgctxt "#32720"
-msgid "{0} {1} {2} items"
-msgstr ""
 
 
 

@@ -7,12 +7,12 @@ from typing import Dict, ForwardRef, List, Tuple, Union
 import xbmc
 
 from common import AbortException, reraise
-from common.logger import BasicLogger, DEBUG_V, DISABLED
-from gui import ParseError
+from common.logger import BasicLogger, DEBUG_V, DEBUG_XV, DISABLED
+from gui import ControlElement, ParseError
 from gui.i_model import IModel
 
-from gui.base_topic_model import BaseTopicModel
 from gui.no_topic_models import BaseFakeTopic
+from gui.topic_model import TopicModel
 from utils import util
 from windows.window_state_monitor import WinDialogState
 
@@ -47,22 +47,25 @@ class WindowStructure:
 
         self.window: IModel = window
         window.window_struct = self
-        clz._logger.debug(f'window: {window} windialog_state: {window.windialog_state}')
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v(f'window: {window.window_id} windialog_state:'
+                                f' {window.windialog_state}')
         self._windialog_state: WinDialogState = window.windialog_state
 
         topic_id: str = ''
         if window.topic is not None:
             topic_id = window.topic.name
-        clz._logger.debug(f'window_id: {window.windialog_state.window_id} '
-                          f'control_id: {window.control_id} topic: {topic_id}')
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v(f'window_id: {window.windialog_state.window_id} '
+                              f'control_id: {window.control_id} topic: {topic_id}')
         clz._window_struct_map[window.control_id] = self.window
-        self._root_topic: BaseTopicModel = window.topic
+        self._root_topic: TopicModel = window.topic
         self.window_topic_id: str = topic_id
 
-        self.test_node_list: List[IModel] = []  # For testing
-        self.topic_by_tree_id: Dict[str, BaseTopicModel] = {}
-        self.topic_by_topic_name: Dict[str, BaseTopicModel] = {}
-        #  self.ordered_topics_by_name: Dict[str, BaseTopicModel] = {}
+        self._test_node_list: List[IModel] = []  # For testing
+        self._topic_by_tree_id: Dict[str, TopicModel] = {}
+        self._topic_by_topic_name: Dict[str, TopicModel] = {}
+        #  self.ordered_topics_by_name: Dict[str, TopicModel] = {}
 
         """
           Map of all Controls in Window, indexed by it's 'tree_id'.
@@ -72,7 +75,7 @@ class WindowStructure:
           controls to be looked-up, even if awkwardly
         """
 
-        self.window_id_map: Dict[str, IModel] = {}
+        self._window_id_map: Dict[str, IModel] = {}
         """     
             Map of all Controls in Window, which have a control_id
             Many controls don't have a control_id
@@ -87,7 +90,8 @@ class WindowStructure:
 
         self.test_window_id_map()
         self.test_get_control_and_topic_for_id()
-        clz._logger.debug(f'Finished WindowStructure init')
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v(f'Finished WindowStructure init')
 
     def _destroy(self):
         clz = type(self)
@@ -97,10 +101,10 @@ class WindowStructure:
         del clz._window_struct_map
         del self._root_topic
         del self.window_topic_id
-        del self.test_node_list
-        del self.topic_by_tree_id
-        del self.topic_by_topic_name
-        del self.window_id_map
+        del self._test_node_list
+        del self._topic_by_tree_id
+        del self._topic_by_topic_name
+        del self._window_id_map
         del self._model_for_control_id
 
     def set_windialog_state(self, windialog_state: WinDialogState) -> None:
@@ -120,7 +124,7 @@ class WindowStructure:
         return self._windialog_state.focus_changed
 
     @property
-    def root_topic(self) -> BaseTopicModel | None:
+    def root_topic(self) -> TopicModel | None:
         """
         Returns the root_topic node for this window/dialog.
         The root topic represents the Window/Dialog
@@ -129,15 +133,108 @@ class WindowStructure:
         """
         return self._root_topic
 
-    def get_model_for_control_id(self, control_id: int) -> IModel | None:
-        if not isinstance(control_id, int):
-            raise ValueError('control_id must be int')
-        return self._model_for_control_id.get(control_id, None)
+    @property
+    def test_node_list(self) -> List[IModel]:
+        return self._test_node_list
 
-    def set_model_for_control_id(self, control_id: int, value: IModel) -> None:
+    def add_test_node(self, value: IModel):
+        clz = WindowStructure
+        if not isinstance(value, IModel):
+            raise ValueError(f'value is NOT a Model: {value}')
+        self._test_node_list.append(value)
+
+    def get_topic_by_tree_id(self, tree_id: str) -> TopicModel:
+        clz = WindowStructure
+        if not isinstance(tree_id, str):
+            raise ValueError(f'tree_id: {tree_id} MUST be a str not:{type(tree_id)}')
+        topic: TopicModel = self._topic_by_tree_id.get(tree_id)
+        if topic is not None and clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v(f'Found: topic: {topic.name}')
+        return topic
+
+    def add_topic_by_tree_id(self, tree_id: str, topic: TopicModel) -> None:
+        clz = WindowStructure
+        if not isinstance(tree_id, str):
+            raise ValueError(f'Expected tree_id to str not {type(tree_id)}')
+        if not isinstance(topic, TopicModel):
+            raise ValueError(f'Expected topic to TopicModel not {type(topic)}')
+        if (clz._logger.isEnabledFor(DEBUG_V) and
+                tree_id in self._topic_by_tree_id.keys()):
+            clz._logger.debug_v(f'Duplicate tree_id in _topic_by_tree_id: {tree_id}')
+        self._topic_by_tree_id[tree_id] = topic
+
+    def get_topic_by_topic_name(self, topic_name: str) -> TopicModel:
+        clz = WindowStructure
+        if topic_name is None:
+            raise ValueError('topic_name is None')
+        if not isinstance(topic_name, str):
+            raise ValueError(f'topic_name: {topic_name} MUST be a str not:{type(topic_name)}')
+        topic: TopicModel = self._topic_by_topic_name.get(topic_name)
+        if topic is None:
+            clz._logger.debug(f'Could not find topic with name: {topic_name}')
+        elif clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v(f'Found: topic: {topic.name}')
+        return topic
+
+    def add_topic_by_topic_name(self, topic_name: str, topic: TopicModel) -> None:
+        clz = WindowStructure
+        if not isinstance(topic_name, str):
+            raise ValueError(f'Expected topic_name to str not {type(topic_name)}')
+        if not isinstance(topic, TopicModel):
+            raise ValueError(f'Expected topic to TopicModel not {type(topic)}')
+        if topic_name in self._topic_by_topic_name.keys():
+            if clz._logger.isEnabledFor(DEBUG):
+                clz._logger.debug(f'Duplicate topic_name in _topic_by_topic_name: {topic_name}')
+        self._topic_by_topic_name[topic_name] = topic
+
+    """
+      Map of all Controls in Window, indexed by it's 'tree_id'.
+      A tree_id is same as it's control_id, but when there is no
+      control_id, it is L<control_depth>C<child#>
+      The control_id is most useful, but the other form allows other
+      controls to be looked-up, even if awkwardly
+    """
+
+    def get_model_by_tree_id(self, window_id: str) -> IModel | None:
+        clz = WindowStructure
+        if not isinstance(window_id, str):
+            raise ValueError(f'window_id: {window_id} MUST be a str not:'
+                             f'{type(window_id)}')
+        window_model: IModel = self._window_id_map.get(window_id)
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v(f'found: {window_model}')
+        return window_model
+
+    def add_window_model_by_window_id(self, window_id: str, window_model: IModel) -> None:
+        if not isinstance(window_id, str):
+            raise ValueError(f'window_id: {window_id} MUST be a str not:'
+                             f'{type(window_id)}')
+        if not isinstance(window_model, IModel):
+            raise ValueError(f'window_model: MUST be a Model not:'
+                             f'{type(window_model)}')
+        self._window_id_map[window_id] = window_model
+
+    def get_model_for_control_id(self, control_id: int) -> IModel | None:
+        clz = WindowStructure
         if not isinstance(control_id, int):
             raise ValueError('control_id must be int')
-        self._model_for_control_id[control_id] = value
+        model: IModel = self._model_for_control_id.get(control_id)
+        if clz._logger.isEnabledFor(DEBUG_XV):
+            clz._logger.debug_xv(f'found: {model.control_id} {model.control_type}')
+        return model
+
+    def set_model_for_control_id(self, control_id: int, model: IModel) -> None:
+        clz = WindowStructure
+        if not isinstance(control_id, int):
+            raise ValueError('control_id must be int')
+        if not isinstance(model, IModel):
+            raise ValueError(f'model: MUST be a Model not:'
+                             f'{type(model)}')
+        if clz._logger.isEnabledFor(DEBUG_V):
+            clz._logger.debug_v(f'added control_id: {control_id} control_type:'
+                                f' {model.control_type}'
+                                f' to model_for_control_id')
+        self._model_for_control_id[control_id] = model
 
     def build_control_tree(self, node: IModel,
                            level: int, child_idx: int = 0) -> None:
@@ -179,44 +276,51 @@ class WindowStructure:
         # Window control ALWAYS has an ID. Tree_id assigned in constructor
 
         clz = WindowStructure
-        clz._logger.debug(f'In build_control_tree')
+        if clz._logger.isEnabledFor(DISABLED):
+            clz._logger.debug_v(f'In build_control_tree')
         topic_str: str = ''
-        self.test_node_list.append(node)
+        self.add_test_node(node)
         if node.topic is not None and node.topic.is_real_topic:
-            clz._logger.debug(f'REAL TOPIC: {node.topic}')
+            #  clz._logger.debug(f'REAL TOPIC: {node.topic}')
             topic_str: str = f'{node.topic}'
         else:
-            clz._logger.debug(f'UNREAL TOPIC: {node.topic} control_id:'
-                              f' {node.control_id} node: {node}')
-
-        clz._logger.debug_v(
-                f'topic: {topic_str} '
-                f' control_id: {node.control_id}'
-                f' parent: {node}')
+            if node.topic is not None:
+                if clz._logger.isEnabledFor(DEBUG_XV):
+                    clz._logger.debug_xv(f'UNREAL TOPIC: {node.topic.name} control_id:'
+                                         f' {node.control_id} ')
+            elif node.control_type != ControlElement.CONTROLS:
+                # A Controls control only holds other controls
+                pass
+        if clz._logger.isEnabledFor(DISABLED):
+            clz._logger.debug_v(
+                    f'topic: {topic_str} '
+                    f' control_id: {node.control_id}'
+                    f' parent: {node}')
         if node.control_id >= 0:  # Control_id 0 is for window control
             self.set_model_for_control_id(node.control_id, node)
             node.tree_id = f'{node.control_id}'
-            clz._logger.debug(f'added node: {node.control_id} to model_for_control_id')
+
         else:  # Control_id is invalid.
             #  Generate fake ID for controls which don't have an explicit ID
             node.tree_id = f'L{level}C{child_idx}'
         topic_str: str = ''
         if node.topic is not None:
             topic_str = node.topic.name
-        clz._logger.debug(f'Working on tree_id: {node.tree_id}  topic: {topic_str}'
-                          f'{node}')
+        if clz._logger.isEnabledFor(DEBUG_XV):
+            clz._logger.debug(f'Working on tree_id: {node.tree_id}  topic: {topic_str}')
 
         try:
             # Copy tree_id to any topic linked to the node. But
             # ignore 'fake' topics (manufactured dummy ones to simplify code)
             if node.topic is not None and node.topic.is_real_topic:
-                clz._logger.debug(f'REAL TOPIC: {node.topic}')
+                if clz._logger.isEnabledFor(DEBUG_XV):
+                    clz._logger.debug_xv(f'REAL TOPIC: {node.topic.name}')
                 node.topic.tree_id = node.tree_id
                 if self.root_topic is None:
                     clz._logger.error('root_topic not set')
                     raise ParseError('root topic not set')
 
-                if node.tree_id in self.topic_by_tree_id.keys():
+                if node.tree_id in self._topic_by_tree_id.keys():
                     clz._logger.debug(f'Dupe topic tree_id: {node.tree_id}')
                     raise ET.ParseError(f'Duplicate topic by tree_id: '
                                         f'{node.tree_id} '
@@ -224,25 +328,29 @@ class WindowStructure:
 
                 # Add non-fake topic to topic map indexed by tree_id
 
-                clz._logger.debug(f'Adding node: {node.tree_id} to topic_by_tree_id')
-                self.topic_by_tree_id[node.tree_id] = node.topic
-
-                clz._logger.debug(f'Adding topic: {node.topic.name} id:'
-                                  f' {node.tree_id}')
-                clz._logger.debug_v(f'{node.topic}\n{node.topic.parent}')
-
-                if node.topic.name in self.topic_by_topic_name.keys():
-                    raise ET.ParseError(f'Duplicate topic name: {node.topic.name}')
-
+                if clz._logger.isEnabledFor(DEBUG_XV):
+                    clz._logger.debug_xv(f'Adding node: |{node.tree_id}| '
+                                         f'type: {type(node.tree_id)} to topic_by_tree_id')
+                self.add_topic_by_tree_id(node.tree_id, node.topic)
+                if clz._logger.isEnabledFor(DEBUG_XV):
+                    clz._logger.debug_xv(f'Adding topic: {node.topic.name} id:'
+                                         f' {node.tree_id}')
+                    clz._logger.debug_xv(f'{node.topic}\n{node.topic.parent}')
                 # Add non-fake topic to topic map indexed by topic name
 
-                self.topic_by_topic_name[node.topic.name] = node.topic
+                    clz._logger.debug_xv(f'Adding topic {node.topic.name} to'
+                                         f' topic_by_topic_name')
+                self.add_topic_by_topic_name(node.topic.name, node.topic)
 
                 # Add control node to window_id_map indexed by tree_id
-
-                self.window_id_map[node.tree_id] = node
+                if clz._logger.isEnabledFor(DEBUG_XV):
+                    clz._logger.debug_xv(f'Adding topic with tree_id '
+                                         f'|{node.tree_id}| type: {type(node.tree_id)}'
+                                         f' to window_id_map')
+                self.add_window_model_by_window_id(node.tree_id, node)
             else:
-                clz._logger.debug(f'UNREAL TOPIC: {node.topic}')
+                if clz._logger.isEnabledFor(DEBUG_XV):
+                    clz._logger.debug_xv(f'UNREAL TOPIC: {node.topic.name}')
         except ET.ParseError:
             clz._logger.exception(f'Ignoring topic {node.topic.name}')
         except AbortException:
@@ -292,8 +400,8 @@ class WindowStructure:
           of not much value.
        """
         clz = WindowStructure
-        root_topic: BaseTopicModel = self.root_topic
-        topic: ForwardRef('BaseTopicModel') = root_topic
+        root_topic: TopicModel = self.root_topic
+        topic: ForwardRef('TopicModel') = root_topic
         while topic is not None:
             if topic.name == '':
                 raise ET.ParseError(f'Topic.name is empty')
@@ -322,7 +430,7 @@ class WindowStructure:
 
     def get_control_and_topic_for_id(self,
                                      control_topic_or_tree_id: str | int) \
-            -> Tuple[ForwardRef('IModel'), ForwardRef('BaseBaseTopicModel')]:
+            -> Tuple[ForwardRef('IModel'), ForwardRef('BaseTopicModel')]:
         """
             Fetches any control and/or topic that has a matching:
                 control_id (numeric)
@@ -333,49 +441,52 @@ class WindowStructure:
         :return:  control, topic
         """
         clz = WindowStructure
-        search_id: str = control_topic_or_tree_id
+        search_id: str = str(control_topic_or_tree_id)
+        if clz._logger.isEnabledFor(DEBUG_XV):
+            clz._logger.debug_xv(f'search_id type: {type(search_id)} value:'
+                                 f' |{search_id}|')
         if search_id == '':
             return None, None
 
-        topic: ForwardRef('BaseTopicModel') = None
+        topic: ForwardRef('TopicModel') = None
         control: ForwardRef('IModel') = None
 
         # Try to search by numeric control id
         control_id: str = search_id
         control = self.get_control_model(control_id)
-        if control is None:
-            clz._logger.debug(f'Did NOT find control {control_id} '
-                              f'window_id: {self.window.window_id}')
-
         if control is not None:
             topic = control.topic
             topic_name: str = ''
             if topic is not None:
                 topic_name = topic.name
-            clz._logger.debug_xv(f'get_control_model rtns ctrl_id: {control.control_id} '
-                                 f'topic: {topic_name}')
-        else:
-            # Perhaps search_id is actually a topic name or tree-id.
-            # There is no search for controls by that, but probably not
-            # a big deal. All topics have topic ids so we should be able to
-            # find both topic and control from it. tree_ids are explicitly for
-            # controls without ids, so you can't find them from that
-            topic = self.topic_by_topic_name.get(search_id)
-            if topic is None:
-                topic = self.topic_by_tree_id.get(search_id)
-            if topic is not None:
-                control = topic.parent
+            if clz._logger.isEnabledFor(DEBUG_XV):
+                clz._logger.debug_xv(f'get_control_model rtns ctrl_id:'
+                                     f' {control.control_id} '
+                                     f'topic: {topic_name}')
+        # Search for topic
+        if clz._logger.isEnabledFor(DEBUG_XV):
+            clz._logger.debug_xv(f'search_id type: {type(search_id)} value:'
+                                 f' |{search_id}|')
+        topic = self.get_topic_by_topic_name(search_id)
+        if topic is None:
+            topic = self.get_topic_by_tree_id(search_id)
         if topic is not None:
+            control = topic.parent
             # clz._logger.debug(f'topic {topic}')
             if not topic.is_real_topic or not topic.is_new_topic:
-                clz._logger.debug_v(f'topic is_real: {topic.is_real_topic} '
-                                          f'{topic.is_new_topic}')
+                if clz._logger.isEnabledFor(DEBUG_V):
+                    clz._logger.debug_v(f'topic is_real: {topic.is_real_topic} '
+                                        f'{topic.is_new_topic}')
                 topic = None
+        if control is None:
+            if clz._logger.isEnabledFor(DEBUG):
+                clz._logger.debug(f'Did NOT find control {control_id} '
+                                  f'window_id: {self.window.window_id}')
         return control, topic
 
     def get_topic_for_id(self,
                          ctrl_topic_or_tree_id: str)\
-            -> Tuple[ForwardRef('IModel'), ForwardRef('BaseTopicModel')]:
+            -> Tuple[ForwardRef('IModel'), ForwardRef('TopicModel')]:
         """
         Retrieves a topic (if it exists) given one of:
                 control_id (must be an int)
@@ -385,29 +496,33 @@ class WindowStructure:
         :return:
         """
         clz = WindowStructure
-        control_model: IModel = None
+        control_model: IModel | None = None
         if clz._logger.isEnabledFor(DEBUG_V):
             clz._logger.debug_v(f'ctrl_topic_or_tree_id: {ctrl_topic_or_tree_id}')
         control_id: int = util.get_non_negative_int(ctrl_topic_or_tree_id)
         if control_id != -1:
-            clz._logger.debug(f'got model for {ctrl_topic_or_tree_id}')
+            if clz._logger.isEnabledFor(DEBUG_XV):
+                clz._logger.debug(f'got model for {ctrl_topic_or_tree_id}')
             control_model = self.get_control_model(control_id)
-        topic: ForwardRef('BaseTopicModel') = None
-        topic = self.topic_by_topic_name.get(ctrl_topic_or_tree_id)
+        topic: ForwardRef('TopicModel') = None
+        topic = self.get_topic_by_topic_name(ctrl_topic_or_tree_id)
         if topic is None:
-            clz._logger.debug(f'topic not found for topic name {ctrl_topic_or_tree_id}')
+            if clz._logger.isEnabledFor(DEBUG_XV):
+                clz._logger.debug_xv(f'topic not found for topic name {ctrl_topic_or_tree_id}')
             # TODO: Merge topic_by_tree_id with topic_by_topic_name
-            topic = self.topic_by_tree_id.get(ctrl_topic_or_tree_id)
+            topic = self.get_topic_by_tree_id(ctrl_topic_or_tree_id)
             if topic is None:
-                clz._logger.debug(f'topic not found for tree_id: {ctrl_topic_or_tree_id}')
+                if clz._logger.isEnabledFor(DEBUG_XV):
+                    clz._logger.debug_xv(f'topic not found for tree_id: {ctrl_topic_or_tree_id}')
             else:
-                clz._logger.debug(
-                    f'got topic from topic_by_tree_id from {ctrl_topic_or_tree_id} '
-                    f'topic: {topic}')
+                if clz._logger.isEnabledFor(DEBUG_V):
+                    clz._logger.debug_v(
+                        f'got topic from topic_by_tree_id from {ctrl_topic_or_tree_id} '
+                        f'topic: {topic}')
         else:
-            pass
-            clz._logger.debug(f'got topic from topic_by_topic_name from '
-                              f'{ctrl_topic_or_tree_id}')
+            if clz._logger.isEnabledFor(DEBUG_V):
+                clz._logger.debug_v(f'got topic from topic_by_topic_name from '
+                                  f'{ctrl_topic_or_tree_id}')
         # if topic is not None:
         #     clz._logger.debug(f'control from topic: {topic.parent}')
         return control_model, topic
@@ -423,12 +538,17 @@ class WindowStructure:
         control_id: int = util.get_non_negative_int(control_id_expr)
         if control_id < 0:
             return None
-        clz._logger.debug(f'control_id: {control_id}')
         result = self.get_model_for_control_id(control_id)
         return result
 
     def get_control_model_by_tree_id(self, tree_id: str) -> IModel | None:
-        return self.window_id_map.get(tree_id)
+        clz = WindowStructure
+        if clz._logger.isEnabledFor(DEBUG_XV):
+            clz._logger.debug_xv(f'tree_id: type: {type(tree_id)} |{tree_id}|')
+        value: IModel | None = self.get_model_by_tree_id(tree_id)
+        if clz._logger.isEnabledFor(DEBUG_XV):
+            clz._logger.debug_xv(f'Found: {value}')
+        return value
 
     def get_current_control_model(self) -> IModel | None:
         try:
@@ -444,8 +564,8 @@ class WindowStructure:
         return ''
 
     '''
-            self.topic_by_tree_id: Dict[str, BaseTopicModel] = {}
-            self.topic_by_topic_name: Dict[str, BaseTopicModel] = {}
+            self.topic_by_tree_id: Dict[str, TopicModel] = {}
+            self.topic_by_topic_name: Dict[str, TopicModel] = {}
 
             """
               Map of all Controls in Window, indexed by it's 'tree_id'.
@@ -477,7 +597,7 @@ class WindowStructure:
         for node in self.test_node_list:
             node_id: str = None
             control: IModel
-            topic: BaseTopicModel
+            topic: TopicModel
             expected_topic_name: str | None = None
             if node.topic is not None:
                 expected_topic_name = node.topic.name
@@ -486,16 +606,19 @@ class WindowStructure:
                 node_id = f'{node.control_id}'
                 control, topic = self.get_control_and_topic_for_id(node_id)
                 if control is None:
-                    clz._logger.debug(f'Error: Should have found control {node_id}')
+                    if clz._logger.isEnabledFor(DEBUG):
+                        clz._logger.debug(f'Error: Should have found control {node_id}')
                 elif f'{control.control_id}' != node_id:
-                    clz._logger.debug(f'Error: control ids should match: '
-                                      f'control_id: {control.control_id} '
-                                      f'node_id: {node_id}')
+                    if clz._logger.isEnabledFor(DEBUG):
+                        clz._logger.debug(f'Error: control ids should match: '
+                                          f'control_id: {control.control_id} '
+                                          f'node_id: {node_id}')
                 if topic is None:
                     if expected_topic_name is not None:
                         if not isinstance(node.topic, BaseFakeTopic):
-                            clz._logger.debug(f'Topic node not found '
-                                              f'expected: {expected_topic_name}')
+                            if clz._logger.isEnabledFor(DEBUG_V):
+                                clz._logger.debug_v(f'Topic node not found '
+                                                    f'expected: {expected_topic_name}')
 
     def test_get_control_and_topic_for_id(self) -> None:
         clz = WindowStructure
@@ -503,7 +626,7 @@ class WindowStructure:
         for node in self.test_node_list:
             node_id: str = None
             control: IModel
-            topic: BaseTopicModel
+            topic: TopicModel
             expected_topic_name: str | None = None
             if node.topic is not None:
                 expected_topic_name = node.topic.name
@@ -512,21 +635,24 @@ class WindowStructure:
                 node_id = f'{node.control_id}'
                 control, topic = self.get_control_and_topic_for_id(node_id)
                 if control is None:
-                    clz._logger.debug(f'Error: Should have found control {node_id}')
+                    if clz._logger.isEnabledFor(DEBUG):
+                        clz._logger.debug(f'Error: Should have found control {node_id}')
                 elif f'{control.control_id}' != node_id:
-                    clz._logger.debug(f'Error: control ids should match: '
-                                      f'control_id: {control.control_id} '
-                                      f'node_id: {node_id}')
+                    if clz._logger.isEnabledFor(DEBUG):
+                        clz._logger.debug(f'Error: control ids should match: '
+                                          f'control_id: {control.control_id} '
+                                          f'node_id: {node_id}')
                 if topic is None:
                     if expected_topic_name is not None:
                         if not isinstance(node.topic, BaseFakeTopic):
-                            clz._logger.debug(f'Topic node not found '
-                                              f'expected: {expected_topic_name}')
+                            if clz._logger.isEnabledFor(DEBUG):
+                                clz._logger.debug(f'Topic node not found '
+                                                  f'expected: {expected_topic_name}')
 
             if node.topic is not None:
-                topic: BaseTopicModel
+                topic: TopicModel
                 topic = node.topic
-                found_topic: BaseTopicModel
+                found_topic: TopicModel
                 self.test_find_topic(topic.name)
                 self.test_find_topic(topic.flows_to_expr)
                 self.test_find_topic(topic.flows_from_expr)
@@ -539,15 +665,17 @@ class WindowStructure:
         clz = WindowStructure
         if topic_name is None or topic_name == '':
             return
-        found_topic: BaseTopicModel
+        found_topic: TopicModel
         control, found_topic = self.get_control_and_topic_for_id(topic_name)
         if found_topic is None:
-            if not topic_name.startswith(f'Fake_topic'):
-                clz._logger.debug(f'Error: Should have found topic {found_topic} '
-                                  f'for topic: {topic_name}')
-            else:
-                # clz._logger.debug(f'topic: {topic_name} gives FakeTopic')
-                pass
+            if clz._logger.isEnabledFor(DEBUG):
+                if not topic_name.startswith(f'Fake_topic'):
+                    clz._logger.debug(f'Error: Should have found topic {found_topic} '
+                                      f'for topic: {topic_name}')
+                else:
+                    # clz._logger.debug(f'topic: {topic_name} gives FakeTopic')
+                    pass
         elif found_topic.name != topic_name:
-            clz._logger.debug(f'Error: Topics not identical: {topic_name} vs '
-                              f'{found_topic} for {topic_name}')
+            if clz._logger.isEnabledFor(DEBUG):
+                clz._logger.debug(f'Error: Topics not identical: {topic_name} vs '
+                                  f'{found_topic} for {topic_name}')

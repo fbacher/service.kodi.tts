@@ -69,6 +69,19 @@ class ScrollbarModel(BaseModel):
             child_model: BaseModel = model_handler(self, parser)
             self.children.append(child_model)
 
+    @property
+    def supports_orientation(self) -> bool:
+        """
+           List-type controls support orientation (vertical or horizontal)
+
+           Known Containers
+               FixedList?, List, Panel, WrapList, scrollbar
+           Known semi-containers
+               GroupList
+           :return:
+        """
+        return True
+
     def __repr__(self) -> str:
         return self.to_string(include_children=False)
 

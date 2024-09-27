@@ -61,6 +61,21 @@ class BaseFakeTopic(BaseTopicModel):
         return ''
 
 
+class NoControlsTopicModel(BaseFakeTopic):
+    """
+        Provides a skeletal Topic implementation
+    """
+    _logger: BasicLogger = module_logger
+    item: Item = control_elements[BAT.TOPIC]
+
+    def __init__(self, parent: BaseModel) -> None:
+        clz = type(self)
+        if clz._logger is None:
+            clz._logger = module_logger
+        fake_name: str = 'Fake_topic'  # patch up later
+        super().__init__(parent=parent, topic_name=fake_name)
+
+
 class NoButtonTopicModel(BaseFakeTopic):
     """
         Provides a skeletal Topic implementation
