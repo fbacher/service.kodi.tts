@@ -38,15 +38,28 @@ class SliderTopicModel(TopicModel):
         """
         return True
 
-    def voice_topic_value_old(self, stmts: Statements) -> bool:
-        # Get the value from here when control heading, etc. is voiced
-        # But don't get the value when the control is not voiced.
+    def voice_topic_value(self, stmts: Statements) -> bool:
+        """
+            Voice a control's value. Used primarily when a control's value comes from
+            another control ('flows_to'). Let the control using the value decide
+            whether it should be voiced (repeat values are supressed when the focus
+            has not changed).
+
+            In addition to getting the value, temporarily change the polling
+            behavior to send events even when focus has not changed.
+
+            :param stmts:
+            :return:
+
+            KEEP
+        """
 
         clz = self.__class__
-        if self.focus_changed:
+        if True:   # self.focus_changed:
             #  clz._logger.debug(f'calling voice_working_value')
             result = self.voice_working_value(stmts)
             GuiGlobals.require_focus_change = False
+            clz._logger.debug(f'TICK')
             #  clz._logger.debug(f'Back from voice_working_value')
             return result
         return False

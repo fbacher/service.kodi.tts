@@ -50,16 +50,24 @@ DEBUG_EXTRA_VERBOSE: Final[int] = 6
 
 
 # Default logging is info, otherwise debug_v
-definitions = {
-    'tts': logging.INFO,
-    'tts.backends': logging.DEBUG,
-    'tts.gui': DEBUG_VERBOSE,
-    'tts.windows': logging.DEBUG,
-    'tts.windows.custom_tts': DEBUG_VERBOSE,
-    'tts.gui.parser': DEBUG_VERBOSE,
-    'tts.service_worker': DEBUG_VERBOSE,
-    'tts.windowNavigation.help_dialog': logging.DEBUG
-            }
+if False:
+    definitions = {'tts': logging.INFO}
+else:
+    definitions = {
+        'tts': logging.INFO,
+        'tts.backends': logging.DEBUG,
+        'tts.backends.base': DEBUG_VERBOSE,
+        'tts.backends.audio.base_audio': DEBUG_VERBOSE,
+        'tts.backends.audio.mpv_audio_player': DEBUG_VERBOSE,
+        'tts.common.slave_communication': logging.DEBUG,
+        'tts.common.slave_run_command': DEBUG_VERBOSE,
+        'tts.gui': DEBUG_VERBOSE,
+        'tts.windows': logging.DEBUG,
+        'tts.windows.custom_tts': DEBUG_VERBOSE,
+        'tts.gui.parser': logging.DEBUG,
+        'tts.service_worker': DEBUG_VERBOSE,
+        'tts.windowNavigation.help_dialog': logging.DEBUG
+         }
 xbmc.log(f'configuring debug_levels INFO: {logging.INFO} DEBUG: {logging.DEBUG} '
          f'VERBOSE: {DEBUG_VERBOSE} EXTRA_VERBOSE: '
          f'{DEBUG_EXTRA_VERBOSE}')

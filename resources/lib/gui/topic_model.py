@@ -149,20 +149,6 @@ class TopicModel(BaseTopicModel):
         return super().name
 
     @property
-    def supports_heading_label(self) -> bool:
-        """
-        Indicates whether this control provides a label which explains what it
-        is for. For example, a button's label almost certainly is to explain
-        why you should press it. On the other hand a label control does not.
-        A label control may be displaying a date or the result of an action.
-        More information is needed for controls like labels in order to know
-        what to do with them.
-
-        :return:
-        """
-        return self.parent.supports_heading_label
-
-    @property
     def supports_label(self) -> bool:
         """
             A control which getLabel or at least Control.GetLabel({control_id})
@@ -226,6 +212,16 @@ class TopicModel(BaseTopicModel):
             raise ValueError('Invalid message id: {self.false_msg_id}')
         false_msg: str = MessageUtils.get_msg(self.false_msg_id)
         return false_msg
+
+    @property
+    def supports_label_heading(self) -> bool:
+        """
+            A control with a label that is being used as a heading
+        :return:
+        """
+        # ControlCapabilities.LABEL
+
+        return self.parent.supports_label_heading
 
     @property
     def supports_label_value(self) -> bool:
@@ -677,7 +673,7 @@ class TopicModel(BaseTopicModel):
 
         visible_item_count: int = -1
         if self.supports_item_count:
-            visible_item_count  = self.visible_item_count()
+            visible_item_count = self.visible_item_count()
 
         if clz._logger.isEnabledFor(DEBUG_V):
             clz._logger.debug_v(f'control_id: {self.control_id} '
@@ -741,7 +737,7 @@ class TopicModel(BaseTopicModel):
     def voice_heading_label(self, stmts: Statements,
                             chain: bool = True) -> bool:
         """
-        Voices the label(s) for this topic's heading. label information is contained
+        Voices a label for this topic's heading. label information is contained
         in heading_label and heading_next.
 
         :param stmts: Append any voicings to stmts
@@ -750,7 +746,12 @@ class TopicModel(BaseTopicModel):
         :return: True if at least one phrase was appended. False if no phrases
                  added.
 
-        Voice  heading_label, if present or heading_labeled_by, if present.
+        Attempts to voice from multiple sources until succes, or there are
+        no more sources. The sources are, in order: heading_label,
+        heading_labeled_by, the control's own label.
+
+        NOTE: chain is currently ignored.
+
          If chain is True, then call voice_chained_headings to voice sub-headings,
          etc.
 
@@ -763,10 +764,8 @@ class TopicModel(BaseTopicModel):
         If a topic_id is referenced, then voice the heading_label
         from that topic.
 
-          TODO: Try to eliminate this and force use of explicit
-                heading_**label** elements.
         If neither heading_label nor heading_labeled_by are voiced, then
-        if the control is marked with supports_heading_label then one of
+        if the control is marked supports_label_heading then one of
         the control's "normal" labels are read.
         """
         clz = TopicModel
@@ -783,6 +782,7 @@ class TopicModel(BaseTopicModel):
                                                             check_expired=False)
                     stmts.append(Statement(phrases))
             else:
+                # TODO: START HERE. SHOULD NOT VOICE_INFO_LABEL
                 success = self.voice_info_label(stmts, self.heading_label)
 
             if clz._logger.isEnabledFor(DEBUG_V):
@@ -791,57 +791,33 @@ class TopicModel(BaseTopicModel):
         elif self.heading_labeled_by != '':
             success = self.voice_heading_labeled_by(stmts, chain)
 
-        '''
-        Be careful voicing standard labels because it can lead to duplicate
-        voicings. 
-        
-        You can not tell if a label control's single displayed string is 
-        a heading, giving direction or a value. For this reason labels are not
-        processed here unless they explicitly use heading_label or heading_labeled_by.
-        
-        Other controls, such as Button also have only one label to display, but 
-        is almost certainly for an instruction on what the button is for. Other
-        measures must be taken to read the value of the button, likely through 
-        flows_to, etc., but that is the responsibility of other code.
-            
-        '''
-        return success
-        '''
-        if not self.supports_heading_label:
-            return success
-        if not success:
-            clz._logger.debug(f'Considering normal labels for heading')
-        if not success:
-            success = self.voice_alt_label(stmts)
-            if success and clz._logger.isEnabledFor(DEBUG_V):
-                clz._logger.debug_v(f'post voice_alt_label: {stmts.last}')
-        if not success:
-            success = self.voice_labeled_by(stmts)
-            if success and clz._logger.isEnabledFor(DEBUG_V):
-                clz._logger.debug_v(f'post voice_labeled_by: {stmts.last}')
-        if not success:
-            success = self.voice_label_expr(stmts)
-            if success and clz._logger.isEnabledFor(DEBUG_V):
-                clz._logger.debug_v(f'post voice_label_expr: {stmts.last}')
-        if not success:
-            # label_2 is generally for value. We just want label
-            success = self.voice_control_labels(stmts, voice_label=True,
-                                                voice_label_2=False,
-                                                control_id_expr=str(self.control_id))
-            if success and clz._logger.isEnabledFor(DEBUG_V):
-                clz._logger.debug_v(f'post voice_control_labels: {stmts.last}')
-        '''
-        '''
-        if chain and self.heading_next != '':
-            # If this topic has a 'heading_next' value, then voice the heading_label
-            # from that topic
+        """
+           Be careful voicing standard labels because it can lead to duplicate
+           voicings. 
 
+           You can not tell if a label control's single displayed string is 
+           a heading, giving direction or a value. For this reason labels are not
+           processed here unless they explicitly use heading_label or heading_labeled_by.
 
-            _ = self.voice_chained_headings(stmts)
-            if clz._logger.isEnabledFor(DEBUG_V):
-                self._logger.debug_v(f'post voice_chained_headings: {stmts.last}')
+           Other controls, such as Button also have only one label to display, but 
+           is almost certainly for an instruction on what the button is for. Other
+           measures must be taken to read the value of the button, likely through 
+           flows_to, etc., but that is the responsibility of other code.
+         """
+        if not success and self.supports_label_heading:
+            success = self.voice_label_heading(stmts)
         return success
-        '''
+
+    def voice_label_heading(self, stmts: Statements) -> bool:
+        """
+        Voices a Control's label as the heading
+
+        :param stmts:
+        :return:
+        """
+        if not self.supports_label_heading:
+            return False
+        return self.parent.voice_label_heading(stmts)
 
     def get_orientation(self) -> str:
         """
@@ -1155,19 +1131,6 @@ class TopicModel(BaseTopicModel):
             control: BaseModel
             success = control.voice_heading_without_topic(stmts)
         clz._logger.debug(f'voice_heading_labeled_by: {self.heading_labeled_by}')
-
-        if self.heading_labeled_by == '':
-            return False
-
-        success: bool = False
-        control: BaseModel | None
-        topic: TopicModel | None
-        control, topic = self.window_struct.get_control_and_topic_for_id(
-                self.heading_labeled_by)
-        if topic is not None:
-            success = topic.voice_heading_labeled_by(stmts)
-        else:
-            success = control.voice_label(stmts, None)
         return success
 
     def voice_control_labels(self, stmts: Statements, voice_label: bool = True,

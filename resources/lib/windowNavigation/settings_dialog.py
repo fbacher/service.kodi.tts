@@ -9,7 +9,6 @@ from xbmcgui import (ControlButton, ControlEdit, ControlGroup, ControlLabel,
                      ControlRadioButton, ControlSlider)
 
 from backends.settings.language_info import LanguageInfo
-from backends.settings.service_types import Services
 from backends.settings.settings_helper import SettingsHelper
 from backends.settings.validators import (AllowedValue, BoolValidator, NumericValidator,
                                           StringValidator, TTSNumericValidator, Validator)
@@ -323,17 +322,17 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
                 self.ok_button: ControlButton = self.get_control_button(
                         clz.OK_BUTTON)
-                self.ok_button.setLabel(Messages.get_msg(Messages.OK))
+                self.ok_button.setLabel(MessageId.OK_BUTTON.get_msg())
                 self.ok_button.setVisible(True)
 
                 self.cancel_button = self.get_control_button(
                         clz.CANCEL_BUTTON)
-                self.cancel_button.setLabel(Messages.get_msg(Messages.CANCEL))
+                self.cancel_button.setLabel(MessageId.CANCEL_BUTTON.get_msg())
                 self.cancel_button.setVisible(True)
 
                 self.defaults_button: ControlButton = self.get_control_button(
                         clz.DEFAULTS_BUTTON)
-                self.defaults_button.setLabel(Messages.get_msg(Messages.DEFAULTS))
+                self.defaults_button.setLabel(MessageId.DEFAULTS_BUTTON.get_msg())
                 self.defaults_button.setVisible(True)
 
                 # self.engine_group = self.get_control_group(clz.ENGINE_GROUP_LIST)
@@ -518,8 +517,9 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                         clz.SELECT_VOLUME_LABEL)
                 result: UIValues = self.get_volume_range()
                 self.engine_volume_label.setLabel(
-                        Messages.get_formatted_msg(Messages.VOLUME_DB,
-                                                   result.current))
+                        MessageId.VOLUME_DB.get_formatted_msg(result.current))
+                #        Messages.get_formatted_msg(Messages.VOLUME_DB,
+                #                                     result.current))
                 self.engine_volume_slider = self.get_control_slider(
                         clz.SELECT_VOLUME_SLIDER)
 
@@ -1958,10 +1958,9 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                     volume: float = Settings.get_volume(self.engine_id)
                     if self._logger.isEnabledFor(DEBUG):
                         self._logger.debug(f'Setting volume to {volume}')
-                    self.engine_volume_label.setLabel(label=
-                                                      Messages.get_formatted_msg(
-                                                          Messages.VOLUME_DB,
-                                                          volume))
+                    self.engine_volume_label.setLabel(
+                            label=MessageId.VOLUME_DB.get_formatted_msg(volume))
+
                     self.engine_volume_group.setVisible(True)
         except Exception as e:
             self._logger.exception('')

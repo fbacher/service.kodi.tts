@@ -434,16 +434,18 @@ class SubprocessAudioPlayer(AudioPlayer):
                 try:
                     args: List[str] = self.get_slave_play_args()
                     self._simple_player_busy = True
-                    slave_pipe_path = self.get_slave_pipe_path()
+                    p_path = self.get_slave_pipe_path()
                     volume: float = self.get_player_volume(as_decibels=False)
+                    speed: float = self.get_player_speed()
+                    s_num: int = phrase.serial_number
                     #  play_channels: Channels = self.get_player_channels()
                     self.slave_player_process = SlaveCommunication(args,
-                                                                   phrase_serial=phrase.serial_number,
+                                                                   phrase_serial=s_num,
                                                                    thread_name='mpv',
                                                                    stop_on_play=True,
-                                                                   slave_pipe_path=slave_pipe_path,
-                                                                   speed=self.get_player_speed(),
-                                                                   volume=volume)
+                                                                   fifo_path=p_path,
+                                                                   default_speed=speed,
+                                                                   default_volume=volume)
                     # clz._logger.debug(
                     #         f'START Running slave player to voice NOW args: {"
                     #         ".join(args)}')
@@ -464,8 +466,8 @@ class SubprocessAudioPlayer(AudioPlayer):
             phrase.test_expired()  # Throws ExpiredException
             volume: float = self.get_player_volume(as_decibels=False)
             speed: float = self.get_player_speed()
-            self.slave_player_process.set_volume(volume)
-            self.slave_player_process.set_speed(speed)
+            self.slave_player_process.set_next_volume(volume)
+            self.slave_player_process.set_next_speed(speed)
             self.slave_player_process.set_channels(Channels.STEREO)
             self.slave_player_process.add_phrase(phrase, volume, speed)
             # clz._logger.debug(f'slave state: {self.slave_player_process.get_state()}')

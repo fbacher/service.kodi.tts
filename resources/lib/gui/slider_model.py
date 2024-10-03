@@ -14,6 +14,7 @@ from gui.element_parser import (ElementHandler)
 from gui.no_topic_models import NoSliderTopicModel
 from gui.parser.parse_slider import ParseSlider
 from gui.slider_topic_model import SliderTopicModel
+from gui.statements import Statements
 from gui.topic_model import TopicModel
 from windows.ui_constants import UIConstants
 from windows.window_state_monitor import WinDialogState
@@ -97,6 +98,10 @@ class SliderModel(BaseModel):
             self.children.append(child_model)
 
     @property
+    def supports_item_count(self) -> bool:
+        return False
+
+    @property
     def supports_label(self) -> bool:
         # ControlCapabilities.LABEL
         return False
@@ -130,9 +135,9 @@ class SliderModel(BaseModel):
         """
         return True
 
-    def voice_control(self, phrases: PhraseList) -> bool:
+    def voice_control(self, stmts: Statements) -> bool:
         """
-        :param phrases: PhraseList to append to
+        :param stmts: Statements to append to
         :return: True if anything appended to phrases, otherwise False
         """
         clz = type(self)
@@ -140,12 +145,12 @@ class SliderModel(BaseModel):
         focus_changed: bool = self.windialog_state.focus_changed
         if not focus_changed:
             # Only voice change in value
-            success = self.voice_value(phrases, focus_changed)
+            success = self.voice_value(stmts, focus_changed)
             return success
         if self.topic is not None:
             topic: TopicModel = self.topic
             temp_phrases: PhraseList = PhraseList(check_expired=False)
-            heading_success: bool = self.voice_heading(phrases)
+            heading_success: bool = self.voice_label_heading(stmts)
             # if not self.previous_heading.equal_text(temp_phrases):
             #     self.previous_heading.clear()
             #     self.previous_heading.extend(temp_phrases)
@@ -153,7 +158,7 @@ class SliderModel(BaseModel):
 
             # temp_phrases.clear()
             # Simply appends one value if it has changed
-            success = self.voice_value(phrases, focus_changed)
+            success = self.voice_value(stmts, focus_changed)
             if heading_success:
                 success = True
             return success
@@ -167,7 +172,7 @@ class SliderModel(BaseModel):
         orientation: str = Messages.get_msg_by_id(msg_id=msg_id)
         return orientation
 
-    def voice_value(self, phrases: PhraseList, focus_changed: bool = True) -> bool:
+    def voice_value(self, stmts: Statements, focus_changed: bool = True) -> bool:
         clz = SliderModel
         clz._logger.debug(f'Not Supported')
         return False

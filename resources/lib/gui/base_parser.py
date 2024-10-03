@@ -73,8 +73,8 @@ class BaseParser:
 
     @control_id.setter
     def control_id(self, value: int) -> None:
-        clz = BaseParser
-        clz._logger.debug(f'new: {value} old {self._control_id} {type(self)}')
+        # clz = BaseParser
+        # clz._logger.debug(f'new: {value} old {self._control_id} {type(self)}')
         self._control_id = value
 
     @property

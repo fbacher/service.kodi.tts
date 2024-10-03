@@ -85,57 +85,22 @@ class ButtonModel(BaseLabelModel):
         return False
 
     @property
+    def supports_label_heading(self) -> bool:
+        """
+            A control that defaults to using label as a heading
+        :return:
+        """
+        # ControlCapabilities.LABEL
+
+        return True
+
+    @property
     def supports_value(self) -> bool:
         """
         This control is unable to provide a value. I.E. it can't give any
         indication of what happens when pressed. If the topic for this
         control or another provides flows_from/flows_to or similar, then a
         value can be determined that way, but not using this method.
-        :return:
-        """
-        return False
-
-    def voice_control(self, phrases: PhraseList) -> bool:
-        """
-
-        :param phrases: PhraseList to append to
-        :return: True if anything appended to phrases, otherwise False
-        """
-        clz = ButtonModel
-
-        if self.control_id is not None:
-            if not self.is_visible():
-                clz._logger.debug(f'not visible, exiting')
-                return False
-
-        focus_changed = self.windialog_state.focus_changed
-        success: bool = True
-        if self.topic is not None:
-            topic: TopicModel = self.topic
-            if focus_changed:
-                success = self.voice_heading(phrases)
-                # if not self.previous_heading.equal_text(temp_phrases):
-                #     self.previous_heading.clear()
-                #     self.previous_heading.extend(temp_phrases)
-                #     phrases.extend(temp_phrases)
-
-                # Voice either focused control, or label/text
-                #temp_phrases.clear()
-            temp_phrases: PhraseList = PhraseList(check_expired=False)
-            success = topic.voice_topic_value(temp_phrases)
-            if focus_changed or not self.previous_value.equal_text(temp_phrases):
-                phrases.extend(temp_phrases)
-            self.previous_value.clear()
-            self.previous_value.extend(temp_phrases)
-            return success
-        # TODO, incomplete
-        return False
-
-    def voice_value(self, phrases: PhraseList) -> bool:
-        """
-        ControlButton does not have a value.
-
-        :param phrases:
         :return:
         """
         return False

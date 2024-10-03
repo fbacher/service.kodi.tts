@@ -15,7 +15,7 @@ module_logger = BasicLogger.get_logger(__name__)
 class MessageId(Enum):
     # The following tree values MUST be the same as in VoiceHintToggle
     ENGINE_LABEL = 32001
-
+    VOLUME_LABEL = 32014
     VOICE_HINT_OFF = 32050
     VOICE_HINT_ON = 32051
     VOICE_HINT_PAUSE = 32052
@@ -26,6 +26,10 @@ class MessageId(Enum):
     ITEMS_WITH_NUMBER = 32107  # {number} items
 
     ENGINE_AUTO_ID = 32184
+    OK_BUTTON = 32220
+    CANCEL_BUTTON = 32221
+    DEFAULTS_BUTTON = 32222
+    VOLUME_DB = 32232
     ITEM = 32237  # item (use when you can't get the number)
     CONTAINER_ITEM_NUMBER_CONTROL_AND_VALUE = 32238
     BASIC_CONFIGURATION = 32239

@@ -63,13 +63,13 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
        slave mode commands are sent as json over pipe 
         # For volume, send:
            f'{{ "command": ["set_property", "volume", "{self.volume}"],'
-                f' "request_id": "{self.fifo_sequence_number}" }}'
+                f' "request_id": "{self.latest_request_sequence_number}" }}'
           The volume is again in percent change.
           
           For speed use:
            f'{{ "command": ["set_property", '
                               f'"speed", "{self.speed}"], "request_id": '
-                              f'"{self.fifo_sequence_number}" }}
+                              f'"{self.latest_request_sequence_number}" }}
             The speed is also a multiplier as with the command line. 
         
         Note that there are other ways to pass speed and volume where they may be
@@ -160,9 +160,9 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
             # and volume
             #
             if int(abs(round(volume * 10))) != 0:
-                args.append(f'--volume={volume}')
+                args.append(f'--default_volume={volume}')
             if int(abs(round(speed * 10))) != 0:
-                args.append(f'--speed={speed}')
+                args.append(f'--default_speed={speed}')
                 args.append(f'{phrase.get_cache_path()}')
         except ExpiredException:
             reraise(*sys.exc_info())
@@ -229,9 +229,9 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
             # and volume
             #
             if int(abs(round(volume * 10))) != 0:
-                args.append(f'--volume={volume}')
+                args.append(f'--default_volume={volume}')
             if int(abs(round(speed * 10))) != 0:
-                args.append(f'--speed={speed}')
+                args.append(f'--default_speed={speed}')
         except ExpiredException:
             reraise(*sys.exc_info())
         self._logger.debug_v(f'args: {" ".join(args)}')

@@ -174,6 +174,9 @@ class EngineQueue:
                               f' debug: {phrases[0].debug_data()}')
         except ExpiredException:
             cls._logger.debug('EXPIRED')
+        # if phrases[0].interrupt:
+        #     phrases.set_expired()
+        #     return
         try:
             phrase: Phrase
             for phrase in phrases:
@@ -198,7 +201,7 @@ class EngineQueue:
             cls._logger.debug(f'{phrase.debug_data()}')
             interrupt: bool = phrase.get_interrupt()
             if interrupt:
-                cls._logger.debug(f'INTERRUPT: {phrase.get_text()}')
+                cls._logger.debug(f'INTERRUPT: {phrase.get_short_text()}')
                 cls.empty_queue()
             engine.stop_current_phrases()
 
@@ -697,14 +700,6 @@ class BaseEngineService(BaseServices):
     def is_active_engine(self) -> bool:
         clz = type(self)
         return clz.is_active_engine(self)
-
-    @classmethod
-    def insertPause(cls, ms=500):
-        """Insert a pause of ms milliseconds
-
-        May be overridden by sublcasses. Default implementation sleeps for ms.
-        """
-        Monitor.exception_on_abort(ms / 1000.0)
 
     def isSpeaking(self):
         """Returns True if speech engine is currently speaking, False if not

@@ -309,8 +309,8 @@ class CustomTTSReader(WindowReaderBase):
                         and not hints_to_voice.is_empty()):
                     clz._logger.debug_v(f'Aggregate hint-text: {hints_to_voice}')
             else:
-                if clz._logger.isEnabledFor(DEBUG_V) and focus_changed:
-                    clz._logger.debug_v(f'NOT voicing {stmts}')
+                if clz._logger.isEnabledFor(DEBUG_XV) and focus_changed:
+                    clz._logger.debug_xv(f'NOT voicing {stmts}')
 
         clz._previous_stmts_chain = new_stmt_chain
         if not phrases_to_voice.is_empty():

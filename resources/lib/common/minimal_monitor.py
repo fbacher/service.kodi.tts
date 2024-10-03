@@ -98,10 +98,15 @@ class MinimalMonitor(xbmc.Monitor):
         return abort
 
     @classmethod
-    def abort_requested(cls) -> None:
+    def abort_requested(cls) -> bool:
+        """
+        Returns True if abort has been requested
+        :return:
+        """
         abort: bool = cls._xbmc_monitor.abortRequested()
         if abort:
             cls.set_abort_received()
+        return abort
 
     @classmethod
     def set_abort_received(cls):

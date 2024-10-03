@@ -89,20 +89,6 @@ class BaseModel(IModel):
     """
 
     @property
-    def supports_heading_label(self) -> bool:
-        """
-        Indicates whether this control provides a label which explains what it
-        is for. For example, a button's label almost certainly is to explain
-        why you should press it. On the other hand a label control does not.
-        A label control may be displaying a date or the result of an action.
-        More information is needed for controls like labels in order to know
-        what to do with them.
-
-        :return:
-        """
-        return True
-
-    @property
     def supports_label(self) -> bool:
         """
             A control which getLabel or at least Control.GetLabel({control_id})
@@ -168,6 +154,16 @@ class BaseModel(IModel):
         else:
             false_msg = MessageUtils.get_msg(self.default_false_msg_id)
         return false_msg
+
+    @property
+    def supports_label_heading(self) -> bool:
+        """
+            A control that defaults to using its label as a heading
+        :return:
+        """
+        # ControlCapabilities.LABEL
+
+        return True
 
     @property
     def supports_label_value(self) -> bool:
@@ -320,9 +316,16 @@ class BaseModel(IModel):
         # TODO, incomplete
         return False
 
-    def voice_controls_heading(self, stmts: Statements) -> bool:
-        stmts.last.phrases.append(Phrase(text='get_heading_without_text not implemented'))
-        return True
+    def voice_label_heading(self, stmts: Statements) -> bool:
+        """
+        Voices a Control's label as the heading
+
+        :param stmts:
+        :return:
+        """
+        if not self.supports_label_heading:
+            return False
+        return self.voice_label(stmts)
 
     def get_real_topic(self) -> ForwardRef('BaseTopicModel'):
         """

@@ -45,34 +45,23 @@ class SlaveRunCommand:
         SlaveRunCommand.logger = module_logger
 
         self.args: List[str] = args
-        # self.phrase_serial: int = phrase_serial
+        #  args.append('--log-file=/tmp/mpv.log')
+        #  args.append('--msg-level=all=debug')
         self.thread_name = thread_name
         self.rc = 0
-        # clz.get.debug(f'Setting runstate to NOT_STARTED')
         self.run_state: RunState = RunState.NOT_STARTED
         self.cmd_finished: bool = False
-        # self._thread: threading.Thread | None = None
-        #  self.fifo_in = None;
-        #  self.fifo_out = None
-        #  self.fifo_initialized: bool = False
-        #  self.fifo_reader_thread: threading.Thread | None = None
-        #  self.filename_sequence_number: int = 0
-        #  self.playlist_playing_pos: int = 0
         self.process: Popen | None = None
         self.run_thread: threading.Thread | None = None
-        #  self.fifo_sequence_number: int = 0
-        #  self.observer_sequence_number: int = 0
-        #  self.stdout_thread: threading.Thread | None = None
-        #  self.stdout_lines: List[str] = []
-        #  self.play_count: int = 0
+        clz.logger.debug(f'Calling post_start_callback')
         self.post_start_callback: Callable[[None], bool] = post_start_callback
-
+        clz.logger.debug(f'Returned from post_start_callback')
         Monitor.register_abort_listener(self.abort_listener, name=thread_name,
                                         garbage_collect=False)
 
     def terminate(self):
         if self.process is not None and self.run_state.value <= RunState.RUNNING.value:
-            self.process.terminate()
+            self.process.kill()
         clz = type(self)
         clz.logger.debug(f'terminate')
 
@@ -96,24 +85,33 @@ class SlaveRunCommand:
 
         :return:
         """
+        self.run_state = RunState.COMPLETE
+        if self.cmd_finished:
+            return
+
         clz = type(self)
         clz.logger.debug(f'In destroy')
         self.cmd_finished = True
-        try:
-            self.process.stdout.close()
-            self.process.stdout = None
-        except:
-            pass
-        try:
-            self.process.stdin.close()
-            self.process.stdin = None
-        except:
-            pass
-        # self.process.wait(0.1)
-        try:
-            self.process.kill()
-        except:
-            pass
+        if self.process is not None:
+            try:
+                self.process.poll()
+                if self.process.returncode is not None:
+                    return
+            except:
+                return  # Probably dead
+            try:
+                self.process.stdin.close()
+            except:
+                pass
+            try:
+                self.process.stdout.close()
+            except:
+                pass
+            # self.process.wait(0.1)
+            try:
+                self.process.kill()
+            except:
+                pass
         clz.logger.debug('Slave Destroyed')
 
     def start_service(self) -> int:
@@ -140,8 +138,6 @@ class SlaveRunCommand:
                     self.run_state = RunState.RUNNING
                     break
                 attempts -= 1
-
-
         except AbortException:
             # abort_listener will do the kill
             self.rc = 99  # Thread will exit very soon
@@ -155,7 +151,7 @@ class SlaveRunCommand:
     def run_service(self) -> None:
         clz = type(self)
         self.rc = 0
-        # clz.get.debug(f'run_service started')
+        clz.logger.debug(f'run_service started')
         env = os.environ.copy()
         try:
             if Constants.PLATFORM_WINDOWS:
@@ -185,71 +181,15 @@ class SlaveRunCommand:
                                                 universal_newlines=True,
                                                 encoding='utf-8', env=env,
                                                 close_fds=True)
-            # self.stdout_thread = threading.Thread(target=self.stdout_reader,
-            #                                      name=f'{self.thread_name}_stdout_rdr')
             Monitor.exception_on_abort()
-            #  self.stdout_thread.start()
             if self.post_start_callback:
                 if self.post_start_callback():
                     self.run_state = RunState.PIPES_CONNECTED
-
-            # self.player_state = KodiPlayerState.
-
-            #  self.stderr_thread = threading.Thread(target=self.stderr_reader,
-            #                                        name=f'{
-            #                                        self.thread_name}_stderr_rdr')
-            # self.stderr_thread.start()
+                    clz.logger.debug(f'pipes connected')
             Monitor.exception_on_abort(timeout=1.0)
         except AbortException:
             return  # We are in the top of the thread
         except Exception as e:
             clz.logger.exception('')
-        return
-
-    def stdout_reader(self):
-        clz = type(self)
-        finished = False
-        try:
-            while not Monitor.exception_on_abort(timeout=0.1):
-                try:
-                    if finished or self.cmd_finished:
-                        break
-                    line: str
-                    line, _ = self.process.communicate(input='',
-                                                       timeout=0.0)
-                    # clz.get.debug(f'Setting run_state RUNNING')
-                    self.run_state = RunState.RUNNING
-                    # if len(line) > 0:
-                    #     clz.get.debug(f'STDOUT: {line}')
-                except subprocess.TimeoutExpired:
-                    Monitor.exception_on_abort(timeout=0.1)
-                except ValueError as e:
-                    rc = self.process.poll()
-                    if rc is not None:
-                        self.rc = rc
-                        # Command complete
-                        finished = True
-                        break
-                    else:
-                        clz.logger.exception('')
-                        finished = True
-        except AbortException as e:
-            try:
-                if hasattr(self.process) and hasattr(self.process.stdout):
-                    self.process.stdout.close()
-                    self.process.stdout = None
-            except:
-                finished = True
-                pass
-            return
-        except Exception as e:
-            clz.logger.exception('')
-            finished = True
-        try:
-            if hasattr(self.process) and hasattr(self.process.stdout):
-                self.process.stdout.close()
-                self.process.stdout = None
-        except:
-            finished = True
-            pass
+        clz.logger.debug(f'returning from run_service')
         return

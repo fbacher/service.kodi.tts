@@ -148,7 +148,7 @@ class WindowStructure:
         if not isinstance(tree_id, str):
             raise ValueError(f'tree_id: {tree_id} MUST be a str not:{type(tree_id)}')
         topic: TopicModel = self._topic_by_tree_id.get(tree_id)
-        if topic is not None and clz._logger.isEnabledFor(DEBUG_V):
+        if topic is not None and clz._logger.isEnabledFor(DISABLED):
             clz._logger.debug_v(f'Found: topic: {topic.name}')
         return topic
 
@@ -172,7 +172,7 @@ class WindowStructure:
         topic: TopicModel = self._topic_by_topic_name.get(topic_name)
         if topic is None:
             clz._logger.debug(f'Could not find topic with name: {topic_name}')
-        elif clz._logger.isEnabledFor(DEBUG_V):
+        elif clz._logger.isEnabledFor(DISABLED):
             clz._logger.debug_v(f'Found: topic: {topic.name}')
         return topic
 
@@ -201,8 +201,8 @@ class WindowStructure:
             raise ValueError(f'window_id: {window_id} MUST be a str not:'
                              f'{type(window_id)}')
         window_model: IModel = self._window_id_map.get(window_id)
-        if clz._logger.isEnabledFor(DEBUG_V):
-            clz._logger.debug_v(f'found: {window_model}')
+        if clz._logger.isEnabledFor(DEBUG_V) and window_model is None:
+            clz._logger.debug_v(f'window_id: {window_id} NOT found')
         return window_model
 
     def add_window_model_by_window_id(self, window_id: str, window_model: IModel) -> None:

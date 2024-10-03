@@ -305,7 +305,7 @@ class GuiWorker:
 
         if focused_topic is None and windialog_state.potential_change:
             try:
-                focused_topic = window_struct.topic_by_tree_id.get(str(focus_id))
+                focused_topic = window_struct.get_topic_by_tree_id.get(str(focus_id))
                 topics_to_voice: List[TopicModel]
                 focused_topic_id: str = ''
                 if focused_topic is not None:

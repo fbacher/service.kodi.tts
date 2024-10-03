@@ -139,7 +139,7 @@ class Phrase:
         self.cache_path: Path = cache_path
         self._exists: bool = exists
         self._temp: bool = temp
-        self.interrupt: bool = interrupt
+        self._interrupt: bool = False
         if pre_pause_ms is None:
             pre_pause_ms = 0
         self.pre_pause_ms = pre_pause_ms
@@ -158,7 +158,6 @@ class Phrase:
         # PhraseList can disable expiration checking when you explicitly
         # make an unchecked clone. Useful for seeding a cache for the future
 
-        self.check_expired: bool = check_expired
         self.language: str | None = language
         self.gender: str | None = gender
         self.voice: str | None = voice
@@ -172,6 +171,21 @@ class Phrase:
             text_id = text
         self.text_id: str | None = None
         self.set_text_id(text_id)  # Keeps md5
+
+        # Set interrupt and expired at the end
+        self.check_expired: bool = check_expired
+        self.interrupt = interrupt  # Can alter check_expired
+
+
+    @property
+    def interrupt(self) -> bool:
+        return self._interrupt
+
+    @interrupt.setter
+    def interrupt(self, value: bool) -> None:
+        self._interrupt = value
+        if self._interrupt:
+            self.set_expired(True)
 
     def __repr__(self) -> str:
         interrupt_str = ''
@@ -289,6 +303,12 @@ class Phrase:
         clz = type(self)
         # clz._logger.debug(f'{self.get_debug_info()}')
         self.test_expired()
+        return self.text
+
+    def get_short_text(self) -> str:
+        self.test_expired()
+        if len(self.text) > 20:
+            return self.text[0:20]
         return self.text
 
     def get_text_id(self) -> str:
@@ -507,26 +527,25 @@ class Phrase:
         return json_object
 
     @classmethod
-    def set_expired(cls, phrase_or_list: Union['Phrase', 'PhraseList'], all: bool):
+    def set_expired(cls, phrase_or_list: Union['Phrase', 'PhraseList']):
         """
         Mark the global PhraseList expired_serial_number with the
         serial_number of the given Phrase or PhraseList (unless already marked)
         :param phrase_or_list:
-        :param all:
         :return:
         """
         if isinstance(phrase_or_list, Phrase):
             phrase: Phrase = phrase_or_list
             if PhraseList.expired_serial_number < phrase.serial_number:
-                cls.expired_serial_number = phrase.serial_number
+                PhraseList.expired_serial_number = phrase.serial_number
             if cls._logger.isEnabledFor(DEBUG_V):
                 cls._logger.debug_v(f'Set Phrase EXPIRED: {phrase.debug_data()} '
-                                  f'global serial: {PhraseList.expired_serial_number}')
+                                    f'global serial: {PhraseList.expired_serial_number}')
 
         elif isinstance(phrase_or_list, PhraseList):
             phrases: PhraseList = phrase_or_list
             if PhraseList.expired_serial_number < phrases.serial_number:
-                cls.expired_serial_number = phrases.serial_number
+                PhraseList.expired_serial_number = phrases.serial_number
 
         # Just to make sure that global_serial_number is > expired_serial_number
 
@@ -609,7 +628,7 @@ class PhraseList(UserList):
         :param texts: One or more strings to create Phrases from
         :param interrupt: If True, then when this PhraseList is voiced, all
                           prior voicings are aborted and discarded.
-                          Defalt False
+                          Default False
         :param preload_cache:
         :param check_expired: When True, then most methods to acceses a Phrase
                               will throw an ExpiredException when a newer
@@ -854,30 +873,28 @@ class PhraseList(UserList):
 
     @classmethod
     def set_current_expired(cls) -> None:
-        cls.expired_serial_number = cls.global_serial_number
+        PhraseList.expired_serial_number = cls.global_serial_number
 
     def expire_all_prior(self) -> None:
         clz = type(self)
         if not self.is_expired() and not self.check_expired:
-            if clz.expired_serial_number < (self.serial_number - 1):
-                clz.expired_serial_number = self.serial_number - 1
+            if PhraseList.expired_serial_number < (self.serial_number - 1):
+                PhraseList.expired_serial_number = self.serial_number - 1
 
     def set_expired(self) -> None:
         clz = type(self)
         if not self.is_expired() and not self.check_expired:
-            if clz.expired_serial_number < self.serial_number:
-                clz.expired_serial_number = self.serial_number
-
+            if PhraseList.expired_serial_number < self.serial_number:
+                PhraseList.expired_serial_number = self.serial_number
                 # Just to make sure that global_serial_number is > expired_serial_number
-
-                if clz.expired_serial_number >= clz.global_serial_number:
-                    clz.global_serial_number = clz.expired_serial_number + 1
+                if PhraseList.expired_serial_number >= clz.global_serial_number:
+                    clz.global_serial_number = PhraseList.expired_serial_number + 1
 
     def is_expired(self) -> bool:
         clz = type(self)
         if not self.check_expired:
             return False
-        return clz.expired_serial_number >= self.serial_number
+        return PhraseList.expired_serial_number >= self.serial_number
 
     def set_speak_over_kodi(self, speak_over_kodi: bool) -> None:
         if len(self.data) > 0:

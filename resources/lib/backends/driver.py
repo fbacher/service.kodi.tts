@@ -231,26 +231,6 @@ class Driver(BaseServices):
         # tts.dead
         # tts.deadReason
 
-    '''
-    def sayList(self, texts, interrupt: bool = False):
-        """Accepts a list of text strings to be spoke
-
-        May be overriden by subclasses. The default i
-        for each item in texts, calling insertPause()
-        If interrupt is True, the subclass should int
-        """
-        clz = type(self)
-        try:
-            self.say(texts.pop(0), interrupt=interrupt)
-            cache_files: List[str, bool]
-            for t in texts:
-                self.say(t,post_pause_ms=500)
-        except AbortException:
-            reraise(*sys.exc_info())
-        except Exception as e:
-            clz._logger.exception('')
-    '''
-
     def say_cached_file(self, active_engine: BaseEngineService, player_id: str,
                         phrase: Phrase) -> bool:
         """
