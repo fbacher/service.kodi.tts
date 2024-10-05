@@ -306,7 +306,12 @@ class Phrase:
         return self.text
 
     def get_short_text(self) -> str:
-        self.test_expired()
+        """
+        Gets short text for debugging
+
+        Does NOT check for expiration
+        :return:
+        """
         if len(self.text) > 20:
             return self.text[0:20]
         return self.text
@@ -539,8 +544,8 @@ class Phrase:
             if PhraseList.expired_serial_number < phrase.serial_number:
                 PhraseList.expired_serial_number = phrase.serial_number
             if cls._logger.isEnabledFor(DEBUG_V):
-                cls._logger.debug_v(f'Set Phrase EXPIRED: {phrase.debug_data()} '
-                                    f'global serial: {PhraseList.expired_serial_number}')
+                cls._logger.debug_v(f'EXPIRED: {phrase.debug_data()} '
+                                    f'serial: {PhraseList.expired_serial_number}')
 
         elif isinstance(phrase_or_list, PhraseList):
             phrases: PhraseList = phrase_or_list
@@ -551,9 +556,9 @@ class Phrase:
 
         if PhraseList.expired_serial_number >= PhraseList.global_serial_number:
             PhraseList.global_serial_number = PhraseList.expired_serial_number + 1
-        if cls._logger.isEnabledFor(DEBUG_XV):
-            cls._logger.debug(f'Set Phrase EXPIRED: {phrase_or_list.debug_data()} '
-                              f'global serial: {PhraseList.expired_serial_number}')
+        if cls._logger.isEnabledFor(DEBUG_V):
+            cls._logger.debug(f'EXPIRED: {phrase_or_list.debug_data()} '
+                              f'serial: {PhraseList.expired_serial_number}')
 
     def is_expired(self) -> bool:
         """
@@ -874,16 +879,23 @@ class PhraseList(UserList):
     @classmethod
     def set_current_expired(cls) -> None:
         PhraseList.expired_serial_number = cls.global_serial_number
+        cls._logger.debug_xv('EXPIRE')
 
     def expire_all_prior(self) -> None:
         clz = type(self)
-        if not self.is_expired() and not self.check_expired:
+        if clz._logger.isEnabledFor(DEBUG_XV):
+            clz._logger.debug_xv(f'EXPIRE expired: {self.is_expired()} check_expired: '
+                                 f'{self.check_expired} \n'
+                                 f'expSerial: {PhraseList.expired_serial_number} '
+                                 f'serialNum: {self.serial_number}')
+        if not self.is_expired():
             if PhraseList.expired_serial_number < (self.serial_number - 1):
                 PhraseList.expired_serial_number = self.serial_number - 1
 
     def set_expired(self) -> None:
         clz = type(self)
-        if not self.is_expired() and not self.check_expired:
+        if not self.is_expired() and self.check_expired:
+            clz._logger.info('EXPIRE')
             if PhraseList.expired_serial_number < self.serial_number:
                 PhraseList.expired_serial_number = self.serial_number
                 # Just to make sure that global_serial_number is > expired_serial_number

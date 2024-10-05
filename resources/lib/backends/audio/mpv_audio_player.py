@@ -58,18 +58,18 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
     For consistency use same options for slave and non-slave modes.
        non-slave mode use command-line arguments:
        --volume=<float>, (in percent change 100 == no change)
-       --speed  (accepts a <float> multiplier 1 == no change)
+       --speed=<float>  (accepts a <float> multiplier 1.0 == no change)
 
        slave mode commands are sent as json over pipe 
         # For volume, send:
            f'{{ "command": ["set_property", "volume", "{self.volume}"],'
-                f' "request_id": "{self.latest_request_sequence_number}" }}'
+                f' "request_id": "{self.latest_config_transaction_num}" }}'
           The volume is again in percent change.
           
           For speed use:
            f'{{ "command": ["set_property", '
                               f'"speed", "{self.speed}"], "request_id": '
-                              f'"{self.latest_request_sequence_number}" }}
+                              f'"{self.latest_config_transaction_num}" }}
             The speed is also a multiplier as with the command line. 
         
         Note that there are other ways to pass speed and volume where they may be
@@ -186,32 +186,26 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
         clz = MPVAudioPlayer
         slave_pipe_dir: Path = Path(tempfile.mkdtemp())
         self.slave_pipe_path = slave_pipe_dir.joinpath('mpv.tts')
-        clz._logger.debug(f'slave_pipe_path: {self.slave_pipe_path}')
+        clz._logger.debug_v(f'slave_pipe_path: {self.slave_pipe_path}')
         args: List[str] = []
         args.extend(clz.SLAVE_ARGS)
         args.append(f'--input-ipc-server={self.slave_pipe_path}')
         channels: Channels = self.play_channels
         if channels != Channels.NO_PREF:
             args.append(f'--audio-channels={channels.name.lower()}')
-        '''
-        speed: float = self.get_player_speed()
-        volume: float = self.get_player_volume(as_decibels=True)
-        if speed is None:
-            self.configSpeed = False
-        if volume is None:
-            self.configVolume = False
 
-        if self.configSpeed or self.configVolume:
-            filters = []
-            if self.configSpeed:
-                filters.append(clz.MPV_SPEED_ARGS.format(
-                        self.speedArg(speed)))
-            if self.configVolume:
-                filters.append(self._volumeArgs.format(volume))
-            args.append(
-                    f'{MPVAudioPlayer.MPV_AUDIO_FILTER}{",".join(filters)}')
-        '''
-        self._logger.debug_v(f'args: {" ".join(args)}')
+        default_volume: float = self.get_player_volume(as_decibels=False)
+        default_speed = self.get_player_speed()
+
+        # By default, mpv has --audio-pitch-correction=yes and
+        #                     --scaletempo2 selected
+        # therefore, a change in speed will automatically preserve pitch
+        # and volume
+        #
+        if int(abs(round(default_volume * 10))) != 0:
+            args.append(f'--volume={default_volume}')
+        if int(abs(round(default_speed * 10))) != 0:
+            args.append(f'--speed={default_speed}')
         return args
 
     def get_pipe_args(self) -> List[str]:

@@ -262,26 +262,6 @@ class SubprocessAudioPlayer(AudioPlayer):
             self._time_of_previous_play_ended = datetime.now()
             self._simple_player_busy = False
 
-        '''
-        with subprocess.Popen(pipe_args, stdin=subprocess.PIPE,
-                              stdout=subprocess.DEVNULL,
-                              stderr=subprocess.STDOUT) as self._player_process:
-            try:
-                shutil.copyfileobj(source, self._player_process.stdin)
-            except AbortException:
-                self._player_process.kill()
-                self.stop(now=True)
-                reraise(*sys.exc_info())
-            except IOError as e:
-                if e.errno != errno.EPIPE:
-                    self._logger.error('Error piping audio')
-            except:
-                self._logger.error('Error piping audio')
-            finally:
-                source.close()
-                self._player_busy = False
-        '''
-
     def getSpeed(self) -> float:
         speed: float | None = \
             Settings.getSetting(SettingsProperties.SPEED, Settings.get_player_id())
@@ -466,8 +446,6 @@ class SubprocessAudioPlayer(AudioPlayer):
             phrase.test_expired()  # Throws ExpiredException
             volume: float = self.get_player_volume(as_decibels=False)
             speed: float = self.get_player_speed()
-            self.slave_player_process.set_next_volume(volume)
-            self.slave_player_process.set_next_speed(speed)
             self.slave_player_process.set_channels(Channels.STEREO)
             self.slave_player_process.add_phrase(phrase, volume, speed)
             # clz._logger.debug(f'slave state: {self.slave_player_process.get_state()}')

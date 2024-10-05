@@ -624,7 +624,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         except AbortException as e:
             reraise(*sys.exc_info())
         except ExpiredException:
-            return False
+            reraise(*sys.exc_info())
 
         return phrase.cache_path_exists()
 
@@ -670,11 +670,12 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
                     Monitor.exception_on_abort(timeout=0.5)
             except AbortException as e:
                 reraise(*sys.exc_info())
+            except ExpiredException:
+                reraise(*sys.exc_info())
             except Exception:
                 clz._logger.exception('')
-
         except ExpiredException:
-            pass
+            reraise(*sys.exc_info())
         return phrase.cache_path_exists()
 
     def runCommandAndPipe(self, phrase: Phrase) -> BinaryIO:
@@ -722,12 +723,14 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
             except FileNotFoundError:
                 clz._logger.debug(f'File not found: {phrase.get_cache_path()}')
                 byte_stream = None
+            except ExpiredException:
+                reraise(*sys.exc_info())
             except Exception:
                 clz._logger.exception('')
                 byte_stream = None
 
         except ExpiredException:
-            pass
+            reraise(*sys.exc_info())
         return byte_stream
 
     def seed_text_cache(self, phrases: PhraseList) -> None:

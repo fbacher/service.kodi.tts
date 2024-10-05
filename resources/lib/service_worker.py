@@ -1212,6 +1212,8 @@ class TTSService:
 
             phrases.set_all_preload_cache(preload_cache)
             phrases.enable_check_expired()
+            if phrases[0].get_interrupt():
+                phrases.expire_all_prior()
             cls.driver.say(phrases)
         except ExpiredException:
             if TTSLogger.logger().isEnabledFor(DEBUG):

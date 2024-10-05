@@ -174,9 +174,9 @@ class EngineQueue:
                               f' debug: {phrases[0].debug_data()}')
         except ExpiredException:
             cls._logger.debug('EXPIRED')
-        # if phrases[0].interrupt:
-        #     phrases.set_expired()
-        #     return
+        if phrases[0].interrupt:
+            phrases.set_expired()
+            return
         try:
             phrase: Phrase
             for phrase in phrases:
