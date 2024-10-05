@@ -58,14 +58,14 @@ class EditTopicModel(TopicModel):
             return ''
 
         phrases: PhraseList = PhraseList(check_expired=False)
-        alt_type: AltCtrlType = AltCtrlType.alt_ctrl_type_for_ctrl_name(self.alt_type)
+        alt_type: AltCtrlType = AltCtrlType.get_alt_type_for_name(self.alt_type)
         success = AltCtrlType.get_message(alt_type, phrases)
         return phrases[-1].get_text()
 
     def get_alt_control_type(self) -> AltCtrlType:
         alt_type: str = ''
         if self.alt_type != '':
-            alt_type: AltCtrlType = AltCtrlType.alt_ctrl_type_for_ctrl_name(self.alt_type)
+            alt_type: AltCtrlType = AltCtrlType.get_alt_type_for_name(self.alt_type)
         return alt_type
 
     def voice_alt_label(self, stmts: Statements) -> bool:
@@ -131,14 +131,15 @@ class EditTopicModel(TopicModel):
         #     A tree_id (dynamically created when window defined)
         control: BaseModel | None
         topic: TopicModel | None
-        control, topic = self.parent.get_control_and_topic_for_id(self.labeled_by_expr)
+        control, topic = self.window_struct.get_control_and_topic_for_id(
+                self.labeled_by_expr)
         if topic is not None:
             success = topic.voice_control_labels(stmts)
         else:
             # Have to do it the hard way without topic, if possible.
             # TODO: Implement
             success = False
-        clz._logger.debug(f'{stmts.last.stmts}')
+        clz._logger.debug(f'{stmts.last}')
         return success
 
     def voice_controls_labels(self, stmts: Statements) -> bool:
@@ -217,7 +218,8 @@ class EditTopicModel(TopicModel):
 
         control_model: BaseModel
         next_topic: TopicModel
-        control_model, next_topic = self.parent.get_topic_for_id(self.read_next_expr)
+        control_model, next_topic = self.window_struct.get_control_and_topic_for_id(
+                self.read_next_expr)
         if next_topic is None:
             clz._logger.debug(f"Can't find read_next_expr {self.read_next_expr}")
             return False
@@ -246,7 +248,8 @@ class EditTopicModel(TopicModel):
             clz._logger.debug(f'flows_to: {self.flows_to_expr}')
             control_model: BaseModel
             topic_to: TopicModel
-            control_model, topic_to = self.parent.get_topic_for_id(self.flows_to_expr)
+            control_model, topic_to = self.window_struct.get_control_and_topic_for_id(self.flows_to_expr)
+
             clz._logger.debug(f'topic_to: {topic_to}')
             success = topic_to.voice_topic_value(stmts)
             return success

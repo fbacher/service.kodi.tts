@@ -69,11 +69,13 @@ class GuiWorkerQueue:
     def queue(cls) -> 'GuiWorkerQueue':
         return cls._instance
 
+    '''
     def get_window_model(self, window_id: int) -> WindowModel:
         from windows import CustomTTSReader
         current_reader: CustomTTSReader
         current_reader = CustomTTSReader.get_instance(window_id)
         return current_reader.window_model
+    '''
 
     def _handleQueue(self):
         clz = type(self)
@@ -81,7 +83,7 @@ class GuiWorkerQueue:
             self._logger.debug_v(f'Threaded GuiWorkerQueue started')
         try:
             while self.active_queue and not Monitor.wait_for_abort(timeout=0.1):
-                item: GuiWorkerQueue.QueueItem = None
+                item: GuiWorkerQueue.QueueItem | None = None
                 try:
                     item = self.topics_queue.get(timeout=0.0)
                     self.topics_queue.task_done()
@@ -305,7 +307,7 @@ class GuiWorker:
 
         if focused_topic is None and windialog_state.potential_change:
             try:
-                focused_topic = window_struct.get_topic_by_tree_id.get(str(focus_id))
+                focused_topic = window_struct.get_topic_by_tree_id(str(focus_id))
                 topics_to_voice: List[TopicModel]
                 focused_topic_id: str = ''
                 if focused_topic is not None:

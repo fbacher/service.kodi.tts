@@ -13,7 +13,6 @@ from common import *
 from common.constants import Constants
 from common.logger import *
 from common.message_ids import MessageId, MessageUtils
-from common.messages import Messages
 from common.monitor import Monitor
 from windowNavigation.choice import Choice
 
@@ -99,9 +98,9 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
             clz._logger.debug(f'Just initialized ok_radio_button')
             self.cancel_radio_button = self.getControlRadioButton(
                 clz.CANCEL_CONTROL_ID)
-            self.ok_radio_button.setLabel(Messages.get_msg(Messages.OK))
+            self.ok_radio_button.setLabel(MessageId.OK_BUTTON.get_msg())
             self.ok_radio_button.setVisible(True)
-            self.cancel_radio_button.setLabel(Messages.get_msg(Messages.CANCEL))
+            self.cancel_radio_button.setLabel(MessageId.CANCEL_BUTTON.get_msg())
             self.cancel_radio_button.setVisible(True)
             try:
                 # Buttons for displaying and choosing choices.
