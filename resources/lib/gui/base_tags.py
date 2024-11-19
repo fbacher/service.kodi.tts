@@ -85,7 +85,7 @@ class BaseAttributeType(StrEnum):
     # substituted for '(*)' from the ListItem value of the control
     TRUE_MSG_ID = 'true_msg_id'
     # For binary controls: RadioButton. By default, 'Disabled' is
-    # substituted for '()' from the ListItem value of the control
+    # substituted for '( )' from the ListItem value of the control
     FALSE_MSG_ID = 'false_msg_id'
     # READ_NEXT is typically used for non-focusable items. It indicates that
     # more than one thing needs to be read for, say, a window header.
@@ -162,7 +162,7 @@ class TopicElement(StrEnum):
         # substituted for '(*)' from the ListItem value of the control
     TRUE_MSG_ID = 'true_msg_id'
         # For binary controls: RadioButton. By default, 'Disabled' is
-        # substituted for '()' from the ListItem value of the control
+        # substituted for '( )' from the ListItem value of the control
     FALSE_MSG_ID = 'false_msg_id'
         # READ_NEXT is typically used for non-focusable items. It indicates that
         # more than one thing needs to be read for, say, a window header.

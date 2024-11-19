@@ -12,6 +12,11 @@ from collections import UserList
 from os import stat_result
 from pathlib import Path
 
+from backends.audio.sound_capabilities import SoundCapabilities
+from cache.common_types import CacheEntryInfo
+from common.setting_constants import AudioType
+from common.settings import Settings
+
 try:
     import regex
 except ImportError:
@@ -26,7 +31,15 @@ from common.messages import Message, Messages
 from common.monitor import Monitor
 from simplejson import JSONEncoder
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
+
+
+class MyEncoder(JSONEncoder):
+    def default(self, o):
+        if isinstance(o, Phrase):
+            value: Dict[str, Dict[str, Any]] = {'phrase': o.__dict__}
+            return value
+        return JSONEncoder.default(self, o)
 
 
 class Phrase:
@@ -75,11 +88,15 @@ class Phrase:
     _hyphen_prefix: Final[regex.Pattern] = regex.compile(r'(:?(-\[)([^[]*)(]))')
     _pauseRE: Final[regex.Pattern] = regex.compile(Constants.PAUSE_INSERT)
 
-    _logger: BasicLogger = None
-
-    def __init__(self, text: str = '', interrupt: bool = False, pre_pause_ms: int = None,
+    def __init__(self,
+                 text: str = '',
+                 start_of_phrase_list: bool = False,
+                 interrupt: bool = False,
+                 pre_pause_ms: int = None,
                  post_pause_ms: int = None,
-                 cache_path: Path = None, exists: bool = False, temp: bool = False,
+                 cache_path: Path = None,
+                 text_exists: bool = False,
+                 temp: bool = False,
                  preload_cache: bool = False,
                  serial_number: int | None = None,
                  check_expired: bool = True,
@@ -95,12 +112,16 @@ class Phrase:
         """
 
         :param text: Text to be voiced
+        :param start_of_phrase_list: The first phrase in a PhraseList has several
+                                     special attributes that impact the entire
+                                    list. Interrupt is (normally) only allowed
+                                    on the first phrase.
         :param interrupt: Interrupts any previously queued speech if True
         :param pre_pause_ms: Amount of time to wait prior to voicing this phrase
         :param post_pause_ms: Amount of time to wait after voicing this phrase
-        :param cache_path: Path to the cache entry for this phrase (set even
+        :param cache_path: Path to the voice cache entry for this phrase (set even
                            when not yet in the cache)
-        :param exists: True if a cache entry for this phrase exists
+        :param exists: True if a cache entry for this phrase text_exists
         :param temp:
         :param preload_cache:
         :param serial_number: Monotonically increasing number to aid in purging
@@ -130,14 +151,16 @@ class Phrase:
         """
         clz = type(self)
         Monitor.exception_on_abort()
-        if clz._logger is None:
-            clz._logger = module_logger
         debug_context += 1
         self.text: str = clz.clean_phrase_text(text)
         # if self.text == '':
-        #     clz._logger.debug(f'empty text')
+        #     MY_LOGGER.debug(f'empty text')
+        # Interrupt should only be placed on first Phrase in PhraseList.
+        # Strange things can happen if interrupt is set on other elements.
+        self.start_of_phrase_list: bool = start_of_phrase_list
+        # Path to cached voice file (there can be multiple, for different players)
         self.cache_path: Path = cache_path
-        self._exists: bool = exists
+        self._text_exists: bool = text_exists
         self._temp: bool = temp
         self._interrupt: bool = False
         if pre_pause_ms is None:
@@ -158,6 +181,7 @@ class Phrase:
         # PhraseList can disable expiration checking when you explicitly
         # make an unchecked clone. Useful for seeding a cache for the future
 
+        self.audio_type: AudioType | None = None
         self.language: str | None = language
         self.gender: str | None = gender
         self.voice: str | None = voice
@@ -171,21 +195,38 @@ class Phrase:
             text_id = text
         self.text_id: str | None = None
         self.set_text_id(text_id)  # Keeps md5
-
         # Set interrupt and expired at the end
         self.check_expired: bool = check_expired
-        self.interrupt = interrupt  # Can alter check_expired
+        self.interrupt = interrupt
 
+    @property
+    def start_of_phrase_list(self) -> bool:
+        return self._start_of_phrase_list
+
+    @start_of_phrase_list.setter
+    def start_of_phrase_list(self, value: bool) -> None:
+        self._start_of_phrase_list = value
 
     @property
     def interrupt(self) -> bool:
+        """
+        Retrieves the interrupt attribute WITHOUT setting or testing
+        expiration
+        :return:
+        """
         return self._interrupt
 
     @interrupt.setter
     def interrupt(self, value: bool) -> None:
+        """
+        Sets the interrupt attribute WITHOUT testing expiration
+        :param value:
+        :return:
+        """
+        if value and not self.start_of_phrase_list:
+            MY_LOGGER.debug('WARNING Can only set Interrupt on start of PhraseList')
+            #  raise ValueError('WARNING Can only set Interrupt on start of PhraseList')
         self._interrupt = value
-        if self._interrupt:
-            self.set_expired(True)
 
     def __repr__(self) -> str:
         interrupt_str = ''
@@ -204,7 +245,7 @@ class Phrase:
     def new_instance(cls, text: str = '', interrupt: bool = False,
                      pre_pause_ms: int = None,
                      post_pause_ms: int = None,
-                     cache_path: Path = None, exists: bool = False,
+                     cache_path: Path = None, text_exists: bool = False,
                      temp: bool = False,
                      preload_cache: bool = False,
                      serial_number: int = None,
@@ -219,7 +260,7 @@ class Phrase:
             serial_number = PhraseList.global_serial_number
         return Phrase(text=text, interrupt=interrupt, pre_pause_ms=pre_pause_ms,
                       post_pause_ms=post_pause_ms, cache_path=cache_path,
-                      exists=exists, temp=temp,
+                      text_exists=text_exists, temp=temp,
                       preload_cache=preload_cache,
                       serial_number=serial_number,
                       speak_over_kodi=speak_over_kodi,
@@ -230,17 +271,27 @@ class Phrase:
         '''
 
     def clone(self, check_expired: bool = True) -> 'Phrase':
+        """
+        Produces a clone of the given Phrase. Most frequently used by PhraseList
+        clone, to create a copy that has expiration checking disabled so that
+        some processing can occur in the background. For example getting voicings
+        from a slower vocing engine to be cached for the next time it is voiced.
+
+        :param check_expired:
+        :return:
+        """
         phrase: Phrase
         phrase = Phrase(text=self.text,
+                        start_of_phrase_list=self.start_of_phrase_list,
+                        check_expired=check_expired,
                         interrupt=self.interrupt,
                         pre_pause_ms=self.pre_pause_ms,
                         post_pause_ms=self.post_pause_ms,
                         cache_path=self.cache_path,
-                        exists=self._exists,
+                        text_exists=self._text_exists,
                         temp=self._temp,
                         preload_cache=self.preload_cache,
                         speak_over_kodi=self._speak_over_kodi,
-                        check_expired=check_expired,
                         debug_info=self.debug_info,
                         # text_id=self.text_id,
                         language=self.language,
@@ -253,7 +304,7 @@ class Phrase:
 
     def to_json(self) -> str:
         data: Dict[str, Dict[str, Any]] = self.to_dict()
-        json_str: str = JSONEncoder.default(data)
+        json_str: str = MyEncoder().default(data)
         return json_str
 
     def to_dict(self) -> Dict[str, Any]:
@@ -262,18 +313,18 @@ class Phrase:
         :return:
         """
         tmp: Dict[str, Dict[str, Any]] = {'phrase': {
-            'text'               : self.text,
-            'interrupt'          : self.interrupt,
-            'pre_pause_ms'       : self.pre_pause_ms,
-            'post_pause_ms'      : self.post_pause_ms,
-            'cache_path'         : self.cache_path,
-            'exists'             : self._exists,
-            'temp'               : self._temp,
-            'preload_cache'      : self.preload_cache,
-            'speak_over_kodi'    : self._speak_over_kodi,
-            'check_expired'      : self.check_expired,
-            'text_id'            : self.text_id,
-            'debug_info'         : self.debug_info
+            'text'           : self.text,
+            'interrupt'      : self.interrupt,
+            'pre_pause_ms'   : self.pre_pause_ms,
+            'post_pause_ms'  : self.post_pause_ms,
+            'cache_path'     : self.cache_path,
+            'text_exists'         : self._text_exists,
+            'temp'           : self._temp,
+            'preload_cache'  : self.preload_cache,
+            'speak_over_kodi': self._speak_over_kodi,
+            'check_expired'  : self.check_expired,
+            'text_id'        : self.text_id,
+            'debug_info'     : self.debug_info
         }}
         return tmp
 
@@ -284,7 +335,7 @@ class Phrase:
                                 pre_pause_ms=params.get('pre_pause_ms'),
                                 post_pause_ms=params.get('post_pause_ms'),
                                 cache_path=params.get('cache_path'),
-                                exists=params.get('exists'),
+                                text_exists=params.get('text_exists'),
                                 temp=params.get('temp'),
                                 preload_cache=params.get('preload_cache'),
                                 speak_over_kodi=params.get('speak_over_kodi',
@@ -301,19 +352,19 @@ class Phrase:
 
     def get_text(self) -> str:
         clz = type(self)
-        # clz._logger.debug(f'{self.get_debug_info()}')
+        # MY_LOGGER.debug(f'{self.get_debug_info()}')
         self.test_expired()
         return self.text
 
-    def get_short_text(self) -> str:
+    def short_text(self, max_len: int = 20) -> str:
         """
         Gets short text for debugging
 
         Does NOT check for expiration
         :return:
         """
-        if len(self.text) > 20:
-            return self.text[0:20]
+        if len(self.text) > max_len:
+            return self.text[0:max_len]
         return self.text
 
     def get_text_id(self) -> str:
@@ -344,7 +395,7 @@ class Phrase:
             function = caller_frame.function
             self.debug_info = f'file {filename} func: {function} line: {lineno}'
         except Exception as e:
-            clz._logger.exception('')
+            MY_LOGGER.exception('')
 
     def debug_data(self) -> str:
         return f'{self.serial_number:d}_{self.text:20} expired: {self.is_expired()}' \
@@ -356,63 +407,125 @@ class Phrase:
         if not preserve_debug_info:
             self.set_debug_info(context=context)
         self.test_expired()
-        if clz._logger.isEnabledFor(DEBUG_XV):
-            clz._logger.debug_xv(f'Phrase: {self}')
+        if MY_LOGGER.isEnabledFor(DEBUG_XV):
+            MY_LOGGER.debug_xv(f'Phrase: {self}')
 
         self.text = text
 
-    def set_cache_path(self, cache_path: Path, exists: bool, temp: bool = False):
-        self.test_expired()
-        self.cache_path = cache_path
-        self._exists = exists
-        self._temp = temp
-
-    def get_cache_path(self) -> Path:
-        self.test_expired()
-        return self.cache_path
-
-    def cache_path_exists(self) -> bool:
+    def set_cache_path(self, cache_path: Path, text_exists: bool, temp: bool = False):
         """
-        Convenience method that tests for empty path as well as existance
-
+        Sets the audio (voice) file path. If caching not enabled for this
+        engine, then the path will be to a temp file.
+        :param cache_path:
+        :param text_exists:
+        :param temp:
         :return:
         """
         self.test_expired()
+        if isinstance(cache_path, str):
+            MY_LOGGER.debug(f'PATH is STRING: {cache_path}')
+        self.cache_path = cache_path
+        self._text_exists = text_exists
+        self._temp = temp
+
+    def get_cache_path(self, check_expired: bool = True) -> Path:
+        """
+        Gets the voiced (audio) file for this phrase. The file may be from
+        the cache, or from a temp directory if uncached.
+
+        :param check_expired:
+        :return:
+        """
+        if check_expired:
+            self.test_expired()
+        return self.cache_path
+
+    def update_cache_path(self, active_engine: ForwardRef('BaseEngineService')) -> None:
+        voice_cache: ForwardRef('VoiceCache') = active_engine.get_voice_cache()
+        result: CacheEntryInfo
+        result = voice_cache.get_path_to_voice_file(self, use_cache=True)
+        cache_path: Path = result.current_audio_path
+        audio_exists: bool = result.audio_exists
+        text_exists: bool = result.text_exists
+        suffixes: List[str] = result.audio_suffixes
+        self.set_cache_path(result.current_audio_path, text_exists=text_exists)
+
+    def cache_path_exists(self, check_expired: bool = True) -> bool:
+        """
+        Convenience method that tests for empty (audio) path as well as existance
+
+        :return:
+        """
+        if check_expired:
+            self.test_expired()
         return self.cache_path.exists()
 
-    def exists(self) -> bool:
+    def text_exists(self, check_expired: bool = True) -> bool:
         clz = type(self)
-        self.test_expired()
-        if clz._logger.isEnabledFor(DEBUG):
-            text: str = self.get_text()
-            voice_file_path: pathlib.Path = self.get_cache_path()
+        if check_expired:
+            self.test_expired()
+        if MY_LOGGER.isEnabledFor(DEBUG) and Settings.is_use_cache():
+            text: str = self.text
+            voice_file_path: pathlib.Path
+            voice_file_path = self.get_cache_path(check_expired=check_expired)
             try:
                 text_file: pathlib.Path | None
                 text_file = voice_file_path.with_suffix('.txt')
-                exists: bool = text_file.is_file() and text_file.exists()
+                exists: bool = text_file.is_file()
                 size: int = -1
                 if exists:
                     size = text_file.stat().st_size
                 if size <= 0:
-                    clz._logger.debug(f'EMPTY FILE path: {text_file} exists: {exists} '
-                                      f'size: {size} text: {text}')
+                    try:
+                        with text_file.open('wt', encoding='utf-8') as tf:
+                            tf.write(self.text)
+                        self._text_exists = True
+                        MY_LOGGER.debug(f'Wrote Text File: {text_file}')
+                    except:
+                        self._text_exists = False
+                        try:
+                            MY_LOGGER.debug(f'SIZE: {size} UNLINKING {text_file}')
+                            text_file.unlink(missing_ok=True)
+                        except:
+                            MY_LOGGER.exception('Could not delete {text_file}')
+                        MY_LOGGER.debug(f'EMPTY FILE path: {text_file} text_exists: {exists} '
+                                          f'size: {size} text: {text}')
             except:
-                clz._logger.exception('')
-        return self._exists
+                MY_LOGGER.exception('')
+        return self._text_exists
 
-    def set_exists(self, exists: bool) -> None:
-        self.test_expired()
-        self._exists = exists
+    def set_exists(self, text_exists: bool, check_expired: bool = True) -> None:
+        if check_expired:
+            self.test_expired()
+        self._text_exists = text_exists
 
     def get_interrupt(self) -> bool:
+        """
+        Either throws an ExpiredException or returns whether this phrase
+        has its interrupt attribute set.
+
+        NOTE: The interrupt attribute should ONLY be set on the first phrase
+        in a PhraseList
+        :return:
+        """
         self.test_expired()
         clz = Phrase
-        clz._logger.debug(f'INTERRUPT PHRASE: {self.text}')
+        MY_LOGGER.debug(f'INTERRUPT PHRASE: {self.text}')
         return self.interrupt
 
     def _set_interrupt(self, interrupt: bool) -> None:
+        """
+        Either raises an ExpiredException or sets the interrupt attribute
+        of this phrase
+        :param interrupt:
+        :return:
+        """
         self.test_expired()
+        if interrupt and not self.start_of_phrase_list:
+            raise ValueError('Can only set Interrupt on start of PhraseList.')
         self.interrupt = interrupt
+        # MY_LOGGER.debug(f'setting interrupt: {interrupt} would_expire '
+        #                 f'{self.is_expired()} {self.short_text()}')
 
     def get_pre_pause(self) -> int:
         self.test_expired()
@@ -422,15 +535,15 @@ class Phrase:
         self.test_expired()
         self.pre_pause_ms = pre_pause_ms
 
-    def get_pre_pause_path(self, audio_type: str = 'mp3') -> Path | None:
+    def pre_pause_path(self) -> Path | None:
         clz = type(self)
-        return self.get_pause_path(self.get_post_pause())
+        return self.get_pause_path(self.get_pre_pause())
 
     def get_post_pause(self) -> int:
         self.test_expired()
         return self.post_pause_ms
 
-    def get_post_pause_path(self, audio_type: str = 'mp3') -> Path | None:
+    def post_pause_path(self) -> Path | None:
         clz = type(self)
         return self.get_pause_path(self.get_post_pause())
 
@@ -442,7 +555,7 @@ class Phrase:
         found_pause_ms: int | None = None
         # Pauses from 10ms - 1990 ms available.
         if (pause_ms < Phrase.MINIMUM_PAUSE) or (pause_ms > Phrase.MAXIMUM_PAUSE):
-            clz._logger.debug_v(f'pause out of range: {pause_ms}')
+            MY_LOGGER.debug_v(f'pause out of range: {pause_ms}')
             if pause_ms < Phrase.MINIMUM_PAUSE:
                 found_pause_ms = Phrase.MINIMUM_PAUSE
             elif pause_ms > Phrase.MAXIMUM_PAUSE:
@@ -451,7 +564,7 @@ class Phrase:
             found_pause_ms = int((pause_ms + 5) / 10.0)  # Round to nearest available
 
         sound_file_type: str = 'wav'
-        if found_pause_ms >= Phrase.MINIMUM_MP3:
+        if found_pause_ms >= Phrase.PREFERRED_MINIMUM_MP3:
             sound_file_type: str = 'mp3'
 
         pause_file_path: Path = CriticalSettings.RESOURCES_PATH.joinpath(
@@ -495,6 +608,9 @@ class Phrase:
     def get_territory_dir(self) -> str:
         return self.territory_dir
 
+    def set_audio_type(self, audio_type: AudioType) -> None:
+        self.audio_type = audio_type
+
     def set_lang_dir(self, lang_dir: str, override: bool = False) -> None:
         if override or self.lang_dir is None:
             self.lang_dir = lang_dir
@@ -520,8 +636,12 @@ class Phrase:
             text = Messages.get_msg(Messages.PARENT_DIRECTORY)
         if text.endswith(')'):  # Skip this most of the time
             # For boolean settings
-            text = Messages.format_boolean(text, enabled_msgid=Messages.ENABLED.get_msg_id(),
+            new_text: str
+            new_text = Messages.format_boolean(text,
+                                               enabled_msgid=Messages.ENABLED.get_msg_id(),
                                            disabled_msgid=Messages.DISABLED.get_msg_id())
+            MY_LOGGER.debug(f'BOOLEAN orig: {text} new: {new_text}')
+            text = new_text
         return text
 
     @classmethod
@@ -543,8 +663,8 @@ class Phrase:
             phrase: Phrase = phrase_or_list
             if PhraseList.expired_serial_number < phrase.serial_number:
                 PhraseList.expired_serial_number = phrase.serial_number
-            if cls._logger.isEnabledFor(DEBUG_V):
-                cls._logger.debug_v(f'EXPIRED: {phrase.debug_data()} '
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'EXPIRED: {phrase.debug_data()} '
                                     f'serial: {PhraseList.expired_serial_number}')
 
         elif isinstance(phrase_or_list, PhraseList):
@@ -556,9 +676,9 @@ class Phrase:
 
         if PhraseList.expired_serial_number >= PhraseList.global_serial_number:
             PhraseList.global_serial_number = PhraseList.expired_serial_number + 1
-        if cls._logger.isEnabledFor(DEBUG_V):
-            cls._logger.debug(f'EXPIRED: {phrase_or_list.debug_data()} '
-                              f'serial: {PhraseList.expired_serial_number}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug(f'EXPIRED: {phrase_or_list.debug_data()} '
+                            f'serial: {PhraseList.expired_serial_number}')
 
     def is_expired(self) -> bool:
         """
@@ -605,15 +725,11 @@ class PhraseList(UserList):
     """
     global_serial_number: int = 1
     expired_serial_number: int = 0
-    _logger: BasicLogger = None
 
     def __init__(self, check_expired: bool = True) -> None:
         super().__init__()
         clz = type(self)
         Monitor.exception_on_abort()
-        if clz._logger is None:
-            clz._logger = module_logger
-
         clz.global_serial_number += 1
         self.serial_number: int = clz.global_serial_number
         self.check_expired = check_expired
@@ -626,8 +742,7 @@ class PhraseList(UserList):
                gender: str | None = None,
                voice: str | None = None,
                lang_dir: str | None = None,
-               territory_dir: str | None = None
-        ) -> 'PhraseList':
+               territory_dir: str | None = None) -> 'PhraseList':
         """
 
         :param texts: One or more strings to create Phrases from
@@ -674,19 +789,29 @@ class PhraseList(UserList):
             if text_id is None:
                 text_id = texts[0]
             phrases[0].set_text_id(text_id)
-
+        phrases.data[0].start_of_phrase_list = True
         phrases.set_interrupt(interrupt)
         return phrases
 
     @classmethod
-    def convert_str_to_phrases(cls, texts: List[str],
-                               phrases: PhraseList,
-                               preload_cache: bool = False):
-        pre_pause: int = 0
+    def convert_str_to_fragments(cls, texts: List[str | int]) -> List[str | int]:
+        """
+        Breaks a string with possible integer pauses, or list of strings and ints into
+        fragments and pauses. Each 'text' value that is an int (not a string
+        representation of an int) is interpretted as a pause to insert before
+        voicing the next string. The strings are checked for certain regular
+        expressions, and modified as needed.
+
+        Note that the use of ints embedded in texts is being deprecated.
+        Instead, pauses should be explicitly added by pre_pause_ms or post_pause_ms.
+
+        :param texts:
+        """
+        result: List[str | int] = []
         for text in texts:
             text: str | int
             if isinstance(text, int):
-                pre_pause = text
+                result.append(text)
                 continue
             elif not isinstance(text, str):
                 raise TypeError(f'Expected list of strings and ints not {type(text)}')
@@ -703,23 +828,56 @@ class PhraseList(UserList):
             for fragment in fragments:
                 if fragment == '':
                     # A pause on fragment following an empty fragment
-                    pre_pause = Phrase.PAUSE_NORMAL
+                    result.append(Phrase.PAUSE_NORMAL)
                 else:
                     fragment: str = Phrase.clean_phrase_text(fragment)
-                    if cls._logger.isEnabledFor(DEBUG_XV):
-                        cls._logger.debug_xv(
-                                f'# fragment: {fragment} pre_pause: {pre_pause}')
-                    phrase: Phrase = Phrase(text=fragment, preload_cache=preload_cache,
-                                            pre_pause_ms=pre_pause,
-                                            check_expired=phrases.check_expired)
-
+                    result.append(fragment)
                     # Every fragment indicates a pause for next fragment
-                    pre_pause = Phrase.PAUSE_NORMAL
-                    phrase.serial_number = phrases.serial_number
-                    phrases.append(phrase)
+                    result.append(Phrase.PAUSE_NORMAL)
+        return result
+
+    @classmethod
+    def convert_str_to_phrases(cls, texts: List[str | int] | int | str,
+                               phrases: PhraseList,
+                               preload_cache: bool = False) -> None:
+        """
+        Converts one or more string (or int, representing a pause) values
+        into one or more Phrases.
+
+        Note that the use of ints embedded in texts is being deprecated.
+        Instead, pauses should be explicitly added by pre_pause_ms or post_pause_ms.
+
+        :param texts: A combination of strings and pauses
+        :param phrases: Any generated phrases are appended to this
+        :param preload_cache: Mark any phrases with this value
+        """
+        fragments: List[str | int] = cls.convert_str_to_fragments(texts)
+        # Fragments is a list of strings and ints. Ints are interpreted
+        # as a pause, in milliseconds, to insert before the next string.
+        pre_pause: int = 0
+        for fragment in fragments:
+            fragment: str | int
+            if isinstance(fragment, int):
+                pre_pause = fragment
+                continue
+            try:
+                if MY_LOGGER.isEnabledFor(DEBUG_XV):
+                    MY_LOGGER.debug_xv(
+                            f'# fragment: {fragment} pre_pause: {pre_pause}')
+                phrase: Phrase = Phrase(text=fragment, preload_cache=preload_cache,
+                                        pre_pause_ms=pre_pause,
+                                        check_expired=phrases.check_expired)
+                phrase.serial_number = phrases.serial_number
+                phrases.append(phrase)
+            except ExpiredException:
+                pass  # the caller will know soon enough
+        if len(phrases) > 0:
+            phrases.data[0].start_of_phrase_list = True
 
     def add_text(self, texts: str | List[str],  pre_pause_ms: int = None,
-                 post_pause_ms: int = None, text_id: str | None = None) -> PhraseList:
+                 post_pause_ms: int = None, text_id: str | None = None,
+                 debug_info: str | None = None
+                 ) -> PhraseList:
         """
         Appends one or more text strings at the end of this PhraseList.
         Note that unlike create, this method can replace embedded delay
@@ -735,6 +893,7 @@ class PhraseList(UserList):
         :param post_pause_ms: If specified, will be assigned to the Last phrase added
         :param text_id: Sets the text_id of the FIRST Phrase created. Defaults
                         to the first value in texts
+        :param debug_info:
         :return:
         """
         clz = type(self)
@@ -751,7 +910,6 @@ class PhraseList(UserList):
         if post_pause_ms is not None and post_pause_ms > 0:
             phrase: Phrase = self.data[-1]
             phrase.set_post_pause(post_pause_ms)
-
         return self
 
     def get_aggregate_text(self) -> str:
@@ -792,12 +950,12 @@ class PhraseList(UserList):
 
         current_phrase: Phrase = self.data[start_index]
         compact_phrase: Phrase
-        compact_phrase = Phrase(current_phrase.get_text(),
-                                current_phrase.get_interrupt(),
-                                current_phrase.get_pre_pause(),
-                                current_phrase.get_post_pause(),
+        compact_phrase = Phrase(text=current_phrase.get_text(),
+                                interrupt=current_phrase.get_interrupt(),
+                                pre_pause_ms=current_phrase.get_pre_pause(),
+                                post_pause_ms=current_phrase.get_post_pause(),
                                 cache_path=None,
-                                exists=False,
+                                text_exists=False,
                                 preload_cache=current_phrase.is_preload_cache())
         if compact_phrase.get_post_pause() > Phrase.PAUSE_NORMAL:
             return compact_phrase
@@ -811,7 +969,7 @@ class PhraseList(UserList):
                 text: str = f'{compact_phrase.get_text()} ' \
                             f'{current_phrase.get_text()}'
                 compact_phrase.set_text(text, preserve_debug_info=True)
-                compact_phrase._set_interrupt(current_phrase.get_interrupt())
+                compact_phrase.interrupt = current_phrase.get_interrupt()
 
             compact_phrase.set_post_pause(current_phrase.get_post_pause())
             if compact_phrase.get_post_pause() > Phrase.PAUSE_NORMAL:
@@ -831,7 +989,22 @@ class PhraseList(UserList):
                 new_list.append(phrase)
             phrase = next_phrase
 
+        new_list.data[0].start_of_phrase_list = True
         return new_list
+
+    def short_text(self) -> str:
+        """
+        Gets short text of first phrase for debugging
+
+        Does NOT check for expiration
+        :return:
+        """
+        if self.is_empty():
+            return ''
+
+        if len(self.data[0].text) > 20:
+            return self.data[0].text[0:20]
+        return self.data[0].text
 
     def enable_check_expired(self) -> None:
         """
@@ -879,12 +1052,12 @@ class PhraseList(UserList):
     @classmethod
     def set_current_expired(cls) -> None:
         PhraseList.expired_serial_number = cls.global_serial_number
-        cls._logger.debug_xv('EXPIRE')
+        MY_LOGGER.debug_xv('EXPIRE')
 
     def expire_all_prior(self) -> None:
         clz = type(self)
-        if clz._logger.isEnabledFor(DEBUG_XV):
-            clz._logger.debug_xv(f'EXPIRE expired: {self.is_expired()} check_expired: '
+        if MY_LOGGER.isEnabledFor(DEBUG_XV):
+            MY_LOGGER.debug_xv(f'EXPIRE expired: {self.is_expired()} check_expired: '
                                  f'{self.check_expired} \n'
                                  f'expSerial: {PhraseList.expired_serial_number} '
                                  f'serialNum: {self.serial_number}')
@@ -895,7 +1068,7 @@ class PhraseList(UserList):
     def set_expired(self) -> None:
         clz = type(self)
         if not self.is_expired() and self.check_expired:
-            clz._logger.info('EXPIRE')
+            MY_LOGGER.info('EXPIRE')
             if PhraseList.expired_serial_number < self.serial_number:
                 PhraseList.expired_serial_number = self.serial_number
                 # Just to make sure that global_serial_number is > expired_serial_number
@@ -914,7 +1087,15 @@ class PhraseList(UserList):
 
     def set_interrupt(self, interrupt: bool) -> None:
         if len(self.data) > 0:
+            self.data[0].start_of_phrase_list = True
             self.data[0]._set_interrupt(interrupt)
+
+    @property
+    def interrupt(self) -> bool:
+        interrupt: bool = False
+        if len(self.data) > 0:
+            interrupt = self.data[0].get_interrupt()
+        return interrupt
 
     def equal_text(self, other: PhraseList) -> bool:
         clz = PhraseList
@@ -931,11 +1112,11 @@ class PhraseList(UserList):
                     if not self[p].get_text() == other[p].get_text():
                         return False
                 except ExpiredException:
-                    clz._logger.debug(f'check_expired_p: {self[p].check_expired}\n'
+                    MY_LOGGER.debug(f'check_expired_p: {self[p].check_expired}\n'
                                       f'other_check_expired_p {other[p].check_expired} ')
                     reraise(*sys.exc_info())
         except ExpiredException:
-            clz._logger.debug(f'check_expired: {self.check_expired} '
+            MY_LOGGER.debug(f'check_expired: {self.check_expired} '
                               f'global: {clz.global_serial_number} '
                               f'serial: {self.serial_number} '
                               f'other check: {other.check_expired} '
@@ -966,7 +1147,7 @@ class PhraseList(UserList):
             idx: int
             for idx in 0, (length - 1):
                 if self[idx + start] != other[idx]:
-                    # clz._logger.debug(f'me[{idx + start}]: {self[idx + start]} '
+                    # MY_LOGGER.debug(f'me[{idx + start}]: {self[idx + start]} '
                     #                   f'them[{idx}]: {other[idx]}')
                     return False
             return True
@@ -995,7 +1176,7 @@ class PhraseList(UserList):
             return False
 
         if isinstance(other, PhraseList):
-            # clz._logger.debug(f'self: {self} \n'
+            # MY_LOGGER.debug(f'self: {self} \n'
             #                   f'other: {other}\n'
             #                   f'len(self): {len(self)} len(other): {len(other)}')
             if other.is_empty():
@@ -1006,7 +1187,7 @@ class PhraseList(UserList):
                 return False
             idx: int
             for idx in 0, (length - 1):
-                # clz._logger.debug(f'me[{idx + start}]: {self[idx + start]} '
+                # MY_LOGGER.debug(f'me[{idx + start}]: {self[idx + start]} '
                 #                   f'them[{idx}]: {other[idx]}\n'
                 #                   f'equals: {self[idx + start] != other[idx]}')
                 if self[idx + start] != other[idx]:
@@ -1115,7 +1296,9 @@ class PhraseList(UserList):
             raise ExpiredException()
         item.check_expired = self.check_expired
         item.serial_number = self.serial_number
-        return self.data.append(item)
+        self.data.append(item)
+        if len(self.data) > 0:
+            self.data[0].start_of_phrase_list = True
 
     def insert(self, i: int, item: Phrase) -> None:
         if not isinstance(item, Phrase):
@@ -1196,24 +1379,32 @@ class PhraseList(UserList):
 class PhraseUtils:
 
     PUNCTUATION_PATTERN = regex.compile(r'([.,:])', regex.DOTALL)
-    _logger: BasicLogger = None
     _initialized: bool = False
 
     def __init__(self):
         clz = type(self)
-        if clz._logger is None:
-            clz._logger = module_logger
         clz._initialized = True
 
     @classmethod
     def split_into_chunks(cls, phrase: Phrase, chunk_size: int = 100) -> PhraseList[
         Phrase]:
+        """
+        Splits a single phrase into string chunks, small enough for the TTS generator
+        can handle.
+
+        TODO: There are several challenges here:
+              If a chunk is split then the lang and territory data must be copied
+              to both chunks.
+        :param phrase:
+        :param chunk_size:
+        :return:
+        """
         phrases: PhraseList[Phrase] = PhraseList(check_expired=False)
         out_chunks: List[str] = []
         try:
             chunks: List[str] = regex.split(cls.PUNCTUATION_PATTERN, phrase.get_text())
-            if cls._logger.isEnabledFor(DEBUG_V):
-                cls._logger.debug_v(f'len chunks: {len(chunks)}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'len chunks: {len(chunks)}')
             text_file_path: pathlib.Path
             text_file_path = phrase.get_cache_path().with_suffix('.txt')
             with text_file_path.open('at', encoding='utf-8') as text_file:
@@ -1224,13 +1415,15 @@ class PhraseUtils:
                     # go ahead and return the over-length chunk.
 
                     if len(chunk) >= chunk_size:
-                        if cls._logger.isEnabledFor(DEBUG_V):
-                            cls._logger.debug_v(f'Long chunk: {chunk}'
+                        if MY_LOGGER.isEnabledFor(DEBUG_V):
+                            MY_LOGGER.debug_v(f'Long chunk: {chunk}'
                                                       f' length: {len(chunk)}')
                             try:
-                                text_file.write(f'\nPhrase: {chunk}')
+                                with text_file_path.open('wt',
+                                                         encoding='utf-8') as tf:
+                                    tf.write(f'\nPhrase: {chunk}')
                             except Exception as e:
-                                cls._logger.exception(f'Failed to save text cache file')
+                                MY_LOGGER.exception(f'Failed to save text cache file')
                                 try:
                                     text_file_path.unlink(True)
                                 except Exception as e2:
@@ -1244,39 +1437,40 @@ class PhraseUtils:
                             next_chunk = chunks[0]  # Don't pop yet
                             if ((len(next_chunk) + len(
                                     next_chunk)) <= chunk_size):
-                                if cls._logger.isEnabledFor(DEBUG_V):
-                                    cls._logger.debug_v(f'Appending to chunk:'
+                                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                                    MY_LOGGER.debug_v(f'Appending to chunk:'
                                                               f' {next_chunk}'
                                                               f' len: {len(next_chunk)}')
                                 chunk += chunks.pop(0)
                             else:
                                 out_chunks.append(chunk)
-                                if cls._logger.isEnabledFor(DEBUG_V):
-                                    cls._logger.debug_v(f'Normal chunk: {chunk}'
+                                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                                    MY_LOGGER.debug_v(f'Normal chunk: {chunk}'
                                                               f' length: {len(chunk)}')
                                 chunk = ''
                                 break
                     if len(chunk) > 0:
                         out_chunks.append(chunk)
-                        if cls._logger.isEnabledFor(DEBUG_V):
-                            cls._logger.debug_v(f'Last chunk: {chunk}'
+                        if MY_LOGGER.isEnabledFor(DEBUG_V):
+                            MY_LOGGER.debug_v(f'Last chunk: {chunk}'
                                                       f' length: {len(chunk)}')
                 phrases: PhraseList[Phrase] = PhraseList()
                 # Force these phrases have the same serial # as the original
                 phrases.serial_number = phrase.serial_number
 
                 first: bool = True
+                interrupt: bool = False
                 for chunk in out_chunks:
                     if first:
-                        chunk_phrase: Phrase = Phrase(chunk, phrase.get_interrupt(),
-                                                      phrase.get_pre_pause(),
-                                                      phrase.get_post_pause(),
-                                                      phrase.get_cache_path(), False,
-                                                      phrase.is_preload_cache(),
+                        chunk_phrase: Phrase = Phrase(chunk,
+                                                      pre_pause_ms=phrase.get_pre_pause(),
+                                                      post_pause_ms=phrase.get_post_pause(),
+                                                      cache_path=phrase.get_cache_path(),
+                                                      text_exists=False,
+                                                      preload_cache=phrase.is_preload_cache(),
                                                       check_expired=False,
                                                       lang_dir=phrase.lang_dir,
-                                                      territory_dir=phrase.territory_dir
-                        )
+                                                      territory_dir=phrase.territory_dir)
                         first = False
                     else:
                         chunk_phrase: Phrase = Phrase(chunk, check_expired=False,
@@ -1285,6 +1479,7 @@ class PhraseUtils:
                                                       )
                     phrases.append(chunk_phrase)
                     chunk_phrase.serial_number = phrase.serial_number
+            phrases.set_interrupt(interrupt)
         except AbortException:
             reraise(*sys.exc_info())
         except ExpiredException:
@@ -1292,7 +1487,7 @@ class PhraseUtils:
             phrases.serial_number = phrase.serial_number
             reraise(*sys.exc_info())
         except Exception as e:
-            cls._logger.exception('')
+            MY_LOGGER.exception('')
         return phrases
 
 

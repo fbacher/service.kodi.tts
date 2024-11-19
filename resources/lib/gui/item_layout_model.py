@@ -11,6 +11,7 @@ from gui.item_layout_topic_model import ItemLayoutTopicModel
 from gui.label_model import LabelModel
 from gui.no_topic_models import NoItemLayoutTopicModel
 from gui.parser.parse_item_layout import ParseItemLayout
+from windows.window_state_monitor import WinDialogState
 
 module_logger = BasicLogger.get_logger(__name__)
 
@@ -20,11 +21,13 @@ class ItemLayoutModel(BaseModel):
     _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.ITEM_LAYOUT]
 
-    def __init__(self, parent: BaseModel, parsed_item_layout: ParseItemLayout) -> None:
+    def __init__(self, parent: BaseModel, parsed_item_layout: ParseItemLayout,
+                 windialog_state: WinDialogState | None = None) -> None:
         clz = type(self)
         if clz._logger is None:
             clz._logger = module_logger
-        super().__init__(window_model=parent.window_model, parser=parsed_item_layout)
+        super().__init__(window_model=parent.window_model, parser=parsed_item_layout,
+                         windialog_state=windialog_state)
         self.parent: BaseModel = parent
         self.broken: bool = False
         self.condition_expr: str = ''
@@ -50,9 +53,10 @@ class ItemLayoutModel(BaseModel):
         clz._logger.debug(f'# parsed children: {len(parsed_item_layout.children)}')
         for child in parsed_item_layout.children:
             child: BaseParser
-            model_handler: Callable[[BaseModel, BaseModel, BaseParser], BaseModel]
+            model_handler: Callable[[BaseModel, BaseParser, WinDialogState | None],
+                                    BaseModel]
             model_handler = ElementHandler.get_model_handler(child.item)
-            child_model: BaseModel = model_handler(self, child)
+            child_model: BaseModel = model_handler(self, child, None)
             self.children.append(child_model)
 
     @property

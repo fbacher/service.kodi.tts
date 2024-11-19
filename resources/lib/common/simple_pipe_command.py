@@ -235,7 +235,7 @@ class SimplePipeCommand:
         finally:
             Monitor.unregister_abort_listener(self.abort_listener)
             KodiPlayerMonitor.unregister_player_status_listener(
-                self.kodi_player_status_listener)
+                    f'{self.thread_name}_Kodi_Player_Monitor')
         return self.rc
 
     def run_worker(self) -> None:

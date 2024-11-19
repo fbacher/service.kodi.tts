@@ -13,10 +13,11 @@ class Choice:
     def __init__(self, label: str, value: str, choice_index: int,
                  sort_key: str = None, enabled: bool = True,
                  engine_id: str = '', lang_info: LanguageInfo = None,
-                 match_distance: int = 1000) -> None:
+                 match_distance: int = 1000, hint: str = None) -> None:
         """
 
         :param label: User friendly, translate label
+        :param hint: User friendly, translated hint
         :param value: value used in settings, etc.
         :param choice_index: When from a list of choices, this is its place in list.
         :param sort_key:  Key to use when sorting list
@@ -35,6 +36,7 @@ class Choice:
             sort_key = label
 
         self.label: str = label
+        self.hint: str = hint
         self.value: str = value
         self.choice_index: int = choice_index
         self.engine_id: str = engine_id
@@ -45,5 +47,5 @@ class Choice:
 
     def __repr__(self) -> str:
         result: str = (f'label: {self.label} value: {self.value} idx: {self.choice_index}\n'
-                       f'engine_id: {self.engine_id} lang_info: {self.lang_info}')
+                       f'service_id: {self.engine_id} lang_info: {self.lang_info}')
         return result

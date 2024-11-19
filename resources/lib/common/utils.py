@@ -2,6 +2,7 @@ from __future__ import annotations  # For union operator |
 
 import os
 import sys
+import tempfile
 from pathlib import Path
 
 import xbmc
@@ -25,19 +26,20 @@ def tailXBMCLog(num_lines=10):
     return lines[-num_lines:]
 
 
-def getTmpfs(subdir: str = None):
+def getTmpfs() -> Path | None:
+    """
+    Returns the default directory for temporary files.
+    :return:
+    """
     if sys.platform.startswith('win'):
         return None
-    temp_path: str = None
-    for temp_path in ('/run/shm', '/dev/shm', '/tmp'):
-        if os.path.exists(temp_path):
+    temp_path: Path
+    for temp_dir in ('/run/shm', '/dev/shm', '/tmp'):
+        temp_dir: str
+        temp_path = Path(temp_dir)
+        if temp_path.exists():
             break
-    if temp_path is not None:
-        temp_path: Path = Path(temp_path)
-        if subdir:
-            temp_path = temp_path / subdir
-        return str(temp_path)
-    return None
+    return temp_path
 
 
 def sleep(ms):

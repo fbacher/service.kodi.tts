@@ -11,7 +11,7 @@ import xbmcaddon
 
 from common import *
 
-from kutils.kodiaddon import Addon
+from common.kodiaddon import Addon
 from .__init__ import *
 
 

@@ -11,6 +11,7 @@ from gui.edit_topic_model import EditTopicModel
 from gui.element_parser import (ElementHandler)
 from gui.no_topic_models import NoEditTopicModel
 from gui.parser.parse_edit import ParseEdit
+from windows.window_state_monitor import WinDialogState
 
 module_logger = BasicLogger.get_logger(__name__)
 
@@ -20,12 +21,13 @@ class EditModel(BaseLabelModel):
     _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.EDIT]
 
-    def __init__(self, parent: BaseLabelModel, parsed_edit: ParseEdit) -> None:
+    def __init__(self, parent: BaseLabelModel, parsed_edit: ParseEdit,
+                 windialog_state: WinDialogState | None = None) -> None:
         clz = type(self)
         if clz._logger is None:
             clz._logger = module_logger
         super().__init__(window_model=parent.window_model,
-                         parser=parsed_edit)
+                         parser=parsed_edit, windialog_state=windialog_state)
         self.parent = parent
         self.action_expr: str = ''
         self.description: str = ''
@@ -72,10 +74,11 @@ class EditModel(BaseLabelModel):
         for child in parsed_edit.children:
             child: BaseParser
             # clz._logger.debug(f'child: {child}')
-            model_handler: Callable[[BaseModel, BaseParser], BaseModel]
+            model_handler: Callable[[BaseModel, BaseParser, WinDialogState | None],
+                                    BaseModel]
             # clz._logger.debug(f'About to create model from {type(child).item}')
             model_handler = ElementHandler.get_model_handler(child.item)
-            child_model: BaseModel = model_handler(self, child)
+            child_model: BaseModel = model_handler(self, child, None)
             self.children.append(child_model)
 
     def __repr__(self) -> str:

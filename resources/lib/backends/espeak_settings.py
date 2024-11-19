@@ -6,7 +6,7 @@ import sys
 
 from common import *
 
-from backends.audio.sound_capabilties import SoundCapabilities
+from backends.audio.sound_capabilities import SoundCapabilities
 from backends.engines.base_engine_settings import (BaseEngineSettings)
 from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.i_validators import INumericValidator, ValueType
@@ -18,10 +18,11 @@ from backends.settings.validators import (BoolValidator, ConstraintsValidator,
                                           StringValidator)
 from common.constants import Constants
 from common.logger import BasicLogger
-from common.setting_constants import Backends, PlayerMode, Players
+from common.setting_constants import AudioType, Backends, PlayerMode, Players
+from common.settings import Settings
 from common.system_queries import SystemQueries
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class ESpeakSettings(BaseServiceSettings):
@@ -36,14 +37,6 @@ class ESpeakSettings(BaseServiceSettings):
     # SettingName, default value
 
     initialized: bool = False
-    _supported_input_formats: List[str] = []
-    _supported_output_formats: List[str] = [SoundCapabilities.WAVE]
-    _provides_services: List[ServiceType] = [ServiceType.ENGINE,
-                                             ServiceType.INTERNAL_PLAYER]
-    SoundCapabilities.add_service(service_ID, _provides_services,
-                                  _supported_input_formats,
-                                  _supported_output_formats)
-    _logger: BasicLogger = None
 
     def __init__(self, *args, **kwargs):
         clz = type(self)
@@ -52,20 +45,16 @@ class ESpeakSettings(BaseServiceSettings):
         if ESpeakSettings.initialized:
             return
         ESpeakSettings.initialized = True
-        if clz._logger is None:
-            clz._logger = module_logger
         ESpeakSettings.init_settings()
         SettingsMap.set_is_available(clz.service_ID, Reason.AVAILABLE)
 
     @classmethod
     def init_settings(cls):
-        cls._logger.debug(f'Adding eSpeak to engine service')
-        service_properties = {Constants.NAME: cls.displayName}
+        MY_LOGGER.debug(f'Adding eSpeak to engine service')
+        service_properties = {Constants.NAME: cls.displayName,
+                              Constants.CACHE_SUFFIX: 'espk'}
         SettingsMap.define_service(ServiceType.ENGINE, cls.service_ID,
                                    service_properties)
-        x = SettingsMap.get_services_for_service_type(ServiceType.ENGINE)
-        cls._logger.debug(f'Got back {len(x)} services')
-
         #
         # Need to define Conversion Constraints between the TTS 'standard'
         # constraints/settings to the engine's constraints/settings
@@ -89,42 +78,20 @@ class ESpeakSettings(BaseServiceSettings):
                                    SettingsProperties.VOLUME,
                                    volume_validator)
 
+        # Can use LAME to convert to mp3. This code is untested
+        # TODO: test, expose capability in settings config
+
         audio_validator: StringValidator
-        audio_converter_validator = StringValidator(SettingsProperties.CONVERTER,
+        audio_converter_validator = StringValidator(SettingsProperties.TRANSCODER,
                                                     cls.engine_id,
-                                                    allowed_values=[Services.LAME_ID])
+                                                    allowed_values=[Services.LAME_ID,
+                                                                    Services.MPLAYER_ID])
 
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.CONVERTER,
+        SettingsMap.define_setting(cls.service_ID, SettingsProperties.TRANSCODER,
                                    audio_converter_validator)
-
-        allowed_player_modes: List[str] = [
-            PlayerMode.SLAVE_FILE.value,
-            PlayerMode.FILE.value,
-            PlayerMode.PIPE.value
-        ]
-        player_mode_validator: StringValidator
-        player_mode_validator = StringValidator(SettingsProperties.PLAYER_MODE,
-                                                cls.service_ID,
-                                                allowed_values=allowed_player_modes,
-                                                default=PlayerMode.SLAVE_FILE.value)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER_MODE,
-                                   player_mode_validator)
-        # pipe_validator: BoolValidator
-        # pipe_validator = BoolValidator(SettingsProperties.PIPE, cls.engine_id,
-        #                                default=False)
-
-        #  TODO:  Need to eliminate un-available players
-        #         Should do elimination in separate code
-
-        valid_players: List[str] = [Players.SFX, Players.WINDOWS, Players.APLAY,
-                                    Players.PAPLAY, Players.AFPLAY, Players.SOX,
-                                    Players.MPLAYER, Players.MPV, Players.MPG321,
-                                    Players.MPG123, Players.MPG321_OE_PI,
-                                    Players.INTERNAL]
-        player_validator: StringValidator
-        player_validator = StringValidator(SettingsProperties.PLAYER, cls.engine_id,
-                                           allowed_values=valid_players,
-                                           default=Players.MPLAYER)
+        # Defines a very loose language validator. Basically it will accept
+        # almost any strings. The real work is done by LanguageInfo and
+        # SettingsHelper. Should revisit this validator
 
         language_validator: StringValidator
         language_validator = StringValidator(SettingsProperties.LANGUAGE, cls.engine_id,
@@ -140,15 +107,77 @@ class ESpeakSettings(BaseServiceSettings):
 
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOICE,
                                    voice_validator)
-        # SettingsMap.define_setting(cls.service_ID, SettingsProperties.PIPE,
-        #                            pipe_validator)
 
-        # 'normal speed' is 175 words per minute.
+        allowed_player_modes: List[str] = [
+            PlayerMode.SLAVE_FILE.value,
+            PlayerMode.FILE.value,
+            PlayerMode.PIPE.value
+        ]
+        player_mode_validator: StringValidator
+        player_mode_validator = StringValidator(SettingsProperties.PLAYER_MODE,
+                                                cls.service_ID,
+                                                allowed_values=allowed_player_modes,
+                                                default=PlayerMode.SLAVE_FILE.value)
+        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER_MODE,
+                                   player_mode_validator)
+
+        Settings.set_current_output_format(cls.service_ID, AudioType.WAV)
+
+        SoundCapabilities.add_service(cls.service_ID,
+                                      service_types=[ServiceType.ENGINE,
+                                                     ServiceType.INTERNAL_PLAYER],
+                                      supported_input_formats=[],
+                                      supported_output_formats=[AudioType.WAV])
+
+        candidates: List[str]
+        candidates = SoundCapabilities.get_capable_services(
+                service_type=ServiceType.PLAYER,
+                consumer_formats=[AudioType.WAV],
+                producer_formats=[])
+
+        #  TODO:  Need to eliminate un-available players
+        #         Should do elimination in separate code
+
+        players: List[str] = [Players.MPV, Players.MPLAYER,
+                              Players.SFX, Players.WINDOWS, Players.APLAY,
+                              Players.PAPLAY, Players.AFPLAY, Players.SOX,
+                              Players.MPG321, Players.MPG123,
+                              Players.MPG321_OE_PI, Players.INTERNAL]
+
+        MY_LOGGER.debug(f'candidates: {candidates}')
+        valid_players: List[str] = []
+        for player_id in candidates:
+            player_id: str
+            if player_id in players and SettingsMap.is_available(player_id):
+                valid_players.append(player_id)
+
+        MY_LOGGER.debug(f'valid_players: {valid_players}')
+
+        player_validator: StringValidator
+        player_validator = StringValidator(SettingsProperties.PLAYER, cls.engine_id,
+                                           allowed_values=valid_players,
+                                           default=Players.MPV)
+        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER,
+                                   player_validator)
+
+        cache_validator: BoolValidator
+        cache_validator = BoolValidator(SettingsProperties.CACHE_SPEECH, cls.service_ID,
+                                        default=False)
+
+        SettingsMap.define_setting(cls.service_ID, SettingsProperties.CACHE_SPEECH,
+                                   cache_validator)
+
+        # For consistency (and simplicity) any speed adjustments are actually
+        # done by a player that supports it. Direct adjustment of player speed
+        # could be re-added, but it would complicate configuration a bit.
+        #
+        # TTS scale is based upon mpv/mplayer which is a multiplier which
+        # has 1 = no change in speed, 0.25 slows down by 4, and 4 speeds up by 4
+        #
+        # eSpeak-ng 'normal speed' is 175 words per minute.
         # The slowest supported rate appears to be about 70, any slower doesn't
         # seem to make any real difference. The maximum speed is unbounded, but
         # 4x (4 * 175 = 700) is hard to listen to.
-        # TTS scale is based upon mpv/mplayer which is a multiplier which
-        # has 1 = no change in speed, 0.25 slows down by 4, and 4 speeds up by 4
         #
         # In other words espeak speed = 175 * mpv speed
 
@@ -162,16 +191,6 @@ class ESpeakSettings(BaseServiceSettings):
         SettingsMap.define_setting(cls.service_ID,
                                    SettingsProperties.SPEED,
                                    speed_validator)
-
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER,
-                                   player_validator)
-        cache_validator: BoolValidator
-        cache_validator = BoolValidator(SettingsProperties.CACHE_SPEECH, cls.service_ID,
-                                        default=False)
-
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.CACHE_SPEECH,
-                                   cache_validator)
-
 
     @classmethod
     def isSupportedOnPlatform(cls) -> bool:
@@ -192,7 +211,7 @@ class ESpeakSettings(BaseServiceSettings):
     @classmethod
     def available(cls):
         try:
-            subprocess.run(['espeak', '--version'], stdout=(open(os.path.devnull, 'w')),
+            subprocess.run(['espeak-ng', '--version'], stdout=(open(os.path.devnull, 'w')),
                            universal_newlines=True, stderr=subprocess.STDOUT)
         except AbortException:
             reraise(*sys.exc_info())

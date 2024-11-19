@@ -354,7 +354,7 @@ class BasicLogger(Logger):
         '''
 
         if cls.debug_level_config.get(logger_name) is not None:
-            #  xbmc.log(f'get already exists: {logger_name} NO CHANGES')
+            #  xbmc.log(f'get already text_exists: {logger_name} NO CHANGES')
             return logger
 
         my_handler: Handler = None
@@ -1132,6 +1132,8 @@ class Trace(logging.Filter):
             passed_traces = record.__dict__.get('trace', [])
             if passed_traces is None or len(passed_traces) == 0:
                 return 1
+            if not isinstance(passed_traces, list):
+                passed_traces = [passed_traces]
 
             filtered_traces = []
             for trace in passed_traces:

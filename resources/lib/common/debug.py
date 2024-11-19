@@ -85,18 +85,25 @@ class Debug:
 
     @classmethod
     def dump_current_thread(cls) -> None:
+        debug_file = StringIO()
+        '''
         debug_file = io.open("/home/fbacher/.kodi/temp/kodi.threads", mode='a',
                              buffering=1,
                              newline=None,
                              encoding='ASCII')
-        faulthandler.dump_traceback(file=debug_file, all_threads=False)
-        debug_file.close()
+        '''
+        #  faulthandler.dump_traceback(file=debug_file, all_threads=False)
+        #  xbmc.log(debug_file.getvalue())
+        #  debug_file.close()
+        sio = StringIO()
+        sio.write('\n*** STACKTRACE - START ***\n\n')
+        th: threading.Thread = threading.current_thread()
+        sio.write(f'\n# ThreadID: {th.name} Daemon: {th.isDaemon()}\n\n')
+        stack = sys._current_frames().get(th.ident, None)
+        if stack is not None:
+            traceback.print_stack(stack, file=sio)
 
-        delay = 0.0
-        dump_threads = threading.Timer(delay, cls._dump_all_threads)
-        dump_threads.name = 'dump_threads'
-        dump_threads.start()
-
+        xbmc.log(sio.getvalue() + '\n*** STACKTRACE - END ***\n')
 
     @classmethod
     def _dump_all_threads(cls) -> None:

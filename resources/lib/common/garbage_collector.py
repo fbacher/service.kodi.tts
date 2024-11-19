@@ -69,7 +69,7 @@ class GarbageCollector:
         # Sometimes thread name doesn't get set.
         threading.current_thread.__name__ = cls.GARBAGE_COLLECTOR_THREAD_NAME
         try:
-            while Monitor.exception_on_abort(timeout=2.0):
+            while not Monitor.exception_on_abort(timeout=2.0):
                 cls.reap_the_dead()
         except AbortException:
             cls.abort_notification()

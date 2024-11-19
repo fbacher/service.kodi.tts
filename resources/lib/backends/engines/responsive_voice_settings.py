@@ -2,7 +2,7 @@ from __future__ import annotations  # For union operator |
 
 from common import *
 
-from backends.audio.sound_capabilties import SoundCapabilities
+from backends.audio.sound_capabilities import SoundCapabilities
 from backends.engines.base_engine_settings import (BaseEngineSettings)
 from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.constraints import Constraints
@@ -13,7 +13,7 @@ from backends.settings.validators import (BoolValidator, ConstraintsValidator,
                                           NumericValidator, StringValidator)
 from common.constants import Constants
 from common.logger import BasicLogger
-from common.setting_constants import Backends, Players
+from common.setting_constants import AudioType, Backends, Players
 from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
 
@@ -85,8 +85,8 @@ class ResponsiveVoiceSettings(BaseServiceSettings):
             value, _, _, _ = self.get_tts_values()
             return str(value)
 
-    _supported_input_formats: List[str] = []
-    _supported_output_formats: List[str] = [SoundCapabilities.WAVE]
+    _supported_input_formats: List[AudioType] = []
+    _supported_output_formats: List[AudioType] = [AudioType.WAV]
     _provides_services: List[ServiceType] = [ServiceType.ENGINE]
     SoundCapabilities.add_service(service_ID, _provides_services,
                                   _supported_input_formats,
@@ -154,7 +154,7 @@ class ResponsiveVoiceSettings(BaseServiceSettings):
         '''
         volume_constraints_validator = self.VolumeConstraintsValidator(
                 SettingsProperties.VOLUME,
-                self.engine_id,
+                self.service_id,
                 self.ttsVolumeConstraints)
 
         SettingsMap.define_setting(self.service_ID, SettingsProperties.VOLUME,
@@ -162,11 +162,11 @@ class ResponsiveVoiceSettings(BaseServiceSettings):
         '''
 
         audio_validator: StringValidator
-        audio_converter_validator = StringValidator(SettingsProperties.CONVERTER,
+        audio_converter_validator = StringValidator(SettingsProperties.TRANSCODER,
                                                     self.engine_id,
                                                     allowed_values=[Services.LAME_ID])
 
-        SettingsMap.define_setting(self.service_ID, SettingsProperties.CONVERTER,
+        SettingsMap.define_setting(self.service_ID, SettingsProperties.TRANSCODER,
                                    audio_converter_validator)
 
         api_key_validator = StringValidator(SettingsProperties.API_KEY, self.engine_id,

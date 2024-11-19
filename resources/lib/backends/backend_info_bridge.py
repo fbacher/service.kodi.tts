@@ -62,6 +62,6 @@ class BackendInfoBridge(IBackendInfo):
 
     '''
     @classmethod
-    def get_backend_setting_default(cls, backend_id: str, setting_id: str) -> Any:
-        return cls.getBackend(backend_id).get_setting_default(setting_id)
+    def get_backend_setting_default(cls, service_id: str, setting_id: str) -> Any:
+        return cls.getBackend(service_id).get_setting_default(setting_id)
     '''

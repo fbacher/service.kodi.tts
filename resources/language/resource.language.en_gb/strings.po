@@ -560,8 +560,8 @@ msgid "Cannot adjust volume"
 msgstr "Cannot adjust volume"
 
 msgctxt "#32181"
-msgid "Choose Backend"
-msgstr "Choose Backend"
+msgid "TTS Engine"
+msgstr ""
 
 msgctxt "#32182"
 msgid "Not Available"
@@ -699,9 +699,15 @@ msgctxt "#32215"
 msgid "Key"
 msgstr "Key"
 
+# Used in (internal) settings dialog when showing configuration choices.
+# A Voice is one of the descriptions for a voice. It should be unique.
+# The labels are dependent on the TTS Engine, which are not always pretty.
+# Example of full choice description, with "Voice" as one of the fields:
+# eSpeak  United Kingtom   English (United Kingdom)  Voice: English_(Scotland)
+
 msgctxt "#32216"
-msgid "Voice"
-msgstr "Voice"
+msgid "Voice:"
+msgstr ""
 
 msgctxt "#32217"
 msgid "Choose a voice gender"
@@ -732,8 +738,8 @@ msgid "None"
 msgstr "None"
 
 msgctxt "#32224"
-msgid "Speech Engine"
-msgstr "Speech Engine"
+msgid "Choose TTS Engine"
+msgstr ""
 
 msgctxt "#32225"
 msgid "Cancel"
@@ -743,9 +749,11 @@ msgctxt "#32226"
 msgid "OK"
 msgstr "OK"
 
+# Language Variant is used as a button label for selecting a spoken
+# language in a country/region. (English, US) or (English, US, New York)
 msgctxt "#32227"
-msgid "Language"
-msgstr "Language"
+msgid "Language Variant"
+msgstr "Language Variant"
 
 msgctxt "#32228"
 msgid "Voice Gender"
@@ -821,6 +829,65 @@ msgctxt "#32241"
 msgid "{0} value: {1}"
 msgstr ""
 
+msgctxt "#32242"
+msgid "Use Select (Enter) to choose a TTS engine."
+msgstr ""
+
+# Used to select a voice for the current TTS engine
+# {0} is replaced by the name of the engine
+msgctxt "#32243"
+msgid "Voices for {0} TTS engine"
+msgstr ""
+
+# The following are somewhat technical names for how/where the
+# audio player gets the audio from the audio engine
+# In case it is useful for translation, here is what they mean:
+#  "Slave File" is when the audio player is running in "slave" mode, which
+#  improves performance because the player doesn't have to be relaunched each
+#  time. The audio is stored in a "file", which is most useful when caching is
+#  is enabled.
+#
+#  "Slave Pipe" is like "Slave File" except that the audio comes directly
+#  from the TTS engine without ever going to a file. Best when caching is not
+#  used and when the TTS engine is fast.
+#
+#  "File" is best used when caching is not used and the TTS engine only writes
+#  audio to a file.
+#
+#  "Pipe" is best used when caching is not used and the TTS engine is fast and
+#  can output using a pipe without requring a file.
+#
+#  "Engine Speak" is used when caching is not used and the TTS engine is fast
+#  and does not require an audio player.
+#
+# The message is displayed as the value for "Player Mode" setting. The label
+# and value are two separate fields
+# Example msg "Player Mode:"       "Slave File"
+
+msgctxt "#32244"
+msgid "Slave File"
+msgstr ""
+
+msgctxt "#32245"
+msgid "Slave Pipe"
+msgstr ""
+
+msgctxt "#32246"
+msgid "File"
+msgstr ""
+
+msgctxt "#32247"
+msgid "Pipe"
+msgstr ""
+
+msgctxt "#32248"
+msgid "Engine Speak"
+msgstr ""
+
+msgctxt "#32249"
+msgid "Use Select (Enter) to choose a player."
+msgstr ""
+
 # ----------------------------------
 # Audio Players. Translation may not apply to all
 
@@ -868,6 +935,9 @@ msgctxt "#32307"
 msgid "mpg321 OE Pi"
 msgstr "mpg321 OE Pi"
 
+# Here Voice is used as the label for a button (and elsewhere) to further
+# configure a language-variant (see 32227). The lang-variant is chosen first
+# and if there are more options, you Select a specific Voice.
 msgctxt "#32308"
 msgid "Select Voice"
 msgstr "Select Voice"
@@ -1002,14 +1072,14 @@ msgstr "Select Player Mode"
 
 msgctxt "#32338"
 msgid "Enabled"
-msgstr "Enabled"
+msgstr ""
 
 # Used to indicate state of a RadioButton or similar:
 #  ex: Pipe Audo. Disabled
 
 msgctxt "#32339"
 msgid "Disabled"
-msgstr "Disabled"
+msgstr ""
 
 msgctxt "#32340"
 msgid "Library cleaning started"
@@ -1050,7 +1120,11 @@ msgctxt "#32346"
 msgid "{0} {1} {2} items"
 msgstr ""
 
+# Name for a Windows TTS engine that utilizes PowerShell to access
 
+msgctxt "#32347"
+msgid "Windows TTS"
+msgstr ""
 
 # BEGIN MESSAGES USED IN UI (WINDOWS, CONTROLS, etc.)
 
@@ -1122,14 +1196,14 @@ msgstr "{0} of {1} items"
 
 # Sub-heading for menu to select engine/voice
 msgctxt "#32715"
-msgid "Begins with the closest match"
-msgstr "Begins with the closest match"
+msgid "Choose the desired voice using Select/Enter"
+msgstr ""
 
 # Used as a Menu Heading to select a TTS engine and voice
-# Ex. Available Voices for English
+# Ex. Available English Voices for Google TTS Engine
 msgctxt "#32716"
-msgid "Available Voices for {0}"
-msgstr "Available Voices for {0}"
+msgid "Available {0} Voices for {1} Engine"
+msgstr ""
 
 msgctxt "#32717"
 msgid "List"

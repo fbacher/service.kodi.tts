@@ -9,14 +9,14 @@ import threading
 
 from common import *
 
-from backends.audio.sound_capabilties import ServiceType, SoundCapabilities
+from backends.audio.sound_capabilities import ServiceType, SoundCapabilities
 from backends.backend_info_bridge import BackendInfoBridge
 from backends.settings.constraints import Constraints
 from backends.settings.service_types import Services
 from common import utils
 from common.base_services import BaseServices
 from common.logger import *
-from common.setting_constants import Converters
+from common.setting_constants import AudioType, Converters
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
@@ -28,7 +28,7 @@ try:
 except:
     xbmc = None
 
-module_logger: BasicLogger = BasicLogger.get_logger(__name__)
+MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 PLAYSFX_HAS_USECACHED: bool = False
 
 
@@ -38,19 +38,13 @@ class WindowsAudioConverter(AudioConverter):
     # name = 'Windows Internal'
     sound_file_base = '{speech_file_name}{sound_file_type}'
     sound_dir: str = None
-    _logger: BasicLogger = None
-    _supported_input_formats: List[str] = [SoundCapabilities.WAVE, SoundCapabilities.MP3]
-    _supported_output_formats: List[str] = [SoundCapabilities.WAVE, SoundCapabilities.MP3]
+    _supported_input_formats: List[AudioType] = [AudioType.WAV, AudioType.MP3]
+    _supported_output_formats: List[AudioType] = [AudioType.WAV, AudioType.MP3]
     _provides_services: List[ServiceType] = [ServiceType.PLAYER]
     _available = SystemQueries.is_windows
     SoundCapabilities.add_service(service_ID, _provides_services,
                                   _supported_input_formats,
                                   _supported_output_formats)
-
-    @classmethod
-    def init_class(cls):
-        if cls._logger is None:
-            cls._logger = module_logger
 
     def __init__(self, *args, **kwargs):
         super().__init__()
@@ -62,7 +56,7 @@ class WindowsAudioConverter(AudioConverter):
 
     def play(self, path):
         if not os.path.exists(path):
-            type(self)._logger.info(
+            MY_LOGGER.info(
                     f'WindowsAudioConverter.play() - Missing sound file: {path}')
             return
         self.audio = self._player.load(path)
@@ -92,16 +86,12 @@ class WindowsAudioConverter(AudioConverter):
             from . import winplay  # @analysis:ignore
             return True
         except:
-            WindowsAudioConverter._logger.error('winplay import failed')
+            MY_LOGGER.error('winplay import failed')
         return False
-
-
-WindowsAudioConverter.init_class()
 '''
 
 
 class BaseAudioConverter(AudioConverter):
-    _logger: BasicLogger = None
     _availableArgs = None
     _playArgs = None
     _speedArgs = None
@@ -114,8 +104,6 @@ class BaseAudioConverter(AudioConverter):
     def __init__(self):
         super().__init__()
         clz = type(self)
-        clz._logger = module_logger
-                self.__class__.__name__)
         self._convert_process = None
         self.speed: float = 0.0
         self.volume: float | None = None
@@ -127,7 +115,7 @@ class BaseAudioConverter(AudioConverter):
     def pipe(self, source):
         clz = type(self)
         pipe_args = self.get_pipe_args()
-        clz._logger.debug_v('pipeArgs: {" ".join(pipe_args)}')
+        MY_LOGGER.debug_v('pipeArgs: {" ".join(pipe_args)}')
 
         with subprocess.Popen(pipe_args, stdin=subprocess.PIPE,
                               stdout=subprocess.DEVNULL,
@@ -136,9 +124,9 @@ class BaseAudioConverter(AudioConverter):
                 shutil.copyfileobj(source, self._convert_process.stdin)
             except IOError as e:
                 if e.errno != errno.EPIPE:
-                    self._logger.error('Error piping audio')
+                    MY_LOGGER.error('Error piping audio')
             except:
-                self._logger.error('Error piping audio')
+                MY_LOGGER.error('Error piping audio')
 
             finally:
                 source.close()
@@ -197,18 +185,16 @@ class SOXAudioConverter(AudioConverter):
     _volumeArgs = ('vol', None, 'dB')
     kill = True
 
-    _supported_input_formats: List[str] = [SoundCapabilities.WAVE, SoundCapabilities.MP3]
-    _supported_output_formats: List[str] = [SoundCapabilities.WAVE, SoundCapabilities.MP3]
+    _supported_input_formats: List[AudioType] = [AudioType.WAV, AudioType.MP3]
+    _supported_output_formats: List[AudioType] = [AudioType.WAV, AudioType.MP3]
     _provides_services: List[ServiceType] = [ServiceType.PLAYER,
-                                             ServiceType.CONVERTER]
+                                             ServiceType.TRANSCODER]
     SoundCapabilities.add_service(service_ID, _provides_services,
                                   _supported_input_formats,
                                   _supported_output_formats)
 
     def __init__(self):
         super().__init__()
-        self._logger = module_logger
-                self.__class__.__name__)  # type: module_logger
 
     def playArgs(self, path):
         args = self.baseArgs(path)
@@ -218,7 +204,7 @@ class SOXAudioConverter(AudioConverter):
         if self.speed:
             args.extend(self._speedArgs)
             args[args.index(None)] = self.speedArg(self.speed)
-        self._logger.debug_v(f'args: {" ".join(args)}')
+        MY_LOGGER.debug_v(f'args: {" ".join(args)}')
         return args
 
     def canSetVolume(self):
@@ -280,18 +266,18 @@ class MPlayerAudioConverter(AudioConverter, BaseServices):
                                             f'{voice_file_path}'], shell=False,
                                             text=True, check=True)
                         except subprocess.CalledProcessError:
-                            clz._logger.exception('')
+                            MY_LOGGER.exception('')
                             reason = 'mplayer failed'
                             failed = True
     """
     ID = Converters.MPLAYER
     service_ID: str = Services.MPLAYER_ID
-    service_Type: ServiceType = ServiceType.CONVERTER
+    service_Type: ServiceType = ServiceType.TRANSCODER
 
-    _supported_input_formats: List[str] = [SoundCapabilities.WAVE, SoundCapabilities.MP3]
-    _supported_output_formats: List[str] = [SoundCapabilities.WAVE, SoundCapabilities.MP3]
+    _supported_input_formats: List[AudioType] = [AudioType.WAV, AudioType.MP3]
+    _supported_output_formats: List[AudioType] = [AudioType.WAV, AudioType.MP3]
     _provides_services: List[ServiceType] = [ServiceType.PLAYER,
-                                             ServiceType.CONVERTER]
+                                             ServiceType.TRANSCODER]
     SoundCapabilities.add_service(service_ID, _provides_services,
                                   _supported_input_formats,
                                   _supported_output_formats)
@@ -308,14 +294,14 @@ class MPlayerAudioConverter(AudioConverter, BaseServices):
     # Multiplier of 1.0 = 100% of speed (i.e. no change)
     _speedMultiplier: Final[float] = 1.0  # The base range is 3 .. 30.
     _volumeArgs = 'volume={0}'  # Volume in db -200db .. +40db Default 0
-    _logger: BasicLogger = None
+    _initialized: bool = False
 
     def __init__(self):
         super().__init__()
         clz = type(self)
-        if clz._logger is None:
-            clz._logger = module_logger
-            clz.register(self)
+        if not clz._initialized:
+            clz.register()
+            clz._initialized = True
 
         self.configVolume: bool = False
         self.configSpeed: bool = False
@@ -350,7 +336,7 @@ class MPlayerAudioConverter(AudioConverter, BaseServices):
             if self.configVolume:
                 filters.append(self._volumeArgs.format(volume))
             args.append(','.join(filters))
-        self._logger.debug_v(f'args: {" ".join(args)}')
+        MY_LOGGER.debug_v(f'args: {" ".join(args)}')
         return args
 
     def get_pipe_args(self) -> List[str]:
@@ -373,7 +359,7 @@ class MPlayerAudioConverter(AudioConverter, BaseServices):
             if self.configVolume:
                 filters.append(self._volumeArgs.format(volume))
             args.append(','.join(filters))
-        self._logger.debug_v(f'args: {" ".join(args)}')
+        MY_LOGGER.debug_v(f'args: {" ".join(args)}')
         return args
 
     def canSetSpeed(self) -> bool:
@@ -406,6 +392,12 @@ class MPlayerAudioConverter(AudioConverter, BaseServices):
 
 
 class Mpg123AudioConverter(AudioConverter, BaseServices):
+    """
+    mpg123 can:
+        - Play one or more .mpg3 files via commandline or stdin
+        - low-latency, efficient
+        - Convert to wave, but not the other way around
+    """
     ID = Converters.MPG123
     service_ID = Services.MPG123_ID
     # name = 'mpg123'
@@ -413,20 +405,20 @@ class Mpg123AudioConverter(AudioConverter, BaseServices):
     _playArgs = ('mpg123', '-q', None)
     _pipeArgs = ('mpg123', '-q', '-')
 
-    _supported_input_formats: List[str] = [SoundCapabilities.MP3]
-    _supported_output_formats: List[str] = []
+    _supported_input_formats: List[AudioType] = [AudioType.MP3]
+    _supported_output_formats: List[AudioType] = []
     _provides_services: List[ServiceType] = [ServiceType.PLAYER]
     SoundCapabilities.add_service(service_ID, _provides_services,
                                   _supported_input_formats,
                                   _supported_output_formats)
-    _logger: BasicLogger = None
+    _initialized: bool = False
 
     def __init__(self) -> None:
         super().__init__()
         clz = type(self)
-        if clz._logger is None:
-            clz._logger = module_logger
-            clz.register(self)
+        if not clz._initialized:
+            clz.register()
+            clz._initialized = True
 
     def canSetSpeed(self) -> bool:
         return False
@@ -446,6 +438,12 @@ class Mpg123AudioConverter(AudioConverter, BaseServices):
 
 
 class Mpg321AudioConverter(AudioConverter):
+    """
+    Created as a 'free' replacement for the not-quite-free mpg123.
+    Now, both are free. Nearly the same, but I think mpg123 has an edge.
+      Both can convert to wave
+      Both can play multiple .mpg3s via stdin
+    """
     ID = Converters.MPG321
     service_ID = ID
     # name = 'mpg321'
@@ -453,8 +451,8 @@ class Mpg321AudioConverter(AudioConverter):
     _playArgs: Tuple[str, str, str] = ('mpg321', '-q', None)
     _pipeArgs: Tuple[str, str, str] = ('mpg321', '-q', '-')
 
-    _supported_input_formats: List[str] = [SoundCapabilities.MP3]
-    _supported_output_formats: List[str] = []
+    _supported_input_formats: List[AudioType] = [AudioType.MP3]
+    _supported_output_formats: List[AudioType] = []
     _provides_services: List[ServiceType] = [ServiceType.PLAYER]
     SoundCapabilities.add_service(service_ID, _provides_services,
                                   _supported_input_formats,
@@ -462,8 +460,6 @@ class Mpg321AudioConverter(AudioConverter):
 
     def __init__(self):
         super().__init__()
-        self._logger = module_logger
-                self.__class__.__name__)  # type: module_logger
 
     def canSetVolume(self):
         return True
@@ -487,8 +483,8 @@ class Mpg321OEPiAudioConverter(AudioConverter):
     service_ID = ID
     # name = 'mpg321 OE Pi'
 
-    _supported_input_formats: List[str] = [SoundCapabilities.MP3]
-    _supported_output_formats: List[str] = []
+    _supported_input_formats: List[AudioType] = [AudioType.MP3]
+    _supported_output_formats: List[AudioType] = []
     _provides_services: List[ServiceType] = [ServiceType.PLAYER]
     SoundCapabilities.add_service(service_ID, _provides_services,
                                   _supported_input_formats,
@@ -496,7 +492,6 @@ class Mpg321OEPiAudioConverter(AudioConverter):
 
     def __init__(self):
         super().__init__()
-        self._logger: BasicLogger = module_logger
         self._convert_process = None
         try:
             import OEPiExtras
@@ -504,7 +499,7 @@ class Mpg321OEPiAudioConverter(AudioConverter):
             self.env = OEPiExtras.getEnvironment()
             self.active = True
         except ImportError:
-            self._logger.debug('Could not import OEPiExtras')
+            MY_LOGGER.debug('Could not import OEPiExtras')
 
     def canSetVolume(self):
         return True
@@ -528,9 +523,9 @@ class Mpg321OEPiAudioConverter(AudioConverter):
             shutil.copyfileobj(source, self._convert_process.stdin)
         except IOError as e:
             if e.errno != errno.EPIPE:
-                module_logger.error('Error piping audio')
+                MY_LOGGER.error('Error piping audio')
         except:
-            module_logger.error('Error piping audio')
+            MY_LOGGER.error('Error piping audio')
         source.close()
         self._convert_process.stdin.close()
         while self._convert_process.poll() is None and self.active:

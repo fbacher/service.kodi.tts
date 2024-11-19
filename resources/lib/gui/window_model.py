@@ -4,7 +4,7 @@ from typing import Callable, Dict, ForwardRef, List
 
 import xbmc
 
-from common.logger import BasicLogger, DEBUG_V
+from common.logger import BasicLogger, DEBUG_V, DEBUG_XV
 from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
 from gui.base_tags import control_elements, ControlElement, Item, WindowType
@@ -19,20 +19,42 @@ from gui.window_topic_model import WindowTopicModel
 from windows.window_state_monitor import WinDialogState
 
 
-module_logger = BasicLogger.get_logger(__name__)
+my_logger = BasicLogger.get_logger(__name__)
 
 
 class WindowModel(BaseModel):
 
-    _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.WINDOW]
+    window_models: Dict[int, ForwardRef('WindowModel')] = {}
 
-    def __init__(self, parsed_window: ParseWindow) -> None:
+    @classmethod
+    def get_instance(cls, window_id: int,
+                     xml_path: pathlib.Path,
+                     windialog_state: WinDialogState)\
+            -> ForwardRef('WindowModel'):
+        my_logger.debug(f'windialog_state is None: {windialog_state is None}')
+        if window_id not in cls.window_models.keys():
+            parser: ParseWindow = ParseWindow.get_instance(xml_path=xml_path,
+                                                           is_addon=True)
+            if my_logger.isEnabledFor(DEBUG_XV):
+                my_logger.debug_xv(f'DUMP PARSED: window_id: {window_id}')
+                for result in parser.dump_parsed():
+                    my_logger.debug_xv(result)
+                my_logger.debug_v('finished DUMP PARSED')
+            window_parser = parser
+            window_model: ForwardRef('WindowModel') = WindowModel(window_parser,
+                                                                  windialog_state)
+            cls.window_models[window_id] = window_model
+        return cls.window_models[window_id]
+
+    def __init__(self, parsed_window: ParseWindow,
+                 windialog_state: WinDialogState) -> None:
         clz = WindowModel
-        if clz._logger is None:
-            clz._logger = module_logger
-        super().__init__(window_model=self, parser=parsed_window)
-        clz._logger.debug(f'I am here in WindowModel')
+        my_logger.debug(f'windialog_state is None: {windialog_state is None}')
+        self._windialog_state: WinDialogState = windialog_state
+        super().__init__(window_model=self, parser=parsed_window,
+                         windialog_state=windialog_state)
+        my_logger.debug(f'I am here in WindowModel')
 
         # Reduce the number of repeated phrases.
         # Detect when there has been a change to a new window, or when the focus
@@ -50,20 +72,20 @@ class WindowModel(BaseModel):
 
         # window: xbmcgui.Window = WindowStateMonitor.get_dialog()
         # control = window.getControl(100)
-        # clz._logger.debug(f'control label: {control.getLabel()}')
+        # my_logger.debug(f'control label: {control.getLabel()}')
 
         # Now, covert all controls that have been previously parsed into models.
         # Uses depth-first search though the controls
 
         self.convert_controls(parsed_window)
-        self._windialog_state: WinDialogState = None
+        #  self._windialog_state: WinDialogState = None
         self._window_struct: IWindowStructure = None
 
     def convert_controls(self, parsed_window: ParseWindow) -> None:
         clz = WindowModel
         children: List[BaseParser] = []
         # parsers: List[BaseParser] = parsed_window.parsers
-        # clz._logger.debug(f'# children: {len(parsed_window.children)}')
+        # my_logger.debug(f'# children: {len(parsed_window.children)}')
 
         if parsed_window.topic is not None:
             self.topic = WindowTopicModel(parent=self,
@@ -73,11 +95,12 @@ class WindowModel(BaseModel):
 
         for child in parsed_window.children:
             child: BaseParser
-            model_handler: Callable[[BaseModel, BaseParser], BaseModel]
+            model_handler: Callable[[BaseModel, BaseParser,
+                                     WinDialogState | None], BaseModel]
             model_handler = ElementHandler.get_model_handler(child.item)
             value_or_control = model_handler(self, child)
-            if clz._logger.isEnabledFor(DEBUG_V):
-                clz._logger.debug_v(f'value_or_control: {value_or_control}')
+            if my_logger.isEnabledFor(DEBUG_V):
+                my_logger.debug_v(f'value_or_control: {value_or_control}')
             if value_or_control is not None:
                 if (child.item.key in (ControlElement.CONTROLS.name,
                                        ControlElement.CONTROL.name)):
@@ -110,16 +133,6 @@ class WindowModel(BaseModel):
         """
         self._windialog_state = updated_value
 
-    # @property
-    # def windialog_state(self) -> WinDialogState:
-    #     return self._windialog_state
-
-    # @windialog_state.setter
-    # def windialog_state(self, windialog_state: WinDialogState) -> None:
-    #     clz = WindowModel
-    #     clz._logger.debug(f'super: {super().__class__.__name__}')
-    #     super().windialog_state = windialog_state
-
     def voice_control(self, stmts: Statements) -> bool:
         """
         Generate the speech for the window itself. Takes into account
@@ -146,7 +159,7 @@ class WindowModel(BaseModel):
         # such as when there is an interruption (focus change occurs before this
         # window info is announced, causing the window not being announced when
         # focus change announced).
-        clz._logger.debug(f'changed: {self.windialog_state.changed}')
+        my_logger.debug(f'changed: {self.windialog_state.changed}')
         if not self.windialog_state.window_changed:
             return False
         # TODO, incomplete
@@ -165,7 +178,7 @@ class WindowModel(BaseModel):
         topic: TopicModel = self.topic
         success = self.voice_control_name(stmts)
         if topic is not None:
-            clz._logger.debug(f'topic: {topic.name} real: {topic.is_real_topic} '
+            my_logger.debug(f'topic: {topic.name} real: {topic.is_real_topic} '
                               f'new: {topic.is_new_topic} type: {type(topic)}')
             if topic.is_real_topic and topic.is_new_topic:
                 topic: BaseTopicModel
@@ -217,10 +230,6 @@ class WindowModel(BaseModel):
 
         results.append('\nFinete')
         return '\n'.join(results)
-
-    @classmethod
-    def get_instance(cls) -> ForwardRef('WindowModel'):
-        return WindowModel()
 
     def is_visible(self) -> bool:
         return xbmc.getCondVisibility(f'Window.IsVisible({self.control_id})')

@@ -17,10 +17,14 @@ from common.setting_constants import Backends, Genders, PlayerMode
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class BaseServiceSettings:
+    """
+    Defines base settings inherited by all other services: engine, player, converter,
+    etc.
+    """
     backend_id = Services.TTS_SERVICE
     service_ID: str = Services.TTS_SERVICE
     displayName: str = 'TTS'
@@ -28,7 +32,6 @@ class BaseServiceSettings:
     inWavStreamMode = False
     interval = 100
     broken = False
-    _logger: BasicLogger = None
     initialized: bool = False
     tts_pitch_validator: TTSNumericValidator
     tts_pitch_validator = TTSNumericValidator(SettingsProperties.PITCH,
@@ -48,7 +51,8 @@ class BaseServiceSettings:
                                tts_volume_validator)
     tts_speed_validator: TTSNumericValidator
     tts_speed_validator = TTSNumericValidator(SettingsProperties.SPEED,
-                                              minimum=25, maximum=300,
+                                              minimum=50, maximum=200,
+                                              increment=10,
                                               default=100,
                                               is_decibels=False,
                                               is_integer=False,
@@ -81,8 +85,6 @@ class BaseServiceSettings:
         if BaseServiceSettings.initialized:
             return
         BaseServiceSettings.initialized = True
-        if clz._logger is None:
-            clz._logger = module_logger
         # Explicitly init this class. Self would initialize the self class
         BaseServiceSettings.init_settings()
         if not clz.global_settings_initialized:
@@ -108,7 +110,7 @@ class BaseServiceSettings:
 
     @classmethod
     def init_settings(cls):
-        cls._logger.debug(f'In init_settings')
+        MY_LOGGER.debug(f'In init_settings')
         '''
         pipe_validator: BoolValidator
         pipe_validator = BoolValidator(SettingsProperties.PIPE, cls.service_ID,
@@ -116,6 +118,16 @@ class BaseServiceSettings:
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PIPE,
                                    pipe_validator)
         '''
+        debug_log_level_val: IntValidator
+        debug_log_level_val = IntValidator(SettingsProperties.DEBUG_LOG_LEVEL,
+                                           Services.TTS_SERVICE,
+                                           min_value=0, max_value=5, default=4,
+                                           # INFO
+                                           step=1, scale_internal_to_external=1)
+        SettingsMap.define_setting(Services.TTS_SERVICE,
+                                   SettingsProperties.DEBUG_LOG_LEVEL,
+                                   debug_log_level_val)
+
         allowed_player_modes: List[str] = [
             PlayerMode.SLAVE_FILE.value,
             PlayerMode.FILE.value
@@ -128,6 +140,7 @@ class BaseServiceSettings:
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER_MODE,
                                    player_mode_validator)
 
+        # TODO: Change to use allowed_values  BackendInfo.getAvailableBackends()
         engine_id_validator = StringValidator(SettingsProperties.ENGINE,
                                               '',
                                               allowed_values=Backends.ALL_ENGINE_IDS,
@@ -162,7 +175,6 @@ class BaseServiceSettings:
                                    SettingsProperties.AUTO_ITEM_EXTRA_DELAY,
                                    auto_item_extra_delay_validator)
         '''
-        '''
         background_progress_validator: IntValidator
         background_progress_validator = IntValidator(
                 SettingsProperties.BACKGROUND_PROGRESS_INTERVAL, Services.TTS_SERVICE,
@@ -171,7 +183,23 @@ class BaseServiceSettings:
         SettingsMap.define_setting(Services.TTS_SERVICE,
                                    SettingsProperties.BACKGROUND_PROGRESS_INTERVAL,
                                    background_progress_validator)
-        '''
+
+        settings_digest: BoolValidator
+        settings_digest = BoolValidator(
+                SettingsProperties.SETTINGS_DIGEST, Services.TTS_SERVICE,
+                default=True)
+        SettingsMap.define_setting(Services.TTS_SERVICE,
+                                   SettingsProperties.SETTINGS_DIGEST,
+                                   settings_digest)
+
+        extended_help: BoolValidator
+        extended_help = BoolValidator(
+                SettingsProperties.EXTENDED_HELP_ON_STARTUP, Services.TTS_SERVICE,
+                default=True)
+        SettingsMap.define_setting(Services.TTS_SERVICE,
+                                   SettingsProperties.EXTENDED_HELP_ON_STARTUP,
+                                   extended_help)
+
         disable_broken_services: BoolValidator
         disable_broken_services = BoolValidator(
                 SettingsProperties.DISABLE_BROKEN_SERVICES, Services.TTS_SERVICE,
@@ -179,6 +207,7 @@ class BaseServiceSettings:
         SettingsMap.define_setting(Services.TTS_SERVICE,
                                    SettingsProperties.DISABLE_BROKEN_SERVICES,
                                    disable_broken_services)
+
         speak_background_progress: BoolValidator
         speak_background_progress = BoolValidator(
                 SettingsProperties.SPEAK_BACKGROUND_PROGRESS, Services.TTS_SERVICE,
@@ -186,14 +215,35 @@ class BaseServiceSettings:
         SettingsMap.define_setting(Services.TTS_SERVICE,
                                    SettingsProperties.SPEAK_BACKGROUND_PROGRESS,
                                    speak_background_progress)
+
         speak_during_media: BoolValidator
         speak_during_media = BoolValidator(
                 SettingsProperties.SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA,
                 Services.TTS_SERVICE,
                 default=False)
+
         SettingsMap.define_setting(Services.TTS_SERVICE,
                                    SettingsProperties.SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA,
                                    speak_during_media)
+
+        override_poll_interval_val: BoolValidator
+        override_poll_interval_val = BoolValidator(
+                SettingsProperties.OVERRIDE_POLL_INTERVAL, Services.TTS_SERVICE,
+                default=False)
+        SettingsMap.define_setting(Services.TTS_SERVICE,
+                                   SettingsProperties.OVERRIDE_POLL_INTERVAL,
+                                   override_poll_interval_val)
+
+        # Poll interval in milliseconds
+        poll_interval_val: IntValidator
+        poll_interval_val = IntValidator(SettingsProperties.POLL_INTERVAL,
+                                         Services.TTS_SERVICE,
+                                         min_value=0, max_value=1000, default=100,
+                                         step=1, scale_internal_to_external=1)
+        SettingsMap.define_setting(Services.TTS_SERVICE,
+                                   SettingsProperties.POLL_INTERVAL,
+                                   poll_interval_val)
+
         cache_path_val: StringValidator
         cache_path_val = StringValidator(SettingsProperties.CACHE_PATH,
                                          Services.TTS_SERVICE,
@@ -205,15 +255,6 @@ class BaseServiceSettings:
                                    SettingsProperties.CACHE_PATH,
                                    cache_path_val)
 
-        cache_expiration_val: IntValidator
-        cache_expiration_val = IntValidator(SettingsProperties.CACHE_EXPIRATION_DAYS,
-                                            Services.TTS_SERVICE,
-                                            min_value=0, max_value=3654,
-                                            default=365,
-                                            step=1, scale_internal_to_external=1)
-        SettingsMap.define_setting(Services.TTS_SERVICE,
-                                   SettingsProperties.CACHE_EXPIRATION_DAYS,
-                                   cache_expiration_val)
         override_poll_interval_val: BoolValidator
         override_poll_interval_val = BoolValidator(
                 SettingsProperties.OVERRIDE_POLL_INTERVAL, Services.TTS_SERVICE,
@@ -283,11 +324,27 @@ class BaseServiceSettings:
         SettingsMap.define_setting(Services.TTS_SERVICE, SettingsProperties.GENDER,
                                    gender_validator)
         gender_validator.set_tts_value(Genders.FEMALE)
-        cls._logger.debug(f'exiting init_settings')
 
+        hint_text_on_startup: BoolValidator
+        hint_text_on_startup = BoolValidator(
+                SettingsProperties.HINT_TEXT_ON_STARTUP, Services.TTS_SERVICE,
+                default=True)
+        SettingsMap.define_setting(Services.TTS_SERVICE,
+                                   SettingsProperties.HINT_TEXT_ON_STARTUP,
+                                   hint_text_on_startup)
 
-        # def register(self, what: Type[ITTSBackendBase]) -> None:
-        #     BaseServices.register(what)
+        version_val: StringValidator
+        version_val = StringValidator(SettingsProperties.VERSION, Services.TTS_SERVICE,
+                                      allowed_values=[],
+                                      min_length=5,
+                                      max_length=20,
+                                      default=None)
+        SettingsMap.define_setting(Services.TTS_SERVICE,
+                                   SettingsProperties.VERSION,
+                                   version_val)
+
+        MY_LOGGER.debug(f'exiting init_settings')
+
 
         @staticmethod
         def isSupportedOnPlatform():

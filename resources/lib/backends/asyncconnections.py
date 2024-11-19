@@ -62,8 +62,6 @@ class _AsyncHTTPResponse(http.client.HTTPResponse):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._logger = module_logger
-            self.__class__.__name__)  # type: BasicLogger
 
     def _read_status(self):
         ## Do non-blocking checks for server response until something arrives.

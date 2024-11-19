@@ -25,7 +25,7 @@ except ImportError:
 
 from common import *
 
-from backends.audio.sound_capabilties import ServiceType
+from backends.audio.sound_capabilities import ServiceType
 from backends.base import SimpleTTSBackend
 from backends.players.iplayer import IPlayer
 from backends.settings.i_validators import IValidator
@@ -34,7 +34,7 @@ from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import (ConstraintsValidator, NumericValidator,
                                           StringValidator)
-from cache.voicecache import VoiceCache
+from cache.voicecache import CacheEntryInfo, VoiceCache
 from common.constants import Constants, ReturnCode
 from common.exceptions import ExpiredException
 from common.logger import *
@@ -192,7 +192,7 @@ class PiperSpeechGenerator(ISpeechGenerator):
         while max_wait > 0:
             Monitor.exception_on_abort(timeout=0.1)
             max_wait -= 1
-            if phrase.exists():  # Background process started elsewhere may finish
+            if phrase.text_exists():  # Background process started elsewhere may finish
                 break
             if (self.get_rc() <= ReturnCode.MINOR_SAVE_FAIL or
                     KodiPlayerMonitor.instance().isPlaying()):
@@ -222,7 +222,7 @@ class PiperSpeechGenerator(ISpeechGenerator):
 
             original_phrase = kwargs.get('original_phrase', None)
             Monitor.exception_on_abort()
-            if original_phrase.exists():
+            if original_phrase.text_exists():
                 self.set_rc(ReturnCode.OK)
                 self.set_finished()
                 return  # Nothing to do
@@ -305,7 +305,7 @@ class PiperSpeechGenerator(ISpeechGenerator):
             ' ''
             if self.get_rc() == ReturnCode.OK:
                #  try:
-                    # if temp_file.exists() and temp_file.stat().st_size > 0:
+                    # if temp_file.text_exists() and temp_file.stat().st_size > 0:
                     #     temp_file.rename(cache_path)
                     #     original_phrase.set_exists(True)
                     #     clz._logger.debug(f'cache_file is: {str(cache_path)}')
@@ -315,7 +315,7 @@ class PiperSpeechGenerator(ISpeechGenerator):
                 except Exception as e:
                     clz._logger.exception('')
             else:
-                if temp_file.exists():
+                if temp_file.text_exists():
                     temp_file.unlink(True)
                 self.set_rc(ReturnCode.DOWNLOAD)
                 self.set_finished()
@@ -530,7 +530,7 @@ class PiperTTSBackend(SimpleTTSBackend):
     def runCommand(self, phrase: Phrase) -> bool:
         clz = type(self)
         #  clz._logger.debug(f'In runCommand')
-        # If caching disabled, then exists is always false. file_path
+        # If caching disabled, then text_exists is always false. file_path
         # always contains path to cached file, or path where to download to
         if self.stop_processing:
             if clz._logger.isEnabledFor(DEBUG):
@@ -541,11 +541,11 @@ class PiperTTSBackend(SimpleTTSBackend):
         voiced_text: bytes
         try:
             #  clz._logger.debug(f'phrase path: {str(phrase.get_cache_path)} '
-            #                    f'exists: {phrase.exists()}')
-            if phrase.get_cache_path() is None:
-                VoiceCache.get_path_to_voice_file(phrase,
+            #                    f'text_exists: {phrase.text_exists()}')
+            result: CacheEntryInfo
+            result = VoiceCache.get_path_to_voice_file(phrase,
                                                   use_cache=Settings.is_use_cache())
-            if not phrase.exists():
+            if not result.text_exists:
                 clz._logger.debug(f'phrase does NOT exist, calling generate')
 
                 results: ReturnCode = clz.generator.tts_generate(phrase)
@@ -554,8 +554,8 @@ class PiperTTSBackend(SimpleTTSBackend):
         except ExpiredException:
             clz._logger.debug(f'EXPIRED at engine')
             return False
-        #  clz._logger.debug(f'Returning from runCommand exists: {phrase.exists()}')
-        return phrase.exists()
+        #  clz._logger.debug(f'Returning from runCommand text_exists: {phrase.text_exists()}')
+        return phrase.text_exists()
 
     def runCommandAndPipe(self, phrase: Phrase):
         clz = type(self)
@@ -572,7 +572,7 @@ class PiperTTSBackend(SimpleTTSBackend):
         byte_stream: BinaryIO = None
         rc: int = -2
         try:
-            if not phrase.exists():
+            if not phrase.text_exists():
                 rc: ReturnCode = clz.generator.tts_generate(phrase)
 
             if self.stop_processing:
@@ -607,8 +607,9 @@ class PiperTTSBackend(SimpleTTSBackend):
             phrases = phrases.clone(check_expired=False)
             for phrase in phrases:
                 if Settings.is_use_cache():
-                    VoiceCache.get_path_to_voice_file(phrase, use_cache=True)
-                    if not phrase.exists():
+                    result: CacheEntryInfo
+                    result = VoiceCache.get_path_to_voice_file(phrase, use_cache=True)
+                    if not result.text_exists:
                         text_to_voice: str = phrase.get_text()
                         voice_file_path: pathlib.Path = phrase.get_cache_path()
                         clz._logger.debug_xv(f'PHRASE Text {text_to_voice}')
@@ -730,7 +731,7 @@ class PiperTTSBackend(SimpleTTSBackend):
 
     '''
     @classmethod
-    def negotiate_engine_config(cls, engine_id: str, player_volume_adjustable: bool,
+    def negotiate_engine_config(cls, service_id: str, player_volume_adjustable: bool,
                                 player_speed_adjustable: bool,
                                 player_pitch_adjustable: bool) -> Tuple[bool, bool, bool]:
         """

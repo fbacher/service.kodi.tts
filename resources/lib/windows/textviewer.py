@@ -12,14 +12,18 @@ from common.logger import BasicLogger
 from common.phrases import PhraseList
 
 from .base import WindowReaderBase
+from .window_state_monitor import WinDialogState
+
 module_logger = BasicLogger.get_logger(__name__)
 
 
 class TextViewerReader(WindowReaderBase):
     ID = 'textviewer'
 
-    def __init__(self) -> None:
-        # super.__init__()
+    def __init__(self, win_id=None, service: ForwardRef('TTSService') = None,
+                 windialog_state: WinDialogState = None) -> None:
+        cls = type(self)
+        super().__init__(win_id, service, windialog_state)
         self.start = time.time()
         self._last_md5sum: bytes = None
         self.doubleChecked: bool = False

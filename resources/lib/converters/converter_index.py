@@ -1,5 +1,7 @@
 from __future__ import annotations  # For union operator |
 
+from startup.bootstrap_converters import BootstrapConverters
+
 """
 Provides a means to access a Converter class by name. The map is built using dynamic
 code to invoke a Converter's register function which adds itself to the map. This

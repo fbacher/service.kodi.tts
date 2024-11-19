@@ -8,6 +8,7 @@ from gui.gui_globals import GuiGlobals
 from gui.parser.parse_topic import ParseTopic
 from gui.statements import Statement, Statements, StatementType
 from gui.topic_model import TopicModel
+from windows.window_state_monitor import WinDialogState
 
 module_logger = BasicLogger.get_logger(__name__)
 
@@ -68,7 +69,7 @@ class SpinexTopicModel(TopicModel):
             #  clz._logger.debug(f'No change: {value}')
             return False
         value_str: str = self.units.format_value(value)
-        stmts.append(Statement(PhraseList.create(texts=value_str),
+        stmts.append(Statement(PhraseList.create(texts=value_str, check_expired=False),
                                stmt_type=StatementType.VALUE))
         return True
 

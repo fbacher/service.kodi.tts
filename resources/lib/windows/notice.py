@@ -12,6 +12,7 @@ from common.messages import Messages
 from common.monitor import Monitor
 from utils import addoninfo
 from .base import WindowHandlerBase
+from .window_state_monitor import WinDialogState
 
 module_logger = BasicLogger.get_logger(__name__)
 
@@ -20,7 +21,8 @@ class NoticeDialog(WindowHandlerBase):
     ID = 'info'
 
     def __init__(self, win_id=None,
-                 service: ForwardRef('TTSService') = None) -> None:
+                 service: ForwardRef('TTSService') = None,
+                 windialog_state: WinDialogState = None) -> None:
         super().__init__(win_id, service)
         self.notices = []
         self._visible = True  # Pretend info was shown so we check stuff on startup

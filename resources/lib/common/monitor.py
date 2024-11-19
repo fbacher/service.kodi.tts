@@ -31,10 +31,14 @@ class Monitor(MinimalMonitor):
     """
         Provides a number of customizations to xbmc.monitor
 
-        MinimalMonitor exists simply to not drag in logging dependencies
+        MinimalMonitor text_exists simply to not drag in logging dependencies
         at startup.
     """
     FOREVER = 24 * 60 * 60 * 365  # A year, in seconds
+
+    # Give unique name to notification thread so that garbage collector can be
+    # happier
+    _thread_count: int = 0
 
     class NotificationMonitor(xbmc.Monitor):
 
@@ -108,13 +112,13 @@ class Monitor(MinimalMonitor):
     startup_complete_event: threading.Event = None
     _monitor_changes_in_settings_thread: threading.Thread = None
     _logger: BasicLogger = None
-    _notification_listeners: Dict[Callable[[None], None], str] = None
+    _notification_listeners: Dict[Callable[[Dict[str, Any]], None], str] = None
     _notification_listener_lock: threading.RLock = None
-    _screen_saver_listeners: Dict[Callable[[None], None], str] = None
+    _screen_saver_listeners: Dict[str, Callable[[Dict[str, Any]], None]] = None
     _screen_saver_listener_lock: threading.RLock = None
     _settings_changed_listeners: Dict[Callable[[None], None], str] = None
     _settings_changed_listener_lock: threading.RLock = None
-    _abort_listeners: Dict[Callable[[None], None], Tuple[str, bool]] = None
+    _abort_listeners: Dict[Callable[[None], None], str] = None
     _abort_listener_lock: threading.RLock = None
     _abort_listeners_informed: bool = False
     #  _wait_return_count_map: Dict[str, int] = {}  # thread_id, returns from wait
@@ -141,7 +145,7 @@ class Monitor(MinimalMonitor):
             cls._screen_saver_listener_lock = threading.RLock()
             cls._settings_changed_listeners = {}
             cls._settings_changed_listener_lock = threading.RLock()
-            cls._abort_listeners: Dict[Callable[[None], None], Tuple[str, bool]] = {}
+            cls._abort_listeners: Dict[Callable[[None], None], str] = {}
             cls._abort_listener_lock = threading.RLock()
             cls._abort_listeners_informed: bool = False
             cls._notification_listeners = {}
@@ -190,7 +194,7 @@ class Monitor(MinimalMonitor):
 
             changed = False
             change_record = dict()
-            if not os.path.exists(change_file):
+            if not os.path.text_exists(change_file):
                 changed = True
             else:
                 if not os.access(change_file, os.R_OK | os.W_OK):
@@ -311,13 +315,17 @@ class Monitor(MinimalMonitor):
         '''
 
     @classmethod
-    def runInThread(cls, func: Callable, args: List[Any] = [], name: str = '?',
+    def runInThread(cls, func: Callable, args: List[Any] = None, name: str = '?',
                     delay: float = 0.0, **kwargs) -> None:
+        cls._thread_count += 1
         import threading
-        thread = threading.Thread(target=cls.thread_wrapper, name=f'MonHlpr: {name}',
+        if args is None:
+            args = []
+        thread = threading.Thread(target=cls.thread_wrapper,
+                                  name=f'MonHlpr_{cls._thread_count}:{name}',
                                   args=args, kwargs={'target': func,
-                                                     'delay' : delay, **kwargs})
-        xbmc.log(f'util.runInThread starting thread {name}', xbmc.LOGINFO)
+                                                     'delay': delay, **kwargs})
+        xbmc.log(f'monitor.runInThread starting thread {name}', xbmc.LOGINFO)
         thread.start()
         from common.garbage_collector import GarbageCollector
         GarbageCollector.add_thread(thread)
@@ -338,9 +346,9 @@ class Monitor(MinimalMonitor):
 
     @classmethod
     def get_listener_name(cls,
-                          listener: Callable[[None], None],
+                          listener: Callable[[Dict[str, Any] | None], None],
                           name: str = None) -> str:
-        listener_name: str = 'unknown'
+        listener_name: str | None = None
         if name is not None:
             listener_name = name
         elif hasattr(listener, '__name__'):
@@ -353,12 +361,14 @@ class Monitor(MinimalMonitor):
                 listener_name = listener.name
             except:
                 pass
-
+        if listener_name is None:
+            raise ValueError('No listener name specified, nor does listener have '
+                             '__name__ or name attribute')
         return listener_name
 
     @classmethod
     def register_screensaver_listener(cls,
-                                      listener: Callable[[None], None],
+                                      listener: Callable[[Dict[str, Any]], None],
                                       name: str = None) -> None:
         """
 
@@ -370,21 +380,31 @@ class Monitor(MinimalMonitor):
             if not (cls.is_abort_requested()
                     or listener in cls._screen_saver_listeners):
                 listener_name = cls.get_listener_name(listener, name)
-
-                cls._screen_saver_listeners[listener] = listener_name
+                if listener_name in cls._screen_saver_listeners.keys():
+                    raise ValueError(f'Duplicate listener with name: {listener_name}')
+                cls._screen_saver_listeners[listener_name] = listener
 
     @classmethod
     def unregister_screensaver_listener(cls,
-                                        listener: Callable[[None], None]) -> None:
+                                        listener: Callable[[Dict[str, Any]], None],
+                                        name: str | None = None) -> None:
         """
+        Unregisters a screensaver_listener previously registered by
+        register_screensaver_listener.
+        Like register_screensaver_listener, if name is not specified the listener
+        MUST have a __name__ or name attribute.
 
         :param listener:
+        :param name: Same name as used for register_screensaver_listner, or None
         :return:
         """
         with cls._screen_saver_listener_lock:
+            listener_name = cls.get_listener_name(listener, name)
+            if listener_name in cls._screen_saver_listeners.keys():
+                raise ValueError(f'Duplicate listener with name: {listener_name}')
             try:
                 if listener in cls._screen_saver_listeners:
-                    del cls._screen_saver_listeners[listener]
+                    del cls._screen_saver_listeners[listener_name]
             except ValueError:
                 pass
 
@@ -424,14 +444,15 @@ class Monitor(MinimalMonitor):
     def register_abort_listener(cls,
                                 listener: Callable[[None], None],
                                 name: str = None,
-                                garbage_collect: bool = True) -> None:
+                                thread: threading.thread | None = None) -> None:
         """
+        Registers a listener to be informed of an abort/shutdown.
+        Before the listener is called, any non-None thread is checked to see
+        if it is still alive.
 
         :param listener:
         :param name:
-        :param garbage_collect: Have the garbage collector run after calling
-                        listener. (May prevent hang when trying to
-                        garbage collect twice).
+        :param thread: thread to verify that it is alive prior to calling
         :return:
 
         TODO: Fix the garbage collect hang problem.
@@ -441,7 +462,7 @@ class Monitor(MinimalMonitor):
                     or listener in cls._abort_listeners):
                 listener_name = cls.get_listener_name(listener, name)
 
-                cls._abort_listeners[listener] = (listener_name, garbage_collect)
+                cls._abort_listeners[listener] = listener_name
             else:
                 raise AbortException()
 
@@ -453,7 +474,7 @@ class Monitor(MinimalMonitor):
         :param listener:
         :return:
 
-        TODO: Fix the garbage collect prolem
+        TODO: Fix the garbage collect problem
         """
         with cls._abort_listener_lock:
             try:
@@ -487,18 +508,9 @@ class Monitor(MinimalMonitor):
             cls._abort_listeners.clear()  # Unregister all
             cls._abort_listeners_informed = True
 
-        for listener, listener_data in listeners_copy.items():
+        for listener, listener_name in listeners_copy.items():
             # noinspection PyTypeChecker
             listener_name: str
-            garbage_collect: bool
-            listener_name, garbage_collect = listener_data
-            '''
-            if garbage_collect:
-                xbmc.log(f'Skipping calling abort listener and garbage collect '
-                         f'Due to "garbage_collect=False"')
-            else:
-                xbmc.log(f'Starting abort listener: {listener_name} {listener}')
-            '''
             thread = threading.Thread(
                     target=cls._listener_wrapper, name=listener_name,
                     args=(), kwargs={'listener': listener})
@@ -507,12 +519,18 @@ class Monitor(MinimalMonitor):
             from common.garbage_collector import GarbageCollector
             GarbageCollector.add_thread(thread)
 
+        xbmc.log(f'SHUTDOWN finished informing threads of shutdown')
         cls.startup_complete_event.set()
+        xbmc.log(f'SHUTDOWN startup_complete_event.set')
         with cls._settings_changed_listener_lock:
+            xbmc.log(f'SHUTDOWN about to clear settings_changed_listeners')
             cls._settings_changed_listeners.clear()
+        xbmc.log(f'SHUTDOWN finished settings_changed_listeners.clear()')
 
         with cls._screen_saver_listener_lock:
+            xbmc.log(f'SHUTDOWN About to clear screen_saver_listeners')
             cls._screen_saver_listeners.clear()
+        xbmc.log(f'SHUTDOWN LISTENER FINISHED')
 
     @classmethod
     def _listener_wrapper(cls, listener):
@@ -614,7 +632,7 @@ class Monitor(MinimalMonitor):
 
     @classmethod
     def register_notification_listener(cls,
-                                       listener: Callable[[str, str, str], None],
+                                       listener: Callable[[Dict[str, Any]], None],
                                        name: str = None) -> None:
         """
 
@@ -632,8 +650,11 @@ class Monitor(MinimalMonitor):
                                        sender: str, method: str,
                                        data: str = None) -> None:
         """
-
-        :param activated:
+        Relays several "on" events: onNotification, onScreensaver*, onClean*,
+        and onScan*.
+        :param sender: Tags the message source. Usually ignored
+        :param method: Tags the message type, informs how to process
+        :param data: Holds the content of the message. May be json, or plain text
         :return:
         """
 
@@ -642,7 +663,7 @@ class Monitor(MinimalMonitor):
             if cls.is_abort_requested():
                 cls._notification_listeners.clear()
 
-        if cls._logger.isEnabledFor(DEBUG_XV):
+        if cls._logger.isEnabledFor(DEBUG_V):
             cls._logger.debug_v(f'Notification received sender: {sender}'
                                       f' method: {method} data: {data}')
         for listener, listener_name in listeners_copy.items():
@@ -675,7 +696,7 @@ class Monitor(MinimalMonitor):
         #  Use xbmc wait for long timeouts so that the wait time is better
         #  shared with other threads, etc.
 
-        if timeout is None or timeout < 0.0 or timeout > 0.2:
+        if timeout is None or 0.0 < timeout > 0.2:
             abort = self.real_waitForAbort(timeout=timeout)
         else:
             abort = clz._abort_received.wait(timeout=timeout)

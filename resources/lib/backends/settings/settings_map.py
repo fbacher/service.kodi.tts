@@ -190,7 +190,8 @@ class SettingsMap:
         :param service_id: Specifies the service: 'engine', 'player', etc. When
         the property has no service, then the service is 'tts'
         :param property_id: Specifies the property: volume, cache-path, etc.
-        :param validator: If None, then the
+        :param validator: If None, then the setting is NOT supported and any
+                          prior definition is removed.
         """
         # cls._logger.debug(f'DEFINE settings for {service_id} property: {property_id} '
         #                   f'validator: {type(validator)}')

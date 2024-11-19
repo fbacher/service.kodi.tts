@@ -13,20 +13,18 @@ from gui.interfaces import IWindowStructure
 from gui.parser.parse_topic import ParseTopic
 from windows.window_state_monitor import WinDialogState
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class BaseTopicModel:
     """
 
     """
-    _logger: BasicLogger = module_logger  # None
     item: Item = control_elements[BAT.TOPIC]
 
     def __init__(self, parent: BaseModel,
                  parsed_topic: ParseTopic | None, rank: int = 0,
                  real_topic: bool = True) -> None:
-        clz = BaseTopicModel
 
         # Glue this node to it's parent BaseModel
 
@@ -34,9 +32,6 @@ class BaseTopicModel:
         self.is_real_topic: bool = real_topic
         self.is_new_topic: bool = True
         self._name: str = parent.tree_id
-        if clz._logger is None:
-            clz._logger = module_logger
-
         if parsed_topic is None:
 
             # Mark as a TopicModel. Used in BaseModel
@@ -148,11 +143,11 @@ class BaseTopicModel:
 
         :return:
         """
-        return self.parent.windialog_state
+        return self.parent.window_model.windialog_state
 
-    @windialog_state.setter
-    def windialog_state(self, updated_state: WinDialogState) -> None:
-        self.parent.windialog_state = updated_state
+    #  @windialog_state.setter
+    #  def windialog_state(self, updated_state: WinDialogState) -> None:
+    #      self.parent.window_model.windialog_state = updated_state
 
     @property
     def window_struct(self) -> IWindowStructure:

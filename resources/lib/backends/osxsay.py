@@ -72,7 +72,7 @@ class OSXSayTTSBackend_Internal(ThreadedTTSBackend):
     def getWavStream(self, text):
         wav_path = os.path.join(utils.getTmpfs(), 'speech.wav')
         subprocess.call(['say', '-o', wav_path,
-                         '--file-format', 'WAVE', '--data-format', 'LEI16@22050', text],
+                         '--file-format', 'WAV', '--data-format', 'LEI16@22050', text],
                         universal_newlines=True)
         return open(wav_path, 'rb')
 
@@ -167,7 +167,7 @@ class OSXSayTTSBackend(ThreadedTTSBackend):
     def getWavStream(self, text):
         wav_path = os.path.join(utils.getTmpfs(), 'speech.wav')
         subprocess.call(['say', '-o', wav_path,
-                         '--file-format', 'WAVE', '--data-format', 'LEI16@22050',
+                         '--file-format', 'WAV', '--data-format', 'LEI16@22050',
                          text], universal_newlines=True)
         return open(wav_path, 'rb')
 

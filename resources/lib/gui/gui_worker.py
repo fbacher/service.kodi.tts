@@ -334,7 +334,9 @@ class GuiWorker:
         if focused_topic is not None:
             focused_topic_id = focused_topic.name
             if clz._logger.isEnabledFor(DEBUG_V):
-                clz._logger.debug_v(f'focused_topic: {focused_topic_id} ')
+                clz._logger.debug_v(f'focused_topic: {focused_topic_id} '
+                                    f'require_focus_change: '
+                                    f'{GuiGlobals.require_focus_change}')
         else:
             pass
             if clz._logger.isEnabledFor(DEBUG):
@@ -412,7 +414,8 @@ class GuiWorker:
             # From there see if there is a topic with a neighboring controlId
             control_model: ForwardRef('BaseModel')
             topic: TopicModel
-            control_model, topic = window_struct.get_topic_for_id(focused_topic_id)
+            control_model, topic = window_struct.get_control_and_topic_for_id(
+                    focused_topic_id)
             # Fake topics are created for controls which have no <topic> in the
             # xml. Can't use them for this purpose.
             if topic is None or not topic.is_real_topic:
@@ -425,7 +428,8 @@ class GuiWorker:
                 return []
             if clz._logger.isEnabledFor(DEBUG_V):
                 clz._logger.debug_v(f'focus_changed: {focus_changed} '
-                                    f'focused topic: {topic.name}')
+                                    f'focused topic: {topic.name} '
+                                    f'control_id: {control_model.control_id}')
         if not focus_changed:
             current_focus_chain.append(topic)
             return current_focus_chain
@@ -440,7 +444,7 @@ class GuiWorker:
                 clz._logger.debug_v(f'topic: {topic.name} ctrl: '
                                           f'{topic.parent.control_id} '
                                           f'outer_topic: {topic.outer_topic}')
-            topic = window_struct.get_topic_by_topic_name(topic.outer_topic)
+            control, topic = window_struct.get_control_and_topic_for_id(topic.outer_topic)
 
         # Reverse to make head of list the first thing to voice (window header)
         current_focus_chain = list(reversed(current_focus_chain))

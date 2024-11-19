@@ -21,26 +21,24 @@ from utils import util
 from windows.ui_constants import AltCtrlType, UIConstants
 from windows.window_state_monitor import WinDialogState
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class BaseModel(IModel):
 
-    _logger: BasicLogger = module_logger
-
     def __init__(self, window_model: ForwardRef('BaseModel'),
-                 parser: BaseParser) -> None:
+                 parser: BaseParser, windialog_state: WinDialogState | None) -> None:
+        super().__init__()
         clz = BaseModel
-        if clz._logger is None:
-            clz._logger = module_logger
 
-        self._windialog_state: WinDialogState | None = None
+        MY_LOGGER.debug(f'Entering BaseModel Parser: {type(parser)}')
         self._window_model: ForwardRef('WindowModel') = window_model
+
         self._control_id: int = parser.control_id
         #  self._window_id: int | None = None
         self._window_struct: IWindowStructure = None
         self._control_type: ControlElement = parser.control_type
-        #  clz._logger.debug(f'initial control_type: {self._control_type} '
+        #  MY_LOGGER.debug(f'initial control_type: {self._control_type} '
         #                   f'control_id: {self._control_id}')
         self._tree_id: str = f'JUNK'
         self._topic: ForwardRef('TopicModel') = None
@@ -61,20 +59,25 @@ class BaseModel(IModel):
     @property
     def control_id(self) -> int:
         clz = type(self)
-        # clz._logger.debug(f'self: {self.__class__.__name__} '
+        # MY_LOGGER.debug(f'self: {self.__class__.__name__} '
         #                   f'control_id: {self._control_id}')
         return self._control_id
 
     @property
     def window_id(self) -> int:
-        return self.windialog_state.window_id
+        return self.window_model.windialog_state.window_id
 
     @property
     def window_struct(self) -> IWindowStructure:
-        return self._window_model.window_struct
+        MY_LOGGER.debug(f'_window_model: {self._window_model is None}')
+        return self.window_model.window_struct
 
     @property
     def windialog_state(self) -> WinDialogState:
+        MY_LOGGER.debug(f'window_model is None: {self._window_model is None}')
+        if self._window_model is not None:
+            MY_LOGGER.debug(f'windialog_state is None:'
+                            f' {self._window_model.windialog_state is None}')
         return self._window_model.windialog_state
 
     # @property
@@ -126,7 +129,7 @@ class BaseModel(IModel):
         """
         Some controls, such as RadioButton, support a boolean value
         (on/off, disabled/enabled, True/False, etc.). Such controls
-        Use the value "(*)" to indicate True and "()" to indicate False.
+        Use the value "(*)" to indicate True and "( )" to indicate False.
         :return:
         """
         return False
@@ -141,7 +144,7 @@ class BaseModel(IModel):
             true_msg = self.topic.true_value
         else:
             true_msg = MessageUtils.get_msg(self.default_true_msg_id)
-        clz._logger.debug(f'true_msg: {true_msg}')
+        MY_LOGGER.debug(f'true_msg: {true_msg}')
         return true_msg
 
     @property
@@ -156,7 +159,7 @@ class BaseModel(IModel):
         return false_msg
 
     @property
-    def supports_label_heading(self) -> bool:
+    def supports_heading_label(self) -> bool:
         """
             A control that defaults to using its label as a heading
         :return:
@@ -224,6 +227,16 @@ class BaseModel(IModel):
         return False
 
     @property
+    def supports_item_number(self) -> bool:
+        """
+            Indicates if the control supports reporting the current item number.
+            The list control is not capable of these, although it supports
+            item_count.
+        :return:
+        """
+        return False
+
+    @property
     def supports_change_without_focus_change(self) -> bool:
         """
             Indicates if the control supports changes that can occur without
@@ -242,7 +255,7 @@ class BaseModel(IModel):
     def topic(self, new_topic: ForwardRef('BaseTopicModel')):
         clz = ForwardRef('BaseModel')
         """
-        clz._logger.debug(f'self: {self.__class__.__name__} '
+        MY_LOGGER.debug(f'self: {self.__class__.__name__} '
                           f'parent: {self.parent.__class__.__name__} '
                           f'control_id: {self.parent.control_id} '
                           f'new_value: {new_control_id}')
@@ -265,7 +278,7 @@ class BaseModel(IModel):
 
     @property
     def focus_changed(self) -> bool:
-        return self.windialog_state.focus_changed
+        return self.window_model.windialog_state.focus_changed
 
     @property
     def control_type(self) -> ControlElement:
@@ -299,7 +312,7 @@ class BaseModel(IModel):
     @control_id.setter
     def control_id(self, new_control_id):
         clz = type(self)
-        clz._logger.debug(f'self: {self.__class__.__name__} '
+        MY_LOGGER.debug(f'self: {self.__class__.__name__} '
                           f'parent: {self.parent.__class__.__name__} '
                           f'control_id: {self.parent.control_id} '
                           f'new_value: {new_control_id}')
@@ -323,7 +336,7 @@ class BaseModel(IModel):
         :param stmts:
         :return:
         """
-        if not self.supports_label_heading:
+        if not self.supports_heading_label:
             return False
         return self.voice_label(stmts)
 
@@ -348,14 +361,14 @@ class BaseModel(IModel):
             control_type: AltCtrlType
             control_type = AltCtrlType.get_default_alt_ctrl_type(self.control_type)
             control_name = Messages.get_msg_by_id(control_type.value)
-            clz._logger.debug(f'control_name: {control_name}')
+            MY_LOGGER.debug(f'control_name: {control_name}')
         return control_name
 
     def voice_control_name(self, stmts: Statements) -> bool:
         clz = BaseModel
         success: bool = False
         control_name: str = self.get_control_name()
-        stmts.last.phrases.append(Phrase(text=control_name))
+        stmts.last.phrases.append(Phrase(text=control_name, check_expired=False))
         return success
 
     def voice_control_heading(self, stmts: Statements) -> bool:
@@ -448,33 +461,34 @@ class BaseModel(IModel):
         # Needs work
         clz = BaseModel
         success: bool = False
-        clz._logger.debug(f'In voice_labeled_by')
+        MY_LOGGER.debug(f'In voice_labeled_by')
         if self.topic.labeled_by_expr != '':
             control_id: int = util.get_non_negative_int(self.topic.labeled_by_expr)
             if control_id == -1:
-                clz._logger.debug(
+                MY_LOGGER.debug(
                     f"Can't find labeled by for {self.topic.labeled_by_expr}")
                 return False
             label_cntrl: BaseModel
             label_cntrl = self.window_model.get_control_model(control_id)
             label_cntrl: ForwardRef('LabelModel')
-            if clz._logger.isEnabledFor(DEBUG_V):
-                clz._logger.debug_v(f'labeled_by: {self.topic.labeled_by_expr}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'labeled_by: {self.topic.labeled_by_expr}')
             if label_cntrl is not None:
                 control_type: ControlElement = label_cntrl.control_type
-                if clz._logger.isEnabledFor(DEBUG_V):
-                    clz._logger.debug_v(f'label_cntrl: {control_type}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'label_cntrl: {control_type}')
                 if label_cntrl.control_type != ControlElement.LABEL_CONTROL:
                     success = label_cntrl.voice_labels(stmts)  # Label and Label 2
                 else:
                     success = label_cntrl.voice_label(stmts)
-        if clz._logger.isEnabledFor(DEBUG):
-            clz._logger.debug(f'{stmts.last.phrases}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'{stmts.last.phrases}')
         return success
 
     def voice_heading_without_topic(self, stmts: Statements) -> bool:
         stmts.last.phrases.append(
-                Phrase(text='voice_heading_without_topic not implemented'))
+                Phrase(text='voice_heading_without_topic not implemented',
+                       check_expired=False))
         return True
 
     def voice_labels(self, stmts: Statements, voice_label: bool = True,
@@ -500,7 +514,7 @@ class BaseModel(IModel):
             except ValueError as e:
                 success = False
             except Exception:
-                clz._logger.exception('')
+                MY_LOGGER.exception('')
         return success
 
     def voice_label(self, stmts: Statements,
@@ -520,8 +534,8 @@ class BaseModel(IModel):
         control_id: int = self.control_id
         if control_id_expr is None:
             control_id_expr = str(self.control_id)
-        if clz._logger.isEnabledFor(DEBUG):
-            clz._logger.debug(f'control_id_expr: {control_id_expr}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'control_id_expr: {control_id_expr}')
         if control_id != -1:
             try:
                 success = self.voice_label_ll(stmts, label_expr=control_id_expr,
@@ -529,7 +543,7 @@ class BaseModel(IModel):
             except ValueError as e:
                 success = False
             except Exception:
-                clz._logger.exception('')
+                MY_LOGGER.exception('')
         return success
 
     def voice_label2(self, stmts: Statements,
@@ -550,10 +564,10 @@ class BaseModel(IModel):
             try:
                 query: str = f'Control.GetLabel({control_id}.index(1))'
                 text: str = xbmc.getInfoLabel(query)
-                if clz._logger.isEnabledFor(DEBUG):
-                    clz._logger.debug(f'Text: {text}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'Text: {text}')
                 if text != '':
-                    stmts.last.phrases.append(Phrase(text=text))
+                    stmts.last.phrases.append(Phrase(text=text, check_expired=False))
                     success = True
             except ValueError as e:
                 success = False
@@ -581,8 +595,8 @@ class BaseModel(IModel):
         control_id: int = self.control_id
         if control_id_expr is None:
             control_id_expr = str(self.control_id)
-        if clz._logger.isEnabledFor(DEBUG):
-            clz._logger.debug(f'control_id_expr: {control_id_expr}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'control_id_expr: {control_id_expr}')
         if control_id != -1:
             try:
                 success = self.voice_label_ll(stmts, label_expr=control_id_expr,
@@ -590,7 +604,7 @@ class BaseModel(IModel):
             except ValueError as e:
                 success = False
             except Exception:
-                clz._logger.exception('')
+                MY_LOGGER.exception('')
         return success
 
     def voice_label2_value(self, stmts: Statements,
@@ -603,12 +617,6 @@ class BaseModel(IModel):
         :param control_id_expr:
         :param stmt_type:
         :return:
-        """
-        """
-        :param stmts: 
-        :param control_id_expr: 
-        :param stmt_type: 
-        :return: 
         """
         clz = BaseModel
         # Control ID should be an integer
@@ -623,27 +631,27 @@ class BaseModel(IModel):
                 query: str = f'Control.GetLabel({control_id}.index(1))'
                 text: str = xbmc.getInfoLabel(query)
                 bool_text: str = ''
-                if clz._logger.isEnabledFor(DEBUG):
-                    clz._logger.debug(f'Text: {text}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'Text: {text}')
                 if text != '':
                     if self.supports_boolean_value:
                         is_true: bool
                         new_text: str
                         is_true, new_text = self.is_true(text)
-                        clz._logger.debug(f'is_true: {is_true}')
+                        MY_LOGGER.debug(f'is_true: {is_true}')
                         if is_true is not None:
                             if is_true:
                                 bool_text = self.true_value
                             else:
                                 bool_text = self.false_value
-                    clz._logger.debug(f'bool_text: {bool_text}')
+                    MY_LOGGER.debug(f'bool_text: {bool_text}')
                     stmt: Statement = Statement(
-                            PhraseList.create(texts=bool_text),
+                            PhraseList.create(texts=bool_text, check_expired=False),
                             stmt_type=stmt_type)
                     stmts.append(stmt)
                     success = True
             except ValueError as e:
-                clz._logger.exception('')
+                MY_LOGGER.exception('')
                 success = False
         return success
 
@@ -660,8 +668,8 @@ class BaseModel(IModel):
         """
         success: bool = False
         clz = BaseModel
-        if clz._logger.isEnabledFor(DISABLED):
-            clz._logger.debug_v(f'control_id: {control_id} self.control_id: {self.control_id}')
+        if MY_LOGGER.isEnabledFor(DISABLED):
+            MY_LOGGER.debug_v(f'control_id: {control_id} self.control_id: {self.control_id}')
         if control_id is None:
             control_id = self.control_id
 
@@ -670,8 +678,8 @@ class BaseModel(IModel):
             label_1 = False
         success = self.voice_label_ll(stmts, label_expr=str(control_id),
                                       label_1=label_1, label_2=True)
-        if clz._logger.isEnabledFor(DEBUG_V):
-            clz._logger.debug_v(f'{stmts.last.phrases}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'{stmts.last.phrases}')
         return success
 
     def visible_item_count(self) -> int:
@@ -681,7 +689,7 @@ class BaseModel(IModel):
         # Can specify the control_id, but assume we have focus
         container_id: str = f'{self.control_id}'
         num_items_str: str = xbmc.getInfoLabel(f'Container({container_id}).NumItems')
-        #  clz._logger.debug(f'num_items_str: {num_items_str}')
+        #  MY_LOGGER.debug(f'num_items_str: {num_items_str}')
         if num_items_str.isdigit():
             return int(num_items_str)
         return -1
@@ -705,30 +713,30 @@ class BaseModel(IModel):
                     text = MessageUtils.get_msg_by_id(label_num)
                     return text
                 else:
-                    clz._logger.debug(f'ERROR: expected $LOCALIZE to contain '
+                    MY_LOGGER.debug(f'ERROR: expected $LOCALIZE to contain '
                                       f'a number not: {label_expr}')
                     return ''
         except ValueError:
-            clz._logger.exception('')
+            MY_LOGGER.exception('')
             return ''
 
         if label_expr.startswith('$INFO['):
             label_expr = label_expr[6:-1]
         try:
             text = xbmc.getInfoLabel(f'{label_expr}')
-            if clz._logger.isEnabledFor(DEBUG):
-                clz._logger.debug(f'label_expr: {label_expr} = {text}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'label_expr: {label_expr} = {text}')
         except ValueError as e:
-            clz._logger.exception('')
+            MY_LOGGER.exception('')
             text = ''
 
         '''
         if text == '':
             text = CriticalSettings.ADDON.getInfoLabel(label_expr)
-            clz._logger.debug(f'label_expr: {label_expr} = {text}')
+            MY_LOGGER.debug(f'label_expr: {label_expr} = {text}')
         '''
         if text == '':
-            clz._logger.debug(f'Failed to get label_expr {label_expr}')
+            MY_LOGGER.debug(f'Failed to get label_expr {label_expr}')
             return None
         return text
 
@@ -746,7 +754,7 @@ class BaseModel(IModel):
             f'Container({container_id}).CurrentItem')
         position_0: str = xbmc.getInfoLabel(f'Container({container_id}).Position(0)')
         has_focus_1: str = xbmc.getInfoLabel(f'Container({container_id}).HasFocus(1)')
-        clz._logger.debug(f'pos_str: {pos_str}'
+        MY_LOGGER.debug(f'pos_str: {pos_str}'
                           f' num_items: {num_items_str}'
                           f' num_all_items: {num_all_items_str}'
                           f' num_non_folder_items: {num_non_folder_items}'
@@ -759,7 +767,7 @@ class BaseModel(IModel):
         item_count = 0
         for child in self.children:
             child: BaseModel
-            clz._logger.debug(f'count: {item_count} child: {child.control_id} '
+            MY_LOGGER.debug(f'count: {item_count} child: {child.control_id} '
                               f'topic: {child.topic} visible: {child.is_visible()}')
             if child.is_visible():
                 item_count += 1
@@ -769,7 +777,7 @@ class BaseModel(IModel):
     def is_true(self, text: str) -> Tuple[bool | None, str]:
         """
         Inspects text to see if it has Kodi's encoded boolean value at the end.
-        '(*)' is True while '()' is False. RadioButton returns an encoded bool
+        '(*)' is True while '( )' is False. RadioButton returns an encoded bool
         in its Label2 value (even when the radiobutton is zero size).
 
         :param text: Text to examine
@@ -783,7 +791,7 @@ class BaseModel(IModel):
         value: bool | None = None
         if text.endswith(')'):  # Skip this most of the time
             # For boolean settings
-            if text.endswith('()'):
+            if text.endswith('( )'):
                 text = text[0:-4]
                 value = False
             elif text.endswith('(*)'):
@@ -797,7 +805,7 @@ class BaseModel(IModel):
             # WindowModel.control_id is the Window ID. We can't set the
             # window id using CondVisibility. Grrr
 
-            #  clz._logger.debug(f'is_visible control_id: {self.control_id}')
+            #  MY_LOGGER.debug(f'is_visible control_id: {self.control_id}')
             return xbmc.getCondVisibility(f'Control.IsVisible({self.control_id})')
 
             # Can not use this on all control types (GroupList is one that blows up)
@@ -824,7 +832,7 @@ class BaseModel(IModel):
         :return:
         """
         control: xbmcgui.Control
-        control = self.windialog_state.window_instance.getControl(iControlId)
+        control = self.window_model.windialog_state.window_instance.getControl(iControlId)
         control: xbmcgui.ControlButton
         return control
 
@@ -835,7 +843,7 @@ class BaseModel(IModel):
         :return:
         """
         control: xbmcgui.Control
-        control = self.windialog_state.window_instance.getControl(iControlId)
+        control = self.window_model.windialog_state.window_instance.getControl(iControlId)
         control: xbmcgui.ControlEdit
         return control
 
@@ -846,7 +854,7 @@ class BaseModel(IModel):
         :return:
         """
         control: xbmcgui.Control
-        control = self.windialog_state.window_instance.getControl(iControlId)
+        control = self.window_model.windialog_state.window_instance.getControl(iControlId)
         control: xbmcgui.ControlGroup
         return control
 
@@ -857,7 +865,7 @@ class BaseModel(IModel):
         :return:
         """
         control: xbmcgui.Control
-        control = self.windialog_state.window_instance.getControl(iControlId)
+        control = self.window_model.windialog_state.window_instance.getControl(iControlId)
         control: xbmcgui.ControlLabel
         return control
 
@@ -868,7 +876,7 @@ class BaseModel(IModel):
         :return:
         """
         control: xbmcgui.Control
-        control = self.windialog_state.window_instance.getControl(iControlId)
+        control = self.window_model.windialog_state.window_instance.getControl(iControlId)
         control: xbmcgui.ControlRadioButton
         return control
 
@@ -879,7 +887,7 @@ class BaseModel(IModel):
         :return:
         """
         control: xbmcgui.Control
-        control = self.windialog_state.window_instance.getControl(iControlId)
+        control = self.window_model.windialog_state.window_instance.getControl(iControlId)
         control: xbmcgui.ControlSlider
         return control
 
@@ -908,14 +916,14 @@ class BaseModel(IModel):
     def get_control(self, control_id: int) -> xbmcgui.Control:
         clz = BaseModel
         window: xbmcgui.Window | xbmcgui.WindowDialog = self.window_model.win_or_dialog
-        clz._logger.debug(f'control_id: {control_id}')
+        MY_LOGGER.debug(f'control_id: {control_id}')
         control: xbmcgui.Control = window.getControl(control_id)
-        # clz._logger.debug(f'control: {control}')
+        # MY_LOGGER.debug(f'control: {control}')
         return control
 
     def get_label_control(self, control_id: int) -> xbmcgui.ControlLabel:
         clz = BaseModel
-        clz._logger.debug(f'control_id: {control_id}')
+        MY_LOGGER.debug(f'control_id: {control_id}')
         control: xbmcgui.Control
         control = self.get_control(control_id)
         control: xbmcgui.ControlLabel
@@ -923,12 +931,12 @@ class BaseModel(IModel):
 
     def get_button_control(self, control_id: int) -> xbmcgui.ControlButton | None:
         clz = BaseModel
-        clz._logger.debug(f'control_id: {control_id}')
+        MY_LOGGER.debug(f'control_id: {control_id}')
         control: xbmcgui.Control
         try:
             control = self.get_control(control_id)
         except Exception as e:
-            clz._logger.exception('')
+            MY_LOGGER.exception('')
             control = None
         control: xbmcgui.ControlButton
         return control
@@ -962,11 +970,11 @@ class BaseModel(IModel):
             Converts a label expression which may be a simple integer string
             or an infoList expression, etc.
 
-        :param stmts Any resulting label or list item text is added to phrases
+        :param stmts Any resulting label or list item text is added to this
         :param label_expr: used for label query
         :param label_1: If True then return the value of getLabel
         :param label_2: If True, and the control supports label 2, then return
-                        it's value
+                        its value
         :param stmt_type: StatementType to assign any Statements
         :return: True if any text added to phrases, otherwise False
 
@@ -980,12 +988,12 @@ class BaseModel(IModel):
         success_1: bool = False
         success_2: bool = False
         text_1, text_2 = self.get_label_ll(label_expr, label_1, label_2)
-        if text_1 != '':
+        if text_1 is not None and text_1 != '':
             stmts.append(Statement(PhraseList.create(texts=text_1,
                                                      check_expired=False),
                                    stmt_type=stmt_type))
             success_1 = True
-        if text_2 != '':
+        if text_2 is not None and text_2 != '':
             success_2 = True
             if text_1 != '':
                 stmts.last.phrases.add_text(texts=text_2)
@@ -1005,12 +1013,9 @@ class BaseModel(IModel):
         :param label_expr: used for label query
         :param label_1: If True then return the value of getLabel
         :param label_2: If True, and the control supports label 2, then return
-                        it's value
-        :return: True if any text added to phrases, otherwise False
-
-        If both label and label_2 are False, then nothing is added to phrases.
-        If both label1 and label2 are True, then both values of label and label_2
-        are added to phrases.
+                        its value
+        :return: Values of label_1 and label_2, or None for each that
+                does not have a volue
         """
         clz = BaseModel
         text: str = ''
@@ -1032,25 +1037,23 @@ class BaseModel(IModel):
         expressions
         """
         clz = BaseModel
-        clz._logger.debug(f'label_1: {label_1} label_2: {label_2} '
+        MY_LOGGER.debug(f'label_1: {label_1} label_2: {label_2} '
                           f'label_expr: {label_expr}\n '
                           f'supports_label_1: {self.supports_label} '
                           f'supports_label_2: {self.supports_label2}')
-        success_1: bool = True
-        success_2: bool = True
         if not (label_1 or label_2):
-            return False
+            return None, None,
 
         control_id: int | None = None
         if label_expr is not None:
             if isinstance(label_expr, int):
                 control_id = label_expr
                 if control_id < 0:
-                    return False
+                    return None, None
             elif label_expr.isdigit():
                 control_id = int(label_expr)
                 if control_id <= 0:
-                    return False
+                    return None, None
         else:
             control_id = self.control_id
 
@@ -1075,21 +1078,19 @@ class BaseModel(IModel):
                 text_1 = xbmc.getInfoLabel(f'{query_1}')  # TODO: May require post-processing
                 text_1 = text_1.strip()
                 visible: bool = xbmc.getCondVisibility(f'Control.IsVisible({control_id})')
-                clz._logger.debug(f'query_1: {query_1} text_1: {text_1} visible {visible}')
-                clz._logger.debug(f'text_2: {text_2}')
+                MY_LOGGER.debug(f'query_1: {query_1} text_1: {text_1} visible {visible}')
+                MY_LOGGER.debug(f'text_2: {text_2}')
             except:
-                clz._logger.exception(f'control_expr: {query_1} label_1')
-                success_1 = False
+                MY_LOGGER.exception(f'control_expr: {query_1} label_1')
         if query_2 != '' and label_2:
             try:
                 text_2 = xbmc.getInfoLabel(query_2)  # TODO: May require post-processing
                 text_2 = text_2.strip()
             except:
-                clz._logger.exception(f'control_expr: {query_2} label_1')
-                success_2 = False
+                MY_LOGGER.exception(f'control_expr: {query_2} label_1')
 
         if text_1 != '' or text_2 != '':
-            clz._logger.debug(f'text_1: {text_1} text_2: {text_2}')
+            MY_LOGGER.debug(f'text_1: {text_1} text_2: {text_2}')
         return text_1, text_2
 
     def get_info_label_ll(self, stmts: Statements, query: str) -> bool:
@@ -1110,7 +1111,7 @@ class BaseModel(IModel):
                                                              check_expired=False)))
                 return True
             except:
-                clz._logger.exception('')
+                MY_LOGGER.exception('')
         return False
 
     def to_string(self, include_children: bool = False) -> str:

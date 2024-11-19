@@ -8,6 +8,7 @@ from common.logger import BasicLogger
 from common.phrases import Phrase, PhraseList
 
 from . import base, DefaultWindowReader
+from .window_state_monitor import WinDialogState
 
 module_logger = BasicLogger.get_logger(__name__)
 
@@ -15,7 +16,8 @@ module_logger = BasicLogger.get_logger(__name__)
 class VideoInfoDialogReader(base.DefaultWindowReader):
     ID = 'videoinfodialog'
 
-    def __init__(self, win_id=None, service: ForwardRef('TTSService') = None) -> None:
+    def __init__(self, win_id=None, service: ForwardRef('TTSService') = None,
+                 windialog_state: WinDialogState = None) -> None:
         cls = type(self)
         super().__init__(win_id, service)
         cls._logger = module_logger

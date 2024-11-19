@@ -22,19 +22,18 @@ from utils import util
 from windows.ui_constants import UIConstants
 from windows.window_state_monitor import WinDialogState
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class ListModel(BaseModel):
 
-    _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.LIST]
 
-    def __init__(self, parent: BaseModel, parsed_list: ParseList) -> None:
+    def __init__(self, parent: BaseModel, parsed_list: ParseList,
+                 windialog_state: WinDialogState | None) -> None:
         clz = type(self)
-        if clz._logger is None:
-            clz._logger = module_logger
-        super().__init__(window_model=parent.window_model, parser=parsed_list)
+        super().__init__(window_model=parent.window_model, parser=parsed_list,
+                         windialog_state=None)
         self.parent: BaseModel = parent
         self.visible_expr: str = ''
         self.description: str = ''
@@ -73,23 +72,25 @@ class ListModel(BaseModel):
             self.topic = NoListTopicModel(self)
 
         for item_layout in parsed_list.item_layouts:
-            model_handler: Callable[[BaseModel, BaseModel, BaseParser], BaseModel]
+            model_handler: Callable[[BaseModel, BaseParser, WinDialogState | None],
+                                    BaseModel]
             model_handler = ElementHandler.get_model_handler(item_layout.item)
-            child_model: ItemLayoutModel = model_handler(self, item_layout)
-            clz._logger.debug(f'item model handler: {model_handler} class: ')
-            clz._logger.debug(f'Appending item_layout {item_layout} '
+            child_model: ItemLayoutModel = model_handler(self, item_layout, None)
+            MY_LOGGER.debug(f'item model handler: {model_handler} class: ')
+            MY_LOGGER.debug(f'Appending item_layout {item_layout} '
                                f'now child_model: {child_model}')
             self.item_layouts.append(child_model)
 
         for item_layout in parsed_list.focused_layouts:
-            model_handler: Callable[[BaseModel, BaseModel, BaseParser], BaseModel]
+            model_handler: Callable[[BaseModel, BaseParser, WinDialogState | None],
+                                    BaseModel]
             model_handler = ElementHandler.get_model_handler(item_layout.item)
-            child_model: FocusedLayoutModel = model_handler(self, item_layout)
-            clz._logger.debug(f'Appending focused_layout {item_layout} '
+            child_model: FocusedLayoutModel = model_handler(self, item_layout, None)
+            MY_LOGGER.debug(f'Appending focused_layout {item_layout} '
                               f'now child_model: {child_model}')
             self.focused_layouts.append(child_model)
 
-        clz._logger.debug(f'# parsed children: {len(parsed_list.get_children())}')
+        MY_LOGGER.debug(f'# parsed children: {len(parsed_list.get_children())}')
 
         for child in parsed_list.children:
             child: BaseParser
@@ -102,20 +103,6 @@ class ListModel(BaseModel):
     def supports_label(self) -> bool:
         # ControlCapabilities.LABEL
         return True
-
-    @property
-    def supports_heading_label(self) -> bool:
-        """
-        Indicates whether this control provides a label which explains what it
-        is for. For example, a button's label almost certainly is to explain
-        why you should press it. On the other hand a label control does not.
-        A label control may be displaying a date or the result of an action.
-        More information is needed for controls like labels in order to know
-        what to do with them.
-
-        :return:
-        """
-        return False
 
     @property
     def supports_container(self) -> bool:
@@ -155,6 +142,16 @@ class ListModel(BaseModel):
         return True
 
     @property
+    def supports_item_number(self) -> bool:
+        """
+            Indicates if the control supports reporting the current item number.
+            The list control is not capable of these, although it supports
+            item_count.
+        :return:
+        """
+        return False
+
+    @property
     def supports_change_without_focus_change(self) -> bool:
         """
             Indicates if the control supports changes that can occur without
@@ -165,14 +162,29 @@ class ListModel(BaseModel):
         """
         return True
 
+    @property
+    def supports_heading_label(self) -> bool:
+        """
+        Indicates whether this control provides a label which explains what it
+        is for. For example, a button's label almost certainly is to explain
+        why you should press it. On the other hand a label control does not.
+        A label control may be displaying a date or the result of an action.
+        More information is needed for controls like labels in order to know
+        what to do with them.
+
+        :return:
+        """
+        MY_LOGGER.debug(f'list_topic_model does NOT supports_heading_label')
+        return False
+
     def get_orientation(self) -> str:
         clz = ListModel
         msg_id: int = 32809
         if self.orientation_expr == UIConstants.VERTICAL:
             msg_id = 32808
         orientation: str = Messages.get_msg_by_id(msg_id=msg_id)
-        if clz._logger.isEnabledFor(DEBUG_XV):
-            clz._logger.debug_xv(f'Orientation: {orientation}')
+        if MY_LOGGER.isEnabledFor(DEBUG_XV):
+            MY_LOGGER.debug_xv(f'Orientation: {orientation}')
         return orientation
 
     def voice_active_item_value(self, stmts: Statements) -> bool:
@@ -195,13 +207,14 @@ class ListModel(BaseModel):
             # pos_str: str = xbmc.getInfoLabel(f'Container({container_id}).Position')
             # pos: int = util.get_non_negative_int(pos_str)
             # pos += 1  # Convert to one-based item #
-            # clz._logger.debug(f'container position: {pos} container_id: {container_id}')
+            # MY_LOGGER.debug(f'container position: {pos} container_id: {container_id}')
             current_item: str = xbmc.getInfoLabel(f'Container({container_id}).CurrentItem')
-            clz._logger.debug(f'current_item: {current_item}')
-            stmts.last.phrases.append(Phrase(text=f'Item: {current_item}'))
+            MY_LOGGER.debug(f'current_item: {current_item}')
+            stmts.last.phrases.append(Phrase(text=f'Item: {current_item}',
+                                             check_expired=False))
             win: xbmcgui.Window = self.windialog_state.window_instance
             focused_control: int = win.getFocusId()
-            clz._logger.debug(f'Focused control: {focused_control}')
+            MY_LOGGER.debug(f'Focused control: {focused_control}')
             return True
 
         # TODO START HERE!!
@@ -229,8 +242,8 @@ class ListModel(BaseModel):
 
         pos: int = util.get_non_negative_int(pos_str)
         pos += 1  # Convert to one-based item #
-        clz._logger.debug(f'container position: {pos} container_id: {container_id}')
-        #  clz._logger.debug(f'num_all_items: {num_all_items} num_items: {num_items} '
+        MY_LOGGER.debug(f'container position: {pos} container_id: {container_id}')
+        #  MY_LOGGER.debug(f'num_all_items: {num_all_items} num_items: {num_items} '
         #                    f'')
         return pos
 
@@ -251,15 +264,15 @@ class ListModel(BaseModel):
                  first item_layout and focused_layout with a passing condition.
         """
         clz = ListModel
-        #  clz._logger.debug(f'{windialog_state}')
+        #  MY_LOGGER.debug(f'{windialog_state}')
 
         #   if self.focus_changed:
-            # clz._logger.debug(f'value was: {self.value} changed: {self.value_changed}'
+            # MY_LOGGER.debug(f'value was: {self.value} changed: {self.value_changed}'
             #                   f' control_id: {self.control_id}')
-            # clz._logger.debug(f'value_id: {hex(id(self.value))} '
+            # MY_LOGGER.debug(f'value_id: {hex(id(self.value))} '
             #                   f'changed: {hex(id(self.value_changed))}')
-        # clz._logger.debug(f'value was: {self.value} changed: {self.value_changed} ')
-        # clz._logger.debug(f'value_id: {hex(id(self.value))} '
+        # MY_LOGGER.debug(f'value was: {self.value} changed: {self.value_changed} ')
+        # MY_LOGGER.debug(f'value_id: {hex(id(self.value))} '
         #                   f'changed: {hex(id(self.value_changed))}')
         """
           A List container is basically a single column or row of labels and/or
@@ -292,32 +305,32 @@ class ListModel(BaseModel):
         # using the associated condition. The first found that passes
         # the condition wins.
 
-        clz._logger.debug(f'In get_working_value')
+        MY_LOGGER.debug(f'In get_working_value')
         # active_item_layout: ItemLayoutModel | None = None
         active_focused_layout: FocusedLayoutModel | None = None
         # winner: int = -1
         '''
             Don't voice unfocused items. This may change in future
             
-        clz._logger.debug(f'# item_layouts: {len(self.item_layouts)}')
+        MY_LOGGER.debug(f'# item_layouts: {len(self.item_layouts)}')
         for layout_item in self.item_layouts:
             winner += 1
             layout_item: ItemLayoutModel
             query: str = layout_item.condition_expr
-            clz._logger.debug(f'layout_item: {layout_item} \n query: {query}')
+            MY_LOGGER.debug(f'layout_item: {layout_item} \n query: {query}')
             if query == '':   # Passes
                 break
             if xbmc.getCondVisibility(query):
-                clz._logger.debug('query passed')
+                MY_LOGGER.debug('query passed')
                 break
 
         if -1 < winner < len(self.item_layouts):
             active_item_layout = self.item_layouts[winner]
         else:
-            clz._logger.debug(f'All item layouts FAILED the condition')
+            MY_LOGGER.debug(f'All item layouts FAILED the condition')
         '''
         winner: int = -1
-        clz._logger.debug(f'# focusedlayouts: {len(self.focused_layouts)}')
+        MY_LOGGER.debug(f'# focusedlayouts: {len(self.focused_layouts)}')
         failed: bool = True
         for layout_item in self.focused_layouts:
             winner += 1
@@ -333,27 +346,27 @@ class ListModel(BaseModel):
         if -1 < winner < len(self.item_layouts):
             active_focused_layout = self.focused_layouts[winner]
         else:
-            clz._logger.debug('All focused layouts FAILED the condition')
+            MY_LOGGER.debug('All focused layouts FAILED the condition')
 
         #  info_labels: List[str] = active_item_layout.get_info_labels()
         focused_info_labels: List[str] = active_focused_layout.get_info_labels()
-        # clz._logger.debug(f'# info_labels: {len(info_labels)} '
+        # MY_LOGGER.debug(f'# info_labels: {len(info_labels)} '
         #                  f'# focused_info_labels: {len(focused_info_labels)}')
 
         values: List[str] = []
         '''
         for info_label in info_labels:
-            clz._logger.debug(f'info_label: {info_label}')
+            MY_LOGGER.debug(f'info_label: {info_label}')
             query: str
             query = (f'Container({self.control_id}).ListItemAbsolute({position}).'
                      f'[{info_label}]')
             value: str = self.get_info_label(query)
-            clz._logger.debug(f'query: {query}  value: {value}')
+            MY_LOGGER.debug(f'query: {query}  value: {value}')
             values.append(value)
         '''
         for info_label in focused_info_labels:
             value: str | None = self.get_info_label(info_label)
-            clz._logger.debug(f'info_label: {info_label} value: {value}')
+            MY_LOGGER.debug(f'info_label: {info_label} value: {value}')
             if value is not None:
                 values.append(value)
         return values

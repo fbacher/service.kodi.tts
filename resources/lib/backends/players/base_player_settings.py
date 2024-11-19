@@ -46,7 +46,7 @@ class BasePlayerSettings(BaseServiceSettings):
         player_validator: StringValidator
         player_validator = StringValidator(SettingsProperties.PLAYER, cls.service_ID,
                                            allowed_values=valid_players,
-                                           default=Players.MPLAYER)
+                                           default=Players.MPV)
 
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER,
                                    player_validator)

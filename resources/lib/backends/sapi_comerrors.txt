@@ -77,9 +77,9 @@ This success code indicates that an SR method called with the SPRIF_ASYNC flag i
 SPERR_ALL_WORDS_OPTIONAL	0x80045027	-2147200985
 A grammar rule was defined with a null path through the rule. That is, it is possible to satisfy the rule conditions with no words.
 SPERR_INSTANCE_CHANGE_INVALID	0x80045028	-2147200984
-It is not possible to change the current engine or input. This occurs in the following cases: 1) SelectEngine called while a recognition context exists, or 2) SetInput called in the shared instance case.
+It is not possible to change the current engine or input. This occurs in the following cases: 1) SelectEngine called while a recognition context text_exists, or 2) SetInput called in the shared instance case.
 SPERR_RULE_NAME_ID_CONFLICT	0x80045029	-2147200983
-A rule exists with matching IDs (names) but different names (IDs).
+A rule text_exists with matching IDs (names) but different names (IDs).
 SPERR_NO_RULES	0x8004502a	-2147200982
 A grammar contains no top-level, dynamic, or exported rules. There is no possible way to activate or otherwise use any rule in this grammar.
 SPERR_CIRCULAR_RULE_REF	0x8004502b	-2147200981
@@ -107,7 +107,7 @@ The operation is invalid for all but newly created application lexicons.
 SPERR_NO_TERMINATING_RULE_PATH	0x80045036	-2147200970
 
 SP_WORD_EXISTS_WITHOUT_PRONUNCIATION	0x00045037	282679
-The word exists but without pronunciation.
+The word text_exists but without pronunciation.
 SPERR_STREAM_CLOSED	0x80045038	-2147200968
 An operation was attempted on a stream object that has been closed.
 SPERR_NO_MORE_ITEMS	0x80045039	-2147200967

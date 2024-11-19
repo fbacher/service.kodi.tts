@@ -3,6 +3,7 @@ from __future__ import annotations  # For union operator |
 import os
 import subprocess
 import sys
+import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -26,48 +27,48 @@ from common.simple_pipe_command import SimplePipeCommand
 from common.simple_run_command import SimpleRunCommand
 from common.slave_communication import SlaveCommunication
 
-module_logger: BasicLogger = BasicLogger.get_logger(__name__)
+MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class AudioPlayer(IPlayer, BaseServices):
     ID = Players.NONE
     # name = ''
-
     _advanced: bool = False
     sound_file_types: List[str] = ['.wav']
-    sound_dir: str = None
-    _logger: BasicLogger = None
+    sound_dir: Path | None = None
 
     def __init__(self) -> None:
         clz = type(self)
-        if clz._logger is None:
-            clz._logger = module_logger
-
         clz.set_sound_dir()
+        self._post_play_pause_ms: int = 0
+        self._time_of_previous_play_ended: datetime = datetime.now()
         super().__init__()
 
     @classmethod
     def set_sound_dir(cls):
+        """
+        Controls the tempfile and tempfile.NamedTemporaryFile 'dir' entry
+        used to create temporary audio files. A None value allows tempfile
+        to decide.
+        :return:
+        """
+        tmpfs: Path | None = None
         tmpfs = utils.getTmpfs()
-        if Settings.getSetting(SettingsProperties.USE_TEMPFS,
-                               SettingsProperties.TTS_SERVICE, True) and tmpfs:
-            #  cls._logger.debug_xv(f'Using tmpfs at: {tmpfs}')
-            cls.sound_dir = os.path.join(tmpfs, 'kodi_speech')
-        else:
-            cls.sound_dir = os.path.join(Constants.PROFILE_PATH, 'kodi_speech')
-        if not os.path.exists(cls.sound_dir):
-            os.makedirs(cls.sound_dir)
+        if tmpfs is None:
+            tmpfs = Path(Constants.PROFILE_PATH)
+        tmpfs = tmpfs / 'kodi_speech'
+        if not tmpfs.exists():
+            tmpfs.mkdir(parents=True)
+        cls.sound_dir = tmpfs
 
     @classmethod
-    def get_sound_dir(cls) -> str:
+    def get_sound_dir(cls) -> Path:
         return cls.sound_dir
 
     @classmethod
-    def get_tmp_path(cls, speech_file_name: str, sound_file_type: str) -> str:
-        sound_file_base = '{speech_file_name}{sound_file_type}'
-
-        filename: str = f'{speech_file_name}{sound_file_type}'
-        sound_file_path: str = os.path.join(cls.sound_dir, filename)
+    def get_tmp_path(cls, speech_file_name: str, sound_file_type: str) -> Path:
+        filename: str = f'{speech_file_name}.{sound_file_type}'
+        sound_file_path: Path = cls.sound_dir / filename
         return sound_file_path
 
     def canSetSpeed(self) -> bool:
@@ -106,8 +107,56 @@ class AudioPlayer(IPlayer, BaseServices):
     def pipe(self, source, phrase: Phrase) -> None:
         pass
 
-    def play(self, path: str) -> None:
-        pass
+    def play(self, phrase: Phrase):
+        """
+        Play the voice file for the given phrase
+        :param phrase: Contains information about the spoken phrase, including
+        path to .wav or .mp3 file
+        :return:
+        """
+        stop_on_play: bool = not phrase.speak_over_kodi
+        if stop_on_play:
+            if KodiPlayerMonitor.player_status == KodiPlayerState.PLAYING_VIDEO:
+                return
+
+        clz = type(self)
+        args: List[str] = []
+        phrase_serial: int = phrase.serial_number
+        try:
+            phrase.test_expired()  # Throws ExpiredException
+            # Use previous phrase's post_play_pause
+            delay_ms = max(phrase.get_pre_pause(), self._post_play_pause_ms)
+            self._post_play_pause_ms = phrase.get_post_pause()
+            #  pre_silence_path: Path = phrase.pre_pause_path()
+            #  post_silence_path: Path = phrase.post_pause_path()
+            waited: timedelta = datetime.now() - self._time_of_previous_play_ended
+            # TODO: Get rid of this wait loop and use phrase pauses
+            waited_ms = waited / timedelta(microseconds=1000)
+            delta_ms = delay_ms - waited_ms
+            if delta_ms > 0.0:
+                additional_wait_needed_s: float = delta_ms / 1000.0
+                MY_LOGGER.debug(f'pausing {additional_wait_needed_s} ms')
+                Monitor.exception_on_abort(timeout=float(additional_wait_needed_s))
+
+            Monitor.exception_on_abort()
+        except AbortException:
+            self.stop(now=True)
+            reraise(*sys.exc_info())
+        except ExpiredException:
+            MY_LOGGER.debug('EXPIRED')
+            return
+        except Exception as e:
+            MY_LOGGER.exception('')
+            return
+        try:
+            if stop_on_play:
+                if KodiPlayerMonitor.player_status == KodiPlayerState.PLAYING_VIDEO:
+                    return
+            delete_after_run: Path | None = None
+            if Constants.PLATFORM_WINDOWS:
+                delete_after_run = phrase.get_cache_path()
+        finally:
+            self._time_of_previous_play_ended = datetime.now()
 
     def isPlaying(self) -> bool:
         return False
@@ -116,6 +165,9 @@ class AudioPlayer(IPlayer, BaseServices):
         pass
 
     def close(self) -> None:
+        pass
+
+    def destroy(self) -> None:
         pass
 
     @staticmethod
@@ -133,11 +185,13 @@ class AudioPlayer(IPlayer, BaseServices):
 class SubprocessAudioPlayer(AudioPlayer):
     _logger: BasicLogger = None
     _availableArgs = None
+    # Count appended to thread_name to make unique
+    slave_player_count: int = 0
+    std_player_count: int = 0
 
     def __init__(self):
         super().__init__()
         clz = type(self)
-        clz._logger = module_logger
         self._player_busy: bool = False
         self.player_mode: PlayerMode | None = None
         self._simple_player_busy: bool = False
@@ -146,10 +200,8 @@ class SubprocessAudioPlayer(AudioPlayer):
         self.active = True
         self._speedMultiplier: int = 1
         self._player_process: SimpleRunCommand | None = None
-        self._post_play_pause_ms: int = 0
         #  HACK!
         self.slave_player_process: SlaveCommunication | None = None
-        self._time_of_previous_play_ended: datetime = datetime.now()
         self.kill: bool = False
         self.stop_urgent: bool = False
         self.reason: str = ''
@@ -179,7 +231,7 @@ class SubprocessAudioPlayer(AudioPlayer):
         """
         clz = type(self)
         clz.player_status = kodi_player_state
-        clz._logger.debug(f'Player play status: {kodi_player_state}')
+        MY_LOGGER.debug(f'Player play status: {kodi_player_state}')
         if Monitor.is_abort_requested():
             return True
 
@@ -203,7 +255,9 @@ class SubprocessAudioPlayer(AudioPlayer):
         clz = type(self)
         self.player_mode = Settings.get_player_mode()
         if self.player_mode == PlayerMode.SLAVE_FILE:
+            MY_LOGGER.debug(f'SLAVE_PLAYER')
             return True
+        MY_LOGGER.debug(f'NOT SLAVE')
         return False
 
     def speedArg(self, speed: float) -> str:
@@ -234,7 +288,8 @@ class SubprocessAudioPlayer(AudioPlayer):
         Monitor.exception_on_abort()
         clz = type(self)
         pipe_args: List[str] = list(self.get_pipe_args())
-        # clz._logger.debug_v(f'pipeArgs: {" ".join(pipe_args)}')
+        # MY_LOGGER.debug_v(f'pipeArgs: {" ".join(pipe_args)}')
+        MY_LOGGER.debug(f'Running MPLAYER via pipe')
         try:
             self._player_busy = True
             stop_on_play: bool = not phrase.speak_over_kodi
@@ -249,22 +304,22 @@ class SubprocessAudioPlayer(AudioPlayer):
                                                      name='mplayer',
                                                      stop_on_play=stop_on_play)
             # shutil.copyfileobj(source, self._player_process.stdin)
-            # clz._logger.debug_v(
+            # MY_LOGGER.debug_v(
             #         f'START Running player to voice PIPE args: {" ".join(pipe_args)}')
             self._player_process.run_cmd()
         except subprocess.CalledProcessError as e:
-            clz._logger.exception('')
+            MY_LOGGER.exception('')
             self.reason = 'mplayer failed'
             self.failed = True
         except Exception as e:
-            clz._logger.exception('')
+            MY_LOGGER.exception('')
         finally:
             self._time_of_previous_play_ended = datetime.now()
             self._simple_player_busy = False
 
     def getSpeed(self) -> float:
         speed: float | None = \
-            Settings.getSetting(SettingsProperties.SPEED, Settings.get_player_id())
+            Settings.getSetting(SettingsProperties.SPEED, SettingsProperties.TTS_SERVICE)
         self.setSpeed(speed)
         return speed
 
@@ -276,7 +331,7 @@ class SubprocessAudioPlayer(AudioPlayer):
         # the tts 'line-input' or '0' tts volume level.
 
         clz = type(self)
-        final_volume: int = Settings.get_volume()
+        final_volume: float = Settings.get_volume()
         engine_volume_val: IConstraintsValidator = SettingsMap.get_validator(
                 Settings.get_engine_id(),
                 SettingsProperties.VOLUME)
@@ -323,11 +378,6 @@ class SubprocessAudioPlayer(AudioPlayer):
         :return:
         """
         clz = SubprocessAudioPlayer
-        # Do we need to kill a stale player?
-        if self.slave_player_process is not None:
-            # Will stop pending voicings and destroy non-slave player.
-            self.abort_voicing(purge=True, future=True)
-
         stop_on_play: bool = not phrase.speak_over_kodi
         if stop_on_play:
             if KodiPlayerMonitor.player_status == KodiPlayerState.PLAYING_VIDEO:
@@ -338,20 +388,18 @@ class SubprocessAudioPlayer(AudioPlayer):
         phrase_serial: int = phrase.serial_number
         try:
             phrase.test_expired()  # Throws ExpiredException
-
             # Use previous phrase's post_play_pause
-
             delay_ms = max(phrase.get_pre_pause(), self._post_play_pause_ms)
 
             self._post_play_pause_ms = phrase.get_post_pause()
-            #  pre_silence_path: Path = phrase.get_pre_pause_path()
-            #  post_silence_path: Path = phrase.get_post_pause_path()
+            #  pre_silence_path: Path = phrase.pre_pause_path()
+            #  post_silence_path: Path = phrase.post_pause_path()
             waited: timedelta = datetime.now() - self._time_of_previous_play_ended
             waited_ms = waited / timedelta(microseconds=1000)
             delta_ms = delay_ms - waited_ms
             if delta_ms > 0.0:
                 additional_wait_needed_s: float = delta_ms / 1000.0
-                clz._logger.debug(f'pausing {additional_wait_needed_s} ms')
+                MY_LOGGER.debug(f'pausing {additional_wait_needed_s} ms')
                 Monitor.exception_on_abort(timeout=float(additional_wait_needed_s))
 
             Monitor.exception_on_abort()
@@ -360,30 +408,30 @@ class SubprocessAudioPlayer(AudioPlayer):
             self.stop(now=True)
             reraise(*sys.exc_info())
         except ExpiredException:
-            clz._logger.debug('EXPIRED')
+            MY_LOGGER.debug('EXPIRED')
             return
         except Exception as e:
-            clz._logger.exception('')
+            MY_LOGGER.exception('')
             return
         try:
             if stop_on_play:
                 if KodiPlayerMonitor.player_status == KodiPlayerState.PLAYING_VIDEO:
                     return
             self._simple_player_busy = True
-            delete_after_run: Path = None
+            delete_after_run: Path | None = None
             if Constants.PLATFORM_WINDOWS:
                 delete_after_run = phrase.get_cache_path()
             self._player_process = SimpleRunCommand(args,
                                                     phrase_serial=phrase_serial,
                                                     delete_after_run=delete_after_run,
-                                                    name='mplayer',
+                                                    name='mplyr',
                                                     stop_on_play=stop_on_play)
-            clz._logger.debug_v(
+            MY_LOGGER.debug_v(
                     f'START Running player to voice NOW args: {" ".join(args)}')
             self._player_process.run_cmd()
         except subprocess.CalledProcessError:
-            clz._logger.exception('')
-            self.reason = 'mplayer failed'
+            MY_LOGGER.exception('')
+            self.reason = 'failed'
             self.failed = True
         finally:
             self._time_of_previous_play_ended = datetime.now()
@@ -402,12 +450,15 @@ class SubprocessAudioPlayer(AudioPlayer):
         :return:
         """
         clz = type(self)
-        # clz._logger.debug(f'In slave_play phrase: {phrase}'
+        if not self.is_slave_player():
+            return
 
+        # MY_LOGGER.debug(f'In slave_play phrase: {phrase}'
         # Do we need to kill a stale player?
         if self._player_process is not None:
             # Will stop pending voicings
-            self.abort_voicing(purge=True, future=True)
+            MY_LOGGER.debug('player process running. switching to slave')
+            self.destroy_player_process()
 
         try:
             if self.slave_player_process is None:
@@ -419,19 +470,22 @@ class SubprocessAudioPlayer(AudioPlayer):
                     speed: float = self.get_player_speed()
                     s_num: int = phrase.serial_number
                     #  play_channels: Channels = self.get_player_channels()
+                    clz.slave_player_count += 1
+                    slave_count: int = clz.slave_player_count
                     self.slave_player_process = SlaveCommunication(args,
                                                                    phrase_serial=s_num,
                                                                    thread_name='mpv',
+                                                                   count=slave_count,
                                                                    stop_on_play=True,
                                                                    fifo_path=p_path,
                                                                    default_speed=speed,
                                                                    default_volume=volume)
-                    # clz._logger.debug(
+                    # MY_LOGGER.debug(
                     #         f'START Running slave player to voice NOW args: {"
                     #         ".join(args)}')
                     self.slave_player_process.start_service()
                 except subprocess.CalledProcessError:
-                    clz._logger.exception('')
+                    MY_LOGGER.exception('')
                     self.reason = 'mpv failed'
                     self.failed = True
                 finally:
@@ -439,7 +493,7 @@ class SubprocessAudioPlayer(AudioPlayer):
                     self._simple_player_busy = False
 
         except Exception as e:
-            clz._logger.exception('')
+            MY_LOGGER.exception('')
 
         phrase_serial: int = phrase.serial_number
         try:
@@ -448,38 +502,54 @@ class SubprocessAudioPlayer(AudioPlayer):
             speed: float = self.get_player_speed()
             self.slave_player_process.set_channels(Channels.STEREO)
             self.slave_player_process.add_phrase(phrase, volume, speed)
-            # clz._logger.debug(f'slave state: {self.slave_player_process.get_state()}')
+            # MY_LOGGER.debug(f'slave state: {self.slave_player_process.get_state()}')
         except AbortException:
             self.stop(now=True)
             reraise(*sys.exc_info())
         except ExpiredException:
-            clz._logger.debug('EXPIRED')
+            MY_LOGGER.debug('EXPIRED')
             return
         except Exception as e:
-            clz._logger.exception('')
+            MY_LOGGER.exception('')
             return
 
     def isPlaying(self) -> bool:
         self.set_state()
         return self._player_busy
 
-    def abort_voicing(self, purge: bool = True, future: bool = False) -> None:
+    def stop_player(self, purge: bool = True,
+                    keep_silent: bool = False,
+                    kill: bool = False):
         """
-        Stop voicing pending speech and/or future speech. Most often used to
-        stop in order to allow a higher priority voicing to start.
+        Stop player (most likely because current text is expired)
+        Engines may wish to override this method, particularly when
+        the player is built-in.
 
-        :param purge: if True, then abandon playing all pending speech
-        :param future: if True, then ignore future voicings.
-        :return: None
+        :param purge: if True, then purge any queued vocings
+                      if False, then only stop playing current phrase
+        :param keep_silent: if True, ignore any new phrases until restarted
+                            by resume_player.
+                            If False, then play any new content
+        :param kill: If True, kill any player processes. Implies purge and
+                     keep_silent.
+                     If False, then the player will remain ready to play new
+                     content, depending upon keep_silent
+        :return:
         """
         clz = type(self)
 
         # Only slave players have a queue of pending speech files
+        MY_LOGGER.debug(f'abort purge: {purge} keep_silent: {keep_silent} '
+                        f'kill: {kill}')
         if self.slave_player_process is not None:
-            self.slave_player_process.abort_voicing(purge, future)
-        if future:
-            # Destroys any active player process (slave or non-slave)
-            self.destroy_player_process()
+            if kill:
+                self.destroy_slave_process()
+            else:
+                self.slave_player_process.stop_player(purge=purge,
+                                                      keep_silent=keep_silent,
+                                                      kill=kill)
+        if self._player_process is not None:
+            self.destroy_simple_process()
 
     '''
     def stop_processes(self, now: bool = False):
@@ -490,12 +560,12 @@ class SubprocessAudioPlayer(AudioPlayer):
         """
         clz = type(self)
         if self.is_slave_player():
-            clz._logger.warning(f'stop_processes should NOT be called for'
+            MY_LOGGER.warning(f'stop_processes should NOT be called for'
                                 f'slave players')
             return
         if now:
             self.kill = True
-        clz._logger.debug(f'STOP received is_playing: {self.isPlaying()} kill: '
+        MY_LOGGER.debug(f'STOP received is_playing: {self.isPlaying()} kill: '
                           f'{self.kill}')
 
         if not self.isPlaying():
@@ -513,7 +583,7 @@ class SubprocessAudioPlayer(AudioPlayer):
                 self._player_process.kill()
                 reraise(*sys.exc_info())
             except Exception as e:
-                clz._logger.exception('')
+                MY_LOGGER.exception('')
             finally:
                 self.set_state()
 
@@ -523,7 +593,7 @@ class SubprocessAudioPlayer(AudioPlayer):
             self._player_process.terminate()
 
         try:
-            while Monitor.exception_on_abort(timeout = 0.5):
+            while not Monitor.exception_on_abort(timeout = 0.5):
                 if self._player_process.get_state().value >= RunState.COMPLETE.value:
                     return
                 # Null until command starts running
@@ -545,30 +615,38 @@ class SubprocessAudioPlayer(AudioPlayer):
         :return:
         """
         clz = type(self)
-        clz._logger.debug(f'destroy')
+        MY_LOGGER.debug(f'destroy')
         self.destroy_player_process()
 
     def destroy_player_process(self):
         """
         Destroy the ployer process (ex. mpv, mplayer, etc.). Typicaly done
-        when stopping TTS, or when long-running player (one which exists for
-        multiple voicings) needs to shutdown the process. Note that
+        when stopping TTS, or when long-running player (one which text_exists for
+        multiple voicings) needs to shutdown the process.
 
         :return:
         """
+        self.destroy_slave_process()
+        self.destroy_simple_process()
+
+    def destroy_slave_process(self):
         clz = type(self)
-        clz._logger.debug(f'destroy_player_process')
+        MY_LOGGER.debug(f'DESTROY_player_process')
         if self.slave_player_process is not None:
             try:
+                MY_LOGGER.debug('DESTROY SLAVE')
+                self.player_mode = Settings.get_player_mode()
+                if self.is_slave_player():
+                    self.player_mode = None
                 self.slave_player_process.destroy()
             except Exception as e:
-                clz._logger.exception('')
-            self._simple_player_busy = False
+                MY_LOGGER.exception('')
             self.slave_player_process = None
             return
 
-        # Non-slave player
-
+    def destroy_simple_process(self):
+        MY_LOGGER.debug(f'DESTROY MPLAYER')
+        self._simple_player_busy = False
         if self._player_process is not None:
             if self._player_process.poll() is not None:
                 self._player_process = None
@@ -582,26 +660,13 @@ class SubprocessAudioPlayer(AudioPlayer):
                 self._player_process.kill()
                 reraise(*sys.exc_info())
             except Exception as e:
-                clz._logger.exception('')
+                MY_LOGGER.exception('')
             finally:
                 self.set_state()
-        """
-        try:
-            while Monitor.exception_on_abort(timeout=0.5):
-                if self._player_process.get_state().value >= RunState.COMPLETE.value:
-                    return
-                # Null until command starts running
-        except AbortException:
-            self._player_process.kill()
-            reraise(*sys.exc_info())
-        except:
-            pass
-        finally:
-            self.set_state()
-        """
         self._player_process = None
 
     def close(self):
+        MY_LOGGER.debug(f'In close calling destroy')
         self.destroy()
 
     def set_state(self):
@@ -613,7 +678,7 @@ class SubprocessAudioPlayer(AudioPlayer):
             self._player_busy = False
             self._player_process = None
         else:
-            #  clz._logger.debug(f'Player busy: {self._player_busy}')
+            #  MY_LOGGER.debug(f'Player busy: {self._player_busy}')
             if (self._player_process is not None and
                     self._player_process.process is not None and
                     self._player_process.process.returncode is not None):
@@ -621,7 +686,7 @@ class SubprocessAudioPlayer(AudioPlayer):
                 self._player_busy = False
                 self._simple_player_busy = False
                 self._player_process = None
-                clz._logger.debug(f'SimplePlayer busy: {self._simple_player_busy}')
+                MY_LOGGER.debug(f'SimplePlayer busy: {self._simple_player_busy}')
             else:
                 self._player_busy = True
 

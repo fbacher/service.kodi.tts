@@ -1,5 +1,7 @@
 from __future__ import annotations  # For union operator |
 
+from pathlib import Path
+
 from windowNavigation.settings_dialog import SettingsDialog
 
 '''
@@ -142,6 +144,7 @@ class SettingsGUI(threading.Thread):
                     cmd: Tuple[str, str, str] = self.dialog_queue.get_nowait()
                     if cmd[0] != 'blah':  # clz.VISIBLE:
                         self.logger.debug(f'About to go Modal')
+                        xbmc.log(f'About to go Modal')
                         if self.gui is None:
                             #  TODO FIXME!
                             self.logger.debug('Dialog not running')
@@ -191,9 +194,9 @@ class SettingsGUI(threading.Thread):
             self.logger.debug(f'In launch')
             if self.gui is None:
                 self.logger.debug(f'creating gui')
-                script_path = Constants.ADDON_PATH
+                script_path: Path = Constants.ADDON_PATH
                 self.gui = SettingsDialog('script-tts-settings-dialog.xml',
-                                          script_path,
+                                          str(script_path),
                                           'Custom',
                                           defaultRes='1080i')
                 self.logger.debug(f'launched SettingsDialog.gui')

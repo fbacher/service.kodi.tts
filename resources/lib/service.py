@@ -4,6 +4,7 @@ from __future__ import annotations  # For union operator |
 import faulthandler
 import io
 import logging
+from logging import *
 from typing import Dict, Final
 #
 import os
@@ -45,33 +46,58 @@ definitions: Dict[str, int]
 from common.logger import BasicLogger
 
 
-DEBUG_VERBOSE: Final[int] = 8
-DEBUG_EXTRA_VERBOSE: Final[int] = 6
+DEBUG_V: Final[int] = 8
+DEBUG_XV: Final[int] = 6
 
 
 # Default logging is info, otherwise debug_v
 if False:
-    definitions = {'tts': logging.INFO}
+    definitions = {'tts': INFO}
 else:
     definitions = {
-        'tts': logging.INFO,
-        'tts.backends': logging.DEBUG,
-        'tts.backends.base': DEBUG_VERBOSE,
-        'tts.backends.audio.base_audio': DEBUG_VERBOSE,
-        'tts.backends.audio.mpv_audio_player': DEBUG_VERBOSE,
-        'tts.common.slave_communication': logging.DEBUG,
-        'tts.common.slave_run_command': DEBUG_VERBOSE,
-        'tts.gui': DEBUG_VERBOSE,
-        'tts.windows': logging.DEBUG,
-        'tts.windows.custom_tts': DEBUG_VERBOSE,
-        'tts.gui.parser': logging.DEBUG,
-        'tts.service_worker': DEBUG_VERBOSE,
-        'tts.windowNavigation.help_dialog': logging.DEBUG
-         }
-xbmc.log(f'configuring debug_levels INFO: {logging.INFO} DEBUG: {logging.DEBUG} '
-         f'VERBOSE: {DEBUG_VERBOSE} EXTRA_VERBOSE: '
-         f'{DEBUG_EXTRA_VERBOSE}')
-BasicLogger.config_debug_levels(replace=False, default_log_level=logging.INFO,
+        'tts': INFO,
+        'tts.backends': INFO,
+        'tts.backends.driver': DEBUG,
+        'tts.backends.google': DEBUG,
+        'tts.backends.espeak': DEBUG_V,
+        'tts.backends.settings.language_info': INFO,
+        'tts.backends.settings.settings_helper': DEBUG,
+        'tts.backends.settings.settings_map': DEBUG,
+        'tts.backends.settings.validators': DEBUG,
+        'tts.backends.base': INFO,
+        'tts.backends.audio.base_audio': INFO,
+        'tts.backends.audio.mpv_audio_player': INFO,
+        'tts.backends.audio.mplayer_audio_player': INFO,
+        'tts.backends.audio.sfx_audio_player': DEBUG,
+        'tts.backends.audio.sound_capabilities': INFO,
+        'tts.backends.audio.worker_thread': INFO,
+        'tts.backends.transcoders.trans': DEBUG,
+        'tts.cache.voicecache': DEBUG,
+        'tts.common.base_services': DEBUG,
+        'tts.common.logger': INFO,
+        'tts.commmon.monitor': DEBUG_V,
+        'tts.common.phrases': DEBUG,
+        'tts.common.settings_low_level': INFO,
+        'tts.common.settings': INFO,
+        'tts.common.slave_communication': INFO,
+        'tts.common.slave_run_command': INFO,
+        'tts.windows': DEBUG,
+        'tts.windows.custom_tts': DEBUG_V,
+        'tts.gui': DEBUG_V,
+        'tts.gui.window_structure': INFO,
+        # 'tts.gui.parser': INFO,
+        'tts.service_worker': DEBUG,
+        'tts.startup.bootstrap_engines': DEBUG,
+        'tts.startup.bootstrap_converters': DEBUG,
+        'backends.audio.bootstrap_players': DEBUG,
+        'tts.windowNavigation.help_dialog': DEBUG,
+        'tts.windowNavigation.selection_dialog': DEBUG_XV,
+        'tts.windowNavigation.settings_dialog': DEBUG_XV
+    }
+xbmc.log(f'configuring debug_levels INFO: {logging.INFO} DEBUG: {DEBUG} '
+         f'VERBOSE: {DEBUG_V} EXTRA_VERBOSE: '
+         f'{DEBUG_XV}')
+BasicLogger.config_debug_levels(replace=False, default_log_level=DEBUG_V,
                                 definitions=definitions)
 xbmc.log(f'Using service_worker')
 service_worker_logger: BasicLogger = BasicLogger.get_logger(f'tts.service_worker')
@@ -89,7 +115,7 @@ from common import *
 from common.minimal_monitor import MinimalMonitor
 from common.python_debugger import PythonDebugger
 
-DEVELOPMENT_BUILD: Final[bool] = True
+DEVELOPMENT_BUILD: Final[bool] = False
 CRASH_FILE_ENABLED: Final[bool] = False
 REMOTE_DEBUG: bool = False
 
@@ -125,7 +151,6 @@ except Exception as e:
 from common.logger import *
 
 module_logger = BasicLogger.get_logger(__name__)
-module_logger = BasicLogger.get_logger(__name__)
 
 from backends import audio
 from common.settings import Settings
@@ -139,6 +164,7 @@ __version__ = Constants.VERSION
 
 module_logger.info(__version__)
 module_logger.info('Platform: {0}'.format(sys.platform))
+
 
 def resetAddon():
     global DO_RESET
@@ -331,16 +357,19 @@ if __name__ == '__main__':
     except Exception as e:
         module_logger.exception('')
     try:
-        #  Debug.dump_all_threads()
+        Debug.dump_all_threads()
         pending_threads: int = GarbageCollector.reap_the_dead()
+        """
         tmp_path: str = xbmcvfs.translatePath("special://home/temp/kodi.threads")
         debug_file = io.open(tmp_path,
                              mode='w',
                              buffering=1,
                              newline=None,
                              encoding='ASCII')
+        """
         for tries in range(0, 10):
-            #  Debug.dump_all_threads()
+            xbmc.sleep(50)
+            Debug.dump_all_threads()
             #  pending_threads: int = GarbageCollector.reap_the_dead()
             pending_threads: int = 0
             for a_thread in threading.enumerate():
@@ -351,15 +380,20 @@ if __name__ == '__main__':
                     a_thread.join()
                     xbmc.log(f'Joined thread: {a_thread.name}')
             unaccounted_for_threads: int = threading.active_count()
-            if unaccounted_for_threads > 0:  # Main
+            if unaccounted_for_threads > 1:  # Main
                 xbmc.log(f'Threads remaining: {unaccounted_for_threads} '
                          f'pending: {pending_threads}', xbmc.LOGDEBUG)
-                faulthandler.dump_traceback(file=debug_file, all_threads=True)
+                #  faulthandler.dump_traceback(file=debug_file, all_threads=True)
             if pending_threads < 2:  # Main will still be present
+                xbmc.log('Exiting SHUTDOWN LOOP, only MAIN thread remains')
                 break
-        debug_file.close()
+        #  debug_file.close()
+        xbmc.sleep(50)
+        xbmc.log(f'TTS SHUTDOWN COMPLETE')
     except Exception as e:
         xbmc.log(f'Exception occured shutting down MainThreadLoop {e}')
+    if REMOTE_DEBUG:
         PythonDebugger.disable()
     xbmc.log('TTS Execution Done', xbmc.LOGDEBUG)
-    sys.exit(0)
+    # sys.exit(0)
+    # sys.exit()

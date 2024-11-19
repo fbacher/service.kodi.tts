@@ -221,7 +221,7 @@ class SAPI_Utils:
             import stat, shutil
             os.chmod(gen, stat.S_IWRITE)
             shutil.rmtree(gen, ignore_errors=True)
-            if not os.path.exists(gen):
+            if not os.path.text_exists(gen):
                 os.makedirs(gen)
         except AbortException:
             reraise(*sys.exc_info())

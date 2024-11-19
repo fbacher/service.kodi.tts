@@ -10,6 +10,7 @@ from gui.element_parser import (ElementHandler)
 from gui.no_topic_models import NoScrollbarTopicModel
 from gui.parser.parse_scrollbar import ScrollbarParser
 from gui.scrollbar_topic_model import ScrollbarTopicModel
+from windows.window_state_monitor import WinDialogState
 
 module_logger = BasicLogger.get_logger(__name__)
 
@@ -19,11 +20,13 @@ class ScrollbarModel(BaseModel):
     _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.SCROLL_BAR]
 
-    def __init__(self, parent: BaseModel, parsed_scrollbar: ScrollbarParser) -> None:
+    def __init__(self, parent: BaseModel, parsed_scrollbar: ScrollbarParser,
+                 windialog_state: WinDialogState | None = None) -> None:
         clz = type(self)
         if clz._logger is None:
             clz._logger = module_logger
-        super().__init__(parent.window_model, parsed_scrollbar)
+        super().__init__(parent.window_model, parsed_scrollbar,
+                         windialog_state=windialog_state)
 
         self.orientation_expr: str = 'vertical'
         self.show_one_page: bool = parsed_scrollbar.show_one_page
@@ -38,7 +41,8 @@ class ScrollbarModel(BaseModel):
         self.on_unfocus_expr: str = parsed_scrollbar.on_unfocus_expr
 
         if parsed_scrollbar.topic is not None:
-            model_handler: Callable[[BaseModel, BaseModel, BaseParser], BaseModel]
+            model_handler: Callable[[BaseModel, BaseModel, BaseParser,
+                                     WinDialogState], BaseModel]
             self.topic = ScrollbarTopicModel(self, parsed_scrollbar.topic)
         else:
             self.topic = NoScrollbarTopicModel(self)
@@ -63,10 +67,11 @@ class ScrollbarModel(BaseModel):
         for parser in parsers:
             parser: BaseParser
             # clz._logger.debug(f'parser: {parser}')
-            model_handler:  Callable[[BaseModel, BaseModel, BaseParser], BaseModel]
+            model_handler:  Callable[[BaseModel, BaseParser, WinDialogState | None],
+                                     BaseModel]
             # clz._logger.debug(f'About to create model from {parser.item}')
             model_handler = ElementHandler.get_model_handler(parser.item)
-            child_model: BaseModel = model_handler(self, parser)
+            child_model: BaseModel = model_handler(self, parser, None)
             self.children.append(child_model)
 
     @property

@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 
 from backends.audio.base_audio import SubprocessAudioPlayer
-from backends.audio.sound_capabilties import SoundCapabilities
+from backends.audio.sound_capabilities import SoundCapabilities
 from backends.players.player_index import PlayerIndex
 from backends.settings.i_validators import IChannelValidator, INumericValidator
 from backends.settings.service_types import Services, ServiceType
@@ -20,8 +20,9 @@ from common.exceptions import ExpiredException
 from common.logger import BasicLogger
 from common.phrases import Phrase
 from common.setting_constants import Channels, Players
+from common.settings import Settings
 
-module_logger: BasicLogger = BasicLogger.get_logger(__name__)
+MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
@@ -39,15 +40,6 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
     ID = Players.MPV
     service_ID: str = Services.MPV_ID
     service_TYPE: str = ServiceType.PLAYER
-
-    _supported_input_formats: List[str] = [SoundCapabilities.WAVE, SoundCapabilities.MP3]
-    _supported_output_formats: List[str] = [SoundCapabilities.WAVE, SoundCapabilities.MP3]
-    _provides_services: List[ServiceType] = [ServiceType.PLAYER,
-                                             ServiceType.CONVERTER]
-    SoundCapabilities.add_service(service_ID, _provides_services,
-                                  _supported_input_formats,
-                                  _supported_output_formats)
-
     _availableArgs: Tuple[str, str] = (Constants.MPV_PATH, '--help')
 
     """
@@ -87,7 +79,7 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
      Note that speed, volume, etc. RESET between each file played. Example below
      resets speed/tempo before each play.
     
-     mplayer  -af "scaletempo" -slave  -idle -input file=./slave.input
+     mpv  -af "scaletempo" -slave  -idle -input file=./slave.input
     
      From another shell:
      (echo "loadfile <audio_file> 0"; echo "speed_mult 1.5") >> ./slave.input
@@ -96,7 +88,7 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
      To stop playing current file and start playing another:
      (echo loadfile <audio_file3> 1; echo speed_mult 1.5) >>./slave.input
 
-     Mplayer supports speeds > 0:
+     mpv supports speeds > 0:
       0.30 ~1/3 speed
       0.5 1/2 speed
       1   1 x speed
@@ -113,16 +105,15 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
     
         --af=format=channels=stereo
     '''
-
-    _logger: BasicLogger = None
+    _initialized: bool = False
 
     def __init__(self):
         clz = MPVAudioPlayer
         # Set get here size super also sets clz.get. And clz is the same for
         # both. This messes up register
-        if clz._logger is None:
-            clz._logger = module_logger
+        if not clz._initialized:
             clz.register(self)
+            clz._initialized = True
         super().__init__()
 
         self.engine_id: str | None = None
@@ -160,13 +151,13 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
             # and volume
             #
             if int(abs(round(volume * 10))) != 0:
-                args.append(f'--default_volume={volume}')
+                args.append(f'--volume={volume}')
             if int(abs(round(speed * 10))) != 0:
-                args.append(f'--default_speed={speed}')
+                args.append(f'--speed={speed}')
                 args.append(f'{phrase.get_cache_path()}')
         except ExpiredException:
             reraise(*sys.exc_info())
-        self._logger.debug_v(f'args: {" ".join(args)}')
+        MY_LOGGER.debug_v(f'args: {" ".join(args)}')
         return args
 
     def get_slave_pipe_path(self) -> Path:
@@ -186,7 +177,7 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
         clz = MPVAudioPlayer
         slave_pipe_dir: Path = Path(tempfile.mkdtemp())
         self.slave_pipe_path = slave_pipe_dir.joinpath('mpv.tts')
-        clz._logger.debug_v(f'slave_pipe_path: {self.slave_pipe_path}')
+        MY_LOGGER.debug_v(f'slave_pipe_path: {self.slave_pipe_path}')
         args: List[str] = []
         args.extend(clz.SLAVE_ARGS)
         args.append(f'--input-ipc-server={self.slave_pipe_path}')
@@ -223,12 +214,12 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
             # and volume
             #
             if int(abs(round(volume * 10))) != 0:
-                args.append(f'--default_volume={volume}')
+                args.append(f'--volume={volume}')
             if int(abs(round(speed * 10))) != 0:
-                args.append(f'--default_speed={speed}')
+                args.append(f'--speed={speed}')
         except ExpiredException:
             reraise(*sys.exc_info())
-        self._logger.debug_v(f'args: {" ".join(args)}')
+        MY_LOGGER.debug_v(f'args: {" ".join(args)}')
         return args
 
     def canSetSpeed(self) -> bool:
@@ -249,10 +240,8 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
 
     def get_player_speed(self) -> float:
         clz = MPVAudioPlayer
-        speed_validator: NumericValidator
-        speed_validator = clz.get_validator(self.service_ID,
-                                            property_id=SettingsProperties.SPEED)
-        speed = speed_validator.get_value()
+        speed: float = Settings.get_speed()
+        MY_LOGGER.debug(f'speed: {speed}')
         return speed
 
     def get_player_volume(self, as_decibels: bool = True) -> float:
@@ -284,12 +273,12 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
         else:
             volume = volume_validator.as_percent()
 
-        # clz._logger.debug(f'getVolume as_decibels: {as_decibels} volume: {volume}')
+        # MY_LOGGER.debug(f'getVolume as_decibels: {as_decibels} volume: {volume}')
         return volume
 
     def get_player_channels(self) -> Channels:
         """
-        User can choose to prefer TTS to voice in stereo, mono, or don't care.
+        User can choose to voice in stereo, mono, or don't care.
         MPV by default plays mono out of one channel, while mplayer plays on both
         stereo speakers. Have not tried 5.1 configurations, buut I think stereo means
         the noormal stereo channels. It is possible to specify all speakers, or the

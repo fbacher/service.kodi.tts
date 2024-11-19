@@ -8,11 +8,12 @@ from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
                                           IntValidator, NumericValidator, StringValidator)
+from common.debug import Debug
 from common.logger import BasicLogger
 from common.phrases import Phrase, PhraseList
 from common.settings import Settings
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class IServices:
@@ -58,12 +59,12 @@ class BaseServices(IServices):
 
     @classmethod
     def class_init(cls):
-        BaseServices._logger = module_logger
+        pass
 
     @classmethod
-    def register(cls, service: Type['BaseServices']) -> None:
+    def register(cls, service: IServices) -> None:
         BaseServices.service_index[service.service_ID] = service
-        BaseServices._logger.debug(f'Registering {repr(service)}')
+        MY_LOGGER.debug(f'Registering {service.service_ID} {repr(service)}')
 
     def register_settings(self, service: Type['BaseServices']) -> None:
         BaseServices.service_settings_index[service.service_ID] = service
@@ -78,6 +79,9 @@ class BaseServices(IServices):
     def getService(cls, service_name: str) -> ForwardRef('BaseServices'):
         service: BaseServices | None
         service = BaseServices.service_index.get(service_name, None)
+        if service is None:
+            MY_LOGGER.debug(f'Could not get service: {service_name}')
+            Debug.dump_current_thread()
         return service
 
     @classmethod
@@ -314,8 +318,8 @@ class BaseServices(IServices):
 
     @classmethod
     def get_active_player_id(cls) -> str:
-        # engine_id: str = cls.get_active_engine_id()
-        # player_id: str = Settings.get_player_id(engine_id)
+        # service_id: str = cls.get_active_engine_id()
+        # player_id: str = Settings.get_player_id(service_id)
         # return player_id
         pass
 

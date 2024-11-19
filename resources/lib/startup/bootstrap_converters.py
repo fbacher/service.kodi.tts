@@ -15,11 +15,11 @@ class BootstrapConverters:
         Converters.NONE,
         Converters.WINDOWS,
         Converters.SOX,
-        Converters.MPLAYER,
         Converters.MPG123,
         Converters.MPG321_OE_PI,
         Converters.MPG321,
-        Converters.LAME]
+        Converters.LAME,
+        Converters.MPLAYER]
 
     _initialized: bool = False
     _logger: BasicLogger = None

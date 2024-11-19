@@ -27,11 +27,13 @@ class ButtonModel(BaseLabelModel):
     _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.BUTTON]
 
-    def __init__(self, parent: BaseModel, parsed_button: ParseButton) -> None:
+    def __init__(self, parent: BaseModel, parsed_button: ParseButton,
+                 windialog_state: WinDialogState | None = None) -> None:
         clz = ButtonModel
         if clz._logger is None:
             clz._logger = module_logger
-        super().__init__(window_model=parent.window_model, parser=parsed_button)
+        super().__init__(window_model=parent.window_model, parser=parsed_button,
+                         windialog_state=windialog_state)
         self.attributes_with_values: List[str] = clz.item.attributes_with_values
         self.attributes: List[str] = clz.item.attributes
         self.visible_expr: str = ''
@@ -67,11 +69,12 @@ class ButtonModel(BaseLabelModel):
             self.topic = ButtonTopicModel(self, parsed_button.topic)
         else:
             self.topic = NoButtonTopicModel(self)
+
         for child in parsed_button.children:
             child: BaseParser
-            model_handler:  Callable[[BaseModel, BaseParser], BaseModel]
+            model_handler: Callable[[BaseModel, BaseParser, WinDialogState], BaseModel]
             model_handler = ElementHandler.get_model_handler(child.item)
-            child_model: BaseModel = model_handler(self, child)
+            child_model: BaseModel = model_handler(self, child, None)
             self.children.append(child_model)
 
     @property
@@ -85,7 +88,7 @@ class ButtonModel(BaseLabelModel):
         return False
 
     @property
-    def supports_label_heading(self) -> bool:
+    def supports_heading_label(self) -> bool:
         """
             A control that defaults to using label as a heading
         :return:
@@ -146,7 +149,7 @@ class ButtonModel(BaseLabelModel):
                 clz._logger.debug(f'Text: {text}')
                 if text != '':
                     success = True
-                    phrases.append(Phrase(text=text))
+                    phrases.append(Phrase(text=text, check_expired=False))
             except ValueError as e:
                 success = False
             if not success:
@@ -155,7 +158,7 @@ class ButtonModel(BaseLabelModel):
                     text: str = xbmc.getInfoLabel(query)
                     clz._logger.debug(f'Text: {text}')
                     if text != '':
-                        phrases.append(Phrase(text=text))
+                        phrases.append(Phrase(text=text, check_expired=False))
                         success = True
                 except ValueError as e:
                     success = False

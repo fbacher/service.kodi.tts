@@ -69,19 +69,17 @@ class Messages:
     #  ENGINE = Message('Engine', 32001)
     DEFAULT_TTS_ENGINE = Message('Default TTS Engine', 32002)
     # SELECT_LANGUAGE = Message('Available Voices for', 32227)
-    SELECT_VOICE = Message('Voice', 32308)
+    #  SELECT_VOICE = Message('Voice', 32308)
     SETTINGS = Message('Settings', 32219)
     OPTIONS = Message('Options', 32029)
     KEYMAP = Message('Keymap', 32030)
     ADVANCED = Message('Advanced', 32031)
     SELECT_VOICE_GENDER = Message('Voice Gender', 32228)
     SELECT_PITCH = Message('Pitch', 32229)
-    SELECT_PLAYER = Message('Player', 32230)
     PIPE_AUDIO = Message('Pipe Audio', 32234)
     SELECT_SPEED = Message('Speed: {0}', 32231)
     # VOLUME_DB = Message('Volume: {0}dB', 32232)
     API_KEY = Message('API Key', 32233)
-    SELECT_SPEECH_ENGINE = Message('Speech Engine', 32224)
     ENTER_API_KEY = Message('Enter API Key:  ', 32235)
     CACHE_SPEECH = Message('Cache Audio From Engine', 32312)
     PLAYER_MODE = Message('Player Mode', 32336)
@@ -166,7 +164,6 @@ class Messages:
     NO_TEXT = Message('No text', 32178)
     DELETED = Message('deleted', 32179)
     CANNOT_ADJUST_VOLUME = Message('Cannot adjust volume', 32180)
-    CHOOSE_BACKEND = Message('Choose Backend', 32181)
     NOT_AVAILABLE = Message('Not Available', 32182)
     NO_PLAYERS_TO_SELECT = Message('No players to select.', 32183)
     AUTO = Message('Auto', 32184)
@@ -212,19 +209,19 @@ class Messages:
 
     PLAYER_INTERNAL = Message('internal', 32313)
 
-    BACKEND_ESPEAK = Message(Services.ESPEAK_ID, 32314)
-    BACKEND_FESTIVAL = Message(Services.FESTIVAL_ID, 32315)
-    BACKEND_FLITE = Message(Services.FLITE_ID, 32316)
-    BACKEND_EXPERIMENTAL = Message(Services.EXPERIMENTAL_ENGINE_ID, 32323)
-    BACKEND_GOOGLE = Message(Services.GOOGLE_ID, 32324)
-    BACKEND_RECITE = Message(Services.RECITE_ID, 32325)
-    BACKEND_RESPONSIVE_VOICE = Message(Services.RESPONSIVE_VOICE_ID, 32317)
-    BACKEND_SAPI = Message(Services.SAPI_ID, 32329)
-    BACKEND_SPEECH_DISPATCHER = Message(Services.SPEECH_DISPATCHER_ID, 32318)
-    BACKEND_INTERNAL = Message(Services.INTERNAL_PLAYER_ID, 32326)
-    BACKEND_LOG_ONLY = Message(Services.LOG_ONLY_ID, 32327)
-    CONVERT_PICO_TO_WAV = Message(Services.PICO_TO_WAVE_ID, 32328)
-    BACKEND_PIPER = Message(Services.PIPER_ID, 32331)
+    # BACKEND_ESPEAK = Message(Services.ESPEAK_ID, 32314)
+    # BACKEND_FESTIVAL = Message(Services.FESTIVAL_ID, 32315)
+    # BACKEND_FLITE = Message(Services.FLITE_ID, 32316)
+    # BACKEND_EXPERIMENTAL = Message(Services.EXPERIMENTAL_ENGINE_ID, 32323)
+    # BACKEND_GOOGLE = Message(Services.GOOGLE_ID, 32324)
+    # BACKEND_RECITE = Message(Services.RECITE_ID, 32325)
+    # BACKEND_RESPONSIVE_VOICE = Message(Services.RESPONSIVE_VOICE_ID, 32317)
+    # BACKEND_SAPI = Message(Services.SAPI_ID, 32329)
+    # BACKEND_SPEECH_DISPATCHER = Message(Services.SPEECH_DISPATCHER_ID, 32318)
+    # BACKEND_INTERNAL = Message(Services.INTERNAL_PLAYER_ID, 32326)
+    # BACKEND_LOG_ONLY = Message(Services.LOG_ONLY_ID, 32327)
+    # CONVERT_PICO_TO_WAV = Message(Services.PICO_TO_WAVE_ID, 32328)
+    # BACKEND_PIPER = Message(Services.PIPER_ID, 32331)
 
 
     # INTERNAL_ID: Messages.BACKEND_INTERNAL,
@@ -391,7 +388,7 @@ class Messages:
                        disabled_msgid: int = DISABLED.get_msg_id()) -> str:
         """
         Used to format binary values from Kodi ListItems, etc. Kodi returns
-        a string with the True/False value coded as () for False and (*) for True.
+        a string with the True/False value coded as ( ) for False and (*) for True.
         Here we allow those strings to be replaced by others of the user's choosing.
         Also, pauses are inserted into the strings.
         :param text: Message that may have embedded markes for True/False

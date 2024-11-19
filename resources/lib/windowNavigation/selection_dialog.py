@@ -1,39 +1,41 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations  # For union operator |
 
-from email._header_value_parser import MessageID
+import queue
+import sys
+from collections import namedtuple
 
 import xbmc
 import xbmcgui
 from xbmcgui import (Control, ControlButton, ControlEdit, ControlGroup, ControlLabel,
-                     ControlRadioButton, ControlSlider)
+                     ControlRadioButton, ControlSlider, ControlList, ListItem)
 
+import utils.util
 from common import *
 
 from common.constants import Constants
 from common.logger import *
 from common.message_ids import MessageId, MessageUtils
+from common.messages import Messages
 from common.monitor import Monitor
+from welcome.subjects import (Category, CategoryRef, Load, MessageRef, Subject,
+                              SubjectRef,
+                              Utils)
 from windowNavigation.choice import Choice
 
-if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = BasicLogger.get_logger(__name__)
-
-else:
-    module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class SelectionDialog(xbmcgui.WindowXMLDialog):
-    _logger: BasicLogger
     HEADING_CONTROL_ID: Final[int] = 1
+    SUB_HEADING_CONTROL_ID: Final[int] = 4
+    HEADER_SUB_HEADER_GROUP_ID: Final[int] = 1001
     OPTIONS_GROUP_LIST: Final[int] = 3
-    OK_CONTROL_ID: Final[int] = 5
-    CANCEL_CONTROL_ID: Final[int] = 7
-    NUMBER_OF_ITEMS_ID: Final[int] = 42
-    # BUTTON IDs 1-based numbering
-    NUMBER_OF_BUTTONS: Final[int] = 99
-    BUTTON_ID_BASE: Final[int] = 101
-    BUTTON_ID_LIMIT: Final[int] = NUMBER_OF_BUTTONS + BUTTON_ID_BASE
+
+    FULL_SCREEN_GROUP_ID: Final[int] = 1000
+    SELECTION_LIST_GROUP_ID: Final[int] = 1003
+    LIST_CONTROL_ID: Final[int] = 3
+    RETURN_TO_PREVIOUS_MENU: str = MessageRef.RETURN_TO_PREVIOUS_MENU.get_msg()
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """
@@ -41,41 +43,49 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         :param args:
         """
         super().__init__(*args, **kwargs)
+        self.abort: bool = False  # Set to True after abort received
         self.initialized: bool = False
         clz = type(self)
-        clz._logger = module_logger
-        clz._logger.debug('SelectionDialog.__init__')
+        Load.load_help()
+        MY_LOGGER.debug('SelectionDialog.__init__')
         Monitor.register_abort_listener(self.on_abort_requested)
-        empty_display_values: List[Choice] = []
+        self.EMPTY_DISPLAY_VALUES: Final[List[Choice]] = []
         self.list_position: int = 0
+        self.full_window_group: xbmcgui.ControlGroup | None = None
         self.selection_index: int = -1
         self.title: str = kwargs.get('title', 'No Heading')
         self.sub_title: str | None = kwargs.get('sub_title', None)
-        clz._logger.debug(f'sub_title: {self.sub_title}')
+        MY_LOGGER.debug(f'sub_title: {self.sub_title}')
         self._choices: List[Choice]
-        self._choices = kwargs.get('choices', empty_display_values)
-        self._initial_choice: int = kwargs.get('initial_choice', -1)
-        if self._initial_choice < 0:
-            self._initial_choice = 0
-        self._previous_num_items: int = 200
+        self._choices = kwargs.get('choices', self.EMPTY_DISPLAY_VALUES)
+        MY_LOGGER.debug(f'# choices: {len(self._choices)}')
+        self._selected_idx: int = kwargs.get('initial_choice', -1)
+        if self._selected_idx < 0:
+            self._selected_idx = 0
+        MY_LOGGER.debug(f'selected_idx: {self._selected_idx}')
+
+        self.is_modal: bool = False
         self._call_on_focus: Callable[Choice, None] | None
         self._call_on_focus = kwargs.get('call_on_focus', None)
         self._call_on_select: Callable[Choice, None] | None
         self._call_on_select = kwargs.get('call_on_select', None)
+
+        # True when it is safe to update the gui.
+        # You can not update when not in doModal or show until OnInit is complete.
+        # OnInit is run each time doModal is run. Show doesn't or does not
+        # reliably run OnInit. Odd.
+
         self.disable_tts: bool = kwargs.get('disable_tts', False)
         self.heading_control: ControlLabel | None = None
         self.sub_heading_control: ControlLabel | None = None
-        self.choices_group: ControlGroup | None = None
-        # GroupList's button_controls
-        self.big_group: ControlGroup = None
-        self.button_controls: List[ControlButton] = []
-        self.cancel_radio_button: ControlRadioButton | None = None
-        self.number_of_button_controls: int = 0
-        self.ok_radio_button: ControlRadioButton | None = None
-        self.items_label: ControlLabel | None = None
+
+        self.gui_updates_allowed: bool = False
+        self._callback:  Callable[[Any], None] | None = kwargs.get('callback', None)
+        self.heading_group_control: ControlGroup | None = None
+        self.selection_list_group: ControlGroup | None = None
+        self.list_control: ControlList | None = None
+        self.list_items: List[ListItem] = []
         self.close_selected_idx: int = -1
-        clz._logger.debug(f'choices: {len(self._choices)}')
-        xbmc.log(f'choices len: {len(self._choices)}', xbmc.LOGINFO)
 
     def onInit(self):
         """
@@ -84,61 +94,70 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         """
         # super().onInit()
         clz = type(self)
-        xbmc.log('SelectionDialog.onInit enter', xbmc.LOGINFO)
+        MY_LOGGER.debug('SelectionDialog.onInit enter')
         self.initialized = False
         try:
-            self.big_group = self.getControlGroup(1000)
-            self.big_group.setVisible(False)
-
-            self.heading_control = self.getControlLabel(1)
-            clz._logger.debug(f'Got heading ctrl: 1')
-            self.sub_heading_control = self.getControlLabel(4)
-            clz._logger.debug(f'Got heading ctrl: 4')
-            self.ok_radio_button = self.getControlRadioButton(clz.OK_CONTROL_ID)
-            clz._logger.debug(f'Just initialized ok_radio_button')
-            self.cancel_radio_button = self.getControlRadioButton(
-                clz.CANCEL_CONTROL_ID)
-            self.ok_radio_button.setLabel(MessageId.OK_BUTTON.get_msg())
-            self.ok_radio_button.setVisible(True)
-            self.cancel_radio_button.setLabel(MessageId.CANCEL_BUTTON.get_msg())
-            self.cancel_radio_button.setVisible(True)
-            try:
-                # Buttons for displaying and choosing choices.
-                # Defined in selection-dialog.xml as controls 101 - 301
-                self._logger.debug(f'ID_BASE: {clz.BUTTON_ID_BASE} LIMIT:'
-                                   f' {clz.BUTTON_ID_LIMIT}')
-                for idx in range(clz.BUTTON_ID_BASE, clz.BUTTON_ID_LIMIT):
-                    button_control: ControlButton = \
-                                self.getControlButton(idx)
-                    #  self._logger.debug(f'button controlId: {idx}')
-                    self.button_controls.append(button_control)
-                    button_control.setVisible(False)
-            except Exception as e:
-                clz._logger.exception('Setting up List and evaluating response')
-
-            self.items_label = self.getControlLabel(clz.NUMBER_OF_ITEMS_ID)
+            Monitor.exception_on_abort(timeout=0.01)
+            self.configure_heading()
+            self.configure_selection_list()
             self.update_choices(title=self.title,
                                 choices=self._choices,
                                 sub_title=self.sub_title,
-                                initial_choice=self._initial_choice,
+                                initial_choice=self._selected_idx,
                                 call_on_focus=self._call_on_focus,
                                 disable_tts=self.disable_tts)
-
-        except Exception as e:
-            clz._logger.exception("Failed to initialize")
+            self.initialized = True
+        except AbortException:
+            self.abort = True
             self.close()
+            reraise(*sys.exc_info())
+        except Exception as e:
+            MY_LOGGER.exception("Failed to initialize")
+            self.close()
+        MY_LOGGER.debug_v('SelectionDialog.onInit EXIT')
 
-        clz._logger.debug_v('SelectionDialog.onInit exiting')
+    def configure_heading(self) -> None:
+        """
+        Called by OnInit to configure the Window heading
+
+        :return:
+        """
+        clz = SelectionDialog
+        self.full_window_group = self.getControlGroup(SelectionDialog.FULL_SCREEN_GROUP_ID)
+        #  DON'T completely blank screen. Impacts voicing and flickers screen.
+        # self.full_window_group.setVisible(False)
+
+        self.heading_group_control = self.getControlGroup(
+                clz.HEADER_SUB_HEADER_GROUP_ID)
+        self.heading_control = self.getControlLabel(clz.HEADING_CONTROL_ID)
+        MY_LOGGER.debug(f'Got heading ctrl: 1')
+        self.sub_heading_control = (self.getControlLabel
+                                    (SelectionDialog.SUB_HEADING_CONTROL_ID))
+        MY_LOGGER.debug(f'Got heading ctrl: 4')
+        Monitor.exception_on_abort(timeout=0.01)
+
+    def configure_selection_list(self) -> None:
+        """
+        Called by onInit to configure the list control for selecting subjects
+        to view.
+
+        :return:
+        """
+        clz = SelectionDialog
+        self.selection_list_group = self.getControlGroup(
+                clz.SELECTION_LIST_GROUP_ID)
+        #  Can't Lose focus on this control
+        self.list_control = self.getControlList(clz.LIST_CONTROL_ID)
 
     def update_choices(self, title: str,
-                       choices: List[Choice], initial_choice: int,
+                       choices: List[Choice],
+                       initial_choice: int,
                        sub_title: str | None = None,
                        call_on_focus: Callable[Choice, None] | None = None,
                        call_on_select: Callable[Choice, None] | None = None,
                        disable_tts: bool = False):
         """
-        Provides a means for the SelectionDialog so that the single instance
-        can be shared.
+        Provides a means for SelectionDialog to be a single, reusable instance
 
         :param title:  Heading for the dialog
         :param choices:  List of available choices to present
@@ -149,93 +168,110 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         :param call_on_select: Optional call-back function for on-click events
                               useful for voicing the selected item immediately
         :param disable_tts: When True TTS screen-scraping is disabled until this
-                            dialog exists. See Notes
+                            dialog text_exists. See Notes
         :return: Returns the underlying SelectionDialog so that methods can be
                 called such as doModal
 
         Note: Any changes made in SettingsDialog are either committed or undone
-        on exit. OK commits the changes in Settings to settings.xml.
-        Cancel reverts all changes in Settings from a backup-copy.
+        on exit. Selecting any choice commits the changes in to the settings
+        cache. Only when the changes are committed in SettingsDialog are
+        the committed to settings.xml.
+        Leaving SelectionDialog via the 'Back' button reverts all changes
+        using a backup-copy.
 
         Note: disable_tts is used when the language and engine need to be switched
         while voicing the dialog.
-
-        Reverting live changes without Cancelling SettingsDialog requires care.
         """
         clz = SelectionDialog
-        # Used to convey the selection when DONE. Set to -1 on CANCEL
-        self.close_selected_idx = -1
+        # Used to convey the selection when DONE. Set to -1 on exit without
+        # saving (BACK button).
+        if choices is None:
+            choices = []
 
-        self.title: str = title
-        self.sub_title: str = sub_title
-        clz._logger.debug(f'sub_title: {sub_title}')
+        # Choices can have zero length
         self._choices = choices
-        self._initial_choice = initial_choice
-        if self._initial_choice < 0:
-            self._initial_choice = 0
-        self._call_on_focus = call_on_focus
+        self._selected_idx = initial_choice
+        if self._selected_idx < 0:
+            self._selected_idx = 0
 
+        MY_LOGGER.debug(f'# choices: {len(self._choices)}')
+        new_list_items: List[ListItem] = []
+        for choice in self._choices:
+            choice: Choice
+            list_item: ListItem
+            list_item = ListItem(label=f'{choice.label}', label2=f'hint{choice.hint}')
+            new_list_items.append(list_item)
+
+        self.list_control.reset()
+        self.list_control.addItems(new_list_items)
+        self.list_items = new_list_items
+        self.list_control.selectItem(self._selected_idx)
+        self.list_control.setVisible(True)
+        self.selection_list_group.setVisible(True)
+        self.setFocus(self.list_control)
+        self._call_on_focus = call_on_focus
+        self.update_heading(title=title, sub_title=sub_title)
+
+        self.full_window_group.setVisible(True)
+        self.gui_updates_allowed = True
+        Monitor.exception_on_abort(timeout=0.01)
+
+    def update_heading(self, title: str, sub_title: str = ''):
+        """
+        Called during onInit to update the heading values and make visible
+
+        :param title:
+        :param sub_title:
+        :return:
+        """
+        clz = SelectionDialog
+        self.title = title
+        self.sub_title = sub_title
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'sub_title: {sub_title}')
         self.heading_control.setLabel(self.title)
-        clz._logger.debug(f'title: {self.title}')
+        self.heading_control.setVisible(True)
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'HEADING set to title: {self.title}')
         if self.sub_title is not None:
             self.sub_heading_control.setLabel(self.sub_title)
             self.sub_heading_control.setVisible(True)
         else:
             self.sub_heading_control.setVisible(False)
+        self.heading_group_control.setVisible(True)
+        Monitor.exception_on_abort(timeout=0.01)
 
-        for idx in range(0, min(len(self._choices), clz.NUMBER_OF_BUTTONS)):
-            choice: Choice = self._choices[idx]
-            # self._logger.debug(f'VISIBLE idx: {idx} ctrl: {idx + 101} '
-            #                    f'enabled: {choice.enabled}')
-            button_control = self.button_controls[idx]
-            button_control.setLabel(choice.label)
-            button_control.setVisible(True)
-            button_control.setEnabled(choice.enabled)
+    def process_selection(self, select_idx: int) -> None:
+        """
+        Called when a user selects something from the subject/category list.
 
-        # turn off visibility of unused items
-        start: int = min(len(self._choices), clz.NUMBER_OF_BUTTONS)
-        stop: int = min(clz.NUMBER_OF_BUTTONS, self._previous_num_items)
+        :param select_idx: Item selected
+        :return:
+        """
+        clz = SelectionDialog
+        # Voice the text for this selection
+        choice: int = self.list_control.getSelectedPosition()
+        MY_LOGGER.debug(f'list_control position: {choice}')
+        choice_value: str = ''
+        choice_type: str = ''
+        """
+         
+        """
+        Monitor.exception_on_abort(timeout=0.01)
 
-        for idx in range(start, stop):
-            #  self._logger.debug(f'INVISIBLE idx: {idx} ctrl: {idx + 101}')
-            button_control = self.button_controls[idx]
-            button_control.setVisible(False)
+    def setProperty(self, key, value):
+        """
+        Sets Window properties so that the screen scraper can detect and
+        use the values.
 
-        choice: Choice = self._choices[self._initial_choice]
-        clz._logger.debug(f'SelectionDialog.onInit setting focus on'
-                                  f' control: {101 + self._initial_choice:d}'
-                                  f' value: {choice.label}')
-
-        label: str = MessageUtils.get_formatted_msg_by_id(MessageId.DIALOG_N_OF_M_ITEMS,
-                                                          str(1),
-                                                          str(len(self._choices)))
-        self.disable_tts = disable_tts
-        if self.disable_tts:
-            pass
-        self.items_label.setLabel(label)
-        self.items_label.setVisible(True)
-        self.selection_index = self._initial_choice
-        control_id: int = self._initial_choice + 101
-        idx = self._initial_choice
-        choice: Choice = self._choices[idx]
-        self._logger.debug(f'Enable initial_choice idx: {idx} ctrl: {idx + 101} '
-                           f'enabled: {choice.enabled}')
-        button_control = self.button_controls[self._initial_choice]
-        button_control.setEnabled(True)
-        self.setFocusId(control_id)
-
-        self._previous_num_items = len(self._choices)
-        self.big_group.setVisible(True)
-        self.initialized = True
-        try:
-            self.setProperty('x', 'y')
-        except Exception:
-            clz._logger.exception('')
-        try:
-            win = xbmcgui.Window(xbmcgui.getCurrentWindowId())
-            win.setProperty('y', 'z')
-        except Exception:
-            clz._logger.exception('')
+        :param key:
+        :param value:
+        :return:
+        """
+        clz = type(self)
+        MY_LOGGER.debug_v(f'SelectionDialog.setProperty key: {key} '
+                          f'value: {value}')
+        super().setProperty(key, value)
 
     def getControlButton(self, iControlId: int) -> ControlButton:
         clz = type(self)
@@ -268,19 +304,27 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         control: ControlSlider
         return control
 
+    def getControlList(self, iControlId: int) -> ControlList:
+        clz = type(self)
+        list_control: Control = super().getControl(iControlId)
+        list_control: ControlList
+        return list_control
+
     def doModal(self) -> None:
         """
 
         :return:
         """
         clz = type(self)
-        clz._logger.debug_v('SelectionDialog.doModal enter. About to call show')
         try:
-            self.show()
-            clz._logger.debug_v('SelectionDialog.doModal about to call super')
+            Monitor.exception_on_abort(timeout=0.01)
+            MY_LOGGER.debug('SelectionDialog.doModal about to call super')
+            self.is_modal = True
             super().doModal()
+            MY_LOGGER.debug(f'No longer Modal')
+            self.is_modal = False
         except Exception as e:
-            clz._logger.exception('SelectionDialog.show')
+            MY_LOGGER.exception('SelectionDialog.doModal')
         return
 
     def show(self) -> None:
@@ -289,14 +333,12 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         :return:
         """
         clz = type(self)
-        clz._logger.debug_v('SelectionDialog.show about to call super')
+        if self.abort:
+            return
+        MY_LOGGER.debug('SelectionDialog.show about to call super')
         super().show()
-        clz._logger.debug_v('SelectionDialog.show returned from super.')
 
-        if self.initialized:
-            self.ok_radio_button.setVisible(True)
-            self.cancel_radio_button.setVisible(True)
-        clz._logger.debug_v('SelectionDialog.show exiting')
+        MY_LOGGER.debug('SelectionDialog.show exiting')
 
     def close(self) -> None:
         """
@@ -304,8 +346,10 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         :return:
         """
         clz = type(self)
-        clz._logger.debug_v('SelectionDialog.close')
-        self.initialized = False
+        if not self.abort:
+            MY_LOGGER.debug('SelectionDialog.close')
+        self.gui_updates_allowed = True
+        self.is_modal = False
         super().close()
 
     def getFocus(self) -> None:
@@ -314,8 +358,15 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         :return:
         """
         clz = type(self)
-        clz._logger.debug('SelectionDialog.getFocus')
+        MY_LOGGER.debug('SelectionDialog.getFocus')
         super().getFocus()
+
+    def on_abort_requested(self):
+        try:
+            xbmc.log('Received AbortRequested', xbmc.LOGINFO)
+            self.close()
+        except Exception:
+            pass
 
     def onAction(self, action: xbmcgui.Action) -> None:
         """
@@ -328,105 +379,135 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
             if not self.initialized:
                 return
 
+            Monitor.exception_on_abort(timeout=0.01)
+
             action_id = action.getId()
             if action_id == 107:  # Mouse Move
                 return
 
             buttonCode: int = action.getButtonCode()
-            clz._logger.debug(
-                    'SelectionDialog.onAction action_id: {} buttonCode: {}'.
-                    format(action_id, buttonCode))
+            # MY_LOGGER.debug(
+            #         f'SelectionDialog.onAction focus_id: {self.getFocusId()}'
+            #         f' action_id: {action_id} buttonCode: {buttonCode}')
             if (action_id == xbmcgui.ACTION_PREVIOUS_MENU
                     or action_id == xbmcgui.ACTION_NAV_BACK):
+                # No selection made
+                self.close_selected_idx = -1
                 self.close()
-        except Exception as e:
-            clz._logger.exception('')
+            if action_id == xbmcgui.ACTION_SELECT_ITEM:
+                focus_id: int = self.getFocusId()
+                if focus_id == self.LIST_CONTROL_ID:
+                    try:
+                        if not self.initialized or not self.selection_list_group.isVisible():
+                            return
+                        self.selection_index = self.list_control.getSelectedPosition()
+                        choice: Choice = self._choices[self.selection_index]
+                        self.close_selected_idx: int = self.selection_index
+                        self.close()
 
-        # clz._logger.debug_v('SelectionDialog.onAction selectedPosition: {:d}'
+                    except AbortException:
+                        self.abort = True
+                        self.close()
+                        reraise(*sys.exc_info())
+                    except Exception as e:
+                        MY_LOGGER.exception('')
+
+            if action_id in (xbmcgui.ACTION_MOVE_DOWN, xbmcgui.ACTION_MOVE_UP):
+                # Cursor up/down will almost certainly change the position
+                # of the list container. Could add check to see if selected
+                # position changed.
+                focus_id: int = self.getFocusId()
+                if focus_id == self.LIST_CONTROL_ID:
+                    try:
+                        if not self.initialized or not self.selection_list_group.isVisible():
+                            return
+                        if self._call_on_focus is not None:
+                            self.selection_index = self.list_control.getSelectedPosition()
+                            choice: Choice = self._choices[self.selection_index]
+                            self._call_on_focus(choice, self.selection_index)
+                    except AbortException:
+                        self.abort = True
+                        self.close()
+                        reraise(*sys.exc_info())
+                    except Exception as e:
+                        MY_LOGGER.exception('')
+
+        except AbortException:
+            self.abort = True
+            self.close()
+            reraise(*sys.exc_info())
+        except Exception as e:
+            MY_LOGGER.exception('')
+
+        # MY_LOGGER.debug('SelectionDialog.onAction selectedPosition: {:d}'
         #                 .format(self.list_control.getSelectedPosition()))
         # display_value = self.list_control.getSelectedItem()
         # if display_value is not None:
-        #    clz._logger.debug_v('SelectionDialog.onAction selectedItem: {}'.
+        #    MY_LOGGER.debug('SelectionDialog.onAction selectedItem: {}'.
         #                     format(display_value.getLabel()))
 
     def onControl(self, controlId):
         clz = type(self)
-        clz._logger.debug_v(
+        MY_LOGGER.debug(
                 'SelectionDialog.onControl controlId: {:d}'.format(controlId))
 
     def onClick(self, controlId):
+        """
+        Called when a 'clickable' control is 'clicked' by a mouse. Typically
+        a button or anything selectable.
+
+        :param controlId:
+        :return:
+        """
         clz = type(self)
         try:
-            clz._logger.debug_v(
+            MY_LOGGER.debug(
                     'SelectionDialog.onClick controlId: {:d}'.format(controlId))
-
             focus_id = self.getFocusId()
-            clz._logger.debug('SelectionDialog.onClick FocusId: ' + str(focus_id))
-
+            MY_LOGGER.debug('SelectionDialog.onClick FocusId: ' + str(focus_id))
             # if controlId == self.list_control.getId():
-            #    clz._logger.debug_v('SelectionDialog List control 3 pressed')
+            #    MY_LOGGER.debug('SelectionDialog List control 3 pressed')
             # x = xbmc.executebuiltin('Skin.String(category)',True)
 
-            if controlId == clz.OK_CONTROL_ID:
-                self.close_selected_idx = self.selection_index
-                # OK radio_button
-                self.close()
-
-            elif controlId == clz.CANCEL_CONTROL_ID:
-                # Cancel. Reset to original choice
-
-                # self.getControl(3).selectItem(self._initial_choice)
-                self.close()
-
-            elif 101 <= controlId < (101 + len(self._choices)):
-                # Deselect previous
-                if self.selection_index >= 0:
-                    button: ControlButton = self.getControlButton(
-                            101 + self.selection_index)
-
-                self.selection_index = controlId - 101
-                button: ControlButton = self.getControlButton(controlId)
-                button.setEnabled(True)
-                if self._call_on_select is not None:
-                    choice = self._choices[self.selection_index]
-                    choice: Choice
-                    self._call_on_select(choice, self.selection_index)
+            if controlId == clz.LIST_CONTROL_ID:
+                self.process_selection(self.selection_index)
+        except AbortException:
+            self.abort = True
+            self.close()
+            reraise(*sys.exc_info())
 
         except Exception as e:
-            clz._logger.exception('')
+            MY_LOGGER.exception('')
 
     def onDoubleClick(self, controlId):
         clz = type(self)
-        clz._logger.debug_v(
+        MY_LOGGER.debug(
                 f'SelectionDialog.onDoubleClick controlId: {controlId:d}')
 
     def onFocus(self, controlId: int):
         clz = type(self)
+        MY_LOGGER.debug(f'onFocus controlId: {controlId}')
         try:
-            if not self.initialized or not self.big_group.isVisible():
+            if not self.initialized or not self.selection_list_group.isVisible():
                 return
             if self._call_on_focus is not None:
-                if 101 <= controlId < (101 + len(self._choices)):
-                    idx: int = controlId - 101
-                    choice = self._choices[idx]
-                    choice: Choice
-                    self._call_on_focus(choice, idx)
+                self.selection_index = self.list_control.getSelectedPosition()
+                choice: Choice = self._choices[self.selection_index]
+                self._call_on_focus(choice, self.selection_index)
+        except AbortException:
+            self.abort = True
+            self.close()
+            reraise(*sys.exc_info())
         except Exception as e:
-            clz._logger.exception('')
+            MY_LOGGER.exception('')
 
-    def on_abort_requested(self):
-        self.stop = True
+    def hlp_dialg_abrt(self):  # Short name that shows up in debug log
         try:
-            xbmc.log('Received AbortRequested', xbmc.LOGINFO)
+            self.abort = True
+            xbmc.log('SelectionDialog Received AbortRequested', xbmc.LOGINFO)
             self.close()
         except Exception:
             pass
-
-    def setProperty(self, key, value):
-        clz = type(self)
-        clz._logger.debug_v(f'SelectionDialog.setProperty key: {key} '
-                                  f'value: {value}')
-        super().setProperty(key, value)
 
     def addItem(self, item: str, position: int = 20000) -> None:
         """
@@ -445,20 +526,8 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
             self.addItem('Reboot Kodi', 0)
         """
         clz = type(self)
-        clz._logger.debug_v(
-                f'SelectionDialog.addItem unexpected call item: {item}'
-        )
-        '''
-        self.list_control.addItem(item)
-        if position is None:
-            self.display_values.append(item)
-            self.list_position = len(self.display_values) - 1
-        else:
-            self.display_values.insert(position, item)
-            self.list_position = position
-
-        self.debug_display_values('addItem')
-        '''
+        MY_LOGGER.debug(
+                f'SelectionDialog.addItem unexpected call item: {item}')
 
     def addItems(self, items: List[str]) -> None:
         """
@@ -471,16 +540,8 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
             self.addItems(['Reboot Kodi', 'Restart Kodi'])
         """
         clz = type(self)
-        clz._logger.debug_v(
+        MY_LOGGER.debug(
                 f'SelectionDialog.addItems unexpected call item length: {len(items)}')
-        '''
-        # self.list_control.addItems(items)
-
-        if len(items) > 0:
-            self.display_values.extend(items)
-            # self.list_position = len(self.display_values)
-        self.debug_display_values('addItems')
-        '''
 
     def removeItem(self, position: int) -> None:
         """
@@ -493,39 +554,19 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
             self.removeItem(5)
         """
         clz = type(self)
-        clz._logger.debug_v('SelectionDialog.removeItem unexpected call item: {:d}'
-                            .format(position))
-        '''
-        self.list_control.removeItem(position)
-
-        if self.display_values.get(position, None) is not None:
-            del self.display_values[position]
-            if self.list_position > len(self.display_values):
-                self.list_position = max(len(self.display_values) - 1, 0)
-        self.debug_display_values('removeItem')
-        '''
+        MY_LOGGER.debug('SelectionDialog.removeItem unexpected call item: {:d}'
+                                  .format(position))
 
     def getCurrentListPosition(self) -> int:
         """
-        Gets the current position in the WindowList.
+        Gets the current position in the list container.
 
-        Example::
-
+        Example:
             pos = self.getCurrentListPosition()
         """
-        number_selected = 0
-        selected = -1
-        # for idx in range(0, self.list_control.size() - 1):
-        #    if self.list_control.getListItem(idx).isSelected():
-        #        number_selected += 1
-        #        selected = idx
 
-        # selected_position = int(self.getProperty('selected'))
-
-        # self.debug_display_values('SelectionDialog.getCurrentListPosition # selected: {:d}'
-        #                      .format(number_selected))
         clz = type(self)
-        clz._logger.debug_v(
+        MY_LOGGER.debug(
                 f'SelectionDialog.getCurrentListPosition selected position: '
                 f'{self.selection_index}')
         return self.selection_index
@@ -542,18 +583,6 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         """
         self.debug_display_values(
                 f'SelectionDialog.setCurrentListPosition unexpected call: {position}')
-        '''
-        self.list_control.selectItem(position)
-        self.getListItem(position).select(True)
-
-        self.selected_item_index = self.getCurrentListPosition()
-        self.selected_item = self.getListItem(self.selected_item_index).getLabel()
-
-        if position > max(len(self.display_values) - 1, 0):
-            position = 0
-        self.list_position = position
-        self.debug_display_values('setCurrentListPosition')
-        '''
 
     def getListSize(self) -> int:
         """
@@ -578,10 +607,10 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         """
         # self.list_control.reset()
         clz = type(self)
-        clz._logger.debug_v('SelectionDialog.clearList')
+        MY_LOGGER.debug('SelectionDialog.clearList')
         self.debug_display_values('clearList')
 
     def debug_display_values(self, text: str) -> None:
         pass
-        # clz._logger.debug_v('{} len display_values: {:d}'
+        # MY_LOGGER.debug('{} len display_values: {:d}'
         #                 .format(text, self.list_control.size()))

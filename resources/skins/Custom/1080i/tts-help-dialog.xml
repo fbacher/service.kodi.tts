@@ -56,16 +56,16 @@
                <height>150</height>
                <control type="image">
                   <description>Dialog Header image</description>
-                  <left>10</left>
-                  <top>10</top>
+                  <left>0</left>
+                  <top>0</top>
                   <width>1300</width>
-                  <height>100</height>
+                  <height>60</height>
                   <texture>dialogheader.png</texture>
                </control>
                <control type="label" id="1">
                   <description>header label</description>
                   <topic name="Header_Label" rank="3">
-                     <label>1</label>
+                     <label/>
                      <heading_label>Control.GetLabel(1).index(0)</heading_label>
                      <hint_text>blah blah</hint_text>
                      <outer_topic>header_group</outer_topic>
@@ -77,35 +77,43 @@
                      <heading_next>sub_header</heading_next>
                   </topic>
                   <left>0</left>
-                  <top>30</top>
+                  <top>0</top>
                   <width>1300</width>
                   <height>60</height>
-                  <font>font37</font>
+                  <font>font13_title</font>
                   <visible>true</visible>
                   <aligny>center</aligny>
                   <align>center</align>
-                  <textcolor>white</textcolor>
-                  <shadowcolor>blue</shadowcolor>
+                  <textcolor>blue</textcolor>
+                  <shadowcolor>black</shadowcolor>
+               </control>
+                <control type="image">
+                  <description>Dialog Header image</description>
+                  <left>0</left>
+                  <top>70</top>
+                  <width>1300</width>
+                  <height>60</height>
+                  <texture>dialogheader.png</texture>
                </control>
                <control type="label" id="4">
                   <description>Sub Heading Label</description>
                   <topic name="sub_header" rank="3">
                      <heading_label>Control.GetLabel(4).index(0)</heading_label>
-                     <label>4</label>
-                     <hint_text>Narf!</hint_text>
+                     <hint_text/>
                      <outer_topic>header_group</outer_topic>
                      <!-- <topic_left>ok_button</topic_left> -->
                      <topic_right>main_list_group</topic_right>
                      <topic_down>categories</topic_down>
                      <!-- <topic_up>ok_button</topic_up>  -->
                   </topic>
-                  <top>120</top>
+                  <top>70</top>
                   <left>0</left>
                   <width>1300</width>
-                  <height>40</height>
+                  <height>60</height>
                   <align>center</align>
+                  <aligny>center</aligny>
                   <label/>
-                  <font>font12_title</font>
+                  <font>font13_title</font>
                   <textcolor>blue</textcolor>
                   <shadowcolor>black</shadowcolor>
                </control>
@@ -142,7 +150,7 @@
                   <!-- <topic_up>ok_button</topic_up> -->
                </topic>
                <left>50</left>
-               <top>150</top>
+               <top>160</top>
                <width>1800</width>
                <height>350</height>
                <visible>true</visible>
@@ -157,8 +165,7 @@
                      <description>My first list container</description>
                      <topic name="categories" rank="3">
                         <topic_type>heading</topic_type>
-                        <heading_label>32856</heading_label>
-                        <label/>
+                        <!-- <heading_label>32856</heading_label> -->
                         <alt_type/>
                         <flows_to>help_text</flows_to>
                         <hint_text>32857</hint_text>
@@ -242,7 +249,7 @@
             <control type="group">
                <description>Contains the help text</description>
                <left>40</left>
-               <top>500</top>
+               <top>600</top>
                <width>1900</width>
                <control type="group" id="1004">
                   <topic name="help_group" rank="2">
@@ -279,7 +286,7 @@
                      <wrapmultiline>true</wrapmultiline>
                      <width>1800</width>
                      <textwidth>1700</textwidth>
-                     <height>550</height>
+                     <height>400</height>
                      <alignx>left</alignx>
                      <aligny>top</aligny>
                      <label></label>

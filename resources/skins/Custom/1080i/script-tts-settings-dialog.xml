@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <window type="dialog" tts="TTS-READER" heading="window_header">
    <coordinates>
       <!-- Resolution 1920 x 1080 -->
@@ -56,7 +56,7 @@
             <height>100</height>
             <texture>dialogheader.png</texture>
          </control>
-         <control type="label" id="1" label_for="window_header">
+         <control type="label" id="1">
             <topic name="Header_Label" rank="3">
                <heading_label>Control.GetLabel(1).index(0)</heading_label>
                <hint_text>Changes are applied as you make them. Cancel reverts changes. OK commits changes
@@ -81,7 +81,6 @@
             </description>
             <topic name="X_dismiss_dialog" rank="3">
                <alt_type>BUTTON</alt_type>
-               <alt_label>32803</alt_label>
                <hint_text>Select to close window</hint_text>
                <inner_topic>engine_settings</inner_topic>
                <outer_topic>header_group</outer_topic>
@@ -262,10 +261,10 @@
                <outer_topic>header_group</outer_topic>
             </topic>
 
-            <top>220</top>
+            <top>190</top>
             <left>95</left>
             <width>1800</width>
-            <height>680</height>
+            <height>880</height>
             <defaultcontrol>101</defaultcontrol>
             <!-- <right>523</right> -->
 
@@ -274,15 +273,34 @@
                <topic name="Settings_middle" rank="4">
                   <outer_topic>Settings_top</outer_topic>
                </topic>
+               <top>0</top>
                <width>1730</width>
                <!-- Engine -->
                <control type="group">
                   <defaultcontrol>101</defaultcontrol>
+                  <control type="label" id="2">
+                     <topic name="settings_basic" rank="3">
+                        <heading_label>$INFO[Control.GetLabel(2).index(0)]</heading_label>
+                        <hint_text/>
+                        <outer_topic>Settings_middle</outer_topic>
+                     </topic>
+                     <description>Basic Settings Label</description>
+                     <left>0</left>
+                     <top>0</top>
+                     <width>1650</width>
+                     <height>60</height>
+                     <font>font13_title</font>
+                     <label></label>
+                     <align>center</align>
+                     <aligny>center</aligny>
+                     <textcolor>blue</textcolor>
+                     <shadowcolor>black</shadowcolor>
+                  </control>
                   <control type="grouplist" id="101">
                      <topic name="engine_settings" rank="5">
                         <topic_type>heading</topic_type>
-                        <label>32807</label>
-                        <heading_label>32807</heading_label>
+                        <label></label>
+                        <heading_labeled_by>settings_basic</heading_labeled_by>
                         <hint_text>32815</hint_text>
                         <outer_topic>Settings_middle</outer_topic>
                         <topic_left/>
@@ -291,6 +309,7 @@
                         <topic_down>speech_engine</topic_down>
                      </topic>
                      <description>Engine Tab group list</description>
+                     <top>90</top>
                      <itemgap>30</itemgap>
                      <onup>28</onup>
                      <ondown>102</ondown>
@@ -300,7 +319,7 @@
                      <orientation>vertical</orientation>
                      <scrolltime>0</scrolltime>
                      <defaultcontrol>102</defaultcontrol>
-                     <visible>Skin.String(category,engine)</visible>
+                     <!-- <visible>Skin.String(category,engine)</visible> -->
 
                      <!--
                             1           Window Header label
@@ -333,7 +352,7 @@
                         <defaultcontrol>102</defaultcontrol>
                         <control type="button" id="102">
                            <topic name="speech_engine" rank="7">
-                              <topic_type>heading</topic_type>
+                              <heading_label>$INFO[Control.GetLabel(102).index(0)]</heading_label>
                               <flows_to>speech_engine_value</flows_to>
                               <hint_text>32816</hint_text>
                               <outer_topic>engine_settings</outer_topic>
@@ -345,7 +364,7 @@
                            </topic>
                            <description>Speech Engine</description>
                            <width>850</width>
-                           <label>$LOCALIZE[32002]</label>
+                           <label>$LOCALIZE[32001]</label>
                            <visible>true</visible>
                            <alignx>left</alignx>
                            <aligny>center</aligny>
@@ -362,7 +381,7 @@
                            <topic name="speech_engine_value" rank="7">
                               <labeled_by/>
                               <flows_from>speech_engine</flows_from>
-                              <hint_text/>>
+                              <hint_text/>
                               <outer_topic>engine_settings</outer_topic>
                               <container_topic>engine_settings</container_topic>
                               <topic_left/>
@@ -390,9 +409,9 @@
                         <control type="button" id="104">
                            <topic name="language" rank="7">
                               <topic_type>heading</topic_type>
-                              <labeled_by>104</labeled_by>
+                              <heading_label>$INFO[Control.GetLabel(104).index(0)]</heading_label>
                               <flows_to>105</flows_to>
-                              <hint_text>language</hint_text>
+                              <hint_text>32817</hint_text>
                               <outer_topic>language_group</outer_topic>
                               <container_topic>engine_settings</container_topic>
                               <topic_left/>
@@ -445,6 +464,7 @@
                         <control type="button" id="106">
                            <topic name="voice" rank="7">
                               <topic_type>heading</topic_type>
+                              <heading_label>Control.GetLabel(106).index(0)</heading_label>
                               <labeled_by/>
                               <flows_to>107</flows_to>
                               <hint_text>32817</hint_text>
@@ -470,7 +490,7 @@
                         </control>
 
                         <control type="label" id="107">
-                           <topic name="voice_value" rank="7">
+                           <topic name="voice_topic_value" rank="7">
                               <labeled_by/>
                               <flows_from>106</flows_from>
                               <outer_topic>voice_goup</outer_topic>
@@ -501,6 +521,7 @@
                            <description>Gender</description>
                            <topic name="gender" rank="7">
                               <topic_type>heading</topic_type>
+                              <heading_label>Control.GetLabel(107).index(0)</heading_label>
                               <labeled_by/>
                               <flows_to>109</flows_to>
                               <hint_text>Select to choose voice gender</hint_text>
@@ -557,6 +578,7 @@
                            <description>Player</description>
                            <topic name="player" rank="7">
                               <topic_type>heading</topic_type>
+                              <heading_label>Control.GetLabel(110).index(0)</heading_label>
                               <labeled_by/>
                               <flows_to>111</flows_to>
                               <hint_text>Select to choose audio player</hint_text>
@@ -603,9 +625,8 @@
 
                      <control type="group" id="1112">
                         <topic name="volume_group" rank="6">
-                           <topic_type>heading</topic_type>
+                           <topic_type>none</topic_type>
                            <alt_label/>
-                           <alt_type>SLIDER</alt_type>
                            <outer_topic>engine_settings</outer_topic>
                         </topic>
                         <height>34</height>
@@ -614,7 +635,7 @@
 
                         <control type="label" id="112">
                            <description>Volume Label</description>
-                           <topic name="volume" rank="7">label_for="113"
+                           <topic name="volume" rank="7">
                               <!-- <flows_from>113</flows_from> -->
                               <hint_text>Select to choose volume</hint_text>
                               <outer_topic>volume_group</outer_topic>
@@ -624,7 +645,8 @@
                               <topic_down>volume_value</topic_down>
                            </topic>
                            <width>850</width>
-                           <label>$LOCALIZE[32232]</label>
+                           <!-- <label>$LOCALIZE[32232]</label> -->
+                           <label>$LOCALIZE[32014]</label>
                            <visible>true</visible>
                            <alignx>left</alignx>
                            <aligny>center</aligny>
@@ -634,9 +656,9 @@
                         </control>
                         <control type="slider" id="113">
                            <topic name="volume_value" rank="7">
-                              <topic_type>heading</topic_type>
-                              <topic_heading>volume_group</topic_heading>
-                              <labeled_by>112</labeled_by>
+                              <!-- topic_heading>volume_group</topic_heading> -->
+                              <!-- <heading_labeled_by>volume</heading_labeled_by> -->
+                              <heading_label>32014</heading_label>
                               <value_from>internal</value_from>
                               <value_format/>
                               <flows_to>112</flows_to>
@@ -710,7 +732,7 @@
                            <description>Pitch</description>
                            <topic name="pitch_value" rank="7">
                               <topic_type>heading</topic_type>
-                              <labeled_by>114</labeled_by>
+                              <heading_labeled_by>pitch</heading_labeled_by>
                               <flows_to>114</flows_to>
                               <value_from>internal</value_from>
                               <units unit="" type="float" decimal_digits="2"/>
@@ -755,7 +777,6 @@
                         <control type="label" id="116">
                            <description>Speed Label</description>
                            <topic name="speed_label" rank="7">
-                              <flows_from>117</flows_from>
                               <outer_topic>speed_group</outer_topic>
                               <hint_text>Select to choose speed</hint_text>
                               <topic_left/>
@@ -772,11 +793,13 @@
                            <textcolor>white</textcolor>
                            <shadowcolor>black</shadowcolor>
                         </control>
-
                         <control type="slider" id="117">
                            <description>Speed</description>
                            <topic name="speed_value" rank="7">
-                              <topic_type>heading</topic_type>
+                              <heading_label>32006</heading_label>
+                              <value_from>internal</value_from>
+                              <value_format/>
+                              <flows_to>112</flows_to>
                               <labeled_by>116</labeled_by>
                               <value_from>internal</value_from>
                               <flows_to>116</flows_to>
@@ -825,12 +848,12 @@
                         <control type="radiobutton" id="118">
                            <description>Cache Audio From Engine</description>
                            <topic name="cache_audio" rank="7">
-                              <topic_type>heading</topic_type>
                               <outer_topic>cache_group</outer_topic>
+                              <heading_label>$LOCALIZE[32312]</heading_label>
                               <container_topic>engine_settings</container_topic>
                               <hint_text>Caching reduces response time</hint_text>
-                              <true_msg_id>yes</true_msg_id>
-                              <false_msg_id>no</false_msg_id>
+                              <true_msg_id>enabled</true_msg_id>
+                              <false_msg_id>disabled</false_msg_id>
                               <topic_left/>
                               <topic_right/>
                               <topic_up>speed_value</topic_up>
@@ -864,6 +887,7 @@
                         <control type="button" id="120">
                            <topic name="player_mode" rank="7">
                               <topic_type>heading</topic_type>
+                              <heading_label>Control.GetLabel(120).index(0)</heading_label>
                               <flows_to>121</flows_to>
                               <hint_text>Select to choose player mode</hint_text>
                               <outer_topic>player_mode_group</outer_topic>
@@ -1073,10 +1097,9 @@
             <control type="button" id="28">
                <description>OK Button</description>
                <topic name="ok_button" rank="4">
-                  <topic_type>heading</topic_type>
                   <outer_topic>ok_cancel_group</outer_topic>
                   <container_topic>ok_cancel_group</container_topic>
-                  <hint_text>Select to save settings and exit dialog</hint_text>
+                  <hint_text>Select to save changes and exit dialog</hint_text>
                   <topic_left/>
                   <topic_right/>
                   <topic_up>api_key_value</topic_up>
@@ -1123,8 +1146,7 @@
                <topic name="default_button" rank="4">
                   <outer_topic>ok_cancel_group</outer_topic>
                   <container_topic>ok_cancel_group</container_topic>
-                  <topic_type>heading</topic_type>
-                  <hint_text>Select to set current engine settings to default values</hint_text>
+=                  <hint_text>Select to set current engine settings to default values</hint_text>
                   <topic_left>cancel_button</topic_left>
                   <topic_right>ok_button</topic_right>
                   <topic_up/>

@@ -10,6 +10,7 @@ from gui.element_parser import (ElementHandler)
 from gui.no_topic_models import NoControlsTopicModel
 from gui.parser.parse_control import ParseControl
 from gui.parser.parse_controls import ParseControls
+from windows.window_state_monitor import WinDialogState
 
 module_logger = BasicLogger.get_logger(__name__)
 
@@ -19,11 +20,13 @@ class ControlsModel(BaseModel):
     _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.CONTROLS]
 
-    def __init__(self, parent, parsed_controls: ParseControls) -> None:
+    def __init__(self, parent, parsed_controls: ParseControls,
+                 windialog_state: WinDialogState | None = None) -> None:
         clz = type(self)
         if clz._logger is None:
             clz._logger = module_logger
-        super().__init__(parent.window_model, parsed_controls)
+        super().__init__(parent.window_model, parsed_controls,
+                         windialog_state=windialog_state)
         self.parent: BaseModel = parent
         # self.topic: TopicModel = None
         # self.control_id: int = parsed_controls.control_id
@@ -59,10 +62,11 @@ class ControlsModel(BaseModel):
         clz = type(self)
         for parser in parsed_controls:
             parser: BaseParser
-            model_handler:  Callable[[BaseModel, BaseModel, BaseParser], BaseModel]
+            model_handler:  Callable[[BaseModel, BaseParser, WinDialogState | None],
+                                     BaseModel]
             model_handler = ElementHandler.get_model_handler(parser.item)
             #  clz._logger.debug(f'About to create model from {parser.item}')
-            child_model: BaseModel = model_handler(self, parser)
+            child_model: BaseModel = model_handler(self, parser, None)
             if clz._logger.isEnabledFor(DEBUG_XV):
                 clz._logger.debug_xv(f'adding child: {child_model}')
             self.children.append(child_model)

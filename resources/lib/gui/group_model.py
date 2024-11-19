@@ -11,6 +11,7 @@ from gui.element_parser import (ElementHandler)
 from gui.group_topic_model import GroupTopicModel
 from gui.no_topic_models import NoGroupTopicModel
 from gui.parser.parse_group import ParseGroup
+from windows.window_state_monitor import WinDialogState
 
 module_logger = BasicLogger.get_logger(__name__)
 
@@ -20,12 +21,14 @@ class GroupModel(BaseLabelModel):
     _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.GROUP]
 
-    def __init__(self, parent: BaseLabelModel, parsed_group: ParseGroup) -> None:
+    def __init__(self, parent: BaseLabelModel, parsed_group: ParseGroup,
+                 windialog_state: WinDialogState | None = None) -> None:
         clz = GroupModel
         if clz._logger is None:
             clz._logger = module_logger
 
-        super().__init__(window_model=parent.window_model, parser=parsed_group)
+        super().__init__(window_model=parent.window_model, parser=parsed_group,
+                         windialog_state=windialog_state)
 
         self.parent = parent
         self.alt_info_expr: str = parsed_group.alt_info_expr
@@ -102,9 +105,10 @@ class GroupModel(BaseLabelModel):
 
         for parser in parsers:
             parser: BaseParser
-            model_handler: Callable[[BaseModel, BaseParser], BaseModel]
+            model_handler: Callable[[BaseModel, BaseParser, WinDialogState | None],
+                                    BaseModel]
             model_handler = ElementHandler.get_model_handler(parser.item)
-            child_model: BaseModel = model_handler(self, parser)
+            child_model: BaseModel = model_handler(self, parser, None)
             self.children.append(child_model)
 
     def __repr__(self) -> str:

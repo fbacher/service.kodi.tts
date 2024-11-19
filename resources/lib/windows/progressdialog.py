@@ -11,6 +11,7 @@ from common.phrases import PhraseList
 
 from . import guitables
 from .base import WindowReaderBase
+from .window_state_monitor import WinDialogState
 
 module_logger = BasicLogger.get_logger(__name__)
 
@@ -18,7 +19,10 @@ module_logger = BasicLogger.get_logger(__name__)
 class ProgressDialogReader(WindowReaderBase):
     ID = 'progressdialog'
 
-    def __init__(self):
+    def __init__(self, win_id=None, service: ForwardRef('TTSService') = None,
+                 windialog_state: WinDialogState = None) -> None:
+        cls = type(self)
+        super().__init__(win_id, service, windialog_state)
         self.last_progress_percent_unix_time: int = 0
         self.progress_percent: int = -1
 

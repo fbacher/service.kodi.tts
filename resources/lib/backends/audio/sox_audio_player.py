@@ -5,15 +5,15 @@ import subprocess
 import sys
 
 from backends.audio.base_audio import SubprocessAudioPlayer
-from backends.audio.sound_capabilties import SoundCapabilities
+from backends.audio.sound_capabilities import SoundCapabilities
 from backends.players.player_index import PlayerIndex
 from backends.settings.service_types import ServiceType
 from common import *
 from common.base_services import BaseServices
 from common.logger import BasicLogger
-from common.setting_constants import Players
+from common.setting_constants import AudioType, Players
 
-module_logger: BasicLogger = BasicLogger.get_logger(__name__)
+MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class SOXAudioPlayer(SubprocessAudioPlayer):
@@ -27,8 +27,8 @@ class SOXAudioPlayer(SubprocessAudioPlayer):
     _speedMultiplier: Final[float] = 0.01
     _volumeArgs = ('vol', None, 'dB')
     kill = True
-    _supported_input_formats: List[str] = [SoundCapabilities.WAVE, SoundCapabilities.MP3]
-    _supported_output_formats: List[str] = [SoundCapabilities.WAVE, SoundCapabilities.MP3]
+    _supported_input_formats: List[AudioType] = [AudioType.WAV, AudioType.MP3]
+    _supported_output_formats: List[AudioType] = [AudioType.WAV, AudioType.MP3]
     _provides_services: List[ServiceType] = [ServiceType.PLAYER]
     SoundCapabilities.add_service(service_ID, _provides_services,
                                   _supported_input_formats,
@@ -36,8 +36,6 @@ class SOXAudioPlayer(SubprocessAudioPlayer):
 
     def __init__(self):
         super().__init__()
-        self._logger = module_logger
-                self.__class__.__name__)  # type: module_logger
 
     def playArgs(self, path):
         args = self.baseArgs(path)

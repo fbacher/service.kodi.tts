@@ -228,8 +228,8 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         # control 7 radio_button cancel
         #
 
-        # self.ok_radio_button.setVisible(True)
-        # self.cancel_radio_button.setVisible(True)
+        # self.ok_button.setVisible(True)
+        # self.cancel_button.setVisible(True)
         # clz._logger.debug_v('SelectionDialog.show exiting')
 
     def close(self) -> None:

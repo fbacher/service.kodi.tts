@@ -9,6 +9,7 @@ from gui.label_model import LabelModel
 from gui.parser.parse_topic import ParseTopic
 from gui.statements import Statement, Statements, StatementType
 from gui.topic_model import TopicModel
+from windows.window_state_monitor import WinDialogState
 
 module_logger = BasicLogger.get_logger(__name__)
 
@@ -17,7 +18,8 @@ class FocusedLayoutTopicModel(TopicModel):
 
     _logger: BasicLogger = module_logger
 
-    def __init__(self, parent: BaseModel, parsed_focused_layout_topic: ParseTopic) -> None:
+    def __init__(self, parent: BaseModel,
+                 parsed_focused_layout_topic: ParseTopic) -> None:
         clz = FocusedLayoutTopicModel
         if clz._logger is None:
             clz._logger = module_logger
@@ -58,20 +60,6 @@ class FocusedLayoutTopicModel(TopicModel):
                 list_items.append(layout_item.label_expr)
         return list_items
 
-    def voice_topic_value_old(self, stmts: Statements) -> bool:
-        # Get the value from here when control heading, etc. is voiced
-        # But don't get the value when the control is not voiced.
-
-        clz = self.__class__
-        if self.focus_changed:
-            #  clz._logger.debug(f'calling voice_working_value')
-            result = self.voice_working_value(stmts)
-            clz._logger.debug(f'require_focus_change = False')
-            GuiGlobals.require_focus_change = False
-            #  clz._logger.debug(f'Back from voice_working_value')
-            return result
-        return False
-
     def voice_working_value(self, stmts: Statements) -> bool:
         """
             Voices the value of this topic without any heading. Primarily
@@ -89,7 +77,7 @@ class FocusedLayoutTopicModel(TopicModel):
             #  clz._logger.debug(f'No change: {value}')
             return False
         value_str: str = self.units.format_value(value)
-        stmts.append(Statement(PhraseList.create(texts=value_str),
+        stmts.append(Statement(PhraseList.create(texts=value_str, check_expired=False),
                                stmt_type=StatementType.VALUE))
         return True
 
@@ -125,5 +113,20 @@ class FocusedLayoutTopicModel(TopicModel):
                                            topic_id=self.name)
             self.parent.sayText(stmts)
             return True
+        return False
+        
+    
+    def voice_topic_value_old(self, stmts: Statements) -> bool:
+        # Get the value from here when control heading, etc. is voiced
+        # But don't get the value when the control is not voiced.
+
+        clz = self.__class__
+        if self.focus_changed:
+            #  clz._logger.debug(f'calling voice_working_value')
+            result = self.voice_working_value(stmts)
+            clz._logger.debug(f'require_focus_change = False')
+            GuiGlobals.require_focus_change = False
+            #  clz._logger.debug(f'Back from voice_working_value')
+            return result
         return False
         '''

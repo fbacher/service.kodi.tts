@@ -15,6 +15,7 @@ class ITTSBackendBase(IBackend):
 
     canStreamWav: bool = False
     _backend_id: str = 'ITTSBackendBase'
+    _engine_id: str = 'ITTSBackendBase'
     displayName: str = 'ITTSBackendBase'
     inWavStreamMode = False
     interval = 100
@@ -54,6 +55,11 @@ class ITTSBackendBase(IBackend):
 
     @property
     def backend_id(self) -> str:
+        clz = type(self)
+        return clz._backend_id
+
+    @property
+    def engine_id(self) -> str:
         clz = type(self)
         return clz._backend_id
 

@@ -17,7 +17,7 @@ from common.logger import BasicLogger
 from common.setting_constants import Channels, Genders
 from common.settings_low_level import SettingsLowLevel
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class ConvertType(enum.Enum):
@@ -52,7 +52,7 @@ class Validator(IValidator):
                                                 self.setting_id)
             self.tts_validator = tts_val
         except Exception:
-            module_logger.exception('')
+            MY_LOGGER.exception('')
         return self.tts_validator
 
 
@@ -74,9 +74,11 @@ class BaseNumericValidator(Validator):
         self._default = default
         self.is_decibels: bool = is_decibels
         self.is_integer = is_integer
+        MY_LOGGER.debug(f'increment: {increment}')
         if increment is None or increment <= 0.0:
             increment = (maximum - minimum) / 20.0
         self._increment = increment
+        MY_LOGGER.debug(f'_increment: {self._increment}')
         self.const: bool = const
         return
 
@@ -125,6 +127,7 @@ class TTSNumericValidator(BaseNumericValidator):
                  increment: int | float = 0.0,
                  const: bool = False
                  ) -> None:
+        MY_LOGGER.debug(f'Increment: {increment}')
         super().__init__(setting_id=setting_id,
                          service_id=Services.TTS_SERVICE,
                          minimum=minimum,
@@ -153,7 +156,7 @@ class TTSNumericValidator(BaseNumericValidator):
         internal_value: int = SettingsLowLevel.get_setting_int(self.setting_id,
                                                                self.service_id,
                                                                default)
-        # module_logger.debug(f'service_id {self.service_id} setting: {self.setting_id} '
+        # MY_LOGGER.debug(f'service_id {self.service_id} setting: {self.setting_id} '
         #                     f'internal_value: {internal_value}')
         return internal_value
 
@@ -166,13 +169,17 @@ class TTSNumericValidator(BaseNumericValidator):
             return int(round(tts_value))
         return tts_value
 
+    def scale_value(self, raw_value: int) -> float:
+        value: float = float(raw_value) / float(self.internal_scale_factor)
+        return value
+
     def get_value_from(self, raw_value: int,
                        convert: ConvertType = ConvertType.NONE,
                        is_integer: bool = False) -> int | float:
         # internal_value: int = self.get_raw_value()
         internal_value = min(raw_value, self.maximum)
         internal_value = max(internal_value, self.minimum)
-        tts_value: float = float(internal_value) / float(self.internal_scale_factor)
+        tts_value: float = self.scale_value(internal_value)
         if convert == ConvertType.PERCENT and self.is_decibels:
             tts_value = 100.0 * (10 ** (tts_value / 20.0))
         elif convert == ConvertType.DECIBELS and not self.is_decibels:
@@ -210,7 +217,7 @@ class TTSNumericValidator(BaseNumericValidator):
         result = 100 * (10 ** (tts_value / 20.0))
         if self.is_integer:
             result = int(round(result))
-        #  module_logger.debug(f'raw_value: {internal_value} result: {result}')
+        #  MY_LOGGER.debug(f'raw_value: {internal_value} result: {result}')
         return result
 
     def as_decibels(self) -> int | float:
@@ -246,12 +253,13 @@ class TTSNumericValidator(BaseNumericValidator):
                           current=self.get_value_from(self.get_raw_value(),
                                                       convert=convert,
                                                       is_integer=is_integer),
-                          increment=self.get_value_from(self.increment,
-                                                        convert=convert,
-                                                        is_integer=is_integer),
+                          #increment=self.get_value_from(self.increment,
+                          #                              convert=convert,
+                          #                              is_integer=is_integer),
+                          increment=self.scale_value(self.increment),
                           is_integer=is_integer)
-        # module_logger.debug(f'raw_value: {self.get_raw_value()}'
-        #                     f' current: {result.current}')
+        MY_LOGGER.debug(f'raw_value: {self.get_raw_value()} convert: {convert} '
+                        f' integer: {is_integer}  {result} inc: {self.increment}')
 
         return result
 
@@ -279,6 +287,8 @@ class TTSNumericValidator(BaseNumericValidator):
             value = -value
         current += value
         self.set_value(current)
+        MY_LOGGER.debug(f'adjust value: {value} '
+                            f'current: {current} result: {self.get_value()}')
         return self.get_value()   # Handles range checking
 
 
@@ -549,7 +559,7 @@ class StringValidator(IStringValidator):
         allowed_value: AllowedValue | None = self.get_allowed_value(value)
         if allowed_value is not None:
             if not allowed_value.enabled:
-                module_logger.debug(f'{value} is NOT enabled.')
+                MY_LOGGER.debug(f'{value} is NOT enabled.')
                 valid = False
 
         if valid and not ( self.min_value <= len(value) <= self.max_value):
@@ -573,15 +583,17 @@ class StringValidator(IStringValidator):
             valid = False
 
         if not valid:
-            module_logger.debug(f'INVALID setting {self.service_id} {self.setting_id} '
+            MY_LOGGER.debug(f'INVALID setting {self.service_id} {self.setting_id} '
                                 f'value: {value} '
                                 f'using {self._default} instead.')
             internal_value = self._default
+        MY_LOGGER.debug(f'setting {self.service_id} {self.setting_id} '
+                            f'value: {value} ')
         SettingsLowLevel.set_setting_str(self.setting_id, internal_value, self.service_id)
 
     @property
     def default_value(self) -> str:
-        module_logger.debug(f'ZORBO self._default')
+        MY_LOGGER.debug(f'{self._default}')
         return self._default
 
     def get_allowed_values(self, enabled: bool | None = None) -> List[AllowedValue]:
@@ -635,7 +647,7 @@ class StringValidator(IStringValidator):
                                                                ignore_cache=False,
                                                                default=None)
         if debug:
-            module_logger.debug(f'{self.service_id} {self.setting_id} value: {value} '
+            MY_LOGGER.debug(f'{self.service_id} {self.setting_id} value: {value} '
                                 f'internal_value: {internal_value}')
         if value is None:
             value = internal_value
@@ -645,15 +657,15 @@ class StringValidator(IStringValidator):
                 valid = False
 
         if debug:
-            module_logger.debug(f'value: {value} valid: {valid} ')
+            MY_LOGGER.debug(f'value: {value} valid: {valid} ')
         if valid and len(value) < self.min_value:
             valid = False
         if valid and len(value) > self.max_value:
             valid = False
         if debug:
-            module_logger.debug(f'valid: {valid} len(value): {len(value)} '
+            MY_LOGGER.debug(f'valid: {valid} len(value): {len(value)} '
                                 f'min: {self.min_value} max: {self.max_value}')
-            module_logger.debug(f'allowed values: {self.allowed_values}')
+            MY_LOGGER.debug(f'allowed values: {self.allowed_values}')
 
         return valid, value
 
@@ -756,7 +768,7 @@ class ConstraintsValidator(Validator):
         current_value: int | float = tts_constraints.currentValue(setting_service_id)
         is_valid, _ = self.validate(current_value)
         if not is_valid:
-            module_logger.debug(f'Invalid value for {self.setting_id} service: '
+            MY_LOGGER.debug(f'Invalid value for {self.setting_id} service: '
                                 f'{Services.TTS_SERVICE} Replaced with closest valid '
                                 f'value')
 

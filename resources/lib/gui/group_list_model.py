@@ -32,9 +32,11 @@ class GroupListModel(BaseModel):
     item: Item = control_elements[ControlElement.GROUP_LIST]
 
     def __init__(self, parent: BaseModel,
-                 parsed_group_list: ParseGroupList) -> None:
+                 parsed_group_list: ParseGroupList,
+                 windialog_state: WinDialogState | None = None) -> None:
         clz = GroupListModel
-        super().__init__(window_model=parent.window_model, parser=parsed_group_list)
+        super().__init__(window_model=parent.window_model, parser=parsed_group_list,
+                         windialog_state=windialog_state)
         # TODO: Super should take control_type as param
         # self.control_id: str = parsed_group_list.control_id
         self.default_control_id = parsed_group_list.default_control_id
@@ -111,6 +113,26 @@ class GroupListModel(BaseModel):
         """
         return True
 
+    @property
+    def supports_item_number(self) -> bool:
+        """
+            Indicates if the control supports reporting the current item number.
+            The list control is not capable of these, although it supports
+            item_count.
+        :return:
+        """
+        return True
+
+    @property
+    def supports_item_number(self) -> bool:
+        """
+            Indicates if the control supports reporting the current item number.
+            The list control is not capable of these, although it supports
+            item_count.
+        :return:
+        """
+        return True
+
     def convert_children(self,
                          parsed_group_list: ParseGroupList) -> None:
         """
@@ -137,9 +159,10 @@ class GroupListModel(BaseModel):
         for parser in parsers:
             parser: BaseParser
             # clz._logger.debug(f'parser: {parser}')
-            model_handler:  Callable[[BaseModel, BaseModel, BaseParser], BaseModel]
+            model_handler:  Callable[[BaseModel, BaseParser, WinDialogState | None],
+                                     BaseModel]
             model_handler = ElementHandler.get_model_handler(parser.item)
-            child_model: BaseModel = model_handler(self, parser)
+            child_model: BaseModel = model_handler(self, parser, None)
             # clz._logger.debug(f'About to add model from {parser.item} count: {count}')
             # clz._logger.debug(f'visible: {child_model.is_visible()} topic: '
             #                   f'{child_model.topic}')
@@ -254,7 +277,8 @@ class GroupListModel(BaseModel):
         return success
 
     def voice_heading_without_topic(self, stmts: Statements) -> bool:
-        stmts.last.phrases.append(Phrase(text='get_heading_without_text not implemented'))
+        stmts.last.phrases.append(Phrase(text='get_heading_without_text not implemented',
+                                         check_expired=False))
         return True
 
     def get_orientation(self) -> str:
@@ -273,12 +297,13 @@ class GroupListModel(BaseModel):
                 msg_id: int = int(self.topic.label_expr)
                 text = Messages.get_msg_by_id(msg_id)
                 if text != '':
-                    phrase: Phrase = Phrase(text=text)
+                    phrase: Phrase = Phrase(text=text, check_expired=False)
                     stmts.last.phrases.append(phrase)
             except ValueError as e:
                 success = False
             if not success:
-                phrase = Phrase(text=f'topic label_expr: {self.topic.label_expr}')
+                phrase = Phrase(text=f'topic label_expr: {self.topic.label_expr}',
+                                check_expired=False)
                 stmts.last.phrases.append(phrase)
                 success = True
         else:
@@ -336,7 +361,7 @@ class GroupListModel(BaseModel):
                                     f'container_id: {container_id}')
             text: str = (MessageId.CONTAINER_ITEM_NUMBER_CONTROL_AND_VALUE
                          .get_formatted_msg(f'{item_num}', control_type, ''))
-            phrase: Phrase = Phrase(text=text)
+            phrase: Phrase = Phrase(text=text, check_expired=False)
             stmts.last.phrases.append(phrase)
             if clz._logger.isEnabledFor(DEBUG_V):
                 clz._logger.debug_v(f'phrase: {phrase}')

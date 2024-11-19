@@ -14,7 +14,7 @@ from common.logger import BasicLogger
 from common.messages import Messages
 from common.phrases import Phrase, PhraseList
 from .base import WindowReaderBase
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class VirtualKeyboardReader(WindowReaderBase):
@@ -132,7 +132,7 @@ class PVRSGuideSearchDialogReader(VirtualKeyboardReader):
                                          f'{Messages.get_msg(Messages.NO)}')
             new_text = new_text.replace('(*)', f'{Constants.PAUSE_INSERT} '
                                                f'{Messages.get_msg(Messages.YES)}')
-            cls._logger.debug(f'elipsis substitution orig text: {text} New: {new_text} ')
+            MY_LOGGER.debug(f'BOOLEAN substitution orig text: {text} New: {new_text} ')
         phrases.add_text(texts=new_text)
         return True
 

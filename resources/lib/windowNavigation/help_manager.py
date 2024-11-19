@@ -152,7 +152,7 @@ class HelpManager(threading.Thread):
                 self.logger.debug(f'creating gui')
                 script_path = Constants.ADDON_PATH
                 self.gui = HelpDialog('tts-help-dialog.xml',
-                                      script_path,
+                                      str(script_path),
                                       'Custom',
                                       defaultRes='1080i',
                                       callback=self.gui_callback)

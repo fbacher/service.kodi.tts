@@ -14,7 +14,7 @@ import xbmc
 
 from common import *
 
-from backends.audio.sound_capabilties import ServiceType, SoundCapabilities
+from backends.audio.sound_capabilities import ServiceType, SoundCapabilities
 from backends.base import SimpleTTSBackend
 from backends.players.iplayer import IPlayer
 from backends.settings.i_validators import IValidator
@@ -30,7 +30,7 @@ from common.logger import *
 from common.messages import Messages
 from common.monitor import Monitor
 from common.phrases import Phrase, PhraseList
-from common.setting_constants import Backends, Genders, Languages, Mode
+from common.setting_constants import AudioType, Backends, Genders, Languages, Mode
 from common.settings import Settings
 from utils.util import runInThread
 from windows.ui_constants import UIConstants
@@ -128,7 +128,7 @@ class SpeechGenerator:
         runInThread(self._generate_speech, name='dwnlRV2', delay=0.0,
                     phrase=unchecked_phrase)
         max_wait: int = int(timeout / 0.1)
-        while Monitor.exception_on_abort(timeout=0.1):
+        while not Monitor.exception_on_abort(timeout=0.1):
             max_wait -= 1
             if (self.get_rc() == ReturnCode.OK or caller.stop_processing or
                     max_wait <= 0):
@@ -214,7 +214,7 @@ class SpeechGenerator:
                 runInThread(self.download_speech, name='dwnlRV', delay=0.0,
                             phrases=phrase_chunks)
                 thirty_seconds: int = int(30 / 0.1)
-                while Monitor.exception_on_abort(timeout=0.1):
+                while not Monitor.exception_on_abort(timeout=0.1):
                     thirty_seconds -= 1
                     if (
                             self.download_results.get_rc() == ReturnCode.OK or
@@ -414,9 +414,14 @@ class SpeechGenerator:
                 # Force these phrases have the same serial # as the original
                 phrases.serial_number = phrase.serial_number
                 first: bool = True
+                interrupt: bool = False
                 for chunk in out_chunks:
                     if first:
-                        chunk_phrase: Phrase = Phrase(chunk, phrase.get_interrupt(),
+                        # TODO: There should NO pauses, other than at the ends
+                        #       of a chunk. May be able to convert pauses to a
+                        #       pause grammer the engine understands.
+                        interrupt = phrase.get_interrupt()
+                        chunk_phrase: Phrase = Phrase(chunk, interrupt,
                                                       phrase.get_pre_pause(),
                                                       phrase.get_post_pause(),
                                                       phrase.get_cache_path(), False,
@@ -427,6 +432,7 @@ class SpeechGenerator:
                         chunk_phrase: Phrase = Phrase(chunk, check_expired=False)
                     phrases.append(chunk_phrase)
                     chunk_phrase.serial_number = phrase.serial_number
+                phrases.set_interrupt(interrupt)
         except AbortException:
             self.set_rc(ReturnCode.ABORT)
             reraise(*sys.exc_info())
@@ -621,7 +627,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackend):
 
     def runCommand(self, phrase: Phrase) -> bool:
         clz = type(self)
-        # If caching disabled, then exists is always false. file_path
+        # If caching disabled, then text_exists is always false. file_path
         # always contains path to cached file, or path where to download to
 
         self.stop_processing = False
@@ -632,7 +638,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackend):
             if phrase.get_cache_path() is None:
                 VoiceCache.get_path_to_voice_file(phrase,
                                                   use_cache=Settings.is_use_cache())
-            if not phrase.exists():
+            if not phrase.text_exists():
                 generator: SpeechGenerator = SpeechGenerator()
                 results: Results = generator.generate_speech(self, phrase)
                 if results.get_rc() == ReturnCode.OK:
@@ -640,7 +646,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackend):
         except ExpiredException:
             return False
 
-        return phrase.exists()
+        return phrase.text_exists()
 
     def runCommandAndPipe(self, phrase: Phrase):
         clz = type(self)
@@ -657,7 +663,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackend):
         byte_stream: io.BinaryIO = None
         try:
             VoiceCache.get_path_to_voice_file(phrase, use_cache=Settings.is_use_cache())
-            if not phrase.exists():
+            if not phrase.text_exists():
                 generator: SpeechGenerator = SpeechGenerator()
                 results: Results = generator.generate_speech(self, phrase)
                 if results.get_rc() == ReturnCode.OK:
@@ -692,7 +698,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackend):
             for phrase in phrases:
                 if Settings.is_use_cache():
                     VoiceCache.get_path_to_voice_file(phrase, use_cache=True)
-                    if not phrase.exists():
+                    if not phrase.text_exists():
                         text_to_voice: str = phrase.get_text()
                         voice_file_path: pathlib.Path = phrase.get_cache_path()
                         clz._logger.debug_xv(f'PHRASE Text {text_to_voice}')
@@ -990,7 +996,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackend):
                 ResponsiveVoiceTTSBackend.service_ID)
         candidates: List[str]
         candidates = SoundCapabilities.get_capable_services(
-                service_type=ServiceType.PLAYER, consumer_formats=[SoundCapabilities.MP3],
+                service_type=ServiceType.PLAYER, consumer_formats=[AudioType.MP3],
                 producer_formats=[])
         if len(candidates) > 0:
             return True

@@ -5,14 +5,14 @@ import sys
 import threading
 
 from backends.audio.base_audio import AudioPlayer
-from backends.audio.sound_capabilties import SoundCapabilities
+from backends.audio.sound_capabilities import SoundCapabilities
 from backends.players.player_index import PlayerIndex
 from backends.settings.service_types import ServiceType
 from common import *
 from common import utils
 from common.base_services import BaseServices
 from common.logger import BasicLogger
-from common.setting_constants import Players
+from common.setting_constants import AudioType, Players
 from common.system_queries import SystemQueries
 
 module_logger: BasicLogger = BasicLogger.get_logger(__name__)
@@ -25,8 +25,8 @@ class WindowsAudioPlayer(AudioPlayer):
     sound_file_base = '{speech_file_name}{sound_file_type}'
     sound_dir: str = None
     _logger: BasicLogger = None
-    _supported_input_formats: List[str] = [SoundCapabilities.WAVE, SoundCapabilities.MP3]
-    _supported_output_formats: List[str] = [SoundCapabilities.WAVE, SoundCapabilities.MP3]
+    _supported_input_formats: List[AudioType] = [AudioType.WAV, AudioType.MP3]
+    _supported_output_formats: List[AudioType] = [AudioType.WAV, AudioType.MP3]
     _provides_services: List[ServiceType] = [ServiceType.PLAYER]
     _available = SystemQueries.is_windows
     SoundCapabilities.add_service(service_ID, _provides_services,

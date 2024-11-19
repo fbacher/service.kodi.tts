@@ -1,5 +1,7 @@
 from __future__ import annotations  # For union operator |
 
+from pathlib import Path
+
 from backends.ispeech_generator import ISpeechGenerator
 
 """
@@ -13,7 +15,7 @@ import sys
 
 from common import *
 
-from backends.audio.sound_capabilties import SoundCapabilities
+from backends.audio.sound_capabilities import SoundCapabilities
 from backends.audio.worker_thread import TTSQueueData, WorkerThread
 from backends.backend_info_bridge import BackendInfoBridge
 from backends.base import BaseEngineService
@@ -24,16 +26,17 @@ from backends.players.player_index import PlayerIndex
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.settings_map import SettingsMap
 from cache.voicecache import VoiceCache
+from cache.common_types import CacheEntryInfo
 from common.base_services import BaseServices
 from common.exceptions import ExpiredException
 from common.logger import BasicLogger
 from common.monitor import Monitor
 from common.phrases import Phrase, PhraseList
-from common.setting_constants import Mode
+from common.setting_constants import AudioType, Mode
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
 
-module_logger: BasicLogger = BasicLogger.get_logger(__name__)
+MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class Result:
@@ -43,15 +46,16 @@ class Result:
 
 
 class Driver(BaseServices):
-
-    _logger: BasicLogger = None
+    _initialized: bool = False
 
     def __init__(self):
         clz = type(self)
-        if clz._logger is None:
-            clz._logger = module_logger
-            self.worker_thread: WorkerThread = WorkerThread('worker', task=None)
+        if clz._initialized is False:
+            self.worker_thread: WorkerThread = WorkerThread('worker',
+                                                            task=None)
             self.cache_reader = CacheReader()
+            clz._initialized = True
+        super().__init__()
 
     def say(self, phrases: PhraseList) -> None:
         """
@@ -64,7 +68,7 @@ class Driver(BaseServices):
             4) run engine to produce voice file to add to cache
             if engine does not produce audio file-type configured for cache,
             then run converter, such as mplayer to convert (probably from wav to
-            mpeg3)
+            mp3)
             5) play audio from cache
          6 else if no caching
            if engine is also the player to use, then have engine voice and play text
@@ -81,37 +85,39 @@ class Driver(BaseServices):
             result: Result = None
             mode: Mode
             engine_id: str = Settings.get_engine_id()
-            #  clz._logger.debug(f'engine_id: {engine_id}')
+            MY_LOGGER.debug(f'service_id: {engine_id}')
             active_engine: BaseEngineService
             if engine_id is None:
-                clz._logger.debug(f'engine_id is not set')
+                MY_LOGGER.debug(f'service_id is not set')
                 return
             active_engine = BaseServices.getService(engine_id)
             if active_engine is None:
-                clz._logger.debug(f'invalid active_engine engine_id: {engine_id}')
+                MY_LOGGER.debug(f'invalid active_engine service_id: {engine_id}')
                 return
-            #  clz._logger.debug(f'engine_id: {engine_id} active_engine: {active_engine}')
+            MY_LOGGER.debug(f'service_id: {engine_id} active_engine: {active_engine}')
             try:
-                if phrases[0].get_interrupt():  # Interrupt should only be on first phrase
-                    # clz._logger.debug(f'INTERRUPT Driver.Say {phrases[0].get_text()}')
+                if phrases.interrupt:  # Interrupt should only be on first phrase
+                    MY_LOGGER.debug(f'INTERRUPT Driver.Say {phrases[0].get_text()}')
                     phrases.expire_all_prior()
                     # self.worker_thread.interrupt()
             except ExpiredException:
-                clz._logger.debug('Expired at Interrupt')
+                MY_LOGGER.debug('Expired at Interrupt')
 
             player_id: str = Settings.get_player_id(engine_id)
 
             '''
             if player_id == Players.INTERNAL:
                 mode = Mode.ENGINESPEAK
-            elif Settings.uses_pipe(engine_id):
+            elif Settings.uses_pipe(service_id):
                 mode = Mode.PIPE
             else:
                 mode = Mode.FILEOUT
             '''
             # Ensure player has been initialized
-
-            converter_id: str = self.getConverter_for(engine_id)
+            '''
+            converter_id: str
+            converter_id = SoundCapabilities.get_transcoder(service_id=service_id,
+                                                            target_audio=AudioType.MP3)
             if converter_id is None:
                 if player_id is None or len(player_id) == 0:
                     player_id = None
@@ -122,9 +128,9 @@ class Driver(BaseServices):
                         active_engine.get_player(active_engine.get_active_engine_id())
                     player_input_formats: List[str]
                     player_input_formats = SoundCapabilities.get_input_formats(player_id)
-                    if SoundCapabilities.MP3 not in player_input_formats:
+                    if AudioType.MP3 not in player_input_formats:
                         pass
-
+           '''
             try:
                 phrase: Phrase = None
                 success: bool = True
@@ -134,45 +140,40 @@ class Driver(BaseServices):
                     interrupt: str = ''
                     if phrase.get_interrupt():
                         interrupt = 'INTERRUPT'
-                    pre_pause: str = ''
-                    post_pause: str = ''
-                    if phrase.get_pre_pause() > 0:
-                        pre_pause = f' PRE_PAUSE: {str(phrase.get_pre_pause())} '
-                    if phrase.get_post_pause() > 0:
-                        post_pause = f' POST_PAUSE: {str(phrase.get_post_pause())} '
-                    # clz._logger.debug(f'Driver.Say PHRASE: {phrase.get_text()} '
-                    #                  f'idx: {phrase_idx}'
-                    #                  f' serial: {phrase.get_serial_num()}'
-                    #                  f' {interrupt}{pre_pause}{post_pause}')
                     '''
                     ALL text to be voiced, must be kept synchronized by going
                     through queues. Otherwise things will get scrambled.
                     '''
-
                     if Settings.is_use_cache():
-                        active_engine. update_voice_path(phrase)
-                        VoiceCache.get_path_to_voice_file(active_engine.get_voice_cache(),
-                                                          phrase, use_cache=True)
+                        active_engine.update_voice_path(phrase)
+                        voice_path: Path
+                        suffixes: List[str]
+                        phrase.update_cache_path(active_engine)
                     '''
-                        if phrase.exists():
-                            clz._logger.debug(f'{phrase.get_text()} is in cache: {
+                        if phrase.text_exists():
+                            MY_LOGGER.debug(f'{phrase.get_text()} is in cache: {
                             phrase.get_cache_path()}')
                             success = self.say_file(active_engine, player_id, phrase)
                         else:  # if engine_settings.wait_for_generate_voice then generate
                                      # now and play, otherwise add to background job
-                            clz._logger.debug(f'NOT in cache, generating: '
+                            MY_LOGGER.debug(f'NOT in cache, generating: '
                                               f'{phrase.get_text()} path: '
                                               f'{phrase.get_cache_path()}')
                             # self.generate_voice(active_engine, phrase)
                     # else:
                         # self.generate_voice(active_engine, phrase)
                     '''
-                    if (not phrase.exists() and Settings.is_use_cache()
+                    MY_LOGGER.debug(f'About to seed use_cache: {Settings.is_use_cache()} '
+                                    f'text_exists: {phrase.text_exists()} '
+                                    f'has generator: {active_engine.has_speech_generator()}')
+
+                    if (Settings.is_use_cache() and not phrase.text_exists()
                             and active_engine.has_speech_generator()):
                         # Clone phrases to seed voice cache
                         phrases_new: PhraseList = PhraseList(check_expired=False)
                         phrase_new: Phrase = phrase.clone(check_expired=False)
                         phrases_new.append(phrase_new)
+                        MY_LOGGER.debug(f'Seeding')
                         self._seed_text_cache(active_engine, phrases_new)
                         # Mark original phrase as being downloaded
                         phrase.set_download_pending()
@@ -183,16 +184,17 @@ class Driver(BaseServices):
                     tts_data = TTSQueueData(None, state='play_file',
                                             player_id=player_id,
                                             phrase=phrase,
-                                            engine_id=active_engine.service_ID)
-
+                                            service_id=active_engine.service_ID)
+                    MY_LOGGER.debug(f'player_id: {player_id} engine_id: {engine_id} '
+                                    f'active_engine: {active_engine}')
                     self.worker_thread.add_to_queue(tts_data)
 
             except ExpiredException:
-                clz._logger.debug(f'Expired')
+                MY_LOGGER.debug(f'Expired')
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            clz._logger.exception('')
+            MY_LOGGER.exception('')
 
     def stop(self):
         clz = type(self)
@@ -203,7 +205,7 @@ class Driver(BaseServices):
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            clz._logger.exception('')
+            MY_LOGGER.exception('')
 
     def close(self):
         clz = type(self)
@@ -214,7 +216,7 @@ class Driver(BaseServices):
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            clz._logger.exception('')
+            MY_LOGGER.exception('')
 
     def isSpeaking(self) -> bool:
         clz = type(self)
@@ -225,7 +227,7 @@ class Driver(BaseServices):
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            clz._logger.exception('')
+            MY_LOGGER.exception('')
         return False
 
         # tts.dead
@@ -247,18 +249,18 @@ class Driver(BaseServices):
         exists: bool = False
         try:
             if phrase.get_cache_path is None:
-                cached_file, exists = VoiceCache.get_path_to_voice_file(phrase,
-                                                                        use_cache=True)
-            if exists:
+                result: CacheEntryInfo
+                result = VoiceCache.get_path_to_voice_file(phrase, use_cache=True)
+            if phrase.text_exists():
                 return self.say_file(active_engine, player_id, phrase)
             return False
         except AbortException:
             reraise(*sys.exc_info())
         except ExpiredException:
-            clz._logger.debug('Expired')
+            MY_LOGGER.debug('Expired')
             return True
         except Exception as e:
-            clz._logger.exception('')
+            MY_LOGGER.exception('')
         return False
 
     def _seed_text_cache(self, active_engine: BaseEngineService,
@@ -269,6 +271,7 @@ class Driver(BaseServices):
             # We don't care about expiration
             phrases: PhraseList
             phrases = phrases_arg.clone(check_expired=False)
+            MY_LOGGER.debug(f'seed_cache: engine: {active_engine.service_ID}')
             tts_data: TTSQueueData = TTSQueueData(None, state='seed_cache',
                                                   phrases=phrases,
                                                   engine_id=active_engine.service_ID)
@@ -277,7 +280,7 @@ class Driver(BaseServices):
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            clz._logger.exception('')
+            MY_LOGGER.exception('')
 
     def generate_voice(self, active_engine: BaseEngineService, phrase: Phrase) -> None:
         Monitor.exception_on_abort(timeout=0.01)
@@ -297,9 +300,9 @@ class Driver(BaseServices):
         except AbortException:
             reraise(*sys.exc_info())
         except ExpiredException:
-            clz._logger.debug(f'Expired')
+            MY_LOGGER.debug(f'Expired')
         except Exception as e:
-            clz._logger.exception('')
+            MY_LOGGER.exception('')
 
     def say_file(self, active_engine: BaseEngineService, player_id: str,
                  phrase: Phrase) -> bool:
@@ -310,7 +313,7 @@ class Driver(BaseServices):
             tts_data: TTSQueueData = TTSQueueData(None, state='play_file',
                                                   player_id=player_id,
                                                   phrase=phrase,
-                                                  engine_id=active_engine.service_ID)
+                                                  service_id=active_engine.service_ID)
 
             self.worker_thread.add_to_queue(tts_data)
             """
@@ -318,38 +321,8 @@ class Driver(BaseServices):
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            clz._logger.exception('')
+            MY_LOGGER.exception('')
         return False
-
-    def getConverter_for(self, engine_id: str) -> str | None:
-        clz = type(self)
-        Monitor.exception_on_abort(0.05)
-        try:
-            converter_id: str = Settings.get_setting_str(SettingsProperties.CONVERTER,
-                                                         engine_id, ignore_cache=False,
-                                                         default=None)
-            engine_produces_audio_types: List[str]
-            engine_produces_audio_types = SoundCapabilities.get_output_formats(engine_id)
-            if SoundCapabilities.MP3 in engine_produces_audio_types:
-                # No converter needed, need to check player
-                return None
-
-            eligible_converters: List[str]
-            eligible_converters = \
-                SoundCapabilities.get_capable_services(ServiceType.CONVERTER,
-                                                       engine_produces_audio_types,
-                                                       SoundCapabilities.MP3)
-            converter_id = None
-            if len(eligible_converters) > 0:
-                converter_id = eligible_converters[0]
-            else:
-                converter = self.getService(converter_id)
-            return converter_id
-        except AbortException:
-            reraise(*sys.exc_info())
-        except Exception as e:
-            clz._logger.exception('')
-        return None
 
     def prefetch(self, text: str, background: bool) -> None:
         pass
@@ -359,7 +332,7 @@ class Driver(BaseServices):
         Gets a setting from addon's settings.xml
 
         A convenience method equivalent to Settings.getSetting(key + '.'. +
-        cls.backend_id,
+        cls.service_id,
         default, useFullSettingName).False
 
         :param key:
@@ -385,7 +358,7 @@ class Driver(BaseServices):
             file_type: str = ''
             self.cache_reader.getVoicedText(phrase, cache_identifier='',
                                             sound_file_types=player_input_formats)
-            if phrase.exists():
+            if phrase.text_exists():
                 active_engine = BaseServices.getService(engine_id)
                 player: IPlayer = active_engine.get_player(engine_id)
                 player.init(engine_id)
@@ -393,6 +366,6 @@ class Driver(BaseServices):
         except AbortException:
             reraise(*sys.exc_info())
         except ExpiredException:
-            clz._logger.debug(f'Expired')
+            MY_LOGGER.debug(f'Expired')
         except Exception as e:
-            clz._logger.exception('')
+            MY_LOGGER.exception('')

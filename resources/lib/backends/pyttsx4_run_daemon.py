@@ -102,7 +102,7 @@ class Pyttsx4RunDaemon:
             self.process.stdin = None
         except:
             pass
-        self.process.wait(0.5)
+        self.process.wait(0.25)
 
     def start_service(self) -> int:
         """
@@ -230,7 +230,7 @@ class Pyttsx4RunDaemon:
             while not Monitor.exception_on_abort(timeout=0.1):
                 line: str = ''
                 try:
-                    if finished or self.cmd_finished:
+                    if finished or self.die:
                         break
                     line = self.process.stdout.readline()
                     clz.get.debug(f'cmd_out: {line}')

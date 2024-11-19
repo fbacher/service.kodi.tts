@@ -3,7 +3,7 @@ from __future__ import annotations  # For union operator |
 from backends.settings.i_validators import INumericValidator
 from common import *
 
-from backends.audio.sound_capabilties import SoundCapabilities
+from backends.audio.sound_capabilities import SoundCapabilities
 from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.settings_map import SettingsMap
@@ -11,7 +11,7 @@ from backends.settings.validators import (BoolValidator, ConstraintsValidator,
                                           NumericValidator, StringValidator, Validator)
 from common.constants import Constants
 from common.logger import BasicLogger
-from common.setting_constants import PlayerMode, Players
+from common.setting_constants import AudioType, PlayerMode, Players
 from common.settings_low_level import SettingsProperties
 
 module_logger = BasicLogger.get_logger(__name__)
@@ -20,6 +20,7 @@ module_logger = BasicLogger.get_logger(__name__)
 class MPlayerSettings:
     ID = Players.MPLAYER
     service_ID: str = Services.MPLAYER_ID
+    service_type: str = ServiceType.PLAYER
     displayName = 'MPlayer'
 
     _logger: BasicLogger = None
@@ -40,18 +41,13 @@ class MPlayerSettings:
                                         cls.volumeConversionConstraints, volumeDb)
     
     """
-
-    settings: Dict[str, Validator] = {}
-
-    _supported_input_formats: List[str] = [SoundCapabilities.WAVE, SoundCapabilities.MP3]
-    _supported_output_formats: List[str] = []
-    _provides_services: List[ServiceType] = [ServiceType.PLAYER]
+    _supported_input_formats: List[AudioType] = [AudioType.WAV, AudioType.MP3]
+    _supported_output_formats: List[AudioType] = []
+    _provides_services: List[ServiceType] = [ServiceType.PLAYER,
+                                             ServiceType.TRANSCODER]
     SoundCapabilities.add_service(service_ID, _provides_services,
                                   _supported_input_formats,
                                   _supported_output_formats)
-
-    # Every setting from settings.xml must be listed here
-    # SettingName, default value
 
     initialized: bool = False
 
@@ -83,8 +79,8 @@ class MPlayerSettings:
 
         speed_validator: NumericValidator
         speed_validator = NumericValidator(SettingsProperties.SPEED,
-                                           cls.service_ID,
-                                           minimum=.25, maximum=5,
+                                           SettingsProperties.TTS_SERVICE,
+                                           minimum=.25, maximum=3,
                                            default=1,
                                            is_decibels=False,
                                            is_integer=False)

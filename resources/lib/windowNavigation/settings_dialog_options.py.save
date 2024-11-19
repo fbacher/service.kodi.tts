@@ -746,7 +746,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             if new_engine != self.previous_engine:
                 self.set_engine_id(new_engine)
                 # from service_worker import TTSService
-                # TTSService.get_instance().initTTS(self.engine_id)
+                # TTSService.get_instance().initTTS(self.service_id)
                 # cmd ='XBMC.NotifyAll({},RELOAD_ENGINE)'.format(Constants.ADDON_ID)
                 # xbmc.executebuiltin(cmd)
         except Exception as e:
@@ -1332,7 +1332,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         """
         try:
             volume_val: INumericValidator
-            volume_val = SettingsMap.get_validator(SettingsProperties.TTS_SERVICE,  # self.engine_id,
+            volume_val = SettingsMap.get_validator(SettingsProperties.TTS_SERVICE,  # self.service_id,
                                                   SettingsProperties.VOLUME)
             if volume_val is None:
                 raise NotImplementedError
@@ -1349,7 +1349,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
         """
         try:
-            if not SettingsMap.is_valid_property(SettingsProperties.TTS_SERVICE,  # self.engine_id,
+            if not SettingsMap.is_valid_property(SettingsProperties.TTS_SERVICE,  # self.service_id,
                                                  SettingsProperties.VOLUME):
                 self._logger.debug(f'Volume is NOT valid property')
                 self.engine_volume_group.setVisible(False)
@@ -1385,7 +1385,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             result = volume_val.get_tts_values()
         except NotImplementedError:
             result = UIValues()
-            self._logger.exception(f'engine_id: {self.engine_id} volume: {result}')
+            self._logger.exception(f'service_id: {self.engine_id} volume: {result}')
         return result
 
     def select_speed(self):
@@ -1590,7 +1590,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
     '''
     def get_gender_id(self) -> int:
         gender_default: int = Genders.UNKNOWN
-        self.gender_id = Settings.get_gender(self.engine_id)
+        self.gender_id = Settings.get_gender(self.service_id)
         if self.settings_changed:
             self.gender_id = self.getSetting(SettingsProperties.GENDER,
                                              gender_default)
@@ -1776,7 +1776,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         :param value:
         """
         try:
-            #  engine: ITTSBackendBase = self.getEngineInstance(self.engine_id)
+            #  engine: ITTSBackendBase = self.getEngineInstance(self.service_id)
             changed: bool = Settings.setSetting(key, value, self.engine_id)
 
             # changed = self.getEngineInstance().setSetting(key, value)

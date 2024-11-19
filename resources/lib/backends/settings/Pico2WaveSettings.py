@@ -5,13 +5,13 @@ import subprocess
 
 from common import *
 
-from backends.audio.sound_capabilties import SoundCapabilities
+from backends.audio.sound_capabilities import SoundCapabilities
 from backends.engines.base_engine_settings import BaseEngineSettings
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.settings_map import Reason, SettingsMap
 from common.constants import Constants
 from common.logger import BasicLogger
-from common.setting_constants import Backends
+from common.setting_constants import AudioType, Backends
 from common.system_queries import SystemQueries
 
 module_logger = BasicLogger.get_logger(__name__)
@@ -26,8 +26,8 @@ class Pico2WaveSettings:
 
     #  supported_settings: Dict[str, str | int | bool] = settings
     initialized: bool = False
-    _supported_input_formats: List[str] = []
-    _supported_output_formats: List[str] = [SoundCapabilities.WAVE]
+    _supported_input_formats: List[AudioType] = []
+    _supported_output_formats: List[AudioType] = [AudioType.WAV]
     _provides_services: List[ServiceType] = [ServiceType.ENGINE]
     SoundCapabilities.add_service(service_ID, _provides_services,
                                   _supported_input_formats,

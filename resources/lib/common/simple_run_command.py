@@ -26,8 +26,9 @@ class RunState(Enum):
     PIPES_CONNECTED = 1
     RUNNING = 2
     COMPLETE = 3
-    KILLED = 4
-    TERMINATED = 5
+    DIE = 4
+    KILLED = 5
+    TERMINATED = 6
 
 
 class SimpleRunCommand:
@@ -38,16 +39,24 @@ class SimpleRunCommand:
     logger: BasicLogger = None
 
     def __init__(self, args: List[str], phrase_serial: int = 0, name: str = '',
-                 stop_on_play: bool = False, delete_after_run: Path = None) -> None:
+                 count: int = 0, stop_on_play: bool = False,
+                 delete_after_run: Path = None) -> None:
         """
 
         :param args: arguments to be passed to exec command
+        :param phrase_serial: Serial Number of PhraseList containing phrase.
+            Used to handle expiration of phrase
+        :param name: thread_name
+        :param count: Suffix to add to thread_name to keep unique
+        :param stop_on_play If True, then exit after play
+        :param delete_after_run: Delete the given path after running command.
         """
         clz = type(self)
         SimpleRunCommand.logger = module_logger
         self.args: List[str] = args
         self.phrase_serial: int = phrase_serial
-        self.thread_name = name
+        self.count: int = count
+        self.thread_name = f'{name}_{count}'
         self.rc = 0
         self.run_state: RunState = RunState.NOT_STARTED
         self.stop_on_play: bool = stop_on_play
@@ -77,11 +86,38 @@ class SimpleRunCommand:
         try:
             if self.delete_after_run and self.delete_after_run.exists():
                 pass  # self.delete_after_run.unlink()
+
+            if self.rc is None or self.rc != 0:
+                self.log_output()
         except Exception as e:
             clz.logger.exception('')
 
+    def stop_player(self, purge: bool = True,
+                    keep_silent: bool = False,
+                    kill: bool = False):
+        """
+        Stop player (most likely because current text is expired)
+        Engines may wish to override this method, particularly when
+        the player is built-in. Players/processes may ignore parameters
+        that don't apply.
+
+        :param purge: if True, then purge any queued vocings
+                      if False, then only stop playing current phrase
+        :param keep_silent: if True, ignore any new phrases until restarted
+                            by resume_player.
+                            If False, then play any new content
+        :param kill: If True, kill any player processes. Implies purge and
+                     keep_silent.
+                     If False, then the player will remain ready to play new
+                     content, depending upon keep_silent
+        :return:
+        """
+        # The only response to any request is to kill process.
+        self.terminate()
+
     def terminate(self):
         if self.process is not None and self.run_state.value <= RunState.RUNNING.value:
+            self.close_files()
             self.process.terminate()
         self.cleanup()
 
@@ -128,19 +164,26 @@ class SimpleRunCommand:
                 self.rc = 11
                 return self.rc
 
+            clz.logger.debug(f'About to run args:{self.args[0]}')
             self.run_thread.start()
 
-            self.cmd_finished = False
             self.process: Popen
             check_serial: bool = True
             countdown: bool = False
             kill_countdown: int = 2
 
             # First, wait until process has started. Should be very quick
+            attempts: int = 3
             while not Monitor.wait_for_abort(timeout=0.1):
                 if self.process is not None:
                     self.run_state = RunState.RUNNING
                     break
+                attempts -= 1
+                if attempts < 0:
+                    break
+            if self.run_state != RunState.RUNNING:
+                if self.process is not None:
+                    self.process.kill()
 
             next_state: RunState = RunState.COMPLETE
             while not Monitor.wait_for_abort(timeout=0.1):
@@ -163,7 +206,7 @@ class SimpleRunCommand:
                         try:
                             self.process.kill()
                         except Exception:
-                            pass
+                            break
                         next_state = RunState.KILLED
                         break
                 except subprocess.TimeoutExpired:
@@ -198,19 +241,6 @@ class SimpleRunCommand:
                 self.rc = 99
 
             self.cleanup()
-            if self.run_thread.is_alive():
-                # TODO: TIMEOUTS TOO LONG REWORK
-                self.run_thread.join(timeout=1.0)
-            if self.stdout_thread.is_alive():
-                self.stdout_thread.join(timeout=0.2)
-            if self.stderr_thread:
-                if self.stderr_thread.is_alive():
-                    self.stderr_thread.join(timeout=0.2)
-            Monitor.exception_on_abort(timeout=0.0)
-            # If abort did not occur, then process finished
-
-            if self.rc is None or self.rc != 0:
-                self.log_output()
         except AbortException:
             try:
                 self.process.kill()  # SIGKILL. Should cause stderr & stdout to exit
@@ -220,7 +250,7 @@ class SimpleRunCommand:
         finally:
             Monitor.unregister_abort_listener(self.abort_listener)
             KodiPlayerMonitor.unregister_player_status_listener(
-                self.kodi_player_status_listener)
+                f'{self.thread_name}_Kodi_Player_Monitor')
         return self.rc
 
     def run_worker(self) -> None:
@@ -237,11 +267,11 @@ class SimpleRunCommand:
                 # process level (stderr = subprocess.STDOUT), devnull or pass through
                 # via pipe and don't log
 
-                stderr = subprocess.STDOUT
                 clz.logger.debug(f'Starting cmd args: {self.args}')
                 self.process = subprocess.Popen(self.args, stdin=None,  # subprocess.DEVNULL,
                                                 stdout=subprocess.PIPE,
-                                                stderr=stderr, shell=False,
+                                                stderr=subprocess.STDOUT,
+                                                shell=False,
                                                 universal_newlines=True, env=env,
                                                 encoding='cp1252',  # 'utf-8',
                                                 close_fds=True,
@@ -249,7 +279,8 @@ class SimpleRunCommand:
             else:
                 self.process = subprocess.Popen(self.args, stdin=None,
                                                 stdout=subprocess.PIPE,
-                                                stderr=subprocess.PIPE, shell=False,
+                                                stderr=subprocess.STDOUT,
+                                                shell=False,
                                                 universal_newlines=True, env=env,
                                                 close_fds=True)
             self.run_state = RunState.RUNNING
@@ -257,10 +288,10 @@ class SimpleRunCommand:
                                                   name=f'{self.thread_name}_stdout_rdr')
             Monitor.exception_on_abort()
             self.stdout_thread.start()
-            if not xbmc.getCondVisibility('System.Platform.Windows'):
-                self.stderr_thread = threading.Thread(target=self.stderr_reader,
-                                                      name=f'{self.thread_name}_stderr_rdr')
-                self.stderr_thread.start()
+            # if not xbmc.getCondVisibility('System.Platform.Windows'):
+            #     self.stderr_thread = threading.Thread(target=self.stderr_reader,
+            #                                           name=f'{self.thread_name}_stderr_rdr')
+            #     self.stderr_thread.start()
         except AbortException as e:
             self.rc = 99  # Let thread die
         except Exception as e:
@@ -270,7 +301,7 @@ class SimpleRunCommand:
             self.run_state = RunState.COMPLETE
         return
 
-
+    '''
     def stderr_reader(self):
         GarbageCollector.add_thread(self.stderr_thread)
         if Monitor.is_abort_requested():
@@ -283,7 +314,7 @@ class SimpleRunCommand:
         try:
             while not Monitor.exception_on_abort():
                 try:
-                    if finished or self.cmd_finished:
+                    if finished or self.die:
                         break
                     line = self.process.stderr.readline()
                     if len(line) > 0:
@@ -310,6 +341,7 @@ class SimpleRunCommand:
                 self.process.stderr.close()
         except Exception:
             pass
+    '''
 
     def stdout_reader(self):
         clz = type(self)
@@ -345,6 +377,18 @@ class SimpleRunCommand:
             pass
         return
 
+    def close_files(self) -> None:
+        try:
+            if self.process.stdout is not None:
+                self.process.stdout.close()
+        except Exception:
+            pass
+        try:
+            if self.process.stdin is not None:
+                self.process.stdin.close()
+        except Exception:
+            pass
+
     def log_output(self):
         clz = type(self)
         try:
@@ -358,8 +402,8 @@ class SimpleRunCommand:
                 if clz.logger.isEnabledFor(DEBUG_V):
                     stdout = '\n'.join(self.stdout_lines)
                     clz.logger.debug_v(f'STDOUT: {stdout}')
-                    stderr = '\n'.join(self.stderr_lines)
-                    clz.logger.debug_v(f'STDERR: {stderr}')
+                    #  stderr = '\n'.join(self.stderr_lines)
+                    #  clz.logger.debug_v(f'STDERR: {stderr}')
         except AbortException as e:
             return
         except Exception as e:

@@ -62,7 +62,9 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
         self.full_window_group: xbmcgui.ControlGroup | None = None
         self.selection_index: int = -1
         self.title: str = kwargs.get('title', MessageId.TTS_HELP_LABEL.get_msg())
-        self.sub_title: str | None = kwargs.get('sub_title', None)
+        self.sub_title: str | None
+        self.sub_title = kwargs.get('sub_title',
+                                    MessageId.TTS_HELP_CHOOSE_SUBJECT.get_msg())
         self.help_text: str | None = None
         self.is_modal: bool = False
         self.notification_queue: queue.SimpleQueue = queue.SimpleQueue()
@@ -176,7 +178,7 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
         self.ok_group = self.getControlGroup(self.OK_CONTROL_ID)
         self.ok_group.setVisible(False)
         self.ok_radio_button = self.getControlRadioButton(clz.OK_CONTROL_ID)
-        self.ok_radio_button.setLabel(Messages.get_msg(Messages.OK))
+        self.ok_radio_button.setLabel(MessageId.OK_BUTTON.get_msg())
         self.ok_radio_button.setVisible(True)
         self.ok_group.setVisible(True)
 

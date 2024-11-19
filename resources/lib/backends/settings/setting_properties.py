@@ -7,7 +7,7 @@ import xbmcvfs
 
 from common import *
 
-from backends.settings.service_types import Services
+from backends.settings.service_types import Services, ServiceType
 
 
 class SettingType(Enum):
@@ -24,11 +24,12 @@ class SettingType(Enum):
 class SettingsProperties:  # (ISettings):
     # Must list these engines in preference order. Or at least the first few
     # should be in this order.
-    AUTO_ID: Final[str] = Services.AUTO_ENGINE_ID
+    AUTO_ID: Final[str] = Services.DEFAULT_ENGINE_ID
     ESPEAK_ID: Final[str] = Services.ESPEAK_ID
     FESTIVAL_ID: Final[str] = Services.FESTIVAL_ID
     FLITE_ID: Final[str] = Services.FLITE_ID
     INTERNAL_ID: Final[str] = Services.INTERNAL_PLAYER_ID
+    NO_ENGINE_ID: Final[str] = Services.NO_ENGINE_ID
     PICO_TO_WAVE_ID: Final[str] = Services.PICO_TO_WAVE_ID
     RECITE_ID: Final[str] = Services.RECITE_ID
     RESPONSIVE_VOICE_ID: Final[str] = Services.RESPONSIVE_VOICE_ID
@@ -52,7 +53,7 @@ class SettingsProperties:  # (ISettings):
     #  CACHE_VOICE_FILES: Final[str] = 'cache_voice_files'
     CAPITAL_RECOGNITION: Final[str] = 'capital_recognition'
     CHANNELS: Final[str] = 'channels'
-    CONVERTER: Final[str] = 'converter'
+    TRANSCODER: Final[str] = 'converter'
     DEBUG_LOG_LEVEL: Final[str] = 'debug_log_level'
     DELAY_VOICING: Final[str] = 'delay_voicing'
     DISABLE_BROKEN_SERVICES: Final[str] = 'disable_broken_services'
@@ -60,12 +61,12 @@ class SettingsProperties:  # (ISettings):
     # ENGINE_SPEAKS: Final[str] = 'engine_speak'  # Voicing engine also speaks
     GENDER: Final[str] = 'gender'
     GENDER_VISIBLE: Final[str] = 'gender_visible'
-    GUI: Final[str] = 'gui'
+    # GUI: Final[str] = 'gui'
     HINT_TEXT_ON_STARTUP: Final[str] = 'hint_text_on_startup'
     LANGUAGE: Final[str] = 'language'
     MODULE: Final[str] = 'module'
-    OUTPUT_VIA: Final[str] = 'output_via'
-    OUTPUT_VISIBLE: Final[str] = 'output_visible'
+    # OUTPUT_VIA: Final[str] = 'output_via'
+    #  OUTPUT_VISIBLE: Final[str] = 'output_visible'
     OVERRIDE_POLL_INTERVAL: Final[str] = 'override_poll_interval'
     # PIPE: Final[str] = 'pipe'  # Engine to pipe speech to a player
     PLAYER_MODE: Final[str] = 'player_mode'  # How the engine communicates with player
@@ -83,7 +84,7 @@ class SettingsProperties:  # (ISettings):
     REMOTE_VOLUME: Final[str] = 'remote_volume'
     SETTINGS_BEING_CONFIGURED: Final[str] = 'settings_being_configured'
     SETTINGS_DIGEST: Final[str] = 'settings_digest'
-    SETTINGS_LAST_CHANGED: Final[str] = 'settings_last_changed'
+    #  SETTINGS_LAST_CHANGED: Final[str] = 'settings_last_changed'
     SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA: Final[
         str] = 'speak_background_progress_during_media'
     SPEAK_BACKGROUND_PROGRESS: Final[str] = 'speak_background_progress'
@@ -93,12 +94,12 @@ class SettingsProperties:  # (ISettings):
     SPEECH_DISPATCHER: Final[str] = 'Speech-Dispatcher'
     SPEED: Final[str] = 'speed'
     SPEED_ENABLED: Final[str] = 'speed_enabled'
-    SPEED_VISIBLE: Final[str] = 'speed_visible'
+    #  SPEED_VISIBLE: Final[str] = 'speed_visible'
     SPELLING: Final[str] = 'spelling'
     SERVICE_ID: Final[str] = 'id'
     TTS_SERVICE: Final[str] = 'tts'
-    TTSD_HOST: Final[str] = 'ttsd_host'
-    TTSD_PORT: Final[str] = 'ttsd_port'
+    #  TTSD_HOST: Final[str] = 'ttsd_host'
+    #  TTSD_PORT: Final[str] = 'ttsd_port'
     USE_AOSS: Final[str] = 'use_aoss'
     USE_TEMPFS: Final[str] = 'use_tmpfs'
     VERSION: Final[str] = 'version'
@@ -110,6 +111,7 @@ class SettingsProperties:  # (ISettings):
     VOLUME_VISIBLE: Final[str] = 'volume_visible'
 
     API_KEY_DEFAULT: Final[str] = ''
+    AUDIO_FORMAT: Final[str] = 'audio_format'
     CACHE_PATH_DEFAULT: Final[str] = xbmcvfs.translatePath(
         'special://userdata/addon_data/service.kodi.tts/cache')
     CACHE_EXPIRATION_DEFAULT: Final[int] = 365
@@ -128,42 +130,42 @@ class SettingsProperties:  # (ISettings):
         TTS_SERVICE
     ]
 
-    TTS_SETTINGS: List[str] = [
-        AUTO_ITEM_EXTRA,
-        AUTO_ITEM_EXTRA_DELAY,
-        BACKGROUND_PROGRESS_INTERVAL,
-        DISABLE_BROKEN_SERVICES,
-        SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA,
-        SPEAK_BACKGROUND_PROGRESS,
-        #  CACHE_VOICE_FILES,
-        ADDONS_MD5,
-        # DEBUG_LOGGING,    #  Boolean needed to toggle visibility
-        DEBUG_LOG_LEVEL,  #  Merge into Logging, get rid of verbose_logging, etc
-        EXTENDED_HELP_ON_STARTUP,
-        GENDER_VISIBLE,
-        GUI,
-        HINT_TEXT_ON_STARTUP,
-        OUTPUT_VIA,
-        OUTPUT_VISIBLE,
-        OVERRIDE_POLL_INTERVAL,
-        POLL_INTERVAL,
-        READER_ON,
-        SETTINGS_BEING_CONFIGURED,
-        SETTINGS_DIGEST,
-        SETTINGS_LAST_CHANGED,
-        SPEAK_LIST_COUNT,
-        SPEAK_VIA_KODI,
-        SPEED_VISIBLE,
-        TTSD_HOST,
-        TTSD_PORT,
-        USE_TEMPFS,
-        VERSION,
-        VOICE_VISIBLE,
-        VOLUME_VISIBLE,
-
-        SPEED,
-        VOLUME
-    ]
+    TTS_SETTINGS: Dict[str, None] = {
+        AUTO_ITEM_EXTRA: None,
+        AUTO_ITEM_EXTRA_DELAY: None,
+        BACKGROUND_PROGRESS_INTERVAL: None,
+        CACHE_EXPIRATION_DAYS: None,
+        DISABLE_BROKEN_SERVICES: None,
+        SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA: None,
+        SPEAK_BACKGROUND_PROGRESS: None,
+        #  CACHE_VOICE_FILES: None,
+        ADDONS_MD5: None,
+        # DEBUG_LOGGING: None,    #  Boolean needed to toggle visibility
+        DEBUG_LOG_LEVEL: None,  #  Merge into Logging: None, get rid of verbose_logging: None, etc
+        EXTENDED_HELP_ON_STARTUP: None,
+        GENDER_VISIBLE: None,
+        # GUI: None,
+        HINT_TEXT_ON_STARTUP: None,
+        # OUTPUT_VIA: None,
+        #  OUTPUT_VISIBLE: None,
+        OVERRIDE_POLL_INTERVAL: None,
+        POLL_INTERVAL: None,
+        READER_ON: None,
+        SETTINGS_BEING_CONFIGURED: None,
+        SETTINGS_DIGEST: None,
+        #  SETTINGS_LAST_CHANGED: None,
+        SPEAK_LIST_COUNT: None,
+        SPEAK_VIA_KODI: None,
+        #  SPEED_VISIBLE: None,
+        #  TTSD_HOST: None,
+        #  TTSD_PORT: None,
+        USE_TEMPFS: None,
+        VERSION: None,
+        VOICE_VISIBLE: None,
+        VOLUME_VISIBLE: None,
+        SPEED: None,
+        VOLUME: None
+    }
 
     # Logically, ENGINE_SPEAK and PIPE should be combined into an enum of
     # three values instructing the engine what to do with speech that it produces:
@@ -182,73 +184,154 @@ class SettingsProperties:  # (ISettings):
     # names are not modified. Such settings are referred to here as
     # 'top_level_settings'
 
-    ALL_SETTINGS: List[str] = [
-        ENGINE,  # Leave this as the FIRST setting
-        ADDONS_MD5,
-        API_KEY,
-        AUTO_ITEM_EXTRA,
+    ALL_SETTINGS: Dict[str, None] = {
+        ENGINE: None,  # Leave this as the FIRST setting
+        ADDONS_MD5: None,
+        API_KEY: None,
+        AUDIO_FORMAT: None,
+        AUTO_ITEM_EXTRA: None,
         #  int seconds Time to wait before saying something extra in seconds
-        AUTO_ITEM_EXTRA_DELAY,
-        BACKGROUND_PROGRESS_INTERVAL,
-        CACHE_PATH,
-        CACHE_EXPIRATION_DAYS,
-        CACHE_SPEECH,
-        #  CACHE_VOICE_FILES, Not used
-        CAPITAL_RECOGNITION,
-        CHANNELS,
-        CONVERTER,
-        #  DEBUG_LOGGING,
-        DEBUG_LOG_LEVEL,
-        DELAY_VOICING,
-        DISABLE_BROKEN_SERVICES,
-        EXTENDED_HELP_ON_STARTUP,
-        GENDER,
-        GENDER_VISIBLE,
-        GUI,
-        HINT_TEXT_ON_STARTUP,
-        LANGUAGE,
-        MODULE,
-        OUTPUT_VIA,
-        OUTPUT_VISIBLE,
-        OVERRIDE_POLL_INTERVAL,
-        # PIPE,
-        PITCH,
-        PLAYER,
-        PLAYER_VOLUME,
-        PLAYER_PITCH,
-        PLAYER_MODE,
-        PLAYER_SPEED,
-        POLL_INTERVAL,
-        PUNCTUATION,
-        READER_ON,
-        REMOTE_PITCH,
-        REMOTE_SPEED,
-        REMOTE_VOLUME,
-        SETTINGS_DIGEST,
-        SETTINGS_BEING_CONFIGURED,
-        SETTINGS_LAST_CHANGED,
-        SPEECH_DISPATCHER,
-        SERVICE_ID,
-        SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA,
-        SPEAK_BACKGROUND_PROGRESS,
-        SPEAK_LIST_COUNT,
-        SPEAK_ON_SERVER,
-        SPEAK_VIA_KODI,
-        SPEED,
-        SPEED_ENABLED,
-        SPEED_VISIBLE,
-        SPELLING,
-        TTS_SERVICE,
-        TTSD_HOST,
-        TTSD_PORT,
-        USE_AOSS,
-        USE_TEMPFS,
-        VERSION,
-        VOICE,
-        VOICE_PATH,
-        VOICE_VISIBLE,
-        VOLUME
-    ]
+        AUTO_ITEM_EXTRA_DELAY: None,
+        BACKGROUND_PROGRESS_INTERVAL: None,
+        CACHE_PATH: None,
+        CACHE_EXPIRATION_DAYS: None,
+        CACHE_SPEECH: None,
+        #  CACHE_VOICE_FILES: None, Not used
+        CAPITAL_RECOGNITION: None,
+        CHANNELS: None,
+        TRANSCODER: None,
+        #  DEBUG_LOGGING: None,
+        DEBUG_LOG_LEVEL: None,
+        DELAY_VOICING: None,
+        DISABLE_BROKEN_SERVICES: None,
+        EXTENDED_HELP_ON_STARTUP: None,
+        GENDER: None,
+        GENDER_VISIBLE: None,
+        # GUI: None,
+        HINT_TEXT_ON_STARTUP: None,
+        LANGUAGE: None,
+        MODULE: None,
+        # OUTPUT_VIA: None,
+        #  OUTPUT_VISIBLE: None,
+        OVERRIDE_POLL_INTERVAL: None,
+        # PIPE: None,
+        PITCH: None,
+        PLAYER: None,
+        PLAYER_VOLUME: None,
+        PLAYER_PITCH: None,
+        PLAYER_MODE: None,
+        PLAYER_SPEED: None,
+        POLL_INTERVAL: None,
+        PUNCTUATION: None,
+        READER_ON: None,
+        REMOTE_PITCH: None,
+        REMOTE_SPEED: None,
+        REMOTE_VOLUME: None,
+        SETTINGS_DIGEST: None,
+        SETTINGS_BEING_CONFIGURED: None,
+        #  SETTINGS_LAST_CHANGED: None,
+        SPEECH_DISPATCHER: None,
+        SERVICE_ID: None,
+        SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA: None,
+        SPEAK_BACKGROUND_PROGRESS: None,
+        SPEAK_LIST_COUNT: None,
+        SPEAK_ON_SERVER: None,
+        SPEAK_VIA_KODI: None,
+        SPEED: None,
+        SPEED_ENABLED: None,
+        #  SPEED_VISIBLE: None,
+        SPELLING: None,
+        TTS_SERVICE: None,
+        #  TTSD_HOST: None,
+        #  TTSD_PORT: None,
+        USE_AOSS: None,
+        USE_TEMPFS: None,
+        VERSION: None,
+        VOICE: None,
+        VOICE_PATH: None,
+        VOICE_VISIBLE: None,
+        VOLUME: None
+    }
+
+    ENGINE_SETTINGS: Dict[str, None] = {
+        #  ENGINE: None,  # Leave this as the FIRST setting
+        #  ADDONS_MD5: None,
+        API_KEY: None,
+        #  AUTO_ITEM_EXTRA: None,
+        #  int seconds Time to wait before saying something extra in seconds
+        # AUTO_ITEM_EXTRA_DELAY: None,
+        AUDIO_FORMAT: None,
+        # BACKGROUND_PROGRESS_INTERVAL: None,
+        CACHE_PATH: None,
+        #  CACHE_EXPIRATION_DAYS: None,
+        CACHE_SPEECH: None,
+        #  CACHE_VOICE_FILES: None, Not used
+        CAPITAL_RECOGNITION: None,
+        CHANNELS: None,
+        TRANSCODER: None,
+        #  DEBUG_LOGGING: None,
+        #  DEBUG_LOG_LEVEL: None,
+        DELAY_VOICING: None,
+        #  DISABLE_BROKEN_SERVICES: None,
+        #  EXTENDED_HELP_ON_STARTUP: None,
+        GENDER: None,
+        # GENDER_VISIBLE: None,
+        # GUI: None,
+        # HINT_TEXT_ON_STARTUP: None,
+        LANGUAGE: None,
+        MODULE: None,
+        # OUTPUT_VIA: None,
+        #  OUTPUT_VISIBLE: None,
+        # OVERRIDE_POLL_INTERVAL: None,
+        # PIPE: None,
+        PITCH: None,
+        PLAYER: None,
+        PLAYER_VOLUME: None,
+        PLAYER_PITCH: None,
+        PLAYER_MODE: None,
+        # PLAYER_SPEED: None,
+        # POLL_INTERVAL: None,
+        PUNCTUATION: None,
+        # READER_ON: None,
+        REMOTE_PITCH: None,
+        REMOTE_SPEED: None,
+        REMOTE_VOLUME: None,
+        # SETTINGS_DIGEST: None,
+        #  SETTINGS_BEING_CONFIGURED: None,
+        #  SETTINGS_LAST_CHANGED: None,
+        SPEECH_DISPATCHER: None,
+        SERVICE_ID: None,
+        #  SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA: None,
+        #  SPEAK_BACKGROUND_PROGRESS: None,
+        # SPEAK_LIST_COUNT: None,
+        SPEAK_ON_SERVER: None,
+        # SPEAK_VIA_KODI: None,
+        #  SPEED: None,
+        SPEED_ENABLED: None,
+        #  SPEED_VISIBLE: None,
+        SPELLING: None,
+        #  TTS_SERVICE: None,
+        #  TTSD_HOST: None,
+        #  TTSD_PORT: None,
+        USE_AOSS: None,
+        # USE_TEMPFS: None,
+        # VERSION: None,
+        VOICE: None,
+        VOICE_PATH: None
+        # VOICE_VISIBLE: None,
+        # VOLUME: None
+    }
+
+    PLAYER_SETTINGS: Dict[str, None] = {
+        #  PLAYER_SPEED: None,
+        AUDIO_FORMAT: None
+    }
+
+    SETTINGS_BY_SERVICE_TYPE: Dict[ServiceType, Dict[str, None]] = {
+        ServiceType.ENGINE:  ENGINE_SETTINGS,
+        ServiceType.PLAYER: PLAYER_SETTINGS,
+        ServiceType.TTS: TTS_SETTINGS
+    }
 
     SettingTypes: Dict[str, SettingType] = {}
 
@@ -257,29 +340,30 @@ class SettingsProperties:  # (ISettings):
         cls.SettingTypes = {
             cls.ADDONS_MD5                            : SettingType.STRING_TYPE,
             cls.API_KEY                               : SettingType.STRING_TYPE,
+            cls.AUDIO_FORMAT                          : SettingType.STRING_TYPE,
             cls.AUTO_ITEM_EXTRA                       : SettingType.BOOLEAN_TYPE,
-            cls.AUTO_ITEM_EXTRA_DELAY                 : SettingType.INTEGER_TYPE,
-            cls.ENGINE                                : SettingType.STRING_TYPE,
-            cls.EXTENDED_HELP_ON_STARTUP              : SettingType.BOOLEAN_TYPE,
-            cls.BACKGROUND_PROGRESS_INTERVAL          : SettingType.INTEGER_TYPE,
-            cls.CACHE_PATH                            : SettingType.STRING_TYPE,
-            cls.CACHE_EXPIRATION_DAYS                 : SettingType.INTEGER_TYPE,
-            cls.CACHE_SPEECH                          : SettingType.BOOLEAN_TYPE,
+            cls.AUTO_ITEM_EXTRA_DELAY       : SettingType.INTEGER_TYPE,
+            cls.ENGINE                      : SettingType.STRING_TYPE,
+            cls.EXTENDED_HELP_ON_STARTUP    : SettingType.BOOLEAN_TYPE,
+            cls.BACKGROUND_PROGRESS_INTERVAL: SettingType.INTEGER_TYPE,
+            cls.CACHE_PATH                  : SettingType.STRING_TYPE,
+            cls.CACHE_EXPIRATION_DAYS       : SettingType.INTEGER_TYPE,
+            cls.CACHE_SPEECH                : SettingType.BOOLEAN_TYPE,
             #  cls.CACHE_VOICE_FILES                     : SettingType.BOOLEAN_TYPE,
-            cls.CAPITAL_RECOGNITION                   : SettingType.BOOLEAN_TYPE,
-            cls.CHANNELS                              : SettingType.STRING_TYPE,
-            cls.CONVERTER                             : SettingType.STRING_TYPE,
-            cls.DEBUG_LOG_LEVEL                       : SettingType.INTEGER_TYPE,
-            cls.DELAY_VOICING                         : SettingType.BOOLEAN_TYPE,
-            cls.DISABLE_BROKEN_SERVICES               : SettingType.BOOLEAN_TYPE,
-            cls.GENDER                                : SettingType.STRING_TYPE,
-            cls.GENDER_VISIBLE                        : SettingType.BOOLEAN_TYPE,
-            cls.GUI                                   : SettingType.BOOLEAN_TYPE,
-            cls.HINT_TEXT_ON_STARTUP                  : SettingType.BOOLEAN_TYPE,
-            cls.LANGUAGE                              : SettingType.STRING_TYPE,
-            cls.MODULE                                : SettingType.STRING_TYPE,
-            cls.OUTPUT_VIA                            : SettingType.STRING_TYPE,
-            cls.OUTPUT_VISIBLE                        : SettingType.BOOLEAN_TYPE,
+            cls.CAPITAL_RECOGNITION         : SettingType.BOOLEAN_TYPE,
+            cls.CHANNELS                    : SettingType.STRING_TYPE,
+            cls.TRANSCODER                  : SettingType.STRING_TYPE,
+            cls.DEBUG_LOG_LEVEL             : SettingType.INTEGER_TYPE,
+            cls.DELAY_VOICING               : SettingType.BOOLEAN_TYPE,
+            cls.DISABLE_BROKEN_SERVICES     : SettingType.BOOLEAN_TYPE,
+            cls.GENDER                      : SettingType.STRING_TYPE,
+            cls.GENDER_VISIBLE              : SettingType.BOOLEAN_TYPE,
+            #  cls.GUI                         : SettingType.BOOLEAN_TYPE,
+            cls.HINT_TEXT_ON_STARTUP        : SettingType.BOOLEAN_TYPE,
+            cls.LANGUAGE                    : SettingType.STRING_TYPE,
+            cls.MODULE                      : SettingType.STRING_TYPE,
+            #  cls.OUTPUT_VIA                  : SettingType.STRING_TYPE,
+            #  cls.OUTPUT_VISIBLE                        : SettingType.BOOLEAN_TYPE,
             cls.OVERRIDE_POLL_INTERVAL                : SettingType.BOOLEAN_TYPE,
             # cls.PIPE                                  : SettingType.BOOLEAN_TYPE,
             cls.PITCH                                 : SettingType.INTEGER_TYPE,
@@ -307,9 +391,9 @@ class SettingsProperties:  # (ISettings):
             cls.SPEECH_DISPATCHER                     : SettingType.STRING_TYPE,
             cls.SPEED                                 : SettingType.INTEGER_TYPE,
             cls.SPEED_ENABLED                         : SettingType.BOOLEAN_TYPE,
-            cls.SPEED_VISIBLE                         : SettingType.BOOLEAN_TYPE,
-            cls.TTSD_HOST                             : SettingType.STRING_TYPE,
-            cls.TTSD_PORT                             : SettingType.INTEGER_TYPE,
+            #  cls.SPEED_VISIBLE                         : SettingType.BOOLEAN_TYPE,
+            #  cls.TTSD_HOST                             : SettingType.STRING_TYPE,
+            #  cls.TTSD_PORT                             : SettingType.INTEGER_TYPE,
             cls.USE_AOSS                              : SettingType.BOOLEAN_TYPE,
             cls.USE_TEMPFS                            : SettingType.BOOLEAN_TYPE,
             cls.VERSION                               : SettingType.STRING_TYPE,

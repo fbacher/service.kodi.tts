@@ -1,5 +1,7 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
+from pathlib import Path
 from common import *
 
 from common.phrases import Phrase
@@ -19,11 +21,11 @@ class IPlayer:
         raise NotImplementedError
 
     @classmethod
-    def get_sound_dir(cls) -> str:
+    def get_sound_dir(cls) -> Path:
         raise NotImplementedError
 
     @classmethod
-    def get_tmp_path(cls, speech_file_name: str, sound_file_type: str) -> str:
+    def get_tmp_path(cls, speech_file_name: str, sound_file_type: str) -> Path:
         raise NotImplementedError
 
     def do(self, **kwargs):
@@ -70,17 +72,26 @@ class IPlayer:
     def isPlaying(self) -> bool:
         raise NotImplementedError
 
-    def abort_voicing(self, purge: bool = True, future: bool = False) -> None:
+    def stop_player(self, purge: bool = True,
+                    keep_silent: bool = False,
+                    kill: bool = False):
         """
-        Stop voicing pending speech and/or future speech.
+        Stop player (most likely because current text is expired)
+        Engines may wish to override this method, particularly when
+        the player is built-in.
 
-        Vocing can be resumed using resume_voicing
-
-        :param purge: if True, then abandon playing all pending speech
-        :param future: if True, then ignore future voicings.
-        :return: None
+        :param purge: if True, then purge any queued vocings
+                      if False, then only stop playing current phrase
+        :param keep_silent: if True, ignore any new phrases until restarted
+                            by resume_player.
+                            If False, then play any new content
+        :param kill: If True, kill any player processes. Implies purge and
+                     keep_silent.
+                     If False, then the player will remain ready to play new
+                     content, depending upon keep_silent
+        :return:
         """
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def close(self) -> None:
         raise NotImplementedError
@@ -99,3 +110,6 @@ class IPlayer:
     @staticmethod
     def register() -> None:
         raise NotImplementedError
+
+    def destroy(self):
+        raise NotImplementedError()

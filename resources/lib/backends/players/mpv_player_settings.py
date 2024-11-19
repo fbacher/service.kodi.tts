@@ -3,20 +3,21 @@ from __future__ import annotations  # For union operator |
 from backends.settings.i_validators import INumericValidator
 from common import *
 
-from backends.audio.sound_capabilties import SoundCapabilities
+from backends.audio.sound_capabilities import SoundCapabilities
 from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
                                           NumericValidator, StringValidator, Validator)
 from common.constants import Constants
-from common.setting_constants import PlayerMode, Players
+from common.setting_constants import AudioType, PlayerMode, Players
 from common.settings_low_level import SettingsProperties
 
 
 class MPVPlayerSettings:
     ID = Players.MPV
     service_ID: str = Services.MPV_ID
+    service_type: str = ServiceType.PLAYER
     displayName = 'MPV'
 
     """
@@ -38,9 +39,9 @@ class MPVPlayerSettings:
 
     settings: Dict[str, Validator] = {}
 
-    _supported_input_formats: List[str] = [SoundCapabilities.WAVE, SoundCapabilities.MP3]
-    _supported_output_formats: List[str] = []
-    _provides_services: List[ServiceType] = [ServiceType.PLAYER]
+    _supported_input_formats: List[AudioType] = [AudioType.WAV, AudioType.MP3]
+    _supported_output_formats: List[AudioType] = []
+    _provides_services: List[ServiceType] = [ServiceType.PLAYER, ServiceType.TRANSCODER]
     SoundCapabilities.add_service(service_ID, _provides_services,
                                   _supported_input_formats,
                                   _supported_output_formats)
@@ -68,18 +69,8 @@ class MPVPlayerSettings:
 
         # Not supporting Pitch changes with MPV_Player at this time
 
-        # TTS Speed constraints defined as linear from 0.25 to 4 with 1 being 100%
-        # speed. 0.25 is 1/4 speed, 4 is 4x speed. This fits nicely with MPV_Player
-        # speed settings.
-        # Since saving the value in settings.xml as a float makes it more difficult
-        # for a human to work with, we save it as an int by scaling it by 100 when it
-        # is saved.
-        #
-        # ttsSpeedConstraints: Constraints = Constraints(25, 100, 400, False, False, 0.01,
-        #                                           SettingsProperties.SPEED, 100, 0.25)
-
         """
-         MPlayer uses both percentage and decibel volume scales.
+         MPV uses both percentage and decibel volume scales.
          The decibel scale is used for the (-af) audio filter with range -200db .. +40db.
          The percent scale is used for the --volume flag (there are multiple ways to
          specify volume, including json).
@@ -103,7 +94,7 @@ class MPVPlayerSettings:
 
         speed_validator: NumericValidator
         speed_validator = NumericValidator(SettingsProperties.SPEED,
-                                           cls.service_ID,
+                                           SettingsProperties.TTS_SERVICE,
                                            minimum=0.25, maximum=3,
                                            is_decibels=False,
                                            is_integer=False)

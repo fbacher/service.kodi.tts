@@ -2,7 +2,7 @@ from __future__ import annotations  # For union operator |
 
 from common import *
 
-from backends.audio.sound_capabilties import SoundCapabilities
+from backends.audio.sound_capabilities import SoundCapabilities
 from backends.engines.base_engine_settings import (BaseEngineSettings)
 from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.constraints import Constraints
@@ -14,12 +14,12 @@ from backends.settings.validators import (BoolValidator, ConstraintsValidator,
 from common.base_services import BaseServices
 from common.constants import Constants
 from common.logger import BasicLogger
-from common.setting_constants import Backends, Genders, PlayerMode, Players
+from common.setting_constants import AudioType, Backends, Genders, PlayerMode, Players
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 '''
 class PlayerModeValidator(StringValidator):
@@ -83,16 +83,9 @@ class GoogleSettings(BaseServiceSettings):
 
     
     """
-    _supported_input_formats: List[str] = []
-    _supported_output_formats: List[str] = [SoundCapabilities.MP3]
-    _provides_services: List[ServiceType] = [ServiceType.ENGINE]
-    SoundCapabilities.add_service(service_ID, _provides_services,
-                                  _supported_input_formats,
-                                  _supported_output_formats)
-    _logger: BasicLogger = None
-
     # Every setting from settings.xml must be listed here
     # SettingName, default value
+
     initialized: bool = False
 
     def __init__(self, *args, **kwargs):
@@ -101,8 +94,7 @@ class GoogleSettings(BaseServiceSettings):
         if GoogleSettings.initialized:
             return
         GoogleSettings.initialized = True
-        if GoogleSettings._logger is None:
-            GoogleSettings._logger = module_logger
+
         GoogleSettings.init_settings()
         installed: bool = GoogleSettings.isInstalled()
         SettingsMap.set_is_available(GoogleSettings.service_ID, Reason.AVAILABLE)
@@ -118,24 +110,45 @@ class GoogleSettings(BaseServiceSettings):
         SettingsMap.define_service(ServiceType.ENGINE, cls.service_ID,
                                    service_properties)
 
+        # Can't adjust Pitch except via a player that supports it. Not bothering
+        # with at this time.
+
+        # Uses default volume_validator defined in base_engine_settings
+
+        # Defines a very loose language validator. Basically it will accept
+        # almost any strings. The real work is done by LanguageInfo and
+        # SettingsHelper. Should revisit this validator
+
         language_validator: StringValidator
         language_validator = StringValidator(SettingsProperties.LANGUAGE, cls.service_ID,
                                              allowed_values=[], min_length=2,
                                              max_length=10)
+        SettingsMap.define_setting(cls.service_ID, SettingsProperties.LANGUAGE,
+                                   language_validator)
+
+        # The free GoogleTTS only supplies basic voices which are determined
+        # by language and country code. In short, the voice choices are
+        # essentially the locale (en-us, en-gb, etc.).Not all combinations are
+        # supported.
+        #
         # For the most part, google_tts uses the 'top level domain' of the url
         # for the google tts service to imply any dialect on a language. The
         # default is "com". Since each country tends to have its own tld the
         # system works fairly well. Google doesn't document this nor does it
         # work in all situations.
+
         voice_validator: StringValidator
         voice_validator = StringValidator(SettingsProperties.VOICE, cls.engine_id,
                                           allowed_values=[], min_length=1,
                                           max_length=8, default='com')
-        # pipe_validator: BoolValidator
-        # pipe_validator = BoolValidator(SettingsProperties.PIPE, cls.service_ID,
-        #                                default=True, const=True)
-        # cls._logger.debug(f'Boolvalidator value: {pipe_validator.get_tts_value()} '
-        #                   f'const: {pipe_validator.is_const()}')
+
+        SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOICE,
+                                   voice_validator)
+
+        # Can't support PlayerMode.PIPE: 1) Google does download mp3, but the
+        # response time would be awful. 2) You could simulate pipe mode for the
+        # cached files, but it would add extra cpu. 3) Not worth it
+
         allowed_player_modes: List[str] = [
             PlayerMode.SLAVE_FILE.value,
             PlayerMode.FILE.value
@@ -147,9 +160,20 @@ class GoogleSettings(BaseServiceSettings):
                                                 default=PlayerMode.SLAVE_FILE.value)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER_MODE,
                                    player_mode_validator)
-        cache_validator: BoolValidator
-        cache_validator = BoolValidator(SettingsProperties.CACHE_SPEECH, cls.service_ID,
-                                        default=True, const=True)
+
+        Settings.set_current_output_format(cls.service_ID, AudioType.MP3)
+        SoundCapabilities.add_service(cls.service_ID, service_types=[ServiceType.ENGINE],
+                                      supported_input_formats=[],
+                                      supported_output_formats=[AudioType.MP3])
+
+        consumer_formats: List[AudioType] = [AudioType.MP3]
+        if True:
+            consumer_formats.append(AudioType.WAV)
+        candidates: List[str]
+        candidates = SoundCapabilities.get_capable_services(
+                service_type=ServiceType.PLAYER,
+                consumer_formats=consumer_formats,
+                producer_formats=[])
 
         #  TODO:  Need to eliminate un-available players
         #         Should do elimination in separate code
@@ -160,41 +184,31 @@ class GoogleSettings(BaseServiceSettings):
                               Players.MPG321, Players.MPG123,
                               Players.MPG321_OE_PI]
 
-        SoundCapabilities.add_service(cls.service_ID, service_types=[ServiceType.ENGINE],
-                                      supported_input_formats=[],
-                                      supported_output_formats=[SoundCapabilities.MP3])
-
-        candidates: List[str]
-        candidates = SoundCapabilities.get_capable_services(
-                service_type=ServiceType.PLAYER,
-                consumer_formats=[SoundCapabilities.MP3],
-                producer_formats=[])
-
-        cls._logger.debug(f'candidates: {candidates}')
+        MY_LOGGER.debug(f'candidates: {candidates}')
         valid_players: List[str] = []
         for player_id in candidates:
             player_id: str
             if player_id in players and SettingsMap.is_available(player_id):
                 valid_players.append(player_id)
 
-        cls._logger.debug(f'valid_players: {valid_players}')
+        MY_LOGGER.debug(f'valid_players: {valid_players}')
 
         player_validator: StringValidator
         player_validator = StringValidator(SettingsProperties.PLAYER, cls.service_ID,
                                            allowed_values=valid_players,
                                            default=Players.MPV)
+        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER,
+                                   player_validator)
 
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.LANGUAGE,
-                                   language_validator)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOICE,
-                                   voice_validator)
+        cache_validator: BoolValidator
+        cache_validator = BoolValidator(SettingsProperties.CACHE_SPEECH, cls.service_ID,
+                                        default=True, const=True)
+        SettingsMap.define_setting(cls.service_ID, SettingsProperties.CACHE_SPEECH,
+                                   cache_validator)
+
         # REMOVE gender validator created by BaseServiceSettings
         SettingsMap.define_setting(cls.engine_id, SettingsProperties.GENDER,
                                    None)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER,
-                                   player_validator)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.CACHE_SPEECH,
-                                   cache_validator)
 
     @classmethod
     def isSupportedOnPlatform(cls) -> bool:
@@ -217,13 +231,13 @@ class GoogleSettings(BaseServiceSettings):
         engine_output_formats: List[str]
         engine_output_formats = SoundCapabilities.get_output_formats(
                 cls.service_ID)
-        cls._logger.debug(f'engine_output_formats: {engine_output_formats}')
+        MY_LOGGER.debug(f'engine_output_formats: {engine_output_formats}')
         candidates: List[str]
         candidates = SoundCapabilities.get_capable_services(
                 service_type=ServiceType.PLAYER,
-                consumer_formats=[SoundCapabilities.MP3],
+                consumer_formats=[AudioType.MP3],
                 producer_formats=[])
-        cls._logger.debug(f'mp3 player candidates: {candidates}')
+        MY_LOGGER.debug(f'mp3 player candidates: {candidates}')
         if len(candidates) > 0:
             return True
         return False

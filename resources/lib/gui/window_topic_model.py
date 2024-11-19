@@ -56,7 +56,7 @@ class WindowTopicModel(TopicModel):
         return True
 
     def get_topic_name(self) -> Phrase:
-        return Phrase(text=self.name)
+        return Phrase(text=self.name, check_expired=False)
 
     def voice_control(self, stmts: Statements) -> bool:
         """
@@ -134,7 +134,7 @@ class WindowTopicModel(TopicModel):
             alt_label_id = int(self.alt_label_expr)
             text: str = Messages.get_msg_by_id(alt_label_id)
             if text != '':
-                stmts.last.phrases.append(Phrase(text=text))
+                stmts.last.phrases.append(Phrase(text=text, check_expired=False))
                 return True
         except ValueError as e:
             clz._logger.debug(f'Invalid int alt_label_id: {alt_label_id}')
@@ -230,7 +230,7 @@ class WindowTopicModel(TopicModel):
             clz._logger.debug(f'flows_to: {self.flows_to_expr}')
             control_model: BaseModel
             topic_to: TopicModel
-            control_model, topic_to = self.window_struct.get_topic_for_id(
+            control_model, topic_to = self.window_struct.get_control_and_topic_for_id(
                     self.flows_to_expr)
             clz._logger.debug(f'topic_to: {topic_to}')
             success = topic_to.voice_topic_value_old(stmts)

@@ -45,7 +45,7 @@ STG_E_LOCKVIOLATION
 A lock violation has occurred.
 STG_E_FILEALREADYEXISTS
 0x80030050
-already exists.
+already text_exists.
 STG_E_INVALIDPARAMETER
 0x80030057
 Invalid parameter error.

@@ -27,11 +27,12 @@ class BaseLabelModel(BaseModel):
 
     _logger: BasicLogger = module_logger
 
-    def __init__(self, window_model: BaseModel, parser: BaseParser) -> None:
+    def __init__(self, window_model: BaseModel, parser: BaseParser,
+                 windialog_state: WinDialogState) -> None:
         clz = BaseLabelModel
         if clz._logger is None:
             clz._logger = module_logger
-        super().__init__(window_model, parser)
+        super().__init__(window_model, parser,  windialog_state=windialog_state)
 
         self.label_expr: str = ''
         self.info_expr: str = ''
@@ -121,7 +122,7 @@ class BaseLabelModel(BaseModel):
                 clz._logger.debug(f'Text: {text}')
                 if text != '':
                     success = True
-                    stmts.last.phrases.append(Phrase(text=text))
+                    stmts.last.phrases.append(Phrase(text=text, check_expired=False))
             except ValueError as e:
                 success = False
             if not success:
@@ -130,7 +131,7 @@ class BaseLabelModel(BaseModel):
                     text: str = xbmc.getInfoLabel(query)
                     clz._logger.debug(f'Text: {text}')
                     if text != '':
-                        stmts.last.phrases.append(Phrase(text=text))
+                        stmts.last.phrases.append(Phrase(text=text, check_expired=False))
                         success = True
                 except ValueError as e:
                     success = False
@@ -152,7 +153,7 @@ class BaseLabelModel(BaseModel):
                 text: str = xbmc.getInfoLabel(query)
                 clz._logger.debug(f'Text: {text}')
                 if text != '':
-                    stmts.last.phrases.append(Phrase(text=text))
+                    stmts.last.phrases.append(Phrase(text=text, check_expired=False))
                     success = True
             except ValueError as e:
                 success = False

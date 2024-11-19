@@ -14,6 +14,7 @@ import xbmc
 
 from common import *
 from common.debug import Debug
+from common.exceptions import ExpiredException
 from common.garbage_collector import GarbageCollector
 from common.kodi_player_monitor import KodiPlayerMonitor, KodiPlayerState
 from common.logger import *
@@ -25,7 +26,7 @@ from common.slave_run_command import SlaveRunCommand
 from common.strenum import StrEnum
 from common.utils import sleep
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 LINE_BUFFERING: int = 1
 
 MINIMUM_PHRASES_IN_QUEUE: Final[int] = 5
@@ -72,7 +73,6 @@ class PlayerState:
     played and unplayed entries in the list. Otherwise, TTS does not care about
     the index of individual voicings.
     """
-    logger: BasicLogger = module_logger
     data: Dict[str, str | int] | None = None
 
     # Note. mpv does NOT reset any player position indexes when it is stopped
@@ -129,7 +129,7 @@ class PlayerState:
                     cls._is_idle = True
                 if reason == 'quit':
                     # Shutting down player
-                    cls.logger.debug(f'QUIT')
+                    MY_LOGGER.debug(f'QUIT')
                     cls._is_idle = True
             if event == 'start_file':
                 # Starting to play a file
@@ -138,7 +138,7 @@ class PlayerState:
                 cls._is_idle = False
             if event == 'idle':
                 cls._is_idle = True
-        cls.logger.debug(f'last_played: {cls._last_played_idx}\n'
+        MY_LOGGER.debug(f'last_played: {cls._last_played_idx}\n'
                          f'last_entry: {cls._last_playlist_entry_idx}\n'
                          f'idle: {cls._is_idle}')
 
@@ -152,9 +152,9 @@ class PlayerState:
         :return:
         """
         more_needed: bool = False
-        cls.logger.debug(f'current_serial#: {cls._current_phrase_serial_num} '
+        MY_LOGGER.debug(f'current_serial#: {cls._current_phrase_serial_num} '
                          f'Expired #: {PhraseList.expired_serial_number}')
-        cls.logger.debug(f'chars_queued: {cls.chars_queued_to_play} '
+        MY_LOGGER.debug(f'chars_queued: {cls.chars_queued_to_play} '
                          f'remaining: {cls.remaining_to_play()}')
         if cls._current_phrase_serial_num < PhraseList.expired_serial_number:
             # Dang, expired, Move up to an unexpired one. After return,
@@ -167,53 +167,6 @@ class PlayerState:
             cls._current_phrase_serial_num += 1
             more_needed = True
         return more_needed
-
-        """
-             bacher@smeagol$ (cat gonzo2.mpv; echo '{ "command": [
-             "observe_property_string", 1, "filename"] }'; echo '{
-             "command": ["observe_property_string", 2,
-             "playlist_playing_pos"] }'; sleep 60) | socat - ./slave.input
-             {"request_id":0,"error":"success"}
-             {"request_id":0,"error":"success"}
-             {"event":"start-file","playlist_entry_id":2}
-             * {"event":"property-change","id":1,"name":"filename",
-             "data":"foo.wav"}
-             * {"event":"property-change","id":2,"name":"playlist_playing_pos"}
-             {"event":"audio-reconfig"}
-             {"event":"file-loaded"}
-             {"event":"audio-reconfig"}
-             {"event":"playback-restart"}
-             {"event":"audio-reconfig"}
-             {"event":"end-file","reason":"eof","playlist_entry_id":2}
-             {"event":"start-file","playlist_entry_id":3}
-             {"event":"property-change","id":1,"name":"filename",
-             "data":"x.wav"}
-             {"event":"audio-reconfig"}
-             {"event":"audio-reconfig"}
-             {"event":"file-loaded"}
-             {"event":"playback-restart"}
-             {"event":"audio-reconfig"}
-             {"event":"end-file","reason":"eof","playlist_entry_id":3}
-             {"event":"start-file","playlist_entry_id":4}
-             {"event":"audio-reconfig"}
-             {"event":"audio-reconfig"}
-             {"event":"file-loaded"}
-             {"event":"playback-restart"}
-             {"event":"audio-reconfig"}
-             {"event":"end-file","reason":"eof","playlist_entry_id":4}
-             {"event":"start-file","playlist_entry_id":5}
-             {"event":"property-change","id":1,"name":"filename",
-             "data":"foo.wav"}
-             {"event":"audio-reconfig"}
-             {"event":"audio-reconfig"}
-             {"event":"file-loaded"}
-             {"event":"playback-restart"}
-             {"event":"audio-reconfig"}
-             {"event":"end-file","reason":"eof","playlist_entry_id":5}
-             {"event":"audio-reconfig"}
-             {"event":"idle"}
-             {"event":"property-change","id":1,"name":"filename"}
-        """
 
     @classmethod
     def first_playlist_entry_idx(cls) -> int:
@@ -259,7 +212,7 @@ class PlayerState:
         ok_to_play: bool = phrase.serial_number <= cls._current_phrase_serial_num
         if not ok_to_play or phrase.is_expired():
             cls.check_play_limits()
-            cls.logger.debug(f'ok_to_play: {ok_to_play}')
+            MY_LOGGER.debug(f'ok_to_play: {ok_to_play}')
         return ok_to_play
 
     @classmethod
@@ -281,10 +234,9 @@ class SlaveCommunication:
     """
 
     video_player_state: str = KodiPlayerState.VIDEO_PLAYER_IDLE
-    logger: BasicLogger = module_logger
 
     def __init__(self, args: List[str], phrase_serial: int = 0,
-                 thread_name: str = 'slav_commo',
+                 thread_name: str = 'slav_commo', count: int = 0,
                  stop_on_play: bool = True, fifo_path: Path = None,
                  default_speed: float = 1.0, default_volume: float = 100.0,
                  channels: Channels = Channels.NO_PREF) -> None:
@@ -293,6 +245,8 @@ class SlaveCommunication:
         :param args: arguments to be passed to exec command
         :param phrase_serial: Serial Number of the initial phrase
         :param thread_name: What to name the worker thread
+        :param count: Number of instances of Slavecommunication have
+                      occurred. Appended to thread names.
         :param stop_on_play: True if voicing is to stop when video is playing
         :param fifo_path: Path to use for FIFO pipe (if available) to
                communicate with mpv command
@@ -307,25 +261,30 @@ class SlaveCommunication:
 
         self.args: List[str] = args
         self.phrase_serial: int = phrase_serial
-        self.thread_name = thread_name
+        self.count = count
+        self.thread_name = f'{thread_name}_{count}'
+
+        # Too many state variables
+
         self.rc = 0
         self.run_state: RunState = RunState.NOT_STARTED
+        self.fifo_initialized: bool = False
+
         # clz.get.debug(f'run_state now NOT_STARTED')
         self.idle_on_play_video: bool = stop_on_play
         # This player is inactive due to Kodi exclusive access (ex: playing movie)
         self.tts_player_idle: bool = False
-        self.cmd_finished: bool = False
         self.fifo_in = None    # FIFO output from mpv
         self.socket = None  # Socket output from mpv
         self.fifo_out = None   # FIFO input to mpv
         #  self.socket_out = None  # Socket input to mpv
-        self.fifo_initialized: bool = False
         self.fifo_reader_thread: threading.Thread | None = None
         self.speak_thread: threading.Thread | None = None
         self.filename_sequence_number: int = 0
         self.playlist_playing_pos: int = 0
         self.slave: SlaveRunCommand | None = None
         self.default_speed: float = float(default_speed)
+        self.current_speed: float = self.default_speed
         self.next_speed: float | None = None
         self.fifo_path: Path = fifo_path
         self.default_volume: float = float(default_volume)
@@ -339,21 +298,22 @@ class SlaveCommunication:
         # Request_id of most recent completed item from mpv
         self._previous_entry: PhraseQueueEntry | None = None
 
-        Monitor.register_abort_listener(self.abort_listener, name=thread_name)
+        Monitor.register_abort_listener(self.abort_listener, name=self.thread_name)
         # clz.get.debug(f'Starting slave player args: {args}')
         if self.idle_on_play_video:
             KodiPlayerMonitor.register_player_status_listener(
                     self.kodi_player_status_listener,
-                    f'{self.thread_name}_Kodi_Player_Monitor')
+                    f'{self.thread_name}_Kodi_Plyr_Mon')
         try:
             os.mkfifo(fifo_path, mode=0o777)
         except OSError as e:
-            clz.logger.exception(f'Failed to create FIFO: {fifo_path}')
+            MY_LOGGER.exception(f'Failed to create FIFO: {fifo_path}')
 
-        clz.logger.debug(f'Starting SlaveRunCommand args: {args}')
+        MY_LOGGER.debug(f'Starting SlaveRunCommand args: {args}')
         self.slave = SlaveRunCommand(args, thread_name='slv_run_cmd',
+                                     count=count,
                                      post_start_callback=self.create_slave_pipe)
-        clz.logger.debug(f'Back from starting SlaveRunCommand')
+        MY_LOGGER.debug(f'Back from starting SlaveRunCommand')
 
     def create_slave_pipe(self) -> bool:
         """
@@ -363,8 +323,8 @@ class SlaveCommunication:
         """
         clz = type(self)
         Monitor.exception_on_abort(timeout=1.0)
-        if clz.logger.isEnabledFor(DEBUG_V):
-            clz.logger.debug_v(f'Slave started, in callback')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'Slave started, in callback')
         self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.socket.settimeout(None)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF,
@@ -374,11 +334,11 @@ class SlaveCommunication:
 
         while limit > 0:
             try:
-                if clz.logger.isEnabledFor(DEBUG_V):
-                    clz.logger.debug_v(f'self.socket.connect path: {self.fifo_path}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'self.socket.connect path: {self.fifo_path}')
                 self.socket.connect(str(self.fifo_path))
-                if clz.logger.isEnabledFor(DEBUG_V):
-                    clz.logger.debug_v(f'self.socket Connected')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'self.socket Connected')
                 try:
                     self.fifo_out = self.socket.makefile(mode='w',
                                                          buffering=LINE_BUFFERING,
@@ -389,41 +349,42 @@ class SlaveCommunication:
                                                         buffering=LINE_BUFFERING,
                                                         encoding='utf-8', errors=None,
                                                         newline=None)
-                    clz.logger.debug(f'RC: {self.rc}')
+                    MY_LOGGER.debug(f'RC: {self.rc}')
                     if self.rc == 0:
                         self.run_state = RunState.PIPES_CONNECTED
-                        clz.logger.debug(f'Set run_state PIPES_CONNECTED')
+                        MY_LOGGER.debug(f'Set run_state PIPES_CONNECTED')
                         self.run_state = RunState.RUNNING
                 except AbortException:
                     reraise(*sys.exc_info())
                 except:
-                    clz.logger.exception('')
+                    MY_LOGGER.exception('')
                 break
             except TimeoutError:
                 limit -= 1
             except FileNotFoundError:
                 limit -= 1
                 if limit == 0:
-                    clz.logger.warning(f'FIFO does not exist: '
-                                       f'{self.fifo_path}')
+                    MY_LOGGER.warning(f'FIFO does not exist: '
+                                      f'{self.fifo_path}')
             except AbortException:
                 self.abort_listener()
                 return False
             except Exception as e:
-                clz.logger.exception('')
+                MY_LOGGER.exception('')
                 break
             Monitor.exception_on_abort(timeout=0.1)
         try:
-            if clz.logger.isEnabledFor(DEBUG):
-                clz.logger.debug(f'Unlinking {self.fifo_path}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'Unlinking {self.fifo_path}')
             self.fifo_path.unlink(missing_ok=True)
             pass
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            self.logger.exception('')
+            MY_LOGGER.exception('')
+        fifo_rdr_thread_name: str = f'{self.thread_name}_fifo_rdr_{self.count}'
         self.fifo_reader_thread = threading.Thread(target=self.fifo_reader,
-                                                   name=f'{self.thread_name}_fifo_rdr')
+                                                   name=fifo_rdr_thread_name)
         self.fifo_reader_thread.start()
         GarbageCollector.add_thread(self.fifo_reader_thread)
         xbmc.sleep(250)
@@ -431,10 +392,10 @@ class SlaveCommunication:
         self.send_volume()
         # self.send_opt_channels()
         self.speak_thread = threading.Thread(target=self.process_phrase_queue,
-                                             name='speak')
+                                             name=f'speak_{self.count}')
         self.speak_thread.start()
         GarbageCollector.add_thread(self.speak_thread)
-        clz.logger.debug(f'Returning from create_slave_pipes')
+        MY_LOGGER.debug(f'Returning from create_slave_pipes')
         return True
 
     def add_phrase(self, phrase: Phrase, volume: float = None,
@@ -446,12 +407,12 @@ class SlaveCommunication:
             1) Phrases can be prepared to be voiced much faster than they are
               voiced
             2) The vocing of phrases is frequently canceled due to 1.
-        Pharses are placed into a Queue to be voiced and given to the player
+        Phrases are placed into a Queue to be voiced and given to the player
         in hopefully logical chunks or thoughts. The minimum chunk are the
         phrases of a PhraseList, or ~20 phrases (you don't want the player to
         starve).
 
-        When an 'abort_voicing' is received, the queue will be drained. The
+        When 'stop_player' is called, the queue will be drained. The
         player most likely will also be cleared. Voicing will proceed with the
         newest phrases.
 
@@ -471,10 +432,10 @@ class SlaveCommunication:
             speed = float(speed)
             volume = float(volume)
             clz._current_phrase_serial_num = phrase.serial_number
-            clz.logger.debug(f'phrase serial: {phrase.serial_number} '
-                             f'{phrase.get_short_text()}')
+            MY_LOGGER.debug(f'phrase serial: {phrase.serial_number} '
+                            f'{phrase.short_text()}')
             if Monitor.abort_requested():
-                clz.logger.debug(F'ABORT_REQUESTED')
+                MY_LOGGER.debug(F'ABORT_REQUESTED')
                 self.empty_queue()
                 return
 
@@ -484,31 +445,31 @@ class SlaveCommunication:
                 interrupted_str = 'INTERRUPT'
             expired_check_str: str = ''
             if phrase.check_expired:
-                clz.logger.debug(f'check_expired is enabled')
+                MY_LOGGER.debug(f'check_expired is enabled')
                 expired_check_str = 'CHECK'
                 if phrase.is_expired():
                     expired_check_str = f'{expired_check_str} EXPIRED'
             else:
-                clz.logger.debug(f'check_expired is NOT enabled')
+                MY_LOGGER.debug(f'check_expired is NOT enabled')
 
-            clz.logger.debug(f'FIFO-ish {phrase.get_short_text()} '
+            MY_LOGGER.debug(f'FIFO-ish {phrase.short_text()} '
                              f'# {phrase.serial_number} expired #: '
                              f'{PhraseList.expired_serial_number}'
                              f' {expired_check_str} {interrupted_str}')
             if self.tts_player_idle and not phrase.speak_over_kodi:
-                if clz.logger.isEnabledFor(DEBUG):
-                    clz.logger.debug(f'player is IDLE')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'player is IDLE')
                 return
-            if clz.logger.isEnabledFor(DEBUG):
-                clz.logger.debug(f'run_state.value: {self.run_state.value}'
-                                 f' < RUNNING.value: {RunState.RUNNING.value}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'run_state.value: {self.run_state.value}'
+                                f' < RUNNING.value: {RunState.RUNNING.value}')
             entry: PhraseQueueEntry = PhraseQueueEntry(phrase, volume, speed)
             self.phrase_queue.put(entry)
-            clz.logger.debug(f'Added entry')
+            MY_LOGGER.debug(f'Added entry')
         except AbortException:
             reraise(*sys.exc_info())
         except:
-            clz.logger.exception('')
+            MY_LOGGER.exception('')
 
     def get_valid_entry(self) -> PhraseQueueEntry | None:
         """
@@ -519,15 +480,19 @@ class SlaveCommunication:
         """
         clz = SlaveCommunication
         entry: PhraseQueueEntry = self._previous_entry
+        idle_counter: int = 0
         while entry is None or entry.phrase.is_expired():
             try:
+                idle_counter += 1
                 if entry is not None and entry.phrase.is_expired():
-                    clz.logger.debug(f'EXPIRED: {entry.phrase.get_short_text()}')
+                    MY_LOGGER.debug(f'EXPIRED: {entry.phrase.short_text()}')
                 entry = self.phrase_queue.get_nowait()
                 self._previous_entry = entry
             except queue.Empty:
                 self._previous_entry = None
                 return None
+            if idle_counter == 1000:
+                MY_LOGGER.ERROR('idle counter is crazy')
         return entry
 
     def process_phrase_queue(self):
@@ -553,7 +518,7 @@ class SlaveCommunication:
                     # Keep PhraseLists together.
                     if (not PlayerState.is_player_hungry() and
                             PlayerState.is_phraselist_complete(entry.phrase)):
-                        clz.logger.debug(f'Not hungry')
+                        MY_LOGGER.debug(f'Not hungry')
                         # Usable or None  phrase kept in self._previous_entry
                         continue
                     self.play_phrase(entry.phrase, entry.volume, entry.speed)
@@ -563,7 +528,7 @@ class SlaveCommunication:
                     pass
         except AbortException:
             return
-        clz.logger.debug('process_phrase_queue exiting')
+        MY_LOGGER.debug('process_phrase_queue exiting')
 
     def empty_queue(self) -> None:
         """
@@ -587,54 +552,54 @@ class SlaveCommunication:
             expired_check_str: str = ''
             if phrase.check_expired:
                 expired_check_str = 'CHECK'
-            clz.logger.debug(f'FIFO-ish {phrase.get_short_text()} '
+            MY_LOGGER.debug(f'FIFO-ish {phrase.short_text()} '
                              f'# {phrase.serial_number} expired #: '
                              f'{PhraseList.expired_serial_number}'
                              f' {expired_check_str} {interrupted_str}')
             if self.tts_player_idle and not phrase.speak_over_kodi:
-                if clz.logger.isEnabledFor(DEBUG):
-                    clz.logger.debug(f'player is IDLE')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'player is IDLE')
                 return
-            if clz.logger.isEnabledFor(DEBUG_V):
-                clz.logger.debug_v(f'run_state.value: {self.run_state.value}'
-                                   f' < RUNNING.value: {RunState.RUNNING.value}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'run_state.value: {self.run_state.value}'
+                                  f' < RUNNING.value: {RunState.RUNNING.value}')
             if Monitor.abort_requested():
                 return
             suffix: str
             suffix = 'append-play'
             clz._is_idle = False
             if phrase.get_pre_pause() != 0:
-                pre_silence_path: Path = phrase.get_pre_pause_path()
-                if pre_silence_path.suffix == '.mp3':
-                    self.send_line(f'loadfile {str(pre_silence_path)} {suffix}',
-                                   pre_pause=True)
-                    clz.logger.debug(f'LOADFILE pre_silence {phrase.get_pre_pause()} ms' )
+                pre_silence_path: Path = phrase.pre_pause_path()
+                self.send_line(f'loadfile {str(pre_silence_path)} {suffix}',
+                               pre_pause=True)
+                MY_LOGGER.debug(f'LOADFILE pre_silence {phrase.get_pre_pause()} ms' )
 
-            if speed != self.default_speed:
-                clz.logger.debug(f'speed: {speed} default:'
-                                 f' {self.default_speed}')
+            if speed != self.current_speed:
+                MY_LOGGER.debug(f'speed: {speed} current:'
+                                f' {self.current_speed}')
                 self.set_next_speed(speed)   # Speed, Volume is reset to initial values on each
             #  else:
             #      self.set_next_speed(speed)  # HACK ALWAYS set unless defaults changed
             if volume != self.default_volume:
-                self.logger.debug(f'volume: {volume} default: {self.default_volume}')
+                MY_LOGGER.debug(f'volume: {volume} default: {self.default_volume}')
                 self.set_next_volume(volume)  # file played
            #   else:
            #       self.set_next_volume(volume)  # HACK ALWAYS send volume or change defaults
             self.send_line(f'loadfile {str(phrase.get_cache_path())} {suffix}',
                            voiced=True)
-            clz.logger.debug(f'LOADFILE {phrase.get_short_text()}')
+            MY_LOGGER.debug(f'LOADFILE {phrase.short_text(max_len=60)}')
 
-            if phrase.get_post_pause() != 0:
-                post_silence_path: Path = phrase.get_post_pause_path()
-                if post_silence_path.suffix == '.mp3':
-                    self.send_line(f'loadfile {str(post_silence_path)} {suffix}',
-                                   post_pause=True)
-                    clz.logger.debug(f'LOADFILE post_silence {phrase.get_post_pause()} ms' )
+            if phrase.get_post_pause() != 0 and phrase.post_pause_path() is not None:
+                post_silence_path: Path = phrase.post_pause_path()
+                self.send_line(f'loadfile {str(post_silence_path)} {suffix}',
+                               post_pause=True)
+                MY_LOGGER.debug(f'LOADFILE post_silence {phrase.get_post_pause()} ms' )
+        except ExpiredException:
+            pass
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            clz.logger.exception('')
+            MY_LOGGER.exception('')
 
     def set_next_speed(self, speed: float):
         self.next_speed = speed
@@ -658,6 +623,7 @@ class SlaveCommunication:
                               f'"speed", {self.next_speed}], "request_id": '
                               f'"{self.latest_config_transaction_num}" }}')
             self.send_line(speed_str)
+            self.current_speed = self.next_speed
             self.next_speed = None
 
     def send_volume(self) -> None:
@@ -676,7 +642,7 @@ class SlaveCommunication:
     def send_opt_channels(self) -> None:
         return
 
-        '''
+    '''
         self.latest_config_transaction_num += 1
         if self.channels != Channels.NO_PREF:
             channel_str: str | None = None
@@ -690,32 +656,53 @@ class SlaveCommunication:
                                      f'"format", "channels", "{channel_str}"],'
                                      f' "request_id": "{self.latest_config_transaction_num}" }}')
                 self.send_line(channels_str)
-        '''
-    def abort_voicing(self, purge: bool = True, future: bool = False) -> None:
-        """
-        Stop voicing pending speech and/or future speech.
-        Vocing can be resumed using resume_voicing
+    '''
 
-        :param purge: if True, then abandon playing all pending speech
-        :param future: if True, then ignore future voicings.
-        :return: None
+    def stop_player(self, purge: bool = True,
+                    keep_silent: bool = False,
+                    kill: bool = False):
+        """
+        Stop player (most likely because current text is expired)
+        Engines may wish to override this method, particularly when
+        the player is built-in.
+
+        :param purge: if True, then purge any queued vocings
+                      if False, then only stop playing current phrase
+        :param keep_silent: if True, ignore any new phrases until restarted
+                            by resume_player.
+                            If False, then play any new content
+        :param kill: If True, kill any player processes. Implies purge and
+                     keep_silent.
+                     If False, then the player will remain ready to play new
+                     content, depending upon keep_silent
+        :return:
         """
         clz = type(self)
         try:
-            clz.logger.debug(f'STOP PURGE: {purge} future: {future}')
-            if future:
-                self.tts_player_idle = True
-            if purge:
+            MY_LOGGER.debug(f'STOP PURGE: {purge} future: {keep_silent} '
+                            f'kill: {kill}')
+            if kill:
+                quit_str: str = f'quit'
+                self.send_line(quit_str)
+                self.run_state = RunState.DIE
+                Monitor.wait_for_abort(0.05)
+                self.slave.terminate()
+                self.slave.destroy()
+            elif purge:
                 stop_str: str = f'stop'
                 self.send_line(stop_str)
+                self.current_speed = None
+                self.next_speed = self.default_speed
+                if keep_silent:
+                    self.tts_player_idle = True
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            clz.logger.exception('')
+            MY_LOGGER.exception('')
 
     def resume_voicing(self) -> None:
         clz = SlaveCommunication
-        clz.logger.debug_v('RESUME')
+        MY_LOGGER.debug_v('RESUME')
         self.tts_player_idle = False
 
     '''
@@ -745,25 +732,25 @@ class SlaveCommunication:
             if self.get_state() != RunState.RUNNING:
                 return
             if self.fifo_out is not None:
-                if clz.logger.isEnabledFor(DEBUG):
-                    clz.logger.debug(f'FIFO_OUT: {text}| last_played_idx: '
-                                     f'{PlayerState.last_played_idx()} '
-                                     f'delta: {PlayerState.remaining_to_play()} '
-                                     'transaction # : '
-                                     f'{self.latest_config_transaction_num}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'FIFO_OUT: {text}| last_played_idx: '
+                                    f'{PlayerState.last_played_idx()} '
+                                    f'delta: {PlayerState.remaining_to_play()} '
+                                    'transaction # : '
+                                    f'{self.latest_config_transaction_num}')
                 self.fifo_out.write(f'{text}\n')
                 self.fifo_out.flush()
-                if voiced:
-                    PlayerState.add_voiced_file()
-                elif pre_pause:
+                if pre_pause:
                     PlayerState.add_pre_pause()
+                elif voiced:
+                    PlayerState.add_voiced_file()
                 elif post_pause:
                     PlayerState.add_post_pause()
-                #  clz.logger.debug(f'FLUSHED')
+                #  MY_LOGGER.debug(f'FLUSHED')
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            clz.logger.exception('')
+            MY_LOGGER.exception('')
 
     def terminate(self):
         pass
@@ -789,36 +776,49 @@ class SlaveCommunication:
         :return:
         """
         clz = type(self)
-        xbmc.log(f'In destroy', xbmc.LOGDEBUG)
-        if self.cmd_finished:
-            return
+        xbmc.log(f'In {self.thread_name} destroy', xbmc.LOGDEBUG)
+
+        self.stop_player(kill=True)
+        xbmc.sleep(10)
+
+        self.close_slave_files()
+
+    def close_slave_files(self) -> None:
+        """
+        Shut down files with slave. SlaveRunCommand.stop_player(kill) will cause
+        it to close the process files, which will kill the player.
+
+        :return:
+        """
         #  NOTE: it is the job of SlaveRunCommand to
         #  die on abort. Doing so here ends up causing the
         # thread killer try to kill it twice, which hangs.
         # Will address that problem later
         try:
-            self.run_state = RunState.COMPLETE
-            self.cmd_finished = True
+            self.run_state = RunState.DIE
+            # Close the INPUT to slave first.
             if self.fifo_out is not None:
                 try:
                     self.fifo_out.close()
-                    #  self.socket_out.shutdown()
-                    #  self.socket_out.close()
+                except:
+                    pass
+                try:
+                    self.fifo_in.close()
+                except:
+                    pass
+                try:
+                    self.socket.shutdown()
+                except:
+                    pass
+                try:
+                    self.socket.close()
                 except:
                     pass
                 self.fifo_out = None
-                if self.fifo_in is not None:
-                    try:
-                        self.fifo_in.close()
-                        self.socket.shutdown()
-                        self.socket.close()
-                    except:
-                        pass
-                    self.fifo_in = None
-                    # del self.socket
-                #  self.slave.destroy()
+                self.fifo_in = None
+                self.slave.destroy()
         except Exception as e:
-            clz.logger.exception('')
+            MY_LOGGER.exception('')
 
     def kodi_player_status_listener(self, video_player_state: KodiPlayerState) -> bool:
         clz = type(self)
@@ -828,11 +828,11 @@ class SlaveCommunication:
         #                 f'serial: {self.phrase_serial}')
         if self.idle_on_play_video:
             if video_player_state == KodiPlayerState.PLAYING_VIDEO:
-                clz.logger.debug(f'STOP playing TTS while Kodi player active')
-                self.abort_voicing(purge=True, future=True)
+                MY_LOGGER.debug(f'STOP playing TTS while Kodi player active')
+                self.stop_player(purge=True, keep_silent=True)
             elif video_player_state != KodiPlayerState.PLAYING_VIDEO:
                 self.resume_voicing()  # Resume playing TTS content
-                clz.logger.debug(f'Start playing TTS (Kodi not playing)')
+                MY_LOGGER.debug(f'Start playing TTS (Kodi not playing)')
         return False  # Don't unregister
 
     def start_service(self) -> int:
@@ -849,30 +849,30 @@ class SlaveCommunication:
         finished = False
         try:
             while not Monitor.exception_on_abort(timeout=0.1):
+                if finished or self.run_state.value > RunState.RUNNING.value:
+                    break
                 line: str = ''
                 try:
-                    if finished or self.cmd_finished:
-                        break
                     line = self.fifo_in.readline()
                     if len(line) > 0:
                         self.fifo_initialized = True
-                        if clz.logger.isEnabledFor(DEBUG):
-                            clz.logger.debug(f'FIFO_IN: {line}')
+                        if MY_LOGGER.isEnabledFor(DEBUG):
+                            MY_LOGGER.debug(f'FIFO_IN: {line}')
                 except ValueError as e:
                     rc = self.slave.rc
                     if rc is not None:
                         self.rc = rc
                         # Command complete
                         finished = True
-                        clz.logger.debug(f'mpv process ended')
+                        MY_LOGGER.debug(f'mpv process ended')
                         break
                     else:
-                        clz.logger.exception('')
+                        MY_LOGGER.exception('')
                         finished = True
                 except AbortException:
                     reraise(*sys.exc_info())
                 except Exception as e:
-                    clz.logger.exception('')
+                    MY_LOGGER.exception('')
                     finished = True
                     line: str = ''
                 try:
@@ -881,11 +881,12 @@ class SlaveCommunication:
                 except AbortException:
                     reraise(*sys.exc_info())
                 except Exception as e:
-                    clz.logger.exception('')
+                    MY_LOGGER.exception('')
 
         except AbortException as e:
             self.destroy()
             return
         except Exception as e:
-            clz.logger.exception('')
-            return
+            MY_LOGGER.exception('')
+        # Any way that we exit, we are done, done, done
+        self.destroy()

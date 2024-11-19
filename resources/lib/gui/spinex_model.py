@@ -22,11 +22,13 @@ class SpinexModel(BaseModel):
     _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.SPIN_CONTROL_EX]
 
-    def __init__(self, parent: BaseModel, parsed_spinex: ParseSpinex) -> None:
+    def __init__(self, parent: BaseModel, parsed_spinex: ParseSpinex,
+                 windialog_state: WinDialogState | None = None) -> None:
         clz = type(self)
         if clz._logger is None:
             clz._logger = module_logger
-        super().__init__(window_model=parent.window_model, parser=parsed_spinex)
+        super().__init__(window_model=parent.window_model, parser=parsed_spinex,
+                         windialog_state=windialog_state)
         self.parent: BaseModel = parent
         self.broken: bool = False
         self.visible_expr: str = ''
@@ -78,9 +80,10 @@ class SpinexModel(BaseModel):
 
         for child in parsed_spinex.children:
             child: BaseParser
-            model_handler: Callable[[BaseModel, BaseModel, BaseParser], BaseModel]
+            model_handler: Callable[[BaseModel, BaseParser, WinDialogState | None],
+                                    BaseModel]
             model_handler = ElementHandler.get_model_handler(child.item)
-            child_model: BaseModel = model_handler(self, child)
+            child_model: BaseModel = model_handler(self, child, None)
             self.children.append(child_model)
 
     @property

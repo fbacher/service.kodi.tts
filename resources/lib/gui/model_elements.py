@@ -22,6 +22,8 @@ from gui.base_tags import ControlElement, Tag
 from gui.base_tags import BaseAttributeType as BAT
 from gui.base_tags import ElementKeywords as EK
 from gui.exceptions import ParseError
+from windows.window_state_monitor import WinDialogState
+
 module_logger = BasicLogger.get_logger(__name__)
 
 
@@ -339,7 +341,8 @@ class ModelHandler:
         cls.model_handlers[item.key] = model
 
     @classmethod
-    def get_model_handler(cls, item: Item) -> Callable[[BaseModel, BaseParser], BaseModel]:
+    def get_model_handler(cls, item: Item) -> Callable[[BaseModel, BaseParser,
+                                                        WinDialogState], BaseModel]:
         supress_keys = ('image')
         cls._logger.debug(f'key: {item.key} contained: {item.key in supress_keys}')
         if item.ignore:

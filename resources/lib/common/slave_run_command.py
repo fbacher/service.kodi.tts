@@ -25,7 +25,7 @@ from common.phrases import Phrase
 from common.simple_run_command import RunState
 from common.utils import sleep
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class SlaveRunCommand:
@@ -33,37 +33,36 @@ class SlaveRunCommand:
 
     """
     #  player_state: str = KodiPlayerState.VIDEO_PLAYER_IDLE
-    logger: BasicLogger = None
 
-    def __init__(self, args, thread_name: str = 'slave_run_cmd',
+    def __init__(self, args, thread_name: str = 'slv_run_cmd', count: int = 0,
                  post_start_callback: Callable[[None], bool] = None) -> None:
         """
 
         :param args: arguments to be passed to exec command
         """
         clz = type(self)
-        SlaveRunCommand.logger = module_logger
-
         self.args: List[str] = args
         #  args.append('--log-file=/tmp/mpv.log')
         #  args.append('--msg-level=all=debug')
+        thread_name = f'{thread_name}_{count}'
         self.thread_name = thread_name
         self.rc = 0
         self.run_state: RunState = RunState.NOT_STARTED
         self.cmd_finished: bool = False
+        self.stdin_closed: bool = False
+        self.stdout_closed: bool = False
         self.process: Popen | None = None
         self.run_thread: threading.Thread | None = None
-        clz.logger.debug(f'Calling post_start_callback')
-        self.post_start_callback: Callable[[None], bool] = post_start_callback
-        clz.logger.debug(f'Returned from post_start_callback')
-        Monitor.register_abort_listener(self.abort_listener, name=thread_name,
-                                        garbage_collect=False)
+        MY_LOGGER.debug(f'Calling post_start_callback')
+        self.post_start_callback: Callable[[], bool] = post_start_callback
+        MY_LOGGER.debug(f'Returned from post_start_callback')
+        Monitor.register_abort_listener(self.abort_listener, name=thread_name)
 
     def terminate(self):
         if self.process is not None and self.run_state.value <= RunState.RUNNING.value:
             self.process.kill()
         clz = type(self)
-        clz.logger.debug(f'terminate')
+        MY_LOGGER.debug(f'slave terminate')
 
     def kill(self):
         pass
@@ -87,32 +86,57 @@ class SlaveRunCommand:
         """
         self.run_state = RunState.COMPLETE
         if self.cmd_finished:
+            MY_LOGGER.debug(f'slave destroy, cmd_finished')
             return
 
         clz = type(self)
-        clz.logger.debug(f'In destroy')
+        MY_LOGGER.debug(f'In slave destroy')
         self.cmd_finished = True
+        killed: bool = False
+
         if self.process is not None:
+            self.close_files()
+            MY_LOGGER.debug(f'slave closed files')
             try:
                 self.process.poll()
                 if self.process.returncode is not None:
+                    MY_LOGGER.debug(f'RC: {self.process.returncode}')
                     return
             except:
-                return  # Probably dead
-            try:
-                self.process.stdin.close()
-            except:
-                pass
-            try:
-                self.process.stdout.close()
-            except:
-                pass
+                MY_LOGGER.exception('')
             # self.process.wait(0.1)
             try:
+                MY_LOGGER.debug(f'slave process.kill')
                 self.process.kill()
+                killed = True
             except:
-                pass
-        clz.logger.debug('Slave Destroyed')
+                MY_LOGGER.exception('')
+        try:
+            MY_LOGGER.debug(f'Slave Destroyed:stdin: {self.stdin_closed} '
+                            f'stdout: {self.stdout_closed} killed: {killed} '
+                            f'RC: {self.process.returncode}')
+        except:
+            MY_LOGGER.exception('')
+
+    def close_files(self) -> None:
+        """
+        Closing the process's files frequently kills the process and needs to
+        be done for clean up
+
+        :return:
+        """
+        try:
+            if not self.stdin_closed:
+                self.process.stdin.close()
+                self.stdin_closed = True
+        except:
+            pass
+        try:
+            if not self.stdout_closed:
+                self.process.stdout.close()
+                self.stdout_closed = True
+        except:
+            pass
 
     def start_service(self) -> int:
         """
@@ -127,7 +151,6 @@ class SlaveRunCommand:
             Monitor.exception_on_abort()
             self.run_thread.start()
             GarbageCollector.add_thread(self.run_thread)
-            self.cmd_finished = False
             self.process: Popen
 
             # First, wait until process has started. Should be very quick
@@ -146,12 +169,15 @@ class SlaveRunCommand:
         return 0
 
     def poll(self) -> int | None:
-        return self.process.poll()
+        rc: int = self.process.poll()
+        if rc is not None:
+            self.cmd_finished = True
+        return rc
 
     def run_service(self) -> None:
         clz = type(self)
         self.rc = 0
-        clz.logger.debug(f'run_service started')
+        MY_LOGGER.debug(f'run_service started')
         env = os.environ.copy()
         try:
             if Constants.PLATFORM_WINDOWS:
@@ -163,7 +189,7 @@ class SlaveRunCommand:
                 # via pipe and don't log
 
                 # self.args.append('/home/fbacher/.kodi/userdata/addon_data/service.kodi.tts/cache/goo/df/df16f1fee15ac535aed684fab4a54fd4.mp3')
-                clz.logger.debug(f'Cond_Visibility: '
+                MY_LOGGER.debug(f'Cond_Visibility: '
                                  f'{xbmc.getCondVisibility("System.Platform.Windows")} '
                                  f'mpv_path: {Constants.MPV_PATH} '
                                  f'args: {self.args} ')
@@ -182,14 +208,15 @@ class SlaveRunCommand:
                                                 encoding='utf-8', env=env,
                                                 close_fds=True)
             Monitor.exception_on_abort()
-            if self.post_start_callback:
+            if self.post_start_callback is not None:
                 if self.post_start_callback():
                     self.run_state = RunState.PIPES_CONNECTED
-                    clz.logger.debug(f'pipes connected')
+                    MY_LOGGER.debug(f'pipes connected')
             Monitor.exception_on_abort(timeout=1.0)
         except AbortException:
             return  # We are in the top of the thread
         except Exception as e:
-            clz.logger.exception('')
-        clz.logger.debug(f'returning from run_service')
+            MY_LOGGER.exception('')
+        Monitor.unregister_abort_listener(listener=self.abort_listener)
+        MY_LOGGER.debug(f'slave returning from run_service')
         return

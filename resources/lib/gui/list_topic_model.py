@@ -12,20 +12,18 @@ from gui.gui_globals import GuiGlobals
 from gui.parser.parse_topic import ParseTopic
 from gui.statements import Statement, Statements, StatementType
 from gui.topic_model import TopicModel
+from windows.window_state_monitor import WinDialogState
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class ListTopicModel(TopicModel):
     """
     Provides vocing for the List Container decorated with a Topic
     """
-    _logger: BasicLogger = module_logger
 
     def __init__(self, parent: BaseModel, parsed_topic: ParseTopic) -> None:
         clz = ListTopicModel
-        if clz._logger is None:
-            clz._logger = module_logger
 
         super().__init__(parent=parent, parsed_topic=parsed_topic)
 
@@ -56,6 +54,27 @@ class ListTopicModel(TopicModel):
         return True
 
     @property
+    def supports_item_number(self) -> bool:
+        return False
+
+    @property
+    def supports_item_collection(self) -> bool:
+        """
+        Indicates that this control contains multiple items.
+        Used to influence how the heading for this control is read.
+
+        The heading for a simple object, such as a button is read:
+          [Item #] Control_heading(s) Control_type Control_Value
+          "[item 5] Button Enabled"
+        While a collection is read:
+          Control_heading(s) [Orientation] control_type [# Items]
+          "Basic Settings. Vertical Group List 5 Items"
+
+        :return:
+        """
+        return True
+
+    @property
     def supports_change_without_focus_change(self) -> bool:
         """
             Indicates if the control supports changes that can occur without
@@ -70,8 +89,8 @@ class ListTopicModel(TopicModel):
         """
             Voices the value of this topic without any heading. Primarily
             used by controls, where the value is entered over time, by an
-            analog slider, or multiple keystrokes, etc.... The intermediate
-            changes need to be voiced without added verbage.
+            analog slider, or multiple keystrokes, RadioButton slider,
+            etc.... The intermediate changes need to be voiced without added verbage.
 
             Another use case is where a control (like list) allows you to
             make a selection that changes some other control's value
@@ -86,11 +105,11 @@ class ListTopicModel(TopicModel):
         """
         clz = ListTopicModel
         changed: bool
-        # TODO: Revisit when multiple values returned
-        values: List[str] = self.parent.get_working_value(item_number=0)
-        stmts.append(Statement(PhraseList.create(texts=values),
-                               stmt_type=StatementType.VALUE))
-        return True
+        # TODO: Probably don't need two paths to the same thing. See
+        #  topic_model.voice_control where either voice_topic_value or
+        #  voice_working_value is called depending upon focus change.
+        #  Probably just need one method.
+        return self.voice_active_item_value(stmts)
 
     def voice_active_item_value(self, stmts: Statements) -> bool:
         """
@@ -113,7 +132,6 @@ class ListTopicModel(TopicModel):
         :return:
         """
         clz = ListTopicModel
-        clz._logger.debug(f'In voice_active_item_value')
         success: bool = False
         # Can't get a usable item number. See get_item_number
         #  item_number: int = self.get_item_number()
@@ -121,26 +139,25 @@ class ListTopicModel(TopicModel):
         result = self.parent.get_working_value(-1)
         phrases: PhraseList = PhraseList(check_expired=False)
         #
-        # There is NO useable item number
+        # There is NO usable item number
         # The voicing of an 'item' is a unit. It makes no sense to
         # voice the item number separately from its value(s). The risk
         # is that the item # would be voiced, but not its value.
         old_value_key: str = f'{self.name}_value'
-        # old_item_number_key: str = f'{self.name}_old_item_number'
         old_values: List[str] = GuiGlobals.saved_states.get(old_value_key, [])
-        same: bool = False
-        if old_values == result:
-            same = True
-        clz._logger.debug(f'same: {same} old_values: {old_values}\n '
-                          f'result: {result}')
+        ignore: bool = False
+        if len(result) == 0 or old_values == result:
+            ignore = True
+        MY_LOGGER.debug(f'ignore: {ignore} old_values: {old_values}\n '
+                        f'result: {result}')
         GuiGlobals.saved_states[old_value_key] = result
-        if not same:
+        if not ignore:
             phrases = PhraseList(check_expired=False)
             phrases.add_text(f'item:')
             for item_value in result:
                 phrases.add_text(item_value)
             stmts.append(Statement(phrases, stmt_type=StatementType.VALUE))
-        clz._logger.debug(f'phrases: {phrases}\n {stmts}')
+        MY_LOGGER.debug(f'phrases: {phrases}\n {stmts}')
 
         # Cause WindowStateMonitor to process events whether
         # there was a focus change or not. Normally only
@@ -149,14 +166,14 @@ class ListTopicModel(TopicModel):
         # focus change event occurs under the assumption that the newly
         # focused control will not need it.
 
-        clz._logger.debug(f'FOCUS CHANGED requried = False')
+        MY_LOGGER.debug(f'FOCUS CHANGED requried = False')
         GuiGlobals.require_focus_change = False
 
         # We want to voice any side effects to changes made here,
         # but ONLY when a change is also made in the list container's
         # selection. We can't detect an arbitrary control's Selection
         # events.
-        clz._logger.debug(f'flows_to_expr: {self.flows_to_expr}')
+        MY_LOGGER.debug(f'flows_to_expr: {self.flows_to_expr}')
         if self.flows_to_expr != '':   # and not self.focus_changed:
             # Here we have a case where an additional
             # value(s) may need to be voiced
@@ -169,6 +186,7 @@ class ListTopicModel(TopicModel):
         success = self.voice_working_value(stmts)
         return success
 
+    '''
     def get_item_number(self) -> int:
         """
         NOTE: The item number is next to useless for a list container because
@@ -181,3 +199,4 @@ class ListTopicModel(TopicModel):
         :return: Current topic number, or -1
         """
         return self.parent.get_item_number(self.control_id)
+    '''

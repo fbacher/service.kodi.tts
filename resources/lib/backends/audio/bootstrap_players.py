@@ -2,6 +2,9 @@ from __future__ import annotations  # For union operator |
 
 import sys
 
+import xbmc
+
+from backends.settings.service_types import ServiceType
 from backends.settings.settings_map import Reason, SettingsMap
 from common import *
 from common.constants import Constants
@@ -10,14 +13,14 @@ from common.setting_constants import Players
 from common.settings_low_level import SettingsLowLevel
 from common.system_queries import SystemQueries
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class BootstrapPlayers:
     player_ids: List[str] = [
         Players.MPV,
         Players.MPLAYER,
-        # Players.SFX,
+        Players.SFX,
         # Players.WINDOWS,
         # Players.APLAY,
         # Players.PAPLAY,
@@ -33,13 +36,10 @@ class BootstrapPlayers:
         # Players.BuiltInAudioPlayerHandler
     ]
     _initialized: bool = False
-    _logger: BasicLogger = None
 
     @classmethod
     def init(cls) -> None:
         if not cls._initialized:
-            if cls._logger is None:
-                cls._logger = module_logger
             cls.initialized = True
             if Constants.PLATFORM_WINDOWS:
                 cls.player_ids.append(Players.MPLAYER)
@@ -48,9 +48,10 @@ class BootstrapPlayers:
     @classmethod
     def load_players(cls):
         for player_id in cls.player_ids:
+            MY_LOGGER.debug(f'load_player: {player_id}')
             cls.load_player(player_id)
         # Add all settings
-        SettingsLowLevel.load_settings()
+        SettingsLowLevel.load_settings(ServiceType.PLAYER)
         # SettingsLowLevel.commit_settings()
 
     @classmethod
@@ -58,7 +59,7 @@ class BootstrapPlayers:
         try:
             available: bool = True
             if not SettingsMap.is_available(player_id):
-                cls._logger.debug(f'{player_id} NOT SettingsMap.is_available')
+                MY_LOGGER.debug(f'{player_id} NOT SettingsMap.is_available')
                 return
 
             if player_id == Players.MPLAYER:
@@ -72,8 +73,14 @@ class BootstrapPlayers:
                 from backends.audio.mpv_audio_player import MPVAudioPlayer
                 available = MPVAudioPlayer().available()
             elif player_id == Players.SFX:
+                from backends.players.sfx_settings import SFXSettings
+                MY_LOGGER.debug('Loading SFXSettings')
+                SFXSettings()
+                MY_LOGGER.debug('Loading PlaySFXAudioPlayer')
                 from backends.audio.sfx_audio_player import PlaySFXAudioPlayer
+                MY_LOGGER.debug(f'Checking if SFX is available')
                 available = PlaySFXAudioPlayer().available()
+                MY_LOGGER.debug('SFX is available')
             elif player_id == Players.WINDOWS:
                 if SystemQueries.isWindows():
                     from backends.audio.windows_audio_player import WindowsAudioPlayer
@@ -118,15 +125,15 @@ class BootstrapPlayers:
                 if available:
                     SettingsMap.set_is_available(player_id, Reason.AVAILABLE)
                 else:
-                    cls._logger.debug(f'{player_id} returns NOT available')
+                    MY_LOGGER.debug(f'{player_id} returns NOT available')
                     SettingsMap.set_is_available(player_id, Reason.NOT_AVAILABLE)
             except Exception:
-                cls._logger.exception('')
+                MY_LOGGER.exception('')
                 SettingsMap.set_is_available(player_id, Reason.NOT_AVAILABLE)
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            cls._logger.exception('')
+            MY_LOGGER.exception('')
             SettingsMap.set_is_available(player_id, Reason.BROKEN)
 
     '''

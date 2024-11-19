@@ -64,6 +64,8 @@ class BaseParser:
             self._window_parser: BaseParser = parent.window_parser
         self._control_id: int = -1   # Dummy field
         self._control_type: ControlElement = ControlElement.UNKNOWN
+        if self._parent is None and window_parser is not None:
+            self._control_type = ControlElement.WINDOW
         self.tree_id: str = 'DUMMY_BASE_PARSER'
         self.topic: ForwardRef('TopicModel') = None
 

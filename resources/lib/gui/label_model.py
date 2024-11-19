@@ -21,15 +21,17 @@ class LabelModel(BaseModel):
     _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.LABEL_CONTROL]
 
-    def __init__(self, parent: BaseModel, parsed_label: ParseLabel) -> None:
+    def __init__(self, parent: BaseModel, parsed_label: ParseLabel,
+                 windialog_state: WinDialogState | None = None) -> None:
         clz = LabelModel
         if clz._logger is None:
             clz._logger = module_logger
-        super().__init__(window_model=parent.window_model, parser=parsed_label)
+        super().__init__(window_model=parent.window_model, parser=parsed_label,
+                         windialog_state=None)
         # self.parent = parent
         self.label_for: str = ''
         self.hint_text_expr: str = ''
-        self.parent: BaseModel = None
+        self.parent: BaseModel | None = None
         # self.attributes_with_values: List[str] = clz.item.attributes_with_values
         # self.attributes: List[str] = clz.item.attributes
         self.visible_expr: str = ''
@@ -83,9 +85,10 @@ class LabelModel(BaseModel):
 
         for child in parsed_label.children:
             child: BaseParser
-            model_handler: Callable[[BaseModel, BaseModel, BaseParser], BaseModel]
+            model_handler: Callable[[BaseModel, BaseParser, WinDialogState],
+                                    BaseModel]
             model_handler = ElementHandler.get_model_handler(child.item)
-            child_model: BaseModel = model_handler(self, child)
+            child_model: BaseModel = model_handler(self, child, None)
             self.children.append(child_model)
 
     @property

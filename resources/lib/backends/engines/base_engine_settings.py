@@ -55,50 +55,20 @@ class BaseEngineSettings:
                                    gender_validator)
         # gender_validator.set_tts_value(Genders.FEMALE)
 
-        # TODO: Change to use allowed_values  BackendInfo.getAvailableBackends()
-        engine_id_validator = StringValidator(SettingsProperties.ENGINE,
-                                              Services.TTS_SERVICE,
-                                              allowed_values=Backends.ALL_ENGINE_IDS,
-                                              min_length=1,  # Size way too big
-                                              max_length=32,
-                                              default=Backends.DEFAULT_ENGINE_ID)
-        SettingsMap.define_setting(Services.TTS_SERVICE, SettingsProperties.ENGINE,
-                                   engine_id_validator)
-        '''
         cache_validator: BoolValidator
         cache_validator = BoolValidator(SettingsProperties.CACHE_SPEECH, service_id,
                                         default=False)
 
         SettingsMap.define_setting(service_id, SettingsProperties.CACHE_SPEECH,
                                    cache_validator)
-        '''
 
-        override_poll_interval_val: BoolValidator
-        override_poll_interval_val = BoolValidator(
-                SettingsProperties.OVERRIDE_POLL_INTERVAL, Services.TTS_SERVICE,
-                default=False)
+        gender_visible: BoolValidator
+        gender_visible = BoolValidator(
+                SettingsProperties.GENDER_VISIBLE, Services.TTS_SERVICE,
+                default=True)
         SettingsMap.define_setting(Services.TTS_SERVICE,
-                                   SettingsProperties.OVERRIDE_POLL_INTERVAL,
-                                   override_poll_interval_val)
-        # Poll interval in milliseconds
-        poll_interval_val: IntValidator
-        poll_interval_val = IntValidator(SettingsProperties.POLL_INTERVAL,
-                                         Services.TTS_SERVICE,
-                                         min_value=0, max_value=1000, default=100,
-                                         step=1, scale_internal_to_external=1)
-        SettingsMap.define_setting(Services.TTS_SERVICE,
-                                   SettingsProperties.POLL_INTERVAL,
-                                   poll_interval_val)
-
-        debug_log_level_val: IntValidator
-        debug_log_level_val = IntValidator(SettingsProperties.DEBUG_LOG_LEVEL,
-                                           Services.TTS_SERVICE,
-                                           min_value=0, max_value=5, default=4,
-                                           # INFO
-                                           step=1, scale_internal_to_external=1)
-        SettingsMap.define_setting(Services.TTS_SERVICE,
-                                   SettingsProperties.DEBUG_LOG_LEVEL,
-                                   debug_log_level_val)
+                                   SettingsProperties.GENDER_VISIBLE,
+                                   gender_visible)
 
         speak_list_count_val: BoolValidator
         speak_list_count_val = BoolValidator(SettingsProperties.SPEAK_LIST_COUNT,
@@ -108,20 +78,10 @@ class BaseEngineSettings:
                                    SettingsProperties.SPEAK_LIST_COUNT,
                                    speak_list_count_val)
 
-        version_val: StringValidator
-        version_val = StringValidator(SettingsProperties.VERSION, Services.TTS_SERVICE,
-                                      allowed_values=[],
-                                      min_length=5,
-                                      max_length=20,
-                                      default=None)
+        speak_on_server: BoolValidator
+        speak_on_server = BoolValidator(SettingsProperties.SPEAK_ON_SERVER,
+                                             Services.TTS_SERVICE,
+                                             default=True)
         SettingsMap.define_setting(Services.TTS_SERVICE,
-                                   SettingsProperties.VERSION,
-                                   version_val)
-
-        use_tempfs_val: BoolValidator
-        use_tempfs_val = BoolValidator(SettingsProperties.USE_TEMPFS,
-                                       Services.TTS_SERVICE,
-                                       default=True)
-        SettingsMap.define_setting(Services.TTS_SERVICE,
-                                   SettingsProperties.USE_TEMPFS,
-                                   use_tempfs_val)
+                                   SettingsProperties.SPEAK_ON_SERVER,
+                                   speak_on_server)

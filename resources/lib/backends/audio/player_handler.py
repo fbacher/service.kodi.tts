@@ -14,7 +14,7 @@ from backends.audio.mpg321_audio_player import Mpg321AudioPlayer
 from backends.audio.mplayer_audio_player import MPlayerAudioPlayer
 from backends.audio.paplay_audio_player import PaplayAudioPlayer
 from backends.audio.sfx_audio_player import PlaySFXAudioPlayer
-from backends.audio.sound_capabilties import SoundCapabilities
+from backends.audio.sound_capabilities import SoundCapabilities
 from backends.audio.sox_audio_player import SOXAudioPlayer
 from backends.audio.windows_audio_player import WindowsAudioPlayer
 from backends.players.player_index import PlayerIndex
@@ -25,7 +25,7 @@ from common import utils
 from common.base_services import BaseServices
 from common.constants import Constants
 from common.logger import BasicLogger
-from common.setting_constants import Players
+from common.setting_constants import AudioType, Players
 from common.settings import Settings
 
 module_logger: BasicLogger = BasicLogger.get_logger(__name__)
@@ -275,7 +275,7 @@ class MP3AudioPlayerHandler(WavAudioPlayerHandler):
     displayName = 'MP3AudioPlayerHandler'
     players = (WindowsAudioPlayer, AfplayPlayer, SOXAudioPlayer,
                Mpg123AudioPlayer, Mpg321AudioPlayer, MPlayerAudioPlayer)
-    sound_file_types: List[str] = [SoundCapabilities.WAVE]
+    sound_file_types: List[str] = [AudioType.WAV]
     sound_file_base = '{speech_file_name}{sound_file_type}'
     sound_dir: str = None
     _logger: BasicLogger = None

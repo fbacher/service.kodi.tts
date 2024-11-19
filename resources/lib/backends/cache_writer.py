@@ -3,16 +3,18 @@ from __future__ import annotations  # For union operator |
 
 import io
 import sys
+from pathlib import Path
 
 from common import *
-from backends.audio.sound_capabilties import ServiceType, SoundCapabilities
+from backends.audio.sound_capabilities import ServiceType, SoundCapabilities
 from backends.players.iplayer import IPlayer
 from backends.players.player_index import PlayerIndex
 from backends.settings.service_types import Services
-from cache.voicecache import VoiceCache
+from cache.voicecache import CacheEntryInfo, VoiceCache
 from common.base_services import BaseServices
 from common.logger import *
 from common.phrases import Phrase
+from common.setting_constants import AudioType
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
 
@@ -148,14 +150,12 @@ class BaseCache(BaseServices):
         voice_file: str = ''
         exists: bool = False
         file_type: str = ''
+        result: CacheEntryInfo
+        result = VoiceCache.get_path_to_voice_file(text_to_voice,
+                                                   use_cache)
+        voice_file = result.current_voice_path
         if use_cache:
-            paths: Tuple[str, bool, str] = VoiceCache.get_best_path(text_to_voice,
-                                                                    sound_file_types)
-            voice_file, exists, file_type = paths
-        else:
-            voice_file = player.get_tmp_path(text_to_voice, sound_file_types[0])
-            exists = False
-
+            exists = result.text_exists
         return voice_file, exists
 
     def get_best_path(self, text_to_voice: str,
@@ -193,7 +193,7 @@ class BaseCache(BaseServices):
         if not voice_file or len(voice_file) == 0:
             voice_file = None
         """
-        if not exists:
+        if not text_exists:
             voice_file, _ = self.download_speech(
                     text_to_voice, voice_file)
         try:
@@ -258,7 +258,7 @@ class BaseCache(BaseServices):
         Gets a setting from addon's settings.xml
 
         A convenience method equivalent to Settings.getSetting(key + '.'. +
-        cls.backend_id,
+        cls.service_id,
         default, useFullSettingName).
 
         :param key:
@@ -311,9 +311,9 @@ class CacheWriter(BaseCache):
     _logger: BasicLogger = None
     _initialized: bool = False
 
-    # Find what engines can produce WAVE files.
-    _supported_input_formats: List[str] = []
-    _supported_output_formats: List[str] = [SoundCapabilities.WAVE]
+    # Find what engines can produce WAV files.
+    _supported_input_formats: List[AudioType] = []
+    _supported_output_formats: List[AudioType] = [AudioType.WAV]
     capable_services = SoundCapabilities.get_capable_services(ServiceType.ENGINE,
                                                               _supported_input_formats,
                                                               _supported_output_formats)

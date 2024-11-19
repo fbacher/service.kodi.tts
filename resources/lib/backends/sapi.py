@@ -18,7 +18,7 @@ from backends.settings.validators import NumericValidator
 from common import *
 
 # from backends.audio.player_handler import BasePlayerHandler, WavAudioPlayerHandler
-from backends.audio.sound_capabilties import ServiceType
+from backends.audio.sound_capabilities import ServiceType
 from backends.base import SimpleTTSBackend
 from backends.settings.i_validators import IValidator
 from backends.settings.service_types import Services

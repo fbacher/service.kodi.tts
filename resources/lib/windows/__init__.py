@@ -30,7 +30,7 @@ from .weather import WeatherReader
 from .yesnodialog import YesNoDialogReader
 from windows.custom_tts import CustomTTSReader
 
-module_logger: BasicLogger = BasicLogger.get_logger(__name__)
+MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 
 READERS: Tuple[Type[WindowReaderBase], ...] = (
     HomeDialogReader,
@@ -127,9 +127,9 @@ for r in READERS:
 
 def getWindowReader(winID) -> Type[WindowReaderBase]:
 
-    xbmc.log(f'Window: {winID}', xbmc.LOGDEBUG)
+    MY_LOGGER.debug(f'Window: {winID}')
     simple_path: Path = Path(xbmc.getInfoLabel('Window.Property(xmlfile)'))
-    xbmc.log(f'Window simple_path: {simple_path}')
+    MY_LOGGER.debug(f'Window simple_path: {simple_path}')
     if str(simple_path.name) in ('script-tts-settings-dialog.xml',
                                  'selection-dialog.xml',
                                  'tts-help-dialog.xml'):
@@ -137,11 +137,11 @@ def getWindowReader(winID) -> Type[WindowReaderBase]:
         return reader
 
     reader_id = xbmc.getInfoLabel(f'Window({winID}).Property(TTS.READER)')
-    module_logger.debug(f'winID: {winID} reader: {reader_id}')
+    MY_LOGGER.debug(f'winID: {winID} reader: {reader_id}')
     if reader_id and reader_id in READERS_MAP:
         reader = READERS_MAP[reader_id]
-        module_logger.debug(f'reader: {reader}')
+        MY_LOGGER.debug(f'reader: {reader}')
         return reader
     reader = READERS_WINID_MAP.get(winID, DefaultWindowReader)
-    module_logger.debug(f'default_window_reader: {reader}')
+    MY_LOGGER.debug(f'default_window_reader: {reader}')
     return reader

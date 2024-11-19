@@ -37,7 +37,7 @@ class BasePlayerServiceSettings(BaseServiceSettings):
         clz.init_settings()
 
         '''
-        CONVERTER?,
+        TRANSCODER?,
         GENDER_VISIBLE,
         GUI,
         SPEECH_DISPATCHER,

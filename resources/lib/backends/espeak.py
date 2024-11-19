@@ -5,19 +5,24 @@ import ctypes.util
 import os
 import subprocess
 import sys
+import tempfile
+
 import langcodes
 
 from pathlib import Path
 
 from backends.players.iplayer import IPlayer
 from backends.settings.language_info import LanguageInfo
+from backends.settings.settings_helper import SettingsHelper
 from backends.settings.validators import NumericValidator
+from backends.transcoders.trans import TransCode
 from cache.voicecache import VoiceCache
+from cache.common_types import CacheEntryInfo
 from common import *
 
 from backends.audio.builtin_audio_player import BuiltInAudioPlayer
 # from backends.audio.player_handler import BasePlayerHandler, WavAudioPlayerHandler
-from backends.audio.sound_capabilties import ServiceType
+from backends.audio.sound_capabilities import ServiceType
 from backends.base import BaseEngineService, SimpleTTSBackend
 from backends.settings.i_validators import AllowedValue, INumericValidator, IValidator
 from backends.settings.service_types import Services
@@ -26,17 +31,18 @@ from common import utils
 from common.base_services import BaseServices
 from common.constants import Constants
 from common.logger import *
-from common.message_ids import MessageUtils
+from common.message_ids import MessageId
 from common.messages import Messages
 from common.monitor import Monitor
 from common.phrases import Phrase
-from common.setting_constants import Backends, Genders, Mode, PlayerMode
+from common.setting_constants import (AudioType, Backends, Genders, Mode, PlayerMode,
+                                      Players)
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
 from langcodes import LanguageTagError
 from windowNavigation.choice import Choice
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class ESpeakTTSBackend(SimpleTTSBackend):
@@ -48,6 +54,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
     service_TYPE: str = ServiceType.ENGINE_SETTINGS
     backend_id: str = Backends.ESPEAK_ID
     engine_id: str = Backends.ESPEAK_ID
+    OUTPUT_FILE_TYPE: str = '.wav'
     displayName: str = 'eSpeak'
     UTF_8: Final[str] = '1'
 
@@ -56,31 +63,29 @@ class ESpeakTTSBackend(SimpleTTSBackend):
     _class_name: str = None
     _initialized: bool = False
 
+    '''
     class LangInfo:
-        _logger: BasicLogger = None
 
         lang_info_map: Dict[str, ForwardRef('LangInfo')] = {}
         initialized: bool = False
 
         def __init__(self, locale_id: str, language_code: str, country_code: str,
-                     language_name: str, country_name: str, google_tld: str) -> None:
+                     language_name: str, country_name: str) -> None:
             clz = type(self)
             self.locale_id: str = locale_id
             self.language_code: str = language_code
             self.country_code: str = country_code
             self.language_name: str = language_name
             self.country_name: str = country_name
-            self.google_tld: str = google_tld
+
             clz.lang_info_map[locale_id] = self
+    '''
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         clz = type(self)
-        clz._class_name = self.__class__.__name__
-        if clz._logger is None:
-            clz._logger = module_logger
-        self.process: subprocess.Popen = None
-        self.voice_cache: VoiceCache = VoiceCache()
+        self.process: subprocess.Popen | None = None
+        self.voice_cache: VoiceCache = VoiceCache(clz.service_ID)
 
         if not clz._initialized:
             clz._initialized = True
@@ -89,13 +94,16 @@ class ESpeakTTSBackend(SimpleTTSBackend):
     def init(self):
         super().init()
         clz = type(self)
-        self.process: subprocess.Popen = None
+        self.process: subprocess.Popen | None = None
         self.update()
+
+    def get_voice_cache(self) -> VoiceCache:
+        return self.voice_cache
 
     '''
     @classmethod
     def register_me(cls, what: Type[ITTSBackendBase]) -> None:
-        cls._logger.debug(f'Registering {repr(what)}')
+        MY_LOGGER.debug(f'Registering {repr(what)}')
         BaseServices.register(service=what)
     '''
 
@@ -113,18 +121,21 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         args = [cmd_path, '--voices']
         voices = []
         try:
-            process = subprocess.run(args, stdin=None, stdout=subprocess.PIPE,
-                                     universal_newlines=True,
-                                     stderr=None, shell=False, check=True)
+            completed: subprocess.CompletedProcess
+            completed = subprocess.run(args, stdin=None, capture_output=True,
+                                     text=True, shell=False, check=True)
             """
              Sample output:
-             Pty Language       Age/Gender VoiceName          File                 Other Languages
+             Pty Language       Age/Gender VoiceName          File                 
+             Other Languages
              5  af              --/M      Afrikaans          gmw/af               
              5  am              --/M      Amharic            sem/am                       
              5  bpy             --/M      Bishnupriya_Manipuri inc/bpy                
              5  chr-US-Qaaa-x-west --/M      Cherokee_          iro/chr              
-             5  cmn             --/M      Chinese_(Mandarin,_latin_as_English) sit/cmn              (zh-cmn 5)(zh 5)
-             5  cmn-latn-pinyin --/M      Chinese_(Mandarin,_latin_as_Pinyin) sit/cmn-Latn-pinyin  (zh-cmn 5)(zh 5)
+             5  cmn             --/M      Chinese_(Mandarin,_latin_as_English) sit/cmn  
+                         (zh-cmn 5)(zh 5)
+             5  cmn-latn-pinyin --/M      Chinese_(Mandarin,_latin_as_Pinyin) 
+             sit/cmn-Latn-pinyin  (zh-cmn 5)(zh 5)
 
             Each line is of the form:
             <priority: int> <language> <age/gender> <voicename> <file> <other_langs>...
@@ -170,12 +181,13 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                   bcp47-extensions language tags for accents that cannot be described 
                   using the available BCP 47 language tags.
             """
-            for line in process.stdout.split('\n'):
+            for line in completed.stdout.split('\n'):
                 if len(line) > 0:
                     voices.append(line)
 
             del voices[0]
         except ProcessLookupError:
+            MY_LOGGER.exception('')
             rc = -1
 
         # Read lines of voices, ignoring header
@@ -194,19 +206,19 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             lang: langcodes.Language = None
             try:
                 lang = langcodes.Language.get(lang_str)
-                if cls._logger.isEnabledFor(DEBUG_XV):
-                    cls._logger.debug_xv(f'orig: {lang_str} '
-                                                    f'language: {lang.language} '
-                                                    f'script: {lang.script} '
-                                                    f'territory: {lang.territory} '
-                                                    f'extlangs: {lang.extlangs} '
-                                                    f'variants: {lang.variants} '
-                                                    f'extensions: {lang.extensions} '
-                                                    f'private: {lang.private} '
-                                                    f'display: '
-                                                    f'{lang.display_name(lang.language)}')
+                if MY_LOGGER.isEnabledFor(DEBUG_XV):
+                    MY_LOGGER.debug_xv(f'orig: {lang_str} '
+                                       f'language: {lang.language} '
+                                       f'script: {lang.script} '
+                                       f'territory: {lang.territory} '
+                                       f'extlangs: {lang.extlangs} '
+                                       f'variants: {lang.variants} '
+                                       f'extensions: {lang.extensions} '
+                                       f'private: {lang.private} '
+                                       f'display: '
+                                       f'{lang.display_name(lang.language)}')
             except LanguageTagError:
-                cls._logger.exception('')
+                MY_LOGGER.exception('')
 
             age, gender = fields[2].split('/')
             if gender == 'M':
@@ -236,7 +248,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                                       voice=voice_name,
                                       engine_lang_id=lang_str,
                                       engine_voice_id=voice_id,
-                                      engine_name_msg_id=Messages.BACKEND_ESPEAK.get_msg_id(),
+                                      engine_name_msg_id=MessageId.ENGINE_ESPEAK,
                                       engine_quality=3,
                                       voice_quality=-1)
         cls.initialized_static = True
@@ -268,7 +280,63 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         player_mode: PlayerMode = Settings.get_player_mode(clz.service_ID)
         return player_mode
 
-    def runCommand(self, phrase: Phrase):
+    def get_cached_voice_file(self, phrase: Phrase,
+                              generate_voice: bool = True) -> bool:
+        """
+        Return cached file if present, otherwise, generate speech, place in cache
+        and return cached speech.
+
+        Very similar to runCommand, except that the cached files are expected
+        to be sent to a slave player, or some other player that can play a sound
+        file.
+        :param phrase: Contains the text to be voiced as wll as the path that it
+                       is or will be located.
+        :param generate_voice: If true, then wait a bit to generate the speech
+                               file.
+        :return: True if the voice file was handed to a player, otherwise False
+        """
+        MY_LOGGER.debug(f'phrase: {phrase.get_text()} {phrase.get_debug_info()} '
+                        f'cache_path: {phrase.get_cache_path()} use_cache: '
+                        f'{Settings.is_use_cache()}')
+        self.get_voice_cache().get_path_to_voice_file(phrase,
+                                                      use_cache=Settings.is_use_cache())
+        MY_LOGGER.debug(f'cache_exists: {phrase.cache_path_exists()} '
+                        f'cache_path: {phrase.get_cache_path()}')
+        # Wave files only added to cache when SFX is used.
+
+        # This Only checks if a .wav file exists. That is good enough, the
+        # player should check for existence of what it wants and to transcode
+        # if needed.
+        player_id: str = Settings.get_player_id()
+        sfx_player: bool = player_id == Players.SFX
+        if sfx_player and phrase.cache_path_exists():
+            return True
+
+        # If audio in cache is suitable for player, then we are done.
+        player_voice_cache: VoiceCache = self.get_player_voice_cache(self.player_id)
+        player_result: CacheEntryInfo
+        player_result = player_voice_cache.get_path_to_voice_file(phrase, use_cache=True)
+        if player_result.audio_exists:
+            return True
+
+        success: bool = False
+        wave_file: Path = self.runCommand(phrase)
+        if wave_file is not None:
+            result: CacheEntryInfo
+            result = self.voice_cache.get_path_to_voice_file(phrase, use_cache=True)
+            mp3_file = result.current_audio_path
+            trans_id: str = Settings.get_converter(self.engine_id)
+            MY_LOGGER.debug(f'service_id: {self.engine_id} trans_id: {trans_id}')
+            success = TransCode.transcode(trans_id=trans_id,
+                                          input_path=wave_file,
+                                          output_path=mp3_file,
+                                          remove_input=True)
+            if success:
+                phrase.text_exists(check_expired=False)
+            MY_LOGGER.debug(f'success: {success} wave_file: {wave_file} mp3: {mp3_file}')
+        return success
+
+    def runCommand(self, phrase: Phrase) -> Path | None:
         """
         Run command to generate speech and save voice to a file (mp3 or wave).
         A player will then be scheduled to play the file. Note that there is
@@ -276,19 +344,56 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         up and playing. Consider using caching of speech files as well as
         using PlayerMode.SLAVE_FILE.
         :param phrase:
-        :return:
+        :return: If Successful, path of the wave file (may not have a suffix!)
+                 Otherwise, None
         """
         clz = type(self)
-        out_file: Path = phrase.get_cache_path()
-        if out_file is None:
-            out_file, exists = self.voice_cache.get_path_to_voice_file(phrase)
-        if clz._logger.isEnabledFor(DEBUG_V):
-            clz._logger.debug_v(f'espeak.runCommand outFile: {out_file}\n'
-                                      f'text: {phrase.text}')
-        clz._logger.debug(f'espeak.runCommand outFile: {out_file}\n'
-                          f'text: {phrase.text}')
+        """
+        Output file choices:
+            eSpeak can:
+            - Only output wave format
+            - Can write to file, or pipe, or directly voice
+            - Here we only care about writing to file.
+            Destination:
+            - to player
+            - to cache, then player
+            - to mp3 converter, to cache, then player
+            Player prefers wave (since that is native to eSpeak), but can be 
+            mp3
+            Cache strongly prefers .mp3 (space), but can do wave (useful for
+            fail-safe, when there is no mp3 player configured)).
+            
+        Assumptions:
+            any cache has been checked to see if already voiced
+        """
+        use_cache: bool = Settings.is_use_cache()
+        # The SFX player is used when NO player is available. SFX is Kodi's
+        # internal player with limited functionality. Requires Wave.
+        sfx_player: bool = Settings.get_player_id() == Players.SFX
+        espeak_out_file: Path | None = None
+        exists: bool = False
+        if not sfx_player:
+            tmp = tempfile.NamedTemporaryFile()
+            espeak_out_file = Path(tmp.name)
+            #  espeak_out_file = clz.tmp_file(clz.OUTPUT_FILE_TYPE)
+        else:
+            result: CacheEntryInfo
+            result = self.voice_cache.get_path_to_voice_file(phrase, use_cache=True)
+            exists = result.audio_exists
+            espeak_out_file = result.current_audio_path
+        if exists:
+            return espeak_out_file
+
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'espeak.runCommand cache: {use_cache} '
+                              f'espeak_out_file: {espeak_out_file.name}\n'
+                              f'text: {phrase.text}')
+        # if out_file.stem == '.mp3':
+        #     self.runCommandAndPipe(phrase)
+        #     return
+
         env = os.environ.copy()
-        args = ['espeak-ng', '-b', clz.UTF_8, '-w', out_file, '--stdin']
+        args = ['espeak-ng', '-b', clz.UTF_8, '-w', str(espeak_out_file), '--stdin']
         self.addCommonArgs(args)
         try:
             if Constants.PLATFORM_WINDOWS:
@@ -311,11 +416,12 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                                env=env,
                                check=True)
 
-            clz._logger.debug(f'args: {args}')
+            MY_LOGGER.debug(f'args: {args}')
         except subprocess.CalledProcessError as e:
-            if clz._logger.isEnabledFor(DEBUG):
-                clz._logger.exception('')
-        return True
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.exception('')
+                return None
+        return espeak_out_file  # Wave file
 
     def runCommandAndSpeak(self, phrase: Phrase):
         clz = type(self)
@@ -326,20 +432,29 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                                             encoding='utf-8',
                                             stdin=subprocess.PIPE)
             while (self.process is not None and self.process.poll() is None and
-                    BaseEngineService.is_active_engine(engine=clz)):
+                   BaseEngineService.is_active_engine(engine=clz)):
                 Monitor.exception_on_abort(timeout=0.1)
-            clz._logger.debug(f'args: {args}')
+            MY_LOGGER.debug(f'args: {args}')
         except subprocess.SubprocessError as e:
-            if clz._logger.isEnabledFor(DEBUG):
-                clz._logger.debug('espeak.runCommandAndSpeak Exception: ' + str(e))
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug('espeak.runCommandAndSpeak Exception: ' + str(e))
 
     def runCommandAndPipe(self, phrase: Phrase):
         clz = type(self)
-        args = ['espeak', '-b', clz.UTF_8, '--stdin', '--stdout']
+        args = ['espeak-ng', '-b', clz.UTF_8, '--stdin', '--stdout']
 
         self.addCommonArgs(args, phrase)
-        self.process = subprocess.Popen(args, stdout=subprocess.PIPE,
-                                        encoding='utf-8')
+        # Process will block until reader for PIPE opens
+        # Be sure to close self.process.stdout AFTER second process starts
+        # ex:
+        # p1 = Popen(["dmesg"], stdout=PIPE)
+        # p2 = Popen(["grep", "hda"], stdin=p1.stdout, stdout=PIPE)
+        # p1.stdout.close()  # Allow p1 to receive a SIGPIPE if p2 exits.
+        # output = p2.communicate()[0]
+        #
+        # The p1.stdout.close() call after starting the p2 is important in order
+        # for p1 to receive a SIGPIPE if p2 exits before p1.
+        self.process = subprocess.Popen(args, stdout=subprocess.PIPE)
         return self.process.stdout
 
     def stop(self):
@@ -351,14 +466,23 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         except AbortException:
             reraise(*sys.exc_info())
         except:
-            clz._logger.exception("")
+            MY_LOGGER.exception("")
+
+    @classmethod
+    def load_languages(cls):
+        """
+        Discover eSpeak's supported languages and report results to
+        LanguageInfo.
+        :return:
+        """
+        cls.init_voices()
 
     @classmethod
     def settingList(cls, setting, *args) -> Tuple[List[Choice], str]:
         if setting == SettingsProperties.LANGUAGE:
             # Returns list of languages and index to the closest match to current
             # locale
-
+            MY_LOGGER.debug(f'In LANGUAGE')
             cls.init_voices()
             langs = cls.voice_map.keys()  # Not locales
 
@@ -435,7 +559,6 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                 # translation is handled by SettingsDialog
 
                 genders.append(Choice(value=gender_id))
-
             return genders, ''
 
         elif setting == SettingsProperties.PLAYER:
@@ -446,7 +569,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             choices: List[Choice] = []
             for player in supported_players:
                 player: AllowedValue
-                player_label = MessageUtils.get_msg(player.value)
+                player_label = Players.get_msg(player.value)
                 choices.append(Choice(label=player_label, value=player.value,
                                       choice_index=-1, enabled=player.enabled))
 
@@ -542,6 +665,32 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             speed: int = speed_val.get_value()
         return speed
 
+    @classmethod
+    def update_voice_path(cls, phrase: Phrase) -> None:
+        """
+        If a language is specified for this phrase, then modify any
+        cache path to reflect the chosen language and territory.
+        :param phrase:
+        :return:
+        """
+
+        if Settings.is_use_cache() and not phrase.is_lang_territory_set():
+            if MY_LOGGER.isEnabledFor(DEBUG_XV):
+                MY_LOGGER.debug_xv(f'lang: {phrase.language} \n'
+                                   f'voice: {phrase.voice}\n'
+                                   f'lang_dir: {phrase.lang_dir}\n'
+                                   f'')
+            locale: str = phrase.language  # IETF format
+            _, kodi_locale, _, ietf_lang = LanguageInfo.get_kodi_locale_info()
+            # MY_LOGGER.debug(f'orig Phrase locale: {locale}')
+            if locale is None:
+                locale = kodi_locale
+            ietf_lang: langcodes.Language = langcodes.get(locale)
+            # MY_LOGGER.debug(f'locale: {locale}')
+            phrase.set_lang_dir(ietf_lang.language)
+            phrase.set_territory_dir(ietf_lang.territory.lower())
+        return
+
     @staticmethod
     def available() -> bool:
         available: bool = True
@@ -549,12 +698,13 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             cmd_path = 'espeak-ng'
             args = [cmd_path, '--version']
             try:
-                process = subprocess.run(args, stdin=None, stdout=subprocess.PIPE,
-                                         universal_newlines=True,
-                                         stderr=None, shell=False, check=True)
+                completed: subprocess.CompletedProcess
+                completed = subprocess.run(args, stdin=None, capture_output=True,
+                                           text=True, encoding='utf-8',
+                                           shell=False, check=True)
 
                 found: bool = False
-                for line in process.stdout.split('\n'):
+                for line in completed.stdout.split('\n'):
                     if len(line) > 0:
                         if line.find('eSpeak NG text_to_speech'):
                             found = True
@@ -562,12 +712,15 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                 if not found:
                     available = False
             except ProcessLookupError:
+                MY_LOGGER.exception('')
                 available = False
         except Exception:
+            MY_LOGGER.exception('')
             available = False
 
         # eSpeak has built-in player
         return available
+
 
 '''
 class espeak_VOICE(ctypes.Structure):
@@ -587,7 +740,7 @@ class espeak_VOICE(ctypes.Structure):
 
 ######### BROKEN ctypes method ############
 class ESpeakCtypesTTSBackend(base.BaseEngineService):
-    backend_id = 'eSpeak-ctypes'
+    service_id = 'eSpeak-ctypes'
     displayName = 'eSpeak (ctypes)'
     settings = {SettingsProperties.VOICE: ''}
     broken = True

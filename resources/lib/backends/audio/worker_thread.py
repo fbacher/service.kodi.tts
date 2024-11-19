@@ -12,7 +12,7 @@ from common.logger import *
 from common.monitor import Monitor
 from common.phrases import Phrase, PhraseList
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class TTSQueueData:
@@ -39,7 +39,6 @@ class TTSQueue(Queue):
 
 
 class WorkerThread:
-    _logger: BasicLogger = None
 
     def __init__(self, thread_name: str, task: callable, **kwargs):
         clz = type(self)
@@ -53,9 +52,6 @@ class WorkerThread:
 
         self.thread = Thread(target=self.process_queue, name=thread_name)
         self.thread_started: bool = False
-        if clz._logger is None:
-            clz._logger = module_logger
-        pass
 
     '''
         Handled by just expiring prior phrases. 
@@ -65,7 +61,7 @@ class WorkerThread:
         
     def interrupt(self):
         clz = type(self)
-        clz._logger.debug(f'Purging queued messages due to interrupt',
+        MY_LOGGER.debug(f'Purging queued messages due to interrupt',
                           trace=Trace.TRACE_AUDIO_START_STOP)
         self.empty_queue()
     '''
@@ -81,7 +77,7 @@ class WorkerThread:
         except FullQueue as e:
             self.queueFullCount += 1
         except Exception as e:
-            clz._logger.exception('')
+            MY_LOGGER.exception('')
 
     def process_queue(self):
         clz = type(self)
@@ -105,12 +101,13 @@ class WorkerThread:
                         player_id: str = kwargs.get('player_id')
                         player: IPlayer = PlayerIndex.get_player(player_id)
                         phrase: Phrase = kwargs.get('phrase')
-                        engine_id: str = kwargs.get('engine_id')
+                        engine_id: str = kwargs.get('service_id')
+                        MY_LOGGER.debug(f'player_id: {player_id} engine_id: {engine_id}')
                         try:
                             engine: IServices = BaseServices.getService(engine_id)
                             engine.say_phrase(phrase)
                         except Exception as e:
-                            clz._logger.exception('')
+                            MY_LOGGER.exception('')
                         continue
 
                     if kwargs['state'] == 'seed_cache':
@@ -120,16 +117,16 @@ class WorkerThread:
                             engine: IServices = BaseServices.getService(engine_id)
                             engine.seed_text_cache(phrases)
                         except Exception as e:
-                            clz._logger.exception('')
+                            MY_LOGGER.exception('')
                 except AbortException as e:
                     return  # Exit thread
                 except Exception as e:
-                    clz._logger.exception('')
+                    MY_LOGGER.exception('')
 
         except AbortException as e:
             pass  # Let thread exit
         except Exception as e:
-            clz._logger.exception('')
+            MY_LOGGER.exception('')
         finally:
             pass
         return

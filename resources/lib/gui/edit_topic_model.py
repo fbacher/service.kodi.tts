@@ -11,6 +11,7 @@ from gui.parser.parse_topic import ParseTopic
 from gui.statements import Statements
 from gui.topic_model import TopicModel
 from windows.ui_constants import AltCtrlType
+from windows.window_state_monitor import WinDialogState
 
 module_logger = BasicLogger.get_logger(__name__)
 
@@ -49,7 +50,8 @@ class EditTopicModel(TopicModel):
         if alt_name == '':
             return False
         stmts.last.phrases.append(Phrase(text=alt_name,
-                                         post_pause_ms=Phrase.PAUSE_DEFAULT))
+                                         post_pause_ms=Phrase.PAUSE_DEFAULT,
+                                         check_expired=False))
         return True
 
     def get_alt_control_name(self) -> str:
@@ -78,7 +80,7 @@ class EditTopicModel(TopicModel):
             alt_label_id = int(self.alt_label_expr)
             text: str = Messages.get_msg_by_id(alt_label_id)
             if text != '':
-                stmts.last.phrases.append(Phrase(text=text))
+                stmts.last.phrases.append(Phrase(text=text, check_expired=False))
                 return True
         except ValueError as e:
             clz._logger.debug(f'Invalid int alt_label_id: {alt_label_id}')
@@ -95,7 +97,7 @@ class EditTopicModel(TopicModel):
                 msg_id: int = int(self.label_expr)
                 text = Messages.get_msg_by_id(msg_id)
                 if text != '':
-                    phrase: Phrase = Phrase(text=text)
+                    phrase: Phrase = Phrase(text=text, check_expired=False)
                     stmts.last.phrases.append(phrase)
                     success = True
             except ValueError as e:

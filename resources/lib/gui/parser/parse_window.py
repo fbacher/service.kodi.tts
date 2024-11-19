@@ -3,7 +3,7 @@
 import xml.etree.ElementTree as ET
 from enum import StrEnum
 from pathlib import Path
-from typing import Callable, List, Tuple
+from typing import Callable, Dict, ForwardRef, List, Tuple
 
 from common.logger import BasicLogger, DEBUG_V
 from gui.base_tags import control_elements, ControlElement, Item, WindowType
@@ -50,7 +50,6 @@ class InitParsers:
         ParseItemLayout.init_class()
         ParseFocusedLayout.init_class()
         ParseList.init_class()
-        BaseElementParser.init_class()
         ScrollbarParser.init_class()
         ParseEdit.init_class()
         ParseTopic.init_class()
@@ -131,19 +130,27 @@ class ParseWindow(BaseParser):
     """
     _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.WINDOW]
+    instances: Dict[Path, ForwardRef('ParseWindow')] = {}
 
+
+    @classmethod
+    def get_instance(cls, xml_path: Path,
+                     is_addon: bool) -> ForwardRef('ParseWindow'):
+        if xml_path not in cls.instances:
+            parser: ForwardRef('ParseWindow') = ParseWindow()
+            parser.parse_window(xml_path=xml_path, is_addon=True)
+            cls.instances[xml_path] = parser
+        return cls.instances[xml_path]
 
     def __init__(self):
         super().__init__(parent=None, window_parser=self)
         clz = type(self)
-        clz._logger.debug(f'SETTING self.control_type to WINDOW')
-        self.control_type = ControlElement.WINDOW
         self.topic: ParseTopic | None = None
         self.xml_path: Path = None  # Source path of current window xml
         self.win_parser: WindowParser = None
         self.window_type: WindowType = None
         # self.win_dialog_id: int = -1
-        self.control_id: int = 0
+        self.control_id: int = -1
         self.window_modality: str = ''   # Only applies to dialogs
         self.xml_root: ET.Element = None
         self.menu_control: int = -1
@@ -168,7 +175,7 @@ class ParseWindow(BaseParser):
     def calculate_allowed_children(self) -> None:
         pass
 
-    def parse_window(self, control_id: int,
+    def parse_window(self,
                      xml_path: Path | None, is_addon: bool = False) -> None:
         """
          Get window type

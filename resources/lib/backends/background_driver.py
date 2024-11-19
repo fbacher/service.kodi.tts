@@ -13,7 +13,7 @@ from common import *
 
 from backends.base import SimpleTTSBackend
 from backends.settings.settings_map import SettingsMap
-from cache.voicecache import VoiceCache
+from cache.voicecache import CacheEntryInfo, VoiceCache
 from common.base_services import BaseServices
 from common.constants import Constants
 from common.file_utils import Delay, FindTextToVoice
@@ -122,8 +122,9 @@ class BackgroundDriver(BaseServices):
 
             try:
                 phrase: Phrase = Phrase(text, check_expired=False)
-                VoiceCache.get_path_to_voice_file(phrase, use_cache=True)
-                if not phrase.exists():  # Voice file does not exist
+                result: CacheEntryInfo
+                result = VoiceCache.get_path_to_voice_file(phrase, use_cache=True)
+                if not phrase.text_exists():  # Voice file does not exist
                     self.generate_voice(phrase)
             except Exception as e:
                 clz._logger.exception('')

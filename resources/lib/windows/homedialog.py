@@ -13,6 +13,7 @@ from common.message_ids import MessageId
 from common.messages import Messages
 from common.phrases import Phrase, PhraseList
 from .base import WindowReaderBase
+from .window_state_monitor import WinDialogState
 
 module_logger = BasicLogger.get_logger(__name__)
 
@@ -21,7 +22,8 @@ class HomeDialogReader(WindowReaderBase):
     ID = 'progressdialog'
     _logger: BasicLogger = None
 
-    def __init__(self, win_id=None, service: ForwardRef('TTSService') = None) -> None:
+    def __init__(self, win_id=None, service: ForwardRef('TTSService') = None,
+                 windialog_state: WinDialogState = None) -> None:
         cls = type(self)
         super().__init__(win_id, service)
         cls._logger = module_logger

@@ -965,7 +965,7 @@ class ObjCInstance(object):
     def __getattr__(self, name):
         """Returns a callable method object with the given name."""
         # Search for named instance method in the class object and if it
-        # exists, return callable object with self as hidden argument.
+        # text_exists, return callable object with self as hidden argument.
         # Note: you should give self and not self.ptr as a parameter to
         # ObjCBoundMethod, so that it will be able to keep the ObjCInstance
         # alive for chained calls like MyClass.alloc().init() where the
@@ -975,7 +975,7 @@ class ObjCInstance(object):
         if method:
             return ObjCBoundMethod(method, self)
         # Else, search for class method with given name in the class object.
-        # If it exists, return callable object with a pointer to the class
+        # If it text_exists, return callable object with a pointer to the class
         # as a hidden argument.
         method = self.objc_class.get_class_method(name)
         if method:

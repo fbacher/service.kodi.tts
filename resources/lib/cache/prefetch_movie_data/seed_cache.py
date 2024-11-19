@@ -5,7 +5,7 @@ import sys
 
 from common import *
 
-from backends.audio.sound_capabilties import SoundCapabilities
+from backends.audio.sound_capabilities import SoundCapabilities
 from cache.prefetch_movie_data.db_access import DBAccess
 from cache.prefetch_movie_data.parse_library import ParseLibrary
 from cache.voicecache import VoiceCache

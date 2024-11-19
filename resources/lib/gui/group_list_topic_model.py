@@ -8,6 +8,7 @@ from gui.base_model import BaseModel
 from gui.parser.parse_topic import ParseTopic
 from gui.statements import Statements
 from gui.topic_model import TopicModel
+from windows.window_state_monitor import WinDialogState
 
 module_logger = BasicLogger.get_logger(__name__)
 

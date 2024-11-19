@@ -17,7 +17,7 @@ except ImportError:
 
 from common import *
 
-from backends.audio.sound_capabilties import ServiceType
+from backends.audio.sound_capabilities import ServiceType
 from backends.base import SimpleTTSBackend
 from backends.players.iplayer import IPlayer
 from backends.settings.i_validators import IValidator
@@ -25,7 +25,7 @@ from backends.settings.service_types import Services
 from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import ConstraintsValidator
-from cache.voicecache import VoiceCache
+from cache.voicecache import CacheEntryInfo, VoiceCache
 from common.constants import ReturnCode
 from common.exceptions import ExpiredException
 from common.logger import *
@@ -133,7 +133,7 @@ class SpeechGenerator:
         runInThread(self._generate_speech, name='XprGen', delay=0.0,
                     phrase=unchecked_phrase)
         max_wait: int = int(timeout / 0.1)
-        while Monitor.exception_on_abort(timeout=0.1):
+        while not Monitor.exception_on_abort(timeout=0.1):
             max_wait -= 1
             if (self.get_rc() == ReturnCode.OK or caller.stop_processing or
                     max_wait <= 0):
@@ -216,7 +216,7 @@ class SpeechGenerator:
                 runInThread(self.tts_generate, name='Xgenr', delay=0.0,
                             phrase=phrase)
                 thirty_seconds: int = int(30 / 0.1)
-                while Monitor.exception_on_abort(timeout=0.1):
+                while not Monitor.exception_on_abort(timeout=0.1):
                     thirty_seconds -= 1
                     if (
                             self.generate_results.get_rc() == ReturnCode.OK or
@@ -356,7 +356,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
 
     def runCommand(self, phrase: Phrase) -> bool:
         clz = type(self)
-        # If caching disabled, then exists is always false. file_path
+        # If caching disabled, then text_exists is always false. file_path
         # always contains path to cached file, or path where to download to
         if self.stop_processing:
             if clz._logger.isEnabledFor(DEBUG_XV):
@@ -366,10 +366,10 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
         exists: bool
         voiced_text: bytes
         try:
-            if phrase.get_cache_path() is None:
-                VoiceCache.get_path_to_voice_file(phrase,
+            result: CacheEntryInfo
+            result = VoiceCache.get_path_to_voice_file(phrase,
                                                   use_cache=Settings.is_use_cache())
-            if not phrase.exists():
+            if not result.text_exists:
                 generator: SpeechGenerator = SpeechGenerator()
                 results: Results = generator.generate_speech(self, phrase)
                 if results.get_rc() == ReturnCode.OK:
@@ -377,7 +377,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
         except ExpiredException:
             clz._logger.debug(f'EXPIRED at engine')
             return False
-        return phrase.exists()
+        return phrase.text_exists()
 
     def runCommandAndPipe(self, phrase: Phrase):
         clz = type(self)
@@ -393,7 +393,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
         byte_stream: io.BinaryIO = None
         rc: int = -2
         try:
-            if not phrase.exists():
+            if not phrase.text_exists():
                 rc = self.generate_speech(phrase)
 
             if self.stop_processing:
@@ -427,10 +427,11 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
             phrases = phrases.clone(check_expired=False)
             for phrase in phrases:
                 if Settings.is_use_cache():
-                    VoiceCache.get_path_to_voice_file(phrase, use_cache=True)
-                    if not phrase.exists():
+                    result: CacheEntryInfo
+                    result = VoiceCache.get_path_to_voice_file(phrase, use_cache=True)
+                    if not result.text_exists:
                         text_to_voice: str = phrase.get_text()
-                        voice_file_path: pathlib.Path = phrase.get_cache_path()
+                        voice_file_path: pathlib.Path = result.current_audio_path
                         clz._logger.debug_xv(f'PHRASE Text {text_to_voice}')
                         rc: int = 0
                         try:

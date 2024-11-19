@@ -7,7 +7,7 @@ import sys
 
 from common import *
 
-from backends.audio.sound_capabilties import ServiceType, SoundCapabilities
+from backends.audio.sound_capabilities import ServiceType, SoundCapabilities
 from backends.base import ThreadedTTSBackend
 from backends.settings.constraints import Constraints
 from backends.settings.i_validators import IValidator

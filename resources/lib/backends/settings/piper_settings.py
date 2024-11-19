@@ -3,7 +3,7 @@ from __future__ import annotations  # For union operator |
 
 from common import *
 
-from backends.audio.sound_capabilties import SoundCapabilities
+from backends.audio.sound_capabilities import SoundCapabilities
 from backends.engines.base_engine_settings import (BaseEngineSettings)
 from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.constraints import Constraints
@@ -13,7 +13,7 @@ from backends.settings.validators import (BoolValidator, ConstraintsValidator,
                                           NumericValidator, StringValidator)
 from common.constants import Constants
 from common.logger import BasicLogger
-from common.setting_constants import Backends, Players
+from common.setting_constants import AudioType, Backends, Players
 from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
 
@@ -50,8 +50,8 @@ class PiperSettings(BaseServiceSettings):
     
     """
 
-    _supported_input_formats: List[str] = []
-    _supported_output_formats: List[str] = [SoundCapabilities.WAVE]
+    _supported_input_formats: List[AudioType] = []
+    _supported_output_formats: List[AudioType] = [AudioType.WAV]
     _provides_services: List[ServiceType] = [ServiceType.ENGINE]
     SoundCapabilities.add_service(service_ID, _provides_services,
                                   _supported_input_formats,
@@ -194,7 +194,7 @@ class PiperSettings(BaseServiceSettings):
         candidates: List[str]
         candidates = SoundCapabilities.get_capable_services(
                 service_type=ServiceType.PLAYER,
-                consumer_formats=[SoundCapabilities.MP3],
+                consumer_formats=[AudioType.MP3],
                 producer_formats=[])
         if len(candidates) > 0:
             return True

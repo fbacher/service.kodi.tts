@@ -10,12 +10,12 @@ from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import NumericValidator
 from common import *
 
-from backends.audio.sound_capabilties import SoundCapabilities
+from backends.audio.sound_capabilities import SoundCapabilities
 from backends.base import SimpleTTSBackend
 from backends.settings.constraints import Constraints
 from backends.settings.service_types import Services, ServiceType
 from common.logger import *
-from common.setting_constants import Backends, Players
+from common.setting_constants import AudioType, Backends, Players
 from common.settings_low_level import SettingsProperties
 from common.system_queries import SystemQueries
 
@@ -59,8 +59,8 @@ class FestivalTTSBackend(SimpleTTSBackend):
     #  player_handler_class: Type[BasePlayerHandler] = WavAudioPlayerHandler
     constraints: Dict[str, Constraints] = {}
 
-    _supported_input_formats: List[str] = []
-    _supported_output_formats: List[str] = [SoundCapabilities.WAVE]
+    _supported_input_formats: List[AudioType] = []
+    _supported_output_formats: List[AudioType] = [AudioType.WAV]
     _provides_services: List[ServiceType] = [ServiceType.ENGINE,
                                              ServiceType.INTERNAL_PLAYER]
     SoundCapabilities.add_service(service_ID, _provides_services,

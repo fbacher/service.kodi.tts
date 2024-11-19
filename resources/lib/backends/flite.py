@@ -111,7 +111,7 @@ class FliteTTSBackend(SimpleTTSBackend):
                 ': ', 1)[-1].strip().split(' ')]
 
 # class FliteTTSBackend(BaseEngineService):
-#    backend_id = 'Flite':q:q
+#    service_id = 'Flite':q:q
 #    def __init__(self):
 #        import ctypes
 #        self.flite = ctypes.CDLL('libflite.so.1',mode=ctypes.RTLD_GLOBAL)
@@ -138,7 +138,7 @@ class FliteTTSBackend(SimpleTTSBackend):
 #        return True
 
 # class FliteTTSBackend(BaseEngineService):
-#    backend_id = 'Flite'
+#    service_id = 'Flite'
 #
 #    def say(self,text,interrupt=False):
 #        if not text: return

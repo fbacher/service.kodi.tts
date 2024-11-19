@@ -146,7 +146,8 @@ class OldTopicModel(BaseTopicModel):
         alt_name: str = self.get_alt_control_name()
         if alt_name == '':
             return False
-        phrases.append(Phrase(text=alt_name, post_pause_ms=Phrase.PAUSE_DEFAULT))
+        phrases.append(Phrase(text=alt_name, post_pause_ms=Phrase.PAUSE_DEFAULT,
+                              check_expired=False))
         return True
 
     def get_alt_control_name(self) -> str:
@@ -175,7 +176,7 @@ class OldTopicModel(BaseTopicModel):
             alt_label_id = int(self.alt_label_expr)
             text: str = Messages.get_msg_by_id(alt_label_id)
             if text != '':
-                phrases.append(Phrase(text=text))
+                phrases.append(Phrase(text=text, check_expired=False))
                 return True
         except ValueError as e:
             clz._logger.debug(f'Invalid int alt_label_id: {alt_label_id}')

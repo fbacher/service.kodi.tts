@@ -6,21 +6,22 @@ import threading
 import time
 from contextlib import AbstractContextManager
 
+import xbmc
 import xbmcaddon
 
 from common import *
 
-from backends.settings.service_types import Services
+from backends.settings.service_types import Services, ServiceType
 from backends.settings.setting_properties import SettingsProperties, SettingType
 from backends.settings.settings_map import SettingsMap
 from common.constants import Constants
 from common.critical_settings import CriticalSettings
 from common.logger import *
 from common.monitor import Monitor
-from common.setting_constants import Backends
-from kutils.kodiaddon import Addon
+from common.setting_constants import Backends, Players
+from common.kodiaddon import Addon
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class CachedSettings:
@@ -39,7 +40,20 @@ class SettingsManager:
 
     # Initialize with one frame
 
+    _settings_lock: threading.RLock = threading.RLock()
     _settings_stack: List[CachedSettings] = [CachedSettings(settings_to_copy={})]
+
+    @classmethod
+    def get_lock(cls) -> threading.RLock:
+        """
+        Should NOT be generally used. Meant to be used in SettingsDialog while
+        configuring settings. Typically used when multiple settings changes occur
+        within a short time and would prefer for them to all appear to be changed
+        atomically.
+
+        :return:
+        """
+        return cls._settings_lock
 
     @classmethod
     def set_setting(cls, setting_id: str,
@@ -50,14 +64,22 @@ class SettingsManager:
         :param value: value of the setting
         :return:
         """
-        changed: bool = False
-        if cls._settings_stack[-1].settings.get(setting_id) != value:
-            changed = True
-            cls._settings_stack[-1].settings_changed = True
-            if cls._settings_stack[-1].settings_update_begin is None:
-                cls._settings_stack[-1].settings_update_begin = time.time()
-            cls._settings_stack[-1].settings[setting_id] = value
-        return changed
+        with cls._settings_lock:
+            if MY_LOGGER.isEnabledFor(DEBUG_XV):
+                MY_LOGGER.debug_xv(f'setting_id: {setting_id} value: {value}')
+            changed: bool = False
+            if cls._settings_stack[-1].settings.get(setting_id) != value:
+                changed = True
+                cls._settings_stack[-1].settings_changed = True
+                if cls._settings_stack[-1].settings_update_begin is None:
+                    cls._settings_stack[-1].settings_update_begin = time.time()
+                cls._settings_stack[-1].settings[setting_id] = value
+            return changed
+
+    @classmethod
+    def set_settings(cls, settings_to_update: Dict[str, int | str | bool | None]) -> None:
+        for setting_id, value in settings_to_update.items():
+            cls.set_setting(setting_id, value)
 
     @classmethod
     def load_settings(cls,
@@ -69,23 +91,22 @@ class SettingsManager:
         :param settings_to_backup: deep_copy is used to copy
         :return:
         """
-        tts_logger: BasicLogger = BasicLogger.get_addon_logger()
-
-        tts_logger.setLevel(INFO)
-        tts_logger.info('tts_logger info')
-        tts_logger.debug(f'tts_logger debug')
-        module_logger.info('module_logger info')
-        module_logger.debug(f'module_logger debug')
 
         new_frame: CachedSettings = CachedSettings(settings_to_backup)
-        cls._settings_stack.append(new_frame)
-        if SettingsLowLevel._logger.isEnabledFor(DEBUG):
-            SettingsLowLevel._logger.debug(
-                f'settings_to_backup len: {len(settings_to_backup)}'
-                f' current_settings len: {len(cls._settings_stack[-1].settings)}')
+        with cls._settings_lock:
+            cls._settings_stack.append(new_frame)
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(
+                    f'settings_to_backup len: {len(settings_to_backup)}'
+                    f' current_settings len: {len(cls._settings_stack[-1].settings)}')
 
     @classmethod
-    def push_settings(cls) -> None:
+    def clear_settings(cls) -> None:
+        with cls._settings_lock:
+            del cls._settings_stack[0:-1]
+
+    @classmethod
+    def push_settings(cls) -> int:
         """
          Creates a new CachedSettings 'frame' from the current top frame. This
          saves the previous version of settings so that it can be restored if
@@ -93,66 +114,99 @@ class SettingsManager:
 
          :return:
          """
-        current_settings: Dict[str, int | str | bool | None]
-        current_settings = cls._settings_stack[-1].settings
-        new_frame: CachedSettings = CachedSettings(current_settings)
-        cls._settings_stack.append(new_frame)
-        if SettingsLowLevel._logger.isEnabledFor(DEBUG):
-            SettingsLowLevel._logger.debug(
-                    f'settings_to_backup len: {len(current_settings)}'
+        with cls._settings_lock:
+            current_settings: Dict[str, int | str | bool | None]
+            current_settings = cls._settings_stack[-1].settings
+            new_frame: CachedSettings = CachedSettings(current_settings)
+            cls._settings_stack.append(new_frame)
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(
+                    f'push_settings settings_to_backup len: {len(current_settings)}'
                     f' current_settings len: {len(cls._settings_stack[-1].settings)}')
-    @classmethod
-    def restore_settings(cls) -> None:
-        cls._settings_stack.pop()
+        return len(cls._settings_stack)
 
     @classmethod
-    def get_settings(cls) -> Dict[str, Any]:
-        return cls._settings_stack[-1].settings
+    def restore_settings(cls, stack_depth: int = None,
+                         settings_changes: Dict[str, Any] | None = None) -> None:
+        """
+        Restore the Settings Stack by poping one or more frames.
+
+        :param stack_depth: Specifies what the final stack depth should be.
+                            Defaults to poping one frame
+        :param settings_changes: If not None, then apply these changes
+                                 to stack_top
+        """
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'restore_settings')
+        old_top_frame: CachedSettings
+        with cls._settings_lock:
+            if stack_depth is not None:
+                while stack_depth > len(cls._settings_stack):
+                    MY_LOGGER.debug(f'poping stack_depth: {stack_depth} depth: '
+                                    f'{len(cls._settings_stack)}')
+                    cls._settings_stack.pop()
+            else:
+                MY_LOGGER.debug(f'pop one')
+                cls._settings_stack.pop()
+            if settings_changes is not None:
+                cls.set_settings(settings_changes)
+
+    def get_settings_stack_depth(cls) -> int:
+        with cls._settings_lock:
+            return len(cls._settings_stack)
+
+    @classmethod
+    def get_settings(cls, depth: int = -1) -> Dict[str, Any]:
+        if MY_LOGGER.isEnabledFor(DEBUG_XV):
+            MY_LOGGER.debug_xv(f'get_settings')
+        with cls._settings_lock:
+            return copy.deepcopy(cls._settings_stack[-1].settings)
 
     @classmethod
     def get_setting(cls, setting_id: str, default_value: Any) -> Any:
         """
         throws KeyError
         """
-        value = cls._settings_stack[-1].settings.get(setting_id)
+        with cls._settings_lock:
+            value = cls._settings_stack[-1].settings.get(setting_id)
         if value is None or (isinstance(value, str) and value == ''):
-            # cls._logger.debug(f'Using default value {setting_id} {default_value}')
+            # MY_LOGGER.debug(f'Using default value {setting_id} {default_value}')
             value = default_value
             if setting_id == 'converter':
-                SettingsLowLevel._logger.dump_stack('Converter problem')
-        #  SettingsLowLevel._logger.debug(f'setting_id: {setting_id} value: {value}')
-        return value
+                MY_LOGGER.dump_stack('Converter problem')
+        # MY_LOGGER.debug(f'setting_id: {setting_id} value: {value}')
 
+        return value
 
     @classmethod
     def get_previous_setting(cls, setting_id: str, default_value: Any) -> Any:
         """
         throws KeyError
         """
-        if len(cls._settings_stack) < 2:
-            return None
-        value = cls._settings_stack[-2].settings.get(setting_id)
+        with cls._settings_lock:
+            if len(cls._settings_stack) < 2:
+                return None
+            value = cls._settings_stack[-2].settings.get(setting_id)
         if value is None or (isinstance(value, str) and value == ''):
-            # cls._logger.debug(f'Using default value {setting_id} {default_value}')
+            # MY_LOGGER.debug(f'Using default value {setting_id} {default_value}')
             value = default_value
             if setting_id == 'converter':
-                SettingsLowLevel._logger.dump_stack('Converter problem')
-        #  SettingsLowLevel._logger.debug(f'setting_id: {setting_id} value: {value}')
+                MY_LOGGER.dump_stack('Converter problem')
+        MY_LOGGER.debug(f'get_previous_setting setting_id: {setting_id} value: {value}')
+
+
         return value
 
     @classmethod
     def is_empty(cls) -> bool:
-        return not cls._settings_stack[-1].settings
+        with cls._settings_lock:
+            return not cls._settings_stack[-1].settings
 
 
 class SettingsContext(AbstractContextManager):
 
-    # module_logger = BasicLogger.get_logger(__name__)
-    _logger: BasicLogger = module_logger
-
     def __init__(self):
         clz = type(self)
-        # clz._logger = module_logger
         self.ks: xbmcaddon.Settings = None
 
     def __enter__(self) -> ForwardRef('SettingsContext'):
@@ -166,7 +220,7 @@ class SettingsContext(AbstractContextManager):
             self.ks = None
             pass
         except Exception as e:
-            # clz._logger.exception('')
+            # MY_LOGGER.exception('')
             pass
 
         if exc_type is not None:
@@ -177,12 +231,10 @@ class SettingsContext(AbstractContextManager):
 
 class SettingsWrapper:
 
-    _logger: BasicLogger = module_logger
     old_api: xbmcaddon.Addon = CriticalSettings.ADDON
 
     def __init__(self):
         clz = type(self)
-        # clz._logger = module_logger
 
     def getBool(self, id: str) -> bool:
         """
@@ -253,13 +305,13 @@ class SettingsWrapper:
         try:
             value: float = clz.old_api.getSettingNumber(id)
         except TypeError:
-            clz._logger.error(f'Setting {id} is not a float. Setting to None/default')
+            MY_LOGGER.error(f'Setting {id} is not a float. Setting to None/default')
             value = None
         return value
 
     def getString(self, id: str) -> str:
         """
-        Returns the value of a setting as a tring.
+        Returns the value of a setting as a string.
 
         :param id: string - id of the setting that the module needs to access.
         :return: string - Setting as a string
@@ -276,7 +328,7 @@ class SettingsWrapper:
         value: str | None = None
         try:
             value = clz.old_api.getSettingString(id)
-            clz._logger.debug(f'value: {value} id: {id}')
+            MY_LOGGER.debug(f'value: {value} id: {id}')
         except TypeError as e:
             value = None
         return value
@@ -540,9 +592,8 @@ class SettingsLowLevel:
     # working copy of settings. Changes must be validated before changes allowed
     # here
     """
-    _current_engine: str = None
-    _alternate_engine: str = None
-    _logger: BasicLogger = module_logger
+    # _current_engine: str = None
+    # _alternate_engine: str = None
     settings_wrapper = SettingsWrapper()
     addon = xbmcaddon.Addon(Constants.ADDON_ID)
     all_settings: xbmcaddon.Settings = addon.getSettings()
@@ -556,8 +607,7 @@ class SettingsLowLevel:
     def init(cls):
         if not cls._initialized:
             cls._initialized = True
-            #  SettingsLowLevel._logger = module_logger
-            SettingsLowLevel._current_engine = None
+            # SettingsLowLevel._current_engine = None
 
     @staticmethod
     def get_addon() -> Addon:
@@ -583,24 +633,24 @@ class SettingsLowLevel:
         # SettingsLowLevel.load_settings()
 
     @classmethod
-    def save_settings(cls) -> None:
+    def save_settings(cls) -> int:
         """
 
         :return:
         """
         try:
-            SettingsManager.push_settings()
-            #  SettingsLowLevel._logger.debug('Backed up settings')
+            return SettingsManager.push_settings()
+            #  MY_LOGGER.debug('Backed up settings')
         except Exception:
-            SettingsLowLevel._logger.exception("")
+            MY_LOGGER.exception("")
 
     @classmethod
-    def restore_settings(cls) -> None:
+    def restore_settings(cls, stack_depth: int = None) -> None:
         # get lock
         # set SETTINGS_BEING_CONFIGURED, SETTINGS_LAST_CHANGED
         #
-        SettingsManager.restore_settings()
-        SettingsLowLevel._logger.debug('TRACE Cancel changes')
+        SettingsManager.restore_settings(stack_depth)
+        MY_LOGGER.debug('TRACE Cancel changes')
 
     @staticmethod
     def get_changed_settings(settings_to_check: List[str]) -> List[str]:
@@ -609,7 +659,7 @@ class SettingsLowLevel:
         :param settings_to_check:
         :return:
         """
-        # SettingsLowLevel._logger.debug('entered')
+        # MY_LOGGER.debug('entered')
         changed_settings = []
         for setting_id in settings_to_check:
             previous_value = SettingsManager.get_previous_setting(setting_id, None)
@@ -620,8 +670,8 @@ class SettingsLowLevel:
 
             if previous_value != current_value:
                 changed = True
-                if module_logger.isEnabledFor(DEBUG_V):
-                    SettingsLowLevel._logger.debug_v(f'setting changed: {setting_id} '
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'setting changed: {setting_id} '
                                                    f'previous_value: {previous_value} '
                                                    f'current_value: {current_value}')
             else:
@@ -642,20 +692,20 @@ class SettingsLowLevel:
         engine_id: str = None
         type_error: bool = False
         expected_type: str = ''
-        if SettingsLowLevel._logger.isEnabledFor(DEBUG_XV):
-            SettingsLowLevel._logger.debug_xv(f'full_setting_id:'
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'full_setting_id:'
                                                          f' {full_setting_id} '
                                                          f'value: {value}')
         engine_id, setting_id = cls.splitSettingId(full_setting_id)
         if full_setting_id in SettingsProperties.TTS_SETTINGS:
             engine_id = Services.TTS_SERVICE
 
-        if SettingsLowLevel._logger.isEnabledFor(DEBUG_XV):
-            SettingsLowLevel._logger.debug_xv(f'setting_id: {setting_id}'
-                                                         f' engine_id: {engine_id}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'setting_id: {setting_id}'
+                                                         f' service_id: {engine_id}')
         if not SettingsMap.is_valid_property(engine_id, setting_id):
-            if SettingsLowLevel._logger.isEnabledFor(DEBUG_V):
-                SettingsLowLevel._logger.debug_v(
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(
                     f'TRACE Setting {setting_id} NOT supported for {engine_id}')
         if setting_id is None or len(setting_id) == 0:
             setting_id = engine_id
@@ -702,19 +752,19 @@ class SettingsLowLevel:
             finally:
                 pass
         except TypeError:
-            SettingsLowLevel._logger.exception(
+            MY_LOGGER.exception(
                     f'TRACE: failed to find type of setting: {full_setting_id}. '
                     f'Probably not defined in resources/settings.xml')
         except Exception:
-            SettingsLowLevel._logger.exception(
+            MY_LOGGER.exception(
                     f'TRACE: Bad setting_id: {setting_id}')
         if type_error:
-            SettingsLowLevel._logger.debug(f'TRACE: incorrect type for setting: {full_setting_id} '
+            MY_LOGGER.debug(f'TRACE: incorrect type for setting: {full_setting_id} '
                               f'Expected {expected_type} got {str(type(value))}')
         return type_error, type(value)
 
     @classmethod
-    def load_settings(cls) -> None:
+    def load_settings(cls, service_type: ServiceType) -> None:
         """
         Load ALL of the settings for the current backend.
         Settings from multiple backends can be in the cache simultaneously
@@ -725,8 +775,8 @@ class SettingsLowLevel:
 
         Ignore any other changes to settings until finished
         """
-        if SettingsLowLevel._logger.isEnabledFor(DEBUG_V):
-            SettingsLowLevel._logger.debug_v('Tload_settingsRACE load_settings')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'TRACE load_settings service_type: {service_type}')
         blocked: bool = False
         while not SettingsLowLevel._loading.is_set():
             # If some other thread is loading, wait until finished, then exit.
@@ -736,27 +786,40 @@ class SettingsLowLevel:
             blocked = True
             Monitor.exception_on_abort(timeout=0.10)
 
+        services_to_add: List[str] = []
+        new_settings: Dict[str, Any] = {}
+        if service_type == ServiceType.ENGINE:
+            engine_id: str
+            full_setting_id, engine_id = cls.load_setting(SettingsProperties.ENGINE)
+            if engine_id == Backends.AUTO_ID:
+                engine_id = Backends.DEFAULT_ENGINE_ID
+            new_settings[full_setting_id] = engine_id
+            services_to_add.append(engine_id)
+            services_to_add.extend(Backends.ALL_ENGINE_IDS)
+            services_to_add.remove(Services.AUTO_ENGINE_ID)
+            MY_LOGGER.debug(f'engine settings: {services_to_add}')
+        elif service_type == ServiceType.PLAYER:
+            MY_LOGGER.debug(f'Loading PLAYER services')
+            services_to_add.extend(Players.ALL_PLAYER_IDS)
+        elif service_type == ServiceType.TTS:
+            MY_LOGGER.debug(f'Loading TTS services')
+            services_to_add.append(SettingsProperties.TTS_SERVICE)
         try:
             SettingsLowLevel._loading.clear()
             if blocked:
                 return
-            new_settings: Dict[str, Any] = {}
-            cls._load_settings(new_settings, Services.TTS_SERVICE)
-            engine_id: str
-            _, engine_id = cls.load_setting(SettingsProperties.ENGINE)
-            if engine_id == Backends.AUTO_ID:
-                engine_id = Backends.DEFAULT_ENGINE_ID
-            cls._load_settings(new_settings, engine_id)
-
-            SettingsLowLevel._current_engine = engine_id
+            service_id: str
+            for service_id in services_to_add:
+                cls._load_settings(new_settings, service_type, service_id)
 
             # validate new_settings
-            SettingsManager.load_settings(new_settings)
+            SettingsManager.set_settings(new_settings)
             # release lock
             # Notify
         finally:
             SettingsLowLevel._loading.set()
 
+    # Ignore Settings in this dict
     ignore: Dict[str, str] = {
         'addons_MD5.eSpeak': '',
         'addons_MD5.google': '',
@@ -764,7 +827,7 @@ class SettingsLowLevel:
         # 'api_key.Cepstral': '',
         'api_key.google': '',
         'api_key.eSpeak': '',
-        # 'api_key.ResponsiveVoice': '',
+        # 'api_key.ResponsiveVoice': '',service_id
         'api_key.tts': '',
         'auto_item_extra_delay.eSpeak': '',
         'auto_item_extra_delay.tts': '',
@@ -786,7 +849,6 @@ class SettingsLowLevel:
         # 'cache_speech.piper': '',
         # 'cache_speech.ResponsiveVoice': '',
         # 'cache_speech.sapi': '',
-        # 'cache_speech.tts': '',
         'cache_speech.tts': '',
         'capital_recognition.eSpeak': '',
         'capital_recognition.google': '',
@@ -795,7 +857,7 @@ class SettingsLowLevel:
         'channels.eSpeak': '',
         'channels.google': '',
         'channels.tts': '',
-        'converter.eSpeak': '',
+        #  'converter.eSpeak': '',
         'converter.google': '',
         # 'converter.experimental': '',
         # 'converter.google': '',
@@ -831,7 +893,6 @@ class SettingsLowLevel:
         # 'gender.ResponsiveVoice': '',
         # 'gender.sapi': '',
         # 'gender.Speech-Dispatcher': '',
-        # 'gender.tts': '',
         'gender.tts': '',
         'gender_visible.eSpeak': '',
         'gender_visible.google': '',
@@ -906,6 +967,7 @@ class SettingsLowLevel:
         # 'player.Flite': '',
         # 'player.google': '',
         # 'player_mode.google': '',
+        # 'player_mode.eSpeak',
         'player_mode.tts': '',
         # 'player.OSXSay': '',
         # 'player.pico2wave': '',
@@ -1034,9 +1096,10 @@ class SettingsLowLevel:
     }
 
     @classmethod
-    def _load_settings(cls, new_settings: Dict[str, Any], engine_id: str) -> None:
+    def _load_settings(cls, new_settings: Dict[str, Any], service_type: ServiceType,
+                       service_id: str) -> None:
         """
-        Load ALL of the settings for the current backend.
+        Load ALL of the settings for the given service_id.
         Settings from multiple backends can be in the cache simultaneously
         Settings not supported by a backend are not read and not put into
         the cache. The settings.xml can have orphaned settings as long as
@@ -1046,43 +1109,49 @@ class SettingsLowLevel:
         Ignore any other changes to settings until finished
         """
 
-        if SettingsLowLevel._logger.isEnabledFor(DEBUG_V):
-            SettingsLowLevel._logger.debug_v('TRACE load_settings')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'TRACE load_settings service_type: {service_type}')
         # Get Lock
         force_load: bool = False
-        for setting_id in SettingsProperties.ALL_SETTINGS:
+        properties: Dict[str, None]
+        properties = SettingsProperties.SETTINGS_BY_SERVICE_TYPE[service_type]
+        MY_LOGGER.debug(f'service_type: {service_type} properties: {properties.keys()}')
+        for setting_id in properties.keys():
             value: Any | None
-            service_id: str = engine_id
-            key: str = cls.getExpandedSettingId(setting_id, engine_id)
+            key: str = cls.getExpandedSettingId(setting_id, service_id)
             if key in cls.ignore:
                continue
             else:
-                if cls._logger.isEnabledFor(DEBUG_XV):
-                    cls._logger.debug_xv(f'key: {key} not in cls.ignore')
+                if MY_LOGGER.isEnabledFor(DEBUG_XV):
+                    MY_LOGGER.debug_xv(f'key: {key} not in cls.ignore')
 
-            if setting_id in SettingsProperties.TOP_LEVEL_SETTINGS:
-                continue
-            if setting_id in SettingsProperties.TTS_SETTINGS:
-                service_id = Services.TTS_SERVICE
+            # if setting_id in SettingsProperties.TOP_LEVEL_SETTINGS:
+            #     continue
+            # if setting_id in SettingsProperties.TTS_SETTINGS:
+            #     service_id = Services.TTS_SERVICE
             if SettingsMap.is_valid_property(service_id, setting_id):
+                MY_LOGGER.debug(f'loading: service_id: {service_id} setting_id {setting_id}')
                 key, value = cls.load_setting(setting_id, service_id)
             elif force_load:
-                SettingsLowLevel._logger.debug(f'FORCED load of property: {setting_id}')
+                MY_LOGGER.debug(f'FORCED load of property: {setting_id}')
                 key, value = cls.load_setting(setting_id, service_id)
             else:
-                SettingsLowLevel._logger.debug_xv(f'Skipping load of property: {setting_id} '
-                                  f'for service_id: {service_id} key: {key}')
+                MY_LOGGER.debug(f'Skipping load of property: {setting_id} '
+                                f'for service_id: {service_id} key: {key}')
                 continue
             if value is not None:
-                if SettingsLowLevel._logger.isEnabledFor(DEBUG_XV):
-                    SettingsLowLevel._logger.debug_xv(f'Adding {key} '
-                                                                 f'value: {value} '
-                                                                 f'to settings cache')
+                if MY_LOGGER.isEnabledFor(DEBUG_XV):
+                    MY_LOGGER.debug_xv(f'Adding {key} value: {value} '
+                                       f'to settings cache')
                 new_settings[key] = value
+            else:
+                MY_LOGGER.debug(f'FAILED to add {key} value: {value}')
 
     @classmethod
     def load_setting(cls, setting_id: str,
                      engine_id: str = None) -> Tuple[str, Any | None]:
+        # Some global-ish settings have a 'tts' suffix. In a sense their
+        # 'engine' (the suffix) is 'tts'
         if setting_id in SettingsProperties.TTS_SETTINGS:
             engine_id = Services.TTS_SERVICE
 
@@ -1090,14 +1159,14 @@ class SettingsLowLevel:
         force_load: bool = False
         if not force_load and not SettingsMap.is_valid_property(engine_id, setting_id):
             found = False
-            if SettingsLowLevel._logger.isEnabledFor(DEBUG_XV):
-                SettingsLowLevel._logger.debug_xv(f'Setting {setting_id} '
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'Setting {setting_id} '
                                                              f'NOT supported for '
                                                              f'{engine_id}')
         key: str = cls.getExpandedSettingId(setting_id, engine_id)
         if key in cls.ignore:
             return key, None
-        # cls._logger.debug(f'key: {key}')
+        # MY_LOGGER.debug(f'key: {key}')
         # A few values are constant (such as some engines can't play audio,
         # or adjust volume)
         const_value: Any = SettingsMap.get_const_value(engine_id, setting_id)
@@ -1141,13 +1210,13 @@ class SettingsLowLevel:
                 value = cls.settings_wrapper.getStringList(key)
             if const_value is not None:
                 value = const_value
-            # SettingsLowLevel._logger.debug(f'found key: {key} value: {value}')
+            # MY_LOGGER.debug(f'found key: {key} value: {value}')
         except KeyError:
-            SettingsLowLevel._logger.exception(
+            MY_LOGGER.exception(
                     f'failed to find setting key: {key}. '
                     f'Probably not defined in resources/settings.xml')
         except TypeError:
-            SettingsLowLevel._logger.exception(f'failed to get type of setting: '
+            MY_LOGGER.exception(f'failed to get type of setting: '
                                                f'{key}.{engine_id} ')
             if force_load:
                 try:
@@ -1176,22 +1245,22 @@ class SettingsLowLevel:
                         elif setting_type == SettingType.STRING_TYPE:
                             value = value_str
                 except Exception as e:
-                    SettingsLowLevel._logger.exception(
+                    MY_LOGGER.exception(
                         f'Second attempt to read setting {setting_id} failed')
         if value is None:
             try:
                 value = SettingsMap.get_default_value(engine_id, setting_id)
             except Exception as e:
-                SettingsLowLevel._logger.exception(f'Can not set default for '
-                                      f'{setting_id} {engine_id}')
-        if value and SettingsLowLevel._logger.isEnabledFor(DEBUG_XV):
-            SettingsLowLevel._logger.debug_xv(f'Read {key} value: {value}')
-        #  SettingsLowLevel._logger.debug(f'Read {key} value: {value}')
+                MY_LOGGER.exception(f'Can not set default for '
+                                    f'{setting_id} {engine_id}')
+        # if value and MY_LOGGER.isEnabledFor(DEBUG):
+            #  MY_LOGGER.debug(f'Read {key} value: {value}')
+        #  MY_LOGGER.debug(f'Read {key} value: {value}')
         return key, value
 
     @classmethod
     def configuring_settings(cls):
-        #  SettingsLowLevel._logger.debug('configuring_settings hardcoded to false')
+        #  MY_LOGGER.debug('configuring_settings hardcoded to false')
         return False
 
     @classmethod
@@ -1200,19 +1269,20 @@ class SettingsLowLevel:
         real_key: str
 
         if len(tmp_id) > 1:
-            #     SettingsLowLevel._logger.debug(f'already expanded: {setting_id}')
+            #     MY_LOGGER.debug(f'already expanded: {setting_id}')
             real_key = setting_id
         else:
             suffix: str = ''
             if service_id is None:
                 if setting_id not in SettingsProperties.TOP_LEVEL_SETTINGS:
-                    service_id = SettingsLowLevel._current_engine
+                    #  service_id = SettingsLowLevel._current_engine
+                    service_id = SettingsLowLevel.get_engine_id_ll()
 
             if service_id:
                 suffix = "." + service_id
 
             real_key: str = setting_id + suffix
-        # SettingsLowLevel._logger.debug(
+        # MY_LOGGER.debug(
         #         f'in: {setting_id} out: {real_key} len(tmp_id): {len(tmp_id)}')
         return real_key
 
@@ -1224,7 +1294,7 @@ class SettingsLowLevel:
         if len(tmp_id) == 2:
             return tmp_id[1], tmp_id[0]
 
-        SettingsLowLevel._logger.debug(f'Malformed setting id: {expanded_setting}')
+        MY_LOGGER.debug(f'Malformed setting id: {expanded_setting}')
         return None, None
 
     @classmethod
@@ -1238,13 +1308,14 @@ class SettingsLowLevel:
     @classmethod
     def getRealSetting(cls, setting_id: str, backend_id: str | None,
                        default_value: Any | None) -> Any | None:
-        SettingsLowLevel._logger.debug(
+        MY_LOGGER.debug(
                 f'TRACE getRealSetting NOT from cache id: {setting_id} backend: '
                 f'{backend_id}')
         if backend_id is None or len(backend_id) == 0:
-            backend_id = SettingsLowLevel._current_engine
+            # backend_id = SettingsLowLevel._current_engine
+            backend_id = SettingsLowLevel.get_engine_id_ll()
             if backend_id is None or len(backend_id) == 0:
-                SettingsLowLevel._logger.error("TRACE null or empty backend")
+                MY_LOGGER.error("TRACE null or empty backend")
         real_key = cls.getExpandedSettingId(setting_id, backend_id)
         try:
             """
@@ -1284,119 +1355,139 @@ class SettingsLowLevel:
             elif setting_type == SettingType.STRING_LIST_TYPE:
                 return cls.settings_wrapper.getStringList(real_key)
         except Exception as e:
-            SettingsLowLevel._logger.exception('')
+            MY_LOGGER.exception('')
 
     @classmethod
-    def commit_settings(cls):
+    def commit_settings(cls) -> None:
         """
-        Persist all settings from the top frame SettingsManager to settings.xml.
-
-        All settings in Settings and SettingsLowLevel are stored in this top frame.
-        Therefore, the most up-to-date version of the settings is persisted
-        to settings.xml
-
+        In one operation, protected by RLocks:
+            1) commit the top-frame of settngs to settings.xml
+            2) Purge all other frames from SettingsStack, leaving only one frame
         :return:
+
+        Note that final_stack_depth and save_from_top are used during settings
+        configuration. These options allow temporary settings values to be tried
+        by the user and then committed once the user is satisfied.
         """
-        #  SettingsLowLevel._logger.debug('TRACE commit_settings')
+        #  MY_LOGGER.debug('TRACE commit_settings')
         addon: xbmcaddon = xbmcaddon.Addon(Constants.ADDON_ID)
 
-        for full_setting_id, value in SettingsManager.get_settings().items():
-            full_setting_id: str
-            value: Any
-            value_type: SettingType | None = None
-            str_value: str = ''
-            try:
-                str_value = str(value)
-                if full_setting_id == SettingsProperties.ENGINE:
-                    if SettingsLowLevel._logger.isEnabledFor(DEBUG_XV):
-                        SettingsLowLevel._logger.debug_xv(f'TRACE Commiting ENGINE value: {str_value}')
+        with SettingsManager._settings_lock:
+            # Copy the settings from stack_frame at final_stack_depth to
+            # a map.
+            # Apply settings_changes to the copied settings from previous step
+            # Remove all stack frames.
+            # Create final_stack_depth copies of the merged changes and add to
+            # stack.
+            top_frame: Dict[str, str | int | bool | float | None]
+            top_frame = SettingsManager.get_settings()
+            failed: bool = False
+            # Persist the new-frame to settings.xml
+            for full_setting_id, value in top_frame.items():
+                full_setting_id: str
+                value: Any
+                value_type: SettingType | None = None
+                str_value: str = ''
+                try:
+                    str_value = str(value)
+                    if full_setting_id == SettingsProperties.ENGINE:
+                        if MY_LOGGER.isEnabledFor(DEBUG):
+                            MY_LOGGER.debug(f'TRACE Commiting ENGINE value: {str_value}')
 
-                if SettingsLowLevel._logger.isEnabledFor(DEBUG_V):
-                    SettingsLowLevel._logger.debug_v(f'id: {full_setting_id} '
-                                                           f'value: {str_value}')
-                prefix: str = cls.getSettingIdPrefix(full_setting_id)
-                value_type = SettingsProperties.SettingTypes.get(prefix, None)
-                if value == 'NO_VALUE':
-                    SettingsLowLevel._logger.debug(f'Expected setting not found {prefix}')
-                    continue
-                """
-                match value_type:
-                    case SettingType.BOOLEAN_TYPE:
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug(f'id: {full_setting_id} '
+                                                               f'value: {str_value}')
+                    prefix: str = cls.getSettingIdPrefix(full_setting_id)
+                    value_type = SettingsProperties.SettingTypes.get(prefix, None)
+                    if value == 'NO_VALUE':
+                        MY_LOGGER.debug(f'Expected setting not found {prefix}')
+                        continue
+                    """
+                    match value_type:
+                        case SettingType.BOOLEAN_TYPE:
+                            cls.settings_wrapper.setBool(full_setting_id, value)
+                        case SettingType.BOOLEAN_LIST_TYPE:
+                            cls.settings_wrapper.setBoolList(full_setting_id, value)
+                        case SettingType.FLOAT_TYPE:
+                            cls.settings_wrapper.setNumber(full_setting_id, value)
+                        case SettingType.FLOAT_LIST_TYPE:
+                            cls.settings_wrapper.setNumberList(full_setting_id, value)
+                        case SettingType.INTEGER_TYPE:
+                            cls.settings_wrapper.setInt(full_setting_id, value)
+                        case SettingType.INTEGER_LIST_TYPE:
+                            cls.settings_wrapper.setIntList(full_setting_id, value)
+                        case SettingType.STRING_TYPE:
+                            cls.settings_wrapper.setString(full_setting_id, value)
+                        case SettingType.STRING_LIST_TYPE:
+                            cls.settings_wrapper.setStringList(full_setting_id, value)
+                    """
+                    if value_type == SettingType.BOOLEAN_TYPE:
                         cls.settings_wrapper.setBool(full_setting_id, value)
-                    case SettingType.BOOLEAN_LIST_TYPE:
+                    if value_type == SettingType.BOOLEAN_LIST_TYPE:
                         cls.settings_wrapper.setBoolList(full_setting_id, value)
-                    case SettingType.FLOAT_TYPE:
+                    if value_type == SettingType.FLOAT_TYPE:
                         cls.settings_wrapper.setNumber(full_setting_id, value)
-                    case SettingType.FLOAT_LIST_TYPE:
+                    if value_type == SettingType.FLOAT_LIST_TYPE:
                         cls.settings_wrapper.setNumberList(full_setting_id, value)
-                    case SettingType.INTEGER_TYPE:
+                    if value_type == SettingType.INTEGER_TYPE:
                         cls.settings_wrapper.setInt(full_setting_id, value)
-                    case SettingType.INTEGER_LIST_TYPE:
+                    if value_type == SettingType.INTEGER_LIST_TYPE:
                         cls.settings_wrapper.setIntList(full_setting_id, value)
-                    case SettingType.STRING_TYPE:
+                    if value_type == SettingType.STRING_TYPE:
                         cls.settings_wrapper.setString(full_setting_id, value)
-                    case SettingType.STRING_LIST_TYPE:
+                    if value_type == SettingType.STRING_LIST_TYPE:
                         cls.settings_wrapper.setStringList(full_setting_id, value)
-                """
-                if value_type == SettingType.BOOLEAN_TYPE:
-                    cls.settings_wrapper.setBool(full_setting_id, value)
-                if value_type == SettingType.BOOLEAN_LIST_TYPE:
-                    cls.settings_wrapper.setBoolList(full_setting_id, value)
-                if value_type == SettingType.FLOAT_TYPE:
-                    cls.settings_wrapper.setNumber(full_setting_id, value)
-                if value_type == SettingType.FLOAT_LIST_TYPE:
-                    cls.settings_wrapper.setNumberList(full_setting_id, value)
-                if value_type == SettingType.INTEGER_TYPE:
-                    cls.settings_wrapper.setInt(full_setting_id, value)
-                if value_type == SettingType.INTEGER_LIST_TYPE:
-                    cls.settings_wrapper.setIntList(full_setting_id, value)
-                if value_type == SettingType.STRING_TYPE:
-                    cls.settings_wrapper.setString(full_setting_id, value)
-                if value_type == SettingType.STRING_LIST_TYPE:
-                    cls.settings_wrapper.setStringList(full_setting_id, value)
-            except Exception as e:
-                SettingsLowLevel._logger.exception('')
-                SettingsLowLevel._logger.exception(f'Error saving setting: {full_setting_id} '
-                                      f'value: {str_value} as '
-                                      f'{value_type.name}')
-        engine = addon.getSettingString('engine')
-        #  addon.setSettingString('engine', engine)
-
-        #  del SettingsLowLevel.all_settings
-        #  SettingsLowLevel.all_settings = addon.getSettings()
-        #  SettingsLowLevel.settings_wrapper = SettingsLowLevel.all_settings
+                except Exception as e:
+                    failed = True
+                    MY_LOGGER.exception(f'Error saving setting: {full_setting_id} '
+                                          f'value: {str_value} as '
+                                          f'{value_type.name}')
+            # if not failed:
+            #     # Create clones of top frame.
+            #     SettingsManager.clear_settings()
+            #     for idx in range(0, final_stack_depth):
+            #         SettingsManager.load_settings(top_frame)
 
     @classmethod
     def get_engine_id_ll(cls, default: str = None,
-                      bootstrap: bool = False) -> str:
+                         bootstrap: bool = False) -> str:
         """
-        :return:
+        Gets the service_id from either the settings cache, or directly from
+        settings.xml
+
+        :param default: If the service_id value is not found, then use the
+                        value specified by default
+        :param bootstrap: Used during the bootstrap process to get the
+                          engine setting directly, bypassing any cached
+                          value. After startup, the cached value is almost
+                          always the right value to use.
+        :return: The found service_id
         """
-        # SettingsLowLevel._logger.debug(f'default: {default} boostrap {bootstrap} current: '
+        # MY_LOGGER.debug(f'default: {default} boostrap {bootstrap} current: '
         #                                f'{SettingsLowLevel._current_engine}')
-        ignore_cache = True
-        engine_id: str = None
+        ignore_cache = False
+        engine_id: str | None = None
         if bootstrap:
             ignore_cache = True
-        elif SettingsLowLevel._current_engine is not None:
-            engine_id = SettingsLowLevel._current_engine
+        # elif SettingsLowLevel._current_engine is not None:
+        #     service_id = SettingsLowLevel._current_engine
         if engine_id is None:
-            engine_id = cls.get_setting_str(SettingsProperties.ENGINE, engine_id=None,
+            engine_id = cls.get_setting_str(SettingsProperties.ENGINE,
+                                            engine_id=None,
                                             ignore_cache=ignore_cache,
                                             default=default)
-        #  SettingsLowLevel._logger.debug(f'TRACE get_engine_id_ll: {engine_id}')
-        SettingsLowLevel._current_engine = engine_id
+        MY_LOGGER.debug_xv(f'TRACE engine: {engine_id} ignore_cache: {ignore_cache}')
+        # SettingsLowLevel._current_engine = service_id
         return engine_id
 
     @classmethod
-    def set_backend_id(cls, backend_id: str) -> None:
-        #  SettingsLowLevel._logger.debug(f'TRACE set backend_id: {backend_id}')
-        if backend_id is None or len(backend_id) == 0:
-            SettingsLowLevel._logger.debug(f'invalid backend_id Not saving')
+    def set_engine_id(cls, engine_id: str) -> None:
+        #  MY_LOGGER.debug(f'TRACE set service_id: {service_id}')
+        if engine_id is None or len(engine_id) == 0:
+            MY_LOGGER.debug(f'invalid service_id Not saving')
             return
-
-        success: bool = cls.set_setting_str(SettingsProperties.ENGINE, backend_id)
-        SettingsLowLevel._current_engine = backend_id
+        success: bool = cls.set_setting_str(SettingsProperties.ENGINE, engine_id)
+        #  SettingsLowLevel._current_engine = service_id
 
     @classmethod
     def setSetting(cls, setting_id: str, value: Any,
@@ -1408,8 +1499,8 @@ class SettingsLowLevel:
             success: bool = SettingsManager.set_setting(real_key, value)
             return success
         except:
-            SettingsLowLevel._logger.exception('')
-            SettingsLowLevel._logger.debug(f'TRACE: type mismatch')
+            MY_LOGGER.exception('')
+            MY_LOGGER.debug(f'TRACE: type mismatch')
 
     @classmethod
     def check_reload(cls):
@@ -1435,23 +1526,23 @@ class SettingsLowLevel:
         try:
             cls.check_reload()
             value: Any = SettingsManager.get_setting(full_setting_id, default_value)
-            # cls._logger.debug(f'full_setting_id: {full_setting_id} '
+            # MY_LOGGER.debug(f'full_setting_id: {full_setting_id} '
             #                   f'default: {default_value} value: {value}')
         except KeyError:
-            cls._logger.debug(f'KeyError with {full_setting_id} {setting_id}'
+            MY_LOGGER.debug(f'KeyError with {full_setting_id} {setting_id}'
                               f' {service_id} {default_value}')
             value = SettingsLowLevel.getRealSetting(setting_id, service_id, default_value)
-            cls._logger.debug(f'value: {value}')
+            MY_LOGGER.debug(f'value: {value}')
             SettingsManager.set_setting(full_setting_id, value)
-        # SettingsLowLevel._logger.debug(f'setting_id: {full_setting_id} value: {value}')
+        # MY_LOGGER.debug(f'setting_id: {full_setting_id} value: {value}')
         return value
 
     @classmethod
     def set_setting_str(cls, setting_id: str, value: str, engine_id: str = None) -> bool:
         real_key = cls.getExpandedSettingId(setting_id, engine_id)
         if setting_id == SettingsProperties.ENGINE:
-            if SettingsLowLevel._logger.isEnabledFor(DEBUG_XV):
-                SettingsLowLevel._logger.debug_xv(f'TRACE engine_id: '
+            if MY_LOGGER.isEnabledFor(DEBUG_XV):
+                MY_LOGGER.debug_xv(f'TRACE service_id: '
                                                              f'{value} real_key: '
                                                              f'{real_key} '
                                                              f'value: {value}')
@@ -1466,8 +1557,8 @@ class SettingsLowLevel:
         force_load: bool = False
         real_key = cls.getExpandedSettingId(setting_id, engine_id)
         if ignore_cache and setting_id == SettingsProperties.ENGINE:
-            if SettingsLowLevel._logger.isEnabledFor(DEBUG_XV):
-                SettingsLowLevel._logger.debug_xv(
+            if MY_LOGGER.isEnabledFor(DEBUG_XV):
+                MY_LOGGER.debug_xv(
                     f'TRACE get_setting_str IGNORING CACHE id: {setting_id}'
                     f' {engine_id} -> {real_key}')
         if ignore_cache:
@@ -1475,7 +1566,7 @@ class SettingsLowLevel:
                 value: str = cls.settings_wrapper.getString(real_key)
                 return value.strip()
             except Exception as e:
-                SettingsLowLevel._logger.exception('')
+                MY_LOGGER.exception('')
                 return default
         return cls._getSetting(setting_id, engine_id, default)
 
@@ -1488,8 +1579,8 @@ class SettingsLowLevel:
         :return:
         """
         if ignore_cache and setting_id == SettingsProperties.ENGINE:
-            if SettingsLowLevel._logger.isEnabledFor(DEBUG_XV):
-                SettingsLowLevel._logger.debug_xv(
+            if MY_LOGGER.isEnabledFor(DEBUG_XV):
+                MY_LOGGER.debug_xv(
                         f'TRACE get_setting_str IGNORING CACHE id: {setting_id}')
         real_key = cls.getExpandedSettingId(setting_id, engine_id)
         value: bool = None
@@ -1497,7 +1588,7 @@ class SettingsLowLevel:
             try:
                 value = cls.settings_wrapper.getBool(real_key)
             except Exception as e:
-                SettingsLowLevel._logger.exception('')
+                MY_LOGGER.exception('')
         value = cls._getSetting(setting_id, engine_id, default)
         return value
 
@@ -1533,7 +1624,7 @@ class SettingsLowLevel:
         cls.check_reload()
         real_key = cls.getExpandedSettingId(setting_id, service_id)
         value: int = SettingsManager.get_setting(real_key, default_value)
-        # cls._logger.debug(f'real_key: {real_key} value: {value}')
+        # MY_LOGGER.debug(f'real_key: {real_key} value: {value}')
         return value
 
     @classmethod

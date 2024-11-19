@@ -2,23 +2,27 @@ from __future__ import annotations  # For union operator |
 
 import subprocess
 import sys
+from pathlib import Path
 
 from backends.audio.base_audio import SubprocessAudioPlayer
-from backends.audio.sound_capabilties import SoundCapabilities
+from backends.audio.sound_capabilities import SoundCapabilities
+from backends.players.iplayer import IPlayer
 from backends.players.player_index import PlayerIndex
+from backends.settings.i_validators import INumericValidator
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import NumericValidator
 from common import *
-from common.base_services import BaseServices
+from common.base_services import BaseServices, IServices
 from common.constants import Constants
 from common.exceptions import ExpiredException
 from common.logger import BasicLogger
 from common.phrases import Phrase
 from common.setting_constants import Players
+from common.settings import Settings
 
-module_logger: BasicLogger = BasicLogger.get_logger(__name__)
+MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
@@ -33,14 +37,6 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
     ID = Players.MPLAYER
     service_ID: str = Services.MPLAYER_ID
     service_TYPE: str = ServiceType.PLAYER
-
-    _supported_input_formats: List[str] = [SoundCapabilities.WAVE, SoundCapabilities.MP3]
-    _supported_output_formats: List[str] = [SoundCapabilities.WAVE, SoundCapabilities.MP3]
-    _provides_services: List[ServiceType] = [ServiceType.PLAYER,
-                                             ServiceType.CONVERTER]
-    SoundCapabilities.add_service(service_ID, _provides_services,
-                                  _supported_input_formats,
-                                  _supported_output_formats)
 
     if Constants.PLATFORM_WINDOWS:
         # Mplayer not readily available on Windows
@@ -60,12 +56,12 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
     # Multiplier of 1.0 = 100% of speed (i.e. no change)
     _speedMultiplier: Final[float] = 1.0  # The base range is 3 .. 30.
     _volumeArgs = 'volume={0:.2f}'  # Volume in db -200db .. +40db Default 0
-    _logger: BasicLogger = None
+    _initialized: bool = False
 
     def __init__(self):
         clz = MPlayerAudioPlayer
-        if clz._logger is None:
-            clz._logger = module_logger
+        if not clz._initialized:
+            clz.initialized = True
             clz.register(self)
         super().__init__()
 
@@ -116,15 +112,22 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
                 filters.append(self._volumeArgs.format(volume))
             audio_filter: List[str] = [MPlayerAudioPlayer.MPLAYER_AUDIO_FILTER,
                                        ",".join(filters)]
-            clz._logger.debug(f'audio_filter: {audio_filter}')
+            MY_LOGGER.debug(f'audio_filter: {audio_filter}')
             args.extend(audio_filter)
             try:
+                if phrase.get_pre_pause() != 0 and phrase.pre_pause_path() is not None:
+                    args.append(str(phrase.pre_pause_path()))
+                    MY_LOGGER.debug(f'pre_silence {phrase.get_pre_pause()} ms')
+
                 args.append(f'{phrase.get_cache_path()}')
-                self._logger.debug(f'phrase: {phrase} path: {phrase.get_cache_path()}')
-                self._logger.debug(f'args: {args}')
+                MY_LOGGER.debug(f'phrase: {phrase} path: {phrase.get_cache_path()}')
+                if phrase.get_post_pause() != 0 and phrase.post_pause_path() is not None:
+                    args.append(str(phrase.post_pause_path()))
+                    MY_LOGGER.debug(f'post_silence {phrase.get_post_pause()} ms')
+                MY_LOGGER.debug(f'args: {args}')
             except ExpiredException:
                 reraise(*sys.exc_info())
-        self._logger.debug_v(f'args: {" ".join(args)}')
+        MY_LOGGER.debug_v(f'args: {" ".join(args)}')
         return args
 
     def get_pipe_args(self) -> List[str]:
@@ -147,9 +150,9 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
             audio_filter: List[str] = []
             audio_filter.append(MPlayerAudioPlayer.MPLAYER_AUDIO_FILTER)
             audio_filter.append(",".join(filters))
-            clz._logger.debug(f'audio_filter: {audio_filter}')
+            MY_LOGGER.debug(f'audio_filter: {audio_filter}')
             args.extend(audio_filter)
-        self._logger.debug_v(f'args: {" ".join(args)}')
+        MY_LOGGER.debug_v(f'args: {" ".join(args)}')
         # Debug.dump_all_threads(0.0)
         return args
 
@@ -171,11 +174,8 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
 
     def get_player_speed(self) -> float:
         clz = type(self)
-        speed_validator: NumericValidator
-        speed_validator = clz.get_validator(clz.service_ID,
-                                            property_id=SettingsProperties.SPEED)
-        speed = speed_validator.get_value()
-        # clz._logger.debug(f'service_ID: {clz.service_ID} speed: {speed}')
+        speed = Settings.get_speed()
+        # MY_LOGGER.debug(f'service_ID: {clz.service_ID} speed: {speed}')
         return speed
 
     def get_player_volume(self, as_decibels: bool = True) -> float:
@@ -198,9 +198,10 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
         """
         clz = type(self)
 
-        volume_validator = SettingsMap.get_validator(clz.service_ID,
-                                                     property_id=SettingsProperties.VOLUME)
-        volume_validator: NumericValidator
+        volume_validator = SettingsMap.get_validator(
+                                            clz.service_ID,
+                                            property_id=SettingsProperties.VOLUME)
+        volume_validator: INumericValidator
         volume: float
         if as_decibels:
             volume = volume_validator.as_decibels()
@@ -210,22 +211,28 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
         return volume
 
     @classmethod
-    def register(cls, what):
-        PlayerIndex.register(MPlayerAudioPlayer.ID, what)
-        BaseServices.register(what)
+    def register(cls, me: IPlayer):
+        """
+
+        :param me:
+        :return:
+        """
+        PlayerIndex.register(MPlayerAudioPlayer.ID, me)
+        me: IServices
+        BaseServices.register(me)
 
     @classmethod
     def available(cls, ext=None) -> bool:
         if Constants.PLATFORM_WINDOWS:
-            cls._logger.debug(f'mplayer not supported on Windows')
+            MY_LOGGER.debug(f'mplayer not supported on Windows')
             return False
         try:
             subprocess.run(cls._availableArgs, stdout=subprocess.DEVNULL,
                            universal_newlines=True, stderr=subprocess.STDOUT)
-            cls._logger.debug(f'mplayer ran ok')
+            MY_LOGGER.debug(f'mplayer ran ok')
         except AbortException:
             reraise(*sys.exc_info())
         except:
-            cls._logger.debug(f'mplayer failed to start')
+            MY_LOGGER.debug(f'mplayer failed to start')
             return False
         return True

@@ -1,6 +1,6 @@
 from __future__ import print_function, annotations
 
-from backends.audio.sound_capabilties import SoundCapabilities
+from backends.audio.sound_capabilities import SoundCapabilities
 from common import *
 
 from backends.engines.base_engine_settings import BaseEngineSettings

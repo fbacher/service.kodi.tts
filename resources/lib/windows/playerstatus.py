@@ -9,6 +9,7 @@ from common import utils
 from common.messages import Messages
 from common.logger import *
 from .base import WindowHandlerBase, WindowReaderBase
+from .window_state_monitor import WinDialogState
 
 module_logger = BasicLogger.get_logger(__name__)
 
@@ -16,7 +17,8 @@ module_logger = BasicLogger.get_logger(__name__)
 class PlayerStatus(WindowHandlerBase):
     ID = 'playerstatus'
 
-    def __init__(self, win_id=None, service: ForwardRef('TTSService') = None) -> None:
+    def __init__(self, win_id=None, service: ForwardRef('TTSService') = None,
+                 windialog_state: WinDialogState = None) -> None:
         cls = type(self)
         super().__init__(win_id, service)
         cls._logger = module_logger

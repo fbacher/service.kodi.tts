@@ -289,7 +289,7 @@ class WindowParser:
         window_element: ET.Element = self.get_window_element()
         child: ET.Element = window_element.find('./defaultcontrol')
         try:
-            # TODO: should test to see if it exists (may be difficult since
+            # TODO: should test to see if it text_exists (may be difficult since
             #       you can't instantiate every control via python).
             default_control = int(child.text)
         except AbortException:

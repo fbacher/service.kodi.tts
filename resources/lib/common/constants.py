@@ -15,11 +15,10 @@ import xbmc
 import xbmcvfs
 
 from common import *
-from kutils.kodiaddon import Addon
+from common.kodiaddon import Addon
 
 addonName = 'service.kodi.tts'
 addon = Addon(addonName)
-from kutils import addon
 
 
 class Constants:
@@ -94,7 +93,7 @@ class Constants:
         Constants.LOG_PATH = os.path.join(
                 xbmcvfs.translatePath('special://logpath'), 'kodi.log')
 
-        Constants.ADDON_DIRECTORY = xbmcvfs.translatePath(addon.PATH)
+        Constants.ADDON_DIRECTORY = xbmcvfs.translatePath(str(addon.PATH))
         Constants.BACKENDS_DIRECTORY = os.path.join(
                 Constants.PYTHON_ROOT_PATH, 'backends')
         Constants.DISABLE_PATH = os.path.join(addon.DATA_PATH, 'DISABLED')

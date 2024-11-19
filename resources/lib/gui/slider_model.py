@@ -27,11 +27,13 @@ class SliderModel(BaseModel):
     _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.SLIDER]
 
-    def __init__(self, parent: BaseModel, parsed_slider: ParseSlider) -> None:
+    def __init__(self, parent: BaseModel, parsed_slider: ParseSlider,
+                 windialog_state: WinDialogState | None = None) -> None:
         clz = type(self)
         if clz._logger is None:
             clz._logger = module_logger
-        super().__init__(window_model=parent.window_model, parser=parsed_slider)
+        super().__init__(window_model=parent.window_model, parser=parsed_slider,
+                         windialog_state=windialog_state)
         self.parent: BaseModel = parent
         self.broken: bool = False
         self.visible_expr: str = ''
@@ -92,13 +94,24 @@ class SliderModel(BaseModel):
             self.topic = NoSliderTopicModel(self)
         for child in parsed_slider.children:
             child: BaseParser
-            model_handler: Callable[[BaseModel, BaseModel, BaseParser], BaseModel]
+            model_handler: Callable[[BaseModel, BaseParser, WinDialogState | None],
+                                    BaseModel]
             model_handler = ElementHandler.get_model_handler(child.item)
-            child_model: BaseModel = model_handler(self, child)
+            child_model: BaseModel = model_handler(self, child, None)
             self.children.append(child_model)
 
     @property
     def supports_item_count(self) -> bool:
+        return False
+
+    @property
+    def supports_item_number(self) -> bool:
+        """
+            Indicates if the control supports reporting the current item number.
+            The list control is not capable of these, although it supports
+            item_count.
+        :return:
+        """
         return False
 
     @property

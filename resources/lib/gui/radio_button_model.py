@@ -1,6 +1,6 @@
 # coding=utf-8
 
-from typing import Callable, List
+from typing import Callable, List, Tuple
 
 import xbmc
 
@@ -12,6 +12,7 @@ from gui.base_model import BaseModel
 from gui.base_parser import BaseParser
 from gui.base_tags import control_elements, ControlElement, Item
 from gui.element_parser import (ElementHandler)
+from gui.gui_globals import GuiGlobals
 from gui.no_topic_models import NoRadioButtonTopicModel
 from gui.parser.parse_radio_button import ParseRadioButton
 from gui.radio_button_topic_model import RadioButtonTopicModel
@@ -19,7 +20,7 @@ from gui.statements import Statement, Statements, StatementType
 from gui.topic_model import TopicModel
 from windows.window_state_monitor import WinDialogState
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class NoRadioButonTopicModel:
@@ -28,14 +29,13 @@ class NoRadioButonTopicModel:
 
 class RadioButtonModel(BaseLabelModel):
 
-    _logger: BasicLogger = module_logger
     item: Item = control_elements[ControlElement.RADIO_BUTTON]
 
-    def __init__(self, parent: BaseModel, parsed_radio_button: ParseRadioButton) -> None:
+    def __init__(self, parent: BaseModel, parsed_radio_button: ParseRadioButton,
+                 windialog_state: WinDialogState | None = None) -> None:
         clz = type(self)
-        if clz._logger is None:
-            clz._logger = module_logger
-        super().__init__(parent.window_model, parsed_radio_button)
+        super().__init__(parent.window_model, parsed_radio_button,
+                         windialog_state=windialog_state)
         self.parent = parent
         self.description: str = ''
         self.enable_expr: str = ''
@@ -85,14 +85,15 @@ class RadioButtonModel(BaseLabelModel):
             self.topic = RadioButtonTopicModel(self, parsed_radio_button.topic)
         else:
             self.topic = NoRadioButtonTopicModel(self)
-            if clz._logger.isEnabledFor(DEBUG_V):
-                clz._logger.debug_v(f'# parsed children: '
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'# parsed children: '
                                           f'{len(parsed_radio_button.get_children())}')
         for child in parsed_radio_button.children:
             child: BaseParser
-            model_handler:  Callable[[BaseModel, BaseParser], BaseModel]
+            model_handler:  Callable[[BaseModel, BaseParser, WinDialogState | None],
+                                     BaseModel]
             model_handler = ElementHandler.get_model_handler(child.item)
-            child_model: BaseModel = model_handler(self, child)
+            child_model: BaseModel = model_handler(self, child, None)
             self.children.append(child_model)
 
     @property
@@ -114,10 +115,10 @@ class RadioButtonModel(BaseLabelModel):
                RadioButton supports label2 dependent on its config. Will have to
                write code to determine at run time. There is a note from Kodi docs
                that RadioButton only supports this when the RadioButton is zero
-               size. However, experiments show that when the RadioButtin is
+               size. However, experiments show that when the RadioButton is
                non-zero and visible, the value of label2 is the same as for
                label, but with a suffix indicating the boolean state of the
-               RadioButton. The suffix is '(*)' when True or '()' when False
+               RadioButton. The suffix is '(*)' when True or '( )' when False
          """
         #  ControlCapabilities.LABEL2
         return True
@@ -127,7 +128,7 @@ class RadioButtonModel(BaseLabelModel):
         """
         Some controls, such as RadioButton, support a boolean value
         (on/off, disabled/enabled, True/False, etc.). Such controls
-        Use the value "(*)" to indicate True and "()" to indicate False.
+        Use the value "(*)" to indicate True and "( )" to indicate False.
         :return:
         """
         return True
@@ -143,6 +144,17 @@ class RadioButtonModel(BaseLabelModel):
         """
         return True
 
+    @property
+    def supports_change_without_focus_change(self) -> bool:
+        """
+            Indicates if the control supports changes that can occur without
+            changes in Focus. Slider is an example. User modifies value without
+            leaving the container. Further, you only want to voice the value,
+            not the control name, etc.
+        :return:
+        """
+        return True
+
     def voice_control(self, stmts: Statements) -> bool:
         """
 
@@ -154,12 +166,14 @@ class RadioButtonModel(BaseLabelModel):
         success: bool = True
         if self.topic is not None:
             topic: TopicModel = self.topic
+            MY_LOGGER.debug('Hello!')
             if not focus_changed:
-                success = self.voice_radio_button_value(stmts, focus_changed)
+                success = self.voice_label2_value(stmts, focus_changed,
+                                                  stmt_type=StatementType.VALUE)
                 return success
-            success = self.voice_heading(stmts)
             success = self.voice_radio_button_label(stmts, focus_changed)
-            success = self.voice_radio_button_value(stmts, focus_changed)
+            success = self.voice_label2_value(stmts, focus_changed,
+                                              stmt_type=StatementType.VALUE)
 
         # TODO, incomplete
         return success
@@ -180,12 +194,12 @@ class RadioButtonModel(BaseLabelModel):
     def voice_radio_button_label(self, stmts: Statements, focus_changed) -> bool:
         clz = type(self)
         success = self.voice_labeled_by(stmts)
-        clz._logger.debug(f'voice_labeled_by: {success}')
+        MY_LOGGER.debug(f'voice_labeled_by: {success}')
         if not success:
             success = self.topic.voice_alt_label(stmts)
         if not success:
             success = self.topic.voice_label_expr(stmts)
-            clz._logger.debug(f'voice_label_expr: {success}')
+            MY_LOGGER.debug(f'voice_label_expr: {success}')
         if not success:
             if self.control_id != -1:
                 try:
@@ -195,32 +209,71 @@ class RadioButtonModel(BaseLabelModel):
                     new_text: str = Messages.format_boolean(text=text)
                     if new_text is None:
                         new_text = ''
-                    clz._logger.debug(f'text: {new_text} focus_changed: {focus_changed}')
+                    MY_LOGGER.debug(f'text: {new_text} focus_changed: {focus_changed}')
                     if new_text != '' and focus_changed:
-                        stmts.last.phrases.append(Phrase(text=new_text))
+                        stmts.last.phrases.append(Phrase(text=new_text,
+                                                         check_expired=False))
                 except ValueError as e:
-                    clz._logger.exception('')
+                    MY_LOGGER.exception('')
                     pass
         return success
 
-    def voice_radio_button_value(self, stmts, focus_changed: bool) -> bool:
+    def voice_label2_value(self, stmts: Statements,
+                           control_id_expr: int | str | None = None,
+                           stmt_type: StatementType = StatementType.VALUE) -> bool:
+        """
+            Extracts the radio button's boolean pressed state from the encoded
+            suffix of label2. The suffix is either '(*)' (true) or '( )' (false).
+            Further, if the topic has true_msg_id and false_msg_id, then
+            the boolean value will be converted to the defined translated value.
+
+        :param stmts:
+        :param control_id_expr:
+        :param stmt_type:
+        :return:
+         """
         # Control ID should be an integer
         clz = type(self)
         success: bool = False
-        if self.control_id != -1:
-            try:
-                query: str = f'Control.GetLabel({self.control_id}).index(0)'
-                text: str = xbmc.getInfoLabel(query)
-                text2: str = xbmc.getInfoLabel(f'Control.GetLabel({self.control_id})'
-                                               f'.index(1)')
-                clz._logger.debug(f'text: {text} text2: {text2}')
-                # None is returned with no substitutions needed
-                new_text: str = Messages.format_boolean(text=text)
-                clz._logger.debug(f'text: {new_text} focus_changed: {focus_changed}')
-                if new_text != '' and focus_changed:
-                    stmts.last.phrases.append(Phrase(text=new_text))
-            except ValueError as e:
-                pass
+        if self.control_id == -1:
+            raise NotImplementedError(f'RadioButton Model net setup to handle '
+                                      f'other control_Id\'s value')
+        try:
+            if self.supports_boolean_value:
+                # RadioButtons ALL support boolean value (whether button
+                # pressed or not). Translate to desired phrasing: On/Off, Yes/NO,
+                # enabled/disabled, etc.
+                text: str = xbmc.getInfoLabel(f'Control.GetLabel('
+                                              f'{self.control_id}.index(1))')
+                bool_text: str = ''
+                is_true: bool
+                new_text: str
+                # is_true is None if text does not end with boolean indicator:
+                # '(*)' (true)  or '( )' (false), otherwise it returns the
+                # bool value of the indicator.
+                # new_text is the boolean indicator, or None
+
+                is_true, new_text = self.is_true(text)
+                MY_LOGGER.debug(f'is_true: {is_true}')
+                if is_true is not None:
+                    if is_true:
+                        bool_text = self.true_value
+                    else:
+                        bool_text = self.false_value
+                previous_val: str = GuiGlobals.saved_states.get(
+                        'radio_button_model_value')
+                GuiGlobals.require_focus_change = False
+                if previous_val is not None and previous_val == bool_text:
+                    return False
+                GuiGlobals.saved_states['radio_button_model_value'] = bool_text
+                MY_LOGGER.debug(f'bool_text: {bool_text}')
+                stmt: Statement = Statement(
+                        PhraseList.create(texts=bool_text, check_expired=False),
+                        stmt_type=stmt_type)
+                stmts.append(stmt)
+                success = True
+        except ValueError as e:
+            MY_LOGGER.exception('')
         return success
 
     def voice_label_ll(self, stmts: Statements, label_expr: str | None,
@@ -279,7 +332,7 @@ class RadioButtonModel(BaseLabelModel):
                                         f'{Constants.PAUSE_INSERT} '
                                         f'{Messages.get_msg_by_id(enabled_msgid)}')
         if new_text != '' and (focus_changed or text != self.previous_text_value):
-            clz._logger.debug(f'text: {text} focus_changed: {focus_changed} '
+            MY_LOGGER.debug(f'text: {text} focus_changed: {focus_changed} '
                               f'previous_text: {self.previous_text_value} '
                               f'new_text: {new_text}')
             phrases.append(Phrase(text=new_text))

@@ -60,7 +60,7 @@ class MainThreadLoop(xbmc.Monitor):
         :return:
         """
         try:
-            if os.path.exists(os.path.join(xbmcvfs.translatePath('special://profile'),
+            if os.path.text_exists(os.path.join(xbmcvfs.translatePath('special://profile'),
                                            'addon_data', 'service.kodi.tts', 'DISABLED')):
                 xbmc.log('service.kodi.tts: DISABLED - NOT STARTING')
                 return

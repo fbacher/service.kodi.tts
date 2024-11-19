@@ -13,10 +13,11 @@ from common.message_ids import MessageId
 from common.messages import Messages
 from common.phrases import Phrase, PhraseList
 from . import guitables, skintables, windowparser
+from .window_state_monitor import WinDialogState
 
 CURRENT_SKIN = skintables.CURRENT_SKIN
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 def parseItemExtra(control_id, excludes: PhraseList, phrases: PhraseList) -> bool:
@@ -49,7 +50,8 @@ def parseItemExtra(control_id, excludes: PhraseList, phrases: PhraseList) -> boo
 class WindowHandlerBase:
     ID = None
 
-    def __init__(self, win_id=None, service: ForwardRef('TTSService') = None):
+    def __init__(self, win_id=None, service: ForwardRef('TTSService') = None,
+                 windialog_state: WinDialogState = None):
         self.service_prop: ForwardRef('TTSService') = service
         self.winID = win_id
         self._reset(win_id)
@@ -79,15 +81,11 @@ class WindowHandlerBase:
 
 class WindowReaderBase(WindowHandlerBase):
     _slideoutGroupID = 9000
-    _logger: BasicLogger = None
 
-    def __init__(self, win_id=None, service: ForwardRef('TTSService') = None) -> None:
+    def __init__(self, win_id=None, service: ForwardRef('TTSService') = None,
+                 windialog_state: WinDialogState = None) -> None:
         cls = type(self)
         super().__init__(win_id, service)
-        if cls._logger is None:
-            cls._logger = module_logger
-            # x = Window(WINDOW_HOME)
-            # x.create_model()
 
     def getName(self) -> str:
         return guitables.getWindowName(self.winID)
@@ -122,8 +120,9 @@ class WindowReaderBase(WindowHandlerBase):
                 tmp = MessageId.ITEM_WITH_NUMBER.get_formatted_msg(numItems)
             else:
                 tmp = MessageId.ITEMS_WITH_NUMBER.get_formatted_msg(numItems)
-            phrase: Phrase = Phrase(text=tmp, pre_pause_ms=Phrase.PAUSE_NORMAL)
-            phrases.add_text(texts=tmp, pre_pause_ms=Phrase.PAUSE_NORMAL)
+            phrase: Phrase = Phrase(text=tmp, pre_pause_ms=Phrase.PAUSE_NORMAL,
+                                    check_expired=False)
+            phrases.append(phrase)
         return True
 
     def getSecondaryText(self, phrases: PhraseList) -> bool:
@@ -157,6 +156,7 @@ class WindowReaderBase(WindowHandlerBase):
                                                 f'{Messages.get_msg(Messages.NO)}')
             new_text = new_text.replace('(*)', f'{Constants.PAUSE_INSERT} '
                                         f'{Messages.get_msg(Messages.YES)}')
+            MY_LOGGER.debug(f'BOOLEAN control_id: {control_id} text: {new_text}')
             text = new_text
         return text
 
@@ -164,7 +164,8 @@ class WindowReaderBase(WindowHandlerBase):
         text: str = self.getSettingControlText(control_id)
         if text != '':
             phrases.append(Phrase(text=text,
-                                  debug_info='WindowReaderBase.getSlideoutText'))
+                                  debug_info='WindowReaderBase.getSlideoutText',
+                                  check_expired=False))
             return True
         return False
 
@@ -172,7 +173,8 @@ class WindowReaderBase(WindowHandlerBase):
 class DefaultWindowReader(WindowReaderBase):
     ID = 'default'
 
-    def __init__(self, win_id=None, service: ForwardRef('TTSService') = None) -> None:
+    def __init__(self, win_id=None, service: ForwardRef('TTSService') = None,
+                 windialog_state: WinDialogState = None) -> None:
         super().__init__(win_id, service)
         pass
 
@@ -196,39 +198,45 @@ class DefaultWindowReader(WindowReaderBase):
         success: bool = False
         if self.slideoutHasFocus():
             success = self.getSlideoutText(control_id, phrases)
-            if not success and clz._logger.isEnabledFor(DEBUG_XV):
-                clz._logger.debug_xv(f'slideoutHasFocus: {success}')
+            if not success and MY_LOGGER.isEnabledFor(DEBUG_XV):
+                if MY_LOGGER.isEnabledFor(DEBUG_XV):
+                    MY_LOGGER.debug_xv(f'slideoutHasFocus: {success}')
             return True   # TODO: Change?
         if control_id is None:
-            if clz._logger.isEnabledFor(DEBUG_XV):
-                clz._logger.debug_v(f'control_id {control_id} not found')
+            if MY_LOGGER.isEnabledFor(DEBUG_XV):
+                MY_LOGGER.debug_v(f'control_id {control_id} not found')
             return False
+        # First, see if there is a ListItem with the title of
+        # the currently selected song, movie, game in a container.
         text: str | None = xbmc.getInfoLabel('ListItem.Title')
         text2: str | None = None
 
-        if text and clz._logger.isEnabledFor(DEBUG_XV):
-            clz._logger.debug_xv(f'text: |{text}|')
+        if text and MY_LOGGER.isEnabledFor(DEBUG_XV):
+            MY_LOGGER.debug_xv(f'text: |{text}|')
 
         if text == '':
+            # No title, then try for label1 & label2 from a possible container for
+            # the current focused item.
             text = xbmc.getInfoLabel(f'Container({control_id}).ListItem.Label')
             text2 = xbmc.getInfoLabel(f'Container({control_id}).ListItem.Label2')
-            if text and clz._logger.isEnabledFor(DEBUG_XV):
-                clz._logger.debug_xv(f'text: {text} text2: {text2}')
+            if text and MY_LOGGER.isEnabledFor(DEBUG_XV):
+                MY_LOGGER.debug_xv(f'text: {text} text2: {text2}')
         if text == '':
+            # No ListItem label and/or label2, try for a plain label for the
+            # control
             text = xbmc.getInfoLabel(f'Control.GetLabel({control_id})')
-            #  clz._logger.debug(f'Control.GetLabel: {text}')
-            if text is not None and clz._logger.isEnabledFor(DEBUG_XV):
-                clz._logger.debug_xv(f'text: {text}')
+            if text is not None and MY_LOGGER.isEnabledFor(DEBUG_XV):
+                MY_LOGGER.debug_xv(f'text: {text}')
         if text == '':
             text = xbmc.getInfoLabel('System.CurrentControl')
-            if text and clz._logger.isEnabledFor(DEBUG_XV):
-                clz._logger.debug_xv(f'text: {text}')
+            if MY_LOGGER.isEnabledFor(DEBUG_XV) and text:
+                MY_LOGGER.debug_xv(f'text: {text}')
         if text == '':
             return False
         text_id: str = (f"{text}{xbmc.getInfoLabel('ListItem.StartTime')}"
                         f"{xbmc.getInfoLabel('ListItem.EndTime')}")
-        if text and clz._logger.isEnabledFor(DEBUG_XV):
-            clz._logger.debug_xv(f'text_id: {text_id}')
+        if text_id and MY_LOGGER.isEnabledFor(DEBUG_XV):
+            MY_LOGGER.debug_xv(f'text_id: {text_id}')
         texts: List[str] = [text]
         if text2 is not None:
             texts.append(text2)
@@ -242,8 +250,8 @@ class DefaultWindowReader(WindowReaderBase):
     def getSecondaryText(self, phrases: PhraseList) -> bool:
         clz = type(self)
         success: bool = guitables.getListItemProperty(self.winID, phrases)
-        if clz._logger.isEnabledFor(DEBUG_V):
-            clz._logger.debug_v(f'secondaryText: {phrases}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V) and not phrases.is_empty():
+            MY_LOGGER.debug_v(f'secondaryText: {phrases}')
         return success
 
     def getItemExtraTexts(self, phrases: PhraseList, control_id: int) -> bool:
@@ -286,7 +294,8 @@ class DefaultWindowReader(WindowReaderBase):
 class NullReader(WindowReaderBase):
     ID = 'null'
 
-    def __init__(self, win_id=None, service: ForwardRef('TTSService') = None) -> None:
+    def __init__(self, win_id=None, service: ForwardRef('TTSService') = None,
+                 windialog_state: WinDialogState = None) -> None:
         super().__init__(win_id, service)
         pass
 
