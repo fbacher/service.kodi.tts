@@ -1,4 +1,6 @@
 # coding=utf-8
+from __future__ import annotations
+
 """
   Represents a  Kodi Window.  A Window can have its own Properties as well
   as controls. Windows are read-only, while WindowDialogs also provide

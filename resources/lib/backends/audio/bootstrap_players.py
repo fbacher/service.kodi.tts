@@ -41,8 +41,6 @@ class BootstrapPlayers:
     def init(cls) -> None:
         if not cls._initialized:
             cls.initialized = True
-            if Constants.PLATFORM_WINDOWS:
-                cls.player_ids.append(Players.MPLAYER)
             cls.load_players()
 
     @classmethod
@@ -62,7 +60,7 @@ class BootstrapPlayers:
                 MY_LOGGER.debug(f'{player_id} NOT SettingsMap.is_available')
                 return
 
-            if player_id == Players.MPLAYER:
+            if player_id == Players.MPLAYER and not Constants.PLATFORM_WINDOWS:
                 from backends.players.mplayer_settings import MPlayerSettings
                 MPlayerSettings()
                 from backends.audio.mplayer_audio_player import MPlayerAudioPlayer

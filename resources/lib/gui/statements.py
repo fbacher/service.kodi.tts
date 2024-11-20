@@ -1,4 +1,5 @@
 # coding=utf-8
+from __future__ import annotations
 
 """
 Frequently the text that needs to be voiced for a control follows

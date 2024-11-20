@@ -1,4 +1,5 @@
 # coding=utf-8
+from __future__ import annotations
 
 """
 Contains subject matter for the user to learn about how to use Kodi TTS as well
@@ -12,7 +13,12 @@ the subject details.
 A subject category will have a category id, a message id for the category
 title and a number of subject or category ids.
 """
-from enum import auto, Enum, StrEnum
+from enum import auto, Enum
+
+try:
+    from enum import StrEnum
+except ImportError:
+    from common.strenum import StrEnum
 from typing import Dict, ForwardRef, List, Tuple, Union
 
 import xbmcaddon

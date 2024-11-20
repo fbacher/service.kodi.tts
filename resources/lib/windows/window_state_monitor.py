@@ -1,9 +1,15 @@
 # coding=utf-8
+from __future__ import annotations
+
 import copy
 import sys
 import threading
 from collections import namedtuple, OrderedDict
-from enum import StrEnum
+
+try:
+    from enum import StrEnum
+except ImportError:
+    from common.strenum import StrEnum
 from typing import (Callable, Dict, Final, ForwardRef, List,
                     OrderedDict as OrderedDict_type, Tuple)
 

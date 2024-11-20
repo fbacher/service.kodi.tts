@@ -1,7 +1,7 @@
 # coding=utf-8
 from __future__ import annotations  # For union operator |
 
-#  import simplejson as json
+#  import json as json
 import json
 import os
 import queue
@@ -23,8 +23,11 @@ from common.phrases import Phrase, PhraseList
 from common.setting_constants import Channels
 from common.simple_run_command import RunState
 from common.slave_run_command import SlaveRunCommand
-from common.strenum import StrEnum
-from common.utils import sleep
+
+try:
+    from enum import StrEnum
+except ImportError:
+    from common.strenum import StrEnum
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
 LINE_BUFFERING: int = 1

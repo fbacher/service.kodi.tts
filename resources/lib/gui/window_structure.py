@@ -1,4 +1,5 @@
 # coding=utf-8
+from __future__ import annotations
 import sys
 import xml.etree.ElementTree as ET
 from logging import DEBUG

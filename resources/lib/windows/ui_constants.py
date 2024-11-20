@@ -1,4 +1,6 @@
 # coding=utf-8
+from __future__ import annotations
+
 import re
 import sys
 from enum import Enum
@@ -78,7 +80,7 @@ class AltCtrlType(Enum):
             return result
         except AbortException:
             reraise(*sys.exc_info())
-        except Exception | KeyError:
+        except (Exception, KeyError):
             module_logger.exception(f'alt_type_name: {alt_type_name}')
             raise ValueError('Invalid alt_ctrl_type name: {alt_type_name}')
 

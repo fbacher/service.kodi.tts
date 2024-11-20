@@ -20,16 +20,16 @@ MY_LOGGER = BasicLogger.get_logger(__name__)
 
 class BaseSettingsConstants:
 
-    settings_map: Dict[str, Message] = {}
+    settings_map: Dict[str, MessageId] = {}
 
     @classmethod
     def get_label(cls, setting_id: str) -> str:
         msg_handle = cls.settings_map.get(setting_id, setting_id)
-        label = Messages.get_msg(msg_handle)
+        label = msg_handle.get_msg()
         return label
 
     @classmethod
-    def get_msg_handle(cls, setting_id: str) -> Message:
+    def get_msg_handle(cls, setting_id: str) -> MessageId:
         return cls.settings_map.get(setting_id, None)
 
 

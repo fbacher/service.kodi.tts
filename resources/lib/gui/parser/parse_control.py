@@ -1,10 +1,14 @@
 # coding=utf-8
+from __future__ import annotations
 
 import xml.etree.ElementTree as ET
 from collections import namedtuple
-from enum import StrEnum
 from typing import ForwardRef, List, Union
 
+try:
+    from enum import StrEnum
+except ImportError:
+    from common.strenum import StrEnum
 from common.logger import BasicLogger
 from gui.base_parser import BaseParser
 from gui.base_tags import (control_elements, ControlElement,

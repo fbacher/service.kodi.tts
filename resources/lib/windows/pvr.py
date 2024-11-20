@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations  # For union operator |
 
-from typing import TypeAlias
-
 import xbmc
 
 from common import *
@@ -12,7 +10,7 @@ from common.phrases import Phrase, PhraseList
 from . import guitables
 from .base import WindowReaderBase
 
-str_or_int: TypeAlias = str | int
+str_or_int: str | int
 module_logger = BasicLogger.get_logger(__name__)
 
 

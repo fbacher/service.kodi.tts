@@ -1,5 +1,11 @@
 # coding=utf-8
-from enum import StrEnum
+from __future__ import annotations
+
+
+try:
+    from enum import StrEnum
+except ImportError:
+    from common.strenum import StrEnum
 from logging import DEBUG
 from typing import Callable, ForwardRef, List, Tuple
 import xml.etree.ElementTree as ET

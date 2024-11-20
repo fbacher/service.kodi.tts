@@ -11,7 +11,7 @@ from common.phrases import PhraseList
 from . import base
 from .window_state_monitor import WinDialogState
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class VideoLibraryWindowReader(base.DefaultWindowReader):
@@ -21,7 +21,6 @@ class VideoLibraryWindowReader(base.DefaultWindowReader):
                  windialog_state: WinDialogState = None) -> None:
         super().__init__(win_id, service)
         clz = type(self)
-        clz._logger = module_logger
 
     def getControlText(self, control_id, phrases: PhraseList) -> bool:
         cls = type(self)
@@ -32,6 +31,7 @@ class VideoLibraryWindowReader(base.DefaultWindowReader):
         if not control_id:
             return False
         text = xbmc.getInfoLabel('ListItem.Label')
+        #  MY_LOGGER.debug(f'text: {text} phrases: {phrases}')
         if not text:
             return base.DefaultWindowReader.getControlText(self, control_id,
                                                            phrases)
@@ -39,8 +39,11 @@ class VideoLibraryWindowReader(base.DefaultWindowReader):
         if xbmc.getCondVisibility('ListItem.IsResumable'):
             status = f': {Messages.get_msg(Messages.RESUMABLE)}'
         elif xbmc.getInfoLabel('ListItem.Overlay') == 'OverlayWatched.png':
-                status = f': {Messages.get_msg(Messages.WATCHED)}'
+            status = f': {Messages.get_msg(Messages.WATCHED)}'
+        #  MY_LOGGER.debug(f'text: {text} status: {status} phrases: {phrases}')
         if status != '':
             phrases.add_text(texts=f'{text} {status}')
+        else:
+            phrases.add_text(texts=text)
             return True
         return False

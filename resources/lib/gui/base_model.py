@@ -1,4 +1,5 @@
 # coding=utf-8
+from __future__ import annotations
 
 from logging import DEBUG
 from typing import Dict, ForwardRef, List, Tuple, Union

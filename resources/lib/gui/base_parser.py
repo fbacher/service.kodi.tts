@@ -1,4 +1,6 @@
 # coding=utf-8
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Any, Callable, Dict, ForwardRef, List, Tuple, Union
 

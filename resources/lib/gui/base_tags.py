@@ -1,4 +1,5 @@
 # coding=utf-8
+from __future__ import annotations
 
 """
 Tags available to all controls
@@ -16,8 +17,14 @@ false, or a condition. See Conditional Visibility for more information. Defaults
 
 """
 from collections import namedtuple
-from enum import auto, Enum, StrEnum
-from typing import Dict, ForwardRef, Iterable, List, TypeAlias
+from enum import auto, Enum
+
+try:
+    from enum import StrEnum
+except ImportError:
+    from common.strenum import StrEnum
+from typing import Dict, ForwardRef, Iterable, List
+from typing_extensions import TypeAlias
 
 import xbmcgui
 

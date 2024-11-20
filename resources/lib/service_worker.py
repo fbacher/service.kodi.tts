@@ -19,7 +19,10 @@ from common.kodi_player_monitor import KodiPlayerMonitor, KodiPlayerState
 from common.logger import *
 from common.message_ids import MessageId
 from common.phrases import Phrase, PhraseList
-from common.strenum import StrEnum
+try:
+    from enum import StrEnum
+except ImportError:
+    from common.strenum import StrEnum
 from utils.util import runInThread
 from windowNavigation.help_manager import HelpManager
 from windows.notice import NoticeDialog

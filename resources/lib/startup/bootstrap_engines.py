@@ -49,7 +49,6 @@ class BootstrapEngines:
         # ReciteTTSBackend(),
         # GoogleTTSBackend(),
         Backends.GOOGLE_ID,
-        Backends.POWERSHELL_ID,
         # Backends.RESPONSIVE_VOICE_ID,
         # Backends.EXPERIMENTAL_ENGINE_ID,
         #   SpeechUtilComTTSBackend(),
@@ -57,6 +56,8 @@ class BootstrapEngines:
         # Backends.SAPI_ID,
         # Backends.LOG_ONLY_ID
     ]
+    if Constants.PLATFORM_WINDOWS:
+        engine_ids_by_priority.append(Backends.POWERSHELL_ID)
     _initialized: bool = False
     '''
     @classmethod
@@ -380,6 +381,9 @@ class BootstrapEngines:
             elif engine_id == Backends.GOOGLE_ID:
                 from backends.google import GoogleTTSEngine
                 engine = GoogleTTSEngine()
+            elif Constants.PLATFORM_WINDOWS and engine_id == Backends.POWERSHELL_ID:
+                from backends.engines.windows.powershell import PowerShellTTS
+                engine = PowerShellTTS()
             elif engine_id == Backends.SAPI_ID:
                 try:
                     from backends.sapi import SAPIBackend

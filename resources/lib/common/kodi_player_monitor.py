@@ -2,7 +2,11 @@
 from __future__ import annotations  # For union operator |
 
 import sys
-from enum import StrEnum
+
+try:
+    from enum import StrEnum
+except ImportError:
+    from common.strenum import StrEnum
 
 from xbmc import Player
 

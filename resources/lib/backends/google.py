@@ -28,6 +28,7 @@ from common.exceptions import ExpiredException
 from common.kodi_player_monitor import KodiPlayerMonitor
 from common.lang_phrases import SampleLangPhrases
 from common.logger import *
+from common.message_ids import MessageId
 from common.messages import Message, Messages
 from common.monitor import Monitor
 from common.phrases import Phrase, PhraseList, PhraseUtils
@@ -573,7 +574,7 @@ class LangInfo:
                     pass
 
                 voice_id: str = locale_id.lower()
-                engine_name_msg_id: int = Messages.BACKEND_GOOGLE.get_msg_id()
+                engine_name_msg_id: MessageId = MessageId.ENGINE_GOOGLE
 
                 LanguageInfo.add_language(engine_id=GoogleTTSEngine.engine_id,
                                           language_id=lang_code,

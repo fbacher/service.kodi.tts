@@ -11,7 +11,7 @@ Provides methods to create and execute queries to Kodi database
 """
 import sys
 
-import simplejson
+import json
 
 from common import *
 
@@ -102,7 +102,7 @@ class DBAccess:
         movies: List[Dict[str, Any]] = []
         try:
             if cls._logger.isEnabledFor(DISABLED):
-                import simplejson as json
+                import json as json
                 # json_encoded: Dict = json.loads(query)
                 dump: str = json.dumps(query, indent=3, sort_keys=True)
                 cls._logger.debug_xv(f'JASON DUMP: {dump}')
@@ -143,7 +143,7 @@ class DBAccess:
                     message: str = error.get('message')
             cls._logger.exception(message)
             try:
-                import simplejson as json
+                import json as json
                 # json_encoded: Dict = json.loads(query)
                 dump: str = json.dumps(query, indent=3, sort_keys=True)
                 cls._logger.debug_xv(f'JASON DUMP: {dump}')
@@ -198,8 +198,8 @@ class DBAccess:
             cls._logger.debug_v(f'title: {title} year: {year}')
             cls._logger.debug_v(f'query: {query}')
             try:
-                x = simplejson.loads(query)
-                query_str = simplejson.dumps(x, indent=4, sort_keys=True)
+                x = json.loads(query)
+                query_str = json.dumps(x, indent=4, sort_keys=True)
                 cls._logger.debug_xv(f'query: {query_str}')
             except Exception:
                 pass

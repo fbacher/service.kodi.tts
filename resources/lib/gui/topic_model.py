@@ -1,4 +1,5 @@
 # coding=utf-8
+from __future__ import annotations
 
 """
 Provides the bulk of the work for voicing topics (with a lot of work coming from the

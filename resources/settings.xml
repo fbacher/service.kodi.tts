@@ -436,6 +436,84 @@
                     <control type="toggle"/>
                     <visible>true</visible>
                 </setting>
+
+                <setting help="" id="gender.powershell" label="32178" type="string">
+                    <level>4</level>
+                    <default>female</default>
+                    <control type="edit" format="string">
+                        <heading>32005</heading>
+                    </control>
+                    <visible>true</visible>
+                </setting>
+                <setting help="" id="language.powershell" label="32178" type="string">
+                    <level>4</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <default>en</default>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>true</visible>
+                </setting>
+                <!--
+                <setting help="" id="pipe.powershell" label="32178" type="boolean">
+                    <level>4</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>true</visible>
+                </setting> -->
+
+                <setting help="" id="player.powershell" label="32178" type="string">
+                    <level>4</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>true</visible>
+                </setting>
+                <setting help="" id="api_key.powershell" label="32178" type="string">
+                    <level>4</level>
+                      <constraints>
+                        <allowempty>false</allowempty>
+                    </constraints>
+                    <default>abc</default>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>true</visible>
+                </setting>
+                 <setting help="" id="player_mode.powershell" label="32178" type="string">
+                    <level>4</level>
+                      <constraints>
+                        <allowempty>false</allowempty>
+                    </constraints>
+                    <default>slave_file</default>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>true</visible>
+                </setting>
+                <setting help="" id="voice.powershell" label="32178" type="string">
+                    <level>4</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <default>un-gb</default>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>true</visible>
+                </setting>
+                <setting help="" id="cache_speech.powershell" label="32178"
+                         type="boolean">
+                    <level>4</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                    <visible>true</visible>
+                </setting>
             </group>
         </category>
     </section>

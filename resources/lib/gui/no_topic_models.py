@@ -1,4 +1,5 @@
 # coding=utf-8
+from __future__ import annotations
 
 """
 Provides a Skeleton Topic Model that supports a Label control without

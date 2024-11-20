@@ -19,7 +19,10 @@ from common.logger import *
 from common.setting_constants import AudioType, Genders, PlayerMode
 from common.settings_bridge import SettingsBridge
 from common.settings_low_level import SettingsLowLevel
-from common.strenum import StrEnum
+try:
+    from enum import StrEnum
+except ImportError:
+    from common.strenum import StrEnum
 from common.transient_properties import Transient
 
 MY_LOGGER = BasicLogger.get_logger(__name__)

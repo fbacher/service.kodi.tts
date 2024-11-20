@@ -1,4 +1,6 @@
 # coding=utf-8
+from __future__ import annotations
+
 """
      Supervises the voicing of a Kodi Window.  Windows are read-only, while
      WindowDialogs also provide for user input.

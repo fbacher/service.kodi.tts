@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations
+
 from __future__ import annotations  # For union operator |
 import io
 import os
@@ -13,7 +15,6 @@ from time import time
 import xbmc
 import xbmcvfs
 
-import simplejson
 from backends.ispeech_generator import ISpeechGenerator
 from common.kodi_player_monitor import KodiPlayerMonitor
 from common.piper_pipe_command import PiperPipeCommand

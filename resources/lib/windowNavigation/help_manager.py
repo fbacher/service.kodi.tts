@@ -1,4 +1,5 @@
 # coding=utf-8
+from __future__ import annotations
 import queue
 import threading
 from typing import ForwardRef, Tuple

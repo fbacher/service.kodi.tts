@@ -1,7 +1,7 @@
 # coding=utf-8
 from __future__ import annotations  # For union operator |
 
-#  import simplejson as json
+#  import json as json
 import json
 import os
 import socket

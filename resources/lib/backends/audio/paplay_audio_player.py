@@ -25,7 +25,6 @@ class PaplayAudioPlayer(SubprocessAudioPlayer):
     def __init__(self):
         super().__init__()
         self._logger = module_logger
-                self.__class__.__name__)  # type: module_logger
 
     def playArgs(self, path):
         args = self.baseArgs(path)

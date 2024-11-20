@@ -4,7 +4,11 @@ Defines the names of loggers for various sections/functions in TTS.
 The goal is to allow you to enable only the logging that you are
 interested in.
 """
-from enum import StrEnum
+
+try:
+    from enum import StrEnum
+except ImportError:
+    from common.strenum import StrEnum
 from typing import Dict, ForwardRef
 
 from common.logger import BasicLogger

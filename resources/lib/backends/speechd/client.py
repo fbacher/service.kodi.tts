@@ -531,11 +531,11 @@ class SSIPClient:
           host -- for CommunicationMethod.INET_SOCKET, server hostname
             or IP address as a string.  If None, the default value is
             taken from SPEECHD_HOST environment variable (if it
-            exists) or from the DEFAULT_HOST attribute of this class.
+            text_exists) or from the DEFAULT_HOST attribute of this class.
           port -- for CommunicationMethod.INET_SOCKET method, server
             port as number or None.  If None, the default value is
             taken from SPEECHD_PORT environment variable (if it
-            exists) or from the DEFAULT_PORT attribute of this class.
+            text_exists) or from the DEFAULT_PORT attribute of this class.
 
         For more information on client identification strings see Speech
         Dispatcher documentation.

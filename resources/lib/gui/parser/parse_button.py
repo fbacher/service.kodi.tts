@@ -1,5 +1,10 @@
 # coding=utf-8
-from enum import StrEnum
+from __future__ import annotations
+
+try:
+    from enum import StrEnum
+except ImportError:
+    from common.strenum import StrEnum
 from typing import Callable, List, Tuple
 import xml.etree.ElementTree as ET
 from gui.base_tags import ElementKeywords as EK

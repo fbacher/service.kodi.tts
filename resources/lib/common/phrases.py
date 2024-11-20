@@ -29,7 +29,7 @@ from common.exceptions import EmptyPhraseException, ExpiredException
 from common.logger import *
 from common.messages import Message, Messages
 from common.monitor import Monitor
-from simplejson import JSONEncoder
+from json import JSONEncoder
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
 

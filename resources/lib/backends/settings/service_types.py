@@ -1,7 +1,10 @@
 # coding=utf-8
 from __future__ import annotations  # For union operator |
-
-from enum import Enum, StrEnum
+from enum import Enum
+try:
+    from enum import StrEnum
+except ImportError:
+    from common.strenum import StrEnum
 
 from common import *
 from common.message_ids import MessageId
@@ -29,7 +32,7 @@ class Services(StrEnum):
     NO_ENGINE_ID = 'no_engine'
     PICO_TO_WAVE_ID = 'pico2wave'
     PIPER_ID = 'piper'
-    POWERSHELL_ID = 'powershell_tts'
+    POWERSHELL_ID = 'powershell'
     RECITE_ID = 'Recite'
     SAPI_ID = 'sapi'
     SERVICE_ID = 'id'  # Specifies the service's id (FLite is the current
@@ -50,7 +53,7 @@ class Services(StrEnum):
         msg_id_lookup: Dict[str, MessageId] = {
             # TTS :
             clz.AUTO_ENGINE_ID        : MessageId.ENGINE_AUTO,
-            clz.ESPEAK_ID             : MessageId.ENGINE_ESPEAK_ID,
+            clz.ESPEAK_ID             : MessageId.ENGINE_ESPEAK,
             clz.FESTIVAL_ID           : MessageId.ENGINE_FESTIVAL,
             clz.FLITE_ID              : MessageId.ENGINE_FLITE,
             clz.EXPERIMENTAL_ENGINE_ID: MessageId.ENGINE_EXPERIMENTAL,

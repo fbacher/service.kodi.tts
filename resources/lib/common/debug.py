@@ -18,7 +18,7 @@ from sys import getsizeof
 
 import xbmcvfs
 
-import simplejson as json
+import json as json
 from common import *
 
 from common.critical_settings import CriticalSettings

@@ -32,7 +32,7 @@ class PowerShellTTSSettings(BaseServiceSettings):
     service_TYPE: str = ServiceType.ENGINE_SETTINGS
     backend_id: str = Backends.POWERSHELL_ID
     engine_id: str = Backends.POWERSHELL_ID
-    OUTPUT_FILE_TYPE: str = '.mp3'
+    OUTPUT_FILE_TYPE: str = '.wav'
     displayName: str = MessageId.ENGINE_POWERSHELL.get_msg()
 
     # Every setting from settings.xml must be listed here
@@ -83,14 +83,13 @@ class PowerShellTTSSettings(BaseServiceSettings):
         # Can use LAME to convert to mp3. This code is untested
         # TODO: test, expose capability in settings config
 
-        audio_validator: StringValidator
-        audio_converter_validator = StringValidator(SettingsProperties.TRANSCODER,
-                                                    cls.engine_id,
-                                                    allowed_values=[Services.LAME_ID,
-                                                                    Services.MPLAYER_ID])
+        # audio_validator: StringValidator
+        # audio_converter_validator = StringValidator(SettingsProperties.TRANSCODER,
+        #                                             cls.engine_id,
+        #                                             allowed_values=[Services.LAME_ID])
 
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.TRANSCODER,
-                                   audio_converter_validator)
+        # SettingsMap.define_setting(cls.service_ID, SettingsProperties.TRANSCODER,
+        #                            audio_converter_validator)
         # Defines a very loose language validator. Basically it will accept
         # almost any strings. The real work is done by LanguageInfo and
         # SettingsHelper. Should revisit this validator
@@ -111,15 +110,15 @@ class PowerShellTTSSettings(BaseServiceSettings):
                                    voice_validator)
 
         allowed_player_modes: List[str] = [
-            PlayerMode.SLAVE_FILE.value,
+            # PlayerMode.SLAVE_FILE.value,
             PlayerMode.FILE.value,
-            PlayerMode.PIPE.value
+            # PlayerMode.PIPE.value
         ]
         player_mode_validator: StringValidator
         player_mode_validator = StringValidator(SettingsProperties.PLAYER_MODE,
                                                 cls.service_ID,
                                                 allowed_values=allowed_player_modes,
-                                                default=PlayerMode.SLAVE_FILE.value)
+                                                default=PlayerMode.ENGINE_SPEAK.value)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER_MODE,
                                    player_mode_validator)
 

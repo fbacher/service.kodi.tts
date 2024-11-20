@@ -65,7 +65,8 @@ class Constants:
 
     NAME: Final[str] = 'name'
     PAUSE_INSERT = '...'
-    PLATFORM_WINDOWS: bool = False
+    PLATFORM_WINDOWS: bool = xbmc.getCondVisibility('System.Platform.Windows')
+
 
     @staticmethod
     def static_init() -> None:
@@ -102,8 +103,7 @@ class Constants:
                                                          'cache')
         Constants.LOCALE, encoding = locale.getdefaultlocale()
 
-        Constants.PLATFORM_WINDOWS = xbmc.getCondVisibility('System.Platform.Windows')
-        if xbmc.getCondVisibility('System.Platform.Windows'):
+        if Constants.PLATFORM_WINDOWS:
             mpv_dir = os.environ.get('MPV_PATH', '')
             if mpv_dir:
                 Constants.MPV_PATH = str(Path(mpv_dir) / Constants.MPV_PATH_WINDOWS)

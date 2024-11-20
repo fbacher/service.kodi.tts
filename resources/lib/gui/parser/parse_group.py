@@ -1,6 +1,12 @@
 # coding=utf-8
+from __future__ import annotations
+
 import xml.etree.ElementTree as ET
-from enum import StrEnum
+
+try:
+    from enum import StrEnum
+except ImportError:
+    from common.strenum import StrEnum
 from typing import Callable, List, Tuple
 
 from common.logger import BasicLogger

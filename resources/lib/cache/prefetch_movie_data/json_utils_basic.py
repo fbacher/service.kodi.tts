@@ -13,7 +13,7 @@ from enum import auto, Enum
 
 import xbmc
 
-import simplejson as json
+import json as json
 
 from common import *
 

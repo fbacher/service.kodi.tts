@@ -1,5 +1,10 @@
 # coding=utf-8
-from enum import StrEnum
+from __future__ import annotations
+
+try:
+    from enum import StrEnum
+except ImportError:
+    from common.strenum import StrEnum
 from typing import Dict, ForwardRef, List, Tuple
 
 import xbmc
