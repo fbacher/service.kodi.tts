@@ -447,7 +447,7 @@ class SpeechGenerator:
 
 class ResponsiveVoiceTTSBackend(SimpleTTSBackend):
     ID: str = Backends.RESPONSIVE_VOICE_ID
-    backend_id: str = Backends.RESPONSIVE_VOICE_ID
+    engine_id: str = Backends.RESPONSIVE_VOICE_ID
     service_ID: str = Services.RESPONSIVE_VOICE_ID
     service_TYPE: str = ServiceType.ENGINE
 
@@ -868,7 +868,7 @@ class ResponsiveVoiceTTSBackend(SimpleTTSBackend):
         return changed
 
     @classmethod
-    def negotiate_engine_config(cls, backend_id: str, player_volume_adjustable: bool,
+    def negotiate_engine_config(cls, engine_id: str, player_volume_adjustable: bool,
                                 player_speed_adjustable: bool,
                                 player_pitch_adjustable: bool) -> Tuple[bool, bool, bool]:
         """

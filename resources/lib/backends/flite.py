@@ -20,7 +20,7 @@ module_logger: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class FliteTTSBackend(SimpleTTSBackend):
-    backend_id = Backends.FLITE_ID
+    engine_id = Backends.FLITE_ID
     displayName = 'Flite'
     #  speedConstraints = (20, 100, 200, True)
 

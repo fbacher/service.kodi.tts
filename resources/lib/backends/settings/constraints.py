@@ -163,7 +163,7 @@ class Constraints:
         if self.property_name:
             raw_value: float = float(
                     SettingsBridge.getSetting(self.property_name,
-                                              backend_id=service_id,
+                                              engine_id=service_id,
                                               default_value=self._default))
             value = raw_value * self.scale
             # if value is out of bounds, change to be either the
@@ -189,18 +189,18 @@ class Constraints:
 
         return None
 
-    def setSetting(self, value: float, backend_id: str) -> None:
+    def setSetting(self, value: float, engine_id: str) -> None:
         """
         @param value: External representation of value to be saved (after scaling)
         to the settings cache.
-        @param backend_id: The id of the speech engine that this setting applies.
+        @param engine_id: The id of the speech engine that this setting applies.
         May be None or empty string if this is a global setting.
         @return: None
         @note: See Settings for information about how settings cache, etc. works
         """
         value: int = int(float(value) / self.scale)
         if self.property_name:
-            SettingsBridge.setSetting(self.property_name, value, backend_id)
+            SettingsBridge.setSetting(self.property_name, value, engine_id)
         return None
 
     def is_int(self) -> bool:

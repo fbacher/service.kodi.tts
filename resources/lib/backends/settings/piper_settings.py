@@ -23,7 +23,7 @@ module_logger = BasicLogger.get_logger(__name__)
 class PiperSettings(BaseServiceSettings):
     # Only returns .mp3 files
     ID: str = Backends.PIPER_ID
-    backend_id = Backends.PIPER_ID
+    engine_id = Backends.PIPER_ID
     engine_id = Backends.PIPER_ID
     service_ID: str = Services.PIPER_ID
     service_TYPE: str = ServiceType.ENGINE_SETTINGS

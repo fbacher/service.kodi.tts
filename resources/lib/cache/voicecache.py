@@ -62,7 +62,9 @@ class VoiceCache:
         cache_directory: Path | None = None
         try:
             cache_path: str = Settings.get_cache_base()
-            self.engine_id: str = Settings.get_engine_id()
+            self.engine_id: str = self.service_id
+            if self.engine_id is None:
+                self.engine_id = Settings.get_engine_id()
             MY_LOGGER.debug(f'engine_id: {self.engine_id}')
             self.engine = BaseServices.getService(self.engine_id)
             service_type: ServiceType
@@ -78,7 +80,12 @@ class VoiceCache:
                                                                Constants.CACHE_SUFFIX)
             assert engine_dir is not None, \
                 f'Can not find voice-cache dir for engine: {self.engine_id}'
-            cache_directory = Path(xbmcvfs.translatePath(f'{cache_path}/{engine_dir}'))
+            cache_top: Path = SettingsMap.get_service_property(self.engine_id,
+                                                               Constants.CACHE_TOP)
+            if cache_top is not None:
+                cache_directory = cache_top / engine_dir
+            else:
+                cache_directory = Path(xbmcvfs.translatePath(f'{cache_path}/{engine_dir}'))
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
@@ -142,7 +149,7 @@ class VoiceCache:
         not yet exist). audio_exits is True if the current_audio_path file is not empty.
         text_exists is a boolean that is True if the .txt file
         text_exists. audio_suffixes is a list of the suffixes of audio files for
-        this phrase. (Normally only one suffix text_exists)
+        this phrase. (Normally only one suffix '.txt' exists)
 
         Note: When caching is NOT used, text_exists is None and audio_suffixes empty
         """
@@ -154,7 +161,7 @@ class VoiceCache:
         cache_dir: Path | None = None
         cache_path: Path | None = None
         try:
-            if not use_cache or not self.is_cache_sound_files(self.engine):
+            if not use_cache or not self.is_cache_sound_files(self.engine_id):
                 temp_voice_file = self.tmp_file('')
                 voice_file = Path(temp_voice_file.name)
                 phrase.set_cache_path(Path(voice_file, temp=True),
@@ -167,10 +174,14 @@ class VoiceCache:
                     territory_dir: str = phrase.territory_dir
                     filename: str = self.get_hash(phrase.text)
                     subdir: str = filename[0:2]
-                    cache_dir = cache_top / lang_dir / territory_dir / subdir
+                    cache_dir: str = ''
+                    if territory_dir is None or territory_dir == '':
+                        cache_dir = cache_top / lang_dir / subdir
+                    else:
+                        cache_dir = cache_top / lang_dir / territory_dir / subdir
                     cache_path = cache_dir / filename
                     cache_path = cache_path.with_suffix(self.audio_suffix)
-
+                    phrase.set_audio_type(self.audio_type)
                     if not cache_dir.exists():
                         try:
                             cache_dir.mkdir(mode=0o777, exist_ok=True, parents=True)
@@ -306,10 +317,10 @@ class VoiceCache:
         cls.ignore_cache_count = 0
 
     @classmethod
-    def is_cache_sound_files(cls, backend_class: ITTSBackendBase) -> bool:
+    def is_cache_sound_files(cls, engine_id: str) -> bool:
         """
         Indicates whether caching is enabled
-        :param backend_class: check if voiced text from this engine is cached
+        :param engine_id: check if voiced text from this engine is cached
         :return: true if caching is enabled, otherwise false.
         """
         use_cache: bool = False
@@ -318,7 +329,7 @@ class VoiceCache:
                 cls.ignore_cache_count += 1
                 return False
 
-            use_cache = Settings.is_use_cache()
+            use_cache = Settings.is_use_cache(engine_id)
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
@@ -620,7 +631,6 @@ class VoiceCache:
                                                                 Constants.CACHE_SUFFIX)
             assert engine_code is not None, \
                 f'Can not find voice-cache dir for engine: {engine_id}'
-            # cache_directory = xbmcvfs.translatePath(f'{cache_path}/{engine_code}')
 
             cache_file_path: Path = phrase.get_cache_path()
             phrase_engine_code: str = str(cache_file_path.parent.parent.parent.name)

@@ -49,7 +49,7 @@ class IConstraints:
         """
         raise NotImplementedError()
 
-    def setSetting(self, value: float, backend_id: str) -> None:
+    def setSetting(self, value: float, engine_id: str) -> None:
         raise NotImplementedError()
 
     def is_int(self) -> bool:

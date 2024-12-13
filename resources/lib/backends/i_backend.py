@@ -15,7 +15,7 @@ class IBackend:
         type(self)._class_name = self.__class__.__name__
 
     @classmethod
-    def getBackend(cls, backend_id: str) -> 'IBackend':
+    def getBackend(cls, engine_id: str) -> 'IBackend':
         raise Exception('Not Implemented')
 
     @classmethod

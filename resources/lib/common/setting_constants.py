@@ -61,6 +61,7 @@ class Backends(BaseSettingsConstants):
         GOOGLE_ID,
         # INTERNAL_ID,
         # LOG_ONLY_ID,
+        NO_ENGINE_ID,
         # PICO_TO_WAVE_ID,
         # PIPER_ID,
         POWERSHELL_ID,
@@ -271,23 +272,23 @@ class Languages(BaseSettingsConstants):
 
 # TODO: Change to ENUM
 class Players(BaseSettingsConstants):
-    TTS: Final[str] = 'tts'
+    TTS: Final[str] = Services.TTS_SERVICE.value
     NONE: Final[str] = 'Unknown Player'
-    SFX: Final[str] = 'sfx'
-    WINDOWS: Final[str] = 'Windows'
-    APLAY: Final[str] = 'aplay'
-    PAPLAY: Final[str] = 'paplay'
-    AFPLAY: Final[str] = 'afplay'
-    SOX: Final[str] = 'sox'
-    MPLAYER: Final[str] = 'mplayer'
-    MPV: Final[str] = 'mpv'
-    MPG321: Final[str] = 'mpg321'
-    MPG123: Final[str] = 'mpg123'
-    MPG321_OE_PI: Final[str] = 'mpg321_OE_Pi'
+    SFX: Final[str] = Services.SFX_ID.value
+    WINDOWS: Final[str] = Services.WINDOWS_ID.value
+    APLAY: Final[str] = Services.APLAY_ID.value
+    PAPLAY: Final[str] = Services.PAPLAY_ID.value
+    AFPLAY: Final[str] = Services.AFPLAY_ID.value
+    SOX: Final[str] = Services.SOX_ID.value
+    MPLAYER: Final[str] = Services.MPLAYER_ID.value
+    MPV: Final[str] = Services.MPV_ID.value
+    MPG321: Final[str] = Services.MPG321_ID.value
+    MPG123: Final[str] = Services.MPG123_ID.value
+    MPG321_OE_PI: Final[str] = Services.MPG321_OE_PI_ID.value
 
     # Engine's built-in player
 
-    INTERNAL: Final[str] = 'internal'
+    INTERNAL: Final[str] = Services.INTERNAL_PLAYER_ID.value
 
     # HANDLERS
 
@@ -314,7 +315,6 @@ class Players(BaseSettingsConstants):
     @classmethod
     def get_msg(cls, player: str) -> str:
         return Players.settings_map[player].get_msg()
-
 
     ALL_PLAYER_IDS: List[str] = [
             Services.MPV_ID,

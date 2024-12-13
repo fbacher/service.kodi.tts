@@ -9,9 +9,16 @@ except ImportError:
 from common import *
 from common.message_ids import MessageId
 
+# Support for running with NO ENGINE nor PLAYER using limited pre-generated
+# cache. The intent is to provide enough TTS so the user can configure
+# to use an engine and player.
+GENERATE_BACKUP_SPEECH: bool = False
+
 
 class Services(StrEnum):
     TTS_SERVICE = 'tts'
+    AFPLAY_ID = 'afplay'
+    APLAY_ID = 'aplay'
     PLAYER_SERVICE = 'player'  # Generic player
     AUTO_ENGINE_ID = 'auto'
     CACHE_WRITER_ID = 'cache_writer'
@@ -29,7 +36,9 @@ class Services(StrEnum):
     MPV_ID = 'mpv'
     MPG123_ID = 'mpg123'
     MPG321_ID = 'mpg321'
+    MPG321_OE_PI_ID = 'mpg321_OE_Pi'
     NO_ENGINE_ID = 'no_engine'
+    PAPLAY_ID = 'paplay'
     PICO_TO_WAVE_ID = 'pico2wave'
     PIPER_ID = 'piper'
     POWERSHELL_ID = 'powershell'
@@ -37,7 +46,9 @@ class Services(StrEnum):
     SAPI_ID = 'sapi'
     SERVICE_ID = 'id'  # Specifies the service's id (FLite is the current
     SFX_ID = 'sfx'
+    SOX_ID = 'sox'
     LAME_ID = 'lame'
+    WINDOWS_ID = 'windows'
     DEFAULT_ENGINE_ID = ESPEAK_ID
 
     # engine's id.
@@ -77,6 +88,9 @@ class TranscoderType(StrEnum):
     FFMPEG = 'ffmpeg'
 
 
+ALL_TRANSCODERS: List[TranscoderType] = list(TranscoderType)
+
+
 class WaveToMpg3Transcoder(StrEnum):
     LAME = TranscoderType.LAME.value
     MPLAYER = TranscoderType.MPLAYER.value
@@ -111,3 +125,71 @@ class ServiceType(Enum):
     TTS = 9
     INTERNAL_PLAYER = 10
     LAST_SERVICE_TYPE = 10
+
+
+class EngineType(StrEnum):
+    AUTO_ENGINE = Services.AUTO_ENGINE_ID
+    EXPERIMENTAL_ENGINE = Services.EXPERIMENTAL_ENGINE_ID
+    GOOGLE = Services.GOOGLE_ID
+    FESTIVAL = Services.FESTIVAL_ID
+    FLITE = Services.FLITE_ID
+    ESPEAK = Services.ESPEAK_ID
+    LOG_ONLY = Services.LOG_ONLY_ID
+    SPEECH_DISPATCHER = Services.SPEECH_DISPATCHER_ID
+    NO_ENGINE = Services.NO_ENGINE_ID
+    RECITE = Services.RECITE_ID
+    # SAPI_ID = 'sapi'
+    DEFAULT = Services.DEFAULT_ENGINE_ID
+
+
+ALL_ENGINES: List[EngineType] = list(EngineType)
+
+
+class PlayerType(StrEnum):
+    NONE = Services.NONE_ID
+    SFX = Services.SFX_ID  # Kodi built-in, WAVE
+    WINDOWS = Services.WINDOWS_ID
+    APLAY = Services.APLAY_ID
+    PAPLAY = Services.PAPLAY_ID
+    AFPLAY = Services.AFPLAY_ID
+    SOX = Services.SOX_ID
+    MPLAYER = Services.MPLAYER_ID
+    MPV = Services.MPV_ID
+    MPG321 = Services.MPG321_ID
+    MPG123 = Services.MPG123_ID
+    MPG321_OE_PI = Services.MPG321_OE_PI_ID
+
+    # Engine's built-in player
+
+    INTERNAL = Services.INTERNAL_PLAYER_ID
+
+
+ALL_PLAYERS: List[StrEnum] = list(PlayerType)
+
+
+settings_map = {
+        PlayerType.NONE        : MessageId.PLAYER_NONE,
+        PlayerType.SFX         : MessageId.PLAYER_SFX,
+        PlayerType.WINDOWS     : MessageId.PLAYER_WINDOWS,
+        PlayerType.APLAY       : MessageId.PLAYER_APLAY,
+        PlayerType.PAPLAY      : MessageId.PLAYER_PAPLAY,
+        PlayerType.AFPLAY      : MessageId.PLAYER_AFPLAY,
+        PlayerType.SOX         : MessageId.PLAYER_SOX,
+        PlayerType.MPLAYER     : MessageId.PLAYER_MPLAYER,
+        PlayerType.MPV         : MessageId.PLAYER_MPV,
+        PlayerType.MPG321      : MessageId.PLAYER_MPG321,
+        PlayerType.MPG123      : MessageId.PLAYER_MPG123,
+        PlayerType.MPG321_OE_PI: MessageId.PLAYER_MPG321_OE_PI,
+        PlayerType.INTERNAL    : MessageId.PLAYER_INTERNAL
+    }
+
+
+def get_msg(cls, player: PlayerType) -> str:
+    return cls.settings_map[player.value].get_msg()
+
+
+SERVICES_BY_TYPE: Final[Dict[ServiceType, List[StrEnum]]] = {
+    ServiceType.ENGINE: ALL_ENGINES,
+    ServiceType.PLAYER: ALL_PLAYERS,
+    ServiceType.TRANSCODER: ALL_TRANSCODERS
+}

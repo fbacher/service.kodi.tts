@@ -152,12 +152,12 @@ def configuring_settings():
     return Settings.configuring_settings()
 
 
-def getSetting(key, backend_id: str = None, default=None):
-    return Settings.getSetting(key, backend_id, default)
+def getSetting(key, engine_id: str = None, default=None):
+    return Settings.getSetting(key, engine_id, default)
 
 
-def setSetting(key, value, backend_id: str = None):
-    Settings.setSetting(key, value, backend_id)
+def setSetting(key, value, engine_id: str = None):
+    Settings.setSetting(key, value, engine_id)
 
 
 def runInThread(func: Callable, args: List[Any] = [], name: str = '?',

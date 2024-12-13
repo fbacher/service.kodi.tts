@@ -9,6 +9,7 @@ import sys
 
 import xbmc
 
+from backends.settings.service_types import EngineType, GENERATE_BACKUP_SPEECH, PlayerType
 from common import *
 
 from cache.prefetch_movie_data.seed_cache import SeedCache
@@ -692,17 +693,28 @@ class TTSService:
     @classmethod
     def initTTS(cls, engine_id: str = None) -> TTSService:
         """
+        Responsible for configuring TTS to use the given engine along with the
+        configured player and related settings. If the configuration is for some
+        reason invalid, then perform a more fail-safe basic configuration.
 
         :param engine_id:
         :return:
         """
         clz = type(cls)
         if engine_id is None:
+            if GENERATE_BACKUP_SPEECH:
+                Settings.set_engine_id(EngineType.GOOGLE)
+                Settings.set_player(PlayerType.SFX.value)
             engine_id = Settings.get_engine_id()
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'service_id: {engine_id}')
         else:
-            Settings.set_engine_id(engine_id)
+            if GENERATE_BACKUP_SPEECH:
+                engine_id = EngineType.GOOGLE.value
+                Settings.set_engine_id(engine_id)
+                Settings.set_player(PlayerType.SFX.value)
+            else:
+                Settings.set_engine_id(engine_id)
             x = Settings.get_engine_id_ll()
             MY_LOGGER.debug(f'just set service_id: {engine_id} _current_value: '
                             f'{x}')
@@ -746,6 +758,193 @@ class TTSService:
                 MY_LOGGER.debug(f'EXPIRED just before SayText in FallbackTTS')
 
     @classmethod
+    def config_engine(cls, engine_id: str):
+        """
+        Configure to use the given engine_id along with the other
+        services and settings dependent on it: player, volume, transcoder, speed,
+        etc...
+
+        We should be able to just switch to use the engine and let everything
+        else configure itself since [almost] all settings are tied to the
+        given engine (player.<engine>, etc.) and that the code is written
+        to configure immediately when anything changes. However, here, extra care
+        is taken to verify the configuration and make any needed tweaks, such
+        as player in settings is no longer available.
+
+        :param engine_id:
+        :return:
+        """
+        '''
+            # From SettingsDialog.select_engine
+            
+            lang_info: LanguageInfo = choice.lang_info
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'lang_info: {lang_info}')
+            if lang_info is not None:
+                # MY_LOGGER.debug(f'{phrases}')
+                Settings.set_language(lang_info.engine_lang_id,
+                                      engine_id=engine_id)
+                voice: str = lang_info.engine_voice_id
+                Settings.set_voice(voice, engine_id=engine_id)
+
+                #  TODO: Undo- FORCE player and player mode for now
+                target_audio: AudioType = AudioType.MP3
+                player_mode: PlayerMode = PlayerMode.SLAVE_FILE
+                player: str = Players.MPV
+                if True:
+                    #  engine_id = Services.NO_ENGINE_ID
+                    target_audio = AudioType.WAV
+                    player_mode = PlayerMode.FILE
+                    player = Players.SFX
+                Settings.set_player_mode(player_mode, engine_id)
+                # Player
+                Settings.set_player(player, engine_id)
+                # Will a Transcoder be needed?
+
+                try:
+                    tran_id = SoundCapabilities.get_transcoder(
+                            target_audio=target_audio,
+                            service_id=engine_id)
+                    if tran_id is not None:
+                        MY_LOGGER.debug(f'Setting converter: {tran_id} for '
+                                        f'{engine_id}')
+                        Settings.set_converter(tran_id, engine_id)
+                        x = Settings.get_converter(engine_id=engine_id)
+                        MY_LOGGER.debug(f'Setting converter: {x}')
+                except ValueError:
+                    # Can not find a match. Don't recover, for now
+                    reraise(*sys.exc_info())
+        '''
+        '''
+            Currently commented out in SettingsDialog
+                if self.service_id != service_id:
+                    # Engine changed, pick player and PlayerMode
+                    # If player and playermode already set for this player,
+                    # then use it.
+                    player_id: str = Settings.get_player_id(service_id)
+                    if player_id is None or player_id == '':
+                        # Try using player from another engine
+                        pass
+
+                # cacheing
+                # Does engine support caching? Is it already set?
+                Settings.set_use_cache(False, service_id)
+                # PlayerMode
+                Settings.set_player_mode(PlayerMode.FILE, service_id)
+                # Player
+                Settings.set_player(Players.MPV, service_id)
+            End of currently commented out
+        '''
+        '''
+                use_cache: bool = True
+
+                Settings.set_use_cache(use_cache, engine_id)
+                # Settings.set_player_mode(PlayerMode.FILE, service_id)
+                # Player
+                # Settings.set_player(Players.MPV, service_id)
+                # Settings.set_engine_id(service_id)
+                # MY_LOGGER.debug(f'STARTING ENGINE_ID: {service_id}')
+
+                # Expensive
+                from service_worker import TTSService
+                TTSService.get_instance().initTTS(engine_id)
+                MY_LOGGER.debug(f'speed should be 1.5: {Settings.get_speed()}')
+        #  From SettingsDialog.select_language:
+        
+         choice: Choice = choices[idx]
+            if choice is not None:
+                lang_info: LanguageInfo = choice.lang_info
+                if lang_info is not None:
+                    voice: str = choice.lang_info.engine_voice_id
+                    from service_worker import TTSService
+                    Settings.set_language(choice.lang_info.engine_lang_id,
+                                          engine_id=engine_id)
+                    Settings.set_voice(voice, engine_id=engine_id)
+                    speed: float = Settings.get_speed()
+                    MY_LOGGER.debug(f'engine: {engine_id} '
+                                    f'language: {choice.lang_info.engine_lang_id}'
+                                    f' voice: {voice}'
+                                    f' speed: {speed}')
+            self.engine_language_value.setLabel(choice.lang_info.translated_voice)
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'Set engine_language_value to '
+                                f'{self.engine_language_value.getLabel()}')
+        except Exception as e:
+            MY_LOGGER.exception('')
+            
+        # From select_voice
+        
+        choice: Choice = choices[idx]
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'select_voice value: {choice.label} '
+                                  f'setting: {choice.value} idx: {idx:d}')
+
+            self.engine_voice_value.setLabel(choice.label)
+            Settings.set_voice(choice.choice_index)
+        
+        # From SettingsDialog.select_player:
+        
+        choice: Choice = choices[idx]
+            player_id: str = choice.value
+            enabled: bool = choice.enabled
+            player_label: str = choice.label
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'select_player value: {player_label} '
+                                  f'setting: {player_id} idx: {idx:d} '
+                                  f'enabled: {enabled}')
+            engine_id: str = self.engine_id
+            player_mode: PlayerMode
+            player_mode = Settings.get_player_mode(self.engine_id)
+            player_mode, allowed_values = SettingsHelper.update_player_mode(engine_id,
+                                                                            player_id,
+                                                                            player_mode)
+            MY_LOGGER.debug(f'Setting engine: {self.engine_id} '
+                            f'player_mode: {player_mode} '
+                            f'values: {allowed_values}')
+            self.set_player_mode_field(player_mode, self.engine_id)
+            self.engine_player_value.setLabel(player_label)
+            Settings.set_player(player_id, engine_id)
+            # self.update_engine_values()
+        except Exception as e:
+            MY_LOGGER.exception('')
+            
+        # From select_player_mode
+        
+        choice: Choice = choices[idx]
+            prev_choice: Choice = choices[current_choice_index]
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'engine: {self.engine_id} new player mode: {choice.label}'
+                                f' previous: {prev_choice.label} ')
+            new_player_mode: PlayerMode = PlayerMode(choice.value)
+            previous_player_mode: PlayerMode
+            previous_player_mode = PlayerMode(prev_choice.value)
+
+            MY_LOGGER.debug(f'new_player_mode: {new_player_mode} type: '
+                            f'{type(new_player_mode)}')
+            if new_player_mode != previous_player_mode:
+                MY_LOGGER.debug(f'setting player mode to: {new_player_mode}')
+                self.set_player_mode_field(new_player_mode, self.engine_id)
+        except Exception as e:
+            MY_LOGGER.exception('')
+            
+        '''
+        '''
+        From ServiceWorker.initTTS
+        
+        new_active_backend = BaseServices.getService(engine_id)
+        MY_LOGGER.debug(f'new_active_backend: {new_active_backend.engine_id}')
+        if (cls.get_active_backend() is not None
+                and cls.get_active_backend().engine_id == engine_id):
+            MY_LOGGER.debug(f'Returning {engine_id} engine')
+            return cls.get_instance()
+
+        engine_id = cls.set_active_backend(new_active_backend)
+        cls.updateInterval()  # Poll interval
+        MY_LOGGER.info(f'New active backend: {engine_id}')
+        
+        '''
+
+    @classmethod
     def firstRun(cls):
         """
 
@@ -767,7 +966,7 @@ class TTSService:
                                     f'instance_count: {cls.instance_count}')
         cls.initTTS()
         seed_cache: bool = False  # True
-        engine_id: str = cls.get_active_backend().backend_id
+        engine_id: str = cls.get_active_backend().engine_id
         Monitor.register_notification_listener(cls.onNotification,
                                                f'srvic.notfy_{cls.instance_count}')
         Monitor.register_abort_listener(cls.onAbortRequested, name='')
@@ -941,9 +1140,9 @@ class TTSService:
 
         :return:
         """
-        backend_id = Settings.get_engine_id()
+        engine_id = Settings.get_engine_id()
         if (cls.active_backend is not None
-                and backend_id == cls.active_backend.engine_id):
+                and engine_id == cls.active_backend.engine_id):
             return
         cls.initTTS()
 

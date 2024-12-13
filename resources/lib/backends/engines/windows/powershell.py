@@ -52,7 +52,7 @@ class PowerShellTTS(SimpleTTSBackend):
     ID = Backends.POWERSHELL_ID
     service_ID: str = Services.POWERSHELL_ID
     service_TYPE: str = ServiceType.ENGINE_SETTINGS
-    backend_id: str = Backends.POWERSHELL_ID
+    engine_id: str = Backends.POWERSHELL_ID
     engine_id: str = Backends.POWERSHELL_ID
     OUTPUT_FILE_TYPE: str = '.mp3'
     displayName: str = MessageId.ENGINE_POWERSHELL.get_msg()

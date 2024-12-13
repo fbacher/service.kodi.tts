@@ -112,7 +112,7 @@ class WavAudioPlayerHandler(BasePlayerHandler):
     sound file type (here, wave or mp3).
     """
     ID: str = Players.WavAudioPlayerHandler
-    backend_id = Players.WavAudioPlayerHandler
+    engine_id = Players.WavAudioPlayerHandler
     service_ID: str = Services.WavAudioPlayerHandler
     displayName = 'WaveAudioPlayerHandler'
     players = (BuiltInAudioPlayer, PlaySFXAudioPlayer, WindowsAudioPlayer,
@@ -270,7 +270,7 @@ class WavAudioPlayerHandler(BasePlayerHandler):
 
 class MP3AudioPlayerHandler(WavAudioPlayerHandler):
     ID: str = Players.MP3AudioPlayerHandler
-    backend_id = Players.MP3AudioPlayerHandler
+    engine_id = Players.MP3AudioPlayerHandler
     service_ID: str = Services.MP3AudioPlayerHandler
     displayName = 'MP3AudioPlayerHandler'
     players = (WindowsAudioPlayer, AfplayPlayer, SOXAudioPlayer,
@@ -309,7 +309,7 @@ class MP3AudioPlayerHandler(WavAudioPlayerHandler):
 
 class BuiltInAudioPlayerHandler(BasePlayerHandler):
     ID: str = Players.BuiltInAudioPlayerHandler
-    backend_id = Players.BuiltInAudioPlayerHandler
+    engine_id = Players.BuiltInAudioPlayerHandler
     service_ID: str = Services.BuiltInAudioPlayerHandler
     displayName = 'BuiltInAudioPlayerHandler'
 

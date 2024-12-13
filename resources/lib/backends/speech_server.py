@@ -22,7 +22,7 @@ module_logger = BasicLogger.get_logger(__name__)
 
 
 class SpeechServerBackend(SimpleTTSBackend):
-    backend_id = 'ttsd'
+    engine_id = 'ttsd'
     displayName = 'HTTP TTS Server (Requires Running Server)'
     canStreamWav = False
     pitchConstraints: Constraints = Constraints(-100, 0, 100, True, False, 1.0,

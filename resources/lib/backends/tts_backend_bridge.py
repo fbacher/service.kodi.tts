@@ -10,8 +10,8 @@ class TTSBackendBridge(ITTSBackendBase):
     _baseBackend: ITTSBackendBase = None
 
     @classmethod
-    def getBackend(cls, backend_id: str) -> IBackend:
-        return cls._baseBackend.getBackend(backend_id)
+    def getBackend(cls, engine_id: str) -> IBackend:
+        return cls._baseBackend.getBackend(engine_id)
 
     @classmethod
     def setBaseBackend(cls, backend: ITTSBackendBase) -> None:

@@ -316,7 +316,6 @@ class SpeechGenerator:
 class ExperimentalTTSBackend(SimpleTTSBackend):
 
     ID: str = Backends.EXPERIMENTAL_ENGINE_ID
-    backend_id = Backends.EXPERIMENTAL_ENGINE_ID
     engine_id = Backends.EXPERIMENTAL_ENGINE_ID
     service_ID: str = Services.EXPERIMENTAL_ENGINE_ID
     service_TYPE: str = ServiceType.ENGINE

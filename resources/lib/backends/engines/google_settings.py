@@ -53,7 +53,7 @@ class PlayerModeValidator(StringValidator):
 class GoogleSettings(BaseServiceSettings):
     # Only returns .mp3 files
     ID: str = Backends.GOOGLE_ID
-    backend_id = Backends.GOOGLE_ID
+    engine_id = Backends.GOOGLE_ID
     engine_id = Backends.GOOGLE_ID
     service_ID: str = Services.GOOGLE_ID
     service_TYPE: str = ServiceType.ENGINE_SETTINGS
@@ -167,8 +167,8 @@ class GoogleSettings(BaseServiceSettings):
                                       supported_output_formats=[AudioType.MP3])
 
         consumer_formats: List[AudioType] = [AudioType.MP3]
-        if True:
-            consumer_formats.append(AudioType.WAV)
+        # if False:
+        #     consumer_formats.append(AudioType.WAV)
         candidates: List[str]
         candidates = SoundCapabilities.get_capable_services(
                 service_type=ServiceType.PLAYER,

@@ -43,7 +43,7 @@ class ConfigUtils:
         available = BackendInfoBridge.getAvailableBackends()
         for b in available:
             cls._logger.debug_v('backend: ' + b.displayName)
-            choices.append(b.backend_id)
+            choices.append(b.engine_id)
             display.append(b.displayName)
         idx = xbmcgui.Dialog().select(T(32181), display)
         if idx < 0:
@@ -53,8 +53,8 @@ class ConfigUtils:
         Settings.setSetting(SettingsProperties.ENGINE, choices[idx], None)
 
     @classmethod
-    def selectPlayer(cls, backend_id):
-        players = BackendInfoBridge.getPlayers(backend_id)
+    def selectPlayer(cls, engine_id):
+        players = BackendInfoBridge.getPlayers(engine_id)
         if not players:
             xbmcgui.Dialog().ok(T(32182), T(32183))
             return
@@ -66,12 +66,12 @@ class ConfigUtils:
         if idx < 0:
             return
         player: str = players[idx][0]
-        cls._logger.info(f'Player for {backend_id} set to: {player}')
-        Settings.set_player(player, backend_id)
+        cls._logger.info(f'Player for {engine_id} set to: {player}')
+        Settings.set_player(player, engine_id)
 
     @classmethod
-    def selectVoiceSetting(cls, backend_id, voice):
-        players = BackendInfoBridge.getPlayers(backend_id)
+    def selectVoiceSetting(cls, engine_id, voice):
+        players = BackendInfoBridge.getPlayers(engine_id)
         if not players:
             xbmcgui.Dialog().ok(T(32182), T(32183))
             return
@@ -83,12 +83,12 @@ class ConfigUtils:
         if idx < 0:
             return
         player = players[idx][0]
-        cls._logger.info(f'Player for {backend_id} set to: {player}')
-        Settings.set_player(player, backend_id)
+        cls._logger.info(f'Player for {engine_id} set to: {player}')
+        Settings.set_player(player, engine_id)
 
     @classmethod
-    def selectSetting(cls, backend_id, setting, *args):
-        settingsList = BackendInfoBridge.getSettingsList(backend_id, setting, *args)
+    def selectSetting(cls, engine_id, setting, *args):
+        settingsList = BackendInfoBridge.getSettingsList(engine_id, setting, *args)
         if not settingsList:
             xbmcgui.Dialog().ok(T(32182), T(32186))
             return
@@ -98,7 +98,7 @@ class ConfigUtils:
         # xbmcgui.Dialog().select((heading, list[, autoclose, preselect,
         # useDetails])
         auto_close = -1
-        current_value = Settings.getSetting(setting, backend_id)
+        current_value = Settings.getSetting(setting, engine_id)
         current_index = -1
         if current_value is not None:
             current_index = displays.index(str(current_value))
@@ -107,12 +107,12 @@ class ConfigUtils:
         if idx < 0:
             return
         choice = displays[idx]
-        cls._logger.info(f'Setting {setting} for {backend_id} set to: {choice}')
-        Settings.setSetting(f'{setting}', choice, backend_id)
+        cls._logger.info(f'Setting {setting} for {engine_id} set to: {choice}')
+        Settings.setSetting(f'{setting}', choice, engine_id)
 
     @classmethod
-    def selectVolumeSetting(cls, backend_id, setting, *args):
-        settingsList = BackendInfoBridge.getSettingsList(backend_id, setting, *args)
+    def selectVolumeSetting(cls, engine_id, setting, *args):
+        settingsList = BackendInfoBridge.getSettingsList(engine_id, setting, *args)
         if not settingsList:
             xbmcgui.Dialog().ok(T(32182), T(32186))
             return
@@ -120,7 +120,7 @@ class ConfigUtils:
         # xbmcgui.Dialog().select((heading, list[, autoclose, preselect,
         # useDetails])
         auto_close = -1
-        current_value = Settings.getSetting(setting, backend_id)
+        current_value = Settings.getSetting(setting, engine_id)
         current_index = None
         if current_value is not None:
             current_index = settingsList.index(str(current_value))
@@ -128,11 +128,11 @@ class ConfigUtils:
         if idx < 0:
             return
         choice = settingsList[idx]
-        cls._logger.info(f'Setting {setting} for {backend_id} set to: {choice}')
-        Settings.setSetting(setting, choice, backend_id)
+        cls._logger.info(f'Setting {setting} for {engine_id} set to: {choice}')
+        Settings.setSetting(setting, choice, engine_id)
 
     @classmethod
-    def selectGenderSetting(cls, backend_id):
+    def selectGenderSetting(cls, engine_id):
         auto_close = -1
         # yesno(heading, message, nolabel, yeslabel, customlabel, autoclose])
         choice = xbmcgui.Dialog().yesno(T(32211), T(32217), T(32212), T(32213),
@@ -141,7 +141,7 @@ class ConfigUtils:
             voice = 'female'
         else:
             voice = 'male'
-        Settings.setSetting(SettingsProperties.GENDER, voice, backend_id)
+        Settings.setSetting(SettingsProperties.GENDER, voice, engine_id)
 
 
 ConfigUtils.init_class()

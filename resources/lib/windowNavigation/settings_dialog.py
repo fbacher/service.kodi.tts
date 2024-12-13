@@ -9,7 +9,7 @@ from xbmcgui import (ControlButton, ControlEdit, ControlGroup, ControlLabel,
                      ControlRadioButton, ControlSlider)
 
 from backends.settings.language_info import LanguageInfo
-from backends.settings.service_types import Services
+from backends.settings.service_types import GENERATE_BACKUP_SPEECH
 from backends.settings.settings_helper import FormatType, SettingsHelper
 from backends.settings.validators import (AllowedValue, BoolValidator, NumericValidator,
                                           StringValidator, TTSNumericValidator, Validator)
@@ -134,7 +134,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                                                       SettingsProperties.ENGINE_DEFAULT)
 
         if initial_backend == SettingsProperties.ENGINE_DEFAULT:  # 'auto'
-            initial_backend = BackendInfo.getAvailableBackends()[0].backend_id
+            initial_backend = BackendInfo.getAvailableBackends()[0].engine_id
         self.getEngineInstance(engine_id=initial_backend)
 
         MY_LOGGER.debug_xv('SettingsDialog.__init__')
@@ -1040,7 +1040,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 if engine_id is not None:
                     from service_worker import TTSService
 
-                    current_engine_id: str = TTSService.get_instance().tts.backend_id
+                    current_engine_id: str = TTSService.get_instance().tts.engine_id
                     if current_engine_id != engine_id:
                         PhraseList.set_current_expired()  # Changing engines
 
@@ -1064,16 +1064,22 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                     target_audio: AudioType = AudioType.MP3
                     player_mode: PlayerMode = PlayerMode.SLAVE_FILE
                     player: str = Players.MPV
-                    if True:
-                        #  engine_id = Services.NO_ENGINE_ID
+                    #
+                    # This HACK provides a means to provide a limited set of
+                    # audio messages that is shipped with the addon. These
+                    # messages are used when either no engine or no player can
+                    # be configured. These messages are voiced using Kodi SFX
+                    # internal player. The messages should help the user install/
+                    # configure an engine or player. See:
+                    # GENERATE_BACKUP_SPEECH, sfx_audio_player, no_engine and voicecache
+
+                    if GENERATE_BACKUP_SPEECH:
                         target_audio = AudioType.WAV
                         player_mode = PlayerMode.FILE
                         player = Players.SFX
                     Settings.set_player_mode(player_mode, engine_id)
                     # Player
                     Settings.set_player(player, engine_id)
-                    # Will a Transcoder be needed?
-
                     try:
                         tran_id = SoundCapabilities.get_transcoder(
                                                                target_audio=target_audio,
@@ -1148,7 +1154,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             # Get an appropriate voice for this engine
             if engine_id is not None:
                 from service_worker import TTSService
-                current_engine_id: str = TTSService.get_instance().tts.backend_id
+                current_engine_id: str = TTSService.get_instance().tts.engine_id
                 if current_engine_id != engine_id:
                     PhraseList.set_current_expired()  # Changing engines
                 lang_info: LanguageInfo = choice.lang_info
@@ -2383,7 +2389,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         valid_engine = SettingsMap.is_available(engine_id)
         if not valid_engine:
             bad_engine_id: str = engine_id
-            engine_id = BackendInfo.getAvailableBackends()[0].backend_id
+            engine_id = BackendInfo.getAvailableBackends()[0].engine_id
             MY_LOGGER.info(f'Invalid engine: {bad_engine_id} replaced with: {engine_id}')
             Settings.set_engine_id(engine_id)
         return engine_id

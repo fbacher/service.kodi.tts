@@ -186,7 +186,7 @@ class GuiWorker:
         self.service_prop = TTSService.instance
         if clz._logger.isEnabledFor(DEBUG_XV):
             clz._logger.debug_xv('TTSService engine:'
-                                 f' {self.service_prop.active_backend.backend_id} '
+                                 f' {self.service_prop.active_backend.engine_id} '
                                  f'instance: {self.service_prop} ')
         return self.service_prop
 

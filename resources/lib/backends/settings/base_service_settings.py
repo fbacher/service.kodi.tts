@@ -25,7 +25,7 @@ class BaseServiceSettings:
     Defines base settings inherited by all other services: engine, player, converter,
     etc.
     """
-    backend_id = Services.TTS_SERVICE
+    engine_id = Services.TTS_SERVICE
     service_ID: str = Services.TTS_SERVICE
     displayName: str = 'TTS'
     canStreamWav = False

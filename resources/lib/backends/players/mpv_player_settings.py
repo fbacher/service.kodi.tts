@@ -16,7 +16,7 @@ from common.settings_low_level import SettingsProperties
 
 class MPVPlayerSettings:
     ID = Players.MPV
-    service_ID: str = Services.MPV_ID
+    service_ID: str = Services.MPV_ID.value
     service_type: str = ServiceType.PLAYER
     displayName = 'MPV'
 

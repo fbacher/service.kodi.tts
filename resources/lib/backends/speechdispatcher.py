@@ -64,7 +64,7 @@ def getSpeechDSpeaker(test=False) -> Speaker:
 class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
     """Supports The speech-dispatcher on linux"""
     ID = Backends.SPEECH_DISPATCHER_ID
-    backend_id = Backends.SPEECH_DISPATCHER_ID
+    engine_id = Backends.SPEECH_DISPATCHER_ID
     service_ID: str = Services.SPEECH_DISPATCHER_ID
     service_TYPE: str = ServiceType.ENGINE
     displayName = 'Speech Dispatcher'
@@ -277,7 +277,7 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
         return enginePitch
 
     @classmethod
-    def negotiate_engine_config(cls, backend_id: str, player_volume_adjustable: bool,
+    def negotiate_engine_config(cls, engine_id: str, player_volume_adjustable: bool,
                                 player_speed_adjustable: bool,
                                 player_pitch_adjustable: bool) -> Tuple[bool, bool, bool]:
         """

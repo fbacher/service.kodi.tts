@@ -20,8 +20,8 @@ class BackendInfoBridge(IBackendInfo):
         type(self)._class_name = self.__class__.__name__
 
     @classmethod
-    def getBackend(cls, backend_id: str = None) -> ITTSBackendBase:
-        return BaseServices.getService(backend_id)
+    def getBackend(cls, engine_id: str = None) -> ITTSBackendBase:
+        return BaseServices.getService(engine_id)
 
     @classmethod
     def getBackendIds(cls) -> List[str]:
@@ -36,25 +36,25 @@ class BackendInfoBridge(IBackendInfo):
         cls._backendInfoImpl = backend
 
     @classmethod
-    def isValidBackend(cls, backend_id: str):
-        return cls._backendInfoImpl.isValidBackend(backend_id)
+    def isValidBackend(cls, engine_id: str):
+        return cls._backendInfoImpl.isValidBackend(engine_id)
 
     @classmethod
-    def isBackendSettingSupported(cls, backend_id: str, setting_id: str) -> bool:
-        return cls.getBackend(backend_id).isSettingSupported(setting_id)
+    def isBackendSettingSupported(cls, engine_id: str, setting_id: str) -> bool:
+        return cls.getBackend(engine_id).isSettingSupported(setting_id)
 
     @classmethod
-    def getBackendConstraints(cls, backend_id: str, setting_id: str) -> Constraints:
-        return cls.getBackend(backend_id).getConstraints(setting_id)
+    def getBackendConstraints(cls, engine_id: str, setting_id: str) -> Constraints:
+        return cls.getBackend(engine_id).getConstraints(setting_id)
 
     @classmethod
-    def negotiate_engine_config(cls, backend_id: str, player_volume_adjustable: bool,
+    def negotiate_engine_config(cls, engine_id: str, player_volume_adjustable: bool,
                                 player_speed_adjustable: bool,
                                 player_pitch_adjustable: bool) -> Tuple[bool, bool, bool]:
 
         try:
-            engine: BackendInfoBridge = cls.getBackend(backend_id)
-            return engine.negotiate_engine_config(backend_id, player_volume_adjustable,
+            engine: BackendInfoBridge = cls.getBackend(engine_id)
+            return engine.negotiate_engine_config(engine_id, player_volume_adjustable,
                                                   player_speed_adjustable,
                                                   player_pitch_adjustable)
         except Exception:

@@ -8,21 +8,21 @@ class IBackendInfo:
     _backendInfoImpl: 'IBackendInfo' = None
 
     @classmethod
-    def getBackend(cls, backend_id: str = None) -> Callable | ITTSBackendBase | None:
-        return cls._backendInfoImpl.getBackendByProvider(backend_id)
+    def getBackend(cls, engine_id: str = None) -> Callable | ITTSBackendBase | None:
+        return cls._backendInfoImpl.getBackendByProvider(engine_id)
 
     @classmethod
     def getBackendFallback(cls) -> ITTSBackendBase | None:
         return cls._backendInfoImpl.getBackendFallback()
 
     @classmethod
-    def isValidBackend(cls, backend_id: str):
-        return cls._backendInfoImpl.isValidBackend(backend_id)
+    def isValidBackend(cls, engine_id: str):
+        return cls._backendInfoImpl.isValidBackend(engine_id)
 
     @classmethod
     def getBackendByProvider(cls,
-                             backend_id: str = None) -> Callable | ITTSBackendBase | None:
-        return cls._backendInfoImpl.getBackend(backend_id)
+                             engine_id: str = None) -> Callable | ITTSBackendBase | None:
+        return cls._backendInfoImpl.getBackend(engine_id)
 
     @classmethod
     def setBackendInfo(cls, backend: 'IBackendInfo'):
@@ -33,8 +33,8 @@ class IBackendInfo:
         pass
 
     @classmethod
-    def isSettingSupported(cls, backend_id: str, setting_id: str) -> bool:
-        return cls.getBackend(backend_id).isSettingSupported(setting_id)
+    def isSettingSupported(cls, engine_id: str, setting_id: str) -> bool:
+        return cls.getBackend(engine_id).isSettingSupported(setting_id)
 
     @classmethod
     def getSettingNames(cls) -> List[str] | None:
@@ -46,11 +46,11 @@ class IBackendInfo:
         return None
 
     @classmethod
-    def get_setting_default(cls, backend_id: str, setting_id: str) -> Any:
-        return cls.getBackend(backend_id).get_setting_default(setting_id)
+    def get_setting_default(cls, engine_id: str, setting_id: str) -> Any:
+        return cls.getBackend(engine_id).get_setting_default(setting_id)
 
     @classmethod
-    def negotiate_engine_config(cls, backend_id: str, player_volume_adjustable: bool,
+    def negotiate_engine_config(cls, engine_id: str, player_volume_adjustable: bool,
                                 player_speed_adjustable: bool,
                                 player_pitch_adjustable: bool) -> Tuple[bool, bool, bool]:
         pass

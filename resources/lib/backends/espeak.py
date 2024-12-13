@@ -52,7 +52,6 @@ class ESpeakTTSBackend(SimpleTTSBackend):
     ID = Backends.ESPEAK_ID
     service_ID: str = Services.ESPEAK_ID
     service_TYPE: str = ServiceType.ENGINE_SETTINGS
-    backend_id: str = Backends.ESPEAK_ID
     engine_id: str = Backends.ESPEAK_ID
     OUTPUT_FILE_TYPE: str = '.wav'
     displayName: str = 'eSpeak'
@@ -313,10 +312,9 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             return True
 
         # If audio in cache is suitable for player, then we are done.
-        player_voice_cache: VoiceCache = self.get_player_voice_cache(self.player_id)
-        player_result: CacheEntryInfo
-        player_result = player_voice_cache.get_path_to_voice_file(phrase, use_cache=True)
-        if player_result.audio_exists:
+        result: CacheEntryInfo
+        result = self.voice_cache.get_path_to_voice_file(phrase, use_cache=True)
+        if result.audio_exists:
             return True
 
         success: bool = False
@@ -688,7 +686,10 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             ietf_lang: langcodes.Language = langcodes.get(locale)
             # MY_LOGGER.debug(f'locale: {locale}')
             phrase.set_lang_dir(ietf_lang.language)
-            phrase.set_territory_dir(ietf_lang.territory.lower())
+            territory: str = '-'
+            if ietf_lang.territory is not None:
+                territory = ietf_lang.territory.lower()
+            phrase.set_territory_dir(territory)
         return
 
     @staticmethod
@@ -720,105 +721,3 @@ class ESpeakTTSBackend(SimpleTTSBackend):
 
         # eSpeak has built-in player
         return available
-
-
-'''
-class espeak_VOICE(ctypes.Structure):
-    _fields_ = [
-        ('name', ctypes.c_char_p),
-        ('languages', ctypes.c_char_p),
-        ('identifier', ctypes.c_char_p),
-        ('gender', ctypes.c_byte),
-        ('age', ctypes.c_byte),
-        ('variant', ctypes.c_byte),
-        ('xx1', ctypes.c_byte),
-        ('score', ctypes.c_int),
-        ('spare', ctypes.c_void_p),
-    ]
-
-
-
-######### BROKEN ctypes method ############
-class ESpeakCtypesTTSBackend(base.BaseEngineService):
-    service_id = 'eSpeak-ctypes'
-    displayName = 'eSpeak (ctypes)'
-    settings = {SettingsProperties.VOICE: ''}
-    broken = True
-    _eSpeak = None
-
-    @property
-    def eSpeak(self):
-        if ESpeakCtypesTTSBackend._eSpeak:
-            return ESpeakCtypesTTSBackend._eSpeak
-        libname = ctypes.util.find_library('espeak')
-        ESpeakCtypesTTSBackend._eSpeak = ctypes.cdll.LoadLibrary(libname)
-        ESpeakCtypesTTSBackend._eSpeak.espeak_Initialize(0, 0, None, 0)
-        return ESpeakCtypesTTSBackend._eSpeak
-
-    def __init__(self):
-        super().__init__()
-        pass
-
-    def init(self):
-        super().init()
-        self.update()
-        self.initialized = True
-
-    @staticmethod
-    def isSupportedOnPlatform():
-        return SystemQueries.isLinux() or SystemQueries.isWindows()
-
-    @staticmethod
-    def isInstalled():
-        return ESpeakCtypesTTSBackend.isSupportedOnPlatform()
-
-    def say(self, text, interrupt=False, preload_cache=False):
-        if not self.eSpeak:
-            return
-        if self.voice:
-            self.eSpeak.espeak_SetVoiceByName(self.voice)
-        if interrupt:
-            self.eSpeak.espeak_Cancel()
-        sb_text = ctypes.create_string_buffer(text)
-        size = ctypes.sizeof(sb_text)
-        self.eSpeak.espeak_Synth(sb_text, size, 0, 0, 0, 0x1000, None, None)
-
-    def update(self):
-        clz = type(self)
-        self.voice = clz.getSetting(SettingsProperties.VOICE)
-
-    def stop(self):
-        if not self.eSpeak:
-            return
-        self.eSpeak.espeak_Cancel()
-
-    def close(self):
-        if not self.eSpeak:
-            return
-        # self.eSpeak.espeak_Terminate() #TODO: Removed because broke, uncomment if fixed
-        # ctypes.cdll.LoadLibrary('libdl.so').dlclose(self.eSpeak._handle)
-        # del self.eSpeak #TODO: Removed because broke, uncomment if fixed
-        # self.eSpeak = None #TODO: Removed because broke, uncomment if fixed
-
-    @staticmethod
-    def available():
-        return bool(ctypes.util.find_library('espeak'))
-
-    @classmethod
-    def settingList(cls, setting, *args):
-        return None
-        if setting == SettingsProperties.VOICE:
-            if not ESpeakCtypesTTSBackend._eSpeak:
-                return None
-            voices = ESpeakCtypesTTSBackend._eSpeak.espeak_ListVoices(None)
-            aespeak_VOICE = ctypes.POINTER(ctypes.POINTER(espeak_VOICE))
-            pvoices = ctypes.cast(voices, aespeak_VOICE)
-            voiceList = []
-            index = 0
-            while pvoices[index]:
-                voiceList.append(os.path.basename(
-                    pvoices[index].contents.identifier))
-                index += 1
-            return voiceList
-        return None
-'''

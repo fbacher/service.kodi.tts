@@ -122,10 +122,16 @@ class Settings(SettingsLowLevel):
         return engine_id
 
     @classmethod
-    def set_engine_id(cls, engine_id: str) -> None:
+    def set_engine_id(cls, engine_id: str | StrEnum) -> None:
+        engine_str: str = ''
+        if isinstance(engine_id, StrEnum):
+            engine_id: StrEnum
+            engine_str: str = engine_id.value
+        else:
+            engine_str = engine_id
         engine_id_validator = SettingsMap.get_validator(SettingsProperties.ENGINE,
                                                         '')
-        engine_id_validator.set_tts_value(engine_id)
+        engine_id_validator.set_tts_value(engine_str)
         return
 
     @classmethod

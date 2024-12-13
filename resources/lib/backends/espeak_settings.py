@@ -153,6 +153,7 @@ class ESpeakSettings(BaseServiceSettings):
 
         MY_LOGGER.debug(f'valid_players: {valid_players}')
 
+        # TODO: what if default player is not available?
         player_validator: StringValidator
         player_validator = StringValidator(SettingsProperties.PLAYER, cls.engine_id,
                                            allowed_values=valid_players,

@@ -15,7 +15,7 @@ module_logger = BasicLogger.get_logger(__name__)
 
 
 class BaseEngineSettings:
-    backend_id = 'auto'
+    engine_id = 'auto'
     service_ID: str = Services.TTS_SERVICE
     displayName: str = 'Auto'
     canStreamWav = False

@@ -1,44 +1,31 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations  # For union operator |
 
-import ctypes.util
-import os
-import subprocess
-import sys
-import tempfile
-
 import langcodes
 
 from pathlib import Path
 
-from backends.players.iplayer import IPlayer
 from backends.settings.language_info import LanguageInfo
-from backends.settings.settings_helper import SettingsHelper
-from backends.settings.validators import NumericValidator
 from backends.transcoders.trans import TransCode
 from cache.voicecache import VoiceCache
 from cache.common_types import CacheEntryInfo
 from common import *
 
-from backends.audio.builtin_audio_player import BuiltInAudioPlayer
-# from backends.audio.player_handler import BasePlayerHandler, WavAudioPlayerHandler
 from backends.audio.sound_capabilities import ServiceType
-from backends.base import BaseEngineService, SimpleTTSBackend
+from backends.base import SimpleTTSBackend
 from backends.settings.i_validators import AllowedValue, INumericValidator, IValidator
 from backends.settings.service_types import Services
 from backends.settings.settings_map import SettingsMap
 from common import utils
 from common.base_services import BaseServices
-from common.constants import Constants
 from common.logger import *
-from common.messages import Messages
 from common.monitor import Monitor
 from common.phrases import Phrase
-from common.setting_constants import (AudioType, Backends, Genders, Mode, PlayerMode,
+from common.setting_constants import (AudioType, Backends, Converters, Genders, Mode,
+                                      PlayerMode,
                                       Players)
 from common.settings import Settings
 from common.settings_low_level import SettingsProperties
-from langcodes import LanguageTagError
 from windowNavigation.choice import Choice
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
@@ -55,6 +42,7 @@ class NoEngine(SimpleTTSBackend):
     displayName = 'noEngine'
     OUTPUT_FILE_TYPE: str = '.wav'
     UTF_8: Final[str] = '1'
+    voice_cache: VoiceCache = None
 
     voice_map: Dict[str, List[Tuple[str, str, Genders]]] = None
     _class_name: str = None
@@ -63,10 +51,15 @@ class NoEngine(SimpleTTSBackend):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         clz = type(self)
-        self.voice_cache: VoiceCache = VoiceCache(clz.service_ID)
+        self.voice_cache: VoiceCache = VoiceCache(clz.service_ID,
+                                                  reset_engine_each_call=False)
         if not clz._initialized:
             clz._initialized = True
             BaseServices.register(self)
+
+    @classmethod
+    def get_voice_cache(cls) -> VoiceCache:
+        return cls.voice_cache
 
     def init(self):
         super().init()
@@ -75,9 +68,6 @@ class NoEngine(SimpleTTSBackend):
 
     def get_output_audio_type(self) -> AudioType:
         return AudioType.WAV
-
-    def get_voice_cache(self) -> VoiceCache:
-        return self.voice_cache
 
     @classmethod
     def get_backend_id(cls) -> str:
@@ -92,6 +82,57 @@ class NoEngine(SimpleTTSBackend):
 
     def get_player_mode(self) -> PlayerMode:
         return PlayerMode.FILE
+
+    @classmethod
+    def create_wave_phrase(cls, phrase: Phrase) -> Tuple[Phrase, CacheEntryInfo]:
+        """
+        Copy the given phrase produced by an engine and create a wave file from
+        the previously created audio for the phrase. The wave file is placed
+        in Constants.PREDEFINED_CACHE and is shipped with the product.
+        :param phrase:
+        :return: Phrase, CacheEntryInfo for the generated wave phrase
+        """
+        if cls.voice_cache is None:
+            cls.voice_cache = VoiceCache(cls.service_ID)
+        MY_LOGGER.debug(f'phrase: {phrase} \n'
+                        f'text: {phrase.text} \n'
+                        f'cache_path: {phrase.cache_path} \n'
+                        f'audio_type: {phrase.audio_type} \n'
+                        f'lang: {phrase.language} \n'
+                        f'gender: {phrase.gender} \n'
+                        f'voice: {phrase.voice} \n'
+                        f'lang_dir: {phrase.lang_dir} \n'
+                        f'territory_dir: {phrase.territory_dir}')
+        wave_phrase: Phrase = Phrase(text=phrase.text,
+                                     check_expired=False)
+        wave_phrase.language = phrase.language
+        wave_phrase.lang_dir = phrase.lang_dir
+        wave_phrase.update_cache_path(active_engine=cls)
+        cache_info = cls.voice_cache.get_path_to_voice_file(wave_phrase, use_cache=True)
+        MY_LOGGER.debug(f'wave_phrase: {wave_phrase} \n'
+                        f'text: {wave_phrase.text} \n'
+                        f'cache_path: {wave_phrase.cache_path} \n'
+                        f'audio_type: {wave_phrase.audio_type} \n'
+                        f'lang: {wave_phrase.language} \n'
+                        f'gender: {wave_phrase.gender} \n'
+                        f'voice: {wave_phrase.voice} \n'
+                        f'lang_dir: {wave_phrase.lang_dir} \n'
+                        f'territory_dir: {wave_phrase.territory_dir}')
+        MY_LOGGER.debug(f'no_engine cache_info: {cache_info}')
+        if not cache_info.audio_exists:
+            mp3_file: Path = phrase.get_cache_path()
+            wave_file = cache_info.current_audio_path
+            # trans_id: str = Settings.get_converter(self.engine_id)
+            trans_id: str = Converters.LAME
+            MY_LOGGER.debug(f'service_id: {cls.service_ID} trans_id: {trans_id}')
+            success = TransCode.transcode(trans_id=trans_id,
+                                          input_path=mp3_file,
+                                          output_path=wave_file,
+                                          remove_input=False)
+            if success:
+                phrase.text_exists(check_expired=False)
+            MY_LOGGER.debug(f'success: {success} wave_file: {wave_file} mp3: {mp3_file}')
+        return wave_phrase, cache_info
 
     def get_cached_voice_file(self, phrase: Phrase,
                               generate_voice: bool = True) -> bool:
@@ -108,11 +149,12 @@ class NoEngine(SimpleTTSBackend):
                                file.
         :return: True if the voice file was handed to a player, otherwise False
         """
+        clz = type(self)
         MY_LOGGER.debug(f'phrase: {phrase.get_text()} {phrase.get_debug_info()} '
                         f'cache_path: {phrase.get_cache_path()} use_cache: '
                         f'{Settings.is_use_cache()}')
         result: CacheEntryInfo
-        result = self.get_voice_cache().get_path_to_voice_file(phrase,
+        result = clz.get_voice_cache().get_path_to_voice_file(phrase,
                                                       use_cache=Settings.is_use_cache())
         MY_LOGGER.debug(f'result: {result}')
         if result.audio_exists:
@@ -183,17 +225,21 @@ class NoEngine(SimpleTTSBackend):
     def update_voice_path(cls, phrase: Phrase) -> None:
         """
         If a language is specified for this phrase, then modify any
-        cache path to reflect the chosen language and territory.
+        cache path to reflect the chosen language but ignore territory.
         :param phrase:
         :return:
         """
 
-        if Settings.is_use_cache() and not phrase.is_lang_territory_set():
+        # NO_ENGINE is only used when no engine has been or able to be configured.
+        # The audio comes shipped with the product with the sole purpose of guiding
+        # the user to configuring an engine and player. To reduce the size of
+        # these WAVE files, only audio for the major language is used. Territory
+        # is ignored.
+        if Settings.is_use_cache():
             if MY_LOGGER.isEnabledFor(DEBUG_XV):
                 MY_LOGGER.debug_xv(f'lang: {phrase.language} \n'
                                    f'voice: {phrase.voice}\n'
-                                   f'lang_dir: {phrase.lang_dir}\n'
-                                   f'')
+                                   f'lang_dir: {phrase.lang_dir}\n')
             locale: str = phrase.language  # IETF format
             _, kodi_locale, _, ietf_lang = LanguageInfo.get_kodi_locale_info()
             # MY_LOGGER.debug(f'orig Phrase locale: {locale}')
@@ -202,7 +248,7 @@ class NoEngine(SimpleTTSBackend):
             ietf_lang: langcodes.Language = langcodes.get(locale)
             # MY_LOGGER.debug(f'locale: {locale}')
             phrase.set_lang_dir(ietf_lang.language)
-            phrase.set_territory_dir(ietf_lang.territory.lower())
+            phrase.set_territory_dir('')
         return
 
     @staticmethod

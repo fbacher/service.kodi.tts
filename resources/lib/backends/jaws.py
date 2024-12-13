@@ -13,7 +13,7 @@ module_logger = BasicLogger.get_logger(__name__)
 
 
 class JAWSTTSBackend(ThreadedTTSBackend):
-    backend_id = 'JAWS'
+    engine_id = 'JAWS'
     displayName = 'JAWS'
     interval = 50
 

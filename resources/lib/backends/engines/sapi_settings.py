@@ -20,7 +20,7 @@ module_logger = BasicLogger.get_logger(__name__)
 class SAPI_Settings:
     # Only returns .mp3 files
     ID: str = Backends.SAPI_ID
-    backend_id = Backends.SAPI_ID
+    engine_id = Backends.SAPI_ID
     service_ID: str = Services.SAPI_ID
     displayName = 'SAPI'
     _logger: BasicLogger = None

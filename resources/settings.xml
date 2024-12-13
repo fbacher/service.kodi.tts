@@ -359,14 +359,7 @@
                     </control>
                     <visible>true</visible>
                 </setting>
-                <setting help="" id="gender.google" label="32178" type="string">
-                    <level>4</level>
-                    <default>female</default>
-                    <control type="edit" format="string">
-                        <heading>32005</heading>
-                    </control>
-                    <visible>true</visible>
-                </setting>
+
                 <setting help="" id="language.google" label="32178" type="string">
                     <level>4</level>
                     <constraints>
@@ -430,6 +423,74 @@
                     <visible>true</visible>
                 </setting>
                 <setting help="" id="cache_speech.google" label="32178"
+                         type="boolean">
+                    <level>4</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                    <visible>true</visible>
+                </setting>
+
+                <!-- <setting help="" id="gender.no_engine" label="32178" type="string">
+                    <level>4</level>
+                    <default>female</default>
+                    <control type="edit" format="string">
+                        <heading>32005</heading>
+                    </control>
+                    <visible>true</visible>
+                </setting> -->
+                <setting help="" id="language.no_engine" label="32178" type="string">
+                    <level>4</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <default>en</default>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>true</visible>
+                </setting>
+                <!--
+                <setting help="" id="pipe.no_engine" label="32178" type="boolean">
+                    <level>4</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <visible>true</visible>
+                </setting> -->
+
+                <setting help="" id="player.no_engine" label="32178" type="string">
+                    <level>4</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>true</visible>
+                </setting>
+                 <setting help="" id="player_mode.no_engine" label="32178" type="string">
+                    <level>4</level>
+                      <constraints>
+                        <allowempty>false</allowempty>
+                    </constraints>
+                    <default>slave_file</default>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>true</visible>
+                </setting>
+                <!--
+                <setting help="" id="voice.google" label="32178" type="string">
+                    <level>4</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <default>un-gb</default>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>true</visible>
+                </setting> -->
+                <setting help="" id="cache_speech.no_engine" label="32178"
                          type="boolean">
                     <level>4</level>
                     <default>true</default>

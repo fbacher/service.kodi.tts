@@ -10,13 +10,14 @@ import gtts
 from backends.ispeech_generator import ISpeechGenerator
 from backends.settings.language_info import LanguageInfo
 from backends.settings.settings_helper import SettingsHelper
+from backends.transcoders.trans import TransCode
 from common import *
 
 from backends import base
 from backends.audio.sound_capabilities import SoundCapabilities
 from backends.google_data import GoogleData
 from backends.players.iplayer import IPlayer
-from backends.settings.service_types import Services, ServiceType
+from backends.settings.service_types import EngineType, Services, ServiceType
 from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import SettingsMap
 from cache.voicecache import VoiceCache
@@ -32,7 +33,7 @@ from common.message_ids import MessageId
 from common.messages import Message, Messages
 from common.monitor import Monitor
 from common.phrases import Phrase, PhraseList, PhraseUtils
-from common.setting_constants import AudioType, Backends, Genders, PlayerMode
+from common.setting_constants import AudioType, Backends, Converters, Genders, PlayerMode
 from common.settings import Settings
 import langcodes
 from gtts import gTTS, gTTSError, lang
@@ -592,8 +593,7 @@ class LangInfo:
 
 class GoogleTTSEngine(base.SimpleTTSBackend):
     ID: str = Backends.GOOGLE_ID
-    backend_id = Backends.GOOGLE_ID
-    engine_id = Backends.GOOGLE_ID
+    engine_id: str = Backends.GOOGLE_ID
     service_ID: str = Services.GOOGLE_ID
     service_TYPE: str = ServiceType.ENGINE_SETTINGS
     displayName = 'GoogleTTS'
@@ -750,6 +750,38 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         except ExpiredException:
             reraise(*sys.exc_info())
         return phrase.cache_path_exists()
+        '''
+        cache_entry_exists: bool = phrase.cache_path_exists()
+
+        # Support for running with NO ENGINE nor PLAYER using limited pre-generated
+        # cache. The intent is to provide enough TTS so the user can configure
+        # to use an engine and player.
+        force_wave: bool = False
+        if not force_wave or not cache_entry_exists:
+            return cache_entry_exists
+        # Convert .mp3 files into .wav and save in NO_ENGINE engine's cache
+        no_engine_voice_cache: VoiceCache = VoiceCache(EngineType.NO_ENGINE.value)
+        wave_phrase: Phrase = phrase.clone(check_expired=False)
+        no_engine_cache_path: pathlib.Path
+        cache_info: CacheEntryInfo
+        wave_phrase.set_territory_dir('')
+        cache_info = no_engine_voice_cache.get_path_to_voice_file(wave_phrase,
+                                                                  use_cache=True)
+        if not cache_info.audio_exists:
+            mp3_file: pathlib.Path = phrase.get_cache_path()
+            wave_file = cache_info.current_audio_path
+            # trans_id: str = Settings.get_converter(self.engine_id)
+            trans_id: str = Converters.LAME
+            MY_LOGGER.debug(f'service_id: {self.engine_id} trans_id: {trans_id}')
+            success = TransCode.transcode(trans_id=trans_id,
+                                          input_path=mp3_file,
+                                          output_path=wave_file,
+                                          remove_input=False)
+            if success:
+                phrase.text_exists(check_expired=False)
+            MY_LOGGER.debug(f'success: {success} wave_file: {wave_file} mp3: {mp3_file}')
+            return success
+        '''
 
     def runCommandAndPipe(self, phrase: Phrase) -> BinaryIO:
         clz = type(self)
@@ -834,31 +866,23 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
                         rc: int = 0
                         try:
                             # Should only get here if voiced file (.wav, .mp3,
-                            # etc.) was NOT
-                            # found. We might see a pre-existing .txt file which means
-                            # that
-                            # the download failed. To prevent multiple downloads,
-                            # wait a day
-                            # before retrying the download.
-
+                            # etc.) was NOT found.
                             voice_text_file: pathlib.Path | None = None
                             voice_text_file = voice_file_path.with_suffix('.txt')
                             try:
                                 if os.path.isfile(voice_text_file):
                                     os.unlink(voice_text_file)
-
                                 with open(voice_text_file, 'wt',
                                           encoding='utf-8') as f:
                                     f.write(text_to_voice)
                             except Exception as e:
                                 if MY_LOGGER.isEnabledFor(ERROR):
                                     MY_LOGGER.error(
-                                            f'Failed to save voiced text file: '
+                                            f'Failed to save text file: '
                                             f'{voice_text_file} Exception: {str(e)}')
                         except Exception as e:
                             if MY_LOGGER.isEnabledFor(ERROR):
-                                MY_LOGGER.error(
-                                        'Failed to download voice: {}'.format(str(e)))
+                                MY_LOGGER.error(f'Failed to download voice: {e}')
         except AbortException as e:
             reraise(*sys.exc_info())
         except Exception as e:

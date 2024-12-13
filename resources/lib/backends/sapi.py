@@ -39,7 +39,7 @@ class SAPIBackend(SimpleTTSBackend):
     ID = Backends.SAPI_ID
     service_ID: str = Services.SAPI_ID
     service_TYPE: str = ServiceType.ENGINE_SETTINGS
-    backend_id: str = Backends.SAPI_ID
+    engine_id: str = Backends.SAPI_ID
     engine_id: str = Backends.SAPI_ID
     displayName: str = 'SAPI'
     PYTTSX_SAPI_NAME: Final[str] = 'sapi5'

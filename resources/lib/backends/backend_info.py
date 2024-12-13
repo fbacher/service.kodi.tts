@@ -39,18 +39,18 @@ class BackendInfo(IBackendInfo):
     def removeBackendsByProvider(cls, to_remove):
         rem = []
         for b in cls.backendsByPriority:
-            if b.backend_id in to_remove:
+            if b.engine_id in to_remove:
                 rem.append(b)
         for r in rem:
             cls.backendsByPriority.remove(r)
 
     @classmethod
-    def isValidBackend(cls, backend_id: str):
-        if backend_id is None or len(backend_id) == 0:
+    def isValidBackend(cls, engine_id: str):
+        if engine_id is None or len(engine_id) == 0:
             return False
         backends: List[ITTSBackendBase] = cls.getAvailableBackends()
         for backend in backends:
-            if backend_id == backend.backend_id:
+            if engine_id == backend.engine_id:
                 return True
         return False
 
@@ -95,49 +95,49 @@ class BackendInfo(IBackendInfo):
     # TODO: Looks like a HACK. Only applies to several engines/backends and there
     # is no definition in TTSBackend for voices() so it could blow up
     @classmethod
-    def getVoices(cls, backend_id):
+    def getVoices(cls, engine_id):
         voices = None
-        bClass: ITTSBackendBase = cls.getBackendByProvider(backend_id)
+        bClass: ITTSBackendBase = cls.getBackendByProvider(engine_id)
         if bClass:
             voices = bClass.voices()
         return voices
 
     @classmethod
-    def getLanguages(cls, backend_id):
+    def getLanguages(cls, engine_id):
         languages = None
-        bClass: Callable | ITTSBackendBase = cls.getBackendByProvider(backend_id)
+        bClass: Callable | ITTSBackendBase = cls.getBackendByProvider(engine_id)
         if bClass:
             with bClass as b:
                 languages = b.languages()
         return languages
 
     @classmethod
-    def getSettingsList(cls, backend_id, setting,
+    def getSettingsList(cls, engine_id, setting,
                         *args) -> List[Choice]:
         settings: List[Choice]
         settings = None
-        bClass: Callable | ITTSBackendBase = cls.getBackendByProvider(backend_id)
+        bClass: Callable | ITTSBackendBase = cls.getBackendByProvider(engine_id)
         if bClass:
             cls._logger.debug(f'bClass: {type(bClass)}')
             settings = bClass.settingList(setting, *args)
         return settings
 
     @classmethod
-    def getPlayers(cls, backend_id):
+    def getPlayers(cls, engine_id):
         players = None
-        bClass = cls.getBackendByProvider(backend_id)
+        bClass = cls.getBackendByProvider(engine_id)
         if bClass and hasattr(bClass, 'players'):
             players = bClass.players()
         return players
 
     @classmethod
-    def getBackend(cls, backend_id: str = SettingsBridge.BACKEND_DEFAULT) \
+    def getBackend(cls, engine_id: str = SettingsBridge.BACKEND_DEFAULT) \
             -> ITTSBackendBase | None:
         if cls._logger.isEnabledFor(DEBUG_V):
-            cls._logger.debug_v(f'getBackend backend_id: {backend_id}')
+            cls._logger.debug_v(f'getBackend engine_id: {engine_id}')
 
-        backend_id = SettingsBridge.get_engine_id() or backend_id
-        b = cls.getBackendByProvider(backend_id)
+        engine_id = SettingsBridge.get_engine_id() or engine_id
+        b = cls.getBackendByProvider(engine_id)
         if not b or not b._available():
             for b in cls.backendsByPriority:
                 if b._available():
@@ -145,8 +145,8 @@ class BackendInfo(IBackendInfo):
         return b
 
     @classmethod
-    def getWavStreamBackend(cls, backend_id='auto') -> ITTSBackendBase | None:
-        b: ITTSBackendBase = cls.getBackendByProvider(backend_id)
+    def getWavStreamBackend(cls, engine_id='auto') -> ITTSBackendBase | None:
+        b: ITTSBackendBase = cls.getBackendByProvider(engine_id)
         if not b or not b._available() or not b.canStreamWav:
             for b in cls.backendsByPriority:
                 if b._available() and b.canStreamWav:
@@ -160,9 +160,9 @@ class BackendInfo(IBackendInfo):
         if provider_id == 'auto':
             return None
         for b in cls.backendsByPriority:
-            cls._logger.debug(f'backend {b.backend_id}')
+            cls._logger.debug(f'backend {b.engine_id}')
             cls._logger.debug(f'available: {b._available()}')
-            if b.backend_id == provider_id and b._available():
+            if b.engine_id == provider_id and b._available():
                 return b
         return None
 
@@ -194,6 +194,6 @@ class BackendInfo(IBackendInfo):
 
             for backend in backendsByPriority:
                 backend: Type[ITTSBackendBase]
-                backend_class_name: str = backend.backend_id
+                backend_class_name: str = backend.engine_id
                 cls.backendByClassName[backend_class_name] = backend
         return

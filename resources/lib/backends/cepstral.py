@@ -32,7 +32,7 @@ def getStartupInfo():
 
 
 class CepstralTTSOEBackend(base.SimpleTTSBackend):
-    backend_id = 'Cepstral_OE'
+    engine_id = 'Cepstral_OE'
     displayName = 'Cepstral OpenElec'
     canStreamWav = True
     pitchConstraints = (-6, 0, 14, True)
@@ -127,7 +127,7 @@ class CepstralTTSOEBackend(base.SimpleTTSBackend):
 
 
 class CepstralTTSBackend(base.SimpleTTSBackend):
-    backend_id = 'Cepstral'
+    engine_id = 'Cepstral'
     displayName = 'Cepstral'
     canStreamWav = False
     settings = {SettingsProperties.VOICE : '',

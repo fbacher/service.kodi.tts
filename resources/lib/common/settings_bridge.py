@@ -11,14 +11,14 @@ class ISettings:
         return None
 
     @classmethod
-    def getSetting(cls, setting_id: str, backend_id: str | None,
+    def getSetting(cls, setting_id: str, engine_id: str | None,
                    default_value: Any | None = None) -> Any:
         return None
 
     @classmethod
     def setSetting(cls, setting_id: str, value: str | int | float | bool | List[str] |
                                                 List[bool] | List[float],
-                   backend_id: str) -> None:
+                   engine_id: str) -> None:
         return None
 
 
@@ -35,12 +35,12 @@ class SettingsBridge(ISettings):
         return cls._settings_ref.get_engine_id()
 
     @classmethod
-    def getSetting(cls, setting_id: str, backend_id: str | None,
+    def getSetting(cls, setting_id: str, engine_id: str | None,
                    default_value: Any | None = None) -> Any:
-        return cls._settings_ref.getSetting(setting_id, backend_id, default_value)
+        return cls._settings_ref.getSetting(setting_id, engine_id, default_value)
 
     @classmethod
     def setSetting(cls, setting_id: str, value: str | int | float | bool | List[str] |
                                                 List[bool] | List[float],
-                   backend_id: str | None = None) -> None:
-        cls._settings_ref.setSetting(setting_id, value, backend_id)
+                   engine_id: str | None = None) -> None:
+        cls._settings_ref.setSetting(setting_id, value, engine_id)

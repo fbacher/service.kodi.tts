@@ -779,17 +779,17 @@ class SettingsHelper:
         :param service_id:
         :return:
         """
-        backend_id: str = None
+        engine_id: str = None
         if service_id is None:
             service_id = cls.service_id
 
-        if cls.engine_instance is None or cls.engine_instance.backend_id != service_id:
-            backend_id: str = None
+        if cls.engine_instance is None or cls.engine_instance.engine_id != service_id:
+            engine_id: str = None
             if cls.engine_instance is not None:
-                backend_id = cls.engine_instance.backend_id
-        if service_id is None or backend_id is None:
+                engine_id = cls.engine_instance.engine_id
+        if service_id is None or engine_id is None:
             Debug.dump_current_thread()
-            MY_LOGGER.debug(f'service_id changed to: {service_id} from: {backend_id}')
+            MY_LOGGER.debug(f'service_id changed to: {service_id} from: {engine_id}')
             cls.engine_instance = BaseServices.getService(service_id)
         return cls.engine_instance
     '''

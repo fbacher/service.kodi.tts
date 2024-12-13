@@ -21,7 +21,7 @@ module_logger = BasicLogger.get_logger(__name__)
 class FestivalSettings(BaseServiceSettings):
     # Only returns .mp3 files
     ID: str = Backends.FESTIVAL_ID
-    backend_id = Backends.FESTIVAL_ID
+    engine_id = Backends.FESTIVAL_ID
     service_ID: str = Services.FESTIVAL_ID
     service_TYPE: str = ServiceType.ENGINE_SETTINGS
     displayName = 'festival'

@@ -83,7 +83,7 @@ class DriverProxy(object):
 
     def _pump(self):
         '''
-        Attempts to process the next command in the queue if one exists and the
+        Attempts to process the next command in the queue if one text_exists and the
         driver is not currently busy.
         '''
         while (not self._busy) and len(self._queue):

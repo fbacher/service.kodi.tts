@@ -27,7 +27,7 @@ class SpeechUtilComTTSBackend(SimpleTTSBackend):
     """
 
     """
-    backend_id = 'speechutil'
+    engine_id = 'speechutil'
     displayName = 'speechutil.com'
     ttsURL = 'http://speechutil.com/convert/wav?text={0}'
     headers = {

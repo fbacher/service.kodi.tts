@@ -23,7 +23,7 @@ class Pico2WaveTTSBackend(SimpleTTSBackend):
     ID = Backends.ESPEAK_ID
     service_ID: str = Services.PICO_TO_WAVE_ID
     initialized: bool = False
-    backend_id = Backends.PICO_TO_WAVE_ID
+    engine_id = Backends.PICO_TO_WAVE_ID
     _engine_id = Backends.PICO_TO_WAVE_ID
     displayName = 'pico2wave'
     speedConstraints: Constraints = Constraints(20, 100, 200, True, False, 1.0,
@@ -137,7 +137,7 @@ class Pico2WaveTTSBackend(SimpleTTSBackend):
         return None
 
     @classmethod
-    def negotiate_engine_config(cls, backend_id: str, player_volume_adjustable: bool,
+    def negotiate_engine_config(cls, engine_id: str, player_volume_adjustable: bool,
                                 player_speed_adjustable: bool,
                                 player_pitch_adjustable: bool) -> Tuple[bool, bool, bool]:
         """

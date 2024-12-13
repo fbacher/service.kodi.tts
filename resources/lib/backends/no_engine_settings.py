@@ -10,7 +10,7 @@ from backends.audio.sound_capabilities import SoundCapabilities
 from backends.engines.base_engine_settings import (BaseEngineSettings)
 from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.i_validators import INumericValidator, ValueType
-from backends.settings.service_types import Services, ServiceType
+from backends.settings.service_types import GENERATE_BACKUP_SPEECH, Services, ServiceType
 from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import Reason, SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
@@ -19,6 +19,7 @@ from backends.settings.validators import (BoolValidator, ConstraintsValidator,
 from common.constants import Constants
 from common.logger import BasicLogger
 from common.setting_constants import AudioType, Backends, PlayerMode, Players
+from common.settings import Settings
 from common.system_queries import SystemQueries
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
@@ -51,13 +52,14 @@ class NoEngineSettings(BaseServiceSettings):
     def init_settings(cls):
         MY_LOGGER.debug(f'Adding NoEngine to engine service')
         service_properties = {Constants.NAME: cls.displayName,
+                              Constants.CACHE_TOP: Constants.PREDEFINED_CACHE,
                               Constants.CACHE_SUFFIX: 'no_eng'}
         SettingsMap.define_service(ServiceType.ENGINE, cls.service_ID,
                                    service_properties)
         #
         # Need to define Conversion Constraints between the TTS 'standard'
         # constraints/settings to the engine's constraints/settings
-
+        '''
         pitch_validator: NumericValidator
         pitch_validator = NumericValidator(SettingsProperties.PITCH,
                                            cls.service_ID,
@@ -66,6 +68,7 @@ class NoEngineSettings(BaseServiceSettings):
                                            increment=1)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PITCH,
                                    pitch_validator)
+        '''
 
         volume_validator: NumericValidator
         volume_validator = NumericValidator(SettingsProperties.VOLUME,
@@ -88,6 +91,7 @@ class NoEngineSettings(BaseServiceSettings):
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.LANGUAGE,
                                    language_validator)
 
+        '''
         voice_validator: StringValidator
         voice_validator = StringValidator(SettingsProperties.VOICE, cls.engine_id,
                                           allowed_values=[], min_length=1, max_length=20,
@@ -95,6 +99,7 @@ class NoEngineSettings(BaseServiceSettings):
 
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOICE,
                                    voice_validator)
+        '''
 
         allowed_player_modes: List[str] = [
             PlayerMode.FILE.value
@@ -106,7 +111,7 @@ class NoEngineSettings(BaseServiceSettings):
                                                 default=PlayerMode.FILE.value)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER_MODE,
                                    player_mode_validator)
-
+        Settings.set_current_output_format(cls.service_ID, AudioType.WAV)
         SoundCapabilities.add_service(cls.service_ID,
                                       service_types=[ServiceType.ENGINE],
                                       supported_input_formats=[],
@@ -139,9 +144,13 @@ class NoEngineSettings(BaseServiceSettings):
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER,
                                    player_validator)
 
+        # REMOVE gender validator created by BaseServiceSettings
+        SettingsMap.define_setting(cls.engine_id, SettingsProperties.GENDER,
+                                   None)
+
         cache_validator: BoolValidator
         cache_validator = BoolValidator(SettingsProperties.CACHE_SPEECH, cls.service_ID,
-                                        default=False)
+                                        default=True)
 
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.CACHE_SPEECH,
                                    cache_validator)
@@ -160,6 +169,7 @@ class NoEngineSettings(BaseServiceSettings):
         #
         # In other words espeak speed = 175 * mpv speed
 
+        '''
         speed_validator: NumericValidator
         speed_validator = NumericValidator(SettingsProperties.SPEED,
                                            cls.service_ID,
@@ -170,6 +180,7 @@ class NoEngineSettings(BaseServiceSettings):
         SettingsMap.define_setting(cls.service_ID,
                                    SettingsProperties.SPEED,
                                    speed_validator)
+        '''
 
     @classmethod
     def isSupportedOnPlatform(cls) -> bool:

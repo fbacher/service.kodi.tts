@@ -362,9 +362,7 @@ class BaseEngineService(BaseServices):
         if self.player is None or player_id != self.player.ID:
             self.player = BaseServices.getService(player_id)
         return self.player
-
-    def get_player_voice_cache(self, engine_id: str) -> VoiceCache:
-        return self.get_player(engine_id).voice_cache
+        return self.player
 
     def say(self, phrase: PhraseList):
         """Method accepting text to be spoken
@@ -508,7 +506,7 @@ class BaseEngineService(BaseServices):
         return cls.constraints.get(setting_id)
 
     @classmethod
-    def negotiate_engine_config(cls, backend_id: str, player_volume_adjustable: bool,
+    def negotiate_engine_config(cls, engine_id: str, player_volume_adjustable: bool,
                                 player_speed_adjustable: bool,
                                 player_pitch_adjustable: bool) -> Tuple[bool, bool, bool]:
         """
@@ -1242,7 +1240,7 @@ class LogOnlyTTSBackend(BaseEngineService):
     """
 
     """
-    backend_id = 'log'
+    engine_id = 'log'
     displayName = 'Log'
     _class_name: str = None
 

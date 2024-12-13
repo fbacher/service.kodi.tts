@@ -23,7 +23,7 @@ module_logger = BasicLogger.get_logger(__name__)
 class ExperimentalSettings(BaseServiceSettings):
     # Only returns .mp3 files
     ID: str = Backends.EXPERIMENTAL_ENGINE_ID
-    backend_id = Backends.EXPERIMENTAL_ENGINE_ID
+    engine_id = Backends.EXPERIMENTAL_ENGINE_ID
     engine_id = Backends.EXPERIMENTAL_ENGINE_ID
     service_ID: str = Services.EXPERIMENTAL_ENGINE_ID
     service_TYPE: str = ServiceType.ENGINE_SETTINGS

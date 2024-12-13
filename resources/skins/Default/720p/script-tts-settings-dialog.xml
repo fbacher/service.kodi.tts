@@ -422,7 +422,7 @@
                                 </control>
 
                                 <control type="label" id="107">
-                                        <topic name="voice_value" labeled_by=""
+                                        <topic name="voice_topic_value" labeled_by=""
                                            flowsfrom="106"
                                         outertopic="engine_settings"
                                         topicleft=""

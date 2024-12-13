@@ -43,7 +43,7 @@ except ImportError:
 
 
 class NVDATTSBackend(BaseEngineService):
-    backend_id = 'nvda'
+    engine_id = 'nvda'
     displayName = 'NVDA'
     _logger: BasicLogger = None
     _class_name: str = None

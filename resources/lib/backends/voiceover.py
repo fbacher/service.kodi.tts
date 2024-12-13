@@ -15,7 +15,7 @@ module_logger = BasicLogger.get_logger(__name__)
 
 
 class VoiceOverBackend(SimpleTTSBackend):
-    backend_id = 'voiceover'
+    engine_id = 'voiceover'
     displayName = 'VoiceOver'
     _class_name: str = None
 

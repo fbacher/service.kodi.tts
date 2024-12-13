@@ -50,6 +50,7 @@ class Constants:
     DISABLE_PATH = None
     ENABLE_PATH = None
     DEFAULT_CACHE_DIRECTORY = None
+    PREDEFINED_CACHE: Path | None = None
     IGNORE_CACHE_EXPIRATION_DATE: bool = True
 
     CACHE_SUFFIX: Final[str] = 'cache_suffix'
@@ -62,6 +63,7 @@ class Constants:
     MPLAYER_PATH_WINDOWS: Final[str] = 'mplayer.exe'
     MPLAYER_PATH: str = None
     MPV_PATH: str = None
+    CACHE_TOP: Path = None
 
     NAME: Final[str] = 'name'
     PAUSE_INSERT = '...'
@@ -80,11 +82,9 @@ class Constants:
         Constants.ADDON = addon.addon
 
         Constants.ADDON_PATH = addon.PATH
-        Constants.PYTHON_ROOT_PATH = os.path.join(Constants.ADDON_PATH,
-                                                  'resources',
-                                                  'lib')
+        Constants.PYTHON_ROOT_PATH = Constants.ADDON_PATH / 'resources' / 'lib'
         Constants.VERSION = addon.VERSION
-        Constants.USER_DATA_PATH = xbmcvfs.translatePath("special://userdata")
+        Constants.USER_DATA_PATH = Path(xbmcvfs.translatePath("special://userdata"))
         Constants.ADDON_DATA = addon.DATA_PATH
         Constants.MEDIA_PATH = addon.MEDIA_PATH
         Constants.PROFILE = addon.PROFILE
@@ -94,13 +94,17 @@ class Constants:
         Constants.LOG_PATH = os.path.join(
                 xbmcvfs.translatePath('special://logpath'), 'kodi.log')
 
-        Constants.ADDON_DIRECTORY = xbmcvfs.translatePath(str(addon.PATH))
-        Constants.BACKENDS_DIRECTORY = os.path.join(
-                Constants.PYTHON_ROOT_PATH, 'backends')
-        Constants.DISABLE_PATH = os.path.join(addon.DATA_PATH, 'DISABLED')
-        Constants.ENABLE_PATH = os.path.join(addon.DATA_PATH, 'ENABLED')
-        Constants.DEFAULT_CACHE_DIRECTORY = os.path.join(Constants.USER_DATA_PATH,
-                                                         'cache')
+        Constants.ADDON_DIRECTORY = Path(xbmcvfs.translatePath(str(addon.PATH)))
+        Constants.BACKENDS_DIRECTORY = Constants.PYTHON_ROOT_PATH / 'backends'
+        Constants.DISABLE_PATH = addon.DATA_PATH / 'DISABLED'
+        Constants.ENABLE_PATH = addon.DATA_PATH / 'ENABLED'
+        Constants.DEFAULT_CACHE_DIRECTORY = Constants.USER_DATA_PATH / 'cache'
+        # NO_ENGINE_CACHE_DIRECTORY contains a limited set of .wav files to help
+        # user get started with configuration. It is used when no recognized engine or
+        # player is found. See PlaySFXAudioPlayer, NoEngine and Google engine for
+        # more information
+        Constants.PREDEFINED_CACHE = (Constants.ADDON_PATH / 'resources' / 'predefined'
+                                      / 'cache')
         Constants.LOCALE, encoding = locale.getdefaultlocale()
 
         if Constants.PLATFORM_WINDOWS:

@@ -21,7 +21,7 @@ class ReciteTTSBackend(base.SimpleTTSBackend):
     """
      reciteme.com/
     """
-    backend_id = Backends.RECITE_ID
+    engine_id = Backends.RECITE_ID
     displayName = 'Recite'
     _logger: BasicLogger = None
     _class_name: str = None

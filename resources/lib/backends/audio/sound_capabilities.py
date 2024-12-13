@@ -6,13 +6,17 @@ import sys
 from common.monitor import Monitor
 from common.setting_constants import AudioType
 
+try:
+    from enum import StrEnum
+except ImportError:
+    from common.strenum import StrEnum
 '''
     Helper to exchange audio related information between players, engines
     and anything else that can produce, consume or transform audio.
 '''
 from common import *
 
-from backends.settings.service_types import ServiceType
+from backends.settings.service_types import Services, ServiceType
 from common.logger import BasicLogger
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
@@ -33,7 +37,7 @@ class SoundCapabilities:
     _services_by_service_type: Dict[ServiceType, Dict[str, str]] = {}
 
     @classmethod
-    def add_service(cls, service_id: str, service_types: List[ServiceType],
+    def add_service(cls, service_id: StrEnum | str, service_types: List[ServiceType],
                     supported_input_formats: List[AudioType],
                     supported_output_formats: List[AudioType]) -> None:
         """
@@ -43,6 +47,8 @@ class SoundCapabilities:
         :param supported_input_formats:
         :param supported_output_formats:
         """
+        if isinstance(service_id, StrEnum):
+            service_id = service_id.value
         for service_type in service_types:
             services_in_type: Dict[str, str]
             services_in_type = cls._services_by_service_type.get(service_type)
@@ -73,9 +79,12 @@ class SoundCapabilities:
                              producer_formats: List[AudioType] | AudioType)\
             -> List[str]:
         """
+        TODO: Change to return ServiceType, List[service_id]
+              Should return services which can consume or transform one of the
+              input (consumer) formats blah blah
         Returns services which meet the given criteria.
 
-        :param service_type: ex: engine, player, converter, etc.
+        :param service_type: Input service stage. ex: engine, player, converter, etc.
                None means the service type will be ignored
         :param consumer_formats: audio formats that this service must consume from
                the previous service

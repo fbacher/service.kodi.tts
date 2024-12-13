@@ -488,7 +488,7 @@ class Voice:
 class PiperTTSBackend(SimpleTTSBackend):
 
     ID: str = Backends.PIPER_ID
-    backend_id = Backends.PIPER_ID
+    engine_id = Backends.PIPER_ID
     engine_id = Backends.PIPER_ID
     service_ID: str = Services.PIPER_ID
     service_TYPE: str = ServiceType.ENGINE

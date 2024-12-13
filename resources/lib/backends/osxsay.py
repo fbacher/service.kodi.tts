@@ -19,7 +19,7 @@ module_logger = BasicLogger.get_logger(__name__)
 
 
 class OSXSayTTSBackend_Internal(ThreadedTTSBackend):
-    backend_id = 'OSXSay'
+    engine_id = 'OSXSay'
     displayName = 'OSX Say (OSX Internal)'
     canStreamWav = True
     volumeConstraints: Constraints = Constraints(0, 100, 100, True, False, 1.0,
@@ -30,7 +30,7 @@ class OSXSayTTSBackend_Internal(ThreadedTTSBackend):
     volumeExternalEndpoints = (0, 100)
     volumeStep = 5
     volumeSuffix = '%'
-    voicesPath = os.path.join(Constants.PROFILE_PATH, f'{backend_id}.voices')
+    voicesPath = os.path.join(Constants.PROFILE_PATH, f'{engine_id}.voices')
     settings = {
         SettingsProperties.SPEED : 0,
         SettingsProperties.VOICE : '',
@@ -134,7 +134,7 @@ class OSXSayTTSBackend_Internal(ThreadedTTSBackend):
 
 # OLD
 class OSXSayTTSBackend(ThreadedTTSBackend):
-    backend_id = 'OSXSay'
+    engine_id = 'OSXSay'
     displayName = 'OSX Say (OSX Internal)'
     canStreamWav = True
     _logger_name: str = None

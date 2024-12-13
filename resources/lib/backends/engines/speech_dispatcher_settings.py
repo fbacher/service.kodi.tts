@@ -19,7 +19,7 @@ module_logger = BasicLogger.get_logger(__name__)
 class SpeechDispatcherSettings:
     # Only returns .mp3 files
     ID: str = Backends.SPEECH_DISPATCHER_ID
-    backend_id = Backends.SPEECH_DISPATCHER_ID
+    engine_id = Backends.SPEECH_DISPATCHER_ID
     service_ID: str = Services.SPEECH_DISPATCHER_ID
     displayName = 'Speech Dispatcher'
     _logger: BasicLogger = None
@@ -79,7 +79,7 @@ class SpeechDispatcherSettings:
                                                                property_name=SettingsProperties.VOLUME,
                                                                midpoint=1, increment=0.1)
         volume_constraints_validator = self.VolumeConstraintsValidator(
-                SettingsProperties.VOLUME, self.backend_id, volumeConversionConstraints)
+                SettingsProperties.VOLUME, self.engine_id, volumeConversionConstraints)
 
         SettingsMap.define_setting(self.service_ID, SettingsProperties.VOLUME,
                                    volume_constraints_validator)

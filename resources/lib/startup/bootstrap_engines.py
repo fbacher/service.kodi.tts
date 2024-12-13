@@ -31,7 +31,8 @@ MY_LOGGER = BasicLogger.get_logger(__name__)
 
 class BootstrapEngines:
     # Instances of ITTSBackendBase
-    engine_ids_by_priority: List[str] = [  # SAPITTSBackend(),
+    engine_ids_by_priority: List[str] = [
+        # SAPITTSBackend(),
         Backends.NO_ENGINE_ID,
         # OSXSayTTSBackend(),
         Backends.ESPEAK_ID,
@@ -42,7 +43,6 @@ class BootstrapEngines:
         # Backends.PIPER_ID,
         # Backends.FESTIVAL_ID,
         # CepstralTTSBackend(),
-        #            CepstralTTSOEBackend(),
         # Backends.SPEECH_DISPATCHER_ID,
         #            VoiceOverBackend(),
         # SpeechServerBackend(),
@@ -56,6 +56,7 @@ class BootstrapEngines:
         # Backends.SAPI_ID,
         # Backends.LOG_ONLY_ID
     ]
+
     if Constants.PLATFORM_WINDOWS:
         engine_ids_by_priority.append(Backends.POWERSHELL_ID)
     _initialized: bool = False

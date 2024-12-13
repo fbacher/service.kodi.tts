@@ -23,7 +23,7 @@ module_logger = BasicLogger.get_logger(__name__)
 
 
 class FestivalTTSBackend(SimpleTTSBackend):
-    backend_id = Backends.FESTIVAL_ID
+    engine_id = Backends.FESTIVAL_ID
     service_ID: str = Services.FESTIVAL_ID
     displayName = 'Festival'
     canStreamWav = SystemQueries.commandIsAvailable('mpg123')
@@ -205,7 +205,7 @@ class FestivalTTSBackend(SimpleTTSBackend):
         return None
 
     @classmethod
-    def negotiate_engine_config(cls, backend_id: str, player_volume_adjustable: bool,
+    def negotiate_engine_config(cls, engine_id: str, player_volume_adjustable: bool,
                                 player_speed_adjustable: bool,
                                 player_pitch_adjustable: bool) -> Tuple[bool, bool, bool]:
         """

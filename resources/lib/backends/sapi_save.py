@@ -101,7 +101,7 @@ class SAPI_Utils:
     ID = Backends.SAPI_ID
     service_ID: str = Services.SAPI_ID
     service_TYPE: str = ServiceType.ENGINE_SETTINGS
-    backend_id: str = Backends.SAPI_ID
+    engine_id: str = Backends.SAPI_ID
     engine_id: str = Backends.SAPI_ID
     displayName: str = 'SAPI'
     UTF_8: Final[str] = '1'
@@ -380,7 +380,7 @@ class SAPI_Backend(SimpleTTSBackend):
     ID = Backends.SAPI_ID
     service_ID: str = Services.SAPI_ID
     service_TYPE: str = ServiceType.ENGINE_SETTINGS
-    backend_id: str = Backends.SAPI_ID
+    engine_id: str = Backends.SAPI_ID
     engine_id: str = Backends.SAPI_ID
     displayName: str = 'SAPI'
     UTF_8: Final[str] = '1'

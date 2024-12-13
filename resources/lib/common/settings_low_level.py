@@ -796,7 +796,10 @@ class SettingsLowLevel:
             new_settings[full_setting_id] = engine_id
             services_to_add.append(engine_id)
             services_to_add.extend(Backends.ALL_ENGINE_IDS)
-            services_to_add.remove(Services.AUTO_ENGINE_ID)
+            try:
+                services_to_add.remove(Services.AUTO_ENGINE_ID)
+            except ValueError:
+                pass  # Testing may not include AUTO_ENGINE_ID in ALL_ENGINE_IDS
             MY_LOGGER.debug(f'engine settings: {services_to_add}')
         elif service_type == ServiceType.PLAYER:
             MY_LOGGER.debug(f'Loading PLAYER services')
@@ -892,6 +895,7 @@ class SettingsLowLevel:
         'disable_broken_services.tts': '',
         'engine.tts': '',
         'engine.google': '',
+        'engine.no_engine': '',
         'engine.powershell': '',
         'engine.eSpeak': '',
         'tts.tts': '',
@@ -900,6 +904,7 @@ class SettingsLowLevel:
         # 'gender.experimental': '',
         # 'gender.Flite': '',
         'gender.google': '',
+        'gender.no_engine': '',
         'gender.powershell': '',
         # 'gender.OSXSay': '',
         # 'gender.pico2wave': '',
@@ -1356,17 +1361,17 @@ class SettingsLowLevel:
         return prefix
 
     @classmethod
-    def getRealSetting(cls, setting_id: str, backend_id: str | None,
+    def getRealSetting(cls, setting_id: str, engine_id: str | None,
                        default_value: Any | None) -> Any | None:
         MY_LOGGER.debug(
                 f'TRACE getRealSetting NOT from cache id: {setting_id} backend: '
-                f'{backend_id}')
-        if backend_id is None or len(backend_id) == 0:
-            # backend_id = SettingsLowLevel._current_engine
-            backend_id = SettingsLowLevel.get_engine_id_ll()
-            if backend_id is None or len(backend_id) == 0:
+                f'{engine_id}')
+        if engine_id is None or len(engine_id) == 0:
+            # engine_id = SettingsLowLevel._current_engine
+            engine_id = SettingsLowLevel.get_engine_id_ll()
+            if engine_id is None or len(engine_id) == 0:
                 MY_LOGGER.error("TRACE null or empty backend")
-        real_key = cls.getExpandedSettingId(setting_id, backend_id)
+        real_key = cls.getExpandedSettingId(setting_id, engine_id)
         try:
             """
             match SettingsProperties.SettingTypes[setting_id]:
@@ -1644,25 +1649,25 @@ class SettingsLowLevel:
 
     @classmethod
     def set_setting_bool(cls, setting_id: str, value: bool,
-                         backend_id: str = None) -> bool:
+                         engine_id: str = None) -> bool:
         """
 
         :return:
         """
-        real_key = cls.getExpandedSettingId(setting_id, backend_id)
+        real_key = cls.getExpandedSettingId(setting_id, engine_id)
         success, found_type = cls.type_and_validate_settings(real_key, value)
         return_value = SettingsManager.set_setting(real_key, value)
-        current_value: bool = cls.get_setting_bool(setting_id, backend_id)
+        current_value: bool = cls.get_setting_bool(setting_id, engine_id)
         return return_value
 
     @classmethod
-    def get_setting_float(cls, setting_id: str, backend_id: str = None,
+    def get_setting_float(cls, setting_id: str, engine_id: str = None,
                           default_value: float = 0.0) -> float:
         """
 
         :return:
         """
-        return SettingsLowLevel._getSetting(setting_id, backend_id, default_value)
+        return SettingsLowLevel._getSetting(setting_id, engine_id, default_value)
 
     @classmethod
     def get_setting_int(cls, setting_id: str, service_id: str = None,
@@ -1678,19 +1683,19 @@ class SettingsLowLevel:
         return value
 
     @classmethod
-    def set_setting_int(cls, setting_id: str, value: int, backend_id: str = None) -> bool:
+    def set_setting_int(cls, setting_id: str, value: int, engine_id: str = None) -> bool:
         """
 
         :return:
         """
-        real_key = cls.getExpandedSettingId(setting_id, backend_id)
+        real_key = cls.getExpandedSettingId(setting_id, engine_id)
         success, found_type = cls.type_and_validate_settings(real_key, value)
         return SettingsManager.set_setting(real_key, value)
 
     @classmethod
     def update_cached_setting(cls, setting_id: str, value: Any,
-                              backend_id: str = None) -> None:
-        real_key = cls.getExpandedSettingId(setting_id, backend_id)
+                              engine_id: str = None) -> None:
+        real_key = cls.getExpandedSettingId(setting_id, engine_id)
         SettingsManager.set_setting(real_key, value)
 
     '''

@@ -1,6 +1,7 @@
 # coding=utf-8
 from __future__ import annotations  # For union operator |
 
+from pathlib import Path
 from enum import Enum
 
 from backends.settings.setting_properties import SettingsProperties
@@ -22,7 +23,7 @@ from backends.settings.i_validators import (AllowedValue, IBoolValidator,
 from backends.settings.service_types import ServiceType
 from common.logger import BasicLogger, DEBUG_V
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class Reason(StrEnum):
@@ -72,16 +73,6 @@ class SettingsMap:
     #
     service_type_to_services_map: Dict[ServiceType, Dict[str, Dict[str, Any]]] = {}
 
-    _initialized: bool = False
-    _logger: BasicLogger = None
-
-    @classmethod
-    def init(cls):
-        if cls._initialized:
-            return
-        cls._initialized = True
-        cls._logger = module_logger
-
     @classmethod
     def define_service(cls, service_type: ServiceType, service_id: str,
                        service_properties: Dict[str, Any]):
@@ -107,7 +98,7 @@ class SettingsMap:
             props_for_service[service_id] = service_properties
             cls.service_to_properties_map[service_id] = service_properties
         except Exception as e:
-            cls._logger.exception('')
+            MY_LOGGER.exception('')
 
     @classmethod
     def get_services_for_service_type(cls, service_type: ServiceType) \
@@ -142,7 +133,7 @@ class SettingsMap:
         return service_props
 
     @classmethod
-    def get_service_property(cls, service_id: str, property: str) -> Any:
+    def get_service_property(cls, service_id: str, property: str | Path) -> Any:
         properties: Dict[str, Any] = cls.get_service_properties(service_id)
         return properties.get(property, None)
 
@@ -151,7 +142,7 @@ class SettingsMap:
         str, Dict[str, Any]]] | None:
         if not ServiceType.ALL.value <= service_type.value <= \
                ServiceType.LAST_SERVICE_TYPE.value:
-            cls._logger.debug(f'Invalid ServiceType: {service_type}')
+            MY_LOGGER.debug(f'Invalid ServiceType: {service_type}')
             return None
 
         service_ids: Dict[str, str] = cls.get_service_properties(service_type)
@@ -166,7 +157,10 @@ class SettingsMap:
 
     @classmethod
     def set_is_available(cls, service_id: str, reason: Reason) -> None:
-        cls._logger.debug(f'{service_id} is available reason: {reason}')
+        if reason != Reason.AVAILABLE:
+            MY_LOGGER.debug(f'{service_id} is available reason: {reason}')
+        else:
+            MY_LOGGER.debug(f'{service_id} is available')
         cls.service_availability_map[service_id] = reason
 
     @classmethod
@@ -174,7 +168,7 @@ class SettingsMap:
         reason: Reason = cls.service_availability_map.get(service_id, None)
         if reason is None:
             return True
-            # cls._logger.debug(f'{service_id} availability UNKNOWN')
+            # MY_LOGGER.debug(f'{service_id} availability UNKNOWN')
             # cls.set_is_available(service_id, Reason.UNKNOWN)
             # return False
 
@@ -193,18 +187,22 @@ class SettingsMap:
         :param validator: If None, then the setting is NOT supported and any
                           prior definition is removed.
         """
-        # cls._logger.debug(f'DEFINE settings for {service_id} property: {property_id} '
+        # MY_LOGGER.debug(f'DEFINE settings for {service_id} property: {property_id} '
         #                   f'validator: {type(validator)}')
         if property_id is None:
             property_id = ''
-        assert isinstance(service_id, str), 'Service_id must be a str'
+        assert isinstance(service_id, str), 'service_id must be a str'
         assert isinstance(property_id, str), 'property_id must be a str'
+        assert not isinstance(service_id, StrEnum), 'service_id must NOT be StrEnum'
+        assert not isinstance(property_id, StrEnum), 'property_id must NOT be StrEnum'
 
         settings_for_service: Dict[str, IValidator]
         settings_for_service = cls.service_to_settings_map.get(service_id)
         if settings_for_service is None:
             settings_for_service = {}
             cls.service_to_settings_map[service_id] = settings_for_service
+            MY_LOGGER.debug(f'Added service_id: {service_id} settings_for_service '
+                            f'{settings_for_service}')
         #
         # Allow to override any previous entry since doing otherwise would complicate
         # initialization order since it is normal to initialize your ancestor
@@ -212,10 +210,11 @@ class SettingsMap:
 
         if validator is None:
             settings_for_service.pop(property_id, None)
-            cls._logger.debug(f'Undefining setting {property_id} from {service_id}')
+            MY_LOGGER.debug(f'Undefining setting {property_id} from {service_id}')
         else:
             settings_for_service[property_id] = validator
-            #  cls._logger.debug(f'Defining setting {property_id} for {service_id}')
+            MY_LOGGER.debug(f'Defining setting {property_id} for {service_id}')
+
 
     @classmethod
     def is_setting_available(cls, service_id: str, property_id: str) -> bool:
@@ -234,7 +233,7 @@ class SettingsMap:
         """
         if property_id is None:
             property_id = ''
-        # cls._logger.debug(f'service_id: {service_id} property_id: {property_id}')
+        # MY_LOGGER.debug(f'service_id: {service_id} property_id: {property_id}')
         assert isinstance(service_id, str), 'Service_id must be a str'
         assert isinstance(property_id, str), 'property_id must be a str'
         if not service_id or len(service_id) == 0:
@@ -244,12 +243,12 @@ class SettingsMap:
         settings_for_service: Dict[str, IValidator]
         settings_for_service = cls.service_to_settings_map.get(service_id)
         if settings_for_service is None:
-            # cls._logger.debug(f'No settings for {service_id}')
+            # MY_LOGGER.debug(f'No settings for {service_id}')
             return False
 
         if property_id not in settings_for_service.keys():
-            if cls._logger.isEnabledFor(DEBUG_V):
-                cls._logger.debug(f'{property_id} not in {service_id} settings: '
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug(f'{property_id} not in {service_id} settings: '
                                   f'{settings_for_service.keys()}')
             return False
         return True
@@ -277,15 +276,17 @@ class SettingsMap:
 
     @classmethod
     def get_validator(cls, service_id: str,
-                      property_id: str) -> (IBoolValidator | IStringValidator | \
-                                           IIntValidator | IStrEnumValidator | \
-                                           IConstraintsValidator | \
-                                           IGenderValidator | INumericValidator | \
-                                           IChannelValidator |  None):
+                      property_id: str) -> (IBoolValidator | IStringValidator |
+                                            IIntValidator | IStrEnumValidator |
+                                            IConstraintsValidator |
+                                            IGenderValidator | INumericValidator |
+                                            IChannelValidator | None):
         if property_id is None:
             property_id = ''
-        assert isinstance(service_id, str), 'Service_id must be a str'
+        assert isinstance(service_id, str), 'service_id must be a str'
         assert isinstance(property_id, str), 'property_id must be a str'
+        assert not isinstance(service_id, StrEnum), 'service_id must NOT be StrEnum'
+        assert not isinstance(property_id, StrEnum), 'property_id must NOT be StrEnum'
         settings_for_service: Dict[str, IValidator]
         settings_for_service = cls.service_to_settings_map.get(service_id)
         if settings_for_service is None:
@@ -340,6 +341,3 @@ class SettingsMap:
             return None
         value = validator.get_tts_value()
         return value
-
-
-SettingsMap.init()
