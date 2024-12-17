@@ -478,7 +478,7 @@ class SettingsHelper:
                             kodi_language: langcodes,
                             format_type: FormatType) -> str:
         label: str = ''
-        antonym: str = lang_info.ietf.autonym()
+        antonym: str = lang_info.autonym
         engine_name: str = lang_info.translated_engine_name
         country_name: str = lang_info.translated_country_name
         if format_type == FormatType.LONG:
@@ -505,14 +505,14 @@ class SettingsHelper:
         elif format_type == FormatType.SHORT:
             label = f'{engine_name:10}  {country_name:32}'
         elif format_type == FormatType.DISPLAY:
-            label = f'{engine_name:10} {lang_info.ietf.display_name(kodi_language):32}'
+            label = f'{engine_name:10} {lang_info.get_display_name(kodi_language):32}'
         else:
             MY_LOGGER.debug(f'ERROR invalid format_type: {format_type}')
         return label
 
     @classmethod
     def get_formatted_lang(cls, lang: str) -> str:
-        return langcodes.Language.get(lang).display_name()
+        return LanguageInfo.get_formatted_lang(lang)
 
     @classmethod
     def sort_engine_langs(cls,
@@ -536,7 +536,7 @@ class SettingsHelper:
             # Get the name of the language in the current language
             # display_current_lang: str = lang_info.ietf.display_name(
             #         language=kodi_language)
-            display_current_territory: str = lang_info.ietf.territory_name()
+            #  display_current_territory: str = lang_info.ietf.territory_name()
             # Get name of the language in its native language
             # display_lang_choice: str = lang_info.ietf.autonym()
             # get how close of a match this language is to

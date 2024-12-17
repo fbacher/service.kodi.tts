@@ -1304,7 +1304,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             kodi_locale: str
             locale_name: str
             kodi_language: langcodes.Language
-            lang_name: str = kodi_language.language_name()
+            lang_name: str = LanguageInfo.get_translated_language_name(kodi_language)
             engine_name: str = LanguageInfo.get_translated_engine_name(engine_id)
             title: str
             title = MessageId.AVAIL_VOICES_FOR_LANG.get_formatted_msg(

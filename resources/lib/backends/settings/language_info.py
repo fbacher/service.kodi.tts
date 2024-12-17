@@ -1,6 +1,9 @@
 # coding=utf-8
 from __future__ import annotations
 
+#  from backends.settings.langcodes_wrapper import LangCodesWrapper
+from common.constants import Constants
+
 """
    Provides a consistent way to represent the important language
    information provided by the various TTS engines. The goal is to
@@ -483,26 +486,135 @@ class LanguageInfo:
 
     @property
     def translated_language_name(self) -> str:
+        clz = type(self)
         if self._translated_language_name is None:
             kodi_lang: str
             from backends.settings.settings_helper import SettingsHelper
 
-            kodi_lang, _, _, _ = \
+            kodi_lang, _, _, kodi_locale = \
                 LanguageInfo.get_kodi_locale_info()
-            self._translated_language_name = self.ietf.language_name(
-                    language=kodi_lang)
+            if Constants.USE_LANGCODES_DATA:
+                self._translated_language_name = self.ietf.language_name(
+                            language=kodi_lang)
+                xx = clz.get_language_name(self.ietf.to_tag(), kodi_lang)
+                MY_LOGGER.debug(f'LANGCODES lang: {self.ietf.to_tag()} '
+                                f'kodi_lang: {kodi_lang} '
+                                f'lang_name: {self._translated_language_name}')
+                MY_LOGGER.debug(f'LANGCODES2 lang {self.ietf.to_tag()} '
+                                f'kodi_lang: {kodi_lang} '
+                                f'lang_name: {xx}')
+            else:
+                self._translated_language_name = clz.get_language_name(self.ietf.to_tag(),
+                                                                       kodi_lang)
+                MY_LOGGER.debug(f'LANGCODES lang: {self.ietf.to_tag()} '
+                                f'kodi_lang: {kodi_lang} '
+                                f'lang_name: {self._translated_language_name}')
         return self._translated_language_name
+
+    @classmethod
+    def get_translated_language_name(cls, langcode: langcodes.Language) -> str:
+        result: str = ''
+        kodi_lang, _, _, kodi_locale = LanguageInfo.get_kodi_locale_info()
+        if Constants.USE_LANGCODES_DATA:
+            result = langcode.language_name()
+            result2: str = cls.get_language_name(langcode.to_tag(), kodi_lang)
+            MY_LOGGER.debug(f'LANGCODES langcode: {langcode.language} trans: {result}')
+            MY_LOGGER.debug(f'LANGCODES2 langcode: {langcode.language} trans: {result2}')
+        else:
+            result: str = cls.get_language_name(langcode.to_tag(), kodi_lang)
+            MY_LOGGER.debug(f'LANGCODES langcode: {langcode.language} trans: {result}')
+        return result
+
+    def get_display_name(self, locale_spec: langcodes) -> str:
+        """
+        Gets the human readable name for the given locale and translated into
+        the current language that kodi is using. Includes langauge and
+        territory.
+        :param locale_spec:
+        :return:
+        """
+        clz = type(self)
+        if Constants.USE_LANGCODES_DATA:
+            # Gets the display name for self in locale_spec's language
+            # In Kodi TTS you only see language variants of your current Kodi
+            # language, so self.ietf.autonym should work just as well, unless
+            # there are some situations where different territories give different
+            # results (spelling, script).
+            result: str = self.ietf.display_name(locale_spec)
+            MY_LOGGER.debug(f'LANGCODES lang_id: {self.ietf.to_tag()} kodi_locale: '
+                            f'{locale_spec} result: {result}')
+            # When LANGCODES_DATA is not available, just look up in autonym
+            # table. Should generally give the same results.
+            result2: str = clz.get_autonym(self.ietf.to_tag())
+            MY_LOGGER.debug(f'LANGCODES2 lang_id: {self.ietf.to_tag().lower()} '
+                            f'locale_spec: '
+                            f'{locale_spec} result: {result2}')
+        else:
+            result: str = clz.get_autonym(self.ietf.to_tag())
+            MY_LOGGER.debug(f'LANGCODES lang_id: {self.ietf.to_tag().lower()} '
+                            f'locale_spec: '
+                            f'{locale_spec} result: {result}')
+        return result
+
+    @classmethod
+    def get_formatted_lang(cls, lang: str) -> str:
+        """
+        Convert the given lang to human-friendly text using Kodi's current locale
+        :param lang:
+        :return:
+        """
+        _, _, _, kodi_language = \
+            cls.get_kodi_locale_info()
+        langcode: langcodes.Language = langcodes.Language.get(lang)
+        result: str = ''
+        if Constants.USE_LANGCODES_DATA:
+            result = langcode.display_name(kodi_language)  # Gets the English name
+            #  kodi_lang_code = kodi_language.language
+            result2 = cls.get_autonym(lang)
+            MY_LOGGER.debug(f'LANGCODES lang: {lang} {result}')
+            MY_LOGGER.debug(f'LANGCODES2 lang: {lang} {result2}')
+        else:
+            """
+             To do this properly, need to look up the given lang's locale in a
+             map of locale -> display. Further, the map depends upon kodi's locale,
+             or at least kodie's lang. Therefore would need two tiered map or
+             one map with key: <kodi_lang><lang_locale>.
+             
+             However, at the momemnt I'm only aware of kodi displaying languages
+             that are in the same language (not variant) as Kodi is running, so
+             this should mean that autonym would work. 
+             """
+            #  kodi_lang_code = kodi_language.language
+            result = cls.get_autonym(lang)
+
+            MY_LOGGER.debug(f'LANGCODES lang: {lang} {result}')
+        return result
 
     @property
     def translated_lang_country_name(self) -> str:
+        """
+        Generates the text for the user friendly country name in kodi's current
+        language.
+        :return:
+        """
+        clz = type(self)
         if self._translated_lang_country_name is None:
-            from backends.settings.settings_helper import SettingsHelper
-
-            kodi_lang, _, _, _ = \
-                LanguageInfo.get_kodi_locale_info()
-            self._translated_lang_country_name = (
-                self.ietf.display_name(
-                        language=kodi_lang))
+            kodi_lang, _, _, kodi_locale = LanguageInfo.get_kodi_locale_info()
+            if Constants.USE_LANGCODES_DATA:
+                self._translated_lang_country_name = (
+                  self.ietf.display_name(
+                            language=kodi_lang))
+                MY_LOGGER.debug(f'LANGCODES lang: {self.ietf.to_tag()} display: '
+                                f'{self._translated_lang_country_name}')
+                key: str = f'{kodi_lang}-{self.ietf.territory.lower()}'
+                txt = clz.get_country_name(key)
+                MY_LOGGER.debug(f'LANGCODES2 lang: {key} display: '
+                                f'{txt}')
+            else:
+                key: str = f'{kodi_lang}-{self.ietf.territory}'
+                self._translated_lang_country_name = clz.get_country_name(key)
+                MY_LOGGER.debug(f'LANGCODES lang: {key} display: '
+                                f'{self._translated_lang_country_name}')
         return self._translated_lang_country_name
 
     @property
@@ -522,17 +634,51 @@ class LanguageInfo:
 
     @property
     def translated_country_name(self) -> str:
+        """
+        Get the name of the country/territory for self translated for the
+        current kodi language.
+        """
+        clz = type(self)
         if self._translated_country_name is None:
             from backends.settings.settings_helper import SettingsHelper
 
             kodi_lang, _, _, _ = \
                 LanguageInfo.get_kodi_locale_info()
-            self._translated_country_name = (
-                self.ietf.territory_name(
-                        language=kodi_lang))
+            country_name: str = ''
+            if Constants.USE_LANGCODES_DATA:
+                self._translated_country_name = self.ietf.territory_name(
+                        language=kodi_lang)
+                country_name: str = clz.get_country_name(self.ietf.to_tag())
+            else:
+                # Need to look up the country name in a table instead of using
+                # the better LANGCODES_DATA.
+                # Normally, Kodi tts displays language information for
+                # languages that are in the same family as kodi's language ('en')
+                # So, assume that kodi's language setting is not important.
+                # This will bite us if the above assumption is incorrect.
+
+                country_name: str = clz.get_country_name(self.ietf.to_tag())
+                self._translated_country_name = country_name
             if self._translated_country_name is None:
                 self._translated_country_name = ''
+            MY_LOGGER.debug(f'LANGCODES lang: {self.ietf.to_tag().lower()} '
+                            f'{self._translated_country_name}')
+            MY_LOGGER.debug(f'LANGCODES2 lang: {self.ietf.to_tag().lower()} '
+                            f'{country_name}')
         return self._translated_country_name
+
+    @property
+    def autonym(self) -> str:
+        clz = type(self)
+        if Constants.USE_LANGCODES_DATA:
+            display_autonym_choice: str = self.ietf.autonym()
+            x: str = clz.get_autonym(self.ietf.to_tag())
+            MY_LOGGER.debug(f'LANGCODES autonym: {self.ietf.to_tag().lower()} {self.ietf.autonym()}')
+            MY_LOGGER.debug(f'LANGCODES2 autonym: {self.ietf.to_tag().lower()} {x}')
+        else:
+            display_autonym_choice: str = clz.get_autonym(self.ietf.to_tag())
+            MY_LOGGER.debug(f'LANGCODES autonym: {self.ietf.to_tag().lower()} {self.ietf.autonym()}')
+        return display_autonym_choice
 
     @classmethod
     def prepare_for_display(cls, translate: bool,
@@ -555,7 +701,7 @@ class LanguageInfo:
             lang_info: ForwardRef('LanguageInfo')
             if translate:
                 # Get name of the language in its native language
-                display_autonym_choice: str = lang_info.ietf.autonym()
+                display_autonym_choice: str = lang_info.autonym
                 # get how close of a match this language is to
                 # Kodi's setting
 
@@ -564,7 +710,7 @@ class LanguageInfo:
                                                         supported=lang_info.ietf)
                 display_engine_name: str = lang_info.translated_engine_name
                 voice_name: str = lang_info.translated_voice
-                label: str
+                label: str = ''
                 if display_autonym_choice != lang_info.translated_country_name:
                     label = (f'{display_engine_name:10} '
                              f'{lang_info.translated_country_name:20} / '
@@ -651,17 +797,41 @@ class LanguageInfo:
         kodi_language = langcodes.Language.get(tmp)
         kodi_lang: str = kodi_language.language
         kodi_locale: str = kodi_language.to_tag()
-        kodi_friendly_locale_name: str = kodi_language.display_name()
-        # cls._logger.debug(f'kodi_lang: {kodi_lang} \n kodi_locale: {kodi_locale}\n '
-        #                   f'{kodi_friendly_locale_name}')
-        kodi_friendly_locale_name = kodi_friendly_locale_name.lower()
+        if Constants.USE_LANGCODES_DATA:
+            kodi_friendly_locale_name: str = kodi_language.display_name()
+            x: str = cls.get_language_name(kodi_language.to_tag(), kodi_lang)
+            MY_LOGGER.debug(f'LANGCODES display_name {kodi_language.to_tag().lower()} {kodi_friendly_locale_name}')
+            MY_LOGGER.debug(f'LANGCODES2 display_name {kodi_language.to_tag().lower()} {x}')
+        else:
+            kodi_friendly_locale_name: str = cls.get_language_name(kodi_language.to_tag(),
+                                                                   kodi_lang)
+            MY_LOGGER.debug(f'LANGCODES display_name {kodi_friendly_locale_name}')
         return kodi_lang, kodi_locale, kodi_friendly_locale_name, kodi_language
 
     @property
     def locale_label(self) -> str:
+        """
+        Gets the human-friendly name for self in the current kodi_locale
+
+        :return:
+        """
         clz = type(self)
         if clz._locale_label is None:
-            clz._locale_label = self.ietf.display_name(self.kodi_locale)
+            if Constants.USE_LANGCODES_DATA:
+                clz._locale_label = self.ietf.display_name(self.kodi_locale)
+                xx = clz.get_alt_display_name(self.ietf.to_tag())
+                MY_LOGGER.debug(f'LANGCODES kodi_locale {self.kodi_locale} '
+                                f'display_name {clz._locale_label}')
+                MY_LOGGER.debug(f'LANGCODES2 kodi_locale {self.kodi_locale}'
+                                f' display_name {xx}')
+            else:
+                # Need to get self fully displayed (lang + territory) in kodi's
+                # language.
+                # ASSUME that the lang for both self and kodi language are the
+                # SAME since tts does not allow you to choose such a combination.
+                clz._locale_label = clz.get_alt_display_name(self.ietf.to_tag())
+                MY_LOGGER.debug(f'LANGCODES kodi_locale {self.kodi_locale} display_name '
+                                f'{clz._locale_label}')
         return clz._locale_label
 
     @classmethod
@@ -717,3 +887,462 @@ class LanguageInfo:
                   f'\n{translated_language_name_str}{translated_lang_country_name_str}'
                   f'{translated_engine_name_str}')
         return result
+
+    @classmethod
+    def get_autonym(cls, locale_id: str) -> str:
+        locale_id = locale_id.lower()
+        return AUTONYMS.get(locale_id, f'Missing value for {locale_id}')
+
+    @classmethod
+    def get_alt_display_name(cls, locale_id: str) -> str:
+        locale_id = locale_id.lower()
+        return LOCALE_SPEC.get(locale_id, f'Missing value for {locale_id}')
+
+    @classmethod
+    def get_language_name(cls, locale_id: str, kodi_lang_id: str) -> str:
+        locale_id = locale_id.lower()
+        kodi_lang_id: str = kodi_lang_id.lower()[0:2]
+        key: str = f'{locale_id}-{kodi_lang_id}'
+        return LANGUAGE_NAME_FOR_ID.get(key, f'missing value for {key}')
+
+    @classmethod
+    def get_country_name(cls, locale_id: str) -> str:
+        locale_id = locale_id.lower()
+        return COUNTRY_NAME_FOR_LOCALE_ID.get(locale_id, '')
+
+
+AUTONYMS: Dict[str, str] = {
+    'af'             : 'Afrikaans',
+    'am'             : 'አማርኛ',
+    'ar'             : 'العربية',
+    'az'             : 'azərbaycan',
+    'be'             : 'беларуская',
+    'bg'             : 'български',
+    'bs-ba'          : 'bosanski (Bosna i Hercegovina)',
+    'bs'             : 'bosanski',
+    'ca-ad'          : 'català (Andorra)',
+    'ca'             : 'català',
+    'ca-es'          : 'català (Espanya)',
+    'ca-fr'          : 'català (França)',
+    'ca-it'          : 'català (Itàlia)',
+    'cs'             : 'čeština',
+    'cs-cz'          : 'čeština (Česko)',
+    'cy'             : 'Cymraeg',
+    'cy-gb'          : 'Cymraeg (Y Deyrnas Unedig)',
+    'da'             : 'dansk',
+    'da-dk'          : 'dansk (Danmark)',
+    'de-at'          : 'Deutsch (Österreich)',
+    'de-be'          : 'Deutsch (Belgien)',
+    'de-ch'          : 'Deutsch (Schweiz)',
+    'de-de'          : 'Deutsch (Deutschland)',
+    'de'             : 'Deutsch',
+    'de-it'          : 'Deutsch (Italien)',
+    'de-li'          : 'Deutsch (Liechtenstein)',
+    'de-lu'          : 'Deutsch (Luxemburg)',
+    'el-cy'          : 'Ελληνικά (Κύπρος)',
+    'el-gr'          : 'Ελληνικά (Ελλάδα)',
+    'el'             : 'Ελληνικά',
+    'en-029'         : 'English (Caribbean)',
+    'en-ag'          : 'English (Antigua & Barbuda)',
+    'en-au'          : 'English (Australia)',
+    'en-bw'          : 'English (Botswana)',
+    'en-ca'          : 'English (Canada)',
+    'en-dk'          : 'English (Denmark)',
+    'en-gb'          : 'English (United Kingdom)',
+    'en-gb-scotland' : 'English (United Kingdom)',
+    'en-gb-x-gbclan' : 'English (United Kingdom)',
+    'en-gb-x-gbcwmd' : 'English (United Kingdom)',
+    'en-gb-x-rp'     : 'English (United Kingdom)',
+    'en-hk'          : 'English (Hong Kong SAR China)',
+    'en-ie'          : 'English (Ireland)',
+    'en-il'          : 'English (Israel)',
+    'en-in'          : 'English (India)',
+    'en-ng'          : 'English (Nigeria)',
+    'en-nz'          : 'English (New Zealand)',
+    'en-ph'          : 'English (Philippines)',
+    'en-sc'          : 'English (Seychelles)',
+    'en-sg'          : 'English (Singapore)',
+    'en-us'          : 'English (United States)',
+    'en-za'          : 'English (South Africa)',
+    'en-zm'          : 'English (Zambia)',
+    'en-zw'          : 'English (Zimbabwe)',
+    'eo'             : 'Esperanto',
+    'eo-us'          : 'Esperanto (Usono)',
+    'es-419'         : 'español (Latinoamérica)',
+    'es-ar'          : 'español (Argentina)',
+    'es-bo'          : 'español (Bolivia)',
+    'es-cl'          : 'español (Chile)',
+    'es-co'          : 'español (Colombia)',
+    'es-cr'          : 'español (Costa Rica)',
+    'es-cu'          : 'español (Cuba)',
+    'es-do'          : 'español (República Dominicana)',
+    'es-ec'          : 'español (Ecuador)',
+    'es-es'          : 'español (España)',
+    'es'             : 'español',
+    'es-gt'          : 'español (Guatemala)',
+    'es-hn'          : 'español (Honduras)',
+    'es-mx'          : 'español (México)',
+    'es-ni'          : 'español (Nicaragua)',
+    'es-pa'          : 'español (Panamá)',
+    'es-pe'          : 'español (Perú)',
+    'es-pr'          : 'español (Puerto Rico)',
+    'es-py'          : 'español (Paraguay)',
+    'es-sv'          : 'español (El Salvador)',
+    'es-us'          : 'español (Estados Unidos)',
+    'es-uy'          : 'español (Uruguay)',
+    'es-ve'          : 'español (Venezuela)',
+    'et-ee'          : 'eesti (Eesti)',
+    'et'             : 'eesti',
+    'eu-es'          : 'euskara (Espainia)',
+    'eu'             : 'euskara',
+    'eu-fr'          : 'euskara (Frantzia)',
+    'fa-ir'          : 'فارسی (ایران)',
+    'fa-latn'        : 'Persian (Latin)',
+    'fa'             : 'فارسی',
+    'fi-fi'          : 'suomi (Suomi)',
+    'fil-pH'         : 'Filipino (Pilipinas)',
+    'fi'             : 'suomi',
+    'fo-fo'          : 'føroyskt (Føroyar)',
+    'fr-be'          : 'français (Belgique)',
+    'fr-ca'          : 'français (Canada)',
+    'fr-ch'          : 'français (Suisse)',
+    'fr-fr'          : 'français (France)',
+    'fr-lu'          : 'français (Luxembourg)',
+    'gl-es'          : 'galego (España)',
+    'he-il'          : 'עברית (ישראל)',
+    'he'             : 'עברית',
+    'hi-in'          : 'हिन्दी (भारत)',
+    'hi'             : 'हिन्दी',
+    'hr-hr'          : 'hrvatski (Hrvatska)',
+    'hr'             : 'hrvatski',
+    'hu-hu'          : 'magyar (Magyarország)',
+    'hu'             : 'magyar',
+    'hy-am'          : 'հայերեն (Հայաստան)',
+    'hy'             : 'հայերեն',
+    'id'             : 'bahasa Indonesia',
+    'id-id'          : 'bahasa Indonesia (Indonesia)',
+    'is-is'          : 'íslenska (Ísland)',
+    'is'             : 'íslenska',
+    'it-ch'          : 'italiano (Svizzera)',
+    'it'             : 'italiano',
+    'it-it'          : 'italiano (Italia)',
+    'ja-jp'          : '日本語 (日本)',
+    'ja'             : '日本語',
+    'kn-in'          : 'ಕನ್ನಡ (ಭಾರತ)',
+    'kn'             : 'ಕನ್ನಡ',
+    'ko'             : '한국어',
+    'ko-kr'          : '한국어 (대한민국)',
+    'lt'             : 'lietuvių',
+    'lt-lt'          : 'lietuvių (Lietuva)',
+    'lv'             : 'latviešu',
+    'lv-lv'          : 'latviešu (Latvija)',
+    'mi'             : 'Māori',
+    'mi-nz'          : 'Māori (Aotearoa)',
+    'mk-mk'          : 'македонски (Северна Македонија)',
+    'mk'             : 'македонски',
+    'ml-in'          : 'മലയാളം (ഇന്ത്യ)',
+    'ml'             : 'മലയാളം',
+    'mn-mn'          : 'монгол (Монгол)',
+    'ms'             : 'bahasa Malaysia',
+    'ms-my'          : 'bahasa Malaysia (Malaysia)',
+    'mt'             : 'Malti',
+    'mt-mt'          : 'Malti (Malta)',
+    'my-mm'          : 'မြန်မာ (မြန်မာ)',
+    'my'             : 'မြန်မာ',
+    'nb-no'          : 'norsk bokmål (Norge)',
+    'nb'             : 'norsk bokmål',
+    'nl-aw'          : 'Nederlands (Aruba)',
+    'nl-be'          : 'Nederlands (België)',
+    'nl'             : 'Nederlands',
+    'nl-nl'          : 'Nederlands (Nederland)',
+    'os-ru'          : 'ирон (Уӕрӕсе)',
+    'pl-pl'          : 'polski (Polska)',
+    'pl'             : 'polski',
+    'pt-br'          : 'português (Brasil)',
+    'pt'             : 'português',
+    'pt-pt'          : 'português (Portugal)',
+    'ro'             : 'română',
+    'ro-ro'          : 'română (România)',
+    'ru-lv'          : 'русский (Латвия)',
+    'ru-ru'          : 'русский (Россия)',
+    'ru-ua'          : 'русский (Украина)',
+    'ru'             : 'русский',
+    'si-lk'          : 'සිංහල (ශ්‍රී ලංකාව)',
+    'si'             : 'සිංහල',
+    'sk-sk'          : 'slovenčina (Slovensko)',
+    'sk'             : 'slovenčina',
+    'sl-si'          : 'slovenščina (Slovenija)',
+    'sl'             : 'slovenščina',
+    'sq-al'          : 'shqip (Shqipëri)',
+    'sq-mk'          : 'shqip (Maqedonia e Veriut)',
+    'sq'             : 'shqip',
+    'sr-me'          : 'српски (Црна Гора)',
+    'sr-rs'          : 'српски (Србија)',
+    'sr'             : 'српски',
+    'sv-fi'          : 'svenska (Finland)',
+    'sv-se'          : 'svenska (Sverige)',
+    'sv'             : 'svenska',
+    'ta-in'          : 'தமிழ் (இந்தியா)',
+    'ta-lk'          : 'தமிழ் (இலங்கை)',
+    'ta'             : 'தமிழ்',
+    'te-in'          : 'తెలుగు (భారతదేశం)',
+    'te'             : 'తెలుగు',
+    'tg-tj'          : 'тоҷикӣ (Тоҷикистон)',
+    'th-th'          : 'ไทย (ไทย)',
+    'th'             : 'ไทย',
+    'tr-cy'          : 'Türkçe (Kıbrıs)',
+    'tr-tr'          : 'Türkçe (Türkiye)',
+    'tr'             : 'Türkçe',
+    'uk-ua'          : 'українська (Україна)',
+    'uk'             : 'українська',
+    'uz'             : 'o‘zbek',
+    'uz-uz'          : 'o‘zbek (Oʻzbekiston)',
+    'vi'             : 'Tiếng Việt',
+    'vi-vn'          : 'Tiếng Việt (Việt Nam)',
+    'vi-vn-x-central': 'Tiếng Việt (Việt Nam)',
+    'vi-vn-x-south'  : 'Tiếng Việt (Việt Nam)',
+    'zh-cn'          : '中文（中国）',
+    'zh-hk'          : 'Chinese（Hong Kong SAR China）',
+    'zh-sg'          : '中文（新加坡）',
+    'zh-tw'          : 'Chinese（Taiwan）'
+}
+
+
+"""
+LOCALE_SPEC provides a means to lookup the display name for a particular locale
+in a particular language family. In other words, if I want to display the user
+friendly name for 'en-AG' in English I would look up the value of 'en-AG' from
+the table below. We don't have to worry about the language family because Kodi TTS
+ONLY lists language variations (en-AG) for a single language (en) 
+"""
+LOCALE_SPEC: Dict[str, str] = {
+    # lang_id is language to display
+    # using the current language family (en)
+    # locale_spec is the resulting user-friendly name for lang_id in the language family
+    'en-ag': 'English (Antigua & Barbuda)',
+    'en-au': 'English (Australia)',
+    'en-bw': 'English (Botswana)',
+    'en-ca': 'English (Canada)',
+    'en-dk': 'English (Denmark)',
+    'en-gb': 'English (United Kingdom)',
+    'en-hk': 'English (Hong Kong SAR China)',
+    'en-ie': 'English (Ireland)',
+    'en-il': 'English (Israel)',
+    'en-in': 'English (India)',
+    'en-ng': 'English (Nigeria)',
+    'en-nz': 'English (New Zealand)',
+    'en-ph': 'English (Philippines)',
+    'en-sc': 'English (Seychelles)',
+    'en-sg': 'English (Singapore)',
+    'en-us': 'English (United States)',
+    'en-za': 'English (South Africa)',
+    'en-zm': 'English (Zambia)',
+    'en-zw': 'English (Zimbabwe)'}
+
+LANGUAGE_NAME_FOR_ID: Dict[str, str] = {
+    # The key is <locale_of_language_to_get_name_for>-<current_kodi_lang_id>
+    'en-en': 'English',
+    'en-us-en': 'English (United States)'
+}
+
+COUNTRY_NAME_FOR_LOCALE_ID: Dict[str, str] = {
+    """
+    For a given language and country code, return the user friendly name of the
+    country for the given language. Example, if I want the French user-friendly
+    name for 'us' the table key would be: 'fr-us' and the returned value
+    would be 'United States', but in French not English.
+    """
+    'af'             : '',
+    'am'             : '',
+    'ar'             : '',
+    'az'             : '',
+    'be'             : '',
+    'bg'             : '',
+    'bs'             : '',
+    'bs-ba'          : 'Bosnia & Herzegovina',
+    'ca'             : '',
+    'ca-ad'          : 'Andorra',
+    'ca-es'          : 'Spain',
+    'ca-fr'          : 'France',
+    'ca-it'          : 'Italy',
+    'cs'             : '',
+    'cs-cz'          : 'Czechia',
+    'cy'             : '',
+    'cy-gb'          : 'United Kingdom',
+    'da'             : '',
+    'da-dk'          : 'Denmark',
+    'de'             : '',
+    'de-at'          : 'Austria',
+    'de-be'          : 'Belgium',
+    'de-ch'          : 'Switzerland',
+    'de-de'          : 'Germany',
+    'de-it'          : 'Italy',
+    'de-li'          : 'Liechtenstein',
+    'de-lu'          : 'Luxembourg',
+    'el'             : '',
+    'el-cy'          : 'Cyprus',
+    'el-gr'          : 'Greece',
+    'en-029'         : 'Caribbean',
+    'en-ag'          : 'Antigua & Barbuda',
+    'en-au'          : 'Australia',
+    'en-bw'          : 'Botswana',
+    'en-ca'          : 'Canada',
+    'en-dk'          : 'Denmark',
+    'en-gb-scotland' : 'United Kingdom',
+    'en-gb'          : 'United Kingdom',
+    'en-gb-x-gbclan' : 'United Kingdom',
+    'en-gb-x-gbcwmd' : 'United Kingdom',
+    'en-gb-x-rp'     : 'United Kingdom',
+    'en-hk'          : 'Hong Kong SAR China',
+    'en-ie'          : 'Ireland',
+    'en-il'          : 'Israel',
+    'en-in'          : 'India',
+    'en-ng'          : 'Nigeria',
+    'en-nz'          : 'New Zealand',
+    'en-ph'          : 'Philippines',
+    'en-sc'          : 'Seychelles',
+    'en-sg'          : 'Singapore',
+    'en-us'          : 'United States',
+    'en-za'          : 'South Africa',
+    'en-zm'          : 'Zambia',
+    'en-zw'          : 'Zimbabwe',
+    'eo'             : '',
+    'eo-us'          : 'United States',
+    'es'             : '',
+    'es-419'         : 'Latin America',
+    'es-ar'          : 'Argentina',
+    'es-bo'          : 'Bolivia',
+    'es-cl'          : 'Chile',
+    'es-co'          : 'Colombia',
+    'es-cr'          : 'Costa Rica',
+    'es-cu'          : 'Cuba',
+    'es-do'          : 'Dominican Republic',
+    'es-ec'          : 'Ecuador',
+    'es-es'          : 'Spain',
+    'es-gt'          : 'Guatemala',
+    'es-hn'          : 'Honduras',
+    'es-mx'          : 'Mexico',
+    'es-ni'          : 'Nicaragua',
+    'es-pa'          : 'Panama',
+    'es-pe'          : 'Peru',
+    'es-pr'          : 'Puerto Rico',
+    'es-py'          : 'Paraguay',
+    'es-sv'          : 'El Salvador',
+    'es-us'          : 'United States',
+    'es-uy'          : 'Uruguay',
+    'es-ve'          : 'Venezuela',
+    'et'             : '',
+    'et-ee'          : 'Estonia',
+    'eu'             : '',
+    'eu-es'          : 'Spain',
+    'eu-fr'          : 'France',
+    'fa'             : '',
+    'fa-ir'          : 'Iran',
+    'fa-latn'        : '',
+    'fi'             : '',
+    'fi-fi'          : 'Finland',
+    'fil-ph'         : 'Philippines',
+    'fo-fo'          : 'Faroe Islands',
+    'fr-be'          : 'Belgium',
+    'fr-ca'          : 'Canada',
+    'fr-ch'          : 'Switzerland',
+    'fr-fr'          : 'France',
+    'fr-lu'          : 'Luxembourg',
+    'gl-es'          : 'Spain',
+    'he'             : '',
+    'he-il'          : 'Israel',
+    'hi'             : '',
+    'hi-in'          : 'India',
+    'hr'             : '',
+    'hr-hr'          : 'Croatia',
+    'hu'             : '',
+    'hu-hu'          : 'Hungary',
+    'hy'             : '',
+    'hy-am'          : 'Armenia',
+    'id'             : '',
+    'id-id'          : 'Indonesia',
+    'is'             : '',
+    'is-is'          : 'Iceland',
+    'it'             : '',
+    'it-ch'          : 'Switzerland',
+    'it-it'          : 'Italy',
+    'ja'             : '',
+    'ja-jp'          : 'Japan',
+    'kn'             : '',
+    'kn-in'          : 'India',
+    'ko'             : '',
+    'ko-kr'          : 'South Korea',
+    'lt'             : '',
+    'lt-lt'          : 'Lithuania',
+    'lv'             : '',
+    'lv-lv'          : 'Latvia',
+    'mi'             : '',
+    'mi-nz'          : 'New Zealand',
+    'mk'             : '',
+    'mk-mk'          : 'North Macedonia',
+    'ml'             : '',
+    'ml-in'          : 'India',
+    'mn-mn'          : 'Mongolia',
+    'ms'             : '',
+    'ms-my'          : 'Malaysia',
+    'mt'             : '',
+    'mt-mt'          : 'Malta',
+    'my'             : '',
+    'my-mm'          : 'Myanmar (Burma)',
+    'nb'             : '',
+    'nb-no'          : 'Norway',
+    'nl'             : '',
+    'nl-aw'          : 'Aruba',
+    'nl-be'          : 'Belgium',
+    'nl-nl'          : 'Netherlands',
+    'os-ru'          : 'Russia',
+    'pl'             : '',
+    'pl-pl'          : 'Poland',
+    'pt'             : '',
+    'pt-br'          : 'Brazil',
+    'pt-pt'          : 'Portugal',
+    'ro'             : '',
+    'ro-ro'          : 'Romania',
+    'ru'             : '',
+    'ru-lv'          : 'Latvia',
+    'ru-ru'          : 'Russia',
+    'ru-ua'          : 'Ukraine',
+    'si'             : '',
+    'si-lk'          : 'Sri Lanka',
+    'sk'             : '',
+    'sk-sk'          : 'Slovakia',
+    'sl'             : '',
+    'sl-si'          : 'Slovenia',
+    'sq'             : '',
+    'sq-al'          : 'Albania',
+    'sq-mk'          : 'North Macedonia',
+    'sr'             : '',
+    'sr-me'          : 'Montenegro',
+    'sr-rs'          : 'Serbia',
+    'sv'             : '',
+    'sv-fi'          : 'Finland',
+    'sv-se'          : 'Sweden',
+    'ta'             : '',
+    'ta-in'          : 'India',
+    'ta-lk'          : 'Sri Lanka',
+    'te'             : '',
+    'te-in'          : 'India',
+    'tg-tj'          : 'Tajikistan',
+    'th'             : '',
+    'th-th'          : 'Thailand',
+    'tr'             : '',
+    'tr-cy'          : 'Cyprus',
+    'tr-tr'          : 'Türkiye',
+    'uk'             : '',
+    'uk-ua'          : 'Ukraine',
+    'uz'             : '',
+    'uz-uz'          : 'Uzbekistan',
+    'vi'             : '',
+    'vi-vn'          : 'Vietnam',
+    'vi-vn-x-central': 'Vietnam',
+    'vi-vn-x-south'  : 'Vietnam',
+    'zh-cn'          : 'China',
+    'zh-hk'          : 'Hong Kong SAR China',
+    'zh-sg'          : 'Singapore',
+    'zh-tw'          : 'Taiwan'
+}

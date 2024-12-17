@@ -68,6 +68,7 @@ class Constants:
     NAME: Final[str] = 'name'
     PAUSE_INSERT = '...'
     PLATFORM_WINDOWS: bool = xbmc.getCondVisibility('System.Platform.Windows')
+    USE_LANGCODES_DATA: bool = not PLATFORM_WINDOWS
 
 
     @staticmethod

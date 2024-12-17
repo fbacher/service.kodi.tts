@@ -18,7 +18,7 @@ from common.logger import *
 from common.monitor import Monitor
 from common.phrases import PhraseList
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class RunState(Enum):
@@ -36,7 +36,6 @@ class SimpleRunCommand:
 
     """
     player_state: str = KodiPlayerState.VIDEO_PLAYER_IDLE
-    logger: BasicLogger = None
 
     def __init__(self, args: List[str], phrase_serial: int = 0, name: str = '',
                  count: int = 0, stop_on_play: bool = False,
@@ -52,7 +51,6 @@ class SimpleRunCommand:
         :param delete_after_run: Delete the given path after running command.
         """
         clz = type(self)
-        SimpleRunCommand.logger = module_logger
         self.args: List[str] = args
         self.phrase_serial: int = phrase_serial
         self.count: int = count
@@ -90,7 +88,7 @@ class SimpleRunCommand:
             if self.rc is None or self.rc != 0:
                 self.log_output()
         except Exception as e:
-            clz.logger.exception('')
+            MY_LOGGER.exception('')
 
     def stop_player(self, purge: bool = True,
                     keep_silent: bool = False,
@@ -128,7 +126,10 @@ class SimpleRunCommand:
         return self.run_state
 
     def poll(self) -> int | None:
-        return self.process.poll()
+        try:
+            return self.process.poll()
+        except Exception:
+            MY_LOGGER.debug(f'Exception in poll')
 
     def abort_listener(self) -> None:
         pass
@@ -136,11 +137,11 @@ class SimpleRunCommand:
     def kodi_player_status_listener(self, kodi_player_state: KodiPlayerState) -> bool:
         clz = type(self)
         clz.player_state = kodi_player_state
-        clz.logger.debug(f'KodiPlayerState: {kodi_player_state} stop_on_play: '
+        MY_LOGGER.debug(f'KodiPlayerState: {kodi_player_state} stop_on_play: '
                          f'{self.stop_on_play} args: {self.args} '
                          f'serial: {self.phrase_serial}')
         if kodi_player_state == KodiPlayerState.PLAYING_VIDEO and self.stop_on_play:
-            clz.logger.debug(f'KODI_PLAYING terminating command: '
+            MY_LOGGER.debug(f'KODI_PLAYING terminating command: '
                              f'args: {self.args} ')
             self.terminate()
             return True  # Unregister
@@ -157,14 +158,14 @@ class SimpleRunCommand:
         try:
             Monitor.exception_on_abort()
             if self.phrase_serial < PhraseList.expired_serial_number:
-                clz.logger.debug(f'EXPIRED before start {self.phrase_serial} '
+                MY_LOGGER.debug(f'EXPIRED before start {self.phrase_serial} '
                                  f'{self.args[0]}',
                                  trace=Trace.TRACE_AUDIO_START_STOP)
                 self.run_state = RunState.TERMINATED
                 self.rc = 11
                 return self.rc
 
-            clz.logger.debug(f'About to run args:{self.args[0]}')
+            MY_LOGGER.debug(f'About to run args:{self.args[0]}')
             self.run_thread.start()
 
             self.process: Popen
@@ -189,9 +190,9 @@ class SimpleRunCommand:
             while not Monitor.wait_for_abort(timeout=0.1):
                 try:
                     # Move on if command finished
-                    if self.process.poll() is not None:
-                        clz.logger.debug(f'Process finished rc: '
-                                         f'{self.process.returncode} next: {next_state}')
+                    if self.poll() is not None:
+                        MY_LOGGER.debug(f'Process finished rc: '
+                                        f'{self.process.returncode} next: {next_state}')
                         self.run_state = next_state
                         break
                     # Are we trying to kill it?
@@ -200,7 +201,7 @@ class SimpleRunCommand:
                         # Yes, initiate terminate/kill of process
                         check_serial = False
                         countdown = True
-                        clz.logger.debug(f'Expired, kill {self.phrase_serial} '
+                        MY_LOGGER.debug(f'Expired, kill {self.phrase_serial} '
                                          f'{self.args[0]}',
                                          trace=Trace.TRACE_AUDIO_START_STOP)
                         try:
@@ -220,12 +221,12 @@ class SimpleRunCommand:
                     if rc is not None:
                         self.rc = rc
                         self.cmd_finished = True
-                        clz.logger.debug(f'FINISHED COMMAND {self.phrase_serial} '
+                        MY_LOGGER.debug(f'FINISHED COMMAND {self.phrase_serial} '
                                          f'{self.args[0]} rc: {rc}',
                                          trace=Trace.TRACE_AUDIO_START_STOP)
                         break
                     else:
-                        clz.logger.debug(f'Should be finished, but returncode is None')
+                        MY_LOGGER.debug(f'Should be finished, but returncode is None')
                         break  # Complete
                 except subprocess.TimeoutExpired:
                     # Only indicates the timeout is expired, not the run state
@@ -267,7 +268,7 @@ class SimpleRunCommand:
                 # process level (stderr = subprocess.STDOUT), devnull or pass through
                 # via pipe and don't log
 
-                clz.logger.debug(f'Starting cmd args: {self.args}')
+                MY_LOGGER.debug(f'Starting cmd args: {self.args}')
                 self.process = subprocess.Popen(self.args, stdin=None,  # subprocess.DEVNULL,
                                                 stdout=subprocess.PIPE,
                                                 stderr=subprocess.STDOUT,
@@ -295,7 +296,7 @@ class SimpleRunCommand:
         except AbortException as e:
             self.rc = 99  # Let thread die
         except Exception as e:
-            clz.logger.exception('')
+            MY_LOGGER.exception('')
             self.rc = 10
         if self.rc == 0:
             self.run_state = RunState.COMPLETE
@@ -327,13 +328,13 @@ class SimpleRunCommand:
                         finished = True
                         break
                     else:
-                        clz.logger.exception('')
+                        MY_LOGGER.exception('')
                         finished = True
 
         except AbortException as e:
             return
         except Exception as e:
-            clz.logger.exception('')
+            MY_LOGGER.exception('')
             return
 
         try:
@@ -357,19 +358,19 @@ class SimpleRunCommand:
                     if len(line) > 0:
                         self.stdout_lines.append(line)
                 except ValueError as e:
-                    rc = self.process.poll()
+                    rc = self.poll()
                     if rc is not None:
                         self.rc = rc
                         # Command complete
                         finished = True
                         break
                     else:
-                        clz.logger.exception('')
+                        MY_LOGGER.exception('')
                         finished = True
         except AbortException as e:
             return
         except Exception as e:
-            clz.logger.exception('')
+            MY_LOGGER.exception('')
         try:
             if self.process.stdout is not None:
                 self.process.stdout.close()
@@ -396,16 +397,16 @@ class SimpleRunCommand:
                 return
 
             clz = type(self)
-            if clz.logger.isEnabledFor(DEBUG):
+            if MY_LOGGER.isEnabledFor(DEBUG):
                 if self.rc != 0:
-                    clz.logger.debug(f'Failed rc: {self.rc}')
-                if clz.logger.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug(f'Failed rc: {self.rc}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
                     stdout = '\n'.join(self.stdout_lines)
-                    clz.logger.debug_v(f'STDOUT: {stdout}')
+                    MY_LOGGER.debug_v(f'STDOUT: {stdout}')
                     #  stderr = '\n'.join(self.stderr_lines)
-                    #  clz.logger.debug_v(f'STDERR: {stderr}')
+                    #  MY_LOGGER.debug_v(f'STDERR: {stderr}')
         except AbortException as e:
             return
         except Exception as e:
-            clz.logger.exception('')
+            MY_LOGGER.exception('')
         return
