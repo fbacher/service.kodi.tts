@@ -109,10 +109,12 @@ class Settings(SettingsLowLevel):
         if bootstrap:
             return SettingsLowLevel.get_engine_id_ll(default=None, bootstrap=bootstrap)
 
-        engine_id: str = SettingsLowLevel.getSetting(SettingsProperties.ENGINE, None)
+        engine_id: str = SettingsLowLevel.getSetting(SettingsProperties.ENGINE,
+                                                     None)
         #  MY_LOGGER.debug(f'service_id: {service_id}')
         if engine_id is None:
-            engine_id = SettingsLowLevel.get_engine_id_ll(default=None, bootstrap=bootstrap)
+            engine_id = SettingsLowLevel.get_engine_id_ll(default=None,
+                                                          bootstrap=bootstrap)
         if engine_id is None:  # Not set, use default
             # Validator only helps with default and possible values
             engine_id_validator = SettingsMap.get_validator(SettingsProperties.ENGINE,
@@ -250,7 +252,6 @@ class Settings(SettingsLowLevel):
 
     @classmethod
     def set_volume(cls, volume: float, engine_id: str = None) -> None:
-        #  MY_LOGGER.debug(f'{super()._current_engine} {SettingsLowLevel._current_engine}')
         volume_val: INumericValidator = SettingsMap.get_validator(
                 SettingsProperties.TTS_SERVICE, SettingsProperties.VOLUME)
         volume_val.set_value(volume)
@@ -524,6 +525,8 @@ class Settings(SettingsLowLevel):
         :return:
         """
         # MY_LOGGER.debug(f'setting {SettingsProperties.PLAYER}: {value}')
+        if value is None:
+            value = ''
         return cls.set_setting_str(SettingsProperties.PLAYER, value,
                                    engine_id=engine_id)
 
@@ -540,12 +543,14 @@ class Settings(SettingsLowLevel):
                                    engine_id=engine_id)
 
     @classmethod
-    def get_converter(cls, engine_id: str = None) -> str:
+    def get_converter(cls, engine_id: str = None) -> str | None:
         value: str = cls.get_setting_str(SettingsProperties.TRANSCODER,
                                          engine_id=engine_id,
                                          ignore_cache=False,
                                          default=None)
         # MY_LOGGER.debug(f'converter.{service_id} = {value}')
+        if value is '':
+            value = None
         return value
 
     @classmethod
@@ -556,6 +561,8 @@ class Settings(SettingsLowLevel):
         :param engine_id:
         :return:
         """
+        if value is None:
+            value = ''
         MY_LOGGER.debug(f'setting {SettingsProperties.TRANSCODER}: {value}')
         return cls.set_setting_str(SettingsProperties.TRANSCODER, value,
                                    engine_id=engine_id)

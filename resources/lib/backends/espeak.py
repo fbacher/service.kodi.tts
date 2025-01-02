@@ -5,7 +5,6 @@ import ctypes.util
 import os
 import subprocess
 import sys
-import tempfile
 
 import langcodes
 
@@ -20,19 +19,15 @@ from cache.voicecache import VoiceCache
 from cache.common_types import CacheEntryInfo
 from common import *
 
-from backends.audio.builtin_audio_player import BuiltInAudioPlayer
-# from backends.audio.player_handler import BasePlayerHandler, WavAudioPlayerHandler
 from backends.audio.sound_capabilities import ServiceType
 from backends.base import BaseEngineService, SimpleTTSBackend
 from backends.settings.i_validators import AllowedValue, INumericValidator, IValidator
 from backends.settings.service_types import Services
 from backends.settings.settings_map import SettingsMap
-from common import utils
 from common.base_services import BaseServices
 from common.constants import Constants
 from common.logger import *
 from common.message_ids import MessageId
-from common.messages import Messages
 from common.monitor import Monitor
 from common.phrases import Phrase
 from common.setting_constants import (AudioType, Backends, Genders, Mode, PlayerMode,
@@ -202,7 +197,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             if lang_str == 'en-us-nyc':
                 lang_str = 'en-us'
             # locale: str = langcodes.standardize_tag(lang_str)
-            lang: langcodes.Language = None
+            lang: langcodes.Language | None = None
             try:
                 lang = langcodes.Language.get(lang_str)
                 if MY_LOGGER.isEnabledFor(DEBUG_XV):
@@ -277,6 +272,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         clz = type(self)
         player: IPlayer = self.get_player(self.service_ID)
         player_mode: PlayerMode = Settings.get_player_mode(clz.service_ID)
+        MY_LOGGER.debug(f'player_mode: {player_mode}')
         return player_mode
 
     def get_cached_voice_file(self, phrase: Phrase,
@@ -294,11 +290,14 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                                file.
         :return: True if the voice file was handed to a player, otherwise False
         """
+        player_id: str = Settings.get_player_id()
         MY_LOGGER.debug(f'phrase: {phrase.get_text()} {phrase.get_debug_info()} '
                         f'cache_path: {phrase.get_cache_path()} use_cache: '
                         f'{Settings.is_use_cache()}')
-        self.get_voice_cache().get_path_to_voice_file(phrase,
+        cache_info: CacheEntryInfo
+        cache_info = self.get_voice_cache().get_path_to_voice_file(phrase,
                                                       use_cache=Settings.is_use_cache())
+        MY_LOGGER.debug(f'cache_info: {cache_info} player: {player_id}')
         MY_LOGGER.debug(f'cache_exists: {phrase.cache_path_exists()} '
                         f'cache_path: {phrase.get_cache_path()}')
         # Wave files only added to cache when SFX is used.
@@ -306,9 +305,8 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         # This Only checks if a .wav file exists. That is good enough, the
         # player should check for existence of what it wants and to transcode
         # if needed.
-        player_id: str = Settings.get_player_id()
-        sfx_player: bool = player_id == Players.SFX
-        if sfx_player and phrase.cache_path_exists():
+        is_sfx_player: bool = player_id == Players.SFX
+        if is_sfx_player and phrase.cache_path_exists():
             return True
 
         # If audio in cache is suitable for player, then we are done.
@@ -370,22 +368,26 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         sfx_player: bool = Settings.get_player_id() == Players.SFX
         espeak_out_file: Path | None = None
         exists: bool = False
+        # For SFX, save eSpeak .wav directly into the cache
         if not sfx_player:
-            tmp = tempfile.NamedTemporaryFile()
-            espeak_out_file = Path(tmp.name)
+            result: CacheEntryInfo
+            result = self.voice_cache.get_path_to_voice_file(phrase, use_cache=use_cache)
+            exists = result.audio_exists
+            espeak_out_file = result.current_audio_path
+            #  espeak_out_file = Path(tmp.name)
             #  espeak_out_file = clz.tmp_file(clz.OUTPUT_FILE_TYPE)
         else:
             result: CacheEntryInfo
-            result = self.voice_cache.get_path_to_voice_file(phrase, use_cache=True)
+            result = self.voice_cache.get_path_to_voice_file(phrase, use_cache=use_cache)
             exists = result.audio_exists
             espeak_out_file = result.current_audio_path
-        if exists:
-            return espeak_out_file
 
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             MY_LOGGER.debug_v(f'espeak.runCommand cache: {use_cache} '
-                              f'espeak_out_file: {espeak_out_file.name}\n'
+                              f'espeak_out_file: {espeak_out_file}\n'
                               f'text: {phrase.text}')
+        if exists:
+            return espeak_out_file
         # if out_file.stem == '.mp3':
         #     self.runCommandAndPipe(phrase)
         #     return
@@ -415,6 +417,8 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                                check=True)
 
             MY_LOGGER.debug(f'args: {args}')
+            phrase.set_cache_path(cache_path=espeak_out_file, text_exists=False,
+                                  temp=True)
         except subprocess.CalledProcessError as e:
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.exception('')
@@ -423,36 +427,75 @@ class ESpeakTTSBackend(SimpleTTSBackend):
 
     def runCommandAndSpeak(self, phrase: Phrase):
         clz = type(self)
-        args = ['espeak', '-b', clz.UTF_8, '--stdin']
-        self.addCommonArgs(args, phrase)
+        env = os.environ.copy()
+        args = ['espeak-ng', '-b', clz.UTF_8, '--stdin']
+        self.addCommonArgs(args)
+        MY_LOGGER.debug(f'args: {args}')
         try:
-            self.process = subprocess.Popen(args, universal_newlines=True,
-                                            encoding='utf-8',
-                                            stdin=subprocess.PIPE)
-            while (self.process is not None and self.process.poll() is None and
-                   BaseEngineService.is_active_engine(engine=clz)):
-                Monitor.exception_on_abort(timeout=0.1)
-            MY_LOGGER.debug(f'args: {args}')
+            if Constants.PLATFORM_WINDOWS:
+                subprocess.run(args,
+                               input=f'{phrase.text} ',
+                               text=True,
+                               shell=False,
+                               encoding='utf-8',
+                               close_fds=True,
+                               env=env,
+                               check=True,
+                               creationflags=subprocess.DETACHED_PROCESS)
+            else:
+                subprocess.run(args,
+                               input=f'{phrase.text} ',
+                               text=True,
+                               shell=False,
+                               encoding='utf-8',
+                               close_fds=True,
+                               env=env,
+                               check=True)
         except subprocess.SubprocessError as e:
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug('espeak.runCommandAndSpeak Exception: ' + str(e))
 
     def runCommandAndPipe(self, phrase: Phrase):
         clz = type(self)
+        env = os.environ.copy()
         args = ['espeak-ng', '-b', clz.UTF_8, '--stdin', '--stdout']
-
-        self.addCommonArgs(args, phrase)
-        # Process will block until reader for PIPE opens
-        # Be sure to close self.process.stdout AFTER second process starts
-        # ex:
-        # p1 = Popen(["dmesg"], stdout=PIPE)
-        # p2 = Popen(["grep", "hda"], stdin=p1.stdout, stdout=PIPE)
-        # p1.stdout.close()  # Allow p1 to receive a SIGPIPE if p2 exits.
-        # output = p2.communicate()[0]
-        #
-        # The p1.stdout.close() call after starting the p2 is important in order
-        # for p1 to receive a SIGPIPE if p2 exits before p1.
-        self.process = subprocess.Popen(args, stdout=subprocess.PIPE)
+        self.addCommonArgs(args)
+        MY_LOGGER.debug(f'args: {args}')
+        try:
+            # Process will block until reader for PIPE opens
+            # Be sure to close self.process.stdout AFTER second process starts
+            # ex:
+            # p1 = Popen(["dmesg"], stdout=PIPE)
+            # p2 = Popen(["grep", "hda"], stdin=p1.stdout, stdout=PIPE)
+            # p1.stdout.close()  # Allow p1 to receive a SIGPIPE if p2 exits.
+            # output = p2.communicate()[0]
+            #
+            # The p1.stdout.close() call after starting the p2 is important in order
+            # for p1 to receive a SIGPIPE if p2 exits before p1.
+            if Constants.PLATFORM_WINDOWS:
+                self.process = subprocess.run(args,
+                                              input=f'{phrase.text} ',
+                                              stdout=subprocess.PIPE,
+                                              text=True,
+                                              shell=False,
+                                              encoding='utf-8',
+                                              close_fds=True,
+                                              env=env,
+                                              check=True,
+                                              creationflags=subprocess.DETACHED_PROCESS)
+            else:
+                self.process = subprocess.run(args,
+                                              input=f'{phrase.text} ',
+                                              stdout=subprocess.PIPE,
+                                              text=True,
+                                              shell=False,
+                                              encoding='utf-8',
+                                              close_fds=True,
+                                              env=env,
+                                              check=True)
+        except subprocess.SubprocessError as e:
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug('espeak.runCommandAndPipe Exception: ' + str(e))
         return self.process.stdout
 
     def stop(self):
@@ -609,12 +652,12 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             return volume
         else:
             # volume = Settings.get_volume(clz.service_ID)
-            volume_val: INumericValidator = SettingsMap.get_validator(
-                    clz.service_ID, SettingsProperties.VOLUME)
-            volume_val: NumericValidator
+            # volume_val: INumericValidator = SettingsMap.get_validator(
+            #         SettingsProperties.TTS_SERVICE, SettingsProperties.VOLUME)
+            # volume_val: NumericValidator
             # volume: int = volume_val.get_tts_value()
-            volume: int = volume_val.get_value()
-
+            # volume: int = volume_val.get_value()
+            volume: int = 100  # Default
         return volume
 
     def get_pitch(self) -> int:

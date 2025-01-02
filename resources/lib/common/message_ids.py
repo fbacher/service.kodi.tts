@@ -33,8 +33,15 @@ class MessageId(Enum):
     DEFAULTS_BUTTON = 32222
     CHOOSE_TTS_ENGINE = 32224
     LANG_VARIANT_BUTTON = 32227
+
+    # Displays current voicing pitch, a simple float
+    # Pitch: {0}
+    PITCH = 32229
     SELECT_PLAYER = 32230
 
+    # Displays current voicing speed, a simple float value
+    # Speed: {0}
+    SPEED = 32231
     VOLUME_DB = 32232
     ITEM = 32237  # item (use when you can't get the number)
     CONTAINER_ITEM_NUMBER_CONTROL_AND_VALUE = 32238

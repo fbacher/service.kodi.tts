@@ -6,6 +6,9 @@ import sys
 import threading
 from collections import namedtuple, OrderedDict
 
+from common.constants import Constants
+from common.kodi_player_monitor import KodiPlayerMonitor, KodiPlayerState
+
 try:
     from enum import StrEnum
 except ImportError:
@@ -310,6 +313,7 @@ class WindowStateMonitor:
     _window_state_lock: threading.RLock = None
     _window_state_listeners: OrderedDict_type[str, ListenerInfo]
     _window_state_listeners = OrderedDict()
+    IDLE_POLLING_INTERVAL: float = 0.6
     POLLING_INTERVAL: Final[float] = 0.2
     NON_FOCUSED_POLLING_INTERVAL: Final[float] = 0.4
     current_polling_interval: float = POLLING_INTERVAL
@@ -365,7 +369,10 @@ class WindowStateMonitor:
             changed_state: int
             window_state: WinDialogState
             window_state = cls.check_win_dialog_state()
-            if window_state.focus_changed:
+            if (KodiPlayerMonitor.player_status == KodiPlayerState.PLAYING_VIDEO
+                    and Constants.STOP_ON_PLAY):
+                cls.current_polling_interval = cls.IDLE_POLLING_INTERVAL
+            elif window_state.focus_changed:
                 cls.current_polling_interval = cls.POLLING_INTERVAL
             else:
                 cls.current_polling_interval = cls.NON_FOCUSED_POLLING_INTERVAL

@@ -186,16 +186,10 @@
                     <constraints>
                         <allowempty>true</allowempty>
                     </constraints>
-                    <default>lame</default>
+                    <default></default>
                     <control type="edit" format="string">
                         <heading>32178</heading>
                     </control>
-                    <visible>true</visible>
-                </setting>
-                <setting help="" id="pipe.eSpeak" label="32178" type="boolean">
-                    <level>4</level>
-                    <default>false</default>
-                    <control type="toggle"/>
                     <visible>true</visible>
                 </setting>
                 <setting help="" id="pitch.eSpeak" label="32178" type="integer">
@@ -371,14 +365,6 @@
                     </control>
                     <visible>true</visible>
                 </setting>
-                <!--
-                <setting help="" id="pipe.google" label="32178" type="boolean">
-                    <level>4</level>
-                    <default>false</default>
-                    <control type="toggle"/>
-                    <visible>true</visible>
-                </setting> -->
-
                 <setting help="" id="player.google" label="32178" type="string">
                     <level>4</level>
                     <constraints>
@@ -449,14 +435,6 @@
                     </control>
                     <visible>true</visible>
                 </setting>
-                <!--
-                <setting help="" id="pipe.no_engine" label="32178" type="boolean">
-                    <level>4</level>
-                    <default>false</default>
-                    <control type="toggle"/>
-                    <visible>true</visible>
-                </setting> -->
-
                 <setting help="" id="player.no_engine" label="32178" type="string">
                     <level>4</level>
                     <constraints>
@@ -517,14 +495,6 @@
                     </control>
                     <visible>true</visible>
                 </setting>
-                <!--
-                <setting help="" id="pipe.powershell" label="32178" type="boolean">
-                    <level>4</level>
-                    <default>false</default>
-                    <control type="toggle"/>
-                    <visible>true</visible>
-                </setting> -->
-
                 <setting help="" id="player.powershell" label="32178" type="string">
                     <level>4</level>
                     <constraints>

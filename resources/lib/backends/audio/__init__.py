@@ -77,7 +77,7 @@ def load_snd_bm2835() -> None:
 
 """
 AfplayPlayer()
-BuiltInAudioPlayer()
+BuiltInPlayer()
 Mpg123AudioPlayer()
 Mpg321AudioPlayer()
 Mpg321OEPiAudioPlayer()

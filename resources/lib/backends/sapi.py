@@ -197,7 +197,7 @@ class SAPIBackend(SimpleTTSBackend):
     '''
         clz = type(self)
         player_id: str = Settings.get_player_id(clz.service_ID)
-        if player_id == BuiltInAudioPlayer.ID:
+        if player_id == BuiltInPlayer.ID:
             return Mode.ENGINESPEAK
         elif Settings.get_pipe(clz.service_ID):
             return Mode.PIPE

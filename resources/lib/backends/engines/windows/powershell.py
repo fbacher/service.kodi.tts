@@ -20,7 +20,7 @@ from cache.voicecache import VoiceCache
 from cache.common_types import CacheEntryInfo
 from common import *
 
-from backends.audio.builtin_audio_player import BuiltInAudioPlayer
+from backends.audio.builtin_audio_player import BuiltInPlayer
 # from backends.audio.player_handler import BasePlayerHandler, WavAudioPlayerHandler
 from backends.audio.sound_capabilities import ServiceType
 from backends.base import BaseEngineService, SimpleTTSBackend
@@ -217,7 +217,7 @@ class PowerShellTTS(SimpleTTSBackend):
             result: CacheEntryInfo
             result = self.voice_cache.get_path_to_voice_file(phrase, use_cache=True)
             mp3_file = result.current_audio_path
-            trans_id: str = Settings.get_converter(self.engine_id)
+            trans_id: str | None = Settings.get_converter(self.engine_id)
             MY_LOGGER.debug(f'service_id: {self.engine_id} trans_id: {trans_id}')
             success = TransCode.transcode(trans_id=trans_id,
                                           input_path=wave_file,

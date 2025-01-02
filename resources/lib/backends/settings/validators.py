@@ -605,9 +605,11 @@ class StringValidator(IStringValidator):
 
         :param enabled: If specified, then only return values which have the
                  enabled field == enabled param
-        :return: A list of Tuple[<setting>, <enabled | disabled> for every
+        :return: A list of AllowedValues for every
                  supported value. Those settings which are in conflict with
                  a current setting will be marked disabled (False)
+        Note that the supported values are in the order specified in settings_<service>.
+        The assumption is that they are in the preferred order of that service.
         """
         allowed: List[AllowedValue] = []
         for setting in self.allowed_values:
@@ -648,7 +650,7 @@ class StringValidator(IStringValidator):
                                                                default=None)
         if debug:
             MY_LOGGER.debug(f'{self.service_id} {self.setting_id} value: {value} '
-                                f'internal_value: {internal_value}')
+                            f'internal_value: {internal_value}')
         if value is None:
             value = internal_value
         if (self.allowed_values is not None) and (len(self.allowed_values) > 0):

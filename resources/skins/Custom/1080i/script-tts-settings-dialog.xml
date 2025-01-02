@@ -597,7 +597,7 @@
                            <font>font12_title</font>
                            <!-- <onleft>100</onleft>
                            <onright>300</onright> -->
-                           <onup>104</onup> <!-- Avail langs (says Voices) -->
+                           <onup>108</onup> <!-- Avail langs (says Voices) -->
                            <ondown>113</ondown>
                            <texturefocus border="5">button-focus2.png</texturefocus>
                         </control>

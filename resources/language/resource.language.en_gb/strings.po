@@ -760,16 +760,16 @@ msgid "Voice Gender"
 msgstr "Voice Gender"
 
 msgctxt "#32229"
-msgid "Pitch"
-msgstr "Pitch"
+msgid "Pitch: {0}"
+msgstr ""
 
 msgctxt "#32230"
 msgid "Player"
 msgstr "Player"
 
 msgctxt "#32231"
-msgid "Speed {0}"
-msgstr "Speed {0}"
+msgid "Speed: {0}"
+msgstr "Speed: {0}"
 
 msgctxt "#32232"
 msgid "Volume: {0}dB"

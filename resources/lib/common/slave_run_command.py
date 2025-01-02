@@ -188,6 +188,17 @@ class SlaveRunCommand:
                 # process level (stderr = subprocess.STDOUT), devnull or pass through
                 # via pipe and don't log
 
+                # Process will block until reader for stdout PIPE opens
+                # Be sure to close self.process.stdout AFTER second process starts
+                # ex:
+                # p1 = Popen(["dmesg"], stdout=PIPE)
+                # p2 = Popen(["grep", "hda"], stdin=p1.stdout, stdout=PIPE)
+                # p1.stdout.close()  # Allow p1 to receive a SIGPIPE if p2 exits.
+                # output = p2.communicate()[0]
+                #
+                # The p1.stdout.close() call after starting the p2 is important in order
+                # for p1 to receive a SIGPIPE if p2 exits before p1.
+
                 # self.args.append('/home/fbacher/.kodi/userdata/addon_data/service.kodi.tts/cache/goo/df/df16f1fee15ac535aed684fab4a54fd4.mp3')
                 MY_LOGGER.debug(f'Cond_Visibility: '
                                  f'{xbmc.getCondVisibility("System.Platform.Windows")} '
@@ -212,6 +223,12 @@ class SlaveRunCommand:
                 if self.post_start_callback():
                     self.run_state = RunState.PIPES_CONNECTED
                     MY_LOGGER.debug(f'pipes connected')
+                    # Now that remote process is connected to stdout, we can close
+                    # our local stdout. This allows our process to die if the other
+                    # process dies.
+                    self.process.stdout.close()
+                    self.stdout_closed = True
+
             Monitor.exception_on_abort(timeout=1.0)
         except AbortException:
             return  # We are in the top of the thread

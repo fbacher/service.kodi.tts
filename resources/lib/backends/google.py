@@ -205,6 +205,8 @@ class GoogleSpeechGenerator(ISpeechGenerator):
         '''
         locale_id: str = GoogleTTSEngine.get_voice()
         lang_code = langcodes.Language.get(locale_id).language
+        MY_LOGGER.debug(f'locale_id: {locale_id} lang_code: {lang_code} language: '
+                        f'{langcodes.Language.get(locale_id)}')
         country_code = langcodes.Language.get(locale_id).territory.lower()
         # self._logger.debug(f'voice: {locale_id} lang_code: {lang_code} '
         #                    f'territory: {country_code}')

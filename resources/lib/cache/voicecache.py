@@ -57,6 +57,7 @@ class VoiceCache:
         self.engine: BaseServices | None = None
         self._top_of_engine_cache: Path | None = None
         self._audio_type: AudioType = None
+        self.reset_engine()
 
     def reset_engine(self) -> None:
         cache_directory: Path | None = None
@@ -92,6 +93,17 @@ class VoiceCache:
             MY_LOGGER.exception('')
         self._top_of_engine_cache = Path(cache_directory)
         return
+
+    @classmethod
+    def is_tmp_file(cls, file_path: Path) -> bool:
+        """
+        Determines if the given file_path is a temp file
+
+        :param file_path:
+        :return:
+        """
+        temp_root: Path = cls.temp_dir()
+        return str(file_path).startswith(str(temp_root))
 
     @property
     def cache_directory(self) -> Path:
@@ -154,7 +166,6 @@ class VoiceCache:
         Note: When caching is NOT used, text_exists is None and audio_suffixes empty
         """
         exists: bool = False
-        voice_file: Path | None = None
         audio_exists: bool = False
         text_exists: bool = False
         audio_suffixes: List[str] = []
@@ -162,10 +173,11 @@ class VoiceCache:
         cache_path: Path | None = None
         try:
             if not use_cache or not self.is_cache_sound_files(self.engine_id):
-                temp_voice_file = self.tmp_file('')
-                voice_file = Path(temp_voice_file.name)
-                phrase.set_cache_path(Path(voice_file, temp=True),
-                                      False)
+                phrase.set_audio_type(self.audio_type)
+                temp_voice_file = self.tmp_file(f'{self.audio_suffix}')
+                cache_path = Path(temp_voice_file.name)
+                MY_LOGGER.debug(f'voice_file: {cache_path} audio_suffix: '
+                                f'{self.audio_suffix}')
             else:
                 try:
                     path: Path | None = None

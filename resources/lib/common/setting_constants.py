@@ -337,8 +337,21 @@ class Players(BaseSettingsConstants):
 
 
 class PlayerMode(StrEnum):
+    """
+    Defines the various supported player modes. Includes a ranking method
+    so that different modes can be compared.
+    """
+
+    # SLAVE_FILE is most desirable because when used with cache the overhead is
+    # lowest
     SLAVE_FILE = 'slave_file'
+    # SLAVE_PIPE has not yet encountered. Probably used when external service
+    # only provides pipes. Less desirable than SLAVE_FILE because SLAVE_PIPE requires
+    # Python to handle piping, whereas SLAVE_FILE just passes the path on to
+    # a usually external binary
     SLAVE_PIPE = 'slave_pipe'
+    # FILE is used when external command is exec-ed on each file while SLAVE_FILE
+    # reuses existing process, just sending the path over a pipe.
     FILE = 'file'
     PIPE = 'pipe'
     ENGINE_SPEAK = 'engine_speak'
@@ -366,6 +379,12 @@ class PlayerMode(StrEnum):
 
     @classmethod
     def get_rank(cls, player_mode: ForwardRef('PlayerMode')) -> int:
+        """
+        Allows two PlayerModes to be compared. Lower values are more desirable.
+
+        :param player_mode:
+        :return:
+        """
         ranking: Dict[ForwardRef('PlayerMode'), int] = {
             cls.SLAVE_FILE  : 0,
             cls.SLAVE_PIPE  : 1,

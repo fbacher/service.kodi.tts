@@ -146,8 +146,9 @@ class SettingsHelper:
                                                                  player_player_modes)
         MY_LOGGER.debug(f'intersection: {intersection}')
         new_player_mode = None
-        if len(intersection) != 0 and player_mode not in intersection:
-            new_player_mode = intersection[0]
+        if len(intersection) != 0:
+            if player_mode not in intersection:
+                new_player_mode = intersection[0]
         return new_player_mode, intersection
 
     '''
@@ -322,8 +323,8 @@ class SettingsHelper:
                 choice_to_add.choice_index = idx
                 if current_engine_id == choice_to_add.engine_id:
                     current_choice_index = idx
-                MY_LOGGER.debug(f'current_engine_id: {current_engine_id}'
-                                f'idx: {current_choice_index}'
+                MY_LOGGER.debug(f'current_engine_id: {current_engine_id} '
+                                f'idx: {current_choice_index} '
                                 f'choice_id: {choice_to_add.engine_id}')
                 final_choices.append(engines_langs[0])
                 idx += 1

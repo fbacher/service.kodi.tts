@@ -69,7 +69,14 @@ class CommunicationException(Exception):
     def __init__(self, msg: str = ''):
         super().__init__(msg)
 
+
 class EmptyPhraseException(Exception):
+
+    def __init__(self, msg: str = ''):
+        super().__init__(msg)
+
+
+class ConfigurationError(Exception):
 
     def __init__(self, msg: str = ''):
         super().__init__(msg)

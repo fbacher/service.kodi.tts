@@ -69,6 +69,8 @@ class Constants:
     PAUSE_INSERT = '...'
     PLATFORM_WINDOWS: bool = xbmc.getCondVisibility('System.Platform.Windows')
     USE_LANGCODES_DATA: bool = not PLATFORM_WINDOWS
+    # Don't voice while video is playing
+    STOP_ON_PLAY: bool = True
 
 
     @staticmethod

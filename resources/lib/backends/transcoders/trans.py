@@ -48,8 +48,8 @@ class TransCode:
         success: bool = True
         args: List[str] = []
         # transcoder: TranscoderType = TranscoderType[trans_id]
-        MY_LOGGER.debug(f'trans_id: {trans_id} LAME: {TranscoderType.LAME.value} '
-                        f'== {trans_id == TranscoderType.LAME.value} '
+        MY_LOGGER.debug(f'trans_id: {trans_id} '
+                        f'= {trans_id == TranscoderType.LAME.value} '
                         f'input_path: {input_path} '
                         f'output_path: {output_path}')
         if trans_id == TranscoderType.MPLAYER.value:
@@ -78,6 +78,9 @@ class TransCode:
                 MY_LOGGER.debug(f'Unknown conversion: {input_path} to {output_path}')
                 return False
             MY_LOGGER.debug(f'args: {args}')
+        else:
+            MY_LOGGER.debug(f'Transcoder: {trans_id} not implemented')
+            return False
 
         MY_LOGGER.debug(f'args: {args}')
         rc: int = TransCode.run_trivial_command(args, time_limit=0.5)

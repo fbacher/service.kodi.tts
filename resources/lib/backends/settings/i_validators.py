@@ -290,7 +290,7 @@ class AllowedValue:
 
         return engine_values
 
-    def _eq_(self, other) -> bool:
+    def __eq__(self, other) -> bool:
         module_logger.debug(f'{self.value} {self.enabled} other: {other}')
         if isinstance(other, str):
             return self._value == other
@@ -427,7 +427,7 @@ class IStringValidator(IValidator):
     def default_value(self) -> str:
         raise NotImplementedError()
 
-    def get_allowed_values(self, enabled: bool | None) -> List[AllowedValue] | None:
+    def get_allowed_values(self, enabled: bool | None = None) -> List[AllowedValue] | None:
         """
         Determine which values are allowed and which normally allowed values
         are disabled, due to other settings. For example, while an engine

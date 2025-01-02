@@ -29,11 +29,10 @@ class BootstrapPlayers:
         # Players.MPG321,
         # Players.MPG123,
         # Players.MPG321_OE_PI,
-        # Players.INTERNAL,
         # Players.NONE,
         # Players.WavAudioPlayerHandler,
         # Players.MP3AudioPlayerHandler,
-        # Players.BuiltInAudioPlayerHandler
+        Players.INTERNAL
     ]
     _initialized: bool = False
 
@@ -65,7 +64,7 @@ class BootstrapPlayers:
                 MPlayerSettings()
                 from backends.audio.mplayer_audio_player import MPlayerAudioPlayer
                 available = MPlayerAudioPlayer().available()
-            if player_id == Players.MPV:
+            elif player_id == Players.MPV:
                 from backends.players.mpv_player_settings import MPVPlayerSettings
                 MPVPlayerSettings()
                 from backends.audio.mpv_audio_player import MPVAudioPlayer
@@ -108,9 +107,11 @@ class BootstrapPlayers:
                 from backends.audio.mpg321oep_audio_player import Mpg321OEPiAudioPlayer
                 available = Mpg321OEPiAudioPlayer().available()
             elif player_id == Players.INTERNAL:
-                pass
-            elif player_id == Players.NONE:
-                pass
+                from backends.players.builtin_player_settings import BuiltinPlayerSettings
+                BuiltinPlayerSettings()
+                from backends.audio.builtin_player import BuiltInPlayer
+                available = BuiltInPlayer().available()
+            # elif player_id == Players.NONE:
             # elif player_id == Players.WavAudioPlayerHandler:
             #    from backends.audio.player_handler import WavAudioPlayerHandler
             #     WavAudioPlayerHandler()

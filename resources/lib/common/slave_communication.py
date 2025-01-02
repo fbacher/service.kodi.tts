@@ -456,9 +456,9 @@ class SlaveCommunication:
                 MY_LOGGER.debug(f'check_expired is NOT enabled')
 
             MY_LOGGER.debug(f'FIFO-ish {phrase.short_text()} '
-                             f'# {phrase.serial_number} expired #: '
-                             f'{PhraseList.expired_serial_number}'
-                             f' {expired_check_str} {interrupted_str}')
+                            f'# {phrase.serial_number} expired #: '
+                            f'{PhraseList.expired_serial_number}'
+                            f' {expired_check_str} {interrupted_str}')
             if self.tts_player_idle and not phrase.speak_over_kodi:
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'player is IDLE')
@@ -556,9 +556,9 @@ class SlaveCommunication:
             if phrase.check_expired:
                 expired_check_str = 'CHECK'
             MY_LOGGER.debug(f'FIFO-ish {phrase.short_text()} '
-                             f'# {phrase.serial_number} expired #: '
-                             f'{PhraseList.expired_serial_number}'
-                             f' {expired_check_str} {interrupted_str}')
+                            f'# {phrase.serial_number} expired #: '
+                            f'{PhraseList.expired_serial_number}'
+                            f' {expired_check_str} {interrupted_str}')
             if self.tts_player_idle and not phrase.speak_over_kodi:
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'player is IDLE')

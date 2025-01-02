@@ -12,6 +12,7 @@ from backends.settings.i_constraints import IConstraints
 from backends.settings.i_validators import IConstraintsValidator
 from backends.settings.setting_properties import SettingsProperties
 from backends.settings.settings_map import SettingsMap
+from cache.voicecache import VoiceCache
 from common import *
 from common import utils
 from common.base_services import BaseServices
@@ -253,10 +254,13 @@ class SubprocessAudioPlayer(AudioPlayer):
                   False, otherwise
         """
         clz = type(self)
-        self.player_mode = Settings.get_player_mode()
-        if self.player_mode == PlayerMode.SLAVE_FILE:
-            MY_LOGGER.debug(f'SLAVE_PLAYER')
-            return True
+        try:
+            self.player_mode = Settings.get_player_mode()
+            if self.player_mode == PlayerMode.SLAVE_FILE:
+                MY_LOGGER.debug(f'SLAVE_PLAYER')
+                return True
+        except NotImplementedError:
+            pass
         MY_LOGGER.debug(f'NOT SLAVE')
         return False
 
@@ -419,7 +423,7 @@ class SubprocessAudioPlayer(AudioPlayer):
                     return
             self._simple_player_busy = True
             delete_after_run: Path | None = None
-            if Constants.PLATFORM_WINDOWS:
+            if VoiceCache.is_tmp_file(phrase.get_cache_path()):
                 delete_after_run = phrase.get_cache_path()
             self._player_process = SimpleRunCommand(args,
                                                     phrase_serial=phrase_serial,

@@ -167,8 +167,6 @@ class GoogleSettings(BaseServiceSettings):
                                       supported_output_formats=[AudioType.MP3])
 
         consumer_formats: List[AudioType] = [AudioType.MP3]
-        # if False:
-        #     consumer_formats.append(AudioType.WAV)
         candidates: List[str]
         candidates = SoundCapabilities.get_capable_services(
                 service_type=ServiceType.PLAYER,

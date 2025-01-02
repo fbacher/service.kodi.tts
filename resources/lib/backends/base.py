@@ -199,7 +199,7 @@ class EngineQueue:
             MY_LOGGER.debug(f'{phrase.debug_data()}')
             interrupt: bool = phrase.get_interrupt()
             if interrupt:
-                MY_LOGGER.debug(f'INTERRUPT: {phrase.short_text()}')
+                MY_LOGGER.debug(f'INTERRUPTED discarding: {phrase.short_text()}')
                 cls.empty_queue()
             engine.stop_current_phrases()
 
@@ -353,15 +353,16 @@ class BaseEngineService(BaseServices):
 
         clz = type(self)
         player_id: str = Settings.get_player_id(engine_id)
+        MY_LOGGER.debug(f'player_id: {player_id}')
         if self.player is not None and player_id != self.player.ID:
             # Stop old player
             MY_LOGGER.debug(f'Killing player(s) because player_id changed '
                             f'from {self.player.ID} to {player_id}')
             self.player.destroy()
 
+        MY_LOGGER.debug(f'player_id: {player_id}')
         if self.player is None or player_id != self.player.ID:
             self.player = BaseServices.getService(player_id)
-        return self.player
         return self.player
 
     def say(self, phrase: PhraseList):
@@ -728,16 +729,8 @@ class BaseEngineService(BaseServices):
         return engine.engine_id == cls.get_alternate_engine_id()
 
     @classmethod
-    def is_active_engine(cls, engine: ForwardRef('BaseEngineService')) -> bool:
+    def is_active_engine(cls, engine: ForwardRef('BaseEngineService') = None) -> bool:
         return cls.is_current_engine(engine) or cls.is_alternate_engine(engine)
-
-    def is_alternate_engine(self) -> bool:
-        clz = type(self)
-        return clz.is_alternate_engine(self)
-
-    def is_active_engine(self) -> bool:
-        clz = type(self)
-        return clz.is_active_engine(self)
 
     def isSpeaking(self):
         """Returns True if speech engine is currently speaking, False if not
@@ -1061,7 +1054,7 @@ class SimpleTTSBackend(ThreadedTTSBackend):
         If using PlayerMode.ENGINE_SPEAK, subclasses must override this method
         and speak text and should block until speech is complete.
         """
-        raise NotImplementedError()
+        raise NotImplementedError('runCommandAndSpeak')
 
     def runCommandAndPipe(self, phrase: Phrase) -> BinaryIO:
         """Convert text to speech and pipe to audio player
@@ -1120,10 +1113,12 @@ class SimpleTTSBackend(ThreadedTTSBackend):
             #  self.config_mode()
             player_mode: PlayerMode = Settings.get_player_mode()
             if phrase.get_interrupt():
+                MY_LOGGER.debug(f'stop_player phrase: {phrase}')
                 self.stop_player(purge=True)
 
-            MY_LOGGER.debug(f'player_mode: {player_mode}')
+            MY_LOGGER.debug(f'player_mode: {player_mode} engine: {self.service_ID}')
             if player_mode == PlayerMode.FILE:
+                MY_LOGGER.debug('runCommand')
                 # outFile: str
                 # text_exists: bool
                 # use_cache: bool = Settings.is_use_cache(clz.service_id)
@@ -1147,22 +1142,29 @@ class SimpleTTSBackend(ThreadedTTSBackend):
                 # pipe or other file so that it can play the file. Slaves avoid
                 # the cost of Python I/O on the voiced file as well as the cost
                 # of exec'ing the player.
-                if not self.get_cached_voice_file(phrase, generate_voice=True):
-                    return
+                if Settings.is_use_cache():  # or not Settings.is_use_cache():
+                    if not self.get_cached_voice_file(phrase, generate_voice=True):
+                        return
+                else:
+                    if not self.runCommand(phrase):
+                        return
                 player: IPlayer = self.get_player(self.engine_id)
                 player.slave_play(phrase)
 
             elif player_mode == PlayerMode.PIPE:
+                MY_LOGGER.debug('runCommandAndPipe')
                 source: BinaryIO = self.runCommandAndPipe(phrase)
                 if not source:
                     return
                 player: IPlayer = self.get_player(self.engine_id)
                 if player:
                     player.pipe(source, phrase)
-            else:
+            else:   # PlayerMode.EngineSpeak
+                MY_LOGGER.debug(f'runCommandAndSpeak')
                 clz._simpleIsSpeaking = True
                 self.runCommandAndSpeak(phrase)
                 clz._simpleIsSpeaking = False
+            MY_LOGGER.debug(f'Exiting threadedSay')
         except AbortException as e:
             reraise(*sys.exc_info())
         except ExpiredException:

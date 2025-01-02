@@ -36,9 +36,10 @@ class SimpleRunCommand:
 
     """
     player_state: str = KodiPlayerState.VIDEO_PLAYER_IDLE
+    instance_count: int = 0
 
     def __init__(self, args: List[str], phrase_serial: int = 0, name: str = '',
-                 count: int = 0, stop_on_play: bool = False,
+                 stop_on_play: bool = False,
                  delete_after_run: Path = None) -> None:
         """
 
@@ -46,22 +47,25 @@ class SimpleRunCommand:
         :param phrase_serial: Serial Number of PhraseList containing phrase.
             Used to handle expiration of phrase
         :param name: thread_name
-        :param count: Suffix to add to thread_name to keep unique
-        :param stop_on_play If True, then exit after play
+        :param stop_on_play If True, then exit if video is playing before, or
+               during TTS audio play
         :param delete_after_run: Delete the given path after running command.
         """
         clz = type(self)
         self.args: List[str] = args
         self.phrase_serial: int = phrase_serial
-        self.count: int = count
-        self.thread_name = f'{name}_{count}'
+        self.count: int = clz.instance_count
+        clz.instance_count += 1
+        self.thread_name = f'{name}_{self.count}'
+        MY_LOGGER.debug(f'thread_name: {self.thread_name} delete_after_run:'
+                        f' {delete_after_run} args: {args}')
         self.rc = 0
         self.run_state: RunState = RunState.NOT_STARTED
         self.stop_on_play: bool = stop_on_play
         self.play_interrupted: bool = False  # True when video playing and idle_on_play_video
         self.delete_after_run: Path | None = delete_after_run
         self.cmd_finished: bool = False
-        self.process: Popen = None
+        self.process: Popen | None = None
         self.run_thread: threading.Thread | None = None
         self.stdout_thread: threading.Thread | None = None
         self.stderr_thread: threading.Thread | None = None
@@ -83,7 +87,8 @@ class SimpleRunCommand:
         clz = type(self)
         try:
             if self.delete_after_run and self.delete_after_run.exists():
-                pass  # self.delete_after_run.unlink()
+                MY_LOGGER.debug(f'{self.delete_after_run}')
+                self.delete_after_run.unlink(missing_ok=True)
 
             if self.rc is None or self.rc != 0:
                 self.log_output()
@@ -138,11 +143,11 @@ class SimpleRunCommand:
         clz = type(self)
         clz.player_state = kodi_player_state
         MY_LOGGER.debug(f'KodiPlayerState: {kodi_player_state} stop_on_play: '
-                         f'{self.stop_on_play} args: {self.args} '
-                         f'serial: {self.phrase_serial}')
+                        f'{self.stop_on_play} args: {self.args} '
+                        f'serial: {self.phrase_serial}')
         if kodi_player_state == KodiPlayerState.PLAYING_VIDEO and self.stop_on_play:
             MY_LOGGER.debug(f'KODI_PLAYING terminating command: '
-                             f'args: {self.args} ')
+                            f'args: {self.args} ')
             self.terminate()
             return True  # Unregister
         return False
@@ -159,8 +164,8 @@ class SimpleRunCommand:
             Monitor.exception_on_abort()
             if self.phrase_serial < PhraseList.expired_serial_number:
                 MY_LOGGER.debug(f'EXPIRED before start {self.phrase_serial} '
-                                 f'{self.args[0]}',
-                                 trace=Trace.TRACE_AUDIO_START_STOP)
+                                f'{self.args[0]}',
+                                trace=Trace.TRACE_AUDIO_START_STOP)
                 self.run_state = RunState.TERMINATED
                 self.rc = 11
                 return self.rc

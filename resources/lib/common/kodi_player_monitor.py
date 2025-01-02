@@ -19,9 +19,9 @@ module_logger = BasicLogger.get_logger(__name__)
 
 
 class KodiPlayerState(StrEnum):
-    '''
+    """
     Possible states of interest for Kodi movie/audio player
-    '''
+    """
 
     UNINITALIZED = 'uninitialized'  # Indicates monitoring code yet to start
     # initialization

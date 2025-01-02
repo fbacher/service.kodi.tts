@@ -7,7 +7,7 @@ from backends.audio import load_snd_bm2835
 from backends.audio.afplay_audio_player import AfplayPlayer
 from backends.audio.aplay_audio_player import AplayAudioPlayer
 from backends.audio.base_audio import AudioPlayer
-from backends.audio.builtin_audio_player import BuiltInAudioPlayer
+from backends.audio.builtin_audio_player import BuiltInPlayer
 from backends.audio.i_handler import PlayerHandlerType
 from backends.audio.mpg123_audio_player import Mpg123AudioPlayer
 from backends.audio.mpg321_audio_player import Mpg321AudioPlayer
@@ -115,7 +115,7 @@ class WavAudioPlayerHandler(BasePlayerHandler):
     engine_id = Players.WavAudioPlayerHandler
     service_ID: str = Services.WavAudioPlayerHandler
     displayName = 'WaveAudioPlayerHandler'
-    players = (BuiltInAudioPlayer, PlaySFXAudioPlayer, WindowsAudioPlayer,
+    players = (BuiltInPlayer, PlaySFXAudioPlayer, WindowsAudioPlayer,
                AfplayPlayer, SOXAudioPlayer,
                PaplayAudioPlayer, AplayAudioPlayer, MPlayerAudioPlayer
                )

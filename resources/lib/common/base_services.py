@@ -80,7 +80,7 @@ class BaseServices(IServices):
         service: BaseServices | None
         service = BaseServices.service_index.get(service_name, None)
         if service is None:
-            MY_LOGGER.debug(f'Could not get service: {service_name}')
+            MY_LOGGER.info(f'Could not get service: {service_name}')
             Debug.dump_current_thread()
         return service
 

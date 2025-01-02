@@ -108,10 +108,23 @@ class ESpeakSettings(BaseServiceSettings):
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOICE,
                                    voice_validator)
 
+        # Player Options:
+        #  1 Use internal player and don't produce .wav. Currently don't support
+        #    adjusting volume/speed, etc. this way. Not difficult to add.
+        #  2 Produce .wav from engine (no mp3 support) and use mpv (or mplayer)
+        #     to play the .wav via file. Better control of speed/volume but adds
+        #     extra delay and cpu
+        #  3 Produce .wav, use transcoder to .mp3, store .mp3 in cache and then
+        #     use mpv to play via slave (or file, but slave better). Takes up
+        #     storage, but reduces latency and cpu.
+        #  Default is 1. espeak quality not that great, so don't invest that much
+        #  in it. Allow caching.
+        #
         allowed_player_modes: List[str] = [
             PlayerMode.SLAVE_FILE.value,
             PlayerMode.FILE.value,
-            PlayerMode.PIPE.value
+            PlayerMode.PIPE.value,
+            PlayerMode.ENGINE_SPEAK.value
         ]
         player_mode_validator: StringValidator
         player_mode_validator = StringValidator(SettingsProperties.PLAYER_MODE,
@@ -124,8 +137,7 @@ class ESpeakSettings(BaseServiceSettings):
         Settings.set_current_output_format(cls.service_ID, AudioType.WAV)
 
         SoundCapabilities.add_service(cls.service_ID,
-                                      service_types=[ServiceType.ENGINE,
-                                                     ServiceType.INTERNAL_PLAYER],
+                                      service_types=[ServiceType.ENGINE],
                                       supported_input_formats=[],
                                       supported_output_formats=[AudioType.WAV])
 
@@ -157,9 +169,13 @@ class ESpeakSettings(BaseServiceSettings):
         player_validator: StringValidator
         player_validator = StringValidator(SettingsProperties.PLAYER, cls.engine_id,
                                            allowed_values=valid_players,
-                                           default=Players.MPV)
+                                           default=Players.INTERNAL)
         SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER,
                                    player_validator)
+
+        # If espeak native .wav is produced, then cache_speech = False.
+        # If espeak is converted to mp3, then cache_speech = True, otherwise, why
+        # bother to spend cpu to produce mp3?
 
         cache_validator: BoolValidator
         cache_validator = BoolValidator(SettingsProperties.CACHE_SPEECH, cls.service_ID,

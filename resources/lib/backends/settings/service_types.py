@@ -163,30 +163,29 @@ class PlayerType(StrEnum):
 
     INTERNAL = Services.INTERNAL_PLAYER_ID
 
+    @property
+    def label(self) -> str:
+        clz = PlayerType
+        msg_id_lookup: Dict[str, MessageId] = {
+            PlayerType.NONE        : MessageId.PLAYER_NONE,
+            PlayerType.SFX         : MessageId.PLAYER_SFX,
+            PlayerType.WINDOWS     : MessageId.PLAYER_WINDOWS,
+            PlayerType.APLAY       : MessageId.PLAYER_APLAY,
+            PlayerType.PAPLAY      : MessageId.PLAYER_PAPLAY,
+            PlayerType.AFPLAY      : MessageId.PLAYER_AFPLAY,
+            PlayerType.SOX         : MessageId.PLAYER_SOX,
+            PlayerType.MPLAYER     : MessageId.PLAYER_MPLAYER,
+            PlayerType.MPV         : MessageId.PLAYER_MPV,
+            PlayerType.MPG321      : MessageId.PLAYER_MPG321,
+            PlayerType.MPG123      : MessageId.PLAYER_MPG123,
+            PlayerType.MPG321_OE_PI: MessageId.PLAYER_MPG321_OE_PI,
+            PlayerType.INTERNAL    : MessageId.PLAYER_INTERNAL
+        }
+        msg: str = msg_id_lookup[self].get_msg()
+        return msg
+
 
 ALL_PLAYERS: List[StrEnum] = list(PlayerType)
-
-
-settings_map = {
-        PlayerType.NONE        : MessageId.PLAYER_NONE,
-        PlayerType.SFX         : MessageId.PLAYER_SFX,
-        PlayerType.WINDOWS     : MessageId.PLAYER_WINDOWS,
-        PlayerType.APLAY       : MessageId.PLAYER_APLAY,
-        PlayerType.PAPLAY      : MessageId.PLAYER_PAPLAY,
-        PlayerType.AFPLAY      : MessageId.PLAYER_AFPLAY,
-        PlayerType.SOX         : MessageId.PLAYER_SOX,
-        PlayerType.MPLAYER     : MessageId.PLAYER_MPLAYER,
-        PlayerType.MPV         : MessageId.PLAYER_MPV,
-        PlayerType.MPG321      : MessageId.PLAYER_MPG321,
-        PlayerType.MPG123      : MessageId.PLAYER_MPG123,
-        PlayerType.MPG321_OE_PI: MessageId.PLAYER_MPG321_OE_PI,
-        PlayerType.INTERNAL    : MessageId.PLAYER_INTERNAL
-    }
-
-
-def get_msg(cls, player: PlayerType) -> str:
-    return cls.settings_map[player.value].get_msg()
-
 
 SERVICES_BY_TYPE: Final[Dict[ServiceType, List[StrEnum]]] = {
     ServiceType.ENGINE: ALL_ENGINES,

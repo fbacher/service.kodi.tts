@@ -94,7 +94,7 @@ class Driver(BaseServices):
             if active_engine is None:
                 MY_LOGGER.debug(f'invalid active_engine service_id: {engine_id}')
                 return
-            MY_LOGGER.debug(f'service_id: {engine_id} active_engine: {active_engine}')
+            MY_LOGGER.debug(f'service_id: {engine_id} active_engine: {active_engine.service_ID}')
             try:
                 if phrases.interrupt:  # Interrupt should only be on first phrase
                     MY_LOGGER.debug(f'INTERRUPT Driver.Say {phrases[0].get_text()}')
@@ -186,7 +186,7 @@ class Driver(BaseServices):
                                             phrase=phrase,
                                             service_id=active_engine.service_ID)
                     MY_LOGGER.debug(f'player_id: {player_id} engine_id: {engine_id} '
-                                    f'active_engine: {active_engine}')
+                                    f'active_engine: {active_engine.service_ID}')
                     self.worker_thread.add_to_queue(tts_data)
 
             except ExpiredException:

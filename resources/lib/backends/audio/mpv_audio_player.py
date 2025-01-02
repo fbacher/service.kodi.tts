@@ -154,7 +154,7 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
                 args.append(f'--volume={volume}')
             if int(abs(round(speed * 10))) != 0:
                 args.append(f'--speed={speed}')
-                args.append(f'{phrase.get_cache_path()}')
+            args.append(f'{phrase.get_cache_path()}')
         except ExpiredException:
             reraise(*sys.exc_info())
         MY_LOGGER.debug_v(f'args: {" ".join(args)}')

@@ -137,21 +137,24 @@ class SettingsManager:
                                  to stack_top
         """
         if MY_LOGGER.isEnabledFor(DEBUG_V):
-            MY_LOGGER.debug_v(f'restore_settings')
+            MY_LOGGER.debug_v(f'restore_settings stack_depth: {stack_depth} '
+                              f'len(_settings_stack): {cls.get_stack_depth()}')
         old_top_frame: CachedSettings
         with cls._settings_lock:
             if stack_depth is not None:
-                while stack_depth > len(cls._settings_stack):
+                while stack_depth < cls.get_stack_depth():
                     MY_LOGGER.debug(f'poping stack_depth: {stack_depth} depth: '
-                                    f'{len(cls._settings_stack)}')
+                                    f'{cls.get_stack_depth()}')
                     cls._settings_stack.pop()
             else:
                 MY_LOGGER.debug(f'pop one')
                 cls._settings_stack.pop()
             if settings_changes is not None:
                 cls.set_settings(settings_changes)
+        MY_LOGGER.debug(f'leaving with stack_depth: {cls.get_stack_depth()}')
 
-    def get_settings_stack_depth(cls) -> int:
+    @classmethod
+    def get_stack_depth(cls) -> int:
         with cls._settings_lock:
             return len(cls._settings_stack)
 
@@ -1495,13 +1498,22 @@ class SettingsLowLevel:
                 except Exception as e:
                     failed = True
                     MY_LOGGER.exception(f'Error saving setting: {full_setting_id} '
-                                          f'value: {str_value} as '
-                                          f'{value_type.name}')
-            # if not failed:
-            #     # Create clones of top frame.
-            #     SettingsManager.clear_settings()
-            #     for idx in range(0, final_stack_depth):
-            #         SettingsManager.load_settings(top_frame)
+                                        f'value: {str_value} as '
+                                        f'{value_type.name}')
+            if not failed:
+                # top frame is cloned and saved
+                # Clear the settings stack
+                # Reload the settings stack with copies of top frame until
+                # the stack depth is the same  as before the commit.
+                # After we return, the stack will likely be popped when SettingsDialog
+                # exits and pops the frame that it created on entering
+
+                final_stack_depth: int = SettingsManager.get_stack_depth()
+                MY_LOGGER.debug(f'stack_depth: {final_stack_depth}')
+                SettingsManager.clear_settings()
+                for idx in range(1, final_stack_depth):
+                    SettingsManager.load_settings(top_frame)
+                MY_LOGGER.debug(f'final stack_depth: {SettingsManager.get_stack_depth()}')
 
     @classmethod
     def get_engine_id_ll(cls, default: str = None,
@@ -1596,8 +1608,8 @@ class SettingsLowLevel:
     def set_setting_str(cls, setting_id: str, value: str, engine_id: str = None) -> bool:
         real_key = cls.getExpandedSettingId(setting_id, engine_id)
         if setting_id == SettingsProperties.ENGINE:
-            if MY_LOGGER.isEnabledFor(DEBUG_XV):
-                MY_LOGGER.debug_xv(f'TRACE service_id: '
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'TRACE service_id: '
                                                              f'{value} real_key: '
                                                              f'{real_key} '
                                                              f'value: {value}')
