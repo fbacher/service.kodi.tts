@@ -12,6 +12,7 @@ from subprocess import Popen
 import xbmc
 
 from common import *
+from common.constants import Constants
 
 from common.garbage_collector import GarbageCollector
 from common.kodi_player_monitor import KodiPlayerMonitor, KodiPlayerState
@@ -246,22 +247,24 @@ class SimplePipeCommand:
         clz.logger.debug(f'args: {self.args}')
 
         try:
-            if xbmc.getCondVisibility('System.Platform.Windows'):
+            if Constants.PLATFORM_WINDOWS:
+                MY_LOGGER.info(f'Running command: Windows')
+
                 # Prevent console for ffmpeg from opening
                 #
                 # Here, we keep stdout & stderr separate and combine the output in the
                 # log. Need to change to be configurable: separate, combined at
                 # process level (stderr = subprocess.STDOUT), devnull or pass through
                 # via pipe and don't log
-
                 self.process = subprocess.Popen(self.args, stdin=subprocess.PIPE,
                                                 stdout=subprocess.PIPE,
                                                 stderr=subprocess.PIPE, shell=False,
-                                                universal_newlines=False,
+                                                text=False,
                                                 env=env,
                                                 close_fds=True,
                                                 creationflags=subprocess.DETACHED_PROCESS)
             else:
+                MY_LOGGER.info(f'Running command: Linux')
                 self.process = subprocess.Popen(self.args, stdin=subprocess.PIPE,
                                                 stdout=subprocess.DEVNULL,
                                                 stderr=subprocess.DEVNULL,

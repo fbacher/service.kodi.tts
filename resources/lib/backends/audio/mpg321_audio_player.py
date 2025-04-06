@@ -1,3 +1,4 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
 from backends.audio.base_audio import SubprocessAudioPlayer
@@ -14,7 +15,7 @@ MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 
 class Mpg321AudioPlayer(SubprocessAudioPlayer):
     ID = Players.MPG321
-    service_ID = ID
+    service_id = ID
     # name = 'mpg321'
     _availableArgs: Tuple[str, str] = ('mpg321', '--version')
     _playArgs: Tuple[str, str, str] = ('mpg321', '-q', None)
@@ -23,7 +24,7 @@ class Mpg321AudioPlayer(SubprocessAudioPlayer):
     _supported_input_formats: List[AudioType] = [AudioType.MP3]
     _supported_output_formats: List[AudioType] = []
     _provides_services: List[ServiceType] = [ServiceType.PLAYER]
-    SoundCapabilities.add_service(service_ID, _provides_services,
+    SoundCapabilities.add_service(service_id, _provides_services,
                                   _supported_input_formats,
                                   _supported_output_formats)
 

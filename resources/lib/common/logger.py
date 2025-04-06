@@ -82,6 +82,12 @@ logging.addLevelName(ERROR, 'E')
 
 INCLUDE_MODULE_PATH_IN_LOGGER: bool = False
 
+if os.name == 'nt':
+    IGNORE_FRAMES: int = 1
+else:
+    IGNORE_FRAMES: int = 2
+
+
 # DEBUG, DEBUG_V AND DEBUG_XV will all print as xbmc.DEBUG
 # messages, however the message text will indicate their debug level.
 
@@ -197,7 +203,7 @@ class BasicLogger(Logger):
                 return
         if self.isEnabledFor(level):
             kwargs.setdefault('ignore_frames', 0)
-            ignore_frames = kwargs.pop('ignore_frames') + 2  # 1
+            ignore_frames = kwargs.pop('ignore_frames') + IGNORE_FRAMES  # 1
             trace = kwargs.pop('trace', None)
             notify: str = kwargs.pop('notify', None)
 
@@ -898,10 +904,10 @@ class KodiFormatter(logging.Formatter):
             thread_field: str = ''
             if INCLUDE_THREAD_INFO:
                 if INCLUDE_THREAD_LABEL:
-                    thread_label = 'T:'
+                    t_label = 'T:'
                 else:
-                    thread_label = ''
-                thread_field = f'{thread_label}{record.threadName} '
+                    t_label = ''
+                thread_field = f'{t_label}{record.threadName} '
 
             if INCLUDE_DEBUG_LEVEL:
                 level = record.levelname
@@ -959,7 +965,7 @@ class KodiFormatter(logging.Formatter):
         """
         ignore_frames += 1
         if ei is not None:
-            thread_name = threading.current_thread().getName()
+            thread_name = threading.current_thread().name
 
             sio = StringIO()
             '''

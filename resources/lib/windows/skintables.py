@@ -60,7 +60,7 @@ def getSkinTable():
     global CURRENT_SKIN
     import os
     skinPath = xbmcvfs.translatePath('special://skin')
-    skinName = os.path.basename(skinPath.rstrip('\/')).split('skin.', 1)[-1]
+    skinName = os.path.basename(skinPath.rstrip(r'/')).split('skin.', 1)[-1]
     CURRENT_SKIN = skinName
     print('service.kodi.tts: SKIN: %s' % skinName)
     return skins.get(skinName)

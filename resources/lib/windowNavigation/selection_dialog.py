@@ -30,11 +30,11 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
     HEADING_CONTROL_ID: Final[int] = 1
     SUB_HEADING_CONTROL_ID: Final[int] = 4
     HEADER_SUB_HEADER_GROUP_ID: Final[int] = 1001
-    OPTIONS_GROUP_LIST: Final[int] = 3
+    #  OPTIONS_GROUP_LIST: Final[int] = 3
 
     FULL_SCREEN_GROUP_ID: Final[int] = 1000
     SELECTION_LIST_GROUP_ID: Final[int] = 1003
-    LIST_CONTROL_ID: Final[int] = 3
+    LIST_CONTROL_ID: Final[int] = 1103  # 3
     RETURN_TO_PREVIOUS_MENU: str = MessageRef.RETURN_TO_PREVIOUS_MENU.get_msg()
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -53,6 +53,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         self.list_position: int = 0
         self.full_window_group: xbmcgui.ControlGroup | None = None
         self.selection_index: int = -1
+        self.previous_selection_index: int = -2
         self.title: str = kwargs.get('title', 'No Heading')
         self.sub_title: str | None = kwargs.get('sub_title', None)
         MY_LOGGER.debug(f'sub_title: {self.sub_title}')
@@ -118,7 +119,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
 
     def configure_heading(self) -> None:
         """
-        Called by OnInit to configure the Window heading
+        Called by OnInit to cfg the Window heading
 
         :return:
         """
@@ -138,7 +139,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
 
     def configure_selection_list(self) -> None:
         """
-        Called by onInit to configure the list control for selecting subjects
+        Called by onInit to cfg the list control for selecting subjects
         to view.
 
         :return:
@@ -323,6 +324,8 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
             super().doModal()
             MY_LOGGER.debug(f'No longer Modal')
             self.is_modal = False
+        except AbortException:
+            reraise(*sys.exc_info())
         except Exception as e:
             MY_LOGGER.exception('SelectionDialog.doModal')
         return
@@ -335,10 +338,14 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         clz = type(self)
         if self.abort:
             return
-        MY_LOGGER.debug('SelectionDialog.show about to call super')
-        super().show()
+        try:
+            MY_LOGGER.debug('SelectionDialog.show about to call super')
+            super().show()
 
-        MY_LOGGER.debug('SelectionDialog.show exiting')
+            MY_LOGGER.debug('SelectionDialog.show exiting')
+        except AbortException:
+            self.abort = True
+            reraise(*sys.exc_info())
 
     def close(self) -> None:
         """
@@ -363,10 +370,24 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
 
     def on_abort_requested(self):
         try:
-            xbmc.log('Received AbortRequested', xbmc.LOGINFO)
+            xbmc.log('Received AbortRequested: SelectionDialog', xbmc.LOGINFO)
+            self.abort = True
             self.close()
         except Exception:
             pass
+
+    def get_selected_position(self) -> Tuple[int, bool]:
+        """
+        Gets the current selected position and whether it has changed since the
+        last call
+        :return: Tuple[current_position, changed]
+        """
+        self.selection_index = self.list_control.getSelectedPosition()
+        changed: bool = False
+        if self.selection_index != self.previous_selection_index:
+            changed = True
+            self.previous_selection_index = self.selection_index
+        return self.selection_index, changed
 
     def onAction(self, action: xbmcgui.Action) -> None:
         """
@@ -386,9 +407,10 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
                 return
 
             buttonCode: int = action.getButtonCode()
-            # MY_LOGGER.debug(
-            #         f'SelectionDialog.onAction focus_id: {self.getFocusId()}'
-            #         f' action_id: {action_id} buttonCode: {buttonCode}')
+            MY_LOGGER.debug(
+                    f'SelectionDialog.onAction focus_id: {self.getFocusId()}'
+                    f' action_id: {action_id} buttonCode: {buttonCode}')
+            # action 105 mouse wheel down, 104 mouse wheel up
             if (action_id == xbmcgui.ACTION_PREVIOUS_MENU
                     or action_id == xbmcgui.ACTION_NAV_BACK):
                 # No selection made
@@ -400,9 +422,9 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
                     try:
                         if not self.initialized or not self.selection_list_group.isVisible():
                             return
-                        self.selection_index = self.list_control.getSelectedPosition()
-                        choice: Choice = self._choices[self.selection_index]
-                        self.close_selected_idx: int = self.selection_index
+                        sel_idx, changed = self.get_selected_position()
+                        choice: Choice = self._choices[sel_idx]
+                        self.close_selected_idx: int = sel_idx
                         self.close()
 
                     except AbortException:
@@ -412,7 +434,9 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
                     except Exception as e:
                         MY_LOGGER.exception('')
 
-            if action_id in (xbmcgui.ACTION_MOVE_DOWN, xbmcgui.ACTION_MOVE_UP):
+            if action_id in (xbmcgui.ACTION_MOVE_DOWN, xbmcgui.ACTION_MOVE_UP,
+                             xbmcgui.ACTION_MOUSE_WHEEL_DOWN,
+                             xbmcgui.ACTION_MOUSE_WHEEL_UP):
                 # Cursor up/down will almost certainly change the position
                 # of the list container. Could add check to see if selected
                 # position changed.
@@ -422,9 +446,10 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
                         if not self.initialized or not self.selection_list_group.isVisible():
                             return
                         if self._call_on_focus is not None:
-                            self.selection_index = self.list_control.getSelectedPosition()
-                            choice: Choice = self._choices[self.selection_index]
-                            self._call_on_focus(choice, self.selection_index)
+                            sel_idx, changed = self.get_selected_position()
+                            if changed:
+                                choice: Choice = self._choices[sel_idx]
+                                self._call_on_focus(choice, sel_idx)
                     except AbortException:
                         self.abort = True
                         self.close()
@@ -491,23 +516,16 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
             if not self.initialized or not self.selection_list_group.isVisible():
                 return
             if self._call_on_focus is not None:
-                self.selection_index = self.list_control.getSelectedPosition()
-                choice: Choice = self._choices[self.selection_index]
-                self._call_on_focus(choice, self.selection_index)
+                sel_idx, changed = self.get_selected_position()
+                if changed:
+                    choice: Choice = self._choices[sel_idx]
+                    self._call_on_focus(choice, sel_idx)
         except AbortException:
             self.abort = True
             self.close()
             reraise(*sys.exc_info())
         except Exception as e:
             MY_LOGGER.exception('')
-
-    def hlp_dialg_abrt(self):  # Short name that shows up in debug log
-        try:
-            self.abort = True
-            xbmc.log('SelectionDialog Received AbortRequested', xbmc.LOGINFO)
-            self.close()
-        except Exception:
-            pass
 
     def addItem(self, item: str, position: int = 20000) -> None:
         """

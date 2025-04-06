@@ -35,7 +35,7 @@ from typing import Callable, ForwardRef, List, Tuple, Union
 
 from common.logger import BasicLogger
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 AttribInfo = namedtuple('attrib_info', ['attrib_name', 'attrib_value',
                                          'status'])
@@ -78,7 +78,7 @@ class BaseAttributeType(StrEnum):
     TOPIC = 'topic'
     # NAME is the id to use for this Topic
     NAME = 'name'
-    # HINT_TEXT supplies additional text that may clarify what the control
+    # HINT_TEXT_ON_STARTUP supplies additional text that may clarify what the control
     # is for, or perhaps your options, etc. Format is the same as ALT_LABEL
     HINT_TEXT = 'hint_text'
     # FLOWS_TO indicates that the result of this control (label or value)
@@ -155,7 +155,7 @@ class TopicElement(StrEnum):
     TOPIC = 'topic'
         # NAME is the id to use for this Topic
     NAME = 'name'
-        # HINT_TEXT supplies additional text that may clarify what the control
+        # HINT_TEXT_ON_STARTUP supplies additional text that may clarify what the control
         # is for, or perhaps your options, etc. Format is the same as ALT_LABEL
     HINT_TEXT = 'hint_text'
         # FLOWS_TO indicates that the result of this control (label or value)
@@ -254,7 +254,7 @@ class ValueUnits:
                 # Float
                 result: str = f'{value:.{self.units_digits}f}{self.units}'
         except Exception:
-            clz._logger.exception('')
+            MY_LOGGER.exception('')
         return result
 
     def __repr__(self) -> str:
@@ -319,13 +319,13 @@ class ControlElement(StrEnum):
            :return: the appropriate ControlType for the given ctrl_type
            :raise ValueError: on error
            """
-        ctrl_name: str = ctrl.__class__.__name__
-        module_logger.debug(f'ctrl_name: {ctrl_name}')
+        ctrl_name: str = ctrl_type.__class__.__name__
+        MY_LOGGER.debug(f'ctrl_name: {ctrl_name}')
         ctrl_element: ControlElement = None
         try:
             ctrl_element = ControlElement(ctrl_type)
         except ValueError:
-            raise ValueErro('Invalid ctrl_type: {ctrl_type}')
+            raise ValueError('Invalid ctrl_type: {ctrl_type}')
         return ctrl_element
 
     @classmethod
@@ -341,8 +341,8 @@ class ControlElement(StrEnum):
         :raise ValueError:
              if control type can not be determined.
         """
-        ctrl_name: str = ctrl.__class__.__name__
-        module_logger.debug(f'ctrl_name: {ctrl_name}')
+        ctrl_name: str = kodi_control.__class__.__name__
+        MY_LOGGER.debug(f'ctrl_name: {ctrl_name}')
         return ControlElement.parse_control_type(ctrl_name)
 
 
@@ -476,11 +476,11 @@ class Item:
         if isinstance(keyword, StrEnum):
             enum_key: StrEnum = keyword
             keyword = enum_key.name
-            # module_logger.debug(f'key is enum: {enum_key.name} {enum_key} '
+            # MY_LOGGER.debug(f'key is enum: {enum_key.name} {enum_key} '
             #                   f'keyword: {keyword}')
         else:
             pass
-            # module_logger.debug(f'key is str: {keyword} type: {type(keyword)}')
+            # MY_LOGGER.debug(f'key is str: {keyword} type: {type(keyword)}')
 
         self.keyword: str = keyword
         attribs: List[str] = []
@@ -544,7 +544,7 @@ class Items:
     def add(self, item: Item) -> None:
         clz = type(self)
         if item.key in self.items.keys():
-            module_logger.debug(f'Dupe: {item.key}')
+            MY_LOGGER.debug(f'Dupe: {item.key}')
             raise KeyError(f'Duplicate: {item.key}')
         self.items[item.key] = item
 
@@ -555,7 +555,7 @@ class Items:
             try:
                 self.add(item)
             except KeyError:
-                module_logger.debug(f'duplicate: {item.key}')
+                MY_LOGGER.debug(f'duplicate: {item.key}')
 
     def keys(self):
         return self.items.keys()

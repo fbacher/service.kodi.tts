@@ -1,3 +1,4 @@
+# coding=utf-8
 class Comparable:
     """Customise how your Enum acts when compared to other objects.
 

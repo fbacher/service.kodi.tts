@@ -9,7 +9,7 @@ from common.settings_bridge import SettingsBridge
 
 class Constraints:
     """
-        Define constraints on a propertie's value, including information about how
+        Define constraints on a property's value, including information about how
         to transform from one constraint to another, for example from espeak volume
         to mplayer volume.
 
@@ -35,7 +35,7 @@ class Constraints:
         to an external, typically float, api, value.
 
         property_name is the same as property key used in Settings (ex.
-        SettingsProperties.VOLUME)
+        SettingProp.VOLUME)
 
         midpoint is the value of the logical 'zero reference point' in the range. For
         example,
@@ -148,7 +148,7 @@ class Constraints:
     def currentValue(self, service_id: str, as_decibels: bool | None = None,
                      limit: bool = True) -> float:
         """
-        @service_id: The service (engine, player, etc.) to get this validator's
+        @setting_id: The service (engine, player_key, etc.) to get this validator's
         property from.
         @as_decibels: Converts between decibel and percentage units.
                      True, convert to decibels

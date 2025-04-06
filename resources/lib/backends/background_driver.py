@@ -5,10 +5,14 @@
  rate. This driver converts text to speech in the background and pupulates the
  cache.
 """
+from __future__ import annotations
+
 from pathlib import Path
 
 import xbmcvfs
 
+from backends.settings.service_types import ServiceKey, TTS_Type
+from backends.settings.setting_properties import SettingProp
 from common import *
 
 from backends.base import SimpleTTSBackend
@@ -65,12 +69,13 @@ class BackgroundDriver(BaseServices):
         :return: None when finished
         """
         clz = type(self)
-        cache_path: str = Settings.get_cache_base()
-        engine_id: str = Settings.get_engine_id()
-        engine_code: str = SettingsMap.get_service_property(engine_id,
-                                                            Constants.CACHE_SUFFIX)
+        engine_key: ServiceKey.ENGINE_KEY = Settings.get_engine_key()
+        cache_path: str = Settings.get_cache_base(engine_key.with_prop(
+                TTS_Type.CACHE_PATH))
+        engine_code: str = Settings.get_cache_suffix(engine_key.with_prop(
+                SettingProp.CACHE_SUFFIX))
         assert engine_code is not None, \
-            f'Can not find voice-cache dir for engine: {engine_id}'
+            f'Can not find voice-cache dir for engine: {engine_key}'
         self.cache_directory: str = xbmcvfs.translatePath(f'{cache_path}/{engine_code}/'
                                                           f'{changed_cache_dir}')
 
@@ -105,7 +110,7 @@ class BackgroundDriver(BaseServices):
 
         clz = type(self)
         finished: bool = False
-        voiced_file: Path = None
+        voiced_file: Path | None = None
         while not finished:
             self.delay.delay()
             text_file: Path = self.work_list.get_next()

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations  # For union operator |
 
-from common import *
+import os
 
 from common.critical_settings import *
 from common.logger import BasicLogger
@@ -60,7 +60,7 @@ class MainThreadLoop(xbmc.Monitor):
         :return:
         """
         try:
-            if os.path.text_exists(os.path.join(xbmcvfs.translatePath('special://profile'),
+            if os.path.exists(os.path.join(xbmcvfs.translatePath('special://profile'),
                                            'addon_data', 'service.kodi.tts', 'DISABLED')):
                 xbmc.log('service.kodi.tts: DISABLED - NOT STARTING')
                 return

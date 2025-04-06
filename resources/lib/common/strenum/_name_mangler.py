@@ -1,3 +1,4 @@
+# coding=utf-8
 # pylint: disable=no-name-in-module
 import re
 from zlib import crc32

@@ -1,3 +1,4 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
 # Yapps 2.0 Runtime

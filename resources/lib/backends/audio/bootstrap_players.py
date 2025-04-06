@@ -1,3 +1,4 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
 import sys
@@ -11,6 +12,7 @@ from common.constants import Constants
 from common.logger import BasicLogger
 from common.setting_constants import Players
 from common.settings_low_level import SettingsLowLevel
+from backends.settings.service_types import ServiceID
 from common.system_queries import SystemQueries
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
@@ -45,95 +47,93 @@ class BootstrapPlayers:
     @classmethod
     def load_players(cls):
         for player_id in cls.player_ids:
+            service_key: ServiceID = ServiceID(ServiceType.PLAYER, player_id)
             MY_LOGGER.debug(f'load_player: {player_id}')
-            cls.load_player(player_id)
-        # Add all settings
-        SettingsLowLevel.load_settings(ServiceType.PLAYER)
-        # SettingsLowLevel.commit_settings()
+            cls.load_player(service_key)
+            # Add all settings
+            SettingsLowLevel.load_settings(service_key)
 
     @classmethod
-    def load_player(cls, player_id: str) -> None:
+    def load_player(cls, player_key: ServiceID) -> None:
         try:
-            available: bool = True
-            if not SettingsMap.is_available(player_id):
-                MY_LOGGER.debug(f'{player_id} NOT SettingsMap.is_available')
+            player_id: str = player_key.service_id
+            available: Reason | None
+            if not SettingsMap.is_available(player_key):
+                MY_LOGGER.debug(f'{player_id} NOT available')
                 return
 
             if player_id == Players.MPLAYER and not Constants.PLATFORM_WINDOWS:
                 from backends.players.mplayer_settings import MPlayerSettings
-                MPlayerSettings()
-                from backends.audio.mplayer_audio_player import MPlayerAudioPlayer
-                available = MPlayerAudioPlayer().available()
+                available = MPlayerSettings.check_availability()
+                if available == Reason.AVAILABLE:
+                    from backends.audio.mplayer_audio_player import MPlayerAudioPlayer
+                    MPlayerSettings.config_settings()
+                    available = MPlayerAudioPlayer().check_availability()
             elif player_id == Players.MPV:
                 from backends.players.mpv_player_settings import MPVPlayerSettings
-                MPVPlayerSettings()
-                from backends.audio.mpv_audio_player import MPVAudioPlayer
-                available = MPVAudioPlayer().available()
+                available = MPVPlayerSettings.check_availability()
+                if available == Reason.AVAILABLE:
+                    from backends.audio.mpv_audio_player import MPVAudioPlayer
+                    MPVPlayerSettings.config_settings()
+                    available = MPVAudioPlayer().check_availability()
             elif player_id == Players.SFX:
                 from backends.players.sfx_settings import SFXSettings
                 MY_LOGGER.debug('Loading SFXSettings')
-                SFXSettings()
-                MY_LOGGER.debug('Loading PlaySFXAudioPlayer')
-                from backends.audio.sfx_audio_player import PlaySFXAudioPlayer
-                MY_LOGGER.debug(f'Checking if SFX is available')
-                available = PlaySFXAudioPlayer().available()
-                MY_LOGGER.debug('SFX is available')
-            elif player_id == Players.WINDOWS:
-                if SystemQueries.isWindows():
-                    from backends.audio.windows_audio_player import WindowsAudioPlayer
-                    available = WindowsAudioPlayer().available()
-                else:
-                    available = False
-            elif player_id == Players.APLAY:
-                from backends.audio.aplay_audio_player import AplayAudioPlayer
-                available = AplayAudioPlayer().available()
-            # elif player_id == Players.RECITE_ID:
-            elif player_id == Players.PAPLAY:
-                from backends.audio.paplay_audio_player import PaplayAudioPlayer
-                available = PaplayAudioPlayer().available()
-            elif player_id == Players.AFPLAY:
-                from backends.audio.afplay_audio_player import AfplayPlayer
-                available = AfplayPlayer().available()
-            elif player_id == Players.SOX:
-                from backends.audio.sfx_audio_player import PlaySFXAudioPlayer
-                available = PlaySFXAudioPlayer().available()
-            elif player_id == Players.MPG321:
-                from backends.audio.mpg321_audio_player import Mpg321AudioPlayer
-                available = Mpg321AudioPlayer().available()
-            elif player_id == Players.MPG123:
-                from backends.audio.mpg123_audio_player import Mpg123AudioPlayer
-                available = Mpg123AudioPlayer().available()
-            elif player_id == Players.MPG321_OE_PI:
-                from backends.audio.mpg321oep_audio_player import Mpg321OEPiAudioPlayer
-                available = Mpg321OEPiAudioPlayer().available()
+                available = SFXSettings.check_availability()
+                if available == Reason.AVAILABLE:
+                    MY_LOGGER.debug('Loading PlaySFXAudioPlayer')
+                    from backends.audio.sfx_audio_player import PlaySFXAudioPlayer
+                    SFXSettings.config_settings()
+                    MY_LOGGER.debug(f'Checking if SFX available {available}')
+                    available = PlaySFXAudioPlayer().check_availability()
+                    MY_LOGGER.debug('SFX available {available}')
+                '''
+                elif player_id == Players.WINDOWS:
+                    if SystemQueries.isWindows():
+                        from backends.audio.windows_audio_player import WindowsAudioPlayer
+                        available = WindowsAudioPlayer().available()
+                    else:
+                        available = False
+                elif player_id == Players.APLAY:
+                    from backends.audio.aplay_audio_player import AplayAudioPlayer
+                    available = AplayAudioPlayer().available()
+                # elif player_id == Players.RECITE_ID:
+                elif player_id == Players.PAPLAY:
+                    from backends.audio.paplay_audio_player import PaplayAudioPlayer
+                    available = PaplayAudioPlayer().available()
+                elif player_id == Players.AFPLAY:
+                    from backends.audio.afplay_audio_player import AfplayPlayer
+                    available = AfplayPlayer().available()
+                elif player_id == Players.MPG321:
+                    from backends.audio.mpg321_audio_player import Mpg321AudioPlayer
+                    available = Mpg321AudioPlayer().available()
+                elif player_id == Players.MPG123:
+                    from backends.audio.mpg123_audio_player import Mpg123AudioPlayer
+                    available = Mpg123AudioPlayer().available()
+                elif player_id == Players.MPG321_OE_PI:
+                    from backends.audio.mpg321oep_audio_player import Mpg321OEPiAudioPlayer
+                    available = Mpg321OEPiAudioPlayer().available()
+                '''
             elif player_id == Players.INTERNAL:
                 from backends.players.builtin_player_settings import BuiltinPlayerSettings
-                BuiltinPlayerSettings()
-                from backends.audio.builtin_player import BuiltInPlayer
-                available = BuiltInPlayer().available()
-            # elif player_id == Players.NONE:
-            # elif player_id == Players.WavAudioPlayerHandler:
-            #    from backends.audio.player_handler import WavAudioPlayerHandler
-            #     WavAudioPlayerHandler()
+                MY_LOGGER.debug(f'Loading BuiltInPlayerSettings')
+                available = BuiltinPlayerSettings.check_availability()
+                if available == Reason.AVAILABLE:
+                    MY_LOGGER.debug(f'Loading BuiltinPlayerSettings')
+                    BuiltinPlayerSettings.config_settings()
+                    from backends.audio.builtin_player import BuiltInPlayer
+                    available = BuiltInPlayer().check_availability()
+                    MY_LOGGER.debug(f'BuiltInPlayer available: {available}')
             # elif player_id == Players.MP3AudioPlayerHandler:
             #     from backends.audio.player_handler import MP3AudioPlayerHandler
             #     MP3AudioPlayerHandler()
             # elif player_id == Players.BuiltInAudioPlayerHandler:
             #     pass
-            try:
-                if available:
-                    SettingsMap.set_is_available(player_id, Reason.AVAILABLE)
-                else:
-                    MY_LOGGER.debug(f'{player_id} returns NOT available')
-                    SettingsMap.set_is_available(player_id, Reason.NOT_AVAILABLE)
-            except Exception:
-                MY_LOGGER.exception('')
-                SettingsMap.set_is_available(player_id, Reason.NOT_AVAILABLE)
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            MY_LOGGER.exception('')
-            SettingsMap.set_is_available(player_id, Reason.BROKEN)
+            MY_LOGGER.exception('BROKEN')
+            SettingsMap.set_is_available(player_key, Reason.BROKEN)
 
     '''
     @classmethod

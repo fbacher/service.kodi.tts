@@ -1,3 +1,4 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
 import os
@@ -7,7 +8,7 @@ from backends.audio import load_snd_bm2835
 from backends.audio.afplay_audio_player import AfplayPlayer
 from backends.audio.aplay_audio_player import AplayAudioPlayer
 from backends.audio.base_audio import AudioPlayer
-from backends.audio.builtin_audio_player import BuiltInPlayer
+from backends.audio.builtin_player import BuiltInPlayer
 from backends.audio.i_handler import PlayerHandlerType
 from backends.audio.mpg123_audio_player import Mpg123AudioPlayer
 from backends.audio.mpg321_audio_player import Mpg321AudioPlayer
@@ -18,8 +19,8 @@ from backends.audio.sound_capabilities import SoundCapabilities
 from backends.audio.sox_audio_player import SOXAudioPlayer
 from backends.audio.windows_audio_player import WindowsAudioPlayer
 from backends.players.player_index import PlayerIndex
-from backends.settings.service_types import Services
-from backends.settings.setting_properties import SettingsProperties
+from backends.settings.service_types import ServiceKey, Services
+from backends.settings.setting_properties import SettingProp
 from common import *
 from common import utils
 from common.base_services import BaseServices
@@ -32,8 +33,8 @@ module_logger: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class BasePlayerHandler(PlayerHandlerType):
-    ID: str = 'dummy player'
-    service_ID: str = 'dummy player'
+    ID: str = 'dummy player_key'
+    service_id: str = 'dummy player_key'
     displayName = 'MP3AudioPlayerHandler'
     sound_file_base = '{speech_file_name}{sound_file_type}'
     sound_dir: str = None
@@ -86,8 +87,7 @@ class BasePlayerHandler(PlayerHandlerType):
     @classmethod
     def set_sound_dir(cls):
         tmpfs = utils.getTmpfs()
-        if Settings.getSetting(SettingsProperties.USE_TEMPFS,
-                               None, True) and tmpfs:
+        if Settings.getSetting(ServiceKey.USE_TMPFS, True) and tmpfs:
             cls._logger.debug_xv(f'Using tmpfs at: {tmpfs}')
             cls.sound_dir = os.path.join(tmpfs, 'kodi_speech')
         else:
@@ -97,7 +97,7 @@ class BasePlayerHandler(PlayerHandlerType):
 
     @classmethod
     def register(cls):
-        PlayerIndex.register(cls.service_ID, cls)
+        PlayerIndex.register(cls.service_id, cls)
         BaseServices.register(cls)
 
 
@@ -106,14 +106,14 @@ class WavAudioPlayerHandler(BasePlayerHandler):
     Not all engines are capable of playing the sound, or may lack some
     capabilities such as volume or the ability to change the speed of playback.
     Players are used whenever capabilities are needed which are not inherit
-    in the engine, or when it is more convenient to use a player.
+    in the engine, or when it is more convenient to use a player_key.
 
     PlayerHandlers manage a group of players with support for a particular
     sound file type (here, wave or mp3).
     """
     ID: str = Players.WavAudioPlayerHandler
     engine_id = Players.WavAudioPlayerHandler
-    service_ID: str = Services.WavAudioPlayerHandler
+    service_id: str = Services.WavAudioPlayerHandler
     displayName = 'WaveAudioPlayerHandler'
     players = (BuiltInPlayer, PlaySFXAudioPlayer, WindowsAudioPlayer,
                AfplayPlayer, SOXAudioPlayer,
@@ -271,7 +271,7 @@ class WavAudioPlayerHandler(BasePlayerHandler):
 class MP3AudioPlayerHandler(WavAudioPlayerHandler):
     ID: str = Players.MP3AudioPlayerHandler
     engine_id = Players.MP3AudioPlayerHandler
-    service_ID: str = Services.MP3AudioPlayerHandler
+    service_id: str = Services.MP3AudioPlayerHandler
     displayName = 'MP3AudioPlayerHandler'
     players = (WindowsAudioPlayer, AfplayPlayer, SOXAudioPlayer,
                Mpg123AudioPlayer, Mpg321AudioPlayer, MPlayerAudioPlayer)
@@ -297,8 +297,7 @@ class MP3AudioPlayerHandler(WavAudioPlayerHandler):
     @classmethod
     def set_sound_dir(cls):
         tmpfs = utils.getTmpfs()
-        if Settings.getSetting(SettingsProperties.USE_TEMPFS, None,
-                               True) and tmpfs:
+        if Settings.getSetting(ServiceKey.USE_TMPFS, True) and tmpfs:
             cls._logger.debug_xv(f'Using tmpfs at: {tmpfs}')
             cls.sound_dir = os.path.join(tmpfs, 'kodi_speech')
         else:
@@ -310,7 +309,7 @@ class MP3AudioPlayerHandler(WavAudioPlayerHandler):
 class BuiltInAudioPlayerHandler(BasePlayerHandler):
     ID: str = Players.BuiltInAudioPlayerHandler
     engine_id = Players.BuiltInAudioPlayerHandler
-    service_ID: str = Services.BuiltInAudioPlayerHandler
+    service_id: str = Services.BuiltInAudioPlayerHandler
     displayName = 'BuiltInAudioPlayerHandler'
 
     def __init__(self, base_handler: BasePlayerHandler = WavAudioPlayerHandler):

@@ -1,3 +1,4 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
 from backends.audio.base_audio import SubprocessAudioPlayer
@@ -11,7 +12,7 @@ module_logger: BasicLogger = BasicLogger.get_logger(__name__)
 
 class PaplayAudioPlayer(SubprocessAudioPlayer):
     #
-    # Pulse Audio player
+    # Pulse Audio player_key
     #
     # Has ability to play on remote server
     #

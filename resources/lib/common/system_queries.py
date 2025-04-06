@@ -62,8 +62,15 @@ class SystemQueries:
         uname = None
         import subprocess
         try:
-            uname = subprocess.check_output(
-                    ['uname', '-a'], universal_newlines=True)
+            if Constants.PLATFORM_WINDOWS:
+                MY_LOGGER.info(f'Running command:')
+                uname = subprocess.check_output(
+                            ['uname', '-a'], text=True, shell=False,
+                            close_fds=True, creationflags=subprocess.DETACHED_PROCESS)
+            else:
+                MY_LOGGER.info(f'Running command:')
+                uname = subprocess.check_output(['uname', '-a'], text=True,
+                                                shell=False, close_fds=True)
         except:
             module_logger.error('raspberryPiDistro() - Failed to get uname output')
         if uname and 'raspbmc' in uname:

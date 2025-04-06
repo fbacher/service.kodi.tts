@@ -11,7 +11,7 @@ import xbmcvfs
 
 from common import *
 
-from backends.settings.setting_properties import SettingsProperties
+from backends.settings.setting_properties import SettingProp
 from common import utils
 from common.constants import Constants
 from common.critical_settings import CriticalSettings
@@ -36,13 +36,13 @@ ENABLE_PATH = os.path.join(xbmcvfs.translatePath(
         'special://profile'), 'addon_data', ADDON_ID, 'ENABLED')
 
 POSSIBLE_SETTINGS = ['language',
-                     SettingsProperties.VOICE,
+                     SettingProp.VOICE,
                      'output',
-                     'player',
-                     SettingsProperties.PITCH,
+                     'player_key',
+                     SettingProp.PITCH,
                      'gender',
-                     SettingsProperties.SPEED,
-                     SettingsProperties.VOLUME,
+                     SettingProp.SPEED,
+                     SettingProp.VOLUME,
                      'pipe']
 
 language_code = None

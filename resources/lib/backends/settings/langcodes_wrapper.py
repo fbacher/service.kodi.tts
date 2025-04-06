@@ -150,7 +150,7 @@ class LangCodesWrapper(langcodes.Language):
 
     def territory_name(self, language: Union[str, 'Language'] = DEFAULT_LANGUAGE,
                        max_distance: int = 25) -> str:
-        if True  # Constants.USE_LANGCODES_DATA:
+        if Constants.USE_LANGCODES_DATA:
             return super().territory_name(language, max_distance)
         return 'missing territory_name'
 

@@ -14,6 +14,7 @@ from pathlib import Path
 
 from backends.audio.sound_capabilities import SoundCapabilities
 from cache.common_types import CacheEntryInfo
+from cache.cache_file_state import CacheFileState
 from common.setting_constants import AudioType
 from common.settings import Settings
 
@@ -27,7 +28,7 @@ from common.constants import Constants
 from common.critical_settings import CriticalSettings
 from common.exceptions import EmptyPhraseException, ExpiredException
 from common.logger import *
-from common.messages import Message, Messages
+from common.messages import Messages
 from common.monitor import Monitor
 from json import JSONEncoder
 
@@ -160,6 +161,7 @@ class Phrase:
         self.start_of_phrase_list: bool = start_of_phrase_list
         # Path to cached voice file (there can be multiple, for different players)
         self.cache_path: Path = cache_path
+        self._cache_file_state: CacheFileState = CacheFileState.UNKNOWN
         self._text_exists: bool = text_exists
         self._temp: bool = temp
         self._interrupt: bool = False
@@ -318,7 +320,7 @@ class Phrase:
             'pre_pause_ms'   : self.pre_pause_ms,
             'post_pause_ms'  : self.post_pause_ms,
             'cache_path'     : self.cache_path,
-            'text_exists'         : self._text_exists,
+            'text_exists'    : self._text_exists,
             'temp'           : self._temp,
             'preload_cache'  : self.preload_cache,
             'speak_over_kodi': self._speak_over_kodi,
@@ -418,12 +420,15 @@ class Phrase:
         engine, then the path will be to a temp file.
         :param cache_path:
         :param text_exists:
-        :param temp:
+        :param temp: True if this is a temporary file (not cached) and is to be
+                     deleted after voicing
         :return:
         """
         self.test_expired()
         if isinstance(cache_path, str):
             MY_LOGGER.debug(f'PATH is STRING: {cache_path}')
+        else:
+            MY_LOGGER.debug(f'PATH: {cache_path}')
         self.cache_path = cache_path
         self._text_exists = text_exists
         self._temp = temp
@@ -440,7 +445,13 @@ class Phrase:
             self.test_expired()
         return self.cache_path
 
-    def update_cache_path(self, active_engine: ForwardRef('BaseEngineService')) -> None:
+    def update_cache_path(self,
+                          active_engine: ForwardRef('BaseEngineService')) -> None:
+        """
+        Adds engine-specific information to the path to a voiced audio path.
+        :param active_engine:
+        :return:
+        """
         voice_cache: ForwardRef('VoiceCache') = active_engine.get_voice_cache()
         result: CacheEntryInfo
         result = voice_cache.get_path_to_voice_file(self, use_cache=True)
@@ -450,15 +461,30 @@ class Phrase:
         suffixes: List[str] = result.audio_suffixes
         self.set_cache_path(result.current_audio_path, text_exists=text_exists)
 
-    def cache_path_exists(self, check_expired: bool = True) -> bool:
+    def cache_file_state(self, check_expired: bool = True) -> CacheFileState:
         """
         Convenience method that tests for empty (audio) path as well as existance
-
         :return:
         """
         if check_expired:
             self.test_expired()
-        return self.cache_path.exists()
+        if not self.cache_path.exists():
+            self._cache_file_state = CacheFileState.DOES_NOT_EXIST
+        else:
+            size: int = self.cache_path.stat().st_size
+            # TODO: change to use temp-file for download/creation and
+            #   let downloader/creation process mark state as good/bad, etc.
+            #   For now, just use very crude file size check
+            if size > 100:
+                self._cache_file_state = CacheFileState.OK
+            else:
+                self._cache_file_state = CacheFileState.BAD
+        MY_LOGGER.debug(f'cache_file_state: {self._cache_file_state} path: '
+                        f'{self.cache_path}')
+        return self._cache_file_state
+
+    def set_cache_file_state(self, state: CacheFileState) -> None:
+        self._cache_file_state = state
 
     def text_exists(self, check_expired: bool = True) -> bool:
         clz = type(self)

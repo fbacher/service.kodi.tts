@@ -1,9 +1,11 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
-import collections
+import enum
 from enum import Enum
 from typing import NamedTuple
 
+from backends.settings.service_types import ServiceID
 from common.constants import Constants
 from common.logger import BasicLogger
 
@@ -80,7 +82,7 @@ class INumericValidator:
 
     @property
     def increment(self):
-        pass
+        raise NotImplementedError
 
     def as_percent(self) -> int | float:
         """
@@ -105,11 +107,13 @@ class INumericValidator:
 
 class IValidator:
 
-    def __init__(self, setting_id: str, service_id: str,
-                 default: Any | None = None, const: bool = False) -> None:
+    def __init__(self, service_key: ServiceID,
+                 default: Any | None = None,
+                 allow_default: bool = True,
+                 const: bool = False) -> None:
         pass
 
-    def is_const(self) -> bool:
+    def is_const(self) -> bool | None:
         return None
 
     def get_const_value(self) -> Any:
@@ -126,7 +130,7 @@ class IValidator:
         raise NotImplementedError()
 
     @property
-    def default_value(self) -> bool | int | float | str:
+    def default(self) -> bool | int | float | str:
         raise NotImplementedError()
 
     def get_tts_values(self) -> UIValues:
@@ -168,18 +172,40 @@ class IValidator:
     #     raise NotImplementedError()
 
 
-class IIntValidator(IValidator):
+class ISimpleValidator(IValidator):
 
-    def __init__(self, setting_id: str, service_id: str,
-                 min_value: int, max_value: int, default_value: int,
-                 step: int, scale_internal_to_external: int = 1) -> None:
-        pass
+    def __init__(self, service_key: ServiceID,
+                 const: bool = False) -> None:
+        super().__init__(service_key=service_key, const=const)
+        self._service_key: ServiceID = service_key
+        self._const: bool = const
 
-    @property
-    def default_value(self) -> int | float:
+    def is_const(self) -> bool | None:
         raise NotImplementedError()
 
-    def get_tts_value(self, default_value: int | None = None) -> int | float:
+    def get_value(self) -> Any:
+        raise NotImplementedError()
+
+    def validate(self, value: int | None) -> bool:
+        raise NotImplementedError()
+
+    def preValidate(self, value: Any) -> Tuple[bool, Any]:
+        raise NotImplementedError()
+
+
+class IIntValidator(IValidator):
+
+    def __init__(self, service_key: ServiceID,
+                 min_value: int, max_value: int, default_value: int,
+                 step: int, scale_internal_to_external: int = 1) -> None:
+        raise NotImplementedError()
+
+    @property
+    def default(self) -> int | float:
+        raise NotImplementedError()
+
+    def get_tts_value(self, default_value: int | float | str = None,
+                      setting_service_id: str = None) -> int | float | str:
         raise NotImplementedError()
 
     def set_tts_value(self, value: int | float) -> None:
@@ -218,9 +244,11 @@ class IIntValidator(IValidator):
 
 class AllowedValue:
 
-    def __init__(self, value: str, enabled: bool = True):
+    def __init__(self, value: str, enabled: bool = True,
+                 service_key: ServiceID | None = None):
         self._value: str = value
         self._enabled: bool = enabled
+        self._service_key: ServiceID = service_key
 
     @property
     def enabled(self) -> bool:
@@ -411,10 +439,32 @@ class AllowedValue:
 
 class IStringValidator(IValidator):
 
-    def __init__(self, setting_id: str, service_id: str,
+    def __init__(self, service_key: ServiceID,
                  allowed_values: List[str], min_length: int = 0,
-                 max_length: int = 4096, default_value: str = None) -> None:
-        pass
+                 max_length: int = 4096, default_value: str = None,
+                 allow_default: bool = True,
+                 const: bool = False
+                 ) -> None:
+        """
+          Defines the values which a property of the given service_key can
+        be.
+        :param service_key: ID of the service property
+        :param allowed_values: List of allowed values. Can be an empty list
+               indicating that max/min length and default settings will
+               determine what the legal values are
+        :param min_length: Minimum character length of a valid value
+        :param max_length: Maximum character length of a valid value
+        :param default: Defines a default value, which can be different
+               from allowed_values. A value of None is allowed
+        :param allow_default: If True, then the default parameter
+               can be used, otherwise, ignore the default parameter
+        :param const: If True, then the value can not be changed
+        """
+        super().__init__(service_key=service_key,
+                         default=default_value,
+                         allow_default=allow_default,
+                         const=const
+                         )
 
     def get_tts_value(self, default: str | None = None,
                       setting_service_id: str = None) -> str:
@@ -424,14 +474,15 @@ class IStringValidator(IValidator):
         raise NotImplementedError()
 
     @property
-    def default_value(self) -> str:
+    def default(self) -> str:
         raise NotImplementedError()
 
-    def get_allowed_values(self, enabled: bool | None = None) -> List[AllowedValue] | None:
+    def get_allowed_values(self,
+                           enabled: bool | None = None) -> List[AllowedValue] | None:
         """
         Determine which values are allowed and which normally allowed values
         are disabled, due to other settings. For example, while an engine
-        may support PlayerMode.SLAVE_FILE an already chosen player may not,
+        may support PlayerMode.SLAVE_FILE an already chosen player_key may not,
         therefore blocking you from changing the PlayerMode
 
         :param enabled: If specified, then only return values which have the
@@ -476,10 +527,10 @@ class IEnumValidator(IValidator):
         pass
 
     @property
-    def default_value(self) -> Enum:
+    def default(self) -> Enum:
         raise NotImplementedError()
 
-    def get_tts_value(self) -> Enum:
+    def get_tts_value(self) -> enum.Enum:
         raise NotImplementedError()
 
     def set_tts_value(self, value: Enum) -> None:
@@ -513,7 +564,7 @@ class IStrEnumValidator(IValidator):
         pass
 
     @property
-    def default_value(self) -> StrEnum:
+    def default(self) -> StrEnum:
         raise NotImplementedError()
 
     def get_tts_value(self) -> StrEnum:
@@ -560,7 +611,7 @@ class IConstraintsValidator:
         """
         :param default_value:
         :param setting_service_id:
-        :return: current_value, min_value, default_value, max_value
+        :return: current_value, min_value, default, max_value
         """
         raise NotImplementedError()
 
@@ -571,7 +622,7 @@ class IConstraintsValidator:
                        setting_service_id: str | None = None) -> int | float | str:
         """
             Translates the 'TTS' value (used internally) to the implementation's
-            scale (player or engine).
+            scale (player_key or engine).
             :return:
         """
         raise NotImplementedError()
@@ -662,7 +713,7 @@ class IGenderValidator(IValidator):
         pass
 
     @property
-    def default_value(self) -> Genders:
+    def default(self) -> Genders:
         raise NotImplementedError()
 
     def get_tts_value(self) -> Genders:
@@ -683,9 +734,6 @@ class IGenderValidator(IValidator):
     def setInternalValue(self, internalValue: int | str) -> None:
         raise NotImplementedError()
 
-    def get_value(self) -> str:
-        raise NotImplementedError()
-
     def validate(self, value: Genders | None) -> Tuple[bool, Any]:
         raise NotImplementedError()
 
@@ -702,7 +750,7 @@ class IChannelValidator(IValidator):
         pass
 
     @property
-    def default_value(self) -> Channels:
+    def default(self) -> Channels:
         raise NotImplementedError()
 
     def get_tts_value(self) -> Channels:
@@ -731,3 +779,32 @@ class IChannelValidator(IValidator):
 
     def preValidate(self, ui_value: Enum) -> Tuple[bool, Enum]:
         raise NotImplementedError()
+
+
+class IEngineValidator:
+    """
+    Validator for getting and setting engine ids from Settings.
+
+    Enhancements include verifying if an engine is marked as non-functional.
+    If an engine is non-functional, an Exception is thrown indicating that a new
+    engine needs to be picked.
+    """
+
+    def __init__(self) -> None:
+        raise NotImplementedError('')
+
+    def get_service_key(self) -> ServiceID:
+        """
+        Gets the current engine_id. If the engine is non-functional, then
+        a ServiceUnavailable is thrown containing the failing setting_id
+        and the reason.
+        """
+        raise NotImplementedError('')
+
+    def set_service_key(self, engine_key: ServiceID) -> None:
+        """
+        Sets the current engine_id. If the engine is non-functional, then
+        a ServiceUnavailable is thrown containing the failing setting_id
+        and the reason.
+        """
+        raise NotImplementedError('')

@@ -1,7 +1,8 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
 from backends.players.iplayer import IPlayer
-from backends.settings.setting_properties import SettingsProperties
+from backends.settings.setting_properties import SettingProp
 from common import *
 from common.logger import *
 from common.settings import Settings
@@ -34,12 +35,12 @@ class PlayerHandlerType:
         raise Exception('Not Implemented')
 
     def getSpeed(self) -> float:
-        speed: float = Settings.getSetting(SettingsProperties.SPEED,
+        speed: float = Settings.getSetting(SettingProp.SPEED,
                                            Settings.get_engine_id())
         return speed
 
     def getVolumeDb(self) -> float:
-        volumeDb: float = Settings.getSetting(SettingsProperties.VOLUME,
+        volumeDb: float = Settings.getSetting(SettingProp.VOLUME,
                                               Settings.get_engine_id())
         return volumeDb
 

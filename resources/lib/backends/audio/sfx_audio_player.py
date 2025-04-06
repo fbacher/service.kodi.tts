@@ -1,3 +1,4 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
 import sys
@@ -12,8 +13,10 @@ from backends.audio import PLAYSFX_HAS_USECACHED
 from backends.audio.base_audio import AudioPlayer
 from backends.audio.sound_capabilities import SoundCapabilities
 from backends.players.player_index import PlayerIndex
+from backends.players.sfx_settings import SFXSettings
 from backends.settings.service_types import (EngineType, GENERATE_BACKUP_SPEECH,
                                              Services, ServiceType)
+from backends.settings.settings_map import Reason
 from backends.transcoders.trans import TransCode
 from cache.voicecache import CacheEntryInfo, VoiceCache
 from common import *
@@ -26,16 +29,17 @@ from common.monitor import Monitor
 from common.phrases import Phrase
 from common.setting_constants import AudioType, Players
 from common.settings import Settings
+from backends.settings.service_types import ServiceID
 
 MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class PlaySFXAudioPlayer(AudioPlayer, BaseServices):
     """
-    SFX player simply utilzies Kodi's built-in playSFX service. It is a basic
-    player. You can't change speed or other parameters.
+    SFX player_key simply utilzies Kodi's built-in playSFX service. It is a basic
+    player_key. You can't change speed or other parameters.
 
-    Besides being a (limited) player, SFX player together with NoEngine
+    Besides being a (limited) player_key, SFX player_key together with NoEngine
     provide bare-minimum TTS for users who have not yet configured TTS and
     do not have any supported TTS engines or players installed. TTS can be configured
     via PLAYSFX_HAS_USECACHED + other settings so that .mp3 voicings produced
@@ -45,8 +49,9 @@ class PlaySFXAudioPlayer(AudioPlayer, BaseServices):
     service.kodi.tts.resources/predefined/cache directory.
     """
     ID = Players.SFX
-    service_ID = Services.SFX_ID
-    service_TYPE: str = ServiceType.PLAYER
+    service_id = Services.SFX_ID
+    service_type: str = ServiceType.PLAYER
+    service_key: ServiceID = ServiceID(ServiceType.PLAYER, service_id)
     # name = 'XBMC PlaySFX'
     sound_file_base = '{speech_file_name}{sound_file_type}'
     sound_dir: str = None
@@ -67,8 +72,8 @@ class PlaySFXAudioPlayer(AudioPlayer, BaseServices):
     @property
     def voice_cache(self) -> VoiceCache:
         if self._voice_cache is None:
-            engine_id = Settings.get_engine_id()
-            self._voice_cache = VoiceCache(engine_id)
+            engine_key: ServiceID = Settings.get_engine_key()
+            self._voice_cache = VoiceCache(engine_key)
         return self._voice_cache
 
     @classmethod
@@ -78,7 +83,6 @@ class PlaySFXAudioPlayer(AudioPlayer, BaseServices):
 
     def doPlaySFX(self, path) -> None:
         xbmc.playSFX(path, False)
-
 
     def play(self, phrase: Phrase):
         """
@@ -94,13 +98,12 @@ class PlaySFXAudioPlayer(AudioPlayer, BaseServices):
         cache_info: CacheEntryInfo | None = None
         wave_file: Path | None = None
         # Support for running with NO ENGINE nor PLAYER using limited pre-generated
-        # cache. The intent is to provide enough TTS so the user can configure
-        # to use an engine and player.
+        # cache. The intent is to provide enough TTS so the user can cfg
+        # to use an engine and player_key.
         MY_LOGGER.debug(f'GENERATE_BACKUP_SPEECH: {GENERATE_BACKUP_SPEECH}')
         if GENERATE_BACKUP_SPEECH:
             # Convert .mp3 files into .wav and save in NO_ENGINE engine's cache
-            #  no_engine_voice_cache: VoiceCache = VoiceCache(EngineType.NO_ENGINE.value)
-            no_engine = BaseServices.getService(EngineType.NO_ENGINE.value)
+            no_engine = BaseServices.get_service(EngineType.NO_ENGINE.value)
             wave_phrase, cache_info = no_engine.create_wave_phrase(phrase)
             audio_path: Path = cache_info.current_audio_path
             wave_file = audio_path.with_suffix(f'.{AudioType.WAV}')
@@ -112,25 +115,25 @@ class PlaySFXAudioPlayer(AudioPlayer, BaseServices):
             if not wave_file.exists():
                 mp3_file: Path = audio_path.with_suffix(f'.{AudioType.MP3}')
                 try:
-                    #  SoundCapabilities.get_capable_services(service_ID, _provides_services,
+                    #  SoundCapabilities.get_capable_services(setting_id, _provides_services,
                     target_audio: AudioType
-                    target_audio = Settings.get_current_input_format(clz.service_ID)
+                    target_audio = Settings.get_current_input_format(clz.service_key)
 
                     tran_id = SoundCapabilities.get_transcoder(
-                            target_audio=target_audio,
-                            service_id=clz.service_ID)
+                                                             service_key=clz.service_key,
+                                                             target_audio=target_audio)
                     if tran_id is not None:
                         MY_LOGGER.debug(f'Setting converter: {tran_id} for '
-                                        f'{clz.service_ID}')
-                        Settings.set_converter(tran_id, clz.service_ID)
-                        x = Settings.get_converter(engine_id=clz.service_ID)
+                                        f'{clz.service_id}')
+                        Settings.set_converter(tran_id, clz.service_key)
+                        x = Settings.get_converter(clz.service_key)
                         MY_LOGGER.debug(f'Setting converter: {x}')
                 except ValueError:
                     # Can not find a match. Don't recover, for now
                     reraise(*sys.exc_info())
 
-                trans_id: str = Settings.get_converter(clz.service_ID)
-                MY_LOGGER.debug(f'service_id: {clz.service_ID} trans_id: {trans_id}')
+                trans_id: str = Settings.get_converter(clz.service_key)
+                MY_LOGGER.debug(f'service_id: {clz.service_id} trans_id: {trans_id}')
                 success = TransCode.transcode(trans_id=trans_id,
                                               input_path=mp3_file,
                                               output_path=wave_file,
@@ -200,18 +203,18 @@ class PlaySFXAudioPlayer(AudioPlayer, BaseServices):
                     keep_silent: bool = False,
                     kill: bool = False):
         """
-        Stop player (most likely because current text is expired)
+        Stop player_key (most likely because current text is expired)
         Players may wish to override this method, particularly when
-        the player is built-in.
+        the player_key is built-in.
 
         :param purge: if True, then purge any queued vocings
                       if False, then only stop playing current phrase
         :param keep_silent: if True, ignore any new phrases until restarted
                             by resume_player.
                             If False, then play any new content
-        :param kill: If True, kill any player processes. Implies purge and
+        :param kill: If True, kill any player_key processes. Implies purge and
                      keep_silent.
-                     If False, then the player will remain ready to play new
+                     If False, then the player_key will remain ready to play new
                      content, depending upon keep_silent
         :return:
         """
@@ -223,6 +226,6 @@ class PlaySFXAudioPlayer(AudioPlayer, BaseServices):
     def close(self) -> None:
         self.stop()
 
-    @staticmethod
-    def available(ext=None) -> bool:
-        return xbmc and hasattr(xbmc, 'stopSFX') and PLAYSFX_HAS_USECACHED
+    @classmethod
+    def check_availability(cls) -> Reason:
+        return SFXSettings.check_availability()

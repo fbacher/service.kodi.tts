@@ -163,7 +163,7 @@
                   <width>1800</width>
                   <height>660</height>
                   <visible>true</visible>
-                  <control type="list" id="3">
+                  <control type="list" id="1103">
                      <description>My first list container</description>
                      <topic name="choices" rank="3">
                         <topic_type>heading</topic_type>

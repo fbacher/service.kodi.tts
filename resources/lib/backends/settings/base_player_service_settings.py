@@ -9,11 +9,11 @@ from backends.settings.constraints import Constraints
 from backends.settings.service_types import Services
 from backends.settings.validators import (NumericValidator, Validator)
 from common.base_services import BaseServices
-from common.settings_low_level import SettingsProperties
+from common.settings_low_level import SettingProp
 
 
 class BasePlayerServiceSettings(BaseServiceSettings):
-    service_ID: str = Services.NONE_ID
+    service_id: str = Services.NONE_ID
     displayName: str = 'NoPlayer'
     canStreamWav = False
     inWavStreamMode = False

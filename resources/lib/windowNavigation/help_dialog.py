@@ -150,7 +150,7 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
 
     def configure_heading(self) -> None:
         """
-        Called by OnInit to configure the Window heading
+        Called by OnInit to cfg the Window heading
 
         :return:
         """
@@ -170,7 +170,7 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
 
     def configure_ok(self) -> None:
         """
-        Called by OnInit to configure the OK button
+        Called by OnInit to cfg the OK button
 
         :return:
         """
@@ -184,7 +184,7 @@ class HelpDialog(xbmcgui.WindowXMLDialog):
 
     def configure_selection_list(self) -> None:
         """
-        Called by onInit to configure the list control for selecting subjects
+        Called by onInit to cfg the list control for selecting subjects
         to view.
 
         :return:

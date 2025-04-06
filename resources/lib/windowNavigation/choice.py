@@ -1,4 +1,6 @@
+# coding=utf-8
 from backends.settings.language_info import LanguageInfo
+from backends.settings.service_types import ServiceID
 
 
 class Choice:
@@ -12,7 +14,7 @@ class Choice:
 
     def __init__(self, label: str, value: str, choice_index: int,
                  sort_key: str = None, enabled: bool = True,
-                 engine_id: str = '', lang_info: LanguageInfo = None,
+                 engine_key: ServiceID = None, lang_info: LanguageInfo = None,
                  match_distance: int = 1000, hint: str = None) -> None:
         """
 
@@ -24,7 +26,7 @@ class Choice:
         :param enabled:   Some settings may not be useable depending on other settings
                           We want to include disabled choices to show a consistent list,
                           but marked in UI as disabled
-        :param engine_id: Identifies which engine this setting is associated with
+        :param engine_key: Identifies which engine this setting is associated with
         :param lang_info: language information for language-related settings.
         :param match_distance: for language related settings. Represents how close
                                this choice is to the desired language. For example,
@@ -39,7 +41,7 @@ class Choice:
         self.hint: str = hint
         self.value: str = value
         self.choice_index: int = choice_index
-        self.engine_id: str = engine_id
+        self.engine_key: ServiceID = engine_key
         self.lang_info: LanguageInfo = lang_info
         self.sort_key: str = sort_key
         self.enabled: bool = enabled
@@ -47,5 +49,5 @@ class Choice:
 
     def __repr__(self) -> str:
         result: str = (f'label: {self.label} value: {self.value} idx: {self.choice_index}\n'
-                       f'service_id: {self.engine_id} lang_info: {self.lang_info}')
+                       f'service_id: {self.engine_key} lang_info: {self.lang_info}')
         return result

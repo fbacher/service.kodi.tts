@@ -11,6 +11,7 @@ from subprocess import Popen
 import xbmc
 
 from common import *
+from common.constants import Constants
 
 from common.garbage_collector import GarbageCollector
 from common.kodi_player_monitor import KodiPlayerMonitor, KodiPlayerState
@@ -99,9 +100,9 @@ class SimpleRunCommand:
                     keep_silent: bool = False,
                     kill: bool = False):
         """
-        Stop player (most likely because current text is expired)
+        Stop player_key (most likely because current text is expired)
         Engines may wish to override this method, particularly when
-        the player is built-in. Players/processes may ignore parameters
+        the player_key is built-in. Players/processes may ignore parameters
         that don't apply.
 
         :param purge: if True, then purge any queued vocings
@@ -109,9 +110,9 @@ class SimpleRunCommand:
         :param keep_silent: if True, ignore any new phrases until restarted
                             by resume_player.
                             If False, then play any new content
-        :param kill: If True, kill any player processes. Implies purge and
+        :param kill: If True, kill any player_key processes. Implies purge and
                      keep_silent.
-                     If False, then the player will remain ready to play new
+                     If False, then the player_key will remain ready to play new
                      content, depending upon keep_silent
         :return:
         """
@@ -265,7 +266,8 @@ class SimpleRunCommand:
         GarbageCollector.add_thread(self.run_thread)
         env = os.environ.copy()
         try:
-            if xbmc.getCondVisibility('System.Platform.Windows'):
+            if Constants.PLATFORM_WINDOWS:
+                MY_LOGGER.info(f'Running command: Windows')
                 # Prevent console for command from opening
                 #
                 # Here, we keep stdout & stderr separate and combine the output in the
@@ -278,16 +280,17 @@ class SimpleRunCommand:
                                                 stdout=subprocess.PIPE,
                                                 stderr=subprocess.STDOUT,
                                                 shell=False,
-                                                universal_newlines=True, env=env,
+                                                text=True, env=env,
                                                 encoding='cp1252',  # 'utf-8',
                                                 close_fds=True,
                                                 creationflags=subprocess.DETACHED_PROCESS)
             else:
+                xbmc.log('Running command: Linux')
                 self.process = subprocess.Popen(self.args, stdin=None,
                                                 stdout=subprocess.PIPE,
                                                 stderr=subprocess.STDOUT,
                                                 shell=False,
-                                                universal_newlines=True, env=env,
+                                                text=True, env=env,
                                                 close_fds=True)
             self.run_state = RunState.RUNNING
             self.stdout_thread = threading.Thread(target=self.stdout_reader,

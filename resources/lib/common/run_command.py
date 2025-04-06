@@ -75,6 +75,7 @@ class RunCommand:
         env = os.environ.copy()
         try:
             if xbmc.getCondVisibility('System.Platform.Windows'):
+                MY_LOGGER.info(f'Running command: Windows')
                 # Prevent console for ffmpeg from opening
 
                 self.process = subprocess.Popen(
@@ -83,6 +84,7 @@ class RunCommand:
                         env=env, encoding='utf-8',
                         close_fds=True, creationflags=subprocess.DETACHED_PROCESS)
             else:
+                MY_LOGGER.info(f'Running command: Linux')
                 self.process = subprocess.Popen(
                         self.args, stdin=None, stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE, shell=False, universal_newlines=True,

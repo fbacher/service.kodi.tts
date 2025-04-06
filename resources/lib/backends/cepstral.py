@@ -8,7 +8,7 @@ import sys
 from common import *
 
 from backends import base
-from backends.settings.setting_properties import SettingsProperties
+from backends.settings.setting_properties import SettingProp
 from common.logger import *
 from common.setting_constants import Mode, PlayerMode
 from common.system_queries import SystemQueries
@@ -40,11 +40,11 @@ class CepstralTTSOEBackend(base.SimpleTTSBackend):
     volumeConstraints = (12, 0, 12, True)
 
     settings = {
-        SettingsProperties.PITCH,
-        SettingsProperties.SPEED,
+        SettingProp.PITCH,
+        SettingProp.SPEED,
         'use_aoss',
-        SettingsProperties.VOICE,
-        SettingsProperties.VOLUME}
+        SettingProp.VOICE,
+        SettingProp.VOLUME}
 
     _class_name: str = None
 
@@ -130,11 +130,11 @@ class CepstralTTSBackend(base.SimpleTTSBackend):
     engine_id = 'Cepstral'
     displayName = 'Cepstral'
     canStreamWav = False
-    settings = {SettingsProperties.VOICE : '',
-                'use_aoss'               : False,
-                SettingsProperties.SPEED : 170,
-                SettingsProperties.VOLUME: 0,
-                SettingsProperties.PITCH : 0
+    settings = {SettingProp.VOICE : '',
+                'use_aoss'        : False,
+                SettingProp.SPEED : 170,
+                SettingProp.VOLUME: 0,
+                SettingProp.PITCH : 0
 
                 }
     _logger: BasicLogger = None
@@ -194,17 +194,17 @@ class CepstralTTSBackend(base.SimpleTTSBackend):
         self.process.stdin.write(text + '\n\n')
 
     def update(self):
-        self.voice = self.setting(SettingsProperties.VOICE)
-        self.rate = self.setting(SettingsProperties.SPEED)
+        self.voice = self.setting(SettingProp.VOICE)
+        self.rate = self.setting(SettingProp.SPEED)
         self.useAOSS = self.setting('use_aoss')
         if self.useAOSS and not SystemQueries.commandIsAvailable('aoss'):
             self._logger.info(
                 'Cepstral: Use aoss is enabled, but aoss is not found. Disabling.')
             self.useAOSS = False
-        volume = self.setting(SettingsProperties.VOLUME)
+        volume = self.setting(SettingProp.VOLUME)
         self.volume = int(
             round(100 * (10 ** (volume / 20.0))))  # convert from dB to percent
-        pitch = self.setting(SettingsProperties.PITCH)
+        pitch = self.setting(SettingProp.PITCH)
         self.pitch = 0.4 + ((
                                         pitch + 6) / 20.0) * 2  # Convert from (-6 to
         # +14) value to (0.4 to 2.4)
@@ -238,7 +238,7 @@ class CepstralTTSBackend(base.SimpleTTSBackend):
 
     @classmethod
     def settingList(cls, setting, *args):
-        if setting == SettingsProperties.VOICE:
+        if setting == SettingProp.VOICE:
             return cls.voices()
         return None
 

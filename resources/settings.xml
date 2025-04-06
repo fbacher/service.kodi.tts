@@ -1,6 +1,7 @@
 <?xml version="1.0" ?>
 <settings version="1">
     <section id="service.kodi.tts">
+        <!--
         <category help="" id="engine.tts" label="32001">
             <group id="1">
                 <setting help="" id="gui.tts" label="32219" type="action">
@@ -11,7 +12,7 @@
                     </control>
                 </setting>
             </group>
-        </category>
+        </category> -->
         <!-- Advanced -->
 
         <category help="" id="advanced" label="32031">
@@ -263,7 +264,7 @@
                     </control>
                     <visible>true</visible>
                 </setting>
-                <setting help="" id="engine" label="32211" type="string">
+                <setting help="" id="current_engine.tts" label="32211" type="string">
                     <level>4</level>
                     <constraints>
                         <allowempty>false</allowempty>
@@ -353,13 +354,32 @@
                     </control>
                     <visible>true</visible>
                 </setting>
-
+                <setting help="" id="gender.google" label="32178" type="string">
+                    <!-- TODO: Eliminate -->
+                    <level>4</level>
+                    <default>female</default>
+                    <control type="edit" format="string">
+                        <heading>32005</heading>
+                    </control>
+                    <visible>true</visible>
+                </setting>
                 <setting help="" id="language.google" label="32178" type="string">
                     <level>4</level>
                     <constraints>
                         <allowempty>true</allowempty>
                     </constraints>
                     <default>en</default>
+                    <control type="edit" format="string">
+                        <heading>32178</heading>
+                    </control>
+                    <visible>true</visible>
+                </setting>
+                  <setting help="" id="converter.google" label="32178" type="string">
+                    <level>4</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <default></default>
                     <control type="edit" format="string">
                         <heading>32178</heading>
                     </control>
@@ -416,14 +436,14 @@
                     <visible>true</visible>
                 </setting>
 
-                <!-- <setting help="" id="gender.no_engine" label="32178" type="string">
+                <setting help="" id="gender.no_engine" label="32178" type="string">
                     <level>4</level>
                     <default>female</default>
                     <control type="edit" format="string">
                         <heading>32005</heading>
                     </control>
                     <visible>true</visible>
-                </setting> -->
+                </setting>
                 <setting help="" id="language.no_engine" label="32178" type="string">
                     <level>4</level>
                     <constraints>
@@ -505,12 +525,12 @@
                     </control>
                     <visible>true</visible>
                 </setting>
-                <setting help="" id="api_key.powershell" label="32178" type="string">
+                 <setting help="" id="converter.powershell" label="32178" type="string">
                     <level>4</level>
-                      <constraints>
-                        <allowempty>false</allowempty>
+                    <constraints>
+                        <allowempty>true</allowempty>
                     </constraints>
-                    <default>abc</default>
+                    <default></default>
                     <control type="edit" format="string">
                         <heading>32178</heading>
                     </control>
@@ -539,6 +559,20 @@
                     <visible>true</visible>
                 </setting>
                 <setting help="" id="cache_speech.powershell" label="32178"
+                         type="boolean">
+                    <level>4</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                    <visible>true</visible>
+                </setting>
+                  <setting help="" id="cache_speech.mplayer" label="32178"
+                         type="boolean">
+                    <level>4</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                    <visible>true</visible>
+                </setting>
+                  <setting help="" id="cache_speech.mpv" label="32178"
                          type="boolean">
                     <level>4</level>
                     <default>true</default>

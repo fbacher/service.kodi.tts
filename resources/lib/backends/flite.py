@@ -13,7 +13,7 @@ from backends.base import SimpleTTSBackend
 from common.logger import *
 from common.monitor import Monitor
 from common.setting_constants import Backends, Mode, Players
-from common.settings_low_level import SettingsProperties
+from common.settings_low_level import SettingProp
 from common.system_queries import SystemQueries
 
 module_logger: BasicLogger = BasicLogger.get_logger(__name__)
@@ -25,11 +25,11 @@ class FliteTTSBackend(SimpleTTSBackend):
     #  speedConstraints = (20, 100, 200, True)
 
     settings = {
-        SettingsProperties.PIPE  : False,
-        SettingsProperties.PLAYER: Players.INTERNAL,
-        SettingsProperties.SPEED : 100,
-        SettingsProperties.VOICE : 'kal16',
-        SettingsProperties.VOLUME: 0
+        SettingProp.PIPE  : False,
+        SettingProp.PLAYER: Players.INTERNAL,
+        SettingProp.SPEED : 100,
+        SettingProp.VOICE : 'kal16',
+        SettingProp.VOLUME: 0
     }
     onATV2 = SystemQueries.isATV2()
 
@@ -97,21 +97,21 @@ class FliteTTSBackend(SimpleTTSBackend):
         if cls.onATV2:
             return None
 
-        elif setting == SettingsProperties.PLAYER:
-            # Get list of player ids. Id is same as is stored in settings.xml
+        elif setting == SettingProp.PLAYER:
+            # Get list of player_key ids. Id is same as is stored in settings.xml
 
             players = cls.get_players(include_builtin=False)
-            default_player = cls.get_setting_default(SettingsProperties.PLAYER)
+            default_player = cls.get_setting_default(SettingProp.PLAYER)
 
             return players, default_player
 
-        elif setting == SettingsProperties.VOICE:
+        elif setting == SettingProp.VOICE:
             return [(v, v) for v in subprocess.check_output(['flite', '-lv'],
                                                             universal_newlines=True).split(
                 ': ', 1)[-1].strip().split(' ')]
 
 # class FliteTTSBackend(BaseEngineService):
-#    service_id = 'Flite':q:q
+#    setting_id = 'Flite':q:q
 #    def __init__(self):
 #        import ctypes
 #        self.flite = ctypes.CDLL('libflite.so.1',mode=ctypes.RTLD_GLOBAL)
@@ -138,7 +138,7 @@ class FliteTTSBackend(SimpleTTSBackend):
 #        return True
 
 # class FliteTTSBackend(BaseEngineService):
-#    service_id = 'Flite'
+#    setting_id = 'Flite'
 #
 #    def say(self,text,interrupt=False):
 #        if not text: return

@@ -12,7 +12,7 @@ except ImportError:
 from common import *
 
 from backends.settings.service_types import Services
-from backends.settings.setting_properties import SettingsProperties
+from backends.settings.setting_properties import SettingProp
 from common.messages import Message, Messages
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
@@ -57,7 +57,7 @@ class Backends(BaseSettingsConstants):
         ESPEAK_ID,
         # EXPERIMENTAL_ENGINE_ID,
         # FESTIVAL_ID,
-        # FLITE_ID,
+        # FLITE_ID,check_availability
         GOOGLE_ID,
         # INTERNAL_ID,
         # LOG_ONLY_ID,
@@ -92,14 +92,16 @@ class Backends(BaseSettingsConstants):
     # below the CACHE_PATH
 
     ENGINE_CACHE_CODE: Dict[str, str] = {
-        ESPEAK_ID             : 'espeak',
+        ESPEAK_ID             : 'espk',
         FESTIVAL_ID           : 'fest',
         FLITE_ID              : 'flite',
+        NO_ENGINE_ID          : 'no_eng',
         RESPONSIVE_VOICE_ID   : 'rv',
         SPEECH_DISPATCHER_ID  : 'speechDisp',
         EXPERIMENTAL_ENGINE_ID: 'ex',
         GOOGLE_ID             : 'goo',
-        PIPER_ID              : 'piper'
+        PIPER_ID              : 'piper',
+        Services.MPLAYER_ID   : 'mplr'
     }
 
 
@@ -286,7 +288,7 @@ class Players(BaseSettingsConstants):
     MPG123: Final[str] = Services.MPG123_ID.value
     MPG321_OE_PI: Final[str] = Services.MPG321_OE_PI_ID.value
 
-    # Engine's built-in player
+    # Engine's built-in player_key
 
     INTERNAL: Final[str] = Services.INTERNAL_PLAYER_ID.value
 
@@ -317,9 +319,9 @@ class Players(BaseSettingsConstants):
         return Players.settings_map[player].get_msg()
 
     ALL_PLAYER_IDS: List[str] = [
-            Services.MPV_ID,
-            Services.MPLAYER_ID,
-            Services.SFX_ID,
+            MPV,
+            MPLAYER,
+            SFX,
             # WINDOWS,
             # APLAY,
             # PAPLAY,
@@ -328,7 +330,7 @@ class Players(BaseSettingsConstants):
             # MPG321,
             # MPG123,
             # MPG321_OE_PI,
-            # INTERNAL,
+            INTERNAL,
             # NONE,
             # WavAudioPlayerHandler,
             # MP3AudioPlayerHandler,
@@ -338,7 +340,7 @@ class Players(BaseSettingsConstants):
 
 class PlayerMode(StrEnum):
     """
-    Defines the various supported player modes. Includes a ranking method
+    Defines the various supported player_key modes. Includes a ranking method
     so that different modes can be compared.
     """
 
@@ -448,6 +450,7 @@ class PlayerMode(StrEnum):
 class AudioType(StrEnum):
     MP3 = 'mp3'
     WAV = 'wav'
+    NONE = 'none'  # Only when engine is also playing, i.e. no audio file produced
 
 
 class Converters(BaseSettingsConstants):
@@ -514,7 +517,7 @@ class ChannelSettingsMap(BaseSettingsConstants):
 
 
 class Misc(BaseSettingsConstants):
-    PITCH: Final[str] = SettingsProperties.PITCH
+    PITCH: Final[str] = SettingProp.PITCH
 
     settings_map = {
         PITCH: Messages.MISC_PITCH

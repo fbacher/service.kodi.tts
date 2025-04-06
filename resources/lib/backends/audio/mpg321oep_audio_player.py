@@ -1,3 +1,4 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
 import errno
@@ -24,13 +25,13 @@ class Mpg321OEPiAudioPlayer(SubprocessAudioPlayer):
     #  Plays using ALSA
     #
     ID = Players.MPG321_OE_PI
-    service_ID = ID
+    service_id = ID
     # name = 'mpg321 OE Pi'
 
     _supported_input_formats: List[AudioType] = [AudioType.MP3]
     _supported_output_formats: List[AudioType] = []
     _provides_services: List[ServiceType] = [ServiceType.PLAYER]
-    SoundCapabilities.add_service(service_ID, _provides_services,
+    SoundCapabilities.add_service(service_id, _provides_services,
                                   _supported_input_formats,
                                   _supported_output_formats)
 
@@ -68,9 +69,9 @@ class Mpg321OEPiAudioPlayer(SubprocessAudioPlayer):
             reraise(*sys.exc_info())
         except IOError as e:
             if e.errno != errno.EPIPE:
-                module_logger.error('Error piping audio')
+                MY_LOGGER.error('Error piping audio')
         except:
-            module_logger.error('Error piping audio')
+            MY_LOGGER.error('Error piping audio')
         source.close()
         self._wavProcess.stdin.close()
         while self._wavProcess.poll() is None and self.active:

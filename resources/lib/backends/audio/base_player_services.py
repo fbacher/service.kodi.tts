@@ -12,7 +12,7 @@ class BasePlayerServices(IServices):
     def get_player(cls, service_or_id: str) -> IPlayer:
         service_id: str
         if isinstance(service_or_id, BasePlayerServices):
-            service_id = service_or_id.service_ID
+            service_id = service_or_id.service_id
         else:
             service_id = service_or_id
         return PlayerIndex.get_player(service_id)

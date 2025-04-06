@@ -5,6 +5,7 @@ Created on Feb 19, 2019
 
 @author: Frank Feuerbacher
 """
+from __future__ import annotations
 
 
 # From six

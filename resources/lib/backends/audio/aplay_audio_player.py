@@ -1,3 +1,4 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
 from backends.audio.base_audio import SubprocessAudioPlayer
@@ -14,10 +15,10 @@ MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 
 class AplayAudioPlayer(SubprocessAudioPlayer):
     #
-    # ALSA player. amixer could be used for volume, etc.
+    # ALSA player_key. amixer could be used for volume, etc.
     #
     ID: Final[str] = Players.APLAY
-    service_ID: Final[str] = ID
+    service_id: Final[str] = ID
     # name = 'aplay'
     _availableArgs = ('aplay', '--version')
     _playArgs = ('aplay', '-q', None)
@@ -28,7 +29,7 @@ class AplayAudioPlayer(SubprocessAudioPlayer):
     _supported_output_formats: List[AudioType] = [AudioType.WAV, AudioType.MP3]
     _provides_services: List[ServiceType] = [ServiceType.PLAYER,
                                              ServiceType.TRANSCODER]
-    SoundCapabilities.add_service(service_ID, _provides_services,
+    SoundCapabilities.add_service(service_id, _provides_services,
                                   _supported_input_formats,
                                   _supported_output_formats)
 

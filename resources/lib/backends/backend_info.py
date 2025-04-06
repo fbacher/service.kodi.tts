@@ -7,6 +7,7 @@ from backends.backend_info_bridge import BackendInfoBridge
 from backends.i_backend_index import IEngineIndex
 from backends.i_backend_info import IBackendInfo
 from backends.i_tts_backend_base import ITTSBackendBase
+from backends.settings.service_types import (ServiceID, ServiceType)
 from common import *
 from common.base_services import BaseServices
 from common.constants import Constants
@@ -63,7 +64,7 @@ class BackendInfo(IBackendInfo):
                 f'{str(can_stream_wav)}')
         for engine_id in Backends.ALL_ENGINE_IDS:
             engine: ITTSBackendBase
-            engine = BaseServices.getService(engine_id)
+            engine = BaseServices.get_service(ServiceID(ServiceType.ENGINE, engine_id))
             try:
                 if engine is None or not engine.is_available_and_usable():
                     continue
@@ -97,9 +98,10 @@ class BackendInfo(IBackendInfo):
     @classmethod
     def getVoices(cls, engine_id):
         voices = None
-        bClass: ITTSBackendBase = cls.getBackendByProvider(engine_id)
+        bClass: Callable | ITTSBackendBase = cls.getBackendByProvider(engine_id)
         if bClass:
-            voices = bClass.voices()
+            with bClass as b:
+                voices = b.voices()
         return voices
 
     @classmethod
@@ -146,7 +148,7 @@ class BackendInfo(IBackendInfo):
 
     @classmethod
     def getWavStreamBackend(cls, engine_id='auto') -> ITTSBackendBase | None:
-        b: ITTSBackendBase = cls.getBackendByProvider(engine_id)
+        b: Callable | ITTSBackendBase = cls.getBackendByProvider(engine_id)
         if not b or not b._available() or not b.canStreamWav:
             for b in cls.backendsByPriority:
                 if b._available() and b.canStreamWav:

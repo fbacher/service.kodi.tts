@@ -20,11 +20,11 @@ import xbmc
 import xbmcgui
 
 from common import AbortException, reraise
-from common.logger import BasicLogger, DEBUG_XV
+from common.logger import *
 from common.monitor import Monitor
 from utils import util
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class WinDialog(StrEnum):
@@ -33,8 +33,7 @@ class WinDialog(StrEnum):
 
 
 WindowChanges = namedtuple(typename='WindowChanges',
-                           field_names='focus_changed, focus_change, clicked,'
-                                       ' click_focus, cursor_right, cursor_left')
+                           field_names='focus_changed, focus_change')
 
 ListenerInfo = namedtuple(typename='ListenerInfo',
                           field_names='listener, require_focus_change, '
@@ -49,10 +48,6 @@ class WindowMonitor(xbmcgui.Window):
 
     def __init__(self, existingWindowId: int = -1) -> None:
         super().__init__(existingWindowId=existingWindowId)
-        clz = WindowMonitor
-        if clz._logger is None:
-            # clz._logger = module_logger
-            clz._logger = module_logger
 
         self.window_id: int = existingWindowId
         self.start_focus: int = -1
@@ -88,7 +83,6 @@ class WindowMonitor(xbmcgui.Window):
                                                focus_change=current_focus)
         self.start_focus = self.current_focus
         self.focus_changed = False
-        current_focus = self.current_focus
         return changes
 
 
@@ -346,7 +340,7 @@ class WindowStateMonitor:
 
         """
         if cls._logger is None:
-            cls._logger: BasicLogger = module_logger
+            cls._logger: BasicLogger = MY_LOGGER
             cls._window_state_listener_lock = threading.RLock()
             cls._window_state_lock = threading.RLock()
 
@@ -366,7 +360,6 @@ class WindowStateMonitor:
     @classmethod
     def monitor_gui_state(cls) -> None:
         while not Monitor.wait_for_abort(timeout=cls.current_polling_interval):
-            changed_state: int
             window_state: WinDialogState
             window_state = cls.check_win_dialog_state()
             if (KodiPlayerMonitor.player_status == KodiPlayerState.PLAYING_VIDEO

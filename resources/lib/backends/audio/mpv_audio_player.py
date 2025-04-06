@@ -1,17 +1,22 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
+import os
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
+import xbmc
+
 from backends.audio.base_audio import SubprocessAudioPlayer
 from backends.audio.sound_capabilities import SoundCapabilities
+from backends.players.mpv_player_settings import MPVPlayerSettings
 from backends.players.player_index import PlayerIndex
 from backends.settings.i_validators import IChannelValidator, INumericValidator
-from backends.settings.service_types import Services, ServiceType
-from backends.settings.setting_properties import SettingsProperties
-from backends.settings.settings_map import SettingsMap
+from backends.settings.service_types import ServiceID, ServiceKey, Services, ServiceType
+from backends.settings.setting_properties import SettingProp
+from backends.settings.settings_map import Reason, SettingsMap
 from backends.settings.validators import (ChannelValidator, NumericValidator)
 from common import *
 from common.base_services import BaseServices
@@ -21,6 +26,7 @@ from common.logger import BasicLogger
 from common.phrases import Phrase
 from common.setting_constants import Channels, Players
 from common.settings import Settings
+from common.utils import TempFileUtils
 
 MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 
@@ -30,17 +36,23 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
      name = 'MPV'
      MPV is based on MPLAYER. It offers several improvements, particularly with
      running in slave mode. Using slave mode eliminates the overhead and delay of
-     launching a player for each phrase spoken. There are some significant differences
+     launching a player_key for each phrase spoken. There are some significant differences
      in the commands/aruments/behavior, but not radically different.
 
-     MPV supports -idle and -slave which keeps player from exiting
+     MPV supports -idle and -slave which keeps player_key from exiting
      after files played. When in slave mode, commands are read from sockets or
      named pipe.
     """
     ID = Players.MPV
-    service_ID: str = Services.MPV_ID
-    service_TYPE: str = ServiceType.PLAYER
-    _availableArgs: Tuple[str, str] = (Constants.MPV_PATH, '--help')
+    service_id: str = Services.MPV_ID
+    service_type: ServiceType = ServiceType.PLAYER
+    MPV_KEY: ServiceID = ServiceID(service_type, service_id)
+    service_key: ServiceID = MPV_KEY
+    CHANNELS_KEY: MPV_KEY.with_prop(SettingProp.CHANNELS)
+    CACHE_SPEECH_KEY = MPV_KEY.with_prop(SettingProp.CACHE_SPEECH)
+    MPV_VOLUME_KEY: ServiceID = MPV_KEY.with_prop(SettingProp.VOLUME)
+    PLAYER_MODE_KEY = MPV_KEY.with_prop(SettingProp.PLAYER_MODE)
+    SPEED_KEY: ServiceID = MPV_KEY.with_prop(SettingProp.SPEED)
 
     """
     There are many, many features. But what we are most interested in are:
@@ -117,23 +129,23 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
         super().__init__()
 
         self.engine_id: str | None = None
+        self.engine_key: ServiceID | None = None
         self.configVolume: bool = True
         self.configSpeed: bool = True
         self.slave_pipe_path: Path | None = None
         self.play_channels: Channels = Channels.MONO
 
-    def init(self, engine_id: str):
-        self.engine_id = engine_id
-        engine: BaseServices = BaseServices.getService(engine_id)
+    def init(self, engine_key: ServiceID):
+        super().init(engine_key)
 
         can_set_volume: bool = self.canSetVolume()
         can_set_speed: bool = self.canSetSpeed()
         can_set_pitch: bool = self.canSetPitch()
-        vol, speed, pitch = \
-            engine.negotiate_engine_config(
-                    engine_id, can_set_volume, can_set_speed, can_set_pitch)
-        self.configVolume = vol
-        self.configSpeed = speed
+        # vol, speed, pitch = \
+        #     self.engine.negotiate_engine_config(
+        #             service_key, can_set_volume, can_set_speed, can_set_pitch)
+        # self.configVolume = vol
+        # self.configSpeed = speed
         channels: Channels = Channels.MONO
         self.play_channels: Channels = channels
 
@@ -175,7 +187,7 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
         :return:
         """
         clz = MPVAudioPlayer
-        slave_pipe_dir: Path = Path(tempfile.mkdtemp())
+        slave_pipe_dir: Path = Path(tempfile.mkdtemp(dir=TempFileUtils.temp_dir()))
         self.slave_pipe_path = slave_pipe_dir.joinpath('mpv.tts')
         MY_LOGGER.debug_v(f'slave_pipe_path: {self.slave_pipe_path}')
         args: List[str] = []
@@ -264,8 +276,7 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
         """
         clz = MPVAudioPlayer
         volume_validator: INumericValidator
-        volume_validator = SettingsMap.get_validator(SettingsProperties.TTS_SERVICE,
-                                                     property_id=SettingsProperties.VOLUME)
+        volume_validator = SettingsMap.get_validator(clz.MPV_VOLUME_KEY)
         volume_validator: NumericValidator
         volume: float
         if as_decibels:
@@ -290,9 +301,7 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
 
         clz = MPVAudioPlayer
         channel_validator: IChannelValidator
-        channels_prop: str = SettingsProperties.CHANNELS
-        channel_validator = SettingsMap.get_validator(clz.service_ID,
-                                                      property_id=channels_prop)
+        channel_validator = SettingsMap.get_validator(clz.CHANNELS_KEY)
         channel_validator: ChannelValidator
         channels: Channels = channel_validator.getInternalValue()
         return channels
@@ -303,12 +312,5 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
         BaseServices.register(what)
 
     @classmethod
-    def available(cls, ext=None) -> bool:
-        try:
-            subprocess.run(cls._availableArgs, stdout=subprocess.DEVNULL,
-                           universal_newlines=True, stderr=subprocess.STDOUT)
-        except AbortException:
-            reraise(*sys.exc_info())
-        except:
-            return False
-        return True
+    def check_availability(cls) -> Reason:
+        return MPVPlayerSettings.check_availability()

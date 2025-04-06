@@ -7,9 +7,10 @@ import time
 import xbmc
 import xbmcgui
 
+from backends.settings.service_types import ServiceKey
 from common import *
 
-from backends.settings.setting_properties import SettingsProperties
+from backends.settings.setting_properties import SettingProp
 from common import utils
 from common.constants import Constants
 from common.logger import *
@@ -23,9 +24,9 @@ module_logger = BasicLogger.get_logger(__name__)
 
 class ProgressNotice(xbmcgui.Window):
 
-    def __init__(self, winID: str):
+    def __init__(self, winID: int):
         self._logger = module_logger
-        self.winID = winID
+        self.winID: int = winID
         xbmcgui.Window.__init__(self, winID)
 
         self.started = False
@@ -70,7 +71,9 @@ class ProgressNotice(xbmcgui.Window):
 
     def updateProgress(self):
         try:
-            new_prog = int(self.getControl(32).getPercent())
+            control: xbmcgui.Control = self.getControl(32)
+            control: xbmcgui.ControlSlider
+            new_prog = int(control.getPercent())
             if new_prog == self.progress:
                 return None
             if (self.progress and new_prog) or self.started:
@@ -79,7 +82,7 @@ class ProgressNotice(xbmcgui.Window):
                         self.finish()
                         return None
             self.progress = new_prog
-            self.currentProgress = '{0}%'.format(self.progress)
+            self.currentProgress = f'{self.progress}%'
         except AbortException:
             reraise(*sys.exc_info())
         except:
@@ -90,7 +93,7 @@ class ProgressNotice(xbmcgui.Window):
             return
         self.finished = True
         if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug('BG Prog: Finished - Seen: {0}'.format(self.seen))
+            self._logger.debug(f'BG Prog: Finished - Seen: {self.seen}')
 
     def done(self):
         return self.finished and not self.valid
@@ -143,12 +146,11 @@ class BackgroundProgress(WindowHandlerBase):
 
     def updateFromSettings(self):
         self.last = 0
-        self.interval = Settings.getSetting(
-            SettingsProperties.BACKGROUND_PROGRESS_INTERVAL,
-            SettingsProperties.TTS_SERVICE, 5)
+        self.interval = Settings.getSetting(ServiceKey.BACKGROUND_PROGRESS_INTERVAL,
+                                            5)
         self.playDuringMedia = Settings.getSetting(
-                SettingsProperties.SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA,
-                SettingsProperties.TTS_SERVICE, False)
+                                        ServiceKey.SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA,
+                                        False)
 
     def _visible(self):
         return WindowHandlerBase.visible(self)
@@ -156,8 +158,7 @@ class BackgroundProgress(WindowHandlerBase):
     def visible(self):
         visible = self._visible()
         if visible:
-            if not Settings.getSetting(SettingsProperties.SPEAK_BACKGROUND_PROGRESS,
-                                       SettingsProperties.TTS_SERVICE,
+            if not Settings.getSetting(ServiceKey.SPEAK_BACKGROUND_PROGRESS,
                                        False):
                 return False
         else:

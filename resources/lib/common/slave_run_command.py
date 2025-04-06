@@ -78,7 +78,7 @@ class SlaveRunCommand:
 
     def destroy(self):
         """
-        Destroy this player and any dependent player process, etc. Typicaly done
+        Destroy this player_key and any dependent player_key process, etc. Typicaly done
         when either stopping TTS (F12) or shutdown, or switching players,
         players, etc.
 
@@ -200,22 +200,22 @@ class SlaveRunCommand:
                 # for p1 to receive a SIGPIPE if p2 exits before p1.
 
                 # self.args.append('/home/fbacher/.kodi/userdata/addon_data/service.kodi.tts/cache/goo/df/df16f1fee15ac535aed684fab4a54fd4.mp3')
-                MY_LOGGER.debug(f'Cond_Visibility: '
-                                 f'{xbmc.getCondVisibility("System.Platform.Windows")} '
-                                 f'mpv_path: {Constants.MPV_PATH} '
-                                 f'args: {self.args} ')
+                MY_LOGGER.debug(f'Running command: Windows')
+                MY_LOGGER.debug(f'mpv_path: {Constants.MPV_PATH} '
+                                f'args: {self.args} ')
                 self.process = subprocess.Popen(self.args, stdin=subprocess.PIPE,
                                                 stdout=subprocess.PIPE,
                                                 stderr=subprocess.STDOUT, shell=False,
-                                                universal_newlines=True,
+                                                text=True,
                                                 encoding='utf-8', env=env,
                                                 close_fds=True,
                                                 creationflags=subprocess.DETACHED_PROCESS)
             else:
+                MY_LOGGER.info(f'Running command: Linux')
                 self.process = subprocess.Popen(self.args, stdin=subprocess.PIPE,
                                                 stdout=subprocess.PIPE,
                                                 stderr=subprocess.STDOUT, shell=False,
-                                                universal_newlines=True,
+                                                text=True,
                                                 encoding='utf-8', env=env,
                                                 close_fds=True)
             Monitor.exception_on_abort()

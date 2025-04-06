@@ -1,8 +1,13 @@
 # coding=utf-8
 from __future__ import annotations
 
+from enum import StrEnum
+from logging import DEBUG
+
 #  from backends.settings.langcodes_wrapper import LangCodesWrapper
+from backends.settings.service_unavailable_exception import ServiceUnavailable
 from common.constants import Constants
+from backends.settings.service_types import ServiceID, ServiceKey, SERVICES_BY_TYPE
 
 """
    Provides a consistent way to represent the important language
@@ -20,7 +25,7 @@ import langcodes
 
 from backends.settings.i_validators import AllowedValue, IStringValidator
 from backends.settings.service_types import Services, ServiceType
-from backends.settings.setting_properties import SettingsProperties
+from backends.settings.setting_properties import SettingProp
 from backends.settings.settings_map import SettingsMap
 from common.base_services import BaseServices
 from common.debug import Debug
@@ -120,26 +125,25 @@ class LanguageInfo:
         "zh": "zh",
     }
     """
-     The service_id is used as index for entries_by_engine. Each value 
+     The setting_id is used as index for entries_by_engine. Each value 
      is in turn a Dict indexed by a supported langouage family ('en'). The
      value of this second index is every language supported by that engine and
      belonging to that language family (Here, en-us, en-gb, en...) Note that
      there can be more than one language with the same id (one for male and
      another female, for example).
      
-         entries_by_engine: key: service_id
+         entries_by_engine: key: ServiceID
                             value: Dict[lang_family, List[languageInfo]]
                             lang_family (iso-639-1 or -2 code)
                             List[languageInfo} list of all languages supported by 
                             that engine and language ('en' or 'en-us' and other variants).
     """
-    entries_by_engine: Dict[str, Dict[str, List[ForwardRef('LanguageInfo')]]] = {}
+    entries_by_engine: Dict[ServiceID, Dict[str, List[ForwardRef('LanguageInfo')]]] = {}
     #  entries_by_language: Dict[str, List[ForwardRef('LanguageInfo')]] = {}
 
     lang_id_for_lang: Dict[str, int] = {}
 
-
-    def __init__(self, engine_id: str,
+    def __init__(self, engine_key: ServiceID,
                  language_id: str,
                  country_id: str,
                  region_id: str,
@@ -154,7 +158,7 @@ class LanguageInfo:
                  ):
         """
 
-        :param engine_id: Same as service_ID/engine_ID. Specifies which engine
+        :param engine_key: Same as ServiceID. Specifies which engine
                           this entry applies to
         :param language_id: iso-639-1 or -2 code (if available)
         :param country_id: iso-1366-1 (2 or three letter) country code,
@@ -178,7 +182,7 @@ class LanguageInfo:
         clz._number_of_entries += 1
         if country_id is not None:
             country_id = country_id.lower()
-        self.engine_id: str = engine_id
+        self.engine_key: ServiceID = engine_key
         self.language_id: str = language_id
         self.country_id: str = country_id
         self.region_id: str = region_id
@@ -206,7 +210,7 @@ class LanguageInfo:
                      f'voice:  {voice_name:20}')
             prepare_for_display fills it in
         """
-        self.label: str = None
+        self.label: str | None = None
 
         # Add LanguageInfo to the appropriate engines and language groups
         # ('en-us' is part of language group 'en')
@@ -214,19 +218,18 @@ class LanguageInfo:
         # langs_for_engine: indexed by lang: 'en'
         # Contains all languages for a specific engine
 
-        # MY_LOGGER.debug(f'{self}')
+        MY_LOGGER.debug(f'{self}')
         langs_for_an_engine: Dict[str, List[ForwardRef('LanguageInfo')]]
-        langs_for_an_engine = clz.entries_by_engine.get(engine_id)
+        langs_for_an_engine = clz.entries_by_engine.get(engine_key)
         if langs_for_an_engine is None:
+            MY_LOGGER.debug(f'No languages for engine {engine_key}')
             langs_for_an_engine = {}
-            clz.entries_by_engine[engine_id] = langs_for_an_engine
+            clz.entries_by_engine[engine_key] = langs_for_an_engine
 
         lang_family_list: List[ForwardRef('LanguageInfo')]
-        engine_specific_langs = langs_for_an_engine.get(language_id)
-        if engine_specific_langs is None:
-            engine_specific_langs = []
-            langs_for_an_engine[language_id] = engine_specific_langs
+        engine_specific_langs = langs_for_an_engine.setdefault(language_id, [])
         engine_specific_langs.append(self)  # TODO, put best entry first
+        MY_LOGGER.debug(f'Best entry for engine {engine_key} is {self}')
 
         """
           Create a second table to look up all languges within a family for
@@ -243,7 +246,7 @@ class LanguageInfo:
 
     @classmethod
     def add_language(cls,
-                     engine_id: str,
+                     engine_key: ServiceID,
                      language_id: str,
                      country_id: str,
                      region_id: str,
@@ -258,8 +261,7 @@ class LanguageInfo:
                      ) -> None:
         """
 
-        :param engine_id: Same as service_ID/engine_ID. Specifies which engine
-                          this entry applies to
+        :param engine_key: Specifies which engine this entry applies to
         :param language_id: iso-639-1 or -2 code (if available)
         :param country_id: iso-1366-1 (2 or three letter) country code,
                            if available.
@@ -283,7 +285,7 @@ class LanguageInfo:
         if country_id is not None:
             country_id = country_id.lower()
         langs_for_an_engine: Dict[str, List[ForwardRef('LanguageInfo')]]
-        langs_for_an_engine = cls.entries_by_engine.get(engine_id)
+        langs_for_an_engine = cls.entries_by_engine.get(engine_key)
         if langs_for_an_engine is not None:
             engine_specific_langs = langs_for_an_engine.get(language_id)
             if engine_specific_langs is not None:
@@ -298,7 +300,7 @@ class LanguageInfo:
                             MY_LOGGER.debug_v(f'Dupe: ignored')
                             return
         '''
-        MY_LOGGER.debug(f'service_id: {service_id}\n'
+        MY_LOGGER.debug(f'setting_id: {setting_id}\n'
                         f'country_id: {country_id}\n'
                         f'region_id: {region_id}\n'
                         f'ietf: {ietf}\n'
@@ -309,7 +311,7 @@ class LanguageInfo:
                         f'engine_quality: {engine_quality}\n'
                         f'voice_quality: {voice_quality}')
         '''
-        LanguageInfo(engine_id,
+        LanguageInfo(engine_key,
                      language_id,
                      country_id,
                      region_id,
@@ -324,14 +326,14 @@ class LanguageInfo:
 
     @classmethod
     def get_entry(cls,
-                  engine_id: str | None = None,
+                  engine_key: ServiceID | None = None,
                   engine_voice_id: str | None = None,
                   lang_id: str | None = None) -> ForwardRef('LanguageInfo'):
         """
         Finds the LanguageInfo entry that matches the criteria.
         Any missing arguments will be filled in with current setting values.
 
-        :param engine_id:
+        :param engine_key:
         :param engine_voice_id:
         :param lang_id: IETF lang 2 or 3 char language ex: 'en'
         :return:
@@ -339,31 +341,31 @@ class LanguageInfo:
         cls.get_lang_info()
         # Get closet match to current lang setting, not Kodi's locale
 
-        if engine_id is None:
-            engine_id: str = Settings.get_engine_id()
+        if engine_key is None:
+            engine_key: ServiceID = Settings.get_engine_key()
         if engine_voice_id is None:
-            engine_voice_id: str = Settings.get_voice(engine_id)
+            engine_voice_id: str = Settings.get_voice(engine_key)
         if lang_id is None:
             ietf_lang: langcodes.Language
             _, _, _, ietf_lang = LanguageInfo.get_kodi_locale_info()
             lang_id = ietf_lang.language
-        MY_LOGGER.debug(f'engine: {engine_id} voice_id: {engine_voice_id} '
+        MY_LOGGER.debug(f'{engine_key} voice_id: {engine_voice_id} '
                         f'lang: {lang_id}')
-        entries:  Dict[str, Dict[str, List[ForwardRef('LanguageInfo')]]]
-        entries = cls.get_entries(engine_id=engine_id, lang_family=lang_id)
+        entries:  Dict[ServiceID, Dict[str, List[ForwardRef('LanguageInfo')]]]
+        entries = cls.get_entries(engine_key=engine_key, lang_family=lang_id)
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             MY_LOGGER.debug_v(f'# entries: {len(entries.keys())} keys:'
                               f' {entries.keys()}')
         if entries is None:
-            MY_LOGGER.error(f"Can't find voice entry for engine: {engine_id} "
-                              f"# entries: {cls._number_of_entries}")
+            MY_LOGGER.error(f"Can't find voice entry for: {engine_key} "
+                            f"# entries: {cls._number_of_entries}")
             return None
 
         engine_lang_entries:  Dict[str, List[ForwardRef('LanguageInfo')]] | None
-        engine_lang_entries = entries.get(engine_id)
+        engine_lang_entries = entries.get(engine_key)
         if engine_lang_entries is None:
-            MY_LOGGER.error(f"Can't find voice entry for engine: {engine_id} "
-                              f"# entries: {cls._number_of_entries}")
+            MY_LOGGER.error(f"Can't find voice entry for: {engine_key} "
+                            f"# entries: {cls._number_of_entries}")
             return None
 
         #  MY_LOGGER.debug(f'# engine_lang_entries: {len(engine_lang_entries.keys())} '
@@ -393,17 +395,17 @@ class LanguageInfo:
 
     @classmethod
     def get_entries(cls, translate: bool = True, ordered: bool = True,
-                    engine_id: str | None = None,
+                    engine_key: ServiceID | None = None,
                     lang_family: str | None = None,
                     deep: bool = True
-                    ) -> Dict[str, Dict[str, List[ForwardRef('LanguageInfo')]] | None]:
+                    ) -> Dict[ServiceID, Dict[str, List[ForwardRef('LanguageInfo')]] | None]:
         """
         Gets language capabilities of all or a single TTS engine.
 
         :param translate: Translate any fields in BOTH current lang as well
                            as the language of the locale (if they are different)
         :param ordered: Return entries sorted by language
-        :param engine_id: If None, then return information for all engines
+        :param engine_key: If None, then return information for all engines
                        If not None, then return information for the engine
                        identified by 'engine'
         :param lang_family: Limits returned language information to this
@@ -413,32 +415,41 @@ class LanguageInfo:
                     If False, then return only one language entry for each
                     supported language ('en') with the closest match to the
                     current Kodi locale.
-        :return: Dict indexed by service_id or language_id. Values are lists
+        :return: Dict indexed by service_key. Values are lists
                  of languages supported by that engine. The list will contain
                  all supported variations of a single language if deep=True,
                  otherwise it will contain (TODO: complete)
         """
         number_of_entries: int = 0
         cls.get_lang_info()
-        langs_for_engines: List[Dict[str, List[ForwardRef('LanguageInfo')]]] = []
+        langs_for_engines: List[Dict[engine_key, List[ForwardRef('LanguageInfo')]]] = []
         langs_for_an_engine: Dict[str, List[ForwardRef('LanguageInfo')]]
-        engine_id_arg: str | None = engine_id
+        engine_key_arg: ServiceID = engine_key
         from backends.settings.settings_helper import SettingsHelper
 
         kodi_lang, kodi_locale, kodi_friendly_locale, kodi_language = \
             LanguageInfo.get_kodi_locale_info()
-        if engine_id is not None:
-            langs_for_an_engine = cls.entries_by_engine.get(engine_id)
+        if engine_key is not None:
+            langs_for_an_engine = cls.entries_by_engine.get(engine_key)
             if langs_for_an_engine is None:
-                return_value:  Dict[str,
+                return_value:  Dict[ServiceID,
                                     Dict[str, List[ForwardRef('LanguageInfo')]] | None]
-                return_value = {engine_id: None}
+                return_value = {engine_key: None}
+                MY_LOGGER.debug(f'engine supports no languages return value: {return_value}')
                 return return_value
             langs_for_engines.append(langs_for_an_engine)
         else:
-            for engine_id, langs_for_an_engine in cls.entries_by_engine.items():
-                engine_id: str
+            # Get language info for EVERY engine
+            MY_LOGGER.debug(f'entries_by_engine.keys: {cls.entries_by_engine.keys()}')
+            for engine_key, langs_for_an_engine in cls.entries_by_engine.items():
+                engine_key: ServiceID
                 langs_for_engines.append(langs_for_an_engine)
+            if MY_LOGGER.isEnabledFor(DEBUG_XV):
+                for engine_key in cls.entries_by_engine.keys():
+                    msg: str = f'langs for {engine_key}'
+                    for langs_for_an_engine in cls.entries_by_engine[engine_key].values():
+                        msg = f'{msg}\n  {langs_for_an_engine}'
+                    MY_LOGGER.debug_xv(msg)
 
             '''
             if lang_family != '':
@@ -448,7 +459,10 @@ class LanguageInfo:
                         del keys_for_lang_family[key]
             '''
 
+            # Filter out any languages that we are not interested in
+            # Add translated messages and additional detail to each entry
             for langs_for_an_engine in langs_for_engines:
+                MY_LOGGER.debug(f'langs_for_an_engine: engine: {langs_for_an_engine} ')
                 for lang_family_id, engine_langs_in_family in langs_for_an_engine.items():
                     lang_family_id: str
                     if lang_family is not None and lang_family != lang_family_id:
@@ -459,21 +473,31 @@ class LanguageInfo:
                                             engine_langs_in_family,
                                             lang_family_id,
                                             kodi_lang)
+
         """
             Only return info caller requested:
-            If service_id specified, then only return info for that one.
+            If setting_id specified, then only return info for that one.
             
-            entries_by_engine: key: service_id
+            entries_by_engine: key: service_key (ServiceType, service_id)
                             value: Dict[lang_family, List[languageInfo]]
                             lang_family (iso-639-1 or -2 code)
                             List[languageInfo} list of all languages supported by 
                             that engine and language ('en' or 'en-us' and other variants).
         """
-        if engine_id_arg is not None:
+        # Was this called about a specific Engine?
+        if engine_key_arg is not None:
             entry: Dict[str, List[ForwardRef('LanguageInfo')]]
-            entry = cls.entries_by_engine.get(engine_id_arg)
-            return {engine_id: entry}
+            entry = cls.entries_by_engine.get(engine_key_arg)
+            return {engine_key_arg: entry}
 
+        MY_LOGGER.debug(f'entries_by_engine.keys: {cls.entries_by_engine.keys()}')
+        '''
+        for key in cls.entries_by_engine.keys():
+            msg: str = f'key: {key} '
+            for value in cls.entries_by_engine[key]:
+                msg = f'{msg}\n  {value}'
+            MY_LOGGER.debug(msg)
+        '''
         return cls.entries_by_engine
 
     @property
@@ -606,7 +630,11 @@ class LanguageInfo:
                             language=kodi_lang))
                 MY_LOGGER.debug(f'LANGCODES lang: {self.ietf.to_tag()} display: '
                                 f'{self._translated_lang_country_name}')
-                key: str = f'{kodi_lang}-{self.ietf.territory.lower()}'
+
+                territory: str = self.ietf.territory
+                if territory is None:
+                    territory = ''
+                key: str = f'{kodi_lang}-{territory.lower()}'
                 txt = clz.get_country_name(key)
                 MY_LOGGER.debug(f'LANGCODES2 lang: {key} display: '
                                 f'{txt}')
@@ -627,8 +655,8 @@ class LanguageInfo:
         return self._translated_engine_name
 
     @classmethod
-    def get_translated_engine_name(cls, engine_id: str) -> str:
-        trans_name: str = Services(engine_id).translated_name
+    def get_translated_engine_name(cls, engine_key: ServiceID) -> str:
+        trans_name: str = Services(engine_key.service_id).translated_name
         return trans_name
 
 
@@ -729,31 +757,32 @@ class LanguageInfo:
         if cls.all_languages_loaded:
             return
 
-        engine_ids: List[Tuple[str, Dict[str, Any]]]
-        engine_ids = SettingsMap.get_available_service_ids(
-                service_type=ServiceType.ENGINE)
-        services: List[Tuple[str, str]]
-        services = SettingsMap.get_services_for_service_type(ServiceType.ENGINE)
-        # Each tuple contains [Service_Id, service_display_name]
+        avail_engines: List[ServiceID]
+        avail_engines = SettingsMap.get_available_services(ServiceType.ENGINE)
 
         if MY_LOGGER.isEnabledFor(DEBUG_XV):
-            MY_LOGGER.debug_xv(f'get_lang_info engine_ids:'
-                                            f' {len(engine_ids)}')
-        MY_LOGGER.debug(f'get_lang_info engine_ids:'
-                        f' {len(engine_ids)}')
+            MY_LOGGER.debug_xv(f'get_lang_info engine_keys: {len(avail_engines)}')
+        MY_LOGGER.debug(f'get_lang_info engine_keys: {len(avail_engines)}')
         failure: bool = False
-        for service_info in services:
-            service_info: Tuple[str, str]
-            engine_id: str = service_info[0]
-            if MY_LOGGER.isEnabledFor(DEBUG_V):
-                MY_LOGGER.debug_v(f'getting lang for {engine_id}')
-            new_active_engine = BaseServices.getService(engine_id)
-            MY_LOGGER.debug(f'active_engine: {new_active_engine}')
-            if new_active_engine is None:
-                failure = True
-                continue
-            #  new_active_engine.settingList(SettingsProperties.LANGUAGE)
-            new_active_engine.load_languages()
+        for engine_key in reversed(avail_engines):
+            engine_key: ServiceID
+
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'getting lang for {engine_key}')
+            try:
+                new_active_engine = BaseServices.get_service(engine_key)
+                MY_LOGGER.debug(f'active_engine: {new_active_engine}')
+                if new_active_engine is None:
+                    failure = True
+                    continue
+                #  new_active_engine.settingList(SettingProp.LANGUAGE)
+                new_active_engine.load_languages()
+            except ServiceUnavailable:
+                MY_LOGGER.exception(f'Error getting languages from {engine_key}.'
+                                    f' Skipping')
+            except Exception:
+                MY_LOGGER.exception(f'Error getting languages from {engine_key}.'
+                                    f' Skipping')
         if not failure:
             cls.all_languages_loaded = True
         MY_LOGGER.debug(f'Returned from load_languages()')
@@ -800,12 +829,14 @@ class LanguageInfo:
         if Constants.USE_LANGCODES_DATA:
             kodi_friendly_locale_name: str = kodi_language.display_name()
             x: str = cls.get_language_name(kodi_language.to_tag(), kodi_lang)
-            MY_LOGGER.debug(f'LANGCODES display_name {kodi_language.to_tag().lower()} {kodi_friendly_locale_name}')
-            MY_LOGGER.debug(f'LANGCODES2 display_name {kodi_language.to_tag().lower()} {x}')
+            MY_LOGGER.debug_xv(f'LANGCODES display_name {kodi_language.to_tag().lower()}'
+                               f' {kodi_friendly_locale_name}')
+            MY_LOGGER.debug_xv(f'LANGCODES2 display_name {kodi_language.to_tag().lower()} '
+                               f'{x}')
         else:
             kodi_friendly_locale_name: str = cls.get_language_name(kodi_language.to_tag(),
                                                                    kodi_lang)
-            MY_LOGGER.debug(f'LANGCODES display_name {kodi_friendly_locale_name}')
+            MY_LOGGER.debug_v(f'LANGCODES display_name {kodi_friendly_locale_name}')
         return kodi_lang, kodi_locale, kodi_friendly_locale_name, kodi_language
 
     @property
@@ -837,14 +868,15 @@ class LanguageInfo:
     @classmethod
     def init(cls) -> None:
         if not cls.initialized:
+            service_key: ServiceID = ServiceKey.ENGINE_KEY
             engine_id_val: IStringValidator
-            engine_id_val = SettingsMap.get_validator(SettingsProperties.ENGINE,
-                                                      '')
+            engine_id_val = SettingsMap.get_validator(service_key)
 
             entries: List[AllowedValue] = engine_id_val.get_allowed_values()
-            for engine_id, enabled in entries:
-                engine_id: str
+            for engine_key, enabled in entries:
+                engine_key: ServiceID
                 enabled: bool
+                MY_LOGGER.debug(f'service_key: {engine_key} enabled: {enabled}')
 
     def __eq__(self, other):
         """
@@ -854,14 +886,14 @@ class LanguageInfo:
         """
         if isinstance(other, LanguageInfo):
             other: LanguageInfo
-            return (self.engine_id == other.engine_id and
+            return (self.engine_key == other.engine_key and
                     self.language_id == other.language_id and
                     self.engine_voice_id == other.engine_voice_id)
         return NotImplemented
 
     def __repr__(self) -> str:
         field_sep: str = ''  # '{field_sep}'
-        engine_id_str: str = f'   service_id: {self.engine_id}{field_sep}'
+        engine_key_str: str = f'   setting_id: {self.engine_key}{field_sep}'
         language_id_str: str = f'   language_id: {self.language_id}{field_sep}'
         country_id_str: str = f'   country_id: {self.country_id}{field_sep}'
         region_id_str: str = f'   region_id: {self.region_id}{field_sep}'
@@ -880,7 +912,7 @@ class LanguageInfo:
                                                  f'{self.translated_lang_country_name}{field_sep}')
         translated_engine_name_str: str = (f'   translated_engine_name: '
                                            f'{self.translated_engine_name}{field_sep} ')
-        result = (f'{engine_id_str}{language_id_str}{country_id_str}'
+        result = (f'{engine_key_str}{language_id_str}{country_id_str}'
                   f'{region_id_str}'  # {gender_str}{voice_str}{engine_lang_id_str}'
                   #  f'{engine_voice_id_str}{engine_name_msg_id_str}'
                   #  f'{engine_quality_str}{voice_quality_str}{translated_gender_name_str}'

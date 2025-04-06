@@ -6,6 +6,7 @@ from threading import Thread
 
 from backends.players.iplayer import IPlayer
 from backends.players.player_index import PlayerIndex
+from backends.settings.service_types import ServiceID
 from common import *
 from common.base_services import BaseServices, IServices
 from common.logger import *
@@ -53,22 +54,10 @@ class WorkerThread:
         self.thread = Thread(target=self.process_queue, name=thread_name)
         self.thread_started: bool = False
 
-    '''
-        Handled by just expiring prior phrases. 
-        Interrupt should NOT impact phrases that are marked as not-expired,
-        nor should it discard phrases which can used to seed a phrase cache
-        for future voicing.
-        
-    def interrupt(self):
-        clz = type(self)
-        MY_LOGGER.debug(f'Purging queued messages due to interrupt',
-                          trace=Trace.TRACE_AUDIO_START_STOP)
-        self.empty_queue()
-    '''
-
     def add_to_queue(self, tts_data: TTSQueueData) -> None:
         clz = type(self)
         try:
+            MY_LOGGER.info(f'tts_data: {tts_data.data}')
             if not self.thread_started:
                 self.thread.start()
                 self.thread_started = True
@@ -98,23 +87,24 @@ class WorkerThread:
                 try:
                     kwargs: Dict[str, Any] = data.get_kwargs()
                     if kwargs['state'] == 'play_file':
-                        player_id: str = kwargs.get('player_id')
-                        player: IPlayer = PlayerIndex.get_player(player_id)
+                        player_key: ServiceID = kwargs.get('player_key')
+                        player: IPlayer = PlayerIndex.get_player(player_key.service_id)
                         phrase: Phrase = kwargs.get('phrase')
-                        engine_id: str = kwargs.get('service_id')
-                        MY_LOGGER.debug(f'player_id: {player_id} engine_id: {engine_id}')
+                        engine_key: ServiceID = kwargs.get('engine_key')
+                        # MY_LOGGER.debug(f'player_key: {player_key} '
+                        #                 f'engine_key: {engine_key}')
                         try:
-                            engine: IServices = BaseServices.getService(engine_id)
+                            engine: IServices = BaseServices.get_service(engine_key)
                             engine.say_phrase(phrase)
                         except Exception as e:
                             MY_LOGGER.exception('')
                         continue
 
                     if kwargs['state'] == 'seed_cache':
-                        engine_id: str = kwargs.get('engine_id')
+                        engine_key: ServiceID = kwargs.get('engine_key')
                         phrases: PhraseList = kwargs.get('phrases')
                         try:
-                            engine: IServices = BaseServices.getService(engine_id)
+                            engine: IServices = BaseServices.get_service(engine_key)
                             engine.seed_text_cache(phrases)
                         except Exception as e:
                             MY_LOGGER.exception('')

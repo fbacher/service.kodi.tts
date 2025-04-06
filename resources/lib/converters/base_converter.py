@@ -8,6 +8,7 @@ import shutil
 import subprocess
 
 from common import *
+from common.constants import Constants
 
 from common.logger import *
 from common.setting_constants import Converters
@@ -25,7 +26,7 @@ PLAYSFX_HAS_USECACHED: bool = False
 class AudioConverter(IConverter):
     """
     An Audio Converter converts audio from one format to another. It can be needed
-    to bridge between a player and engine that don't speak the same. In this
+    to bridge between a player_key and engine that don't speak the same. In this
     environment, it is more likely needed to reduce the size of .wav files for
     caching. Caching is needed for high-quality, but slow engines. Almost all
     text from Kodi is often repeated, even movie descriptions, since movie
@@ -34,7 +35,7 @@ class AudioConverter(IConverter):
     Currently, all converters are also players. Having separate classes for
     conversion than for playing should simplify things a bit by making it very
     clear that all settings, etc. are for acting as a converter rather than
-    player.
+    player_key.
 
     The objective is not to alter the audio, just the format. Ideally one could
     perform the conversion with settings that would not change to volume, etc.
@@ -171,6 +172,8 @@ class BaseAudioConverter(AudioConverter):
         pipe_args = self.get_pipe_args()
         MY_LOGGER.debug_v('pipeArgs: {" ".join(pipe_args)}')
         try:
+            MY_LOGGER.info(f'Running command:')
+
             with subprocess.run(pipe_args, stdin=subprocess.PIPE,
                                 stdout=subprocess.DEVNULL,
                                 stderr=subprocess.STDOUT,
@@ -222,9 +225,17 @@ class BaseAudioConverter(AudioConverter):
     @classmethod
     def available(cls, ext=None) -> bool:
         try:
-            subprocess.run(cls._availableArgs, stdout=subprocess.DEVNULL,
-                           stderr=subprocess.DEVNULL, text=True, shell=False,
-                           encoding='utf-8', check=True)
+            if Constants.PLATFORM_WINDOWS:
+                MY_LOGGER.info(f'Running command: Windows')
+                subprocess.run(cls._availableArgs, stdout=subprocess.DEVNULL,
+                               stderr=subprocess.DEVNULL, text=True, shell=False,
+                               encoding='utf-8', check=True, close_fds=True,
+                               creationflags=subprocess.DETACHED_PROCESS)
+            else:
+                MY_LOGGER.info(f'Running command: Linux')
+                subprocess.run(cls._availableArgs, stdout=subprocess.DEVNULL,
+                               stderr=subprocess.DEVNULL, text=True, shell=False,
+                               encoding='utf-8', check=True, close_fds=True)
         except subprocess.CalledProcessError:
             return False
         return True
@@ -313,7 +324,7 @@ class SOXAudioConverter(BaseAudioConverter):
 class MPlayerAudioConverter(BaseAudioConverter, BaseServices):
     """
      name = 'MPlayer'
-     MPlayer supports -idle and -slave which keeps player from exiting
+     MPlayer supports -idle and -slave which keeps player_key from exiting
      after files played. When in slave mode, commands are read from stdin.
 
      To convert from wave to mpg3:
@@ -328,13 +339,13 @@ class MPlayerAudioConverter(BaseAudioConverter, BaseServices):
                             failed = True
     """
     ID = Converters.MPLAYER
-    service_ID: str = Services.MPLAYER_ID
+    setting_id: str = Services.MPLAYER_ID
     sound_file_types: List[str] = [AudioType.WAV, AudioType.MP3]
     _supported_input_formats: List[str] = sound_file_types
     _supported_output_formats: List[str] = [AudioType.WAV, AudioType.MP3]
     _provides_services: List[ServiceType] = [ServiceType.PLAYER,
                                              ServiceType.TRANSCODER]
-    sound_capabilities = SoundCapabilities(service_ID, _provides_services,
+    sound_capabilities = SoundCapabilities(setting_id, _provides_services,
                                            _supported_input_formats,
                                            _supported_output_formats)
     _availableArgs = ('mplayer', '--help')
@@ -364,10 +375,10 @@ class MPlayerAudioConverter(BaseAudioConverter, BaseServices):
         self.configPitch: bool = False
 
     def init(self):
-        service_id: str = Settings.get_engine_id()
+        setting_id: str = Settings.get_service_key()
         self.configVolume, self.configSpeed, self.configPitch = \
             BackendInfoBridge.negotiate_engine_config(
-                                            service_id, self.canSetVolume(),
+                                            setting_id, self.canSetVolume(),
                                             self.canSetSpeed(), self.canSetPitch())
 
     def playArgs(self, path: str):
@@ -431,9 +442,9 @@ class MPlayerAudioConverter(BaseAudioConverter, BaseServices):
         return True
 
     def getPlayerSpeed(self) -> float | None:
-        service_id: str = Settings.get_engine_id()
+        setting_id: str = Settings.get_service_key()
         engine_constraints: Constraints = BackendInfoBridge.getBackendConstraints(
-                service_id, SettingsProperties.SPEED)
+                setting_id, SettingProp.SPEED)
         if engine_constraints is None:
             return None
         engine_speed: float = engine_constraints.currentValue()
@@ -449,7 +460,7 @@ class MPlayerAudioConverter(BaseAudioConverter, BaseServices):
 
 class Mpg123AudioConverter(BaseAudioConverter, BaseServices):
     ID = Converters.MPG123
-    service_ID = Services.MPG123_ID
+    setting_id = Services.MPG123_ID
     # name = 'mpg123'
     _availableArgs = ('mpg123', '--version')
     _playArgs = ('mpg123', '-q', None)
@@ -458,7 +469,7 @@ class Mpg123AudioConverter(BaseAudioConverter, BaseServices):
     _supported_input_formats: List[str] = sound_file_types
     _supported_output_formats: List[str] = []
     _provides_services: List[ServiceType] = [ServiceType.PLAYER]
-    sound_capabilities = SoundCapabilities(service_ID, _provides_services,
+    sound_capabilities = SoundCapabilities(setting_id, _provides_services,
                                             _supported_input_formats,
                                             _supported_output_formats)
     _logger: BasicLogger = None
@@ -621,13 +632,13 @@ class ConverterHandlerType:
         raise Exception('Not Implemented')
 
     def getSpeed(self) -> float:
-        speed: float = Settings.getSetting(SettingsProperties.SPEED, 
-        Settings.get_engine_id())
+        speed: float = Settings.getSetting(SettingProp.SPEED, 
+        Settings.get_service_key())
         return speed
 
     def getVolumeDb(self) -> float:
-        volumeDb: float = Settings.getSetting(SettingsProperties.VOLUME, 
-        Settings.get_engine_id())
+        volumeDb: float = Settings.getSetting(SettingProp.VOLUME, 
+        Settings.get_service_key())
         return volumeDb
 
     def setSpeed(self, speed: float):
@@ -638,7 +649,7 @@ class ConverterHandlerType:
         MY_LOGGER.debug(f'setVolume: {volume}')
         pass  # self.volume = volume
 
-    def player(self) -> str | None:
+    def player_key(self) -> str | None:
         raise Exception('Not Implemented')
 
     def canSetPipe(self) -> bool:
@@ -687,7 +698,7 @@ class BaseConverterHandler(ConverterHandlerType):
     ConverterHandlerType]]:
         return []
 
-    def player(self) -> str | None:
+    def player_key(self) -> str | None:
         return None
 
     def canSetPipe(self) -> bool:
@@ -722,7 +733,7 @@ class BaseConverterHandler(ConverterHandlerType):
     @classmethod
     def set_sound_dir(cls):
         tmpfs = utils.getTmpfs()
-        if Settings.getSetting(SettingsProperties.USE_TEMPFS, None, True) and tmpfs:
+        if Settings.getSetting(SettingProp.USE_TMPFS, None, True) and tmpfs:
             cls._logger.debug_xv(f'Using tmpfs at: {tmpfs}')
             cls.sound_dir = os.path.join(tmpfs, 'kodi_speech')
         else:
@@ -736,7 +747,7 @@ class WavAudioConverterHandler(BaseConverterHandler):
     Not all engines are capable of playing the sound, or may lack some
     capabilities such as volume or the ability to change the speed of playback.
     Players are used whenever capabilities are needed which are not inherit
-    in the engine, or when it is more convenient to use a player.
+    in the engine, or when it is more convenient to use a player_key.
 
     ConverterHandlers manage a group of players with support for a particular
     sound file type (here, wave or mp3).
@@ -771,7 +782,7 @@ class WavAudioConverterHandler(BaseConverterHandler):
                 return i
         return None
 
-    def player(self) -> Union[Type[AudioConverter], None]:
+    def player_key(self) -> Union[Type[AudioConverter], None]:
         return self._player and self._player.ID or None
 
     def canSetPipe(self) -> bool:
@@ -798,11 +809,11 @@ class WavAudioConverterHandler(BaseConverterHandler):
         if advanced is None:
             advanced = self.advanced
         old = self._player
-        player = None
+        player_key = None
         if preferred:
-            player = self.get_player(preferred)
-        if player:
-            self._player: AudioConverter = player()
+            player_key = self.get_player(preferred)
+        if player_key:
+            self._player: AudioConverter = player_key()
             self._player.init()
         elif advanced and self.hasAdvancedPlayer:
             for p in self.availablePlayers:
@@ -915,7 +926,7 @@ class MP3AudioConverterHandler(WavAudioConverterHandler):
     @classmethod
     def set_sound_dir(cls):
         tmpfs = utils.getTmpfs()
-        if Settings.getSetting(SettingsProperties.USE_TEMPFS, None, True) and tmpfs:
+        if Settings.getSetting(SettingProp.USE_TMPFS, None, True) and tmpfs:
             cls._logger.debug_xv(f'Using tmpfs at: {tmpfs}')
             cls.sound_dir = os.path.join(tmpfs, 'kodi_speech')
         else:

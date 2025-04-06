@@ -19,7 +19,7 @@ MY_LOGGER = BasicLogger.get_logger(__name__)
 
 class VirtualKeyboardReader(WindowReaderBase):
     ID = 'virtualkeyboard'
-    ip_re = re.compile('^[\d ]{3}\.[\d ]{3}\.[\d ]{3}.[\d ]{3}$')
+    ip_re = re.compile(r'^[\d ]{3}\.[\d ]{3}\.[\d ]{3}.[\d ]{3}$')
 
     def init(self) -> None:
         self.editID = None

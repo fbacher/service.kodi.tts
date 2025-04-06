@@ -10,7 +10,7 @@ import xbmc
 from backends.audio.sound_capabilities import SoundCapabilities
 from common import *
 
-from backends.settings.service_types import (ServiceType, TranscoderType,
+from backends.settings.service_types import (ServiceID, ServiceType, TranscoderType,
                                              WaveToMpg3Transcoder)
 from common.logger import *
 from common.monitor import Monitor
@@ -25,7 +25,8 @@ class TransCode:
     _supported_input_formats: List[AudioType] = [AudioType.WAV, AudioType.MP3]
     _supported_output_formats: List[AudioType] = [AudioType.MP3, AudioType.WAV]
     _provides_services: List[ServiceType] = [ServiceType.TRANSCODER]
-    SoundCapabilities.add_service(TranscoderType.LAME,
+    SoundCapabilities.add_service(ServiceID(ServiceType.TRANSCODER,
+                                            TranscoderType.LAME.value),
                                   _provides_services,
                                   _supported_input_formats,
                                   _supported_output_formats)
@@ -103,6 +104,7 @@ class TransCode:
                 # via pipe and don't log
 
                 MY_LOGGER.debug(f'Starting cmd args: {args}')
+                MY_LOGGER.info(f'Running command: Windows')
                 completed_proc: subprocess.CompletedProcess
                 completed_proc = subprocess.run(args, stdin=subprocess.DEVNULL,
                                                 capture_output=False,
@@ -113,6 +115,7 @@ class TransCode:
                                                 close_fds=True,
                                                 creationflags=subprocess.DETACHED_PROCESS)
             else:
+                MY_LOGGER.info(f'Running command: Linux')
                 completed_proc = subprocess.run(args, stdin=subprocess.DEVNULL,
                                                 capture_output=False,
                                                 shell=False,

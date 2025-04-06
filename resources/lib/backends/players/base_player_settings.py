@@ -1,3 +1,4 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
 from backends.settings.service_types import Services
@@ -6,7 +7,7 @@ from common import *
 from backends.i_tts_backend_base import ITTSBackendBase
 from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.constraints import Constraints
-from backends.settings.setting_properties import SettingsProperties
+from backends.settings.setting_properties import SettingProp
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import (NumericValidator, StringValidator,
                                           Validator)
@@ -15,7 +16,7 @@ from common.setting_constants import Players
 
 
 class BasePlayerSettings(BaseServiceSettings):
-    service_ID: str = Services.PLAYER_SERVICE
+    service_id: str = Services.PLAYER_SERVICE
     broken = False
 
     settings: Dict[str, Validator] = {}
@@ -44,11 +45,11 @@ class BasePlayerSettings(BaseServiceSettings):
                                     Players.MPLAYER, Players.MPG321, Players.MPG123,
                                     Players.INTERNAL, Players.MPG321_OE_PI]
         player_validator: StringValidator
-        player_validator = StringValidator(SettingsProperties.PLAYER, cls.service_ID,
+        player_validator = StringValidator(SettingProp.PLAYER, cls.service_id,
                                            allowed_values=valid_players,
                                            default=Players.MPV)
 
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER,
+        SettingsMap.define_setting(cls.service_id, SettingProp.PLAYER,
                                    player_validator)
 
     @classmethod

@@ -2,6 +2,8 @@
 from __future__ import annotations  # For union operator |
 
 from pathlib import Path
+
+from backends.settings.service_types import ServiceID, ServiceType
 from common import *
 
 from common.phrases import Phrase
@@ -9,11 +11,14 @@ from common.phrases import Phrase
 
 class IPlayer:
     ID: str = None
+    service_id: str | None = None
+    service_type: ServiceType | None= None
+    service_key: ServiceID | None = None
 
     def __init__(self) -> None:
         pass
 
-    def init(self, service_id: str) -> None:
+    def init(self, service_key: ServiceID) -> None:
         pass
 
     @classmethod
@@ -76,18 +81,18 @@ class IPlayer:
                     keep_silent: bool = False,
                     kill: bool = False):
         """
-        Stop player (most likely because current text is expired)
+        Stop player_key (most likely because current text is expired)
         Engines may wish to override this method, particularly when
-        the player is built-in.
+        the player_key is built-in.
 
         :param purge: if True, then purge any queued vocings
                       if False, then only stop playing current phrase
         :param keep_silent: if True, ignore any new phrases until restarted
                             by resume_player.
                             If False, then play any new content
-        :param kill: If True, kill any player processes. Implies purge and
+        :param kill: If True, kill any player_key processes. Implies purge and
                      keep_silent.
-                     If False, then the player will remain ready to play new
+                     If False, then the player_key will remain ready to play new
                      content, depending upon keep_silent
         :return:
         """
@@ -106,6 +111,9 @@ class IPlayer:
         # Is this Audio Player built-into the voice engine (i.e. espeak).
         #
         raise NotImplementedError
+
+    def is_slave_player(self) -> bool:
+        return False
 
     @staticmethod
     def register() -> None:

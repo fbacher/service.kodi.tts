@@ -86,9 +86,9 @@ class Statement:
     def is_required(self, required_types) -> bool:
         """
             Determines if there is any interest in voicing a statement of this type
-            (HINT_TEXT) or if it is to be ignored.
+            (HINT_TEXT_ON_STARTUP) or if it is to be ignored.
 
-        :param required_types: types, such as StatementType.HINT_TEXT
+        :param required_types: types, such as StatementType.HINT_TEXT_ON_STARTUP
         :return: True, there is a desire to voice these, compare text with previously
             voiced to be sure. Otherwise False, no interest in voicing.
         """
@@ -204,7 +204,7 @@ class Statements:
 
         :param stmt_filter: Limits the statements marked to ones which
              match the filter. (To mark only statements marked as NORMAL
-             or HINT_TEXT, specify stmt_filter=(NORMAL, HINT_TEXT)).
+             or HINT_TEXT_ON_STARTUP, specify stmt_filter=(NORMAL, HINT_TEXT_ON_STARTUP)).
         :param interrupt: Causes the resulting PhraseList's interrupt
             attribute to be overriden. Using interrupt=False will help
             ensure that the full-description will get voiced before a
@@ -365,7 +365,7 @@ class StatementIterator:
         :param statements:
         :param stmt_filter: Combined with Statement.omitABLE, determines if
                        certain StatementTypes are omitted from voicing or
-                       not. (StatementType.HINT_TEXT)
+                       not. (StatementType.HINT_TEXT_ON_STARTUP)
         """
         self.stmts: Statements = statements
         self.stmt_filter: List[StatementType] = stmt_filter

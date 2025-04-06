@@ -13,7 +13,7 @@ from common.constants import Constants
 from common.logger import *
 from common.settings import Settings
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 DATAPATH = os.path.join(Constants.PROFILE_PATH, 'addon_data.json')
 BASE = '{ "jsonrpc": "2.0", "id": 1, "method": "Addons.GetAddons", "params": {' \
@@ -26,12 +26,12 @@ def getAddonsMD5():
 
 
 def saveAddonsMD5(md5):
-    module_logger.debug_v('addoninfo.saveAddonsMD5')
+    MY_LOGGER.debug_v('addoninfo.saveAddonsMD5')
     Settings.set_addons_md5(md5)
 
 
 def loadAddonsMD5():
-    module_logger.debug_v('addoninfo.loadAddonsMD5')
+    MY_LOGGER.debug_v('addoninfo.loadAddonsMD5')
     return Settings.get_addons_md5()
 
 

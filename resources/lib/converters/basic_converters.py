@@ -15,10 +15,11 @@ from backends.settings.constraints import Constraints
 from backends.settings.service_types import Services
 from common import utils
 from common.base_services import BaseServices
+from common.constants import Constants
 from common.logger import *
 from common.setting_constants import AudioType, Converters
 from common.settings import Settings
-from common.settings_low_level import SettingsProperties
+from common.settings_low_level import SettingProp
 from common.system_queries import SystemQueries
 from converters.base_converter import AudioConverter
 from converters.converter_index import ConverterIndex
@@ -34,7 +35,7 @@ PLAYSFX_HAS_USECACHED: bool = False
 
 class WindowsAudioConverter(AudioConverter):
     ID = Converters.WINDOWS
-    service_ID = ID
+    service_id = ID
     # name = 'Windows Internal'
     sound_file_base = '{speech_file_name}{sound_file_type}'
     sound_dir: str = None
@@ -42,7 +43,7 @@ class WindowsAudioConverter(AudioConverter):
     _supported_output_formats: List[AudioType] = [AudioType.WAV, AudioType.MP3]
     _provides_services: List[ServiceType] = [ServiceType.PLAYER]
     _available = SystemQueries.is_windows
-    SoundCapabilities.add_service(service_ID, _provides_services,
+    SoundCapabilities.add_service(service_id, _provides_services,
                                   _supported_input_formats,
                                   _supported_output_formats)
 
@@ -175,7 +176,7 @@ class BaseAudioConverter(AudioConverter):
 
 class SOXAudioConverter(AudioConverter):
     ID = Converters.SOX
-    service_ID = ID
+    service_id = ID
     # name = 'SOX'
     _availableArgs = ('sox', '--version')
     _playArgs = ('play', '-q', None)
@@ -189,7 +190,7 @@ class SOXAudioConverter(AudioConverter):
     _supported_output_formats: List[AudioType] = [AudioType.WAV, AudioType.MP3]
     _provides_services: List[ServiceType] = [ServiceType.PLAYER,
                                              ServiceType.TRANSCODER]
-    SoundCapabilities.add_service(service_ID, _provides_services,
+    SoundCapabilities.add_service(service_id, _provides_services,
                                   _supported_input_formats,
                                   _supported_output_formats)
 
@@ -237,10 +238,14 @@ class SOXAudioConverter(AudioConverter):
         """
         try:
             if ext == '.mp3':
+                MY_LOGGER.info(f'Running command:')
+
                 if '.mp3' not in subprocess.check_output(['sox', '--help'],
                                                          universal_newlines=True):
                     return False
             else:
+                MY_LOGGER.info(f'Running command:')
+
                 subprocess.call(cls._availableArgs, stdout=(open(os.path.devnull, 'w')),
                                 stderr=subprocess.STDOUT, universal_newlines=True,
                                 encoding='utf-8')
@@ -256,7 +261,7 @@ class SOXAudioConverter(AudioConverter):
 class MPlayerAudioConverter(AudioConverter, BaseServices):
     """
      name = 'MPlayer'
-     MPlayer supports -idle and -slave which keeps player from exiting
+     MPlayer supports -idle and -slave which keeps player_key from exiting
      after files played. When in slave mode, commands are read from stdin.
 
      To convert from wave to mpg3:
@@ -271,14 +276,14 @@ class MPlayerAudioConverter(AudioConverter, BaseServices):
                             failed = True
     """
     ID = Converters.MPLAYER
-    service_ID: str = Services.MPLAYER_ID
+    service_id: str = Services.MPLAYER_ID
     service_Type: ServiceType = ServiceType.TRANSCODER
 
     _supported_input_formats: List[AudioType] = [AudioType.WAV, AudioType.MP3]
     _supported_output_formats: List[AudioType] = [AudioType.WAV, AudioType.MP3]
     _provides_services: List[ServiceType] = [ServiceType.PLAYER,
                                              ServiceType.TRANSCODER]
-    SoundCapabilities.add_service(service_ID, _provides_services,
+    SoundCapabilities.add_service(service_id, _provides_services,
                                   _supported_input_formats,
                                   _supported_output_formats)
     _availableArgs = ('mplayer', '--help')
@@ -377,7 +382,7 @@ class MPlayerAudioConverter(AudioConverter, BaseServices):
     def getPlayerSpeed(self) -> float | None:
         engine_id: str = Settings.get_engine_id()
         engine_constraints: Constraints = BackendInfoBridge.getBackendConstraints(
-                engine_id, SettingsProperties.SPEED)
+                engine_id, SettingProp.SPEED)
         if engine_constraints is None:
             return None
         engine_speed: float = engine_constraints.currentValue(engine_id)
@@ -399,7 +404,7 @@ class Mpg123AudioConverter(AudioConverter, BaseServices):
         - Convert to wave, but not the other way around
     """
     ID = Converters.MPG123
-    service_ID = Services.MPG123_ID
+    service_id = Services.MPG123_ID
     # name = 'mpg123'
     _availableArgs = ('mpg123', '--version')
     _playArgs = ('mpg123', '-q', None)
@@ -408,7 +413,7 @@ class Mpg123AudioConverter(AudioConverter, BaseServices):
     _supported_input_formats: List[AudioType] = [AudioType.MP3]
     _supported_output_formats: List[AudioType] = []
     _provides_services: List[ServiceType] = [ServiceType.PLAYER]
-    SoundCapabilities.add_service(service_ID, _provides_services,
+    SoundCapabilities.add_service(service_id, _provides_services,
                                   _supported_input_formats,
                                   _supported_output_formats)
     _initialized: bool = False
@@ -445,7 +450,7 @@ class Mpg321AudioConverter(AudioConverter):
       Both can play multiple .mpg3s via stdin
     """
     ID = Converters.MPG321
-    service_ID = ID
+    service_id = ID
     # name = 'mpg321'
     _availableArgs: Tuple[str, str] = ('mpg321', '--version')
     _playArgs: Tuple[str, str, str] = ('mpg321', '-q', None)
@@ -454,7 +459,7 @@ class Mpg321AudioConverter(AudioConverter):
     _supported_input_formats: List[AudioType] = [AudioType.MP3]
     _supported_output_formats: List[AudioType] = []
     _provides_services: List[ServiceType] = [ServiceType.PLAYER]
-    SoundCapabilities.add_service(service_ID, _provides_services,
+    SoundCapabilities.add_service(service_id, _provides_services,
                                   _supported_input_formats,
                                   _supported_output_formats)
 
@@ -480,13 +485,13 @@ class Mpg321OEPiAudioConverter(AudioConverter):
     #  Plays using ALSA
     #
     ID = Converters.MPG321_OE_PI
-    service_ID = ID
+    service_id = ID
     # name = 'mpg321 OE Pi'
 
     _supported_input_formats: List[AudioType] = [AudioType.MP3]
     _supported_output_formats: List[AudioType] = []
     _provides_services: List[ServiceType] = [ServiceType.PLAYER]
-    SoundCapabilities.add_service(service_ID, _provides_services,
+    SoundCapabilities.add_service(service_id, _provides_services,
                                   _supported_input_formats,
                                   _supported_output_formats)
 
@@ -511,6 +516,8 @@ class Mpg321OEPiAudioConverter(AudioConverter):
         return True
 
     def pipe(self, source):  # Plays using ALSA
+        MY_LOGGER.info(f'Running command:')
+
         self._convert_process = subprocess.Popen('mpg321 - --wav - | aplay',
                                                  stdin=subprocess.PIPE,
                                                  stdout=(
@@ -532,12 +539,26 @@ class Mpg321OEPiAudioConverter(AudioConverter):
             utils.sleep(10)
 
     def play(self, path):  # Plays using ALSA
-        self._convert_process = subprocess.Popen(f'mpg321 --wav - "{path}" | aplay',
-                                                 stdout=(
-                                                     open(os.path.devnull, 'w')),
-                                                 stderr=subprocess.STDOUT, env=self.env,
-                                                 shell=True, universal_newlines=True,
-                                                 encoding='utf-8')
+        args: str = f'mpg321 --wav - "{path}" | aplay'
+        if Constants.PLATFORM_WINDOWS:
+            MY_LOGGER.info(f'Running command: Windows')
+            self._convert_process = subprocess.Popen(args,
+                                                     stdout=subprocess.DEVNULL,
+                                                     stderr=subprocess.STDOUT,
+                                                     env=self.env,
+                                                     close_fds=True,
+                                                     shell=True, text=True,
+                                                     encoding='utf-8',
+                                                     creationflags=subprocess.DETACHED_PROCESS)
+        else:
+            MY_LOGGER.info(f'Running command: Linux')
+            self._convert_process = subprocess.Popen(args,
+                                                     stdout=subprocess.DEVNULL,
+                                                     stderr=subprocess.STDOUT,
+                                                     env=self.env,
+                                                     close_fds=True,
+                                                     shell=True, text=True,
+                                                     encoding='utf-8')
 
     @classmethod
     def available(cls, ext=None):

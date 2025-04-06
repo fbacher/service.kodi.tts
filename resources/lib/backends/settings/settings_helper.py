@@ -1,6 +1,8 @@
 # coding=utf-8
 from __future__ import annotations
 
+from backends.settings.service_types import ServiceID
+
 try:
     from enum import StrEnum
 except ImportError:
@@ -15,7 +17,7 @@ from backends.i_tts_backend_base import ITTSBackendBase
 from backends.settings.i_validators import AllowedValue, IStringValidator
 from backends.settings.language_info import LanguageInfo
 from backends.settings.service_types import ServiceType
-from backends.settings.setting_properties import SettingsProperties
+from backends.settings.setting_properties import SettingProp
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import StringValidator
 from common.base_services import BaseServices
@@ -47,7 +49,7 @@ class SettingsHelper:
     initialized: bool = False
     engine_id: str = None
     engine_instance: ITTSBackendBase | None = None
-    allowed_player_modes: Dict[str, List[AllowedValue]] = {}
+    allowed_player_modes: Dict[ServiceID, List[AllowedValue]] = {}
 
     @classmethod
     def init_class(cls) -> None:
@@ -58,20 +60,20 @@ class SettingsHelper:
     @classmethod
     def build_allowed_player_modes(cls) -> None:
         """
-           Creates a Dictionary of the allowed PlayerMode for a given service.
+           Creates a Dictionary of the allowed PlayerModes for a given service.
 
            The created structure is allowed_player_modes
 
-           The engine and player must both support the same PlayerMode. The UI
+           The engine and player_key must both support the same PlayerMode. The UI
            needs to reflect what the current choices are. Side-effects that
            lead to incorrect configurations must be prevented.
 
-           The structure is simple. It is indexed by service_id (engine or
-           player). Each value is a list of AllowedValues for PlayerMode for
+           The structure is simple. It is indexed by setting_id (engine or
+           player_key). Each value is a list of AllowedValues for PlayerMode for
            that service. The structure is used to see if a combination of
-           engine, player and mode are valid. AllowedValue has an enabled
+           engine, player_key and mode are valid. AllowedValue has an enabled
            flag that is False when that PlayerMode can not be used due to
-           that other service (engine or player) involved.
+           that other service (engine or player_key) involved.
 
            Use Cases:
               The UI allows the user to select the Engine, Player and PlayerMode
@@ -88,45 +90,51 @@ class SettingsHelper:
         if len(cls.allowed_player_modes.keys()) > 0:
             return
 
-        services: List[Tuple[str, str]]
-        services = SettingsMap.get_services_for_service_type(ServiceType.ENGINE)
-        services.extend(SettingsMap.get_services_for_service_type(ServiceType.PLAYER))
-        for service_id, label in services:
-            service_id: str
-            label: str
-            MY_LOGGER.debug(f'service: {service_id} {label}')
-            player_mode_val: StringValidator | IStringValidator
-            player_mode_val = SettingsMap.get_validator(service_id,
-                                                        SettingsProperties.PLAYER_MODE)
-            if player_mode_val is None:
-                MY_LOGGER.info(f'No PLAYER_MODE validator for: {label}')
-                continue
-            allowed_player_modes: List[AllowedValue]
-            allowed_player_modes = player_mode_val.get_allowed_values()
-            cls.allowed_player_modes[service_id] = allowed_player_modes
+        for service_type in (ServiceType.ENGINE, ServiceType.PLAYER):
+            service_type: ServiceType
+            services:  List[Tuple[ServiceID, str]]
+            services = SettingsMap.get_srvc_props_for_service_type(service_type)
+            for service_key, label in services:
+                service_key: ServiceID
+                label: str
+                MY_LOGGER.debug(f'service: {service_key} {label}')
+                player_mode_val: StringValidator | IStringValidator
+                player_mode_val = SettingsMap.get_validator(service_key)
+                if player_mode_val is None:
+                    MY_LOGGER.info(f'No PLAYER_MODE validator for: {label}')
+                    continue
+                allowed_player_modes: List[AllowedValue]
+                allowed_player_modes = player_mode_val.get_allowed_values()
+                cls.allowed_player_modes[service_key] = allowed_player_modes
 
     @classmethod
-    def update_player_mode(cls, engine_id: str, player_id: str,
-                           player_mode: PlayerMode
-                           ) -> Tuple[PlayerMode | None, List[PlayerMode]]:
+    def get_valid_player_modes(cls, engine_key: ServiceID, player_id: str,
+                               player_mode: PlayerMode
+                               ) -> Tuple[List[PlayerMode], int]:
         """
-        Consults with and updates allowed_player_modes to determine what if any
-        changes need to be made to have a valid configuration.
+        Determines which player_modes are common to both the given engine
+        and player_key and the index into that list to the given player_mode
 
-        :param engine_id:  The engine to be used
-        :param player_id:  The player to be used
-        :param player_mode: The proposed player mode
-        :return: Tuple[player_mode, List[AllowedValue]
-                 player_mode is the mode to use and the AllowedValues are to
-                 be used for UI. List is based upon the engine's modes, but
-                 with any unsupported values from the player marked disabled.
+        :param engine_key:  The engine to be used
+        :param player_id:  The player_key to be used
+        :param player_mode: The proposed player_key mode
+        :return: Tuple[List[AllowedValue], int]
+                 List of intersecting player_modes and the index to the element
+                 equal to the given player_mode, or -1 if not found.
         """
-        # AllowedValue is complicating things, and probably not useful
+        # TODO: Consider adding AllowedValue and Choice wrappers at a higher level
 
-        engine_allowed_values: List[AllowedValue] = cls.allowed_player_modes[engine_id]
-        player_allowed_values: List[AllowedValue] = cls.allowed_player_modes[player_id]
+        player_key: ServiceID = ServiceID(ServiceType.PLAYER, player_id)
+        engine_allowed_values: List[AllowedValue] = cls.allowed_player_modes[engine_key]
+        player_allowed_values: List[AllowedValue] = cls.allowed_player_modes[player_key]
         engine_player_modes: List[PlayerMode] = []
         player_player_modes: List[PlayerMode] = []
+
+        # AllowedValues are UI oriented. All possible player_modes for engine or
+        # player_key are returned, with the ones valid for that player_key or engine
+        # marked as enabled. Convert into a simple list of the allowed player_modes
+        # for each. (TODO Simplify)
+
         for allowed_value in engine_allowed_values:
             allowed_value: AllowedValue
             MY_LOGGER.debug(f'playerMode: {allowed_value}')
@@ -142,64 +150,73 @@ class SettingsHelper:
                 MY_LOGGER.debug(f'value2: {value} type: {type(value)}')
                 player_player_modes.append(value)
 
+        # Now, create list of player_modes that are common to both the engine
+        # and player_key
         intersection: List[PlayerMode] = PlayerMode.intersection(engine_player_modes,
                                                                  player_player_modes)
         MY_LOGGER.debug(f'intersection: {intersection}')
-        new_player_mode = None
-        if len(intersection) != 0:
-            if player_mode not in intersection:
-                new_player_mode = intersection[0]
-        return new_player_mode, intersection
+        # Determine if the preferred player_mode is in this intersection
+        idx: int = -1
+        try:
+            idx = intersection.index(player_mode)
+        except ValueError:
+            pass
+        return intersection, idx
 
     '''
     @classmethod
-    def get_engine_id(cls):
+    def get_service_key(cls):
         """
         Gets the
         :return:
         """
-        if cls.service_id is None:
-            cls.service_id = Settings.getSetting(SettingsProperties.ENGINE, None,
-                                                SettingsProperties.ENGINE_DEFAULT)
-        MY_LOGGER.debug(f'service_id: {cls.service_id}')
+        if cls.setting_id is None:
+            cls.setting_id = Settings.getSetting(SettingProp.ENGINE, None,
+                                                SettingProp.ENGINE_DEFAULT)
+        MY_LOGGER.debug(f'setting_id: {cls.setting_id}')
         valid_engine: bool = False
 
-        if cls.service_id != SettingsProperties.ENGINE_DEFAULT:
-            valid_engine = SettingsMap.is_available(cls.service_id)
+        if cls.setting_id != SettingProp.ENGINE_DEFAULT:
+            valid_engine = SettingsMap.is_available(cls.setting_id)
         # if not valid_engine:
-        #     cls.service_id = BackendInfo.getAvailableBackends()[0].service_id
-        MY_LOGGER.debug(f'final service_id: {cls.service_id}')
-        return cls.service_id
+        #     cls.setting_id = BackendInfo.getAvailableBackends()[0].setting_id
+        MY_LOGGER.debug(f'final setting_id: {cls.setting_id}')
+        return cls.setting_id
     '''
 
+    '''
     @classmethod
     def update_enabled_state(cls, engine_id: str, player_id: str) -> None:
         engine_allowed_values: List[AllowedValue] = cls.allowed_player_modes[engine_id]
         player_allowed_values: List[AllowedValue] = cls.allowed_player_modes[player_id]
         AllowedValue.update_enabled_state(engine_values=engine_allowed_values,
                                           player_values=player_allowed_values)
+    '''
+
     @classmethod
     def get_engines_supporting_lang(cls,
-                                    current_engine_id: str) -> (
+                                    current_engine_key: ServiceID) -> (
             Tuple[List[Choice], int] | None):
         """
-        Gets a list of engine Choices that support the current kodi language
+        Gets a list of available engine Choices that support the current kodi language
 
-        :param current_engine_id: id of the currently running engine
+        Any unavailable engines (broken, uninstalled, etc.) are ommitted.
+
+        :param current_engine_key: id of the currently running engine
         :return:
         """
-        MY_LOGGER.debug(f'In get_engines_supporting_lang')
+        MY_LOGGER.debug(f'current_engine_key: {current_engine_key}')
         final_choices: List[Choice] = []
         idx: int = 0
         current_choice_index: int = -1
 
         # Get all language entries (engine=None does that)
         """
-            Returns a Dict indexed by service_id. The values are
+            Returns a Dict indexed by setting_id. The values are
             Dict's indexed by language (en, fr, but not en-us).
             Values of this language dict are lists that contain
             all supported variations of a single language (en-us, en-gb...).
-            entries_by_engine: key: service_id
+            entries_by_engine: key: setting_id
                         value: Dict[lang_family, List[languageInfo]]
                         lang_family (iso-639-1 or -2 code)
                         List[languageInfo} list of all languages supported by 
@@ -210,12 +227,12 @@ class SettingsHelper:
         try:
             entries = LanguageInfo.get_entries(translate=True,
                                                ordered=True,
-                                               engine_id=None)
+                                               engine_key=None)
+            MY_LOGGER.debug(f'entries: {entries.keys()}')
         except Exception as e:
             MY_LOGGER.exception('')
             entries = {}
 
-        # MY_LOGGER.debug(f'entries:{entries}')
         try:
             """
                 We display two views. In both cases they are arranged in 
@@ -242,7 +259,7 @@ class SettingsHelper:
             # and the List of LangInfos
 
             '''
-            current_value: str = cls.getSetting(SettingsProperties.LANGUAGE,
+            current_value: str = cls.getSetting(SettingProp.LANGUAGE,
                                                 kodi_locale)
             if current_value == 'unknown':
                 current_value = kodi_locale
@@ -254,11 +271,13 @@ class SettingsHelper:
             '''
             # First, create sorted list of engine keys by sorting on their label
             engine_choices: List[Choice] = []
-            for engine_id in entries.keys():
+            for engine_key in entries.keys():
+                engine_key: ServiceID
                 choice: Choice
-                engine_label: str = LanguageInfo.get_translated_engine_name(engine_id)
-                choice = Choice(label=engine_label, value=engine_id,
-                                choice_index=0, engine_id=engine_id,
+                MY_LOGGER.debug(f'service_key: {engine_key} type: {type(engine_key)}')
+                engine_label: str = LanguageInfo.get_translated_engine_name(engine_key)
+                choice = Choice(label=engine_label, value=engine_key.service_id,
+                                choice_index=0, engine_key=engine_key,
                                 lang_info=None)
                 engine_choices.append(choice)
             engine_choices = sorted(engine_choices, key=lambda entry: entry.label)
@@ -269,14 +288,14 @@ class SettingsHelper:
             for choice in engine_choices:
                 choice: Choice
                 engines_langs: List[Choice] = []
-                engine_id: str = choice.engine_id
+                engine_key: ServiceID = choice.engine_key
                 language_entry:  Dict[str, List[LanguageInfo]]
-                language_entry = entries[engine_id]
+                language_entry = entries[engine_key]
                 # We only care about the current language
                 languages: List[LanguageInfo] = language_entry.get(kodi_lang)
                 if languages is None:
                     MY_LOGGER.debug(f'Language {kodi_lang} not supported for'
-                                      f' this engine: {engine_id}')
+                                    f' this engine: {engine_key}')
                     continue
 
                 # Now find nearest match to current locale kodi_locale
@@ -288,9 +307,13 @@ class SettingsHelper:
                     lang_info: LanguageInfo
                     engine_label = lang_info.translated_engine_name
                     engine_supported_voices += 1
+                    if lang_info.engine_key != engine_key:
+                        MY_LOGGER.debug(f'ERROR lang_info.service_key:'
+                                        f' {lang_info.engine_key} != '
+                                        f'service_key: {engine_key}')
                     choice: Choice
-                    choice = Choice(label=engine_label, value=engine_id,
-                                    choice_index=0, engine_id=engine_id,
+                    choice = Choice(label=engine_label, value=engine_key.service_id,
+                                    choice_index=0, engine_key=engine_key,
                                     lang_info=lang_info)
                     engines_langs.append(choice)
 
@@ -301,18 +324,25 @@ class SettingsHelper:
                     match_distance = langcodes.tag_distance(desired=kodi_language,
                                                             supported=lang_info.ietf)
                     label = lang_info.label
-                    key: str = f'{match_distance:3d}{label}'
+                    key: str = f'{match_distance:3d}{label} engine: {engine_key}'
                     # Must fix the choice_index later
+                    if engine_key != lang_info.engine_key:
+                        MY_LOGGER.debug(f'ERROR: lang_info.service_key: '
+                                        f'{lang_info.engine_key} != '
+                                        f'current service_key: {engine_key}')
                     choice: Choice
-                    choice = Choice(label=label, value='', choice_index=-1,
+                    choice = Choice(label=label, value=engine_key.service_id,
+                                    choice_index=-1,
                                     sort_key=key, lang_info=lang_info,
-                                    engine_id=lang_info.engine_id,
+                                    engine_key=lang_info.engine_key,
                                     match_distance=match_distance)
                     engines_langs.append(choice)
                 # Done with creating a list of language variants for an engine
                 # which to sort and further manipulate
 
                 # Sort the choices by language match
+                MY_LOGGER.debug(f'engine: {engine_key} # lang choices: '
+                                f'{len(engines_langs)}')
 
                 engines_langs = sorted(engines_langs, key=lambda chc: chc.sort_key)
                 # Finished processing all langs for an engine
@@ -321,12 +351,13 @@ class SettingsHelper:
 
                 choice_to_add: Choice = engines_langs[0]
                 choice_to_add.choice_index = idx
-                if current_engine_id == choice_to_add.engine_id:
-                    current_choice_index = idx
-                MY_LOGGER.debug(f'current_engine_id: {current_engine_id} '
-                                f'idx: {current_choice_index} '
-                                f'choice_id: {choice_to_add.engine_id}')
-                final_choices.append(engines_langs[0])
+                if current_engine_key is not None:
+                    if current_engine_key == choice_to_add.engine_key:
+                        current_choice_index = idx
+                    MY_LOGGER.debug(f'current_engine_key: {current_engine_key} '
+                                    f'idx: {current_choice_index} '
+                                    f'choice_key: {choice_to_add.engine_key}')
+                    final_choices.append(engines_langs[0])
                 idx += 1
             # Finished processing all engines
 
@@ -338,13 +369,13 @@ class SettingsHelper:
         return None
 
     @classmethod
-    def get_languages_supporting_engine(cls, engine_id: str,
+    def get_languages_supporting_engine(cls, engine_key: ServiceID,
                                         best_match_only: bool = False
                                         ) -> Tuple[List[Choice] | None, int | None]:
         """
         Gets a list of language Choices that support the current kodi language
 
-        :param engine_id:  The engine to get language information for
+        :param engine_key:  The engine to get language information for
         :param best_match_only: If True then only return the languge information
             for the language that best matches the current Kodi locale for this engine
         :return: A Tuple of a list of language choices and a index for the best
@@ -356,11 +387,11 @@ class SettingsHelper:
         try:
             # Get language entries for just this engine
             """
-               Returns a  Dict indexed by service_id. The values are
+               Returns a  Dict indexed by setting_id. The values are
                Dict's indexed by language. Values are lists
                  of languages supported by that engine. The list will contain
                  all supported variations of a single language.
-                 entries_by_engine: key: service_id
+                 entries_by_engine: key: setting_id
                             value: Dict[lang_family, List[languageInfo]]
                             lang_family (iso-639-1 or -2 code)
                             List[languageInfo} list of all languages supported by 
@@ -371,7 +402,7 @@ class SettingsHelper:
             entries = LanguageInfo.get_entries(translate=True,
                                                ordered=True,
                                                lang_family=None,
-                                               engine_id=engine_id)
+                                               engine_key=engine_key)
             count: int = 0
             for key, value in entries.items():
                 for lang, lang_values in value.items():
@@ -413,7 +444,7 @@ class SettingsHelper:
             # and the List of LangInfos
 
             '''
-            current_value: str = cls.getSetting(SettingsProperties.LANGUAGE,
+            current_value: str = cls.getSetting(SettingProp.LANGUAGE,
                                                 kodi_locale)
             if current_value == 'unknown':
                 current_value = kodi_locale
@@ -425,9 +456,9 @@ class SettingsHelper:
 
             idx: int = 0
             sort_choices: List[Choice] = []
-            for engine_id, langs_for_an_engine in entries.items():
-                engine_id: str
-                # MY_LOGGER.debug(f'FLOYD service_id: {service_id}')
+            for engine_key, langs_for_an_engine in entries.items():
+                engine_key: ServiceID
+                # MY_LOGGER.debug(f'FLOYD setting_id: {setting_id}')
                 langs_for_an_engine: Dict[str, List[ForwardRef('LanguageInfo')]]
                 for lang_family_id, engine_langs_in_family in langs_for_an_engine.items():
                     lang_family_id: str
@@ -452,8 +483,8 @@ class SettingsHelper:
 
                         engine_supported_voices += 1
                     choice: Choice
-                    choice = Choice(label=engine_label, value=engine_id,
-                                    engine_id=engine_id, choice_index=0)
+                    choice = Choice(label=engine_label, value=engine_key.service_id,
+                                    engine_key=engine_key, choice_index=0)
                     MY_LOGGER.debug(f'choice: {choice}')
                     #  sort_choices.append(choice)
 
@@ -557,7 +588,7 @@ class SettingsHelper:
             choice: Choice
             choice = Choice(label=label, value='', choice_index=-1,
                             sort_key=key, lang_info=lang_info,
-                            engine_id=lang_info.engine_id,
+                            engine_key=lang_info.engine_key,
                             match_distance=match_distance)
             sort_choices.append(choice)
 
@@ -583,19 +614,19 @@ class SettingsHelper:
         :param kodi_locale:
         :return:
         """
-        best_choice_for_engine: Dict[str, Choice] = {}
+        best_choice_for_engine: Dict[ServiceID, Choice] = {}
         choice: Choice
         result_choices: List[Choice] = []
         MY_LOGGER.debug(f'choices: {choices}')
         for choice in choices:
             lang_info: LanguageInfo = choice.lang_info
-            choice.engine_id = lang_info.engine_id
-            best_choice: Choice | None = best_choice_for_engine.get(choice.engine_id)
+            choice.engine_key = lang_info.engine_key
+            best_choice: Choice | None = best_choice_for_engine.get(choice.engine_key)
             if best_choice is None:
-                best_choice_for_engine[choice.engine_id] = choice
+                best_choice_for_engine[choice.engine_key] = choice
             else:
                 if choice.match_distance < best_choice.match_distance:
-                    best_choice_for_engine[choice.engine_id] = choice
+                    best_choice_for_engine[choice.engine_key] = choice
 
         result_choices.extend(best_choice_for_engine.values())
         return result_choices
@@ -624,7 +655,7 @@ class SettingsHelper:
             lang_info: LanguageInfo = choice.lang_info
             locale: str = lang_info.ietf.to_tag()
             lang_id: str = lang_info.language_id
-            choice.engine_id = lang_info.engine_id
+            choice.engine_key = lang_info.engine_key
             choice.choice_index = idx
             # MY_LOGGER.debug(f'FLOYD lang_id: {lang_id} current_lang: {kodi_lang}')
             if choice.match_distance < closest_match:
@@ -647,7 +678,7 @@ class SettingsHelper:
 
     @classmethod
     def get_language_choices(cls,
-                             engine_id: str | None = None,
+                             engine_key: ServiceID | None = None,
                              get_best_match: bool = False,
                              format_type: FormatType = FormatType.DISPLAY) -> (
             Tuple)[List[Choice] | None, int | None]:
@@ -662,7 +693,7 @@ class SettingsHelper:
         not take into account the quality of the voicing made by the entine.
 
         :param format_type:
-        :param engine_id: If None, then return information for all engines
+        :param engine_key: If None, then return information for all engines
                          If not None, then return information for the engine
                          identified by 'engine'
         :param get_best_match; If True, then return index to best match,
@@ -674,15 +705,15 @@ class SettingsHelper:
             or best matching entry (see get_best_match).
         """
 
-        # MY_LOGGER.debug(f'In get_language_choices')
+        MY_LOGGER.debug(f'In get_language_choices service_key: {engine_key}')
         choices: List[Choice] = []
         current_choice_index: int = -1
-        entries: Dict[str, Dict[str, List[ForwardRef('LanguageInfo')]]] | None = None
+        entries: Dict[ServiceID, Dict[str, List[ForwardRef('LanguageInfo')]]] | None = None
         try:
             # Get all language entries (engine=None does that)
             entries = LanguageInfo.get_entries(translate=True,
                                                ordered=True,
-                                               engine_id=engine_id)
+                                               engine_key=engine_key)
             count: int = 0
             for key, value in entries.items():
                 for lang, lang_values in value.items():
@@ -715,9 +746,9 @@ class SettingsHelper:
             # same language family as it's key.
             # So to sort, we need to sort both the second level dict's keys
             # and the List of LangInfos
-            for engine_id, langs_for_an_engine in entries.items():
-                engine_id: str
-                #  MY_LOGGER.debug(f'FLOYD service_id: {service_id}')
+            for engine_key, langs_for_an_engine in entries.items():
+                engine_key: ServiceID
+                #  MY_LOGGER.debug(f'FLOYD setting_id: {setting_id}')
                 sort_choices: List[Choice] = []
                 langs_for_an_engine: Dict[str, List[ForwardRef('LanguageInfo')]]
                 for lang_family_id, engine_langs_in_family in langs_for_an_engine.items():
@@ -735,7 +766,7 @@ class SettingsHelper:
                     choices.extend(more_chc)
             match_locale: str = kodi_locale
             if not get_best_match:
-                current_locale: str = Settings.get_language(engine_id)
+                current_locale: str = Settings.get_language(engine_key)
                 # Convert to ietf format (from en-au to en-AU)
                 match_locale = langcodes.Language.get(current_locale).to_tag()
             current_index: int
@@ -763,7 +794,7 @@ class SettingsHelper:
         :param default:
         :return:
         """
-        engine: ITTSBackendBase = cls.get_engine_class(cls.service_id)
+        engine: ITTSBackendBase = cls.get_engine_class(cls.setting_id)
         value = None
         try:
             if default is None:
@@ -774,24 +805,24 @@ class SettingsHelper:
         return value
 
     @classmethod
-    def get_engine_class(cls, service_id=None) -> ITTSBackendBase:
+    def get_engine_class(cls, setting_id=None) -> ITTSBackendBase:
         """
 
-        :param service_id:
+        :param setting_id:
         :return:
         """
         engine_id: str = None
-        if service_id is None:
-            service_id = cls.service_id
+        if setting_id is None:
+            setting_id = cls.setting_id
 
-        if cls.engine_instance is None or cls.engine_instance.engine_id != service_id:
+        if cls.engine_instance is None or cls.engine_instance.engine_id != setting_id:
             engine_id: str = None
             if cls.engine_instance is not None:
                 engine_id = cls.engine_instance.engine_id
-        if service_id is None or engine_id is None:
+        if setting_id is None or engine_id is None:
             Debug.dump_current_thread()
-            MY_LOGGER.debug(f'service_id changed to: {service_id} from: {engine_id}')
-            cls.engine_instance = BaseServices.getService(service_id)
+            MY_LOGGER.debug(f'setting_id changed to: {setting_id} from: {engine_id}')
+            cls.engine_instance = BaseServices.get_service(setting_id)
         return cls.engine_instance
     '''
 

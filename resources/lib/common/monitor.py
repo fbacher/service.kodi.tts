@@ -211,7 +211,7 @@ class Monitor(MinimalMonitor):
                     with io.open(change_file, mode='rb') as settings_changed_fd:
                         change_record = pickle.load(settings_changed_fd)
                         settings_digest = change_record.get(
-                            SettingsProperties.SETTINGS_DIGEST, None)
+                            SettingProp.SETTINGS_DIGEST, None)
 
                     if new_settings_digest != settings_digest:
                         changed = True
@@ -227,7 +227,7 @@ class Monitor(MinimalMonitor):
 
             if changed:
                 try:
-                    change_record[SettingsProperties.SETTINGS_DIGEST] = 
+                    change_record[SettingProp.SETTINGS_DIGEST] = 
                     new_settings_digest
                     with io.open(change_file, mode='wb') as change_file_fd:
                         pickle.dump(change_record, change_file_fd)

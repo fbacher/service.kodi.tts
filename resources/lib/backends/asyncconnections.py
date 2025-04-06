@@ -1,3 +1,4 @@
+# coding=utf-8
 import http.client
 import select
 import socket

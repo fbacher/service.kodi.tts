@@ -16,7 +16,7 @@ from backends.settings.constraints import Constraints
 from backends.settings.service_types import Services, ServiceType
 from common.logger import *
 from common.setting_constants import AudioType, Backends, Players
-from common.settings_low_level import SettingsProperties
+from common.settings_low_level import SettingProp
 from common.system_queries import SystemQueries
 
 module_logger = BasicLogger.get_logger(__name__)
@@ -24,36 +24,36 @@ module_logger = BasicLogger.get_logger(__name__)
 
 class FestivalTTSBackend(SimpleTTSBackend):
     engine_id = Backends.FESTIVAL_ID
-    service_ID: str = Services.FESTIVAL_ID
+    service_id: str = Services.FESTIVAL_ID
     displayName = 'Festival'
     canStreamWav = SystemQueries.commandIsAvailable('mpg123')
 
     volume_validator: NumericValidator
-    volume_validator = NumericValidator(SettingsProperties.VOLUME,
-                                        service_ID,
+    volume_validator = NumericValidator(SettingProp.VOLUME,
+                                        service_id,
                                         minimum=5, maximum=400,
                                         default=100, is_decibels=False,
                                         is_integer=False)
-    SettingsMap.define_setting(service_ID,
-                               SettingsProperties.VOLUME,
+    SettingsMap.define_setting(service_id,
+                               SettingProp.VOLUME,
                                volume_validator)
     speed_validator: NumericValidator
-    speed_validator = NumericValidator(SettingsProperties.SPEED,
-                                       service_ID,
+    speed_validator = NumericValidator(SettingProp.SPEED,
+                                       service_id,
                                        minimum=-16, maximum=12,
                                        default=0,
                                        is_decibels=False,
                                        is_integer=True)
-    SettingsMap.define_setting(service_ID,
-                               SettingsProperties.SPEED,
+    SettingsMap.define_setting(service_id,
+                               SettingProp.SPEED,
                                speed_validator)
 
     pitch_validator: NumericValidator
-    pitch_validator = NumericValidator(SettingsProperties.PITCH,
-                                       service_ID,
+    pitch_validator = NumericValidator(SettingProp.PITCH,
+                                       service_id,
                                        minimum=50, maximum=500, default=105,
                                        is_decibels=False, is_integer=True)
-    SettingsMap.define_setting(service_ID, SettingsProperties.PITCH,
+    SettingsMap.define_setting(service_id, SettingProp.PITCH,
                                pitch_validator)
 
     #  player_handler_class: Type[BasePlayerHandler] = WavAudioPlayerHandler
@@ -63,19 +63,19 @@ class FestivalTTSBackend(SimpleTTSBackend):
     _supported_output_formats: List[AudioType] = [AudioType.WAV]
     _provides_services: List[ServiceType] = [ServiceType.ENGINE,
                                              ServiceType.INTERNAL_PLAYER]
-    SoundCapabilities.add_service(service_ID, _provides_services,
+    SoundCapabilities.add_service(service_id, _provides_services,
                                   _supported_input_formats,
                                   _supported_output_formats)
 
     '''
     settings = {
-        SettingsProperties.PIPE  : False,
-        SettingsProperties.PITCH : 105,
-        SettingsProperties.PLAYER: Players.MPLAYER,
-        SettingsProperties.SPEED : 0,
+        SettingProp.PIPE  : False,
+        SettingProp.PITCH : 105,
+        SettingProp.PLAYER: Players.MPLAYER,
+        SettingProp.SPEED : 0,
         # Undoubtedly settable, also supported by some players
-        SettingsProperties.VOICE : '',
-        SettingsProperties.VOLUME: 0
+        SettingProp.VOICE : '',
+        SettingProp.VOLUME: 0
     }
     
     supported_settings: Dict[str, str | int | bool] = settings
@@ -103,9 +103,9 @@ class FestivalTTSBackend(SimpleTTSBackend):
 
     def getMode(self):
         clz = type(self)
-        default_player: str = clz.get_setting_default(SettingsProperties.PLAYER)
+        default_player: str = clz.get_setting_default(SettingProp.PLAYER)
         player: str = clz.get_player_setting(default_player)
-        if clz.getSetting(SettingsProperties.PIPE):
+        if clz.getSetting(SettingProp.PIPE):
             return SimpleTTSBackend.PIPE
         else:
             return SimpleTTSBackend.FILEOUT
@@ -148,7 +148,7 @@ class FestivalTTSBackend(SimpleTTSBackend):
         pitch = pitch != 105 and "(require 'prosody-param)(set-pitch {0})".format(
                 pitch) or ''
 
-        # Assumption is to only adjust speech settings in engine, not player
+        # Assumption is to only adjust speech settings in engine, not player_key
 
         player_volume = 0.0  # '{:.2f}'.format(0.0)  # Don't alter volume (db)
         player_speed = 100.0  # '{:.2f}'.format(100.0)  # Don't alter speed/tempo (
@@ -180,10 +180,10 @@ class FestivalTTSBackend(SimpleTTSBackend):
 
     @classmethod
     def settingList(cls, setting, *args) -> Tuple[List[str], str]:
-        if setting == SettingsProperties.LANGUAGE:
+        if setting == SettingProp.LANGUAGE:
             return [], None
 
-        elif setting == SettingsProperties.VOICE:
+        elif setting == SettingProp.VOICE:
             p = subprocess.Popen(['festival', '-i'], stdin=subprocess.PIPE,
                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                  universal_newlines=True, encoding='utf-8')
@@ -194,11 +194,11 @@ class FestivalTTSBackend(SimpleTTSBackend):
             if voices:
                 return [(v, v) for v in voices]  # name, id
 
-        elif setting == SettingsProperties.PLAYER:
-            # Get list of player ids. Id is same as is stored in settings.xml
+        elif setting == SettingProp.PLAYER:
+            # Get list of player_key ids. Id is same as is stored in settings.xml
 
             player_ids: List[str] = cls.get_players(include_builtin=False)
-            default_player_id = cls.get_setting_default(SettingsProperties.PLAYER)
+            default_player_id = cls.get_setting_default(SettingProp.PLAYER)
 
             return player_ids, default_player_id
 

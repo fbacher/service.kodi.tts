@@ -1,3 +1,4 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 import common
 
@@ -21,7 +22,7 @@ class BackendInfoBridge(IBackendInfo):
 
     @classmethod
     def getBackend(cls, engine_id: str = None) -> ITTSBackendBase:
-        return BaseServices.getService(engine_id)
+        return BaseServices.get_service(engine_id)
 
     @classmethod
     def getBackendIds(cls) -> List[str]:
@@ -62,6 +63,6 @@ class BackendInfoBridge(IBackendInfo):
 
     '''
     @classmethod
-    def get_backend_setting_default(cls, service_id: str, setting_id: str) -> Any:
-        return cls.getBackend(service_id).get_setting_default(setting_id)
+    def get_backend_setting_default(cls, setting_id: str, setting_id: str) -> Any:
+        return cls.getBackend(setting_id).get_setting_default(setting_id)
     '''

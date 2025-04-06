@@ -98,7 +98,7 @@ class Debug:
         sio = StringIO()
         sio.write('\n*** STACKTRACE - START ***\n\n')
         th: threading.Thread = threading.current_thread()
-        sio.write(f'\n# ThreadID: {th.name} Daemon: {th.isDaemon()}\n\n')
+        sio.write(f'\n# ThreadID: {th.name} Daemon: {th.daemon}\n\n')
         stack = sys._current_frames().get(th.ident, None)
         if stack is not None:
             traceback.print_stack(stack, file=sio)

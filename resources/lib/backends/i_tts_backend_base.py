@@ -1,5 +1,7 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
+from backends.settings.service_types import ServiceID, ServiceType
 from common import *
 
 from backends.i_backend import IBackend
@@ -16,6 +18,8 @@ class ITTSBackendBase(IBackend):
     canStreamWav: bool = False
     _backend_id: str = 'ITTSBackendBase'
     _engine_id: str = 'ITTSBackendBase'
+    _service_key: ServiceID = None
+    service_key: ServiceID | None = None
     displayName: str = 'ITTSBackendBase'
     inWavStreamMode = False
     interval = 100
@@ -56,12 +60,14 @@ class ITTSBackendBase(IBackend):
     @property
     def engine_id(self) -> str:
         clz = type(self)
-        return clz._backend_id
+        return clz._engine_id
 
     @property
-    def engine_id(self) -> str:
+    def service_key(self) -> ServiceID:
         clz = type(self)
-        return clz._backend_id
+        if clz._service_key is None:
+            clz._service_key = ServiceID(ServiceType.ENGINE, self._engine_id)
+        return clz._service_key
 
     @classmethod
     def setBaseBackend(cls, backend: IBackend) -> None:

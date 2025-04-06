@@ -7,40 +7,35 @@ import sys
 import tempfile
 
 import gtts
-from backends.ispeech_generator import ISpeechGenerator
-from backends.settings.language_info import LanguageInfo
-from backends.settings.settings_helper import SettingsHelper
-from backends.transcoders.trans import TransCode
-from common import *
-
+import langcodes
 from backends import base
-from backends.audio.sound_capabilities import SoundCapabilities
+from backends.engines.google_settings import GoogleSettings
 from backends.google_data import GoogleData
+from backends.ispeech_generator import ISpeechGenerator
 from backends.players.iplayer import IPlayer
-from backends.settings.service_types import EngineType, Services, ServiceType
-from backends.settings.setting_properties import SettingsProperties
-from backends.settings.settings_map import SettingsMap
-from cache.voicecache import VoiceCache
+from backends.settings.language_info import LanguageInfo
+from backends.settings.service_types import ServiceID, ServiceKey, Services, ServiceType
+from backends.settings.setting_properties import SettingProp
+from backends.settings.settings_helper import SettingsHelper
+from backends.settings.settings_map import Reason, SettingsMap
 from cache.common_types import CacheEntryInfo
+from cache.cache_file_state import CacheFileState
+from cache.voicecache import VoiceCache
+from common import *
 from common.base_services import BaseServices
 from common.constants import Constants, ReturnCode
 from common.debug import Debug
 from common.exceptions import ExpiredException
 from common.kodi_player_monitor import KodiPlayerMonitor
-from common.lang_phrases import SampleLangPhrases
 from common.logger import *
 from common.message_ids import MessageId
-from common.messages import Message, Messages
 from common.monitor import Monitor
 from common.phrases import Phrase, PhraseList, PhraseUtils
-from common.setting_constants import AudioType, Backends, Converters, Genders, PlayerMode
+from common.setting_constants import Backends, Genders, PlayerMode
 from common.settings import Settings
-import langcodes
 from gtts import gTTS, gTTSError, lang
 from langcodes import LanguageTagError
 from utils.util import runInThread
-import xbmc
-
 from windowNavigation.choice import Choice
 
 MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
@@ -59,7 +54,7 @@ class Results:
         self.rc: ReturnCode = ReturnCode.NOT_SET
         # self.download: io.BytesIO = io.BytesIO(initial_bytes=b'')
         self.finished: bool = False
-        self.phrase: Phrase = None
+        self.phrase: Phrase | None = None
 
     def get_rc(self) -> ReturnCode:
         return self.rc
@@ -91,13 +86,9 @@ class Results:
 
 class GoogleSpeechGenerator(ISpeechGenerator):
 
-    MAXIMUM_PHRASE_LENGTH: Final[int] = 200
-
-    _logger: BasicLogger = None
-
     def __init__(self) -> None:
         self.download_results: Results = Results()
-        self.voice_cache: VoiceCache = VoiceCache(GoogleTTSEngine.service_ID)
+        self.voice_cache: VoiceCache = VoiceCache(GoogleTTSEngine.service_key)
 
     def set_rc(self, rc: ReturnCode) -> None:
         self.download_results.set_rc(rc)
@@ -129,11 +120,9 @@ class GoogleSpeechGenerator(ISpeechGenerator):
         clz = type(self)
         Monitor.exception_on_abort(timeout=0.0)
         GoogleTTSEngine.update_voice_path(phrase)
+        max_phrase_length_key: ServiceID = GoogleTTSEngine.MAX_PHRASE_KEY
         max_phrase_length: int | None
-        max_phrase_length = SettingsMap.get_service_property(GoogleTTSEngine.service_ID,
-                                                             Constants.MAX_PHRASE_LENGTH)
-        if max_phrase_length is None:
-            max_phrase_length = 10000  # Essentially no limit
+        max_phrase_length = Settings.get_max_phrase_length(max_phrase_length_key)
         self.set_phrase(phrase)
         if phrase.is_empty():
             MY_LOGGER.debug(f'Phrase empty')
@@ -141,6 +130,7 @@ class GoogleSpeechGenerator(ISpeechGenerator):
             self.set_finished()
             return self.download_results
 
+        phrase.set_cache_file_state(CacheFileState.CREATION_INCOMPLETE)
         phrase_chunks: PhraseList = PhraseUtils.split_into_chunks(phrase,
                                                                   max_phrase_length)
         unchecked_phrase_chunks: PhraseList = phrase_chunks.clone(check_expired=False)
@@ -152,7 +142,8 @@ class GoogleSpeechGenerator(ISpeechGenerator):
         while max_wait > 0:
             Monitor.exception_on_abort(timeout=0.1)
             max_wait -= 1
-            if phrase.cache_path_exists():  # Background process started elsewhere may finish
+            # Background process started elsewhere may finish
+            if phrase.cache_file_state() >= CacheFileState.OK:
                 break
             if (self.get_rc() <= ReturnCode.MINOR_SAVE_FAIL or
                     KodiPlayerMonitor.instance().isPlaying()):
@@ -233,7 +224,8 @@ class GoogleSpeechGenerator(ISpeechGenerator):
             MY_LOGGER.debug(f'phrase to download: {original_phrase} '
                             f'path: {original_phrase.get_cache_path(check_expired=False)}')
             Monitor.exception_on_abort()
-            if original_phrase.cache_path_exists(check_expired=False):
+            if (original_phrase.cache_file_state(check_expired=False) ==
+                    CacheFileState.OK):
                 self.set_rc(ReturnCode.OK)
                 self.set_finished()
                 return  # Nothing to do
@@ -249,35 +241,32 @@ class GoogleSpeechGenerator(ISpeechGenerator):
             return
 
         cache_path: pathlib.Path | None = None
+        tmp_path: pathlib.Path | None = None
         try:
             cache_path = original_phrase.get_cache_path(check_expired=False)
             rc2: int
-            rc2, _ = self.voice_cache.create_sound_file(cache_path,
-                                                        create_dir_only=True)
+            rc2, tmp_path, _ = self.voice_cache.create_tmp_sound_file(cache_path,
+                                                                      create_dir_only=True)
             if rc2 != 0:
                 if MY_LOGGER.isEnabledFor(ERROR):
                     MY_LOGGER.error(f'Failed to create cache directory '
-                                      f'{cache_path.parent}')
+                                    f'{cache_path.parent}')
+                original_phrase.set_cache_file_state(CacheFileState.BAD)
                 self.set_rc(ReturnCode.CALL_FAILED)
                 self.set_finished()
                 return
 
-            with tempfile.NamedTemporaryFile(mode='w+b', buffering=-1,
-                                             suffix=cache_path.suffix,
-                                             prefix=cache_path.stem,
-                                             dir=cache_path.parent,
-                                             delete=False) as sound_file:
+            with open(tmp_path, mode='w+b', buffering=-1) as sound_file:
                 # each 'phrase' is a chunk from one, longer phrase. The chunks
-                # are small enough for gTTS to handle. We concatenate the results
+                # are small enough for gTTS to handle. We append the results
                 # from the phrase_chunks to the same file.
-                temp_file = pathlib.Path(sound_file.name)
                 for phrase_chunk in phrase_chunks:
                     phrase_chunk: Phrase
                     try:
                         Monitor.exception_on_abort()
                         if MY_LOGGER.isEnabledFor(DEBUG):
                             MY_LOGGER.debug(f'phrase: '
-                                              f'{phrase_chunk.get_text()}')
+                                            f'{phrase_chunk.get_text()}')
 
                         MY_LOGGER.debug(f'GTTS lang: {lang_code} '
                                         f'terr: {country_code} tld: {tld}')
@@ -288,10 +277,8 @@ class GoogleSpeechGenerator(ISpeechGenerator):
                         #     gTTSError – When there’s an error with the API request.
                         # gtts.stream() # Streams bytes
                         my_gtts.write_to_fp(sound_file)
-                        MY_LOGGER.debug(f'Wrote cache_file fragment')
+                        MY_LOGGER.debug(f'Wrote cache_file fragment to: {tmp_path}')
                     except AbortException:
-                        sound_file.close()
-                        pathlib.Path(sound_file.name).unlink(missing_ok=True)
                         self.set_rc(ReturnCode.ABORT)
                         self.set_finished()
                         reraise(*sys.exc_info())
@@ -304,14 +291,16 @@ class GoogleSpeechGenerator(ISpeechGenerator):
                         self.set_rc(ReturnCode.DOWNLOAD)
                         self.set_finished()
                     except gTTSError as e:
+                        MY_LOGGER.info(f'{gTTSError:} {e.msg()}')
                         MY_LOGGER.exception(f'gTTSError')
                         self.set_rc(ReturnCode.DOWNLOAD)
                         self.set_finished()
                     except IOError as e:
                         MY_LOGGER.exception(f'Error processing phrase: '
-                                              f'{phrase_chunk.get_text()}')
+                                            f'{phrase_chunk.get_text()}')
                         MY_LOGGER.error(f'Error writing to temp file:'
-                                          f' {str(temp_file)}')
+                                        f' {tmp_path}')
+                        original_phrase.set_cache_file_state(CacheFileState.BAD)
                         self.set_rc(ReturnCode.DOWNLOAD)
                         self.set_finished()
                     except Exception as e:
@@ -319,29 +308,19 @@ class GoogleSpeechGenerator(ISpeechGenerator):
                         self.set_rc(ReturnCode.DOWNLOAD)
                         self.set_finished()
                 MY_LOGGER.debug(f'Finished with loop writing temp file: '
-                                  f'{str(temp_file)} size: {temp_file.stat().st_size}')
-            if self.get_rc() == ReturnCode.OK:
+                                f'{sound_file.name} size: {sound_file.tell()}')
+            if (self.get_rc() == ReturnCode.OK
+                    and tmp_path.stat().st_size > 100):
                 try:
-                    if temp_file.exists() and temp_file.stat().st_size > 100:
-                        temp_file.rename(cache_path)
-                        original_phrase.set_exists(True, check_expired=False)
-                        MY_LOGGER.debug(f'cache_file is: {str(cache_path)}')
-                    else:
-                        if temp_file.exists():
-                            temp_file.unlink(True)
-                        self.set_rc(ReturnCode.DOWNLOAD)
-                        self.set_finished()
-                except ExpiredException:
-                    MY_LOGGER.exception(f'{phrase_chunks}')
-                    self.set_rc(ReturnCode.DOWNLOAD)
-                    self.set_finished()
+                    tmp_path.rename(cache_path)
+                    original_phrase.set_exists(True, check_expired=False)
+                    original_phrase.set_cache_file_state(CacheFileState.OK)
+                    MY_LOGGER.debug(f'cache_file is: {str(cache_path)}')
                 except AbortException as e:
                     reraise(*sys.exc_info())
                 except Exception as e:
                     MY_LOGGER.exception('')
             else:
-                if temp_file.exists():
-                    temp_file.unlink(True)
                 self.set_rc(ReturnCode.DOWNLOAD)
                 self.set_finished()
         except AbortException:
@@ -352,13 +331,14 @@ class GoogleSpeechGenerator(ISpeechGenerator):
             MY_LOGGER.exception(f'{phrase_chunks}')
             self.set_finished()
             self.set_rc(ReturnCode.DOWNLOAD)
-
         except Exception as e:
             MY_LOGGER.exception('')
             if MY_LOGGER.isEnabledFor(ERROR):
                 MY_LOGGER.error('Failed to download voice: {}'.format(str(e)))
             self.set_finished()
             self.set_rc(ReturnCode.DOWNLOAD)
+        finally:
+            tmp_path.unlink(missing_ok=True)
         MY_LOGGER.debug(f'exit _generate_speech')
         self.set_finished()
         return None
@@ -468,7 +448,7 @@ class LangInfo:
     def load_languages(cls):
         """
         Get all supported languages from GTTS. Using 'langcodes', convert
-        them into standard IETF format, get translated names, etc.. Finally,
+        them into standard IETF format, get translated names, etc.... Finally,
         hand off the entries to Kodi TTS.
 
         :return:
@@ -579,7 +559,7 @@ class LangInfo:
                 voice_id: str = locale_id.lower()
                 engine_name_msg_id: MessageId = MessageId.ENGINE_GOOGLE
 
-                LanguageInfo.add_language(engine_id=GoogleTTSEngine.engine_id,
+                LanguageInfo.add_language(engine_key=GoogleTTSEngine.service_key,
                                           language_id=lang_code,
                                           country_id=territory,
                                           ietf=ietf_lang,
@@ -596,8 +576,10 @@ class LangInfo:
 class GoogleTTSEngine(base.SimpleTTSBackend):
     ID: str = Backends.GOOGLE_ID
     engine_id: str = Backends.GOOGLE_ID
-    service_ID: str = Services.GOOGLE_ID
-    service_TYPE: str = ServiceType.ENGINE_SETTINGS
+    service_id: str = Services.GOOGLE_ID
+    service_type: ServiceType = ServiceType.ENGINE
+    service_key: ServiceID = ServiceKey.GOOGLE_KEY
+    MAX_PHRASE_KEY: ServiceID = service_key.with_prop(SettingProp.MAX_PHRASE_LENGTH)
     displayName = 'GoogleTTS'
 
     _logger: BasicLogger = None
@@ -620,7 +602,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
 
         # self.simple_cmd: SimpleRunCommand = None
         self.f = False
-        self.voice_cache: VoiceCache = VoiceCache(service_id=GoogleTTSEngine.service_ID)
+        self.voice_cache: VoiceCache = VoiceCache(service_key=GoogleTTSEngine.service_key)
 
         if not clz._initialized:
             BaseServices().register(self)
@@ -636,8 +618,8 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
 
     def get_player_mode(self) -> PlayerMode:
         clz = type(self)
-        player: IPlayer = self.get_player(self.service_ID)
-        player_mode: PlayerMode = Settings.get_player_mode(clz.service_ID)
+        player: IPlayer = self.get_player(self.service_key)
+        player_mode: PlayerMode = Settings.get_player_mode(clz.service_key)
         return player_mode
 
     @classmethod
@@ -651,7 +633,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         if Settings.is_use_cache() and not phrase.is_lang_territory_set():
             locale: str = phrase.language  # IETF format
             _, kodi_locale, _, ietf_lang = LanguageInfo.get_kodi_locale_info()
-            voice: str = Settings.get_voice(cls.service_ID)
+            voice: str = Settings.get_voice(cls.service_key)
             if voice is None or voice == '':
                 voice = kodi_locale
             else:
@@ -679,17 +661,19 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         try:
             clz.update_voice_path(phrase)
             attempts: int = 25  # Waits up to about 2.5 seconds
-            while (not phrase.cache_path_exists() and phrase.is_download_pending() and
+            while (phrase.cache_file_state() < CacheFileState.OK and
+                   phrase.is_download_pending() and
                    attempts > 0):
-                if phrase.cache_path_exists():
+                if phrase.cache_file_state() >= CacheFileState.OK:
                     break
                 Monitor.exception_on_abort(timeout=0.1)
                 attempts -= 1
 
-            if not phrase.cache_path_exists():
+            file_state: CacheFileState = phrase.cache_file_state()
+            if file_state not in (CacheFileState.OK, CacheFileState.BAD):
                 MY_LOGGER.debug(f'Phrase: {phrase.get_text()} not yet downloaded')
 
-            if not phrase.is_download_pending and not phrase.cache_path_exists():
+            if not phrase.is_download_pending and file_state != CacheFileState.OK:
                 tmp_phrase: Phrase = phrase.clone(check_expired=False)
                 # generate voice in cache for the future.
                 # Ignore result, don't wait
@@ -700,22 +684,22 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         except ExpiredException:
             reraise(*sys.exc_info())
 
-        return phrase.cache_path_exists()
+        return phrase.cache_file_state() == CacheFileState.OK
 
     def get_cached_voice_file(self, phrase: Phrase,
-                              generate_voice: bool = True) -> bool:
+                              generate_voice: bool = True) -> CacheFileState:
         """
         Assumes that cache is used. Normally missing voiced files are placed in
         the cache by an earlier step, but can be initiated here as well.
 
         Very similar to runCommand, except that the cached files are expected
-        to be sent to a slave player, or some other player than can play a sound
+        to be sent to a slave player_key, or some other player_key than can play a sound
         file.
         :param phrase: Contains the text to be voiced as wll as the path that it
                        is or will be located.
         :param generate_voice: If true, then wait a bit to generate the speech
                                file.
-        :return: True if the voice file was handed to a player, otherwise False
+        :return: True if the voice file was handed to a player_key, otherwise False
         """
         clz = type(self)
 
@@ -727,7 +711,8 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         try:
             result: CacheEntryInfo
             result = self.get_voice_cache().get_path_to_voice_file(phrase,
-                                                          use_cache=Settings.is_use_cache())
+                                                       use_cache=Settings.is_use_cache())
+            MY_LOGGER.debug(f'result: {result}')
             if not result.audio_exists:
                 tmp_phrase: Phrase = phrase.clone(check_expired=False)
                 generator: GoogleSpeechGenerator = GoogleSpeechGenerator()
@@ -735,29 +720,35 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
                 # Blocks a max of timeout seconds. Generator continues past
                 # timeout so the file will be in the cache for the next time
 
+                MY_LOGGER.debug(f'calling generate_speech')
                 generator.generate_speech(tmp_phrase, timeout=1.0)
-            try:
-                attempts: int = 10
-                while not phrase.cache_path_exists():
-                    attempts -= 1
-                    if attempts <= 0:
-                        break
-                    Monitor.exception_on_abort(timeout=0.5)
-            except AbortException as e:
-                reraise(*sys.exc_info())
-            except ExpiredException:
-                reraise(*sys.exc_info())
-            except Exception:
-                MY_LOGGER.exception('')
+                MY_LOGGER.debug(f'return from generate_speech')
+                try:
+                    attempts: int = 10
+                    MY_LOGGER.debug(f'cache_file_state: {phrase.cache_file_state()}')
+                    while not phrase.cache_file_state() < CacheFileState.OK:
+                        MY_LOGGER.debug(f'cache_file_state: {phrase.cache_file_state()}')
+                        attempts -= 1
+                        if attempts <= 0:
+                            MY_LOGGER.debug(f'Timed out')
+                            break
+                        Monitor.exception_on_abort(timeout=0.1)
+                except AbortException as e:
+                    reraise(*sys.exc_info())
+                except ExpiredException:
+                    reraise(*sys.exc_info())
+                except Exception:
+                    MY_LOGGER.exception('')
         except ExpiredException:
             reraise(*sys.exc_info())
-        return phrase.cache_path_exists()
+        MY_LOGGER.debug(f'cache_file_state: {phrase.cache_file_state()}')
+        return phrase.cache_file_state()
         '''
-        cache_entry_exists: bool = phrase.cache_path_exists()
+        cache_entry_exists: bool = phrase.cache_file_state()
 
         # Support for running with NO ENGINE nor PLAYER using limited pre-generated
-        # cache. The intent is to provide enough TTS so the user can configure
-        # to use an engine and player.
+        # cache. The intent is to provide enough TTS so the user can cfg
+        # to use an engine and player_key.
         force_wave: bool = False
         if not force_wave or not cache_entry_exists:
             return cache_entry_exists
@@ -774,7 +765,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
             wave_file = cache_info.current_audio_path
             # trans_id: str = Settings.get_converter(self.engine_id)
             trans_id: str = Converters.LAME
-            MY_LOGGER.debug(f'service_id: {self.engine_id} trans_id: {trans_id}')
+            MY_LOGGER.debug(f'setting_id: {self.engine_id} trans_id: {trans_id}')
             success = TransCode.transcode(trans_id=trans_id,
                                           input_path=mp3_file,
                                           output_path=wave_file,
@@ -807,7 +798,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
                 # If this presents a problem, this code can be re-enabled.
                 #
                 # espeak_engine: ESpeakTTSBackend =\
-                #     BaseServices.getService(SettingsProperties.ESPEAK_ID)
+                #     BaseServices.get_service(SettingProp.ESPEAK_ID)
                 # if not espeak_engine.initialized:
                 #     espeak_engine.init()
 
@@ -818,7 +809,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
                 generator.generate_speech(tmp_phrase, timeout=1.0)
             try:
                 attempts: int = 10
-                while not phrase.cache_path_exists():
+                while phrase.cache_file_state() < CacheFileState.OK:
                     attempts -= 1
                     if attempts <= 0:
                         break
@@ -860,10 +851,11 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
                 if Settings.is_use_cache():
                     GoogleTTSEngine.update_voice_path(phrase)
                     result = CacheEntryInfo
-                    result = self.voice_cache.get_path_to_voice_file(phrase, use_cache=True)
+                    result = self.voice_cache.get_path_to_voice_file(phrase,
+                                                                     use_cache=True)
                     if not result.audio_exists:
                         text_to_voice: str = phrase.get_text()
-                        voice_file_path: result.current_audio_path
+                        voice_file_path = result.current_audio_path
                         MY_LOGGER.debug_xv(f'PHRASE Text {text_to_voice}')
                         rc: int = 0
                         try:
@@ -932,7 +924,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         :param args: Not used
         :return:
         """
-        if setting == SettingsProperties.LANGUAGE:
+        if setting == SettingProp.LANGUAGE:
             # Returns list of languages and value of closest match to current
             # locale
 
@@ -941,24 +933,24 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
             Debug.dump_current_thread()
 
             value: Tuple[List[Choice], int]
-            value = SettingsHelper.get_language_choices(cls.service_ID,
+            value = SettingsHelper.get_language_choices(cls.service_key,
                                                         get_best_match=True)
             choices: List[Choice] = value[0]
             best: int = value[1]
             default_setting: str = choices[best].lang_info.locale.lower()
             return choices, default_setting
 
-        elif setting == SettingsProperties.PLAYER:
-            # Get list of player ids. Id is same as is stored in settings.xml
+        elif setting == SettingProp.PLAYER:
+            # Get list of player_key ids. Id is same as is stored in settings.xml
 
-            default_player: str = cls.get_setting_default(SettingsProperties.PLAYER)
+            default_player: str = cls.get_setting_default(SettingProp.PLAYER)
             player_ids: List[Choice] = []
             return player_ids, default_player
 
     @classmethod
     def get_default_language(cls) -> str:
         value: Tuple[List[Choice], int]
-        value = SettingsHelper.get_language_choices(cls.service_ID,
+        value = SettingsHelper.get_language_choices(cls.service_key,
                                                     get_best_match=True)
         choices: List[Choice] = value[0]
         best: int = value[1]
@@ -969,7 +961,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
 
     @classmethod
     def get_voice(cls) -> str:
-        voice: str = Settings.get_voice(cls.engine_id)
+        voice: str = Settings.get_voice(cls.service_key)
         return voice
 
     @classmethod
@@ -979,13 +971,13 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
 
         :return:
         """
-        language: str = Settings.get_language(cls.engine_id)
+        language: str = Settings.get_language(cls.service_key)
         languages: List[Tuple[str, str]]  # lang_id, locale_id
-        languages, default_lang = cls.settingList(SettingsProperties.LANGUAGE)
+        languages, default_lang = cls.settingList(SettingProp.LANGUAGE)
         language = default_lang
         # language_validator: StringValidator
-        # language_validator = cls.get_validator(cls.service_ID,
-        #                                        property_id=SettingsProperties.LANGUAGE)
+        # language_validator = cls.get_validator(cls.setting_id,
+        #                                        setting_id=SettingProp.LANGUAGE)
         # language = language_validator.get_tts_value()
         return language
 
@@ -1004,34 +996,8 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
 
     @classmethod
     def getAPIKey(cls) -> str:
-        return cls.getSetting(SettingsProperties.API_KEY)
+        return cls.getSetting(SettingProp.API_KEY)
 
     @staticmethod
-    def available() -> bool:
-        available: bool = True
-        '''
-        Building language information references other engines which are not
-        yet configured. Do this later, or reorganize so that other engines
-        are not queried during bootstrap.
-        
-        try:
-            default_lang: str = GoogleTTSEngine.get_default_language()
-            MY_LOGGER.debug(f'default_lang: {default_lang}')
-        except AbortException as e:
-            reraise(*sys.exc_info())
-        except Exception:
-            MY_LOGGER.exception('')
-            available = False
-        '''
-
-        engine_output_formats: List[str]
-        engine_output_formats = SoundCapabilities.get_output_formats(
-                GoogleTTSEngine.service_ID)
-        candidates: List[str]
-        candidates = SoundCapabilities.get_capable_services(
-                service_type=ServiceType.PLAYER, consumer_formats=[AudioType.MP3],
-                producer_formats=[])
-        if len(candidates) == 0:
-            MY_LOGGER.debug(f'No Sound Candidates')
-            available = False
-        return available
+    def check_availability() -> Reason:
+        return GoogleSettings.check_availability()

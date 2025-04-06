@@ -1,3 +1,4 @@
+# coding=utf-8
 # Note: this file is generated
 _langs = {
     "af": "Afrikaans",

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations  # For union operator |
 
 """
 Created on Feb 10, 2019
@@ -63,10 +64,15 @@ class Constants:
     MPLAYER_PATH_WINDOWS: Final[str] = 'mplayer.exe'
     MPLAYER_PATH: str = None
     MPV_PATH: str = None
-    CACHE_TOP: Path = None
+    # TODO: can't distinguish between constants and calculated values (was None)
+    CACHE_TOP: Final[str] = 'cache_top'
 
     NAME: Final[str] = 'name'
     PAUSE_INSERT = '...'
+    # When generating audio, first save to a temp file, then, rename to correct
+    # name when successful. TEMP_AUDIO_SUFFIX is appended to the file name, not
+    # the type: ex sample.mp3 becomes sample.tmp.mp3
+    TEMP_AUDIO_NAME_SUFFIX = '.tmp'
     PLATFORM_WINDOWS: bool = xbmc.getCondVisibility('System.Platform.Windows')
     USE_LANGCODES_DATA: bool = not PLATFORM_WINDOWS
     # Don't voice while video is playing
@@ -80,6 +86,7 @@ class Constants:
 
         :return:
         """
+        xbmc.log(f'In constants.static_init')
         Constants.KODI_ADDON = addon  # From kutils import addon, same as
         # kodiaddon.Addon()
         Constants.ADDON = addon.addon
@@ -104,7 +111,7 @@ class Constants:
         Constants.DEFAULT_CACHE_DIRECTORY = Constants.USER_DATA_PATH / 'cache'
         # NO_ENGINE_CACHE_DIRECTORY contains a limited set of .wav files to help
         # user get started with configuration. It is used when no recognized engine or
-        # player is found. See PlaySFXAudioPlayer, NoEngine and Google engine for
+        # player_key is found. See PlaySFXAudioPlayer, NoEngine and Google engine for
         # more information
         Constants.PREDEFINED_CACHE = (Constants.ADDON_PATH / 'resources' / 'predefined'
                                       / 'cache')

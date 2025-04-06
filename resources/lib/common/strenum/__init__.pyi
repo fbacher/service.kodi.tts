@@ -1,3 +1,4 @@
+# coding=utf-8
 import enum
 from typing import Union, Sequence, Mapping, Any
 

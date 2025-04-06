@@ -117,7 +117,7 @@ class Messages:
     INFO_DIALOG = Message('info dialog', 32129)
     NUMERIC_INPUT = Message('numeric input', 32130)
     SHUTDOWN_MENU = Message('shutdown menu', 32131)
-    PLAYER_CONTROLS = Message('player controls', 32132)
+    PLAYER_CONTROLS = Message('player_key controls', 32132)
     SEEK_BAR = Message('seek bar', 32133)
     MUSIC_OSD = Message('music OSD', 32134)
     VISUALISATION_PRESET_LIST = Message('visualisation preset list', 32135)

@@ -1,3 +1,4 @@
+# coding=utf-8
 import enum
 from ._version import get_versions
 from ._name_mangler import _NameMangler

@@ -204,8 +204,7 @@ class Num2Word_ES(Num2Word_EU):
         'YUM': (('dinar', 'dinares'), ('para', 'para')),
         'ZMW': (('kwacha', 'kwachas'), ('ngwee', 'ngwee')),
         'ZRZ': (('zaire', 'zaires'), ('likuta', 'makuta')),
-        'ZWL': (GENERIC_DOLLARS, ('céntimo', 'céntimos')),
-        'ZWL': (GENERIC_DOLLARS, ('céntimo', 'céntimos')),
+        'ZWL': (GENERIC_DOLLARS, ('céntimo', 'céntimos'))
     }
 
     # //CHECK: Is this sufficient??

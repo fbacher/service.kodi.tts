@@ -1,3 +1,4 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
 from common import *
@@ -11,7 +12,7 @@ class LogOnlySettings(BaseServiceSettings):
     # Only returns .mp3 files
     ID: str = Backends.LOG_ONLY_ID
     engine_id = Backends.LOG_ONLY_ID
-    service_ID: str = Services.LOG_ONLY_ID
+    service_id: str = Services.LOG_ONLY_ID
     displayName = 'LogOnly'
 
     @classmethod

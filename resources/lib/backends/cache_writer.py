@@ -9,14 +9,14 @@ from common import *
 from backends.audio.sound_capabilities import ServiceType, SoundCapabilities
 from backends.players.iplayer import IPlayer
 from backends.players.player_index import PlayerIndex
-from backends.settings.service_types import Services
+from backends.settings.service_types import ServiceID, Services
 from cache.voicecache import CacheEntryInfo, VoiceCache
 from common.base_services import BaseServices
 from common.logger import *
 from common.phrases import Phrase
 from common.setting_constants import AudioType
 from common.settings import Settings
-from common.settings_low_level import SettingsProperties
+from common.settings_low_level import SettingProp
 
 module_logger = BasicLogger.get_logger(__name__)
 
@@ -25,7 +25,7 @@ Overview:
 If caching is enabled, text to be voiced:
 
 First goes to the cache_reader to see if the sound file for the text is in the cache
-  If it is in the cache, then it is sent directly to the player
+  If it is in the cache, then it is sent directly to the player_key
   If not in the cache, then the text is sent to the current engine to voice
   
   If the engine can not voice (due to remote denial of service, etc.)
@@ -45,8 +45,8 @@ of settings can directly query for the appropriate settings and conversions.
   When voiced text is created and played by an engine without caching, then all of the
   audio settings can be processed at the only stage needed, the engine
   
-  However, when voiced text is cached or when it is forwarded to a player, or 
-  converted to another format, then every stage prior to the player, will use the
+  However, when voiced text is cached or when it is forwarded to a player_key, or 
+  converted to another format, then every stage prior to the player_key, will use the
   engine's default settings (or settings which attempts to produce consistent
   results across all of the engines (impossible to get perfectly, but the product is
   better the more consistent the audio is using the same settings across the different
@@ -55,8 +55,8 @@ of settings can directly query for the appropriate settings and conversions.
                                                 |-- Not successful --> save text in 
                                                 cache --> alt engine
 text -> cache_reader --- not found --> engine --- successful ---> voiced_byte_stream -> 
-cache_writer  --> player
-                   |---- found ---> player
+cache_writer  --> player_key
+                   |---- found ---> player_key
                    
 
 Currently, the 'backend' (aka 'engine') classes are in charge of the general flow and
@@ -77,9 +77,9 @@ class BaseCache(BaseServices):
 
     '''
     pitchConstraints: Constraints = Constraints(0, 50, 99, True, False, 1.0,
-                                                SettingsProperties.PITCH)
+                                                SettingProp.PITCH)
     volumeConstraints: Constraints = Constraints(-12, 8, 12, True, True, 1.0,
-                                                 SettingsProperties.VOLUME, midpoint=0)
+                                                 SettingProp.VOLUME, midpoint=0)
 
     # Special Conversion constraint due to max native range is more or less
     # equivalent to 0db. See note in getEngineVolume
@@ -88,16 +88,16 @@ class BaseCache(BaseServices):
                                                            maximum=2.0, integer=False,
                                                            decibels=False,
                                                            scale=1.0,
-                                                           property_name=SettingsProperties.VOLUME,
+                                                           property_name=cache_SettingProp.VOLUME,
                                                            midpoint=1,
                                                            increment=0.1)
     #  Note that default native volume is at max. Prefer to use external
-    #  player for volume.
+    #  player_key for volume.
     volumeNativeConstraints = Constraints(1, 10, 10, False, True, scale=0.1)
     '''
 
     settings: Dict[str, str | int | bool] = {
-        SettingsProperties.CACHE_PATH: None
+        SettingProp.CACHE_PATH: None
     }
     supported_settings: Dict[str, str | int | bool] = settings
     _logger: BasicLogger = None
@@ -144,7 +144,7 @@ class BaseCache(BaseServices):
         @return:
         """
         clz = type(self)
-        player_id: str = clz.getSetting(SettingsProperties.PLAYER)
+        player_id: str = clz.getSetting(SettingProp.PLAYER)
         player: IPlayer = PlayerIndex.get_player(player_id)
         sound_file_types: List[str] = SoundCapabilities.get_input_formats(player_id)
         voice_file: str = ''
@@ -173,7 +173,7 @@ class BaseCache(BaseServices):
     def create_sound_file(self, voice_file_path: str,
                           sound_file_type: str) -> Tuple[int, IO[io.BufferedWriter]]:
 
-        return VoiceCache.create_sound_file(voice_file_path, sound_file_type)
+        return VoiceCache.create_tmp_sound_file(voice_file_path, sound_file_type)
 
     def runCommandAndPipe(self, use_cache: bool, text_to_voice: str):
         clz = type(self)
@@ -204,7 +204,7 @@ class BaseCache(BaseServices):
         """
 
         # the following a geared towards Mplayer. Assumption is that only adjust
-        # volume in player, other settings in engine.
+        # volume in player_key, other settings in engine.
 
         # volume_db: float = clz.get_volume_db()  # -12 .. 12
         return byte_stream
@@ -258,7 +258,7 @@ class BaseCache(BaseServices):
         Gets a setting from addon's settings.xml
 
         A convenience method equivalent to Settings.getSetting(key + '.'. +
-        cls.service_id,
+        cls.setting_id,
         default, useFullSettingName).
 
         :param key:
@@ -270,31 +270,32 @@ class BaseCache(BaseServices):
 
         # It would be better to know the engineId
 
-        return Settings.getSetting(key, default)
+        service_key: ServiceID = Settings.get_engine_key().with_prop(key)
+        return Settings.getSetting(service_key, default)
 
     @classmethod
-    def settingList(cls, setting, *args) -> List[str]:
+    def settingList(cls, setting, *args) -> None:
         """
         Gets the possible specified setting values in same representation
         as stored in settings.xml (not translate). Sorting/translating done
         in UI.
 
         :param setting:
-        :param args:
+        :param args:settingList
         :return:
         """
-        if setting == SettingsProperties.LANGUAGE:
+        if setting == SettingProp.LANGUAGE:
             # Returns list of languages and value of closest match to current
             # locale
             pass
-        elif setting == SettingsProperties.GENDER:
+        elif setting == SettingProp.GENDER:
             pass
-        elif setting == SettingsProperties.VOICE:
+        elif setting == SettingProp.VOICE:
             pass
 
     @classmethod
     def getLanguage(cls) -> str:
-        language = cls.getSetting(SettingsProperties.LANGUAGE)
+        language = cls.getSetting(SettingProp.LANGUAGE)
         language = 'en-US'
         return language
 
@@ -306,8 +307,9 @@ class BaseCache(BaseServices):
 
 class CacheWriter(BaseCache):
 
-    service_ID: str = Services.CACHE_WRITER_ID
-    service_TYPE: str = ServiceType.CACHE_WRITER
+    service_id: Services = Services.CACHE_WRITER_ID
+    service_type: ServiceType = ServiceType.CACHE_WRITER
+    service_key: ServiceID = ServiceID(service_type, service_id)
     _logger: BasicLogger = None
     _initialized: bool = False
 
@@ -341,9 +343,10 @@ class CacheReader(BaseCache):
     """
       Locates any voice file for the given text
       """
-    engine_id: str = Services.CACHE_READER_ID
-    service_ID: str = Services.CACHE_READER_ID
-    service_TYPE: str = ServiceType.CACHE_READER
+    engine_id: Services = Services.CACHE_READER_ID
+    service_id: Services = Services.CACHE_READER_ID
+    service_type: ServiceType = ServiceType.CACHE_READER
+    service_key: ServiceID = ServiceID(service_type, service_id)
     _initialized: bool = False
 
     def __init__(self):

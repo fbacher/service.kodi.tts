@@ -1,3 +1,4 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
 import os
@@ -20,7 +21,7 @@ module_logger: BasicLogger = BasicLogger.get_logger(__name__)
 
 class WindowsAudioPlayer(AudioPlayer):
     ID = Players.WINDOWS
-    service_ID = ID
+    service_id = ID
     # name = 'Windows Internal'
     sound_file_base = '{speech_file_name}{sound_file_type}'
     sound_dir: str = None
@@ -29,7 +30,7 @@ class WindowsAudioPlayer(AudioPlayer):
     _supported_output_formats: List[AudioType] = [AudioType.WAV, AudioType.MP3]
     _provides_services: List[ServiceType] = [ServiceType.PLAYER]
     _available = SystemQueries.is_windows
-    SoundCapabilities.add_service(service_ID, _provides_services,
+    SoundCapabilities.add_service(service_id, _provides_services,
                                   _supported_input_formats,
                                   _supported_output_formats)
 

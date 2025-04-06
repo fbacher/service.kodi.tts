@@ -1,3 +1,4 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
 import os
@@ -18,7 +19,7 @@ MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 
 class SOXAudioPlayer(SubprocessAudioPlayer):
     ID = Players.SOX
-    service_ID = ID
+    service_id = ID
     # name = 'SOX'
     _availableArgs = ('sox', '--version')
     _playArgs = ('play', '-q', None)
@@ -30,7 +31,7 @@ class SOXAudioPlayer(SubprocessAudioPlayer):
     _supported_input_formats: List[AudioType] = [AudioType.WAV, AudioType.MP3]
     _supported_output_formats: List[AudioType] = [AudioType.WAV, AudioType.MP3]
     _provides_services: List[ServiceType] = [ServiceType.PLAYER]
-    SoundCapabilities.add_service(service_ID, _provides_services,
+    SoundCapabilities.add_service(service_id, _provides_services,
                                   _supported_input_formats,
                                   _supported_output_formats)
 

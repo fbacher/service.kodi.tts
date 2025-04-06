@@ -1,10 +1,11 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
 from common import *
 
 from backends.settings.constraints import Constraints
-from backends.settings.service_types import Services
-from backends.settings.setting_properties import SettingsProperties
+from backends.settings.service_types import ServiceID, ServiceKey, Services
+from backends.settings.setting_properties import SettingProp
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import (BoolValidator, GenderValidator, IntValidator,
                                           StringValidator, Validator)
@@ -16,13 +17,13 @@ module_logger = BasicLogger.get_logger(__name__)
 
 class BaseEngineSettings:
     engine_id = 'auto'
-    service_ID: str = Services.TTS_SERVICE
+    service_id: str = Services.TTS_SERVICE
     displayName: str = 'Auto'
     canStreamWav = False
     inWavStreamMode = False
     interval = 100
     broken = False
-    initialized: Dict[str, bool] = {}
+    initialized: Dict[ServiceID, bool] = {}
 
     settings: Dict[str, Validator] = {}
     constraints: Dict[str, Constraints] = {}
@@ -33,55 +34,32 @@ class BaseEngineSettings:
     # _supported_output_formats: List[str] = []
     # _provides_services: List[ServiceType] = [ServiceType.ENGINE]
 
-    def __init__(self, service_ID, *args, **kwargs):
+    '''
+    def __init__(self, setting_id, *args, **kwargs):
         clz = type(self)
-        super().__init__()
-        self.service_ID = service_ID
+        #  super().__init__()
 
-        if BaseEngineSettings.initialized.setdefault(service_ID, False):
+        self.setting_id = setting_id
+        if BaseEngineSettings.initialized.setdefault(setting_id, False):
             return
-        BaseEngineSettings.initialized[service_ID] = True
+        BaseEngineSettings.initialized[setting_id] = True
         if clz._logger is None:
             clz._logger = module_logger
-        BaseEngineSettings.init_settings(service_ID)
+        BaseEngineSettings.config_settings(setting_id)
+    '''
 
-    @classmethod
-    def init_settings(cls, service_id):
-        gender_validator = GenderValidator(SettingsProperties.GENDER, service_id,
-                                           min_value=Genders.FEMALE,
-                                           max_value=Genders.UNKNOWN,
-                                           default=Genders.UNKNOWN)
-        SettingsMap.define_setting(service_id, SettingsProperties.GENDER,
-                                   gender_validator)
-        # gender_validator.set_tts_value(Genders.FEMALE)
+    @staticmethod
+    def config_settings(service_key: ServiceID) -> None:
+        if BaseEngineSettings.initialized.setdefault(service_key, False):
+            return
+        BaseEngineSettings.initialized[service_key] = True
 
         cache_validator: BoolValidator
-        cache_validator = BoolValidator(SettingsProperties.CACHE_SPEECH, service_id,
+        cache_validator = BoolValidator(service_key.with_prop(SettingProp.CACHE_SPEECH),
                                         default=False)
-
-        SettingsMap.define_setting(service_id, SettingsProperties.CACHE_SPEECH,
-                                   cache_validator)
+        SettingsMap.define_setting(cache_validator.service_key, cache_validator)
 
         gender_visible: BoolValidator
-        gender_visible = BoolValidator(
-                SettingsProperties.GENDER_VISIBLE, Services.TTS_SERVICE,
-                default=True)
-        SettingsMap.define_setting(Services.TTS_SERVICE,
-                                   SettingsProperties.GENDER_VISIBLE,
-                                   gender_visible)
-
-        speak_list_count_val: BoolValidator
-        speak_list_count_val = BoolValidator(SettingsProperties.SPEAK_LIST_COUNT,
-                                             Services.TTS_SERVICE,
-                                             default=True)
-        SettingsMap.define_setting(Services.TTS_SERVICE,
-                                   SettingsProperties.SPEAK_LIST_COUNT,
-                                   speak_list_count_val)
-
-        speak_on_server: BoolValidator
-        speak_on_server = BoolValidator(SettingsProperties.SPEAK_ON_SERVER,
-                                             Services.TTS_SERVICE,
-                                             default=True)
-        SettingsMap.define_setting(Services.TTS_SERVICE,
-                                   SettingsProperties.SPEAK_ON_SERVER,
-                                   speak_on_server)
+        gender_visible = BoolValidator(service_key.with_prop(SettingProp.GENDER_VISIBLE),
+                                       default=True)
+        SettingsMap.define_setting(gender_visible.service_key, gender_visible)

@@ -20,7 +20,7 @@ module_logger = BasicLogger.get_logger(__name__)
 
 class KodiPlayerState(StrEnum):
     """
-    Possible states of interest for Kodi movie/audio player
+    Possible states of interest for Kodi movie/audio player_key
     """
 
     UNINITALIZED = 'uninitialized'  # Indicates monitoring code yet to start
@@ -28,7 +28,7 @@ class KodiPlayerState(StrEnum):
     INITIALIZING = 'initializing'  # Initialization of monitor in progress
     PLAYING_VIDEO = 'playing_video'  # Actively playing audio/video/picture
     #  PLAYING_STARTED = 'started'
-    VIDEO_PLAYER_IDLE = 'video_player_idle'  # Kodi player is idle
+    VIDEO_PLAYER_IDLE = 'video_player_idle'  # Kodi player_key is idle
 
 
 class KodiPlayerMonitorListener:
@@ -176,7 +176,7 @@ class KodiPlayerMonitor(Player):
         """
         onPlayBackStarted method.
 
-        Will be called when Kodi player starts. Video or audio might not be available at
+        Will be called when Kodi player_key starts. Video or audio might not be available at
         this point.
 
         @python_v18 Use `onAVStarted()` instead if you need to detect if Kodi is actually

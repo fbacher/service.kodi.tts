@@ -1,3 +1,4 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
 # TODO: NOT WORKING AND NOT USED CURRENTLY

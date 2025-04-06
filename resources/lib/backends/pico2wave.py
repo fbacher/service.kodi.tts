@@ -14,26 +14,26 @@ from common.constants import Constants
 from common.logger import *
 from common.setting_constants import Backends
 from common.settings import Settings
-from common.settings_low_level import SettingsProperties
+from common.settings_low_level import SettingProp
 
 module_logger = BasicLogger.get_logger(__name__)
 
 
 class Pico2WaveTTSBackend(SimpleTTSBackend):
     ID = Backends.ESPEAK_ID
-    service_ID: str = Services.PICO_TO_WAVE_ID
+    service_id: str = Services.PICO_TO_WAVE_ID
     initialized: bool = False
     engine_id = Backends.PICO_TO_WAVE_ID
     _engine_id = Backends.PICO_TO_WAVE_ID
     displayName = 'pico2wave'
     speedConstraints: Constraints = Constraints(20, 100, 200, True, False, 1.0,
-                                                SettingsProperties.SPEED)
+                                                SettingProp.SPEED)
     #  player_handler_class: Type[BasePlayerHandler] = WavAudioPlayerHandler
     constraints: Dict[str, Constraints] = {}
-    settings = {SettingsProperties.LANGUAGE: '',
-                SettingsProperties.PLAYER  : None,
-                SettingsProperties.SPEED   : 0,
-                SettingsProperties.VOLUME  : 0
+    settings = {SettingProp.LANGUAGE: '',
+                SettingProp.PLAYER  : None,
+                SettingProp.SPEED   : 0,
+                SettingProp.VOLUME  : 0
                 }
     supported_settings: Dict[str, str | int | bool] = settings
     _logger: BasicLogger = None
@@ -52,7 +52,7 @@ class Pico2WaveTTSBackend(SimpleTTSBackend):
         self.language = None
         self.stop_processing = False
         self.initialized = False  # For reinitialization, super classes use
-        clz.constraints[SettingsProperties.SPEED] = clz.speedConstraints
+        clz.constraints[SettingProp.SPEED] = clz.speedConstraints
 
     def init(self):
         super().init()
@@ -126,11 +126,11 @@ class Pico2WaveTTSBackend(SimpleTTSBackend):
 
             return languages, default_language
 
-        elif setting == SettingsProperties.PLAYER:
-            # Get list of player ids. Id is same as is stored in settings.xml
+        elif setting == SettingProp.PLAYER:
+            # Get list of player_key ids. Id is same as is stored in settings.xml
 
             players = cls.get_players(include_builtin=False)
-            default_player = cls.get_setting_default(SettingsProperties.PLAYER)
+            default_player = cls.get_setting_default(SettingProp.PLAYER)
 
             return players, default_player
 

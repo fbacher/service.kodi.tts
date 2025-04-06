@@ -10,7 +10,7 @@ from backends.backend_info_bridge import BackendInfoBridge
 from common.constants import Constants
 from common.logger import *
 from common.settings import Settings
-from common.settings_low_level import SettingsProperties
+from common.settings_low_level import SettingProp
 
 T = xbmcaddon.Addon(Constants.ADDON_ID).getLocalizedString
 module_logger = BasicLogger.get_logger(__name__)
@@ -50,7 +50,7 @@ class ConfigUtils:
             return
         cls._logger.debug_v('service.kodi.tts.util.selectBackend value: ' +
                             choices[idx] + ' idx: ' + str(idx))
-        Settings.setSetting(SettingsProperties.ENGINE, choices[idx], None)
+        Settings.setSetting(SettingProp.ENGINE, choices[idx], None)
 
     @classmethod
     def selectPlayer(cls, engine_id):
@@ -141,7 +141,7 @@ class ConfigUtils:
             voice = 'female'
         else:
             voice = 'male'
-        Settings.setSetting(SettingsProperties.GENDER, voice, engine_id)
+        Settings.setSetting(SettingProp.GENDER, voice, engine_id)
 
 
 ConfigUtils.init_class()

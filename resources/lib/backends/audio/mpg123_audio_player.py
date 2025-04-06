@@ -1,3 +1,4 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
 from backends.audio.base_audio import SubprocessAudioPlayer
@@ -14,7 +15,7 @@ module_logger: BasicLogger = BasicLogger.get_logger(__name__)
 
 class Mpg123AudioPlayer(SubprocessAudioPlayer, BaseServices):
     ID = Players.MPG123
-    service_ID = Services.MPG123_ID
+    service_id = Services.MPG123_ID
     # name = 'mpg123'
     _availableArgs = ('mpg123', '--version')
     _playArgs = ('mpg123', '-q', None)
@@ -23,7 +24,7 @@ class Mpg123AudioPlayer(SubprocessAudioPlayer, BaseServices):
     _supported_input_formats: List[AudioType] = [AudioType.MP3]
     _supported_output_formats: List[AudioType] = []
     _provides_services: List[ServiceType] = [ServiceType.PLAYER]
-    SoundCapabilities.add_service(service_ID, _provides_services,
+    SoundCapabilities.add_service(service_id, _provides_services,
                                   _supported_input_formats,
                                   _supported_output_formats)
 

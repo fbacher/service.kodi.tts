@@ -1,7 +1,7 @@
 # coding=utf-8
 
 """
-    Similar to SettingsProperties, but for only transient settings, which are
+    Similar to SettingProp, but for only transient settings, which are
     determined at run-time.
 """
 from enum import auto

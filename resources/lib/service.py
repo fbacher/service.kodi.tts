@@ -15,6 +15,7 @@ import xbmc
 import xbmcaddon
 import xbmcvfs
 
+from backends.settings.service_types import ServiceKey, TTS_Type
 from common.debug import Debug
 
 '''
@@ -59,34 +60,41 @@ else:
         'tts.backends': INFO,
         'tts.backends.driver': DEBUG,
         'tts.backends.google': DEBUG,
-        'tts.backends.espeak': DEBUG_V,
-        'tts.backends.espeak_settings': DEBUG,
-        'tts.backends.no_engine': DEBUG,
-        'tts.backends.settings.language_info': DEBUG,
-        'tts.backends.settings.settings_helper': DEBUG,
+        'tts.backends.espeak': DEBUG,
+        'tts.backends.espeak_settings': INFO,
+        'tts.backends.no_engine': INFO,
+        'tts.backends.no_engine_settings': INFO,
+        'tts.backends.engines.google': DEBUG,
+        'tts.backends.engines.google_settings': DEBUG,
+        'tts.backends.settings.language_info': INFO,
+        #  'tts.backends.settings.langcodes_wrapper': DEBUG,
+        'tts.backends.settings.service_types': INFO,
+        'tts.backends.settings.settings_helper': INFO,
         'tts.backends.settings.settings_map': DEBUG,
-        'tts.backends.settings.validators': DEBUG,
+        'tts.backends.settings.validators': INFO,
         'tts.backends.base': DEBUG,
-        'tts.backends.audio.base_audio': INFO,
-        'tts.backends.audio.mpv_audio_player': INFO,
+        'tts.backends.audio.base_audio': DEBUG,
+        'tts.backends.audio.mpv_audio_player': DEBUG_XV,
         'tts.backends.audio.mplayer_audio_player': INFO,
-        'tts.backends.audio.sfx_audio_player': DEBUG,
-        'tts.backends.audio.sound_capabilities': DEBUG,
-        'tts.backends.audio.worker_thread': INFO,
-        'tts.backends.transcoders.trans': DEBUG,
-        'tts.cache.voicecache': DEBUG,
+        'tts.backends.audio.sfx_audio_player': INFO,
+        'tts.backends.audio.sound_capabilities': INFO,
+        'tts.backends.audio.worker_thread': DEBUG,
+        'tts.backends.transcoders.trans': INFO,
+        'tts.cache.voicecache': DEBUG_XV,
         'tts.common.base_services': DEBUG,
         'tts.common.logger': INFO,
-        'tts.common.monitor': DEBUG_V,
-        'tts.common.phrases': DEBUG,
-        'tts.common.settings_low_level': INFO,
+        'tts.common.monitor': INFO,
+        'tts.common.phrases': INFO,
+        'tts.common.settings_low_level': DEBUG,
         'tts.common.settings': DEBUG,
-        'tts.common.slave_communication': INFO,
-        'tts.common.simple_run_command': DEBUG,
+        'tts.common.slave_communication': DEBUG,
+        'tts.common.simple_run_command': INFO,
         'tts.common.slave_run_command': DEBUG,
-        'tts.windows': DEBUG,
+        'tts.common.utils': DEBUG,
+        'tts.utils.util': INFO,
+        'tts.windows': INFO,
         'tts.windows.custom_tts': INFO,
-        'tts.windows.libraryviews': DEBUG,
+        'tts.windows.libraryviews': INFO,
         'tts.gui': INFO,
         'tts.gui.window_structure': INFO,
         # 'tts.gui.parser': INFO,
@@ -94,7 +102,10 @@ else:
         'tts.startup.bootstrap_engines': DEBUG,
         'tts.startup.bootstrap_converters': DEBUG,
         'backends.audio.bootstrap_players': DEBUG,
-        'tts.windowNavigation.help_dialog': DEBUG,
+        'backends.players.mpv_player_settings': DEBUG,
+        'backends.players.mplayer_settings': INFO,
+        'tts.windowNavigation.configure': DEBUG,
+        'tts.windowNavigation.help_dialog': INFO,
         'tts.windowNavigation.selection_dialog': DEBUG_XV,
         'tts.windowNavigation.settings_dialog': DEBUG_XV
     }
@@ -158,7 +169,7 @@ module_logger = BasicLogger.get_logger(__name__)
 
 from backends import audio
 from common.settings import Settings
-from backends.settings.setting_properties import SettingsProperties
+from backends.settings.setting_properties import SettingProp
 
 from common.constants import Constants
 from common.system_queries import SystemQueries
@@ -188,11 +199,11 @@ def preInstalledFirstRun():
             module_logger.info('PRE INSTALL: REMOVED')
             # Set version to 0.0.0 so normal first run will execute and fix the
             # keymap
-            Settings.setSetting(SettingsProperties.VERSION, '0.0.0', None)
+            Settings.setSetting(SettingProp.VERSION, '0.0.0', None)
             enabler.markPreOrPost()  # Update the install status
         return False
 
-    lastVersion = Settings.getSetting(SettingsProperties.VERSION, None)
+    lastVersion = Settings.getSetting(ServiceKey.VERSION)
 
     if not enabler.isPostInstalled() and SystemQueries.wasPostInstalled():
         module_logger.info('POST INSTALL: UN-INSTALLED OR REMOVED')
@@ -203,7 +214,7 @@ def preInstalledFirstRun():
         return False
 
     # Set version to 0.0.0 so normal first run will execute on first enable
-    Settings.setSetting(SettingsProperties.VERSION, '0.0.0', None)
+    Settings.set_service_setting(ServiceKey.VERSION, '0.0.0')
 
     module_logger.info('PRE-INSTALLED FIRST RUN')
     module_logger.info('Installing basic keymap')
@@ -241,7 +252,7 @@ def startService():
         #  Do NOT remove import!!
         from startup.bootstrap_engines import BootstrapEngines
         BootstrapEngines.init()
-        from backends.audio.bootstrap_players import BootstrapPlayers
+        # from backends.audio.bootstrap_players import BootstrapPlayers
 
         from service_worker import TTSService
         TTSService().start()
@@ -251,6 +262,7 @@ def startService():
     except Exception as e:
         xbmc.log(f'Exception {repr(e)}. Exiting')
         module_logger.exception('')
+        MinimalMonitor.set_abort_received()
     # while True:
     #     if xbmc.abortRequested(100):
     #         break
@@ -277,12 +289,14 @@ class MainThreadLoop:
 
         :return:
         """
+        xbmc.log(f'Starting event_processing_loop')
         try:
             if os.path.exists(os.path.join(xbmcvfs.translatePath('special://profile'),
                                            'addon_data', 'service.kodi.tts', 'DISABLED')):
                 xbmc.log('service.kodi.tts: DISABLED - NOT STARTING')
                 return
 
+            xbmc.log(f'worker_thread_initialized')
             worker_thread_initialized = False
 
             # For the first 10 seconds use a short timeout so that initialization
@@ -318,10 +332,10 @@ class MainThreadLoop:
                 else:
                     if not worker_thread_initialized:
                         worker_thread_initialized = True
+                        xbmc.log(f'Starting worker thread')
                         cls.start_worker_thread()
 
             MinimalMonitor.exception_on_abort(timeout=timeout)
-
         except AbortException:
             return
         except Exception as e:
@@ -349,7 +363,7 @@ if __name__ == '__main__':
     import threading
     from common.garbage_collector import GarbageCollector
 
-    module_logger.debug('starting service.py service.kodi.tts service thread')
+    xbmc.log('starting service.py service.kodi.tts service thread')
     # sys.exit()
     #
     try:

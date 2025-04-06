@@ -1,3 +1,4 @@
+# coding=utf-8
 # try adding these to the tld
 accents = [
     "com",

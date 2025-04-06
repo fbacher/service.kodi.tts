@@ -1,3 +1,4 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
 import os
@@ -22,7 +23,7 @@ class FliteSettings:
     ID: str = Backends.FLITE_ID
     engine_id = Backends.FLITE_ID
     engine_id = Backends.FLITE_ID
-    service_ID: str = Services.FLITE_ID
+    service_id: str = Services.FLITE_ID
     service_TYPE: str = ServiceType.ENGINE_SETTINGS
     displayName = 'flite'
 
@@ -31,7 +32,7 @@ class FliteSettings:
     _supported_input_formats: List[AudioType] = []
     _supported_output_formats: List[AudioType] = [AudioType.WAV]
     _provides_services: List[ServiceType] = [ServiceType.ENGINE]
-    SoundCapabilities.add_service(service_ID, _provides_services,
+    SoundCapabilities.add_service(service_id, _provides_services,
                                   _supported_input_formats,
                                   _supported_output_formats)
     _logger: BasicLogger = None
@@ -39,20 +40,20 @@ class FliteSettings:
     def __init__(self, *args, **kwargs):
         clz = type(self)
         super().__init__(*args, **kwargs)
-        BaseEngineSettings(clz.service_ID)
+        BaseEngineSettings(clz.service_id)
         if FliteSettings.initialized:
             return
         FliteSettings.initialized = True
         if clz._logger is None:
             clz._logger = module_logger
         FliteSettings.init_settings()
-        SettingsMap.set_is_available(clz.service_ID, Reason.AVAILABLE)
+        SettingsMap.set_is_available(clz.service_id, Reason.AVAILABLE)
 
     @classmethod
     def init_settings(cls):
         service_properties = {Constants.NAME: cls.displayName}
-        SettingsMap.define_service(ServiceType.ENGINE, cls.service_ID,
-                                   service_properties)
+        SettingsMap.define_service_properties(ServiceType.ENGINE, cls.service_id,
+                                              service_properties)
 
     @classmethod
     def isSupportedOnPlatform(cls) -> bool:
@@ -67,7 +68,7 @@ class FliteSettings:
 
     @classmethod
     def isSettingSupported(cls, setting) -> bool:
-        return SettingsMap.is_valid_property(cls.service_ID, setting)
+        return SettingsMap.is_valid_setting(cls.service_id, setting)
 
     @classmethod
     def available(cls):

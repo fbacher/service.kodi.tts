@@ -1,17 +1,22 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
+import os
 import subprocess
 import sys
 from pathlib import Path
 
+import xbmc
+
 from backends.audio.base_audio import SubprocessAudioPlayer
 from backends.audio.sound_capabilities import SoundCapabilities
 from backends.players.iplayer import IPlayer
+from backends.players.mplayer_settings import MPlayerSettings
 from backends.players.player_index import PlayerIndex
 from backends.settings.i_validators import INumericValidator
 from backends.settings.service_types import Services, ServiceType
-from backends.settings.setting_properties import SettingsProperties
-from backends.settings.settings_map import SettingsMap
+from backends.settings.setting_properties import SettingProp
+from backends.settings.settings_map import Reason, SettingsMap
 from backends.settings.validators import NumericValidator
 from common import *
 from common.base_services import BaseServices, IServices
@@ -21,6 +26,8 @@ from common.logger import BasicLogger
 from common.phrases import Phrase
 from common.setting_constants import Players
 from common.settings import Settings
+from backends.settings.service_types import ServiceID
+from common.system_queries import SystemQueries
 
 MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 
@@ -31,18 +38,16 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
      MPlayer supports slave mode, however mpv's implementation is much
      better, so it is not used here.
 
-     MPlayer supports -idle and -slave which keeps player from exiting
+     MPlayer supports -idle and -slave which keeps player_key from exiting
      after files played. When in slave mode, commands are read from stdin.
     """
     ID = Players.MPLAYER
-    service_ID: str = Services.MPLAYER_ID
-    service_TYPE: str = ServiceType.PLAYER
+    service_id: str = Services.MPLAYER_ID
+    service_type: ServiceType = ServiceType.PLAYER
+    service_key: ServiceID = ServiceID(ServiceType.PLAYER, service_id)
 
-    if Constants.PLATFORM_WINDOWS:
-        # Mplayer not readily available on Windows
-        raise NotImplementedError('mplayer not available on Windows')
-    else:
-        _availableArgs = (Constants.MPLAYER_PATH, '--help')
+    _availableArgs = (Constants.MPLAYER_PATH, '--help')
+    _available: bool | None = None
     #
     """
       mplayer is NOT used for slave mode since it has an inferior implementation
@@ -65,14 +70,15 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
             clz.register(self)
         super().__init__()
 
-        self.engine_id: str = None
+        self.engine_key: ServiceID | None = None
         self.configVolume: bool = True
         self.configSpeed: bool = True
         self.configPitch: bool = True
 
-    def init(self, engine_id: str):
-        self.engine_id = engine_id
-        engine: BaseServices = BaseServices.getService(engine_id)
+    def init(self, engine_key: ServiceID):
+        clz = type(self)
+        self.engine_key = engine_key
+        engine: BaseServices = BaseServices.get_service(engine_key)
 
         can_set_volume: bool = self.canSetVolume()
         can_set_speed: bool = self.canSetSpeed()
@@ -80,7 +86,7 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
         # self.configVolume, self.configSpeed, self.configPitch =
         vol, speed, pitch = \
             engine.negotiate_engine_config(
-                    engine_id, can_set_volume, can_set_speed, can_set_pitch)
+                    engine_key, can_set_volume, can_set_speed, can_set_pitch)
         self.configVolume = vol
         self.configSpeed = speed
         self.configPitch = pitch
@@ -175,7 +181,7 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
     def get_player_speed(self) -> float:
         clz = type(self)
         speed = Settings.get_speed()
-        # MY_LOGGER.debug(f'service_ID: {clz.service_ID} speed: {speed}')
+        # MY_LOGGER.debug(f'setting_id: {clz.setting_id} speed: {speed}')
         return speed
 
     def get_player_volume(self, as_decibels: bool = True) -> float:
@@ -199,8 +205,7 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
         clz = type(self)
 
         volume_validator = SettingsMap.get_validator(
-                                            clz.service_ID,
-                                            property_id=SettingsProperties.VOLUME)
+                                            clz.service_key.with_prop(SettingProp.VOLUME))
         volume_validator: INumericValidator
         volume: float
         if as_decibels:
@@ -222,17 +227,5 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
         BaseServices.register(me)
 
     @classmethod
-    def available(cls, ext=None) -> bool:
-        if Constants.PLATFORM_WINDOWS:
-            MY_LOGGER.debug(f'mplayer not supported on Windows')
-            return False
-        try:
-            subprocess.run(cls._availableArgs, stdout=subprocess.DEVNULL,
-                           universal_newlines=True, stderr=subprocess.STDOUT)
-            MY_LOGGER.debug(f'mplayer ran ok')
-        except AbortException:
-            reraise(*sys.exc_info())
-        except:
-            MY_LOGGER.debug(f'mplayer failed to start')
-            return False
-        return True
+    def check_availability(cls) -> Reason:
+        return MPlayerSettings.check_availability()

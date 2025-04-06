@@ -1,31 +1,25 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations  # For union operator |
 
-import langcodes
-
 from pathlib import Path
 
-from backends.settings.language_info import LanguageInfo
-from backends.transcoders.trans import TransCode
-from cache.voicecache import VoiceCache
-from cache.common_types import CacheEntryInfo
-from common import *
-
+import langcodes
 from backends.audio.sound_capabilities import ServiceType
 from backends.base import SimpleTTSBackend
-from backends.settings.i_validators import AllowedValue, INumericValidator, IValidator
-from backends.settings.service_types import Services
-from backends.settings.settings_map import SettingsMap
-from common import utils
+from backends.no_engine_settings import NoEngineSettings
+from backends.settings.language_info import LanguageInfo
+from backends.settings.service_types import ServiceID, Services
+from backends.settings.settings_map import Reason
+from backends.transcoders.trans import TransCode
+from cache.common_types import CacheEntryInfo
+from cache.voicecache import VoiceCache
+from common import *
 from common.base_services import BaseServices
 from common.logger import *
-from common.monitor import Monitor
 from common.phrases import Phrase
-from common.setting_constants import (AudioType, Backends, Converters, Genders, Mode,
-                                      PlayerMode,
-                                      Players)
+from common.setting_constants import (AudioType, Backends, Converters, Genders,
+                                      PlayerMode)
 from common.settings import Settings
-from common.settings_low_level import SettingsProperties
 from windowNavigation.choice import Choice
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
@@ -37,8 +31,9 @@ class NoEngine(SimpleTTSBackend):
     """
     ID: str = Backends.NO_ENGINE_ID
     engine_id = Backends.NO_ENGINE_ID
-    service_ID: str = Services.NO_ENGINE_ID
-    service_TYPE: str = ServiceType.ENGINE_SETTINGS
+    service_id: str = Services.NO_ENGINE_ID
+    service_type: ServiceType = ServiceType.ENGINE
+    service_key: ServiceID = ServiceID(service_type, service_id)
     displayName = 'noEngine'
     OUTPUT_FILE_TYPE: str = '.wav'
     UTF_8: Final[str] = '1'
@@ -51,7 +46,7 @@ class NoEngine(SimpleTTSBackend):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         clz = type(self)
-        self.voice_cache: VoiceCache = VoiceCache(clz.service_ID,
+        self.voice_cache: VoiceCache = VoiceCache(clz.service_key,
                                                   reset_engine_each_call=False)
         if not clz._initialized:
             clz._initialized = True
@@ -71,7 +66,7 @@ class NoEngine(SimpleTTSBackend):
 
     @classmethod
     def get_backend_id(cls) -> str:
-        return cls.service_ID
+        return cls.service_id
 
     @classmethod
     def init_voices(cls):
@@ -93,7 +88,7 @@ class NoEngine(SimpleTTSBackend):
         :return: Phrase, CacheEntryInfo for the generated wave phrase
         """
         if cls.voice_cache is None:
-            cls.voice_cache = VoiceCache(cls.service_ID)
+            cls.voice_cache = VoiceCache(cls.service_key)
         MY_LOGGER.debug(f'phrase: {phrase} \n'
                         f'text: {phrase.text} \n'
                         f'cache_path: {phrase.cache_path} \n'
@@ -124,7 +119,7 @@ class NoEngine(SimpleTTSBackend):
             wave_file = cache_info.current_audio_path
             # trans_id: str = Settings.get_converter(self.engine_id)
             trans_id: str = Converters.LAME
-            MY_LOGGER.debug(f'service_id: {cls.service_ID} trans_id: {trans_id}')
+            MY_LOGGER.debug(f'service_id: {cls.service_id} trans_id: {trans_id}')
             success = TransCode.transcode(trans_id=trans_id,
                                           input_path=mp3_file,
                                           output_path=wave_file,
@@ -141,13 +136,13 @@ class NoEngine(SimpleTTSBackend):
         and return cached speech.
 
         Very similar to runCommand, except that the cached files are expected
-        to be sent to a slave player, or some other player that can play a sound
+        to be sent to a slave player_key, or some other player_key that can play a sound
         file.
         :param phrase: Contains the text to be voiced as wll as the path that it
                        is or will be located.
         :param generate_voice: If true, then wait a bit to generate the speech
                                file.
-        :return: True if the voice file was handed to a player, otherwise False
+        :return: True if the voice file was handed to a player_key, otherwise False
         """
         clz = type(self)
         MY_LOGGER.debug(f'phrase: {phrase.get_text()} {phrase.get_debug_info()} '
@@ -164,8 +159,8 @@ class NoEngine(SimpleTTSBackend):
     def runCommand(self, phrase: Phrase) -> Path | None:
         """
         Run command to generate speech and save voice to a file (mp3 or wave).
-        A player will then be scheduled to play the file. Note that there is
-        delay in starting speech generator, speech generation, starting player
+        A player_key will then be scheduled to play the file. Note that there is
+        delay in starting speech generator, speech generation, starting player_key
         up and playing. Consider using caching of speech files as well as
         using PlayerMode.SLAVE_FILE.
         :param phrase:
@@ -205,7 +200,7 @@ class NoEngine(SimpleTTSBackend):
 
     def get_pitch(self) -> int:
         # All pitches in settings use a common TTS scale.
-        # Conversions to/from the engine's or player's scale are done using
+        # Conversions to/from the engine's or player_key's scale are done using
         # Constraints
         return 0
 
@@ -232,7 +227,7 @@ class NoEngine(SimpleTTSBackend):
 
         # NO_ENGINE is only used when no engine has been or able to be configured.
         # The audio comes shipped with the product with the sole purpose of guiding
-        # the user to configuring an engine and player. To reduce the size of
+        # the user to configuring an engine and player_key. To reduce the size of
         # these WAVE files, only audio for the major language is used. Territory
         # is ignored.
         if Settings.is_use_cache():
@@ -252,5 +247,5 @@ class NoEngine(SimpleTTSBackend):
         return
 
     @staticmethod
-    def available() -> bool:
-        return True
+    def check_availability() -> Reason:
+        return NoEngineSettings.check_availability()

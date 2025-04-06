@@ -1,6 +1,7 @@
 # coding=utf-8
 from __future__ import annotations  # For union operator |
 
+from backends.settings.service_types import ServiceID
 from common import *
 
 
@@ -10,6 +11,8 @@ class IConstraints:
                  integer: bool = True, decibels: bool = False, scale: float = 1.0,
                  property_name: str = None,
                  midpoint: int | None = None, increment: float = 0.0) -> None:
+        # Scale factor to convert internal to external value
+        self.scale: Final[float] = scale
         raise NotImplementedError()
 
     @property
@@ -32,10 +35,10 @@ class IConstraints:
     def increment(self) -> float:
         raise NotImplementedError()
 
-    def currentValue(self, service_id: str, as_decibels: bool | None = None,
+    def currentValue(self, service_key: ServiceID, as_decibels: bool | None = None,
                      limit: bool = True) -> float:
         """
-        @service_id: The service (engine, player, etc.) to get this validator's
+        @service_key: The service (engine, player_key, etc.) to get this validator's
         property from.
         @as_decibels: Converts between decibel and percentage units.
                      True, convert to decibels
@@ -49,7 +52,7 @@ class IConstraints:
         """
         raise NotImplementedError()
 
-    def setSetting(self, value: float, engine_id: str) -> None:
+    def setSetting(self, value: float, service_key: ServiceID) -> None:
         raise NotImplementedError()
 
     def is_int(self) -> bool:

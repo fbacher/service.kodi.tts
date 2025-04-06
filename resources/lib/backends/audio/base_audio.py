@@ -1,3 +1,4 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
 import os
@@ -10,7 +11,8 @@ from pathlib import Path
 from backends.players.iplayer import IPlayer
 from backends.settings.i_constraints import IConstraints
 from backends.settings.i_validators import IConstraintsValidator
-from backends.settings.setting_properties import SettingsProperties
+from backends.settings.service_types import ServiceID, ServiceKey
+from backends.settings.setting_properties import SettingProp
 from backends.settings.settings_map import SettingsMap
 from cache.voicecache import VoiceCache
 from common import *
@@ -27,6 +29,7 @@ from common.settings import Settings
 from common.simple_pipe_command import SimplePipeCommand
 from common.simple_run_command import SimpleRunCommand
 from common.slave_communication import SlaveCommunication
+from common.utils import TempFileUtils
 
 MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 
@@ -46,21 +49,14 @@ class AudioPlayer(IPlayer, BaseServices):
         super().__init__()
 
     @classmethod
-    def set_sound_dir(cls):
+    def set_sound_dir(cls) -> None:
         """
         Controls the tempfile and tempfile.NamedTemporaryFile 'dir' entry
         used to create temporary audio files. A None value allows tempfile
         to decide.
         :return:
         """
-        tmpfs: Path | None = None
-        tmpfs = utils.getTmpfs()
-        if tmpfs is None:
-            tmpfs = Path(Constants.PROFILE_PATH)
-        tmpfs = tmpfs / 'kodi_speech'
-        if not tmpfs.exists():
-            tmpfs.mkdir(parents=True)
-        cls.sound_dir = tmpfs
+        cls.sound_dir = TempFileUtils.temp_dir()
 
     @classmethod
     def get_sound_dir(cls) -> Path:
@@ -159,6 +155,9 @@ class AudioPlayer(IPlayer, BaseServices):
         finally:
             self._time_of_previous_play_ended = datetime.now()
 
+    def slave_play(self, phrase: Phrase):
+        pass
+
     def isPlaying(self) -> bool:
         return False
 
@@ -196,6 +195,8 @@ class SubprocessAudioPlayer(AudioPlayer):
         self._player_busy: bool = False
         self.player_mode: PlayerMode | None = None
         self._simple_player_busy: bool = False
+        self.engine: BaseServices | None = None
+        self.engine_key: ServiceID | None = None
         self.speed: float = 0.0
         self.volume: float | None = None
         self.active = True
@@ -209,20 +210,24 @@ class SubprocessAudioPlayer(AudioPlayer):
         self.failed: bool | None = None
         self.rc: int | None = None
 
+    def init(self, engine_key: ServiceID):
+        self.engine_key = engine_key
+        self.engine = BaseServices.get_service(self.engine_key)
+
     '''
     def kodi_player_status_listener(self, kodi_player_state: KodiPlayerState) -> bool:
         """
         Called when Kodi begins to start/stop playing a movie, music, display
         photos, etc....  Normally you want to cease any TTS chatter. Some
         possible actions include:
-          * When engine uses a slave player that can idle until next file is to
+          * When engine uses a slave player_key that can idle until next file is to
             be played, then you just want to abort whatever is playing and have
             engine not
-            send anything else to slave player until Kodi finishes its thing
+            send anything else to slave player_key until Kodi finishes its thing
             (or unless something comes in that requires voicing even if Kodi
             is doing something).
-          * When engine launches a player process for every voiced phrase, then
-            you want to kill the player process to abort the current voicing.
+          * When engine launches a player_key process for every voiced phrase, then
+            you want to kill the player_key process to abort the current voicing.
             The engine can stay alive but, as in the case before, should ignore
             most voicing requests until Kodi finishes its thing, or until some
             comes in that requires voicing even if Kodi is doing something.
@@ -245,19 +250,19 @@ class SubprocessAudioPlayer(AudioPlayer):
 
     def is_slave_player(self) -> bool:
         """
-        A slave player is a long-lived process which accepts commands controlling
+        A slave player_key is a long-lived process which accepts commands controlling
         which speech files are played as well as the volume, speed and other
         settings. Running as a slave may improve responsiveness.
 
-        :return:  True if this player configured for slave mode. No check
+        :return:  True if this player_key configured for slave mode. No check
                   is made for it running.
                   False, otherwise
         """
         clz = type(self)
         try:
-            self.player_mode = Settings.get_player_mode()
+            self.player_mode = Settings.get_player_mode(engine_key=self.engine_key)
             if self.player_mode == PlayerMode.SLAVE_FILE:
-                MY_LOGGER.debug(f'SLAVE_PLAYER')
+                #  MY_LOGGER.debug(f'SLAVE_PLAYER')
                 return True
         except NotImplementedError:
             pass
@@ -309,7 +314,7 @@ class SubprocessAudioPlayer(AudioPlayer):
                                                      stop_on_play=stop_on_play)
             # shutil.copyfileobj(source, self._player_process.stdin)
             # MY_LOGGER.debug_v(
-            #         f'START Running player to voice PIPE args: {" ".join(pipe_args)}')
+            #         f'START Running player_key to voice PIPE args: {" ".join(pipe_args)}')
             self._player_process.run_cmd()
         except subprocess.CalledProcessError as e:
             MY_LOGGER.exception('')
@@ -323,41 +328,20 @@ class SubprocessAudioPlayer(AudioPlayer):
 
     def getSpeed(self) -> float:
         speed: float | None = \
-            Settings.getSetting(SettingsProperties.SPEED, SettingsProperties.TTS_SERVICE)
+            Settings.get_speed()
         self.setSpeed(speed)
         return speed
 
     def getVolumeDb(self) -> float:
         #  All volumes are relative to the TTS volume -12db .. +12db.
-        # the service_id is Services.TTS_Service_id.  We therefore
+        # the setting_id is Services.TTS_Service_id.  We therefore
         # don't care what changes the engine, etc. have made.
         # We just trust that the volume in the source input matches
         # the tts 'line-input' or '0' tts volume level.
-
-        clz = type(self)
-        final_volume: float = Settings.get_volume()
-        engine_volume_val: IConstraintsValidator = SettingsMap.get_validator(
-                Settings.get_engine_id(),
-                SettingsProperties.VOLUME)
-        engine_id: str = Settings.get_engine_id()
-        engine: BaseServices = BaseServices.getService(engine_id)
-        engine_vol_constraints: IConstraints = engine_volume_val.get_constraints()
-        player_id: str = Settings.get_player_id()
-        player_volume_val: IConstraintsValidator
-        player_volume_val = SettingsMap.get_validator(clz.service_ID,
-                                                      SettingsProperties.VOLUME)
-        player_volume: int = player_volume_val.getValue()
-        player_vol_constraints: IConstraints = player_volume_val.get_constraints()
-
-        adjusted_player_volume = \
-            engine_vol_constraints.translate_value(player_vol_constraints, player_volume)
-
-        # self.setVolume(volumeDb)
-        return adjusted_player_volume
+        return self.get_player_volume(as_decibels=True)
 
     def setSpeed(self, speed: float):
-        clz = type(self)
-        self.speed = speed
+        return self.get_player_speed()
 
     def setVolume(self, volume: float):
         self.volume = volume
@@ -431,7 +415,7 @@ class SubprocessAudioPlayer(AudioPlayer):
                                                     name='mplyr',
                                                     stop_on_play=stop_on_play)
             MY_LOGGER.debug_v(
-                    f'START Running player to voice NOW args: {" ".join(args)}')
+                    f'START Running player_key to voice NOW args: {" ".join(args)}')
             self._player_process.run_cmd()
         except subprocess.CalledProcessError:
             MY_LOGGER.exception('')
@@ -446,8 +430,8 @@ class SubprocessAudioPlayer(AudioPlayer):
 
     def slave_play(self, phrase: Phrase):
         """
-        Uses a slave player (such as mpv in slave mode) to play all audio
-        files. This avoids the cost of repeatedly launching the player. Should
+        Uses a slave player_key (such as mpv in slave mode) to play all audio
+        files. This avoids the cost of repeatedly launching the player_key. Should
         also improve control.
 
         :param phrase:
@@ -458,10 +442,10 @@ class SubprocessAudioPlayer(AudioPlayer):
             return
 
         # MY_LOGGER.debug(f'In slave_play phrase: {phrase}'
-        # Do we need to kill a stale player?
+        # Do we need to kill a stale player_key?
         if self._player_process is not None:
             # Will stop pending voicings
-            MY_LOGGER.debug('player process running. switching to slave')
+            MY_LOGGER.debug('player_key process running. switching to slave')
             self.destroy_player_process()
 
         try:
@@ -485,7 +469,7 @@ class SubprocessAudioPlayer(AudioPlayer):
                                                                    default_speed=speed,
                                                                    default_volume=volume)
                     # MY_LOGGER.debug(
-                    #         f'START Running slave player to voice NOW args: {"
+                    #         f'START Running slave player_key to voice NOW args: {"
                     #         ".join(args)}')
                     self.slave_player_process.start_service()
                 except subprocess.CalledProcessError:
@@ -525,25 +509,25 @@ class SubprocessAudioPlayer(AudioPlayer):
                     keep_silent: bool = False,
                     kill: bool = False):
         """
-        Stop player (most likely because current text is expired)
+        Stop player_key (most likely because current text is expired)
         Engines may wish to override this method, particularly when
-        the player is built-in.
+        the player_key is built-in.
 
         :param purge: if True, then purge any queued vocings
                       if False, then only stop playing current phrase
         :param keep_silent: if True, ignore any new phrases until restarted
                             by resume_player.
                             If False, then play any new content
-        :param kill: If True, kill any player processes. Implies purge and
+        :param kill: If True, kill any player_key processes. Implies purge and
                      keep_silent.
-                     If False, then the player will remain ready to play new
+                     If False, then the player_key will remain ready to play new
                      content, depending upon keep_silent
         :return:
         """
         clz = type(self)
 
         # Only slave players have a queue of pending speech files
-        MY_LOGGER.debug(f'abort purge: {purge} keep_silent: {keep_silent} '
+        MY_LOGGER.debug(f'purge: {purge} keep_silent: {keep_silent} '
                         f'kill: {kill}')
         if self.slave_player_process is not None:
             if kill:
@@ -558,7 +542,7 @@ class SubprocessAudioPlayer(AudioPlayer):
     '''
     def stop_processes(self, now: bool = False):
         """
-        Stop voicing by killing player processes
+        Stop voicing by killing player_key processes
         :param now:
         :return:
         """
@@ -612,7 +596,7 @@ class SubprocessAudioPlayer(AudioPlayer):
 
     def destroy(self):
         """
-        Destroy this player and any dependent player process, etc. Typicaly done
+        Destroy this player_key and any dependent player_key process, etc. Typicaly done
         when either stopping TTS (F12) or shutdown, or switching engines,
         players, etc.
 
@@ -639,7 +623,7 @@ class SubprocessAudioPlayer(AudioPlayer):
         if self.slave_player_process is not None:
             try:
                 MY_LOGGER.debug('DESTROY SLAVE')
-                self.player_mode = Settings.get_player_mode()
+                self.player_mode = Settings.get_player_mode(self.engine_key)
                 if self.is_slave_player():
                     self.player_mode = None
                 self.slave_player_process.destroy()
@@ -696,13 +680,5 @@ class SubprocessAudioPlayer(AudioPlayer):
 
     @classmethod
     def available(cls, ext=None) -> bool:
-        # This looks messed up bad
-        try:
-            subprocess.call(cls._availableArgs, stdout=(open(os.path.devnull, 'w')),
-                            stderr=subprocess.STDOUT, universal_newlines=True,
-                            encoding='utf-8')
-        except AbortException:
-            reraise(*sys.exc_info())
-        except:
-            return False
-        return True
+        #  player_id: str = Settings.get_player_key()
+        raise NotImplementedError('base class')

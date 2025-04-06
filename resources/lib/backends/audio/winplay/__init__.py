@@ -1,3 +1,4 @@
+# coding=utf-8
 import os
 
 if os.name == 'nt':
@@ -25,7 +26,7 @@ class AudioClip:
         and end of the clip.  Returns immediately.  If end_ms is specified
         as smaller than start_ms, nothing happens.
         """
-        if end_ms != None and end_ms < start_ms:
+        if end_ms is not None and end_ms < start_ms:
             return
         else:
             return self._clip.play(start_ms, end_ms)

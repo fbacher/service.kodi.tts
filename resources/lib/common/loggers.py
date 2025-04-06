@@ -20,11 +20,11 @@ class Logger(StrEnum):
     NOISY_SCRAPER = 'tts.scraper.noisy'
     OLD_SCRAPER = 'tts.old_scraper'
     TTS_ENGINE = 'tts.engine'
-    TTS_PLAYER = 'tts.player'
+    TTS_PLAYER = 'tts.player_key'
     TTS_PROCESS = 'tts.process'  # commands, daemons
     TTS_SETTINGS = 'tts.settings'
     TTS_CONFIG = 'tts.config'
-    TTS_BOOTSTRAP = 'tts.bootstrap'
+    TTS_BOOTSTRAP = 'tts.ignore_cache'
 
     _root_logger: BasicLogger = None
     _scraper_logger: BasicLogger = None
@@ -45,8 +45,8 @@ class Logger(StrEnum):
         NOISY_SCRAPER = 'tts.scraper.noisy'
         OLD_SCRAPER = 'tts.old_scraper'
         TTS_ENGINE = 'tts.engine'
-        TTS_PLAYER = 'tts.player'
+        TTS_PLAYER = 'tts.player_key'
         TTS_PROCESS = 'tts.process'  # commands, daemons
         TTS_SETTINGS = 'tts.settings'
         TTS_CONFIG = 'tts.config'
-        TTS_BOOTSTRAP = 'tts.bootstrap'
+        TTS_BOOTSTRAP = 'tts.ignore_cache'

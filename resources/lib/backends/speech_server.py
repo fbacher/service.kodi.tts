@@ -15,7 +15,7 @@ from common import *
 from backends.base import SimpleTTSBackend
 from backends.settings.constraints import Constraints
 from common.logger import *
-from common.settings_low_level import SettingsProperties
+from common.settings_low_level import SettingProp
 from common.system_queries import SystemQueries
 
 module_logger = BasicLogger.get_logger(__name__)
@@ -26,27 +26,27 @@ class SpeechServerBackend(SimpleTTSBackend):
     displayName = 'HTTP TTS Server (Requires Running Server)'
     canStreamWav = False
     pitchConstraints: Constraints = Constraints(-100, 0, 100, True, False, 1.0,
-                                                SettingsProperties.PITCH)
+                                                SettingProp.PITCH)
     speedConstraints: Constraints = Constraints(-20, 0, 20, True, False, 1.0,
-                                                SettingsProperties.SPEED)
+                                                SettingProp.SPEED)
 
-    settings = {'engine'                        : None,
-                'host'                          : '127.0.0.1',
-                'perl_server'                   : True,
-                'pipe'                          : False,
-                'player'                        : None,
-                SettingsProperties.PLAYER_SPEED : 0,
-                SettingsProperties.PLAYER_VOLUME: 0,
-                'port'                          : 8256,
-                SettingsProperties.REMOTE_PITCH : 0,
-                SettingsProperties.REMOTE_SPEED : 0,
-                SettingsProperties.REMOTE_VOLUME: 0,
-                'speak_on_server'               : False,
-                SettingsProperties.VOICE        : None,
-                'voice.Flite'                   : None,
-                'voice.eSpeak'                  : None,
-                'voice.SAPI'                    : None,
-                'voice.Cepstral'                : None
+    settings = {'engine'                 : None,
+                'host'                   : '127.0.0.1',
+                'perl_server'            : True,
+                'pipe'                   : False,
+                'player_key'                 : None,
+                SettingProp.PLAYER_SPEED : 0,
+                SettingProp.PLAYER_VOLUME: 0,
+                'port'                   : 8256,
+                SettingProp.REMOTE_PITCH : 0,
+                SettingProp.REMOTE_SPEED : 0,
+                SettingProp.REMOTE_VOLUME: 0,
+                'speak_on_server'        : False,
+                SettingProp.VOICE        : None,
+                'voice.Flite'            : None,
+                'voice.eSpeak'           : None,
+                'voice.SAPI'             : None,
+                'voice.Cepstral'         : None
                 }
 
     _logger: BasicLogger = None
@@ -86,17 +86,17 @@ class SpeechServerBackend(SimpleTTSBackend):
     def updatePostdata(self, postdata):
         postdata['engine'] = self.engine
         if self.voice:
-            postdata[SettingsProperties.VOICE] = self.voice
+            postdata[SettingProp.VOICE] = self.voice
         postdata['rate'] = self.remote_speed
-        postdata[SettingsProperties.PITCH] = self.remote_pitch
-        postdata[SettingsProperties.VOLUME] = self.remote_volume
+        postdata[SettingProp.PITCH] = self.remote_pitch
+        postdata[SettingProp.VOLUME] = self.remote_volume
 
     def runCommand(self, text, outFile):
         postdata = {
             'text': text}  # TODO: This fixes encoding errors for non ascii characters,
         # but I'm not sure if it will work properly for other languages
         if self.perlServer:
-            postdata[SettingsProperties.VOICE] = self.voice
+            postdata[SettingProp.VOICE] = self.voice
             postdata['rate'] = self.remote_speed
             req = urllib.request.Request(self.httphost + 'speak.wav',
                                          urllib.parse.urlencode(postdata))
@@ -146,7 +146,7 @@ class SpeechServerBackend(SimpleTTSBackend):
             'text': text}  # TODO: This fixes encoding errors for non ascii characters,
         # but I'm not sure if it will work properly for other languages
         if self.perlServer:
-            postdata[SettingsProperties.VOICE] = self.voice
+            postdata[SettingProp.VOICE] = self.voice
             postdata['rate'] = self.remote_speed
             req = urllib.request.Request(self.httphost + 'speak.wav',
                                          urllib.parse.urlencode(postdata))
@@ -181,7 +181,7 @@ class SpeechServerBackend(SimpleTTSBackend):
             return self.FILEOUT
 
     def update(self):
-        self.setPlayer(self.setting('player'))
+        self.setPlayer(self.setting('player_key'))
         self.setMode(self.getMode())
 
         self.setHTTPURL()
@@ -202,18 +202,18 @@ class SpeechServerBackend(SimpleTTSBackend):
             self.flagAsDead(reason=version)
 
         if self.perlServer:
-            self.voice = self.setting(SettingsProperties.VOICE)
+            self.voice = self.setting(SettingProp.VOICE)
         else:
             self.engine = self.setting('engine')
             voice = self.setting('voice.{0}'.format(self.engine))
             if voice:
                 voice = '{0}.{1}'.format(self.engine, voice)
             self.voice = voice
-        self.remote_pitch = self.setting(SettingsProperties.REMOTE_PITCH)
-        self.remote_speed = self.setting(SettingsProperties.REMOTE_SPEED)
-        self.setSpeed(self.setting(SettingsProperties.PLAYER_SPEED))
-        self.remote_volume = self.setting(SettingsProperties.REMOTE_VOLUME)
-        self.setVolume(self.setting(SettingsProperties.PLAYER_VOLUME))
+        self.remote_pitch = self.setting(SettingProp.REMOTE_PITCH)
+        self.remote_speed = self.setting(SettingProp.REMOTE_SPEED)
+        self.setSpeed(self.setting(SettingProp.PLAYER_SPEED))
+        self.remote_volume = self.setting(SettingProp.REMOTE_VOLUME)
+        self.setVolume(self.setting(SettingProp.PLAYER_VOLUME))
 
     def getVersion(self):
         req = urllib.request.Request(self.httphost + 'version')

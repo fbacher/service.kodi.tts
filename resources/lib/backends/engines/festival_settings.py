@@ -1,3 +1,4 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
 import os
@@ -22,14 +23,14 @@ class FestivalSettings(BaseServiceSettings):
     # Only returns .mp3 files
     ID: str = Backends.FESTIVAL_ID
     engine_id = Backends.FESTIVAL_ID
-    service_ID: str = Services.FESTIVAL_ID
-    service_TYPE: str = ServiceType.ENGINE_SETTINGS
+    service_id: str = Services.FESTIVAL_ID
+    service_type: ServiceType = ServiceType.ENGINE_SETTINGS
     displayName = 'festival'
 
     _supported_input_formats: List[AudioType] = []
     _supported_output_formats: List[AudioType] = [AudioType.WAV]
     _provides_services: List[ServiceType] = [ServiceType.ENGINE]
-    SoundCapabilities.add_service(service_ID, _provides_services,
+    SoundCapabilities.add_service(service_id, _provides_services,
                                   _supported_input_formats,
                                   _supported_output_formats)
     _logger: BasicLogger = None
@@ -40,8 +41,8 @@ class FestivalSettings(BaseServiceSettings):
 
     def __init__(self, *args, **kwargs):
         clz = type(self)
-        super().__init__(clz.service_ID, *args, **kwargs)
-        BaseEngineSettings(clz.service_ID)
+        super().__init__(clz.service_id, *args, **kwargs)
+        BaseEngineSettings(clz.service_id)
         if clz.initialized:
             return
         clz.initialized = True
@@ -49,7 +50,7 @@ class FestivalSettings(BaseServiceSettings):
             clz._logger = module_logger
         self.init_settings()
         installed: bool = clz.isInstalled()
-        SettingsMap.set_is_available(clz.service_ID, Reason.AVAILABLE)
+        SettingsMap.set_is_available(clz.service_id, Reason.AVAILABLE)
 
     @classmethod
     def init_settings(cls):
@@ -58,12 +59,12 @@ class FestivalSettings(BaseServiceSettings):
         # constraints/settings to the engine's constraints/settings
 
         service_properties = {Constants.NAME: cls.displayName}
-        SettingsMap.define_service(ServiceType.ENGINE, cls.service_ID,
-                                   service_properties)
+        SettingsMap.define_service_properties(ServiceType.ENGINE, cls.service_id,
+                                              service_properties)
 
     @classmethod
     def isSettingSupported(cls, setting) -> bool:
-        return SettingsMap.is_valid_property(cls.service_ID, setting)
+        return SettingsMap.is_valid_setting(cls.service_id, setting)
 
     @classmethod
     def isSupportedOnPlatform(cls):

@@ -1,3 +1,4 @@
+# coding=utf-8
 from ctypes import c_buffer, windll
 
 ID_COUNTER = 0

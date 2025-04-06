@@ -1,9 +1,12 @@
+# coding=utf-8
 from __future__ import annotations  # For union operator |
 
 from backends.audio.base_audio import AudioPlayer
 from backends.audio.sound_capabilities import SoundCapabilities
+from backends.players.builtin_player_settings import BuiltinPlayerSettings
 from backends.players.player_index import PlayerIndex
-from backends.settings.service_types import ServiceType
+from backends.settings.service_types import ServiceID, ServiceType
+from backends.settings.settings_map import Reason
 from common import *
 from common.base_services import BaseServices
 from common.logger import BasicLogger
@@ -14,8 +17,9 @@ MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 
 class BuiltInPlayer(AudioPlayer, BaseServices):
     ID = Players.INTERNAL
-    service_ID = ID
-    service_TYPE: str = ServiceType.PLAYER
+    service_id = ID
+    service_type: ServiceType = ServiceType.PLAYER
+    service_key: ServiceID = ServiceID(service_type, service_id)
     _initialized: bool = False
 
     def __init__(self):
@@ -33,7 +37,7 @@ class BuiltInPlayer(AudioPlayer, BaseServices):
 
     def init(self, engine_id: str):
         self.engine_id = engine_id
-        engine: BaseServices = BaseServices.getService(engine_id)
+        engine: BaseServices = BaseServices.get_service(engine_id)
 
     @staticmethod
     def available(ext=None):
@@ -55,3 +59,7 @@ class BuiltInPlayer(AudioPlayer, BaseServices):
     def register(cls, what):
         PlayerIndex.register(BuiltInPlayer.ID, what)
         BaseServices.register(what)
+
+    @classmethod
+    def check_availability(cls) -> Reason:
+        return BuiltinPlayerSettings.check_availability()
