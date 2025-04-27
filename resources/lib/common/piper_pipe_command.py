@@ -22,6 +22,7 @@ from common.logger import *
 from common.monitor import Monitor
 from common.phrases import Phrase, PhraseList
 
+MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 module_logger = BasicLogger.get_logger(__name__)
 
 
@@ -177,4 +178,5 @@ class PiperPipeCommand:
 
         if failed:
             wave_path.unlink(missing_ok=True)
+            MY_LOGGER.debug(f'unlink {wave_path}')
         return failed

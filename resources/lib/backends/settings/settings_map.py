@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Union
 
 from backends.settings.service_types import ServiceID, SERVICES_BY_TYPE
+from common.service_status import Progress, ServiceStatus, Status
 
 try:
     from enum import StrEnum
@@ -24,20 +25,9 @@ from backends.settings.i_validators import (AllowedValue, IBoolValidator,
                                             IStrEnumValidator,
                                             IStringValidator, IValidator)
 from backends.settings.service_types import ServiceType
-from common.logger import BasicLogger, DEBUG_V
+from common.logger import *
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
-
-
-class Reason(StrEnum):
-    """
-
-    """
-    UNKNOWN = 'unknown'
-    AVAILABLE = 'available'  # Appears fully functional
-    NOT_SUPPORTED = 'not_supported'  # Not supported on this platform
-    NOT_AVAILABLE = 'not_available'  # Not installed, not found, etc.
-    BROKEN = 'broken'  # Command found, but not runnable
 
 
 class SettingsMap:
@@ -88,7 +78,7 @@ class SettingsMap:
 
     # service_availability_map holds the most recent availability status of a
     # given service.
-    service_availability_map: Dict[str, Reason] = {}
+    service_availability_map: Dict[str, ServiceStatus] = {}
 
     # service_to_properties_map maps a service (without property id) to a map of
     # the service's properties to its initial values. Note that property ids do
@@ -100,7 +90,7 @@ class SettingsMap:
     # of that ServiceType, with the value of the index entry referencing a map
     # of all settings of that service.
     #
-    service_type_to_properties_map: Dict[ServiceType, Dict[ServiceID, Dict[str, Any]]] = {}
+    # service_type_to_properties_map: Dict[ServiceType, Dict[ServiceID, Dict[str, Any]]] = {}
 
     # structure to get from an instance of a service_type to an instance of
     # another service type. Used by DependencyValidator. Here, called
@@ -114,139 +104,6 @@ class SettingsMap:
     #
     # Example, EngineType GoogleTTS is able to use specific instances
     svc_to_cand_svc: Dict[ServiceID, Dict[ServiceID, List[str]]] = {}
-
-    #
-    # TODO: Eliminate service_to_service_type_map with apis that specify both
-    # or that encode both in name "engine.google' "player_key.engine.google'
-    #  service_to_service_type_map: Dict[str, ServiceType] = {}
-
-    '''
-    @classmethod
-    def define_service_properties(cls, service_key: ServiceID,
-                                  service_properties: Dict[str, Any]):
-        """
-        Defines the properties with initial values for a service. Examples
-        include name, max_phrase_length, cache_suffix. It does NOT
-        specify the settings the service has (ex. an engine's player_key is NOT
-        a property of the service, it is a setting). (See define_setting)
-
-        :param service_key: Identifies the ServiceType and the service.
-        :param service_properties: Dict[property_name, initial_value]
-        :return:
-        """
-        try:
-            # service_properties is from one Service.
-
-            # Each entry in service_type_to_properties_map is a map of every
-            # property that is a member of the same service_type.
-            props_for_service_type: Dict[ServiceID, Dict[str, Any]]
-            props_for_service_type = cls.service_type_to_properties_map.setdefault(
-                    service_key.service_type, {})
-            for prop, value in service_properties.items():
-                assert isinstance(prop, str), 'prop must be a str'
-                assert not isinstance(prop,
-                                      StrEnum), 'prop must NOT be StrEnum'
-                # Add property to validator map (if it doesn't already exist
-                # (and with no validator),
-
-                prop_key: ServiceID = service_key.with_prop(prop)
-                cls.service_key_to_val_map.setdefault(prop_key, None)
-                # All properties from a single service go into the index
-                # service_key
-                props_for_service_type[prop_key] = value
-            # Also keep all properties for a service into another map indexed
-            # by service_key
-            cls.service_to_properties_map[service_key] = props_for_service_type
-            MY_LOGGER.debug(f'props_for_service_type: {props_for_service_type}')
-        except Exception as e:
-            MY_LOGGER.exception('')
-    '''
-
-    @classmethod
-    def get_srvc_props_for_service_type(cls, service_type: ServiceType) \
-            -> List[Tuple[ServiceID, str]]:
-        """
-          Returns a list of service properties that have registered via
-          SettingsMap.define_service_properties(ServiceType.xxx, serviceID, properties)
-
-          Useful for finding the engines that work with TTS, etc.
-        :param service_type:
-        :return: A Tuple [setting_id, name] Where name is the value of
-                 any property named 'name' when this was defined, or
-                 with name having a message indicating the name was not specified.
-        """
-        service_props: List[Tuple[ServiceID, str]] = []
-        service_dict: Dict[ServiceID, Any]
-        service_dict = cls.service_type_to_properties_map.get(service_type, {})
-        service_key: ServiceID
-        for service_key in service_dict.keys():
-            # Just want the service, without the setting id
-            name: str = service_dict.get(service_key)
-
-            # name: str = service_dict.setdefault('name', 'No name given')
-            #  MY_LOGGER.debug(f'service_key: {service_key} name: {name}')
-            service_props.append((service_key, name))
-        return service_props
-
-    '''
-    @classmethod
-    def get_service_type_for_service(cls, service_id: str) -> ServiceType | None:
-        #  TODO- Eliminate. Not needed with ServiceID
-        return cls.service_to_service_type_map.get(service_id)
-    '''
-
-    '''
-    @classmethod
-    def get_service_properties(cls, service_key: ServiceID) -> Dict[ServiceID, Any]:
-        """
-        Gets the properties for the given service_key (service_type, service_id).
-
-        :param service_key: defines the service (service_type and service_id)
-                            that the properties belong
-        :return:
-                Note that property names do not need to be defined in SettingProp
-        """
-        service_props: Dict[ServiceID, Any]
-        service_props = cls.service_to_properties_map.setdefault(service_key, {})
-        return service_props
-
-    @classmethod
-    def get_service_property(cls, key: ServiceID, property_id: str | Path) -> Any:
-        properties: Dict[ServiceID, Any] = cls.get_service_properties(key)
-        return properties.get(key.with_prop(property_id), None)
-    '''
-
-    '''
-    @classmethod
-    def get_available_property_ids(cls, service_type: ServiceType) -> List[Tuple[
-                            ServiceID, Dict[str, Any]]] | None:
-        """
-        Creates list of all properties (prop-name and value) for all services
-        of the given ServiceType
-        :param service_type:
-        :return: A List of (ServiceID, Dict[property_id, property_value])
-                 where: ServiceID is a service of service_type that has
-                        called define_service_properties to define properties.
-                and Dict[property, property_value] are the properties and values
-                defined in define_service_properties.
-        """
-        if not ServiceType.ALL.value <= service_type.value <= \
-               ServiceType.LAST_SERVICE_TYPE.value:
-            MY_LOGGER.debug(f'Invalid ServiceType: {service_type}')
-            return None
-
-        cls.get_srvc_props_for_service_type(service_type=service_type)
-        service_props: Dict[str, Any]
-        available_service_ids: List[Tuple[ServiceID, Dict[str, Any]]] = []
-        for service_key, service_props in cls.service_to_properties_map.items():
-            if service_key.setting_id is not None:
-                raise ValueError(f'Expected a Service, NOT a setting: {service_key}')
-            if service_key.service_type == service_type:
-                if cls.service_availability_map.get(service_key.service_key,
-                                                    Reason.UNKNOWN) == Reason.AVAILABLE:
-                    available_service_ids.append((service_key, service_props))
-        return available_service_ids
-    '''
 
     @classmethod
     def get_available_services(cls, service_type: ServiceType | None) -> List[ServiceID]:
@@ -269,40 +126,65 @@ class SettingsMap:
             for service_id in SERVICES_BY_TYPE[service_type]:
                 service_id: StrEnum
                 service_key: ServiceID = ServiceID(service_type, service_id)
-                # MY_LOGGER.debug(f'service_key: {service_key} # keys:'
-                #                 f' {cls.service_availability_map.keys()}')
-                # MY_LOGGER.debug(f'{cls.service_availability_map.get(service_key.service_key)}')
-                if cls.service_availability_map.get(service_key.service_key,
-                                                    Reason.UNKNOWN) == Reason.AVAILABLE:
+                if MY_LOGGER.isEnabledFor(DEBUG_XV):
+                    MY_LOGGER.debug_xv(f'service_key: {service_key} # keys:'
+                                       f' {cls.service_availability_map.keys()}')
+                key: str = service_key.service_key
+                status: ServiceStatus
+                status = cls.service_availability_map.get(key)
+
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'availability: {key} status: {status}')
+                if status is not None and status.is_usable():
                     result.append(service_key)
         #  MY_LOGGER.debug(f'result: {result}')
         return result
 
+    @classmethod
+    def set_available(cls, service_key: ServiceID,
+                      status: ServiceStatus = ServiceStatus.GOOD_STATUS) -> None:
+        """
+        Sets the current status of the given service.
+
+        :param service_key: Identifies the service
+        :param status:
+        :return:
+        """
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'key: {service_key} status: {status}')
+        if status is None:
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'{service_key.service_key} is NOT available -'
+                                f' status None')
+            return
+        elif status.status != Status.OK or status.progress != Progress.USABLE:
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'{service_key.service_key} is NOT available status'
+                                f'status: {status.status} '
+                                f'state: {status.progress}')
+        cls.service_availability_map[service_key.service_key] = status
 
     @classmethod
-    def set_is_available(cls, key: ServiceID, reason: Reason) -> None:
-        # MY_LOGGER.debug(f'key: {key}')
-        if reason != Reason.AVAILABLE:
-            MY_LOGGER.debug(f'{key.service_key} is NOT available reason: {reason}')
-        # else:
-        #     MY_LOGGER.debug(f'{key.service_key} is available')
-        # Make sure the key ONLY contains ServiceType and Service id
-        cls.service_availability_map[key.service_key] = reason
+    def is_available(cls, service_key: ServiceID, force: bool = False) -> bool:
+        status: ServiceStatus
+        status = cls.service_availability_map.get(service_key.service_key, None)
+        #  MY_LOGGER.debug(f'{service_key} force: {force} status: {status}')
+        if status is None:
+            if force:
+                cls.set_available(service_key=service_key)
+                status = cls.service_availability_map.get(service_key.service_key, None)
+            else:
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'{service_key} is NOT registered.')
+                return False
 
-    @classmethod
-    def is_available(cls, key: ServiceID) -> bool:
-        reason: Reason
-        reason = cls.service_availability_map.get(key.with_prop(None).service_key, None)
-        if reason is None:
-            return True
-            # MY_LOGGER.debug(f'{setting_id} availability UNKNOWN')
-            # cls.set_is_available(setting_id, Reason.UNKNOWN)
-            # return False
-
-        if reason == Reason.AVAILABLE:
-            return True
-        MY_LOGGER.debug(f'{key} is NOT available reason: {reason}')
-        return False
+        if status.status != Status.OK or status.progress != Progress.USABLE:
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'{service_key.service_key} is NOT available status'
+                                f'status: {status.status} '
+                                f'state: {status.progress}')
+            return False
+        return True
 
     @classmethod
     def define_setting(cls, service_key: ServiceID,
@@ -336,8 +218,9 @@ class SettingsMap:
 
             if validator is None:
                 settings_for_service.pop(service_key.setting_id, None)
-                MY_LOGGER.debug(f'Undefining setting {service_key.setting_id}'
-                                f' from {service_key}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'Undefining setting {service_key.setting_id}'
+                                    f' from {service_key}')
                 cls.service_key_to_val_map[service_key] = None
             else:
                 cls.service_key_to_val_map.setdefault(service_key, validator)
@@ -366,7 +249,8 @@ class SettingsMap:
         settings_for_service: Dict[str, IValidator]
         settings_for_service = cls.service_to_settings_map.get(key.service_key)
         if settings_for_service is None:
-            MY_LOGGER.debug(f'No settings for {key.setting_path} {key.service_key}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'No settings for {key.setting_path} {key.service_key}')
             return False
 
         if key.setting_id not in settings_for_service.keys():
@@ -397,40 +281,6 @@ class SettingsMap:
         if val is None:
             return None
         return val.get_const_value()  # Returns None if not constant
-
-    '''
-    @classmethod
-    def get_service_settings(cls, service_key: ServiceID) ->\
-            List[Tuple[ServiceID, Union[
-                IBoolValidator, IStringValidator, IIntValidator, IStrEnumValidator,
-                IConstraintsValidator, IGenderValidator, INumericValidator,
-                IChannelValidator, IEngineValidator, None]]]:
-        """
-        Similar to get_validator, returns any validator found for a setting.
-        Raises ValueError if setting not
-        :param service_key:
-        :return: Validator, if one has been defined for this setting.
-                 None if setting exists, but no validator defined
-        """
-        result: List[Tuple[ServiceID,
-                           Union[IBoolValidator, IStringValidator, IIntValidator,
-                                 IStrEnumValidator, IConstraintsValidator,
-                                 IGenderValidator, INumericValidator,
-                                 IChannelValidator, IEngineValidator, None]]] = []
-        properties: Dict[ServiceID, Any] = cls.get_service_properties(service_key)
-        for property_key in properties.keys():
-            property_key: ServiceID
-            val: Union[IBoolValidator, IStringValidator, IIntValidator,
-                       IStrEnumValidator,
-                       IConstraintsValidator, IGenderValidator, INumericValidator,
-                       IChannelValidator, IEngineValidator, None]
-            try:
-                val = cls.service_key_to_val_map[property_key]
-                result.append((property_key, val))
-            except:
-                MY_LOGGER.exception('')
-        return result
-    '''
 
     @classmethod
     def get_validator(cls,

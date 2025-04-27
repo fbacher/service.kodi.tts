@@ -18,7 +18,7 @@ class Choice:
                  match_distance: int = 1000, hint: str = None) -> None:
         """
 
-        :param label: User friendly, translate label
+        :param label: User friendly, translated label
         :param hint: User friendly, translated hint
         :param value: value used in settings, etc.
         :param choice_index: When from a list of choices, this is its place in list.

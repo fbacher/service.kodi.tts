@@ -9,6 +9,7 @@ from pathlib import Path
 
 from backends.ispeech_generator import ISpeechGenerator
 from backends.settings.service_types import ServiceID, ServiceKey, Services, TTS_Type
+from backends.settings.service_unavailable_exception import ServiceUnavailable
 from common import *
 
 from backends import audio
@@ -36,6 +37,7 @@ from common.phrases import Phrase, PhraseList
 from common.setting_constants import AudioType, Genders, PlayerMode, Players
 from common.settings import Settings
 from common.settings_low_level import SettingProp
+from common.utils import TempFileUtils
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
 
@@ -76,7 +78,8 @@ class EngineQueue:
 
     @classmethod
     def kodi_player_status_listener(cls, player_state: KodiPlayerState) -> None:
-        MY_LOGGER.debug(f'PLAYER_STATE: {player_state}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'PLAYER_STATE: {player_state}')
         cls.get_kodi_player_state(player_state)
 
     @classmethod
@@ -110,19 +113,22 @@ class EngineQueue:
                 item: EngineQueue.QueueItem | None = None
                 try:
                     item = self.tts_queue.get(timeout=0.0)
-                    MY_LOGGER.debug(f'Queue item phrase: {item.phrase}')
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug(f'Queue item phrase: {item.phrase}')
                     self.tts_queue.task_done()  # TODO: Change this to use phrase delays
                     phrase: Phrase = item.phrase
                     if (clz.kodi_player_state == KodiPlayerState.PLAYING_VIDEO and not
                             phrase.speak_over_kodi):
-                        MY_LOGGER.debug(f'skipping play of {phrase.debug_data()} '
-                                        f'speak while playing: '
-                                        f'{phrase.speak_over_kodi}',
-                                        trace=Trace.TRACE_AUDIO_START_STOP)
+                        if MY_LOGGER.isEnabledFor(DEBUG):
+                            MY_LOGGER.debug(f'skipping play of {phrase.debug_data()} '
+                                            f'speak while playing: '
+                                            f'{phrase.speak_over_kodi}',
+                                            trace=Trace.TRACE_AUDIO_START_STOP)
                         continue
-                    MY_LOGGER.debug(f'Start play of {phrase.debug_data()} '
-                                    f'on {item.engine.service_id}')
-                                    #  trace=Trace.TRACE_AUDIO_START_STOP)
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug(f'Start play of {phrase.debug_data()} '
+                                        f'on {item.engine.service_id}')
+                                        #  trace=Trace.TRACE_AUDIO_START_STOP)
                     self._threadedIsSpeaking = True
                     engine: 'SimpleTTSBackend' = item.engine
                     # MY_LOGGER.debug(f'queue.get {phrase.get_text()} '
@@ -139,8 +145,9 @@ class EngineQueue:
                 except ValueError as e:
                     MY_LOGGER.exception('')
                 except ExpiredException:
-                    MY_LOGGER.debug(f'EXPIRED {item.phrase.debug_data} ',
-                                      trace=Trace.TRACE_AUDIO_START_STOP)
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug(f'EXPIRED {item.phrase.debug_data} ',
+                                          trace=Trace.TRACE_AUDIO_START_STOP)
                 except Exception:
                     MY_LOGGER.exception('')
         except AbortException:
@@ -170,12 +177,14 @@ class EngineQueue:
         # if not engine.is_active_engine():
         #     return
         try:
-            MY_LOGGER.debug(f'phrase: {phrases[0].get_text()} '
-                            f'Engine: {engine.service_id} '
-                            f'Interrupt: {phrases.interrupt}'
-                            f' debug: {phrases[0].debug_data()}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'phrase: {phrases[0].get_text()} '
+                                f'Engine: {engine.service_id} '
+                                f'Interrupt: {phrases.interrupt}'
+                                f' debug: {phrases[0].debug_data()}')
         except ExpiredException:
-            MY_LOGGER.debug('EXPIRED')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug('EXPIRED')
         if phrases[0].interrupt:
             phrases.set_expired()
             return
@@ -200,11 +209,13 @@ class EngineQueue:
         """
         zelf = cls._instance
         try:
-            MY_LOGGER.debug(f'{phrase.debug_data()}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'{phrase.debug_data()}')
             interrupt: bool = phrase.get_interrupt()
             if interrupt:
-                MY_LOGGER.debug(f'INTERRUPTED discarding any phrases prior to:'
-                                f' {phrase.short_text()}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'INTERRUPTED discarding any phrases prior to:'
+                                    f' {phrase.short_text()}')
                 cls.empty_queue()
             engine.stop_current_phrases()
 
@@ -224,7 +235,8 @@ class EngineQueue:
             MY_LOGGER.debug(f'Put on queue')
             '''
         except ExpiredException:
-            MY_LOGGER.debug('EXPIRED')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug('EXPIRED')
 
     @classmethod
     def say_file(cls, phrase: Phrase, player_id: str,
@@ -237,8 +249,9 @@ class EngineQueue:
         """
         zelf = cls._instance
         try:
-            MY_LOGGER.debug(f'phrase: {phrase.get_text()} '
-                              f'Engine: {engine.service_id}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'phrase: {phrase.get_text()} '
+                                  f'Engine: {engine.service_id}')
             cls.say_phrase(phrase, engine)
             '''
             player: IPlayer = PlayerIndex.get_player(player_id)
@@ -248,7 +261,8 @@ class EngineQueue:
         except AbortException as e:
             reraise(*sys.exc_info())
         except ExpiredException:
-            MY_LOGGER.debug('EXPIRED')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug('EXPIRED')
         except Exception as e:
             MY_LOGGER.exception(f'Exception {phrase.debug_data}'
                                   f' engine: {engine.service_id}',
@@ -273,7 +287,8 @@ class EngineQueue:
 
     @classmethod
     def get_kodi_player_state(cls, kodi_player_state: KodiPlayerState) -> None:
-        MY_LOGGER.debug(f'EngineQueue SET_KODI_PLAYER_STATE: {kodi_player_state}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'EngineQueue SET_KODI_PLAYER_STATE: {kodi_player_state}')
         cls.kodi_player_state = kodi_player_state
 
     @classmethod
@@ -366,13 +381,17 @@ class BaseEngineService(BaseServices):
         #  MY_LOGGER.debug(f'player_key: {player_key}')
         if self.player is not None and player_key != self.player.service_key:
             # Stop old player
-            MY_LOGGER.debug(f'Killing player(s) because player_id changed '
-                            f'from {self.player.service_key} to {player_key}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'Killing player(s) because player_id changed '
+                                f'from {self.player.service_key} to {player_key}')
             self.player.destroy()
 
         #  MY_LOGGER.debug(f'player_key: {player_key}')
         if self.player is None or player_key != self.player.service_key:
-            self.player = BaseServices.get_service(player_key)
+            try:
+                self.player = BaseServices.get_service(player_key)
+            except ServiceUnavailable:
+                self.player = None
         return self.player
 
     def say(self, phrase: PhraseList):
@@ -413,7 +432,7 @@ class BaseEngineService(BaseServices):
                 return None
             # Shouldn't get here with this
             if (len(engine_output_formats) == 1 and
-                    AudioType.NONE in engine_output_formats):
+                    AudioType.BUILT_IN in engine_output_formats):
                 return None
 
             player_input_formats: List[AudioType] = [AudioType.MP3]
@@ -428,7 +447,7 @@ class BaseEngineService(BaseServices):
         return transcoder_key
 
     @classmethod
-    def get_speech_generator(cls) -> ISpeechGenerator | None:
+    def create_speech_generator(self) -> ISpeechGenerator | None:
         return None
 
     @classmethod
@@ -593,7 +612,7 @@ class BaseEngineService(BaseServices):
         """
         if cls.tmp_dir is None:
             tmpfs: Path | None = None
-            tmpfs = utils.getTmpfs()
+            tmpfs = TempFileUtils.getTmpfs()
             if tmpfs is None:
                 tmpfs = Path(Constants.PROFILE_PATH)
                 tmpfs = tmpfs / 'kodi_speech'
@@ -830,31 +849,6 @@ class BaseEngineService(BaseServices):
         self._stop()
 
     @classmethod
-    def is_available_and_usable(cls):
-        """
-
-        @return:
-        """
-        return cls._available()
-
-    @classmethod
-    def _available(cls):
-        if cls.broken and Settings.getSetting(ServiceKey.DISABLE_BROKEN_SERVICES,
-                                              True):
-            return False
-        return cls.check_availability()
-
-    @staticmethod
-    def check_availability():
-        """Static method representing the speech engines availability
-
-        Subclasses should override this and return True if the speech engine is
-        capable of speaking text in the current environment.
-        Default implementation returns False.
-        """
-        return False
-
-    @classmethod
     def getSettingConstraints(cls, VOLUME):
         pass
 
@@ -902,7 +896,8 @@ class ThreadedTTSBackend(BaseEngineService):
     def kodi_player_state_listener(self, kodi_player_state: KodiPlayerState) -> None:
         clz = type(self)
         clz.kodi_player_state = kodi_player_state
-        MY_LOGGER.debug(f'KODI_PLAYER_STATE: {kodi_player_state}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'KODI_PLAYER_STATE: {kodi_player_state}')
         if kodi_player_state == KodiPlayerState.PLAYING_VIDEO:
             self._stop()
 
@@ -1023,6 +1018,11 @@ class SimpleTTSBackend(ThreadedTTSBackend):
     def get_voice_cache(self) -> VoiceCache:
         raise NotImplementedError
 
+    @classmethod
+    def get_voice(cls) -> str:
+        voice: str = Settings.get_voice(cls.service_key)
+        return voice
+
     def getVolumeDb(self) -> float:
         """
         Mechanism for player to get the volume set for the engine.  This
@@ -1061,7 +1061,7 @@ class SimpleTTSBackend(ThreadedTTSBackend):
     def get_cached_voice_file(self, phrase: Phrase,
                               generate_voice: bool = True) -> bool:
         """
-        Assumes that cache is used. Normally missing voiced files is placed in
+        Assumes that cache is used. Normally missing voiced files are placed in
         the cache by an earlier step, but can be initiated here as well.
 
         Very similar to runCommand, except that the cached files are expected
@@ -1092,39 +1092,6 @@ class SimpleTTSBackend(ThreadedTTSBackend):
         """
         raise NotImplementedError()
 
-    '''
-    def getWavStream(self, text:str):
-        """
-
-        @param text:
-        @return:
-        """
-        fpath = os.path.join(utils.getTmpfs(), 'speech.wav')
-        if MY_LOGGER.isEnabledFor(DEBUG_V):
-            MY_LOGGER.debug_v('tmpfile: ' + fpath)
-
-        self.runCommand(text, fpath)
-        return open(fpath, 'rb')
-    '''
-
-    '''
-    def config_player_mode(self):
-        """
-
-        """
-        clz = type(self)
-        MY_LOGGER.debug(f'In base.config_player_mode')
-        player_id: str = Settings.get_player_key(clz.setting_id)
-        if player_id == Players.INTERNAL:
-            mode = PlayerMode.ENGINE_SPEAK
-        elif Settings.uses_pipe(clz.setting_id):
-            mode = Mode.PIPE
-        else:
-            mode = Mode.FILEOUT
-
-        self.setMode(mode)
-    '''
-
     def threadedSay(self, phrase: Phrase):
         """
 
@@ -1140,9 +1107,9 @@ class SimpleTTSBackend(ThreadedTTSBackend):
             #  self.config_mode()
             player_mode: PlayerMode = Settings.get_player_mode(self.service_key)
             if phrase.get_interrupt():
-                MY_LOGGER.debug(f'stop_player phrases prior to: {phrase}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'stop_player phrase prior to: {phrase}')
                 self.stop_player(purge=True)
-                MY_LOGGER.debug(f'returned from stop_player')
 
             #  MY_LOGGER.debug(f'player_mode: {player_mode} engine: {self.service_id}')
             if player_mode == PlayerMode.FILE:
@@ -1162,6 +1129,7 @@ class SimpleTTSBackend(ThreadedTTSBackend):
 
                 player: IPlayer = self.get_player(clz.service_key)
                 if player:  # if None, then built-in
+                    phrase.add_event('About to play')
                     player.play(phrase)
             elif player_mode == PlayerMode.SLAVE_FILE:
                 # Typically used with caching. If the voiced file does not
@@ -1171,23 +1139,15 @@ class SimpleTTSBackend(ThreadedTTSBackend):
                 # the cost of Python I/O on the voiced file as well as the cost
                 # of exec'ing the player.
                 if Settings.is_use_cache():  # or not Settings.is_use_cache():
-                    MY_LOGGER.debug(f'is_use_cache')
                     if not self.get_cached_voice_file(phrase, generate_voice=True):
-                        MY_LOGGER.debug(f'NOT get_cached_voice_file {phrase}')
                         return
-                    MY_LOGGER.debug(f'Returned from get_cached_voice_file')
                 else:
-                    MY_LOGGER.debug(f'not is_use_cache')
                     if not self.runCommand(phrase):
-                        MY_LOGGER.debug('not runCommand')
                         return
-                MY_LOGGER.debug(f'getting player')
                 player: IPlayer = self.get_player(clz.service_key)
-                MY_LOGGER.debug(f'calling slave_play phrase: {phrase}')
                 player.slave_play(phrase)
 
             elif player_mode == PlayerMode.PIPE:
-                #  MY_LOGGER.debug('runCommandAndPipe')
                 source: BinaryIO = self.runCommandAndPipe(phrase)
                 if not source:
                     return
@@ -1195,15 +1155,14 @@ class SimpleTTSBackend(ThreadedTTSBackend):
                 if player:
                     player.pipe(source, phrase)
             else:   # PlayerMode.EngineSpeak
-                #  MY_LOGGER.debug(f'runCommandAndSpeak')
                 clz._simpleIsSpeaking = True
                 self.runCommandAndSpeak(phrase)
                 clz._simpleIsSpeaking = False
-            #  MY_LOGGER.debug(f'Exiting threadedSay')
         except AbortException as e:
             reraise(*sys.exc_info())
         except ExpiredException:
-            MY_LOGGER.debug('EXPIRED')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug('EXPIRED')
         except Exception as e:
             MY_LOGGER.exception('')
 

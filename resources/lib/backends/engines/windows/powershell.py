@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations  # For union operator |
 
-import ctypes.util
 import os
+import pathlib
 import subprocess
 import sys
 import tempfile
@@ -14,6 +14,7 @@ import langcodes
 from pathlib import Path
 
 from backends.engines.windows.powershell_settings import PowerShellTTSSettings
+from backends.ispeech_generator import ISpeechGenerator
 from backends.players.iplayer import IPlayer
 from backends.settings.language_info import LanguageInfo
 from backends.settings.settings_helper import SettingsHelper
@@ -30,23 +31,96 @@ from backends.audio.sound_capabilities import ServiceType
 from backends.base import BaseEngineService, SimpleTTSBackend
 from backends.settings.i_validators import AllowedValue, INumericValidator, IValidator
 from backends.settings.service_types import ServiceID, ServiceKey, Services
-from backends.settings.settings_map import Reason, SettingsMap
+from backends.settings.settings_map import Status, SettingsMap
 from common import utils
 from common.base_services import BaseServices
-from common.constants import Constants
+from common.constants import Constants, ReturnCode
+from common.exceptions import ExpiredException
+from common.kodi_player_monitor import KodiPlayerMonitor
 from common.logger import *
 from common.message_ids import MessageId
 from common.messages import Messages
 from common.monitor import Monitor
-from common.phrases import Phrase
+from common.phrases import Phrase, PhraseList, PhraseUtils
 from common.setting_constants import (AudioType, Backends, Genders, Mode, PlayerMode,
                                       Players)
 from common.settings import Settings
 from common.settings_low_level import SettingProp
 from langcodes import LanguageTagError
+from utils.util import runInThread
 from windowNavigation.choice import Choice
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
+
+
+
+class Results:
+    """
+        Contains results of background thread/process
+        Provides ability for caller to get status/results
+        Also allows caller to abandon results, but allow task to continue
+        quietly. This is useful for downloading/generating speech which may
+        get canceled before finished, but results can be cached for later use
+    """
+
+    def __init__(self):
+        self.rc: ReturnCode = ReturnCode.NOT_SET
+        # self.download: io.BytesIO = io.BytesIO(initial_bytes=b'')
+        self.finished: bool = False
+        self.phrase: Phrase | None = None
+
+    def get_rc(self) -> ReturnCode:
+        return self.rc
+
+    # def get_download_bytes(self) -> memoryview:
+    #     return self.download.getbuffer()
+
+    # def get_download_stream(self) -> io.BytesIO:
+    #     return self.download
+
+    def is_finished(self) -> bool:
+        return self.finished
+
+    def get_phrase(self) -> Phrase:
+        return self.phrase
+
+    def set_finished(self, finished: bool) -> None:
+        self.finished = finished
+
+    # def set_download(self, data: bytes | io.BytesIO | None) -> None:
+    #     self.download = data
+
+    def set_rc(self, rc: ReturnCode) -> None:
+        self.rc = rc
+
+    def set_phrase(self, phrase: Phrase) -> None:
+        self.phrase = phrase
+
+
+class SpeechGenerator(ISpeechGenerator):
+
+    def __init__(self, generator: ISpeechGenerator, engine: SimpleTTSBackend) -> None:
+        self.download_results: Results = Results()
+        self.engine: SimpleTTSBackend = engine
+        self.voice_cache: VoiceCache = VoiceCache(engine.service_key)
+
+    def set_rc(self, rc: ReturnCode) -> None:
+        self.download_results.set_rc(rc)
+
+    def get_rc(self) -> ReturnCode:
+        return self.download_results.get_rc()
+
+    def set_phrase(self, phrase: Phrase) -> None:
+        self.download_results.set_phrase(phrase)
+
+    # def get_download_bytes(self) -> memoryview:
+    #     return self.download_results.get_download_bytes()
+
+    def set_finished(self) -> None:
+        self.download_results.set_finished(True)
+
+    def is_finished(self) -> bool:
+        return self.download_results.is_finished()
 
 
 class PowerShellTTS(SimpleTTSBackend):
@@ -57,7 +131,6 @@ class PowerShellTTS(SimpleTTSBackend):
     service_id: str = Services.POWERSHELL_ID
     service_key: ServiceID
     service_type: ServiceType = ServiceType.ENGINE
-    engine_id: str = Backends.POWERSHELL_ID
     service_key = ServiceID(service_type, service_id)
     OUTPUT_FILE_TYPE: str = '.wav'
     displayName: str = MessageId.ENGINE_POWERSHELL.get_msg()
@@ -68,12 +141,12 @@ class PowerShellTTS(SimpleTTSBackend):
     script_dir: Path = Constants.PYTHON_ROOT_PATH / 'backends/engines/windows'
     ps_script = 'voice.ps1'
     script_path: Path = script_dir / ps_script
-    voice_args = [POWERSHELL_PATH, '-ExecutionPolicy', 'Unrestricted',
-                  script_path]
+    voice: str = 'Zira'
     voice_map: Dict[str, List[Tuple[str, str, Genders]]] = None
     _logger: BasicLogger = None
     _class_name: str = None
     _initialized: bool = False
+    suffix: int = 0
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -103,8 +176,9 @@ class PowerShellTTS(SimpleTTSBackend):
         if cls.voice_map is not None:
             return
 
-        david: Tuple[str, str, Genders] = ('David', 'en', Genders.MALE)
-        zira: Tuple[str, str, Genders] = ('Zira', 'en', Genders.FEMALE)
+        cls.voice_map = {}
+        david: Tuple[str, str, Genders] = ('David', 'en-us', Genders.MALE)
+        zira: Tuple[str, str, Genders] = ('Zira', 'en-us', Genders.FEMALE)
         voices: List[Tuple[str, str, Genders]] = [david, zira]
         for voice in voices:
             v_name: str = voice[0]
@@ -113,14 +187,15 @@ class PowerShellTTS(SimpleTTSBackend):
             lang: langcodes.Language | None = None
             try:
                 lang = langcodes.Language.get(v_lang)
-                if MY_LOGGER.isEnabledFor(DEBUG_XV):
-                    MY_LOGGER.debug_xv(f'language: {lang.language} '
-                                       f'display: '
-                                       f'{lang.display_name(lang.language)}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'language: {lang.language} '
+                                    f'display: '
+                                    f'{lang.display_name(lang.language)} '
+                                    f'territory: {lang.territory}')
             except LanguageTagError:
                 MY_LOGGER.exception('')
 
-            LanguageInfo.add_language(engine_id=PowerShellTTS.engine_id,
+            LanguageInfo.add_language(engine_key=PowerShellTTS.service_key,
                                       language_id=lang.language,
                                       country_id=lang.territory,
                                       ietf=lang,
@@ -142,7 +217,7 @@ class PowerShellTTS(SimpleTTSBackend):
 
         speed = self.get_speed()
         volume = self.getVolume()
-        pitch = self.get_pitch()
+        #  pitch = self.get_pitch()
         if phrase:
             args.append(phrase.get_text())
         if voice_id:
@@ -166,33 +241,33 @@ class PowerShellTTS(SimpleTTSBackend):
         and return cached speech.
 
         Very similar to runCommand, except that the cached files are expected
-        to be sent to a slave player_key, or some other player_key that can play a sound
+        to be sent to a slave player, or some other player that can play a sound
         file.
         :param phrase: Contains the text to be voiced as wll as the path that it
                        is or will be located.
         :param generate_voice: If true, then wait a bit to generate the speech
                                file.
-        :return: True if the voice file was handed to a player_key, otherwise False
+        :return: True if the voice file was handed to a player, otherwise False
         """
         clz = type(self)
-        MY_LOGGER.debug(f'phrase: {phrase.get_text()} {phrase.get_debug_info()} '
-                        f'cache_path: {phrase.get_cache_path()} use_cache: '
-                        f'{Settings.is_use_cache()}')
+        clz.update_voice_path(phrase)
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'phrase: {phrase.get_text()} {phrase.get_debug_info()} '
+                            f'cache_path: {phrase.get_cache_path()} use_cache: '
+                            f'{Settings.is_use_cache()}')
         self.get_voice_cache().get_path_to_voice_file(phrase,
                                                       use_cache=Settings.is_use_cache())
-        MY_LOGGER.debug(f'cache_exists: {phrase.cache_file_state()} '
-                        f'cache_path: {phrase.get_cache_path()}')
         # Wave files only added to cache when SFX is used.
 
         # This Only checks if a .wav file exists. That is good enough, the
-        # player_key should check for existence of what it wants and to transcode
+        # player should check for existence of what it wants and to transcode
         # if needed.
         player_key: ServiceID = Settings.get_player_key()
         sfx_player: bool = player_key == Players.SFX
         if sfx_player and phrase.cache_file_state() == CacheFileState.OK:
             return True
 
-        # If audio in cache is suitable for player_key, then we are done.
+        # If audio in cache is suitable for player, then we are done.
 
         player_voice_cache: VoiceCache = self.voice_cache
         player_result: CacheEntryInfo
@@ -205,23 +280,26 @@ class PowerShellTTS(SimpleTTSBackend):
         if wave_file is not None:
             result: CacheEntryInfo
             result = self.voice_cache.get_path_to_voice_file(phrase, use_cache=True)
-            mp3_file = result.current_audio_path
-            trans_id: str | None = Settings.get_converter(clz.service_key)
-            MY_LOGGER.debug(f'service_id: {self.engine_id} trans_id: {trans_id}')
+            mp3_file = result.final_audio_path
+            trans_id: str | None = Settings.get_transcoder(clz.service_key)
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'service_id: {self.service_key} trans_id: {trans_id}')
             success = TransCode.transcode(trans_id=trans_id,
                                           input_path=wave_file,
                                           output_path=mp3_file,
                                           remove_input=True)
             if success:
-                phrase.text_exists(check_expired=False)
-            MY_LOGGER.debug(f'success: {success} wave_file: {wave_file} mp3: {mp3_file}')
+                phrase.text_exists(check_expired=False, active_engine=self)
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'success: {success} wave_file: {wave_file} mp3: '
+                                f'{mp3_file}')
         return success
 
     def runCommand(self, phrase: Phrase) -> Path | None:
         """
         Run command to generate speech and save voice to a file (mp3 or wave).
-        A player_key will then be scheduled to play the file. Note that there is
-        delay in starting speech generator, speech generation, starting player_key
+        A player will then be scheduled to play the file. Note that there is
+        delay in starting speech generator, speech generation, starting player
         up and playing. Consider using caching of speech files as well as
         using PlayerMode.SLAVE_FILE.
         :param phrase:
@@ -231,92 +309,123 @@ class PowerShellTTS(SimpleTTSBackend):
         clz = type(self)
         """
         Output file choices:
-            eSpeak can:
+            PowerShell can:
             - Only output wave format
             - Can write to file, or pipe, or directly voice
             - Here we only care about writing to file.
             Destination:
-            - to player_key
-            - to cache, then player_key
-            - to mp3 converter, to cache, then player_key
-            Player prefers wave (since that is native to eSpeak), but can be 
+            - to player
+            - to cache, then player
+            - to mp3 converter, to cache, then player
+            Player prefers wave (since that is native to PowerShell), but can be 
             mp3
             Cache strongly prefers .mp3 (space), but can do wave (useful for
-            fail-safe, when there is no mp3 player_key configured)).
+            fail-safe, when there is no mp3 player configured)).
 
         Assumptions:
             any cache has been checked to see if already voiced
         """
-        use_cache: bool = Settings.is_use_cache()
-        # The SFX player_key is used when NO player_key is available. SFX is Kodi's
-        # internal player_key with limited functionality. Requires Wave.
-        sfx_player: bool = Settings.get_player_key() == Players.SFX
-        espeak_out_file: Path | None = None
-        exists: bool = False
-        if not sfx_player:
-            tmp = tempfile.NamedTemporaryFile()
-            espeak_out_file = Path(tmp.name)
-            #  espeak_out_file = clz.tmp_file(clz.OUTPUT_FILE_TYPE)
-        else:
-            result: CacheEntryInfo
-            result = self.voice_cache.get_path_to_voice_file(phrase, use_cache=True)
-            exists = result.audio_exists
-            espeak_out_file = result.current_audio_path
-        if exists:
-            return espeak_out_file
+        clz.update_voice_path(phrase)
+        sfx_player: bool = Settings.get_player_key().setting_id == Players.SFX
+        use_cache: bool = Settings.is_use_cache() or sfx_player
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'phrase: {phrase.get_text()} {phrase.get_debug_info()} '
+                            f'cache_path: {phrase.get_cache_path()} ')
+        # Get path to audio-temp file, or cache location for audio
+        result: CacheEntryInfo | None = None
+        result = self.get_voice_cache().get_path_to_voice_file(phrase,
+                                                               use_cache=use_cache)
+        MY_LOGGER.debug(f'use_cache: {use_cache} result: {result}')
+        audio_exists: bool = result.audio_exists  # True ONLY if using cache
+        if audio_exists:
+            return result.final_audio_path
 
         if MY_LOGGER.isEnabledFor(DEBUG_V):
-            MY_LOGGER.debug_v(f'espeak.runCommand cache: {use_cache} '
-                              f'espeak_out_file: {espeak_out_file.name}\n'
+            MY_LOGGER.debug_v(f'PowerShell.runCommand cache: {use_cache} '
+                              f'PowerShell_out_file: {result.temp_voice_path.name}\n'
                               f'text: {phrase.text}')
-        # if out_file.stem == '.mp3':
-        #     self.runCommandAndPipe(phrase)
-        #     return
-
         env = os.environ.copy()
-        args = clz.voice_args.copy()
-        self.addCommonArgs(args)
+        args: List[str] = self.get_args(phrase, result.temp_voice_path)
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'temp_voice_path type: {type(result.temp_voice_path)}')
         try:
+            MY_LOGGER.debug(f'COMMAND STARTED phrase: {phrase.text}')
             if Constants.PLATFORM_WINDOWS:
-                MY_LOGGER.info(f'Running command: Windows')
-                subprocess.run(args,
-                               input=f'{phrase.text} ',
-                               text=True,
-                               shell=False,
-                               encoding='utf-8',
-                               close_fds=True,
-                               env=env,
-                               check=True,
-                               creationflags=subprocess.DETACHED_PROCESS)
-            else:
-                MY_LOGGER.info(f'Running command: Linux')
-                subprocess.run(args,
-                               input=f'{phrase.text} ',
-                               text=True,
-                               shell=False,
-                               encoding='utf-8',
-                               close_fds=True,
-                               env=env,
-                               check=True)
-
-            MY_LOGGER.debug(f'args: {args}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'Running command: Windows {args}')
+                completed_proc: subprocess.CompletedProcess
+                completed_proc = subprocess.run(args,
+                                                input=None,
+                                                capture_output=False,
+                                                text=True,
+                                                shell=False,
+                                                encoding='utf-8',
+                                                close_fds=True,
+                                                env=env,
+                                                check=True,
+                                                creationflags=subprocess.CREATE_NO_WINDOW)
         except subprocess.CalledProcessError as e:
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.exception('')
                 return None
-        return espeak_out_file  # Wave file
+        MY_LOGGER.debug(f'COMMAND FINISHED phrase: {phrase.text}')
+        if not result.temp_voice_path.exists():
+            MY_LOGGER.info(f'voice file not created: {result.temp_voice_path}')
+            return None
+        if result.temp_voice_path.stat().st_size <= 1000:
+            MY_LOGGER.info(f'voice file too small. Deleting: '
+                           f'{result.temp_voice_path}')
+            try:
+                result.temp_voice_path.unlink(missing_ok=True)
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'unlink {result.temp_voice_path}')
+            except:
+                MY_LOGGER.exception('')
+            return None
+        try:
+            result.temp_voice_path.rename(result.final_audio_path)
+            phrase.set_cache_path(cache_path=result.final_audio_path,
+                                  text_exists=phrase.text_exists(active_engine=self,
+                                                                 check_expired=False),
+                                  temp=not result.use_cache)
+        except ExpiredException:
+            try:
+                result.temp_voice_path.unlink(missing_ok=True)
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'EXPIRED: unlink {result.temp_voice_path}')
+            except:
+                MY_LOGGER.exception(f'Can not delete {result.temp_voice_path}')
+            return None
+        except subprocess.CalledProcessError as e:
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.exception('')
+                try:
+                    result.temp_voice_path.unlink(missing_ok=True)
+                except:
+                    MY_LOGGER.exception(f'Can not delete {result.temp_voice_path}')
+                return None
+        except Exception:
+            MY_LOGGER.exception(f'Could not rename {result.temp_voice_path} '
+                                f'to {result.final_audio_path}')
+            try:
+                result.temp_voice_path.unlink(missing_ok=True)
+            except:
+                MY_LOGGER.exception(f'Can not delete {result.temp_voice_path}')
+            return None
+        MY_LOGGER.debug(f'FINISHED')
+        return result.final_audio_path  # Wave file
 
     def runCommandAndSpeak(self, phrase: Phrase):
         clz = type(self)
+        clz.update_voice_path(phrase)
         env = os.environ.copy()
-        args: List[str] = clz.voice_args.copy()
-        self.addCommonArgs(args, phrase)
-        MY_LOGGER.debug(f'args: {args}')
+        args: List[str] = self.get_args(phrase)
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'args: {args}')
         try:
             if Constants.PLATFORM_WINDOWS:
-                MY_LOGGER.info(f'Running command: Windows')
                 subprocess.run(args,
-                               input=f'{phrase.text} ',
+                               input=None,
                                text=True,
                                shell=False,
                                encoding='utf-8',
@@ -324,19 +433,29 @@ class PowerShellTTS(SimpleTTSBackend):
                                env=env,
                                check=True,
                                creationflags=subprocess.CREATE_NO_WINDOW)
-            else:
-                MY_LOGGER.info(f'Running command: Linux')
-                subprocess.run(args,
-                               input=f'{phrase.text} ',
-                               text=True,
-                               shell=False,
-                               encoding='utf-8',
-                               close_fds=True,
-                               env=env,
-                               check=True)
         except subprocess.SubprocessError as e:
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.exception('')
+
+    def seed_text_cache(self, phrases: PhraseList) -> None:
+        """
+        Provides means to generate voice files before actually needed. Currently
+        called by worker_thread to get a bit of a head-start on the normal path.
+
+        :param phrases:
+        :return:
+        """
+
+        clz = type(self)
+        self.get_voice_cache().seed_text_cache(phrases)
+
+    @classmethod
+    def get_speech_generator(cls) -> SpeechGenerator:
+        return SpeechGenerator()
+
+    @classmethod
+    def has_speech_generator(cls) -> bool:
+        return True
 
     def stop(self):
         clz = type(self)
@@ -352,7 +471,7 @@ class PowerShellTTS(SimpleTTSBackend):
     @classmethod
     def load_languages(cls):
         """
-        Discover eSpeak's supported languages and report results to
+        Discover PowerShell's supported languages and report results to
         LanguageInfo.
         :return:
         """
@@ -443,7 +562,7 @@ class PowerShellTTS(SimpleTTSBackend):
                 genders.append(Choice(value=gender_id))
             return genders, ''
         elif setting == SettingProp.PLAYER:
-            # Get list of player_key ids. Id is same as is stored in settings.xml
+            # Get list of player ids. Id is same as is stored in settings.xml
             supported_players: List[AllowedValue]
             supported_players = SettingsMap.get_allowed_values(ServiceKey.PLAYER_KEY)
             for player in supported_players:
@@ -465,6 +584,35 @@ class PowerShellTTS(SimpleTTSBackend):
             return choices, default_player
         return choices, ''
 
+    def get_args(self, phrase: Phrase, wave_output: Path | None = None) -> List[str]:
+        clz = type(self)
+        text: str = f'{phrase.text}'
+
+        voice_id = Settings.get_voice(clz.service_key)
+        #  MY_LOGGER.debug(f'voice: {voice_id}')
+        if voice_id is None or voice_id in ('unknown', ''):
+            voice_id = ''
+        else:
+            voice_id = f'-Voice {voice_id}'
+
+        clz.suffix += 1
+        t_file: str = f'temp_{clz.suffix}'
+        #  wave_output = Path(f'c:/Users/fbacher/{t_file}')
+        windows_path: str = ''
+        if wave_output is not None:
+            windows_path = f'-AudioPath \'{str(wave_output)}\''
+
+        # speed = self.get_speed()
+        # volume = self.getVolume()
+        args = [clz.POWERSHELL_PATH,
+                f'& {{. \'{clz.script_path}\';  New-TextToSpeechMessage '
+                f'\'{text}\' '
+                f'{voice_id} '
+                f'{windows_path}'
+                f'}}']
+        #  MY_LOGGER.debug(f'args: {args}')
+        return args
+
     @classmethod
     def get_default_language(cls) -> str:
         languages: List[str]
@@ -480,7 +628,7 @@ class PowerShellTTS(SimpleTTSBackend):
 
     def getVolume(self) -> int:
         # All volumes in settings use a common TTS db scale.
-        # Conversions to/from the engine's or player_key's scale are done using
+        # Conversions to/from the engine's or player's scale are done using
         # Constraints
         clz = type(self)
         t_service_id: ServiceID
@@ -500,19 +648,18 @@ class PowerShellTTS(SimpleTTSBackend):
 
     def get_pitch(self) -> int:
         # All pitches in settings use a common TTS scale.
-        # Conversions to/from the engine's or player_key's scale are done using
+        # Conversions to/from the engine's or player's scale are done using
         # Constraints
         clz = type(self)
+        pitch_key: ServiceID = clz.service_key.with_prop(SettingProp.PITCH)
         if self.get_player_mode != PlayerMode.ENGINE_SPEAK:
-            pitch_val: INumericValidator = SettingsMap.get_validator(
-                    clz.service_id, SettingProp.PITCH)
+            pitch_val: INumericValidator = SettingsMap.get_validator(pitch_key)
             pitch_val: NumericValidator
             pitch: int = pitch_val.get_value()
             return pitch
         else:
             # volume = Settings.get_volume(clz.setting_id)
-            pitch_val: INumericValidator = SettingsMap.get_validator(
-                    clz.service_id, SettingProp.PITCH)
+            pitch_val: INumericValidator = SettingsMap.get_validator(pitch_key)
             pitch_val: NumericValidator
             # volume: int = volume_val.get_tts_value()
             pitch: int = pitch_val.get_value()
@@ -521,7 +668,7 @@ class PowerShellTTS(SimpleTTSBackend):
 
     def get_speed(self) -> int:
         """
-            espeak's speed is measured in 'words/minute' with a default
+            PowerShell's speed is measured in 'words/minute' with a default
             of 175. Limits not specified, appears to be about min=60 with no
             max. Linear
 
@@ -530,16 +677,16 @@ class PowerShellTTS(SimpleTTSBackend):
         :return:
         """
         # All settings use a common TTS scale.
-        # Conversions to/from the engine's or player_key's scale are done using
+        # Conversions to/from the engine's or player's scale are done using
         # Constraints
         clz = type(self)
+        speed_key: ServiceID = clz.service_key.with_prop(SettingProp.SPEED)
         if self.get_player_mode != PlayerMode.ENGINE_SPEAK:
-            # Let player_key decide speed
-            speed = 176  # Default espeak speed of 176 words per minute.
+            # Let player decide speed
+            speed = 176  # Default PowerShell speed of 176 words per minute.
             return speed
         else:
-            speed_val: INumericValidator = SettingsMap.get_validator(
-                    clz.service_id, SettingProp.SPEED)
+            speed_val: INumericValidator = SettingsMap.get_validator(speed_key)
             speed_val: NumericValidator
             speed: int = speed_val.get_value()
         return speed
@@ -552,24 +699,25 @@ class PowerShellTTS(SimpleTTSBackend):
         :param phrase:
         :return:
         """
-
         if Settings.is_use_cache() and not phrase.is_lang_territory_set():
-            if MY_LOGGER.isEnabledFor(DEBUG_XV):
-                MY_LOGGER.debug_xv(f'lang: {phrase.language} \n'
-                                   f'voice: {phrase.voice}\n'
-                                   f'lang_dir: {phrase.lang_dir}\n'
-                                   f'')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'lang: {phrase.language} \n'
+                                f'voice: {phrase.voice}\n'
+                                f'lang_dir: {phrase.lang_dir}')
             locale: str = phrase.language  # IETF format
-            _, kodi_locale, _, ietf_lang = LanguageInfo.get_kodi_locale_info()
+            kodi_lang, kodi_locale, _, ietf_lang = LanguageInfo.get_kodi_locale_info()
+            MY_LOGGER.debug(f'locale: {locale} kodi_lang: {kodi_lang} '
+                            f'kodi_locale: {kodi_locale} '
+                            f'ietf_lang: {ietf_lang}')
             # MY_LOGGER.debug(f'orig Phrase locale: {locale}')
             if locale is None:
                 locale = kodi_locale
             ietf_lang: langcodes.Language = langcodes.get(locale)
-            # MY_LOGGER.debug(f'locale: {locale}')
+            MY_LOGGER.debug(f'locale: {locale} ietf_lang: {ietf_lang}')
             phrase.set_lang_dir(ietf_lang.language)
-            phrase.set_territory_dir(ietf_lang.territory.lower())
+            # Horrible, crude, hack due to kodi xbmc.getLanguage bug
+            if ietf_lang.territory is not None:
+                phrase.set_territory_dir(ietf_lang.territory.lower())
+            else:
+                phrase.set_territory_dir('us')
         return
-
-    @classmethod
-    def check_availability(cls) -> Reason:
-        return PowerShellTTSSettings.check_availability()

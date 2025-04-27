@@ -384,7 +384,7 @@ class SlaveCommunication:
             Monitor.exception_on_abort(timeout=0.1)
         try:
             if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'Unlinking {self.fifo_path}')
+                MY_LOGGER.debug(f'unlink {self.fifo_path}')
             self.fifo_path.unlink(missing_ok=True)
             pass
         except AbortException:

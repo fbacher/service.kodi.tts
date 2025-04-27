@@ -16,7 +16,7 @@ from common import *
 from backends.settings.i_validators import IValidator
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.setting_properties import SettingProp
-from backends.settings.settings_map import Reason, SettingsMap
+from backends.settings.settings_map import Status, SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
                                           IntValidator, NumericValidator,
                                           StringValidator)
@@ -86,11 +86,13 @@ class BaseServices(IServices):
         :param service:
         :return:
         """
-        key: str = service.service_key.service_key
+        service_key: ServiceID = service.service_key
+        key: str = service_key.service_key
         BaseServices.service_index[key] = service
-        # MY_LOGGER.debug(f'Registered {key} '
-        #                 f'type: {type(service.service_id)} '
-        #                 f'{repr(service)}')
+        MY_LOGGER.debug(f'Registered {key} {type(key)} '
+                        f'type: {type(service.service_id)} '
+                        f'{repr(service)}')
+        #  MY_LOGGER.debug(f'{BaseServices.service_index}')
 
     '''
     def register_settings(self, service: Type['BaseServices']) -> None:
@@ -109,17 +111,19 @@ class BaseServices(IServices):
     @classmethod
     def get_service(cls, service_key: ServiceID) -> ForwardRef('BaseServices'):
         # MY_LOGGER.debug(f'service_key: {service_key} type: {type(service_key)}')
+        key: str = service_key.service_key
         service: BaseServices | None
-        service = BaseServices.service_index.get(service_key.service_key, None)
+        service = BaseServices.service_index.get(key, None)
+
         if service is None:
-            MY_LOGGER.info(f'Could not get service: {service_key} ')
+            MY_LOGGER.info(f'Could not get service: {key} ')
             #  MY_LOGGER.info(f'services: {BaseServices.service_index}')
             active_service: bool = False
-            raise ServiceUnavailable(service_key=service_key, reason=Reason.UNKNOWN,
+            raise ServiceUnavailable(service_key=service_key, reason=Status.UNKNOWN,
                                      active=active_service)
         if not SettingsMap.is_available(service_key):
             raise ServiceUnavailable(service_key,
-                                     reason=Reason.NOT_AVAILABLE, active=None)
+                                     reason=Status.FAILED, active=None)
         return service
 
     @classmethod

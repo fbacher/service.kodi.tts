@@ -16,7 +16,7 @@ from backends.players.player_index import PlayerIndex
 from backends.settings.i_validators import INumericValidator
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.setting_properties import SettingProp
-from backends.settings.settings_map import Reason, SettingsMap
+from backends.settings.settings_map import Status, SettingsMap
 from backends.settings.validators import NumericValidator
 from common import *
 from common.base_services import BaseServices, IServices
@@ -225,7 +225,3 @@ class MPlayerAudioPlayer(SubprocessAudioPlayer, BaseServices):
         PlayerIndex.register(MPlayerAudioPlayer.ID, me)
         me: IServices
         BaseServices.register(me)
-
-    @classmethod
-    def check_availability(cls) -> Reason:
-        return MPlayerSettings.check_availability()

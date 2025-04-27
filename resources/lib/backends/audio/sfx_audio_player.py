@@ -16,7 +16,7 @@ from backends.players.player_index import PlayerIndex
 from backends.players.sfx_settings import SFXSettings
 from backends.settings.service_types import (EngineType, GENERATE_BACKUP_SPEECH,
                                              Services, ServiceType)
-from backends.settings.settings_map import Reason
+from backends.settings.settings_map import Status
 from backends.transcoders.trans import TransCode
 from cache.voicecache import CacheEntryInfo, VoiceCache
 from common import *
@@ -105,12 +105,12 @@ class PlaySFXAudioPlayer(AudioPlayer, BaseServices):
             # Convert .mp3 files into .wav and save in NO_ENGINE engine's cache
             no_engine = BaseServices.get_service(EngineType.NO_ENGINE.value)
             wave_phrase, cache_info = no_engine.create_wave_phrase(phrase)
-            audio_path: Path = cache_info.current_audio_path
+            audio_path: Path = cache_info.final_audio_path
             wave_file = audio_path.with_suffix(f'.{AudioType.WAV}')
         else:
             cache_info = self.voice_cache.get_path_to_voice_file(phrase, use_cache=True)
             MY_LOGGER.debug(f'result: {cache_info}')
-            audio_path: Path = cache_info.current_audio_path
+            audio_path: Path = cache_info.final_audio_path
             wave_file = audio_path.with_suffix(f'.{AudioType.WAV}')
             if not wave_file.exists():
                 mp3_file: Path = audio_path.with_suffix(f'.{AudioType.MP3}')
@@ -125,14 +125,14 @@ class PlaySFXAudioPlayer(AudioPlayer, BaseServices):
                     if tran_id is not None:
                         MY_LOGGER.debug(f'Setting converter: {tran_id} for '
                                         f'{clz.service_id}')
-                        Settings.set_converter(tran_id, clz.service_key)
-                        x = Settings.get_converter(clz.service_key)
+                        Settings.set_transcoder(tran_id, clz.service_key)
+                        x = Settings.get_transcoder(clz.service_key)
                         MY_LOGGER.debug(f'Setting converter: {x}')
                 except ValueError:
                     # Can not find a match. Don't recover, for now
                     reraise(*sys.exc_info())
 
-                trans_id: str = Settings.get_converter(clz.service_key)
+                trans_id: str = Settings.get_transcoder(clz.service_key)
                 MY_LOGGER.debug(f'service_id: {clz.service_id} trans_id: {trans_id}')
                 success = TransCode.transcode(trans_id=trans_id,
                                               input_path=mp3_file,
@@ -227,5 +227,5 @@ class PlaySFXAudioPlayer(AudioPlayer, BaseServices):
         self.stop()
 
     @classmethod
-    def check_availability(cls) -> Reason:
+    def check_availability(cls) -> Status:
         return SFXSettings.check_availability()

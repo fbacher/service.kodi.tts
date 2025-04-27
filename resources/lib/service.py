@@ -61,34 +61,39 @@ else:
         'tts.backends.driver': DEBUG,
         'tts.backends.google': DEBUG,
         'tts.backends.espeak': DEBUG,
-        'tts.backends.espeak_settings': INFO,
+        'tts.backends.espeak_settings': DEBUG,
         'tts.backends.no_engine': INFO,
         'tts.backends.no_engine_settings': INFO,
-        'tts.backends.engines.google': DEBUG,
-        'tts.backends.engines.google_settings': DEBUG,
-        'tts.backends.settings.language_info': INFO,
+        'tts.backends.engines.google_downloader': DEBUG,
+        'tts.backends.engines.google_settings': INFO,
+        'tts.backends.engines.speech_generator': DEBUG,
+        'tts.backends.engines.windows.powershell': DEBUG,
+        'tts.backends.engines.windows.powershell_settings': DEBUG,
+        'tts.backends.settings.language_info': DEBUG,
         #  'tts.backends.settings.langcodes_wrapper': DEBUG,
         'tts.backends.settings.service_types': INFO,
         'tts.backends.settings.settings_helper': INFO,
-        'tts.backends.settings.settings_map': DEBUG,
+        'tts.backends.settings.settings_map': INFO,
         'tts.backends.settings.validators': INFO,
-        'tts.backends.base': DEBUG,
+        'tts.backends.base': INFO,
         'tts.backends.audio.base_audio': DEBUG,
-        'tts.backends.audio.mpv_audio_player': DEBUG_XV,
+        'tts.backends.audio.mpv_audio_player': DEBUG,
         'tts.backends.audio.mplayer_audio_player': INFO,
         'tts.backends.audio.sfx_audio_player': INFO,
-        'tts.backends.audio.sound_capabilities': INFO,
-        'tts.backends.audio.worker_thread': DEBUG,
+        'tts.backends.audio.sound_capabilities': DEBUG,
+        'tts.backends.audio.worker_thread': INFO,
         'tts.backends.transcoders.trans': INFO,
-        'tts.cache.voicecache': DEBUG_XV,
-        'tts.common.base_services': DEBUG,
+        'tts.cache.voicecache': INFO,
+        'tts.common.base_services': INFO,
+        'tts.common.garbage_collector': DEBUG,
         'tts.common.logger': INFO,
         'tts.common.monitor': INFO,
         'tts.common.phrases': INFO,
-        'tts.common.settings_low_level': DEBUG,
-        'tts.common.settings': DEBUG,
+        'tts.common.settings_low_level': INFO,
+        'tts.common.settings': INFO,
         'tts.common.slave_communication': DEBUG,
-        'tts.common.simple_run_command': INFO,
+        'tts.common.simple_run_command': DEBUG,
+        'tts.common.simple_pipe_command': DEBUG,
         'tts.common.slave_run_command': DEBUG,
         'tts.common.utils': DEBUG,
         'tts.utils.util': INFO,
@@ -99,15 +104,15 @@ else:
         'tts.gui.window_structure': INFO,
         # 'tts.gui.parser': INFO,
         'tts.service_worker': DEBUG,
-        'tts.startup.bootstrap_engines': DEBUG,
+        'tts.startup.bootstrap_engines': INFO,
         'tts.startup.bootstrap_converters': DEBUG,
-        'backends.audio.bootstrap_players': DEBUG,
+        'backends.audio.bootstrap_players': INFO,
         'backends.players.mpv_player_settings': DEBUG,
         'backends.players.mplayer_settings': INFO,
         'tts.windowNavigation.configure': DEBUG,
         'tts.windowNavigation.help_dialog': INFO,
-        'tts.windowNavigation.selection_dialog': DEBUG_XV,
-        'tts.windowNavigation.settings_dialog': DEBUG_XV
+        'tts.windowNavigation.selection_dialog': DEBUG,
+        'tts.windowNavigation.settings_dialog': DEBUG
     }
 xbmc.log(f'configuring debug_levels INFO: {logging.INFO} DEBUG: {DEBUG} '
          f'VERBOSE: {DEBUG_V} EXTRA_VERBOSE: '
@@ -259,8 +264,8 @@ def startService():
         xbmc.log('started service.startService thread', xbmc.LOGDEBUG)
     except AbortException:
         pass  # About to exit thread
-    except Exception as e:
-        xbmc.log(f'Exception {repr(e)}. Exiting')
+    except Exception as e2:
+        xbmc.log(f'Exception {repr(e2)}. Exiting')
         module_logger.exception('')
         MinimalMonitor.set_abort_received()
     # while True:

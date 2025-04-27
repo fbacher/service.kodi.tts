@@ -24,7 +24,7 @@ class PlayerIndex:
         Players.MPG321,
         Players.MPG123,
         Players.MPG321_OE_PI,
-        Players.INTERNAL,
+        Players.BUILT_IN,
         Players.NONE]
     #     Players.WavAudioPlayerHandler,
     #     Players.MP3AudioPlayerHandler,
@@ -40,7 +40,4 @@ class PlayerIndex:
     @staticmethod
     def get_player(player_id: str) -> IPlayer:
         player: IPlayer | None = PlayerIndex._player_lookup.get(player_id)
-        if player is None:
-            # BootstrapPlayers.load_player(player_id)
-            player = PlayerIndex._player_lookup.get(player_id)
         return player

@@ -57,7 +57,8 @@ class WorkerThread:
     def add_to_queue(self, tts_data: TTSQueueData) -> None:
         clz = type(self)
         try:
-            MY_LOGGER.info(f'tts_data: {tts_data.data}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'tts_data: {tts_data.data}')
             if not self.thread_started:
                 self.thread.start()
                 self.thread_started = True

@@ -15,6 +15,8 @@ from common import *
 #  from common.get import *
 from common.monitor import Monitor
 
+LOGGER_ENABLED: bool = False
+
 
 class GarbageCollector:
     """
@@ -37,7 +39,8 @@ class GarbageCollector:
             if not cls._stopped:
                 if thread not in cls._threads_to_join:
                     cls._threads_to_join.append(thread)
-                    xbmc.log(f'garbage_collector adding {thread.name}')
+                    if LOGGER_ENABLED:
+                        xbmc.log(f'garbage_collector adding {thread.name}')
                     # if cls._logger.isEnabledFor(DISABLED):
                     #     cls._logger.debug_xv(f'Adding thread: {thread.name} '
                     #                                     f'{thread.ident}')
@@ -94,8 +97,9 @@ class GarbageCollector:
                 #     cls._logger.debug_xv(f'Removing dead thread: '
                 #                                     f'{thread.name} '
                 #                                     f'{thread.ident}')
-                xbmc.log(f'garbage_collector joined: {thread.name} live: {live_threads}',
-                         xbmc.LOGDEBUG)
+                if LOGGER_ENABLED:
+                    xbmc.log(f'garbage_collector joined: {thread.name} live: '
+                             f'{live_threads}', xbmc.LOGDEBUG)
                 cls._threads_to_join.remove(thread)
         return live_threads
 
@@ -105,11 +109,13 @@ class GarbageCollector:
         ABORT HAS OCCURRED. Shut down fast and capture dump of stragglers
         :return:
         """
-        xbmc.log(f'In GarbageCollector abort_notification')
+        if LOGGER_ENABLED:
+            xbmc.log(f'In GarbageCollector abort_notification')
         with cls._lock:
             cls.reap_the_dead()
-            for thread in cls._threads_to_join:
-                xbmc.log(f'garbage_collector remaining thread: {thread.name}')
+            if LOGGER_ENABLED:
+                for thread in cls._threads_to_join:
+                    xbmc.log(f'garbage_collector remaining thread: {thread.name}')
         # cls._stopped = True
         finished = True
         # del cls._threads_to_join

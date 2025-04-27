@@ -1,4 +1,6 @@
 # coding=utf-8
+from __future__ import annotations
+
 import math
 import queue
 import sys
@@ -14,15 +16,14 @@ from common.minimal_monitor import MinimalMonitor
 from common.monitor import Monitor
 from utils.util import runInThread
 
-module_logger: BasicLogger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class Delay:
-    _logger: BasicLogger = None
 
     def __init__(self, bias: float = 0.0, call_scale_factor: float = 1.0,
                  scale_factor: float = 1.0) -> None:
-        '''
+        """
         Delay simply provides a mechanism to keep from throttling the cpu.
         The delay is designed to increase with each call (although this can
         be overridden). The wait time, in seconds, is:
@@ -32,11 +33,7 @@ class Delay:
         :param bias: Base amount of time to wait
         :param call_scale_factor: Increases the weight of each call
         :param scale_factor: See formula
-        '''
-
-        clz = type(self)
-        if clz._logger is None:
-            clz._logger = module_logger
+        """
 
         self._bias: float = bias
         self._call_scale_factor = call_scale_factor
@@ -49,7 +46,7 @@ class Delay:
               call_scale_factor: float = None,
               scale_factor: float = None,
               timeout: float = None) -> float:
-        '''
+        """
         Waits to keep from throttling the cpu. The wait time depends upon
         the given parameters. The time to wait is returned after the call.
 
@@ -67,7 +64,7 @@ class Delay:
         :param scale_factor: See formula; replaces value from constructor
         :param timeout: If specified, this overrides the calculated delay
         :return:
-        '''
+        """
         clz = type(self)
 
         if bias is not None:
@@ -79,11 +76,11 @@ class Delay:
 
         self._call_count += 1
 
-        if clz._logger.isEnabledFor(DISABLED):
-            clz._logger.debug_xv(f' bias: {bias} call_count: '
-                                            f'{self._call_count} call_scale_factor: '
-                                            f'{self._call_scale_factor:f} scale_factor: '
-                                            f'{self._scale_factor}')
+        if MY_LOGGER.isEnabledFor(DISABLED):
+            MY_LOGGER.debug_xv(f' bias: {bias} call_count: '
+                               f'{self._call_count} call_scale_factor: '
+                               f'{self._call_scale_factor:f} scale_factor: '
+                               f'{self._scale_factor}')
         _delay: float
         if timeout is not None:
             _delay = float(timeout)
@@ -102,9 +99,6 @@ class FindTextToVoice:
     _logger: BasicLogger = None
 
     def __init__(self, top: Path) -> None:
-        clz = type(self)
-        if clz._logger is None:
-            clz._logger = module_logger
         self.unvoiced_files: queue.Queue = queue.Queue(maxsize=200)
         self.glob_pattern: str = '**/*.txt'
         self.finder: FindFiles = FindFiles(top, self.glob_pattern)
@@ -129,18 +123,18 @@ class FindTextToVoice:
                 if not voice_path.exists():
                     Monitor.exception_on_abort(timeout=1.0)
                     try:
-                        #  clz._logger.debug(f'found .txt without .mp3: {voice_path}')
+                        #  MY_LOGGER.debug(f'found .txt without .mp3: {voice_path}')
                         self.unvoiced_files.put_nowait(str(path))
                     except AbortException:
                         reraise(*sys.exc_info())
                     except queue.Full:
                         pass
                     except Exception:
-                        module_logger.exception('')
+                        MY_LOGGER.exception('')
         except AbortException:
             pass  # End Thread
         except Exception:
-            clz._logger.exception('')
+            MY_LOGGER.exception('')
 
 
 class FindFiles(Iterable[Path]):
@@ -158,16 +152,13 @@ class FindFiles(Iterable[Path]):
         :param patterns:
         :return:
         """
-        clz = type(self)
-        if clz._logger is None:
-            clz._logger = module_logger
-
         self._die: bool = False
         self._top: Path = top
         self._path: Path = self._top
         self._glob_pattern: str = glob_pattern
-        clz._logger.debug(f'top: {self._top} path: {self._path} pattern: '
-                          f'{self._glob_pattern}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'top: {self._top} path: {self._path} pattern: '
+                            f'{self._glob_pattern}')
 
         self._queue_complete: bool = False
 
@@ -186,12 +177,13 @@ class FindFiles(Iterable[Path]):
 
             for path in self._path.glob(self._glob_pattern):
                 path: Path
-                #  clz._logger.debug(f'path: {path}')
+                #  MY_LOGGER.debug(f'path: {path}')
                 inserted: bool = False
                 while not inserted:
                     try:
                         if self._die:
-                            clz._logger.debug(f'Die')
+                            if MY_LOGGER.isEnabledFor(DEBUG):
+                                MY_LOGGER.debug(f'Die')
                             break
 
                         self._file_queue.put(path, block=False)
@@ -199,28 +191,30 @@ class FindFiles(Iterable[Path]):
                     except queue.Full:
                         Monitor.exception_on_abort(timeout=0.25)
                 if self._die:
-                    clz._logger.debug(f'Die')
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug(f'Die')
                     break
         except AbortException:
             self._die = True  # Let thread die
 
         except Exception as e:
-            clz._logger.exception(msg='')
+            MY_LOGGER.exception(msg='')
         finally:
-            #  clz._logger.debug('queue complete')
+            #  MY_LOGGER.debug('queue complete')
             self._queue_complete = True
             if not self._die:
                 self._file_queue.put(None)
-            clz._logger.debug(f'exiting die: {self._die}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'exiting die: {self._die}')
             del self._path
 
-    def get_next(self) -> Path:
+    def get_next(self) -> Path | None:
         clz = type(self)
         if self._file_queue is None:
-            #  clz._logger.debug('get_next returning None')
+            #  MY_LOGGER.debug('get_next returning None')
             return None
 
-        next_path: Path = None
+        next_path: Path | None = None
         while next_path is None:
             try:
                 Monitor.exception_on_abort(timeout=0.1)
@@ -229,14 +223,15 @@ class FindFiles(Iterable[Path]):
             except queue.Empty:
                 # Empty because we are done, or empty due to timeout
                 if self._queue_complete:
-                    clz._logger.debug('Queue empty')
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug('Queue empty')
                     self._file_queue = None
                     break
                     '''
                     try:
                         GarbageCollector.add_thread(self._find_thread)
                     except Exception as e:
-                        clz._logger.exception(msg='')
+                        MY_LOGGER.exception(msg='')
                     finally:
                     
                         self._find_thread = None
@@ -247,19 +242,20 @@ class FindFiles(Iterable[Path]):
                 reraise(*sys.exc_info())
 
             except BaseException as e:
-                clz._logger.exception(msg='')
+                MY_LOGGER.exception(msg='')
 
-        #  clz._logger.debug(f'next_path: {next_path}')
+        #  MY_LOGGER.debug(f'next_path: {next_path}')
         return next_path
 
     def kill(self):
         clz = type(self)
-        clz._logger.debug('In kill, die')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug('In kill, die')
         self._die = True
 
     def __iter__(self) -> Iterator:
         clz = type(self)
-        #  clz._logger.debug('in __iter__')
+        #  MY_LOGGER.debug('in __iter__')
         return FindFilesIterator(self)
 
 
@@ -268,33 +264,32 @@ class FindFilesIterator(Iterator):
     _logger: BasicLogger = None
 
     def __init__(self, files: FindFiles):
-        clz = type(self)
-        if clz._logger is None:
-            clz._logger = module_logger
-        #  clz._logger.debug(f'In __init__')
+        #  MY_LOGGER.debug(f'In __init__')
 
         self._files: FindFiles = files
 
     def __next__(self) -> Path:
         path: Path = None
         clz = type(self)
-        #  clz._logger.debug('In __next__')
+        #  MY_LOGGER.debug('In __next__')
         try:
             path: Path = self._files.get_next()
-            # clz._logger.debug(f'__next__ path: {path}')
+            # MY_LOGGER.debug(f'__next__ path: {path}')
         except AbortException:
             reraise(*sys.exc_info())
 
         except Exception as e:
-            clz._logger.exception(msg='')
+            MY_LOGGER.exception(msg='')
 
         if path is None:
-            clz._logger.debug('iterator path None raising StopIteration')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug('iterator path None raising StopIteration')
             raise StopIteration()
 
         return path
 
     def __del__(self):
         clz = type(self)
-        clz._logger.debug(f'FindFilesIterator _files.kill')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'FindFilesIterator _files.kill')
         self._files.kill()

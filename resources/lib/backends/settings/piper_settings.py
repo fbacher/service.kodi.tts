@@ -8,7 +8,7 @@ from backends.engines.base_engine_settings import (BaseEngineSettings)
 from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.constraints import Constraints
 from backends.settings.service_types import Services, ServiceType
-from backends.settings.settings_map import Reason, SettingsMap
+from backends.settings.settings_map import Status, SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
                                           NumericValidator, StringValidator)
 from common.constants import Constants
@@ -73,7 +73,7 @@ class PiperSettings(BaseServiceSettings):
             clz._logger = module_logger
         PiperSettings.init_settings()
         installed: bool = clz.isInstalled()
-        SettingsMap.set_is_available(clz.service_id, Reason.AVAILABLE)
+        SettingsMap.set_available(clz.service_id, Status.AVAILABLE)
 
     @classmethod
     def init_settings(cls):
@@ -141,7 +141,7 @@ class PiperSettings(BaseServiceSettings):
                                     Players.WINDOWS, Players.APLAY,
                                     Players.PAPLAY, Players.AFPLAY, Players.SOX,
                                     Players.MPG321, Players.MPG123,
-                                    Players.MPG321_OE_PI, Players.INTERNAL]
+                                    Players.MPG321_OE_PI, Players.BUILT_IN]
         player_validator: StringValidator
         player_validator = StringValidator(SettingProp.PLAYER, cls.engine_id,
                                            allowed_values=valid_players,

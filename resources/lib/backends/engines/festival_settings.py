@@ -10,7 +10,7 @@ from backends.audio.sound_capabilities import SoundCapabilities
 from backends.engines.base_engine_settings import BaseEngineSettings
 from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.service_types import Services, ServiceType
-from backends.settings.settings_map import Reason, SettingsMap
+from backends.settings.settings_map import Status, SettingsMap
 from common.constants import Constants
 from common.logger import BasicLogger
 from common.setting_constants import AudioType, Backends
@@ -50,7 +50,7 @@ class FestivalSettings(BaseServiceSettings):
             clz._logger = module_logger
         self.init_settings()
         installed: bool = clz.isInstalled()
-        SettingsMap.set_is_available(clz.service_id, Reason.AVAILABLE)
+        SettingsMap.set_available(clz.service_id, Status.AVAILABLE)
 
     @classmethod
     def init_settings(cls):

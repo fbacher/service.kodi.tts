@@ -11,7 +11,7 @@ import xbmc
 
 from backends.settings.service_types import (EngineType, GENERATE_BACKUP_SPEECH,
                                              PlayerType, ServiceID, ServiceKey,
-                                             ServiceType, TTS_Type)
+                                             Services, ServiceType, TTS_Type)
 from backends.settings.service_unavailable_exception import ServiceUnavailable
 from common import *
 
@@ -710,7 +710,7 @@ class TTSService:
                                                  player_id=None)
 
         if (cls.get_active_backend() is not None
-                and cls.get_active_backend().engine_id == engine_id):
+                and cls.get_active_backend().service_id == engine_id):
             #  MY_LOGGER.debug(f'Returning {engine_id} engine')
             return cls.get_instance()
 
@@ -730,8 +730,8 @@ class TTSService:
         if reason == Commands.RESET:
             return resetAddon()
         engine: Type[ITTSBackendBase | None] = BackendInfoBridge.getBackendFallback()
-        MY_LOGGER.info(f'Backend falling back to: {engine.engine_id}')
-        cls.initTTS(engine.engine_id)
+        MY_LOGGER.info(f'Engine falling back to: {engine.service_id}')
+        cls.initTTS(engine.service_id)
         try:
             phrases: PhraseList = PhraseList()
             phrase: Phrase
@@ -763,17 +763,21 @@ class TTSService:
         try:
             if engine_id is None:
                 engine_key = Settings.get_engine_key()
+                if engine_key == ServiceKey.AUTO_KEY:
+                    engine_key = ServiceKey.DEFAULT_KEY
             else:
                 engine_key = ServiceID(ServiceType.ENGINE, engine_id)
             #  MY_LOGGER.debug(f'Setting player_id: {player_id} engine: {engine_key}')
             if player_id is not None:
                 Settings.set_player(player_id, engine_key=engine_key)
             Settings.set_engine(engine_key)
-            MY_LOGGER.debug(f'engine_id set')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'engine_id set')
         except ServiceUnavailable:
             try:
-                MY_LOGGER.debug(f'Got ServiceUnavailable engine: {engine_id} '
-                                f'player_key: {player_id}\n Configuring engine')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'Got ServiceUnavailable engine: {engine_id} '
+                                    f'player_key: {player_id}\n Configuring engine')
                 try:
                     configure: Configure = Configure.instance()
                     configure.validate_repair(engine_key=engine_key)
@@ -786,7 +790,8 @@ class TTSService:
                 MY_LOGGER.exception('')
         try:
             new_active_backend = BaseServices.get_service(engine_key)
-            MY_LOGGER.debug(f'new_active_backend: {new_active_backend.service_key}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'new_active_backend: {new_active_backend.service_key}')
         except ServiceUnavailable:
             MY_LOGGER.exception('Could not Load')
         except Exception:
@@ -953,10 +958,12 @@ class TTSService:
         :return:
         """
         if backend is None:
-            MY_LOGGER.debug(f'backend is NONE')
-            return 'Backend is NONE'
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'Engine is NONE')
+            return 'Engine is NONE'
         if isinstance(backend, str):
-            MY_LOGGER.debug(f'backend is string: {backend}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'Engine is string: {backend}')
         else:
             backend.init()
             pass
@@ -969,7 +976,7 @@ class TTSService:
         cls.active_backend = backend
         if cls.driver is None:
             cls.driver = Driver()
-        return backend.engine_id
+        return backend.service_id
 
     @classmethod
     def start_background_driver(cls) -> None:
@@ -990,7 +997,7 @@ class TTSService:
         """
         engine_id = Settings.get_engine_id()
         if (cls.active_backend is not None
-                and engine_id == cls.active_backend.engine_id):
+                and engine_id == cls.active_backend.service_id):
             return
         cls.initTTS()
 
@@ -1006,10 +1013,10 @@ class TTSService:
             changed = len(cls._previous_primary_text) != 0
         else:
             changed = not phrases[0].text_equals(cls._previous_primary_text)
-        if changed:
-            MY_LOGGER.debug(f'changed: {changed} phrases: {phrases}'
-                            f' empty: {phrases.is_empty()} '
-                            f'previous_primary_text: {cls._previous_primary_text}')
+        # if changed and MY_LOGGER.isEnabledFor(DEBUG):
+        #     MY_LOGGER.debug(f'changed: {changed} phrases: {phrases}'
+        #                     f' empty: {phrases.is_empty()} '
+        #                     f'previous_primary_text: {cls._previous_primary_text}')
         return changed
 
     @classmethod
@@ -1031,16 +1038,16 @@ class TTSService:
         :param phrases:
         :return:
         """
-        result: bool
+        changed: bool
         if phrases.is_empty():
-            result = cls._previous_secondary_text != ''
+            changed = cls._previous_secondary_text != ''
         else:
-            result = not phrases[0].text_equals(cls._previous_secondary_text)
-        if MY_LOGGER.isEnabledFor(DEBUG_XV):
-            MY_LOGGER.debug_xv(f'previous_secondary_text:'
-                                       f' {cls._previous_secondary_text} '
-                                       f'phrases: {phrases} result: {result}')
-        return result
+            changed = not phrases[0].text_equals(cls._previous_secondary_text)
+        if changed and MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'previous_secondary_text:'
+                            f' {cls._previous_secondary_text} '
+                            f'phrases: {phrases}')
+        return changed
 
     @classmethod
     def set_previous_secondary_text(cls, phrases: PhraseList) -> None:
@@ -1101,11 +1108,11 @@ class TTSService:
 
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             if not phrases.is_empty() or compare != '' or not secondary.is_empty():
-                MY_LOGGER.debug_xv(f'control_id: {cls.current_control_id} '
-                                   f'phrases: {phrases} '
-                                   f'compare: {compare} secondary: {secondary} '
-                                   f'previous_secondaryText: '
-                                   f'{cls._previous_secondary_text}')
+                MY_LOGGER.debug_v(f'control_id: {cls.current_control_id} '
+                                  f'phrases: {phrases} '
+                                  f'compare: {compare} secondary: {secondary} '
+                                  f'previous_secondaryText: '
+                                  f'{cls._previous_secondary_text}')
 
         # Sometimes, secondary contains a label which is already in our
         # primary voice stream
@@ -1159,11 +1166,11 @@ class TTSService:
             try:
                 phrases: PhraseList = PhraseList.create(monitored, interrupt=True)
                 if MY_LOGGER.isEnabledFor(DEBUG_XV):
-                    MY_LOGGER.debug_xv(
-                        f'# phrases: {len(phrases)} texts: {phrases}')
+                    MY_LOGGER.debug_xv(f'# phrases: {len(phrases)} texts: {phrases}')
                 cls.sayText(phrases)
             except ExpiredException:
-                MY_LOGGER.debug(f'EXPIRED before sayText')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'EXPIRED before sayText')
 
     @classmethod
     def checkAutoRead(cls):
@@ -1203,11 +1210,11 @@ class TTSService:
         success: bool = cls.windowReader.getWindowExtraTexts(phrases)
         try:
             if MY_LOGGER.isEnabledFor(DEBUG_XV):
-                MY_LOGGER.debug_xv(
-                    f'# texts: {len(phrases)} phrases: {phrases}')
+                MY_LOGGER.debug_xv(f'# texts: {len(phrases)} phrases: {phrases}')
             cls.sayText(phrases)
         except ExpiredException:
-            MY_LOGGER.debug(f'EXPIRED at sayText')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'EXPIRED at sayText')
 
     @classmethod
     def sayItemExtra(cls, window_state: WinDialogState, interrupt=True):
@@ -1228,8 +1235,7 @@ class TTSService:
         phrases.set_interrupt(interrupt)
         try:
             if MY_LOGGER.isEnabledFor(DEBUG_XV):
-                MY_LOGGER.debug_xv(f'# phrases: {len(phrases)} '
-                                                f'phrase: {phrases}')
+                MY_LOGGER.debug_xv(f'# phrases: {len(phrases)} phrases: {phrases}')
             if not phrases.is_empty():
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'CHECK phrases: {phrases} '
@@ -1272,6 +1278,7 @@ class TTSService:
                 MY_LOGGER.debug_v(phrases[0].get_debug_info())
 
             phrases.set_all_preload_cache(preload_cache)
+            phrases.add_event('service_worker.sayText')
             phrases.enable_check_expired()
             if phrases.interrupt:
                 phrases.expire_all_prior()
@@ -1424,8 +1431,7 @@ class TTSService:
             if success:
                 phrases[numb_phrases].set_pre_pause(Phrase.PAUSE_NORMAL)
             if MY_LOGGER.isEnabledFor(DEBUG_XV):
-                MY_LOGGER.debug_xv(
-                        f'# phrases: {len(phrases)} texts: {phrases}')
+                MY_LOGGER.debug_xv(f'# phrases: {len(phrases)} texts: {phrases}')
                 MY_LOGGER.debug_xv(phrases[0].get_debug_info())
             cls.sayText(phrases)
         except ExpiredException:
@@ -1485,23 +1491,21 @@ class TTSService:
                     cls.current_control_id, phrases)
             if MY_LOGGER.isEnabledFor(DEBUG_V):
                 MY_LOGGER.debug_v(f'CHECK: checkControlDescription: {phrases} '
-                                          f'reader:'
-                                          f' {cls.windowReader.__class__.__name__}')
+                                  f'reader:'
+                                  f' {cls.windowReader.__class__.__name__}')
             # Checks to see if any item # needs to be voiced, etc.
             success: bool = cls.windowReader.getControlPostfix(cls.current_control_id,
                                                                phrases)
             if not success:
                 if MY_LOGGER.isEnabledFor(DEBUG_V):
                     MY_LOGGER.debug_v(f'CHECK ControlPostfix: {phrases}   '
-                                  f'reader: {cls.windowReader.__class__.__name__}')
+                                      f'reader: {cls.windowReader.__class__.__name__}')
             if phrases.is_empty():
                 return newW
 
             if MY_LOGGER.isEnabledFor(DEBUG_XV):
-                MY_LOGGER.debug_xv(
-                    f'previous_control_id: {cls.current_control_id} '
-                    f'# phrases: {len(phrases)} '
-                    f'texts: {phrases}')
+                MY_LOGGER.debug_xv(f'previous_control_id: {cls.current_control_id} '
+                                   f'# phrases: {len(phrases)} texts: {phrases}')
             cls.sayText(phrases)
         except ExpiredException:
             if MY_LOGGER.isEnabledFor(DEBUG):

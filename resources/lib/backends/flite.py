@@ -26,7 +26,7 @@ class FliteTTSBackend(SimpleTTSBackend):
 
     settings = {
         SettingProp.PIPE  : False,
-        SettingProp.PLAYER: Players.INTERNAL,
+        SettingProp.PLAYER: Players.BUILT_IN,
         SettingProp.SPEED : 100,
         SettingProp.VOICE : 'kal16',
         SettingProp.VOLUME: 0

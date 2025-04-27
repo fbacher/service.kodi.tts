@@ -18,6 +18,7 @@ class ITTSBackendBase(IBackend):
     canStreamWav: bool = False
     _backend_id: str = 'ITTSBackendBase'
     _engine_id: str = 'ITTSBackendBase'
+    _service_id: str = 'ITTSBackendBase'
     _service_key: ServiceID = None
     service_key: ServiceID | None = None
     displayName: str = 'ITTSBackendBase'
@@ -63,10 +64,15 @@ class ITTSBackendBase(IBackend):
         return clz._engine_id
 
     @property
+    def service_id(self) -> str:
+        clz = type(self)
+        return clz._service_id
+
+    @property
     def service_key(self) -> ServiceID:
         clz = type(self)
         if clz._service_key is None:
-            clz._service_key = ServiceID(ServiceType.ENGINE, self._engine_id)
+            clz._service_key = ServiceID(ServiceType.ENGINE, self.service_id)
         return clz._service_key
 
     @classmethod

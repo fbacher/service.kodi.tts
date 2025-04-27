@@ -58,8 +58,9 @@ class SimpleRunCommand:
         self.count: int = clz.instance_count
         clz.instance_count += 1
         self.thread_name = f'{name}_{self.count}'
-        MY_LOGGER.debug(f'thread_name: {self.thread_name} delete_after_run:'
-                        f' {delete_after_run} args: {args}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'thread_name: {self.thread_name} delete_after_run:'
+                              f' {delete_after_run} args: {args}')
         self.rc = 0
         self.run_state: RunState = RunState.NOT_STARTED
         self.stop_on_play: bool = stop_on_play
@@ -88,7 +89,6 @@ class SimpleRunCommand:
         clz = type(self)
         try:
             if self.delete_after_run and self.delete_after_run.exists():
-                MY_LOGGER.debug(f'{self.delete_after_run}')
                 self.delete_after_run.unlink(missing_ok=True)
 
             if self.rc is None or self.rc != 0:
@@ -143,12 +143,14 @@ class SimpleRunCommand:
     def kodi_player_status_listener(self, kodi_player_state: KodiPlayerState) -> bool:
         clz = type(self)
         clz.player_state = kodi_player_state
-        MY_LOGGER.debug(f'KodiPlayerState: {kodi_player_state} stop_on_play: '
-                        f'{self.stop_on_play} args: {self.args} '
-                        f'serial: {self.phrase_serial}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'KodiPlayerState: {kodi_player_state} stop_on_play: '
+                              f'{self.stop_on_play} args: {self.args} '
+                              f'serial: {self.phrase_serial}')
         if kodi_player_state == KodiPlayerState.PLAYING_VIDEO and self.stop_on_play:
-            MY_LOGGER.debug(f'KODI_PLAYING terminating command: '
-                            f'args: {self.args} ')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'KODI_PLAYING terminating command: '
+                                  f'args: {self.args} ')
             self.terminate()
             return True  # Unregister
         return False
@@ -164,14 +166,16 @@ class SimpleRunCommand:
         try:
             Monitor.exception_on_abort()
             if self.phrase_serial < PhraseList.expired_serial_number:
-                MY_LOGGER.debug(f'EXPIRED before start {self.phrase_serial} '
-                                f'{self.args[0]}',
-                                trace=Trace.TRACE_AUDIO_START_STOP)
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'EXPIRED before start {self.phrase_serial} '
+                                      f'{self.args[0]}',
+                                      trace=Trace.TRACE_AUDIO_START_STOP)
                 self.run_state = RunState.TERMINATED
                 self.rc = 11
                 return self.rc
 
-            MY_LOGGER.debug(f'About to run args:{self.args[0]}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'About to run args:{self.args[0]}')
             self.run_thread.start()
 
             self.process: Popen
@@ -197,8 +201,10 @@ class SimpleRunCommand:
                 try:
                     # Move on if command finished
                     if self.poll() is not None:
-                        MY_LOGGER.debug(f'Process finished rc: '
-                                        f'{self.process.returncode} next: {next_state}')
+                        if MY_LOGGER.isEnabledFor(DEBUG_XV):
+                            MY_LOGGER.debug_xv(f'Process finished rc: '
+                                               f'{self.process.returncode} next:'
+                                               f' {next_state}')
                         self.run_state = next_state
                         break
                     # Are we trying to kill it?
@@ -207,9 +213,10 @@ class SimpleRunCommand:
                         # Yes, initiate terminate/kill of process
                         check_serial = False
                         countdown = True
-                        MY_LOGGER.debug(f'Expired, kill {self.phrase_serial} '
-                                         f'{self.args[0]}',
-                                         trace=Trace.TRACE_AUDIO_START_STOP)
+                        if MY_LOGGER.isEnabledFor(DEBUG):
+                            MY_LOGGER.debug(f'Expired, kill {self.phrase_serial} '
+                                            f'{self.args[0]}',
+                                            trace=Trace.TRACE_AUDIO_START_STOP)
                         try:
                             self.process.kill()
                         except Exception:
@@ -227,12 +234,14 @@ class SimpleRunCommand:
                     if rc is not None:
                         self.rc = rc
                         self.cmd_finished = True
-                        MY_LOGGER.debug(f'FINISHED COMMAND {self.phrase_serial} '
-                                         f'{self.args[0]} rc: {rc}',
-                                         trace=Trace.TRACE_AUDIO_START_STOP)
+                        if MY_LOGGER.isEnabledFor(DEBUG):
+                            MY_LOGGER.debug(f'FINISHED COMMAND {self.phrase_serial} '
+                                            f'{self.args[0]} rc: {rc}',
+                                            trace=Trace.TRACE_AUDIO_START_STOP)
                         break
                     else:
-                        MY_LOGGER.debug(f'Should be finished, but returncode is None')
+                        if MY_LOGGER.isEnabledFor(DEBUG):
+                            MY_LOGGER.debug(f'Should be finished, but returncode is None')
                         break  # Complete
                 except subprocess.TimeoutExpired:
                     # Only indicates the timeout is expired, not the run state
@@ -267,7 +276,9 @@ class SimpleRunCommand:
         env = os.environ.copy()
         try:
             if Constants.PLATFORM_WINDOWS:
-                MY_LOGGER.info(f'Running command: Windows')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'Starting Windows cmd args: {self.args}')
+
                 # Prevent console for command from opening
                 #
                 # Here, we keep stdout & stderr separate and combine the output in the
@@ -275,7 +286,6 @@ class SimpleRunCommand:
                 # process level (stderr = subprocess.STDOUT), devnull or pass through
                 # via pipe and don't log
 
-                MY_LOGGER.debug(f'Starting cmd args: {self.args}')
                 self.process = subprocess.Popen(self.args, stdin=None,  # subprocess.DEVNULL,
                                                 stdout=subprocess.PIPE,
                                                 stderr=subprocess.STDOUT,
@@ -285,7 +295,8 @@ class SimpleRunCommand:
                                                 close_fds=True,
                                                 creationflags=subprocess.DETACHED_PROCESS)
             else:
-                xbmc.log('Running command: Linux')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'Starting Linux cmd args: {self.args}')
                 self.process = subprocess.Popen(self.args, stdin=None,
                                                 stdout=subprocess.PIPE,
                                                 stderr=subprocess.STDOUT,

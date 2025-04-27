@@ -9,13 +9,18 @@ from common import *
 
 from backends.audio.sound_capabilities import SoundCapabilities
 from backends.settings.service_types import Services, ServiceType, ServiceID
-from backends.settings.settings_map import Reason, SettingsMap
+from backends.settings.settings_map import Status, SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
                                           NumericValidator, StringValidator, Validator)
+from common.config_exception import UnusableServiceException
 from common.constants import Constants
+from common.logger import BasicLogger
+from common.service_status import Progress, ServiceStatus
 from common.setting_constants import AudioType, PlayerMode, Players
 from common.settings import Settings
 from common.settings_low_level import SettingProp
+
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class SFXSettings:
@@ -45,14 +50,27 @@ class SFXSettings:
 
     initialized: bool = False
     _available: bool | None = None
+    _service_status: ServiceStatus = ServiceStatus()
 
     @classmethod
     def config_settings(cls, *args, **kwargs):
         if cls.initialized:
-            return
+            return cls.get_status()
+        # Basic checks that don't depend on config
+        cls.check_is_supported_on_platform()
+        cls.check_is_installed()
+        if cls._service_status.status != Status.OK:
+            SettingsMap.set_available(cls.service_key, cls._service_status)
+            raise UnusableServiceException(cls.service_key,
+                                           cls._service_status,
+                                           msg='')
         cls.initialized = True
         #  BaseEngineSettings.config_settings(SFXSettings.service_key)
         cls._config()
+        cls.check_is_available()
+        cls.check_is_usable()
+        cls.is_usable()
+        return cls.get_status()
 
     @classmethod
     def _config(cls):
@@ -116,25 +134,66 @@ class SFXSettings:
         return SettingsMap.is_valid_setting(service_key)
 
     @classmethod
-    def check_availability(cls) -> Reason:
-        availability: Reason = Reason.AVAILABLE
-        if not cls.isSupportedOnPlatform():
-            availability = Reason.NOT_SUPPORTED
-        if not cls.isInstalled():
-            availability = Reason.NOT_AVAILABLE
-        elif not cls.available():
-            availability = Reason.BROKEN
-        SettingsMap.set_is_available(cls.service_key, availability)
-        return availability
+    def check_is_supported_on_platform(cls) -> None:
+        if cls._service_status.progress == Progress.START:
+            cls._service_status.progress = Progress.SUPPORTED
+        MY_LOGGER.debug(f'state: {cls._service_status.progress} '
+                        f'status: {cls._service_status.status}')
 
-    @staticmethod
-    def isSupportedOnPlatform() -> bool:
+    @classmethod
+    def check_is_installed(cls) -> None:
+        # Don't have a test for installed, just move on to available
+        if (cls._service_status.progress == Progress.SUPPORTED
+                and cls._service_status.status == Status.OK):
+            cls._service_status.progress = Progress.INSTALLED
+
+    @classmethod
+    def check_is_available(cls) -> None:
+        """
+        Determines if the player is functional. The test is only run once and
+        remembered.
+
+        :return:
+        """
+        success: bool = False
+        if (cls._service_status.progress == Progress.INSTALLED
+                and cls._service_status.status == Status.OK):
+            MY_LOGGER.debug(f'{cls.displayName} available: {success}')
+            cls._service_status.progress = Progress.AVAILABLE
+            if not (xbmc and hasattr(xbmc, 'stopSFX') and PLAYSFX_HAS_USECACHED):
+                cls._service_status.status = Status.FAILED
+
+    @classmethod
+    def check_is_usable(cls) -> None:
+        """
+        Determine if the player is usable in this environment.
+        :return None:
+        """
+        if cls._service_status.progress == Progress.AVAILABLE:
+            if cls._service_status.status == Status.OK:
+                cls._service_status.progress = Progress.USABLE
+
+    @classmethod
+    def is_usable(cls) -> bool:
+        """
+        Determines if there are any known reasons that this service is not
+        functional. Runs the check_ methods to determine the result.
+
+        :return True IFF functional:
+        :raises UnusableServiceException: when this service is not functional
+        :raises ValueError: when called before this module fully initialized.
+        """
+        MY_LOGGER.debug(f'state: {cls._service_status.progress} '
+                        f'status: {cls._service_status.status}')
+        if (cls._service_status.progress == Progress.USABLE
+                or cls._service_status.status != Status.OK):
+            SettingsMap.set_available(cls.service_key, cls._service_status)
+        MY_LOGGER.debug(f'state: {cls._service_status.progress} '
+                        f'status: {cls._service_status.status}')
+        if cls._service_status.progress != Progress.USABLE:
+            raise ValueError(f'Service: {cls.service_key} not fully initialized')
         return True
 
-    @staticmethod
-    def isInstalled() -> bool:
-        return True
-
-    @staticmethod
-    def available(ext=None) -> bool:
-        return xbmc and hasattr(xbmc, 'stopSFX') and PLAYSFX_HAS_USECACHED
+    @classmethod
+    def get_status(cls) -> ServiceStatus:
+        return cls._service_status

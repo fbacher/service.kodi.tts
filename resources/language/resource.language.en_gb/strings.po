@@ -888,6 +888,10 @@ msgctxt "#32249"
 msgid "Use Select (Enter) to choose a player."
 msgstr ""
 
+msgctxt "#32250"
+msgid "No Engine (limited, pregenerated messages)"
+msgstr ""
+
 # ----------------------------------
 # Audio Players. Translation may not apply to all
 
@@ -920,8 +924,8 @@ msgid "MPlayer"
 msgstr "MPlayer"
 
 msgctxt "#32304"
-msgid "No Player"
-msgstr "No Player"
+msgid ""
+msgstr ""
 
 msgctxt "#32305"
 msgid "mpg321"
@@ -958,9 +962,10 @@ msgctxt "#32312"
 msgid "Cache Audio From Engine"
 msgstr "Cache Audio From Engine"
 
+# For a fake, player that is 'built-in' to the engine
 msgctxt "#32313"
-msgid "Internal"
-msgstr "Internal"
+msgid "Built-In"
+msgstr "Built-In"
 
 # Voice engine eSpeak
 msgctxt "#32314"

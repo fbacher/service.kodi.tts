@@ -2,15 +2,20 @@
 
 from common.phrases import Phrase
 
+
 class IResults:
 
     def __init__(self) -> None:
         raise NotImplementedError()
+
 
 class ISpeechGenerator:
 
     def __init__(self) -> None:
         raise NotImplementedError()
 
-    def generate_speech(self, phrase: Phrase, timeout: float = 1.0) -> IResults:
+    def generate_speech(self, phrase: Phrase, timeout: float = 1.0) -> None:
+        phrase.add_event(f'generate_speech')
+
+    def remote_generate_speech(self, phrase: Phrase, timeout: float = 1.0) -> IResults:
         raise NotImplementedError()

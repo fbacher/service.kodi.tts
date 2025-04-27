@@ -5,7 +5,7 @@
     Settings, SettingsHelper and others to maintain settings. Primary
     Objectives:
         * Maintain a working system. Able to switch to a fail-safe
-          mode that can minimally operate with no TTS engine nor player_key.
+          mode that can minimally operate with no TTS engine nor player.
           Have sufficient functionality to guide user through configuring
           a usable system.
         * Users will interact through SettingsDialog, but also work
@@ -50,7 +50,7 @@ class EngineConfig:
     """
     def __init__(self, engine_key: ServiceID, lang_info: LanguageInfo,
                  use_cache: bool | None = None,
-                 player_id: str | None = None, engine_audio: AudioType | None = None,
+                 player: PlayerType | None = None, engine_audio: AudioType | None = None,
                  player_mode: PlayerMode | None = None, transcoder: str | None = None,
                  trans_audio_in: AudioType | None = None,
                  trans_audio_out: AudioType | None = None,
@@ -61,7 +61,7 @@ class EngineConfig:
         self._engine_key: ServiceID = engine_key
         self._lang_info: LanguageInfo = lang_info
         self._use_cache: bool | None = use_cache
-        self._player_id: str | None = player_id
+        self._player: PlayerType | None = player
         self._engine_audio: AudioType | None = engine_audio
         self._player_mode: PlayerMode | None = player_mode
         self._transcoder: str | None = transcoder
@@ -101,12 +101,12 @@ class EngineConfig:
         self._use_cache = use_cache
 
     @property
-    def player_id(self) -> str | None:
-        return self._player_id
+    def player(self) -> PlayerType | None:
+        return self._player
 
-    @player_id.setter
-    def player_id(self, player_id: str | None) -> None:
-        self._player_id = player_id
+    @player.setter
+    def player(self, player: PlayerType | None) -> None:
+        self._player = player
 
     @property
     def engine_audio(self) -> AudioType | None:
@@ -189,9 +189,6 @@ class Configure:
     _instance: Union[ForwardRef('Configure'), None] = None
 
     def __init__(self) -> None:
-        xbmc.log('In init via xbmc.log', xbmc.LOGDEBUG)
-        xbmc.log(f'MY_LOGGER: {MY_LOGGER}')
-        MY_LOGGER.info(f'In init')
         self.engine_instance = None
         self.saved_choices = None
         self.saved_selection_index = None
@@ -203,16 +200,18 @@ class Configure:
         self.busy: bool = False
 
     @classmethod
-    def instance(cls) -> Union[ForwardRef('Configure'), None]:
+    def instance(cls, refresh: bool = False) -> Union[ForwardRef('Configure'), None]:
         if cls._instance is None:
             cls._instance = Configure()
+            refresh = True
             # Ensure some structures are built before we need them.
+        if refresh:
             SettingsHelper.build_allowed_player_modes()
         if cls._instance.busy:
-            MY_LOGGER.debug(f'BUSY')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'BUSY')
             return None
         cls._instance.busy = True
-        MY_LOGGER.debug(f'instance None: {cls._instance is None}')
         return cls._instance
 
     @property
@@ -226,7 +225,8 @@ class Configure:
         :return:
         """
         engine_key: ServiceID = Settings.get_engine_key()
-        MY_LOGGER.info(f'service_key: {engine_key}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'service_key: {engine_key}')
 
         valid_engine: bool
         valid_engine = SettingsMap.is_available(engine_key)
@@ -234,8 +234,9 @@ class Configure:
             engine_id = BackendInfo.getAvailableBackends()[0].engine_id
             new_engine_key: ServiceID = ServiceID(ServiceType.ENGINE,
                                                   engine_id)
-            MY_LOGGER.info(f'Invalid engine: {engine_key} replaced with:'
-                           f' {new_engine_key}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'Invalid engine: {engine_key} replaced with:'
+                                f' {new_engine_key}')
             Settings.set_engine(new_engine_key)
             engine_key = new_engine_key
         return engine_key
@@ -274,15 +275,18 @@ class Configure:
         """
         if engine_key is None:
             engine_key = self.engine_key
-        MY_LOGGER.debug(f'service_key: {engine_key} type: {type(engine_key)}')
-        engine_instance: ITTSBackendBase = BaseServices.get_service(engine_key)
-        return engine_instance
+        try:
+            engine_instance: ITTSBackendBase = BaseServices.get_service(engine_key)
+            return engine_instance
+        except ServiceUnavailable:
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'Could not load: {engine_key}')
 
     def configure_engine(self, choice: Choice,
                          repair: bool = False,
                          save_as_current: bool = False) -> EngineConfig | None:
         """
-        Configures an engine with basic settings (player_key, etc.). Common code
+        Configures an engine with basic settings (player, etc.). Common code
         for select_engine and voice_engine.
 
         :param choice: Selected engine
@@ -293,72 +297,85 @@ class Configure:
         try:
             engine_key: ServiceID = choice.engine_key
             current_engine_key: ServiceID = ServiceKey.CURRENT_ENGINE_KEY
-            MY_LOGGER.debug(f'engine: {engine_key} current_engine: '
-                            f'{Settings.get_engine_id()} '
-                            f'repair: {repair}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'engine: {engine_key} current_engine: '
+                                f'{Settings.get_engine_id()} '
+                                f'repair: {repair} '
+                                f'save_as_current: {save_as_current}')
             # See if we can cfg engine
             engine_config: EngineConfig | None = None
 
             # This HACK provides a means to provide a limited set of
             # audio messages that is shipped with the addon. These
-            # messages are used when either no engine or no player_key can
+            # messages are used when either no engine or no player can
             # be configured. These messages are voiced using Kodi SFX
-            # internal player_key. The messages should help the user install/
-            # cfg an engine or player_key. See:
+            # internal player. The messages should help the user install/
+            # cfg an engine or player. See:
             # GENERATE_BACKUP_SPEECH, sfx_audio_player, no_engine and voicecache
 
             player_mode: PlayerMode | None = None
-            player_id: str | None = None
+            player: PlayerType | None = None
             engine_audio: AudioType | None = None
             use_cache: bool | None = None
+            if not repair:
+                use_cache = Settings.is_use_cache(engine_key)
+                player_mode = Settings.get_player_mode(engine_key)
+                player_id: str = Settings.get_player_key(engine_key).service_id
+                player = PlayerType(player_id)
+                speed: float = Settings.get_speed()
+                volume: float = Settings.get_volume()
+                # self.set_speed_field(speed=1.0)
+                # self.set_volume_field(volume=0.0)
+                #  engine_audio =?
+
             if GENERATE_BACKUP_SPEECH:
                 player_mode = PlayerMode.FILE
-                player_id = PlayerType.SFX.value
+                player = PlayerType.SFX
                 engine_audio = AudioType.WAV
                 use_cache = True
 
             lang_info: LanguageInfo = choice.lang_info
             engine_config: EngineConfig | None = None
             try:
-                MY_LOGGER.debug(f'configuring player with player_mode: {player_mode}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'configuring player with player_mode: {player_mode}')
                 engine_config = self.configure_player(engine_key=engine_key,
                                                       lang_info=lang_info,
                                                       use_cache=use_cache,
-                                                      player_id=player_id,
+                                                      player=player,
                                                       engine_audio=engine_audio,
                                                       player_mode=player_mode,
                                                       repair=repair)
             except ConfigurationError:
-                MY_LOGGER.exception('Config Error')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug('Can not configure engine')
                 return None
-
-            MY_LOGGER.debug(f'engine_config: engine_id: {engine_config.engine_id} '
-                            f'use_cache: {engine_config.use_cache} '
-                            f'player_id: {engine_config.player_id} '
-                            f'engine_audio: {engine_config.engine_audio} '
-                            f'player_mode: {engine_config.player_mode} '
-                            f'transcoder: {engine_config.transcoder} '
-                            f'trans_audio_in: {engine_config.trans_audio_in} '
-                            f'trans_audio_out: {engine_config.trans_audio_out}'
-                            f'lang_info: {lang_info}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'engine_config: engine_id: {engine_config.engine_id} '
+                                f'use_cache: {engine_config.use_cache} '
+                                f'player: {engine_config.player} '
+                                f'engine_audio: {engine_config.engine_audio} '
+                                f'player_mode: {engine_config.player_mode} '
+                                f'transcoder: {engine_config.transcoder} '
+                                f'trans_audio_in: {engine_config.trans_audio_in} '
+                                f'trans_audio_out: {engine_config.trans_audio_out}'
+                                f'lang_info: {lang_info}')
             engine_config.lang_info = lang_info
             self.set_lang_fields(engine_key=engine_key,
                                  lang_info=lang_info)
-            self.set_gender_field(engine_key=engine_key)
+            #  self.set_gender_field(engine_key=engine_key)
             self.set_cache_speech_field(engine_key=engine_key,
                                         use_cache=engine_config.use_cache)
-            MY_LOGGER.debug(f'Setting {engine_key}s player_mode to:'
-                            f' {engine_config.player_mode}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'Setting {engine_key}s player_mode to:'
+                                f' {engine_config.player_mode}')
             self.set_player_mode_field(engine_key=engine_key,
                                        player_mode=engine_config.player_mode)
             self.set_player_field(engine_key=engine_key,
-                                  player_id=engine_config.player_id)
-            Settings.set_converter(engine_config.transcoder, engine_key)
-            # Should not have to repair since validators should catch value
-            # errors
-            if not repair:
-                self.set_speed_field(speed=1.0)
-                self.set_volume_field(volume=0.0)
+                                  player=engine_config.player)
+            Settings.set_transcoder(engine_config.transcoder, engine_key)
+            Settings.set_current_output_format(engine_key,
+                                               engine_config.engine_audio)
             if save_as_current:
                 self.set_engine_field(engine_key=engine_key)
             return engine_config
@@ -366,13 +383,13 @@ class Configure:
             MY_LOGGER.exception('')
 
     def get_player_mode_choices(self, engine_key: ServiceID,
-                                player_id: str) -> Tuple[List[Choice], int]:
+                                player: PlayerType) -> Tuple[List[Choice], int]:
         """
-        Determines which player_key modes are valid for the combination of engine
-        and player_key.
+        Determines which player modes are valid for the combination of engine
+        and player.
 
         :param engine_key: engine to examine
-        :param player_id: player_key to examine
+        :param player: player to examine
 
         :return: Tuple[List[Choice], int] A list of valid choices and an index
                  to any choice matching the current player_mode.engine value,
@@ -383,21 +400,24 @@ class Configure:
         try:
             if not SettingsMap.is_valid_setting(engine_key.with_prop(
                     SettingProp.PLAYER_MODE)):
-                MY_LOGGER.info(f'There are no PLAYER_MODEs for {engine_key}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'There are no PLAYER_MODEs for {engine_key}')
                 return choices, found_idx
             current_choice: PlayerMode
             current_choice = Settings.get_player_mode(engine_key)
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'current player_mode: {current_choice} '
+                                f'type: {type(current_choice)} '
                                 f'engine: {engine_key} ')
 
             intersection: List[PlayerMode]
             intersection, found_idx = SettingsHelper.get_valid_player_modes(engine_key,
-                                                                            player_id,
+                                                                            player,
                                                                             current_choice)
-            MY_LOGGER.debug(f'engine: {engine_key} '
-                            f'found_idx: {found_idx} '
-                            f'intersection: {intersection}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'engine: {engine_key} '
+                                f'found_idx: {found_idx} '
+                                f'intersection: {intersection}')
             idx: int = 0
             for supported_mode in intersection:
                 supported_mode: PlayerMode
@@ -413,24 +433,24 @@ class Configure:
         return choices, found_idx
 
     def configure_player(self, engine_key: ServiceID,
-                         lang_info: LanguageInfo,
+                         lang_info: LanguageInfo | None,
                          use_cache: bool | None = None,
-                         player_id: str | None = None,
+                         player: PlayerType | None = None,
                          engine_audio: AudioType | None = None,
                          player_mode: PlayerMode | None = None,
                          repair: bool = False) -> EngineConfig:
         """
-        Configure a player_key and related settings for the given engine.
+        Configure a player and related settings for the given engine.
         The proposed configuration is returned.
 
         :param engine_key: REQUIRED. Specifies the engine being configured
         :param lang_info: Language information
         :param use_cache: If non-None, forces use or disuse of cache
-        :param player_id: If non-None, forces to use a specific player_key
+        :param player: If non-None, forces to use a specific player
         :param engine_audio: If non-None, will cause audio to be produced in
                              the specified format (mp3 or wave) using a transcoder,
                              if needed.
-        :param player_mode: If non-None, forces player_key mode to match (unless
+        :param player_mode: If non-None, forces player mode to match (unless
                             invalid).
         :param repair: True preserves valid settings values. False sets some
                        settings to default values.
@@ -439,26 +459,26 @@ class Configure:
         """
 
         """
-        Configuring a player_key can get messy because the engine, player_key,
-        any cache, player_mode (depends on engine and player_key capabilities),
+        Configuring a player can get messy because the engine, player,
+        any cache, player_mode (depends on engine and player capabilities),
         transcoder, and audio type (wave/mp3/other). If use_cache is the default
         value None, then there is a strong bias to use caching. There is also 
         a strong bias to only cache mp3 files (due to the size of wave files). 
         If player_mode is None, then there is a bias to return PlayerMode.SLAVE_FILE
-        and a player_key that can use it.
+        and a player that can use it.
         
         This code does quite a bit of sanity checking and repair.
 
         Rough outline:
           If using internal engine player_mode, then your decisions are
-          complete. The default is to use internal player_key if available.
+          complete. The default is to use internal player if available.
 
           If GENERATE_BACKUP_SPEECH (not done by users) is set, then use_cache
-          will be True, audio_type will be .wav and player_id will be SFX.
+          will be True, audio_type will be .wav and player will be SFX.
           This will force wave files to be generated and placed in the cache. 
 
           Otherwise, with use_cache and audio_type = None, then a configuration
-          will be returned that specifies use_cache=True and the first player_key found
+          will be returned that specifies use_cache=True and the first player found
           that can accept mp3 and any specified player_mode will be returned. 
           If a transcoder is needed to convert to mp3 then one will be chosen and
           returned.
@@ -469,33 +489,31 @@ class Configure:
 
         # First, handle the case where the engine also voices
 
-        MY_LOGGER.debug(f'service_key: {engine_key}')
         e_pm_val: IStringValidator
         e_pm_val = SettingsMap.get_validator(engine_key.with_prop(
                 SettingProp.PLAYER_MODE))
-        MY_LOGGER.debug(f'engine_player_mode_val : {e_pm_val}')
         if player_mode is not None and player_mode == PlayerMode.ENGINE_SPEAK:
             if not e_pm_val.validate(player_mode):
-                # Engine does NOT support INTERNAL player_key
-                MY_LOGGER.info(f'Unsupported player_key mode: {player_mode} for '
+                # Engine does NOT support BUILT-IN player
+                MY_LOGGER.info(f'Unsupported player mode: {player_mode} for '
                                f'engine: {engine_key}. Ignoring')
                 player_mode = None
                 if repair:
                     repairs_made = True
-                if player_id is not None and player_id == Players.INTERNAL:
+                if player is not None and player == PlayerType.BUILT_IN_PLAYER:
                     MY_LOGGER.info(f'Engine: {engine_key} does not support '
-                                   f'internal player_key. Ignoring.')
-                    player_id = None
+                                   f'built-in player. Ignoring player.')
+                    player = None
                     if repair:
                         repairs_made = True
-            else:  # Engine supports ENGINE_SPEAK and is requested mode
-                player_id = Players.INTERNAL
-                engine_audio = AudioType.NONE
+            else:  # Engine supports ENGINE_SPEAK and is the requested mode
+                player = PlayerType.BUILT_IN_PLAYER
+                engine_audio = AudioType.BUILT_IN
                 use_cache = False
                 engine_config = EngineConfig(engine_key=engine_key,
                                              lang_info=lang_info,
                                              use_cache=use_cache,
-                                             player_id=player_id,
+                                             player=player,
                                              engine_audio=engine_audio,
                                              player_mode=player_mode,
                                              transcoder=None,
@@ -504,18 +522,18 @@ class Configure:
                                              repair_mode=repair,
                                              repairs_made=repairs_made)
                 return engine_config
-        if player_id is not None and not e_pm_val.validate(PlayerMode.ENGINE_SPEAK):
-            MY_LOGGER.info(f'{engine_key} does not support '
-                           f'internal player_key. Ignoring.')
-            if repair:
-                repairs_made = True
-            player_id = None
+        """
+        At this point we have handled the use case where player_mode == ENGINE_SPEAK 
+        and the engine supports it. 
+        
+        Next, 
+        """
         val: IStringValidator
         val = SettingsMap.get_validator(engine_key.with_prop(SettingProp.PLAYER))
-        if player_id is not None and not val.validate(player_id):
-            MY_LOGGER.info(f'engine: {engine_key} does not support player_key: {player_id}. '
-                           f'Ignoring playerer: {player_id}')
-            player_id = None
+        if player is not None and not val.validate(player):
+            MY_LOGGER.info(f'engine: {engine_key} does not support player: {player}. '
+                           f'Ignoring player')
+            player = None
             if repair:
                 repairs_made = True
 
@@ -530,22 +548,23 @@ class Configure:
             if repair:
                 repairs_made = True
         valid, pm_mode = e_pm_val.validate(player_mode)
-        MY_LOGGER.debug(f'PlayerMode valid: {valid} pm_mode: {pm_mode} '
-                        f'player_mode {player_mode} '
-                        f'{engine_key}. Using default: {pm_default}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'PlayerMode valid: {valid} pm_mode: {pm_mode} '
+                            f'player_mode {player_mode} '
+                            f'{engine_key}. Using default: {pm_default}')
         player_mode = pm_default
 
-        # Second, Handle the case where the player_key is specified. Check validity
+        # Second, Handle the case where the player is specified. Check validity
         # and possibly a need for a transcoder
 
-        MY_LOGGER.debug(f'player_id: {player_id}')
-        if player_id is not None:
+        if player is not None:
             ep_val: IStringValidator
             ep_val = SettingsMap.get_validator(engine_key.with_prop(SettingProp.PLAYER))
-            if not ep_val.validate(player_id)[0]:
-                MY_LOGGER.debug(f'player_key {player_id} not valid for: {engine_key} '
-                                f'Ignoring player_key.')
-                player_id = None
+            if not ep_val.validate(player)[0]:
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'player {player} not valid for: {engine_key} '
+                                    f'Ignoring player.')
+                player = None
                 if repair:
                     repairs_made = True
             else:
@@ -557,9 +576,11 @@ class Configure:
                         engine_audio = AudioType.MP3
                     else:
                         engine_audio = AudioType.WAV
-                    MY_LOGGER.debug(f'engine_audio not specified. trying {engine_audio}')
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug(f'engine_audio not specified. trying '
+                                        f'{engine_audio}')
                 engine_config = self.find_best_config(engine_key, engine_audio, lang_info,
-                                                      player_ids=player_id,
+                                                      players=player,
                                                       player_mode=player_mode,
                                                       use_cache=use_cache)
                 if engine_config is None:
@@ -577,7 +598,7 @@ class Configure:
                         t_ecfg = self.find_best_config(engine_key=engine_key,
                                                        engine_audio=engine_audio,
                                                        lang_info=lang_info,
-                                                       player_ids=player_id,
+                                                       players=player,
                                                        player_mode=player_mode,
                                                        use_cache=use_cache,
                                                        repair_mode=repair)
@@ -586,7 +607,7 @@ class Configure:
                             engine_config = EngineConfig(engine_key=t_ecfg.engine_key,
                                                          lang_info=lang_info,
                                                          use_cache=t_ecfg.use_cache,
-                                                         player_id=t_ecfg.player_id,
+                                                         player=t_ecfg.player,
                                                          engine_audio=engine_audio,
                                                          player_mode=t_ecfg.player_mode,
                                                          transcoder=trans_id,
@@ -596,25 +617,34 @@ class Configure:
                                                          repairs_made=repairs_made)
         engine_id: str = engine_key.service_id
         if engine_config is None:
-            # Did not work out, forget about the player_id that doesn't work,
+            # Did not work out, forget about the player that doesn't work,
             # then try every audio type that the engine produces, without
-            # specifying player_id
+            # specifying player
 
-            player_id = None
-            MY_LOGGER.debug(f'engine_audio_types: {engine_audio_types}')
+            player = None
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'engine_audio_types: {engine_audio_types}')
             for engine_audio_type in engine_audio_types:
                 # Avoid putting .wav files in cache, unless explicitly
                 # requested. Wave files require transcoder to .mp3 (except
                 # GENERATE_BACKUP_SPEECH is set)
                 t_use_cache: bool = use_cache
-                if use_cache is None and engine_audio_type == AudioType.WAV:
+                if (use_cache is None and
+                        engine_audio_type in (AudioType.WAV, AudioType.BUILT_IN)):
                     t_use_cache = False
-                MY_LOGGER.debug(f't_use_cache: {t_use_cache} audio_type: '
-                                f'{engine_audio_type} {engine_key}')
-                engine_config = self.find_player(engine_key, lang_info, engine_audio_type,
-                                                 player_mode, t_use_cache)
-                if engine_config is not None:
-                    break
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f't_use_cache: {t_use_cache} audio_type: '
+                                    f'{engine_audio_type} {engine_key}')
+                try:
+                    engine_config = self.find_player(engine_key, lang_info,
+                                                     engine_audio_type,
+                                                     player_mode, t_use_cache)
+                    if engine_config is not None:
+                        break
+                except ValueError as e:
+                    MY_LOGGER.exception('')
+                    raise ConfigurationError(f'Could not find usable player for '
+                                             f'{engine_key}')
 
             if engine_config is None:
                 # Perhaps a transcoder would help?
@@ -624,28 +654,37 @@ class Configure:
                     trans_audio_out = AudioType.MP3
                 elif AudioType.WAV not in engine_audio_types:
                     trans_audio_out = AudioType.WAV
-                MY_LOGGER.debug(f'trans_audio_out: {trans_audio_out}'
-                                f' {engine_key}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'trans_audio_out: {trans_audio_out}'
+                                    f' {engine_key}')
                 if trans_audio_out is not None:
                     trans_id = self.find_transcoder(engine_key, trans_audio_out)
                     if trans_id is None:
                         raise ConfigurationError('Can not find transcoder for'
                                                  f' {engine_key}')
-                    t_ecfg = self.find_player(engine_key, lang_info, trans_audio_out,
-                                              player_mode, use_cache)
-                    if t_ecfg is not None:
-                        # Add info about transcoder
-                        engine_config.use_cache = t_ecfg.use_cache
-                        engine_config.player_id = t_ecfg.player_id
-                        engine_config.player_mode = t_ecfg.player_mode
-                        engine_config.transcoder = trans_id
-                        engine_config.trans_audio_in = engine_audio
-                        engine_config.trans_audio_out = trans_audio_out
-                        repairs_made |= t_ecfg.repairs_made
-                        engine_config.repairs_made = repairs_made
+                    try:
+                        t_ecfg = self.find_player(engine_key, lang_info, trans_audio_out,
+                                                  player_mode, use_cache)
+                        if t_ecfg is not None:
+                            # Add info about transcoder
+                            engine_config.use_cache = t_ecfg.use_cache
+                            engine_config.player = t_ecfg.player
+                            engine_config.player_mode = t_ecfg.player_mode
+                            engine_config.transcoder = trans_id
+                            engine_config.trans_audio_in = engine_audio
+                            engine_config.trans_audio_out = trans_audio_out
+                            repairs_made |= t_ecfg.repairs_made
+                            engine_config.repairs_made = repairs_made
+                    except ValueError:
+                        if MY_LOGGER.isEnabledFor(DEBUG):
+                            MY_LOGGER.debug(f'Unable to configure engine {engine_key} '
+                                            f'due to no compatible player found.')
+                        raise ConfigurationError('Unable to find compatible player for '
+                                                 f'{engine_key}')
             if engine_config is None:
-                MY_LOGGER.debug(f'Can\'t find player_key for: {engine_key}')
-                raise ConfigurationError(f'Can not find player_key for: {engine_key}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'Can\'t find player for: {engine_key}')
+                raise ConfigurationError(f'Can not find player for: {engine_key}')
         return engine_config
 
     def find_player(self, engine_key: ServiceID, lang_info: LanguageInfo,
@@ -655,87 +694,106 @@ class Configure:
                     repair_mode: bool = False) -> EngineConfig | None:
         """
         Searchs all players supported by the given engine for one that supports
-        the given input_audio. The default player_key is searched first, otherwise
+        the given input_audio. The default player is searched first, otherwise
         they are searched in the order specified by the validator.
 
         This method is called under two circumstances: 1) When the user changes
         engines, 2) When the user changes some option for an engine.
-        In the first case, the primary focus is to get a player_key that meets the
-        requirements of the engine, but also supports caching. If no player_key is
+        In the first case, the primary focus is to get a player that meets the
+        requirements of the engine, but also supports caching. If no player is
         found, then the search can be retried with use_cache=False.
 
         In the second case, the engine has already been picked but the user
-        wants to modify caching, player_key mode, etc. In this case player_mode
+        wants to modify caching, player mode, etc. In this case player_mode
         and use_cache are specified to require matches on those values, narrowing
         the criteria.
 
         :param engine_key:
         :param lang_info:
         :param engine_audio:
-        :param player_mode: If not None,then the player_mode of player_key must match
+        :param player_mode: If not None, then the player_mode of player must match
         :param use_cache:
         :param repair_mode:
         :return:
+        :raises ConfigurationError: for invalid config
 
         Assumption: At this point there is no interest in using ENGINE_SPEAK.
         """
 
         """
-        Look for the first player_key that:
-          - player_key input audio type == engine output audio type
+        Look for the first player that:
+          - player input audio type == engine output audio type
           - if engine's player_mode is specified and supports the players player_mode
           - supports caching
           - does not support caching and use_cache is False
         """
         engine_id: str = engine_key.service_id
-        MY_LOGGER.debug(f'engine_id: {engine_id} engine_audio: {engine_audio} '
-                        f'player_mode: {player_mode} use_cache: {use_cache} '
-                        f'repair_mode: {repair_mode}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'engine_id: {engine_id} engine_audio: {engine_audio} '
+                            f'player_mode: {player_mode} use_cache: {use_cache} '
+                            f'repair_mode: {repair_mode}')
         if engine_audio is None:
-            MY_LOGGER.debug(f'engine_audio can not be None')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'engine_audio can not be None')
             return None
         engine_config: EngineConfig | None = None
         val: IStringValidator
         val = SettingsMap.get_validator(engine_key.with_prop(SettingProp.PLAYER))
-        default_player: str | None = val.default
-        players: List[str] = []
-        MY_LOGGER.debug(f'enabled allowed_values: {val.get_allowed_values(enabled=True)}'
-                        f' default player: {default_player} type: {type(default_player)}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'enabled allowed_values: '
+                            f'{val.get_allowed_values(enabled=True)}'
+                            f' default player: {val.default}')
+        players: List[PlayerType] = []
+        default_player: PlayerType | None = None
+        if val.default is not None:
+            default_player = PlayerType(val.default)
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'enabled allowed_values: '
+                            f'{val.get_allowed_values(enabled=True)}'
+                            f' default player: {default_player}')
         # Try default_player first
         if default_player is not None:
             players.append(default_player)
         for player in val.get_allowed_values(enabled=True):
             player: AllowedValue
-            MY_LOGGER.debug(f'player: {player} type: {type(player.value)}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'player: {player} type: {type(player.value)}')
             if default_player is None or (player.value != default_player):
-                players.append(player.value)
-        MY_LOGGER.debug(f'players_to_try: {players}')
-        supported_players: List[str] = self.filter_players_on_audio_type(players,
-                                                                         engine_audio)
-        MY_LOGGER.debug(f'filtered_players_on_audio_type: {supported_players}')
+                players.append(PlayerType(player.value))
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'players_to_try: {players}')
+        try:
+            supported_players: List[PlayerType]
+            supported_players = self.filter_players_on_audio_type(players, engine_audio)
+        except ValueError:
+            MY_LOGGER.exception('')
+            return None
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'filtered_players_on_audio_type: {supported_players}')
         engine_config = self.find_best_config(engine_key=engine_key,
                                               engine_audio=engine_audio,
                                               lang_info=lang_info,
-                                              player_ids=supported_players,
+                                              players=supported_players,
                                               player_mode=player_mode,
                                               use_cache=use_cache,
                                               repair_mode=repair_mode)
         return engine_config
 
     def find_best_config(self, engine_key: ServiceID, engine_audio: AudioType,
-                         lang_info: LanguageInfo, player_ids: List[str] | str,
+                         lang_info: LanguageInfo,
+                         players: List[PlayerType] | PlayerType,
                          player_mode: PlayerMode | None = None,
                          use_cache: bool | None = None,
                          repair_mode: bool = False) -> EngineConfig | None:
         """
-        Checks to see if the given configuration is a valid player_key for the given
+        Checks to see if the given configuration is a valid player for the given
         engine.
 
         :param engine_key: Can not be None
         :param engine_audio: Can not be None
         :param lang_info: Can not be none
-        :param player_ids: List of players that support the audio output of the engine
-                           Can also be a single player_key
+        :param players: List of players that support the audio output of the engine
+                        Can also be a single player
         :param player_mode: If None, then any player_mode is acceptable, otherwise,
                             the player_mode MUST match exactly, unless it is
                             impossible to match
@@ -749,188 +807,205 @@ class Configure:
         """
         engine_id: str = engine_key.service_id
         repairs: bool = False
-        if isinstance(player_ids, str):
-            player_ids: List = [player_ids]
-        MY_LOGGER.debug(f'engine_id: {engine_id} engine_audio: {engine_audio} '
-                        f'player_ids: {player_ids} player_mode: {player_mode} '
-                        f'use_cache: {use_cache}')
+        if isinstance(players, PlayerType):
+            players: List[PlayerType] = [players]
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'engine_id: {engine_id} engine_audio: {engine_audio} '
+                            f'players: {players} player_mode: {player_mode} '
+                            f'use_cache: {use_cache}')
         if engine_audio is None:
-            raise ValueError(f'Engine: {engine_id} engine_audio can not be None')
+            #  raise ValueError(f'Engine: {engine_id} engine_audio can not be None')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'Engine: {engine_id} compatible audio not found')
+            return None
 
-        # It does little harm to use a player_key that supports a cache if you don't
-        # use it.
-        for t_cache in True, False:
-            t_cache: bool
-            supporting_players: List[str] = self.filter_players_on_cache(player_ids,
-                                                                         t_cache)
-            if len(supporting_players) == 0:
-                if repair_mode:
-                    repairs = True
-                supporting_players.extend(player_ids)
+        # Bias towards using explicitly requested cache setting,
+        # Bias towards using a player that supports caching, even if not used
+        # Bias AGAINST SFX player
+        supporting_players: List[PlayerType]
+        supporting_players = self.filter_players_on_cache(players, use_cache)
+        if len(supporting_players) == 0:
+            return None
 
-            # If given player_mode doesn't match,or is None, then all engine
-            # player_key modes are tried, in preference order, until at least one player_key
-            # also supports the mode.
+        # If given player_mode doesn't match, or is None, then all engine
+        # player modes are tried, in preference order, until at least one
+        # player also supports the mode.
 
-            t_players: List[str]
-            t_players, t_player_mode = self.filter_players_on_player_mode(engine_key,
-                                                                          supporting_players,
-                                                                          player_mode)
-            if len(t_players) == 0:
-                # No player_key supports any of the engine's modes.
-                raise ValueError(f'Engine: {engine_id} No player_key supports any of the '
-                                 f'engine\'s player_key modes.')
-            if t_player_mode != player_mode:
-                # Forced to change player_key mode to find a match
-                if repair_mode:
-                    repair = True
-                player_mode = t_player_mode
-            supporting_players.clear()
-            supporting_players.extend(t_players)
-
-            # supporting_players should be in order of preference.
-            player_id = supporting_players[0]
+        t_players: List[PlayerType]
+        t_player_mode: PlayerMode
+        t_players, t_player_mode = self.filter_players_on_player_mode(engine_key,
+                                                                      supporting_players,
+                                                                      player_mode)
+        if len(t_players) == 0:
+            #  raise ValueError(f'Engine: {engine_id} No player supports any of the '
+            #                  f'engine\'s player modes.')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'No player found for engine {engine_id}')
+            return None
+        # If a player matching player_mode was found, then t_players all support
+        # that player_mode. Otherwise, t_players supports the most preferred
+        # player_mode available for that engine.
+        if t_player_mode != player_mode:
             if repair_mode:
-                if use_cache is None:
-                    use_cache = t_cache
+                repairs = True
+            player_mode = t_player_mode
+
+        # supporting_players should be in order of preference.
+        player = t_players[0]
+        if repair_mode:
+            if use_cache is None:
+                use_cache = player.supports_cache
+                repairs = True
+            elif use_cache != player.supports_cache:
+                if use_cache:
+                    # Here use_cache WAS enabled, but we can't this time.
+                    use_cache = player.supports_cache
                     repairs = True
-                elif use_cache != t_cache:
-                    if use_cache:
-                        # Here use_cache WAS enabled, but we can't this time.
-                        use_cache = t_cache
-                        repairs = True
-            if use_cache is not None:
-                if use_cache and use_cache != t_cache:
-                    use_cache = t_cache
-            engine_config = EngineConfig(engine_key=engine_key,
-                                         lang_info=lang_info,
-                                         use_cache=use_cache,
-                                         player_id=player_id,
-                                         engine_audio=engine_audio,
-                                         player_mode=player_mode,
-                                         transcoder=None,
-                                         trans_audio_in=None,
-                                         trans_audio_out=None,
-                                         repair_mode=repair_mode,
-                                         repairs_made=repairs)
-            return engine_config
+        if use_cache is not None:
+            if use_cache and use_cache != player.supports_cache:
+                use_cache = player.supports_cache
+        engine_config = EngineConfig(engine_key=engine_key,
+                                     lang_info=lang_info,
+                                     use_cache=use_cache,
+                                     player=player,
+                                     engine_audio=engine_audio,
+                                     player_mode=player_mode,
+                                     transcoder=None,
+                                     trans_audio_in=None,
+                                     trans_audio_out=None,
+                                     repair_mode=repair_mode,
+                                     repairs_made=repairs)
+        return engine_config
 
     def filter_players_on_player_mode(self, engine_key: ServiceID,
-                                      player_ids: List[str],
+                                      players: List[PlayerType],
                                       player_mode: PlayerMode) -> (
-            Tuple)[List[str], PlayerMode]:
+            Tuple)[List[PlayerType], PlayerMode]:
         """
         Returns all players which support the given player_mode.
 
         If the given player_mode doesn't match, or is None, then all engine
-        player_key modes are tried, in preference order, until at least one player_key
+        player modes are tried, in preference order, until at least one player
         also supports the mode.
 
         :param engine_key:
-        :param player_ids:
+        :param players:
         :param player_mode:
         :return:
 
         Assumes that engine does not only support ENGINE_SPEAK
         """
-        matching_players: List[str] = []
+        matching_players: List[PlayerType] = []
         e_pm_val: StringValidator | IStringValidator
-        MY_LOGGER.debug(f'service_key: {engine_key}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'service_key: {engine_key} players: {players} '
+                            f'player_mode: {player_mode}')
         t_key: ServiceID = engine_key.with_prop(SettingProp.PLAYER_MODE)
         e_pm_val = SettingsMap.get_validator(t_key)
         e_pm_values: List[AllowedValue] = e_pm_val.get_allowed_values(enabled=True)
-        MY_LOGGER.debug(f'Allowed player_modes for engine: {engine_key}')
 
-        # Search for any non_none player_key mode first, if not found, then
+        # Search for any non_none player mode first, if not found, then
         # search, in preference order, all player_modes supported by the engine,
-        # until at least one player_key also supports it.
+        # until at least one player also supports it.
         player_modes: List[PlayerMode] = []
         if player_mode is not None:
             player_modes.append(player_mode)  # Try given mode first
             for ea_pm in e_pm_values:
                 ea_pm: AllowedValue
                 e_pm: PlayerMode = PlayerMode(ea_pm.value)
-                player_modes.append(e_pm)
+                if player_mode != e_pm:
+                    player_modes.append(e_pm)
         pm: PlayerMode
-        MY_LOGGER.debug(f'player_ids: {player_ids}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'players: {players}')
         for pm in player_modes:
-            MY_LOGGER.debug(f'player_mode: {pm}')
-            for player_id in player_ids:
-                player_id: str
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'player_mode: {pm}')
+            for player in players:
+                player: PlayerType
                 player_key: ServiceID
-                player_key = ServiceID(ServiceType.PLAYER, player_id)
+                player_key = ServiceID(ServiceType.PLAYER, player)
                 p_pm_val: StringValidator | IStringValidator
                 p_pm_key: ServiceID = player_key.with_prop(SettingProp.PLAYER_MODE)
                 p_pm_val = SettingsMap.get_validator(p_pm_key)
-                MY_LOGGER.debug(f'player: {player_key} pm: {pm} valid:'
-                                f' {p_pm_val.is_value_valid(pm)}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'player: {player} pm: {pm} valid:'
+                                    f' {p_pm_val.is_value_valid(pm)}')
                 if p_pm_val.is_value_valid(pm):
-                    matching_players.append(player_id)
+                    matching_players.append(player)
             if len(matching_players) > 0:
                 player_mode = pm
                 break
-        MY_LOGGER.debug(f'player_mode: {player_mode} matching_players: '
-                        f'{matching_players}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'player_mode: {player_mode} matching_players: '
+                            f'{matching_players}')
         return matching_players, player_mode
 
-    def filter_players_on_cache(self, player_ids: List[str],
-                                cache: bool | None) -> List[str]:
+    def filter_players_on_cache(self, players: List[PlayerType],
+                                cache: bool | None) -> (
+            List)[PlayerType]:
         """
-        Returns all players which support the given cache setting
-        :param player_ids:
+        Returns all players which support the given cache setting, in
+        order of preference.
+        :param players:
         :param cache: players that match the boolean value are returned. If
                       cache is None, then all players are returned (with
-                      ones supporting a cache first)
-        :return: player_ids that match
+                      ones supporting a cache first, EXCEPT SFX is less
+                      desirable than INTERNAL)
+        :return: List[PlayerType] that match, in order of
+                 preference
 
         Assumes that engine does not only support ENGINE_SPEAK
         Assumes that any engine supporting a cache does not require it
+        Assumes that SFX player is least desired (due to its limitations)
         """
-        matching_players: List[str] = []
+
+        # Sort candidate players by desirability
+        ordered_players: List[PlayerType] = sorted(players)
+
         if cache is None:
-            matching_players.extend(player_ids)
-            return matching_players
+            return ordered_players
 
-        for player_id in player_ids:
-            player_id: str
-            player_key: ServiceID
-            player_key = ServiceID(ServiceType.PLAYER, player_id)
-            pc_val: BoolValidator | IBoolValidator
-            pc_val = SettingsMap.get_validator(player_key.with_prop(
-                    SettingProp.CACHE_SPEECH))
-            if pc_val is None:
-                MY_LOGGER.info(f'Player: {player_id} did NOT define CACHE_SPEECH '
-                               f'validator')
-            if (pc_val is None and not cache) or (pc_val.get_tts_value() == cache):
-                matching_players.append(player_id)
-        return matching_players
+        preferred_players: List[PlayerType] = []
+        other_players: List[PlayerType] = []
+        for player in ordered_players:
+            player: PlayerType
+            if player.supports_cache == cache:
+                preferred_players.append(player)
+            else:
+                other_players.append(player)
+        preferred_players.extend(other_players)
+        return preferred_players
 
-    def filter_players_on_audio_type(self, player_ids: List[str | PlayerType],
-                                     audio_type: AudioType) -> List[str]:
+    def filter_players_on_audio_type(self, players: List[PlayerType],
+                                     audio_type: AudioType) -> List[PlayerType]:
         """
         Returns all players which support the given audio type.
 
-        :param player_ids:
+        :param players:
         :param audio_type: players that match are returned. MUST not be None
-        :return: player_ids that match
+        :return: players that match
         """
-        matching_players: List[str] = []
+        matching_players: List[PlayerType] = []
         if audio_type is None:
             raise ValueError
 
-        for player_id in player_ids:
-            player_id: str
+        for player in players:
+            player: PlayerType
             player_key: ServiceID = ServiceID(ServiceType.PLAYER,
-                                              player_id)
+                                              player)
             player_audio_types: List[AudioType]
             player_audio_types = SoundCapabilities.get_input_formats(player_key)
-            MY_LOGGER.debug(f'player: {player_id} audio_type: {audio_type}'
-                            f' type: {type(audio_type)} '
-                            f'player_audio_types: {player_audio_types}')
-            if audio_type in player_audio_types:
-                MY_LOGGER.debug(f'{audio_type} in audio_types')
-                matching_players.append(player_id)
-        MY_LOGGER.debug(f'matching_players: {matching_players}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'player: {player} audio_type: {audio_type}'
+                                f' type: {type(audio_type)} '
+                                f'player_audio_types: {player_audio_types}')
+            if audio_type in player_audio_types or player == PlayerType.BUILT_IN_PLAYER:
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'{audio_type} in audio_types')
+                matching_players.append(player)
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'matching_players: {matching_players}')
         return matching_players
 
     def find_transcoder(self, engine_key: ServiceID,
@@ -944,16 +1019,17 @@ class Configure:
         :return: transcoder id Or None
         """
         repairs: bool = False
-        MY_LOGGER.debug(f'trans_audio_out: {trans_audio_out}'
-                        f' {engine_key}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'trans_audio_out: {trans_audio_out} {engine_key}')
         tran_id: str | None = None
         if trans_audio_out is not None:
             try:
                 tran_id = SoundCapabilities.get_transcoder(engine_key,
                                                            target_audio=trans_audio_out)
             except ValueError:
-                MY_LOGGER.debug(f'Can\'t find transcoder for engine:'
-                                f' {engine_key}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'Can\'t find transcoder for engine:'
+                                    f' {engine_key}')
                 tran_id = None
         return tran_id
 
@@ -961,13 +1037,13 @@ class Configure:
                            engine_key: ServiceID) -> Tuple[List[Choice], int]:
         """
             Get players which are compatible with the engine as well as player_Mode.
-            The 'ranking' of players may influence the suggested player_key.
+            The 'ranking' of players may influence the suggested player.
 
             The player_mode should be checked to see if it requires changing
 
         :param engine_key:
         :return: List of compatible players and an index referencing the current
-                 or suggested player_key.
+                 or suggested player.
         """
         choices: List[Choice] = []
         current_choice_index = -1
@@ -979,17 +1055,17 @@ class Configure:
     def get_compatible_players(self,
                                engine_key: ServiceID) -> Tuple[List[Choice], int]:
         """
-            TODO: verify that this is needed or can't utilize other player_key
+            TODO: verify that this is needed or can't utilize other player
                 methods (find_player, etc)
 
                Get players which are compatible with the engine as well as player_Mode.
-               The 'ranking' of players may influence the suggested player_key.
+               The 'ranking' of players may influence the suggested player.
 
                The player_mode should be checked to see if it requires changing
 
            :param engine_key: Engine to get players for
            :return: List of compatible players and an index referencing the current
-                 or suggested player_key.
+                 or suggested player.
         """
         choices: List[Choice] = []
         current_choice_index: int = -1
@@ -1000,7 +1076,7 @@ class Configure:
                     MY_LOGGER.info(f'There is no PLAYER for {engine_key}')
                 return choices, current_choice_index
 
-            # Make sure that any player_key complies with the engine's player_key
+            # Make sure that any player complies with the engine's player
             # validator
 
             val: IStringValidator
@@ -1008,7 +1084,7 @@ class Configure:
             current_choice: ServiceID
             current_choice = Settings.get_player_key(engine_key)
             if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'current player_key: {current_choice} '
+                MY_LOGGER.debug(f'current player: {current_choice} '
                                 f'engine: {engine_key} ')
 
             supported_players_with_enable: List[AllowedValue]
@@ -1016,13 +1092,13 @@ class Configure:
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'supported_players_with_enable:'
                                 f' {supported_players_with_enable}')
-            default_choice_str: str = val.default
+            default_choice: PlayerType = PlayerType(val.default)
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'default: {val.default}')
 
             if supported_players_with_enable is None:
                 supported_players_with_enable = []
-            supported_players: List[Tuple[str, bool]] = []
+            supported_players: List[Tuple[PlayerType, bool]] = []
             idx: int = 0
             default_choice_idx: int = -1
             current_enabled: bool = True
@@ -1032,12 +1108,12 @@ class Configure:
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'player_str: {supported_player.value} '
                                     f'enabled: {supported_player.enabled}')
-                player: str = supported_player.value
+                player: PlayerType = PlayerType(supported_player.value)
                 supported_players.append((player, supported_player.enabled))
-                if player == current_choice.setting_id:
+                if player == PlayerType(current_choice.service_id):
                     current_choice_index = idx
                     current_enabled = supported_player.enabled
-                if player == default_choice_str:
+                if player == default_choice:
                     default_choice_idx = idx
                     default_enabled = supported_player.enabled
                 idx += 1
@@ -1048,10 +1124,10 @@ class Configure:
             if not current_enabled:  # Must pick something else
                 current_choice_index = 0
             idx: int = 0
-            for player_id, enabled in supported_players:
-                player_id: str
-                label: str = Players.get_msg(player_id)
-                choices.append(Choice(label=label, value=player_id,
+            for player, enabled in supported_players:
+                player: PlayerType
+                label: str = Players.get_msg(player)
+                choices.append(Choice(label=label, value=player,
                                       choice_index=idx, enabled=enabled))
         except Exception as e:
             MY_LOGGER.exception('')
@@ -1104,8 +1180,6 @@ class Configure:
         :param engine_key: Identifies which engine's settings to work with
         :return:
         """
-        MY_LOGGER.debug('FOOO get_gender_choices')
-
         current_value: Genders = Settings.get_gender(engine_key)
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'gender: {current_value}')
@@ -1119,8 +1193,6 @@ class Configure:
             engine: ITTSBackendBase = self.getEngineInstance(engine_key)
             gender_choices, _ = engine.settingList(SettingProp.GENDER)
             gender_choices: List[Choice]
-            # supported_genders = BackendInfo.getSettingsList(engine,
-            #                                               SettingProp.GENDER)
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'genders: {gender_choices}')
             genders: List[Choice] = []
@@ -1203,20 +1275,25 @@ class Configure:
                 self.restore_settings('enter select_defaults')
             # Ensure settings for engine are loaded
             BaseServices.get_service(engine_key)
-            MY_LOGGER.debug(f'got service: {engine_key}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'got service: {engine_key}')
             choices, current_choice_index = self.get_engine_choices(
                     engine_key=engine_key)
             choices: List[Choice]
             if current_choice_index < 0:
                 current_choice_index = 0
-            MY_LOGGER.debug(f'# choices: {choices} len: {len(choices)}'
-                            f' current_choice_idx: '
-                            f'{current_choice_index}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'# choices: {choices} len: {len(choices)}'
+                                f' current_choice_idx: '
+                                f'{current_choice_index}')
 
             choice: Choice = choices[current_choice_index]
             if choice is not None:
                 self.configure_engine(choice, save_as_current=True)
                 self.commit_settings()
+        except ServiceUnavailable:
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'Could not load {engine_key}')
         except Exception as e:
             MY_LOGGER.exception('')
         finally:
@@ -1254,14 +1331,16 @@ class Configure:
             # Ensure settings for engine are loaded
             try:
                 BaseServices.get_service(engine_key)
-                MY_LOGGER.debug(f'got service: {engine_key}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'got service: {engine_key}')
             except ServiceUnavailable as e:
                 active: bool = False
                 if engine_key.service_id == SettingsLowLevel.get_engine_id_ll(
                         ignore_cache=True).service_id:
                     active = True
-                MY_LOGGER.debug(f'Service Unavailable: {e}')
-                MY_LOGGER.exception('')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'Service Unavailable: {e}')
+                    MY_LOGGER.exception('')
                 raise ServiceUnavailable(service_key=engine_key,
                                          reason=e.reason,
                                          active=active)
@@ -1270,13 +1349,19 @@ class Configure:
             choices: List[Choice]
             if current_choice_index < 0:
                 current_choice_index = 0
-            MY_LOGGER.debug(f'# choices: {choices} len: {len(choices)}'
-                            f' current_choice_idx: '
-                            f'{current_choice_index}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'# choices: {choices} len: {len(choices)}'
+                                f' current_choice_idx: '
+                                f'{current_choice_index}')
 
             choice: Choice = choices[current_choice_index]
             if choice is not None:
-                self.configure_engine(choice, repair=True, save_as_current=False)
+                if (self.configure_engine(choice, repair=False, save_as_current=False)
+                        is None):
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug(f'Can not use previous configuration. '
+                                        f'Reconfiguring')
+                    self.configure_engine(choice, repair=True, save_as_current=False)
                 self.commit_settings()
         except ServiceUnavailable:
             reraise(*sys.exc_info())
@@ -1299,10 +1384,12 @@ class Configure:
         that it just read).
         :return:
         """
-        MY_LOGGER.debug(f'set_engine_field engine: {engine_key}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'set_engine_field engine: {engine_key}')
         if engine_key is None:
             engine_key = Settings.get_engine_key()
-            MY_LOGGER.debug(f'Got back: {engine_key}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'Got back: {engine_key}')
 
         # Do NOT try to skip initTTS by using:
         # current_engine_id: str = TTSService.get_instance().tts.engine_id
@@ -1319,9 +1406,11 @@ class Configure:
         # same as what is in Settings
 
         PhraseList.set_current_expired()  # Changing engines
-        MY_LOGGER.debug(f'setting: {engine_key} type: {type(engine_key)}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'setting: {engine_key} type: {type(engine_key)}')
         Settings.set_engine(engine_key)
-        MY_LOGGER.debug(f'About to start TTS')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'About to start TTS')
         # Sets the engine id and switch to use it. Expensive
         from service_worker import TTSService
         tts_instance: TTSService = TTSService.get_instance()
@@ -1331,21 +1420,21 @@ class Configure:
 
     def set_player_field(self,
                          engine_key: ServiceID,
-                         player_id: str) -> None:
+                         player: PlayerType) -> None:
         """
-        Updates player_id.engine_id Settings.
+        Updates player.engine_id Settings.
 
         :param engine_key: identifies which engine the settings belong to. If
                            None, then the current engine is used
-        :param player_id: identifies the player_id to set. If None, then
-                          the current player_id for engine_id will be 'updated'
+        :param player: identifies the player to set. If None, then
+                          the current player for engine_id will be 'updated'
         :return:
         """
         try:
 
             if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'Setting {engine_key} player_key to {player_id}')
-            Settings.set_player(value=player_id, engine_key=engine_key)
+                MY_LOGGER.debug(f'Setting {engine_key} player to {player}')
+            Settings.set_player(value=player, engine_key=engine_key)
         except Exception as e:
             MY_LOGGER.exception('')
 
@@ -1391,7 +1480,6 @@ class Configure:
         :return:
         """
         try:
-            MY_LOGGER.debug('FOOO set_lang_field')
             if engine_key is None:
                 raise ValueError('engine_id value required')
             if lang_info is None:
@@ -1417,7 +1505,6 @@ class Configure:
         """
         clz = type(self)
         try:
-            MY_LOGGER.debug('FOOO set_voice_field')
             has_voice: bool
             has_voice = SettingsMap.is_valid_setting(engine_key.with_prop(
                     SettingProp.VOICE))
@@ -1508,7 +1595,8 @@ class Configure:
             choices: List[Choice]
             valid: bool = SettingsMap.is_valid_setting(engine_key.with_prop(
                     SettingProp.GENDER))
-            MY_LOGGER.debug(f'setting_id: {engine_key} GENDER valid: {valid}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'setting_id: {engine_key} GENDER valid: {valid}')
             if not valid:
                 return
             choices, current_choice_index = self.get_gender_choices(
@@ -1573,10 +1661,12 @@ class Configure:
 
         """
         SettingsLowLevel.commit_settings()
-        MY_LOGGER.info(f'Settings saved/committed')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'Settings saved/committed')
         #  TTSService.get_instance().checkBackend()
-        MY_LOGGER.debug(f'original_depth: {self._original_stack_depth} stack_depth: '
-                        f'{SettingsManager.get_stack_depth()}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+          MY_LOGGER.debug_v(f'original_depth: {self._original_stack_depth} stack_depth: '
+                            f'{SettingsManager.get_stack_depth()}')
 
     def save_settings(self, msg: str, initial_frame: bool = False) -> None:
         """
@@ -1592,15 +1682,18 @@ class Configure:
         try:
             if initial_frame:
                 if self._original_stack_depth != -1:
-                    MY_LOGGER.debug('INVALID initial state.')
+                    if MY_LOGGER.isEnabledFor(DEBUG_V):
+                        MY_LOGGER.debug_v('INVALID initial state.')
                 self._original_stack_depth = SettingsManager.get_stack_depth()
-            MY_LOGGER.debug(f'{msg}\nBEFORE save_settings original_depth: '
-                            f'{self._original_stack_depth} '
-                            f'stack_depth: {SettingsManager.get_stack_depth()}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'{msg}\nBEFORE save_settings original_depth: '
+                                f'{self._original_stack_depth} '
+                                f'stack_depth: {SettingsManager.get_stack_depth()}')
             SettingsLowLevel.save_settings()
-            MY_LOGGER.debug(f'{msg}\nAFTER save_settings original_depth: '
-                            f'{self._original_stack_depth} '
-                            f'stack_depth: {SettingsManager.get_stack_depth()}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'{msg}\nAFTER save_settings original_depth: '
+                                  f'{self._original_stack_depth} '
+                                  f'stack_depth: {SettingsManager.get_stack_depth()}')
         except Exception as e:
             MY_LOGGER.exception('')
 
@@ -1651,12 +1744,13 @@ class Configure:
                 MY_LOGGER.warn(f'INVALID stack_depth: '
                                f'{SettingsManager.get_stack_depth()}')
                 return
-        MY_LOGGER.debug(f'{msg_1} to stack_depth: {stack_depth} current: '
-                        f'{SettingsManager.get_stack_depth()}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'{msg_1} to stack_depth: {stack_depth} current: '
+                            f'{SettingsManager.get_stack_depth()}')
         SettingsManager.restore_settings(stack_depth=stack_depth)
-
-        MY_LOGGER.debug(f'{msg_2} with stack_depth: '
-                        f' {SettingsManager.get_stack_depth()}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'{msg_2} with stack_depth: '
+                            f' {SettingsManager.get_stack_depth()}')
         if initial_frame:
             type(self)._instance.busy = False
 
@@ -1676,7 +1770,8 @@ class Configure:
                  current engine
         """
         try:
-            MY_LOGGER.debug(f'target engine: {engine_key}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'target engine: {engine_key}')
             _, _, _, kodi_language = LanguageInfo.get_kodi_locale_info()
             kodi_language: langcodes.Language
             current_engine_idx: int
@@ -1687,13 +1782,15 @@ class Configure:
             idx: int = 0
             for choice in choices:
                 choice: Choice
-                MY_LOGGER.debug(f'engine: {choice.engine_key} '
-                                f'lang_info: {choice.lang_info}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'engine: {choice.engine_key} '
+                                      f'lang_info: {choice.lang_info}')
                 choice.label = SettingsHelper.get_formatted_label(
                         choice.lang_info,
                         kodi_language=kodi_language,
                         format_type=FormatType.DISPLAY)
-                MY_LOGGER.debug(f'lang_info: {choice.lang_info}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'lang_info: {choice.lang_info}')
                 choice.hint = f'choice {idx}'
                 idx += 1
             if MY_LOGGER.isEnabledFor(DEBUG_V):

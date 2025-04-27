@@ -27,7 +27,6 @@ class Services(StrEnum):
     AUTO_ENGINE_ID = 'auto'
     CACHE_WRITER_ID = 'cache_writer'
     CACHE_READER_ID = 'cache_reader'
-    INTERNAL_PLAYER_ID = 'internal'
     EXPERIMENTAL_ENGINE_ID = 'experimental'
     GOOGLE_ID = 'google'
     RESPONSIVE_VOICE_ID = 'ResponsiveVoice'
@@ -55,12 +54,12 @@ class Services(StrEnum):
     WINDOWS_ID = 'windows'
     DEFAULT_ENGINE_ID = ESPEAK_ID
 
-    # engine's id.
+    # player's id.
 
     WavAudioPlayerHandler = 'wave_handler'
     MP3AudioPlayerHandler = 'mp3_handler'
     BuiltInAudioPlayerHandler = 'internal_handler'
-    NONE_ID: str = 'none'
+    BUILT_IN_PLAYER_ID: str = 'built_in_player'
 
     @property
     def translated_name(self) -> str:
@@ -78,7 +77,7 @@ class Services(StrEnum):
             clz.RESPONSIVE_VOICE_ID   : MessageId.ENGINE_RESPONSIVE_VOICE,
             clz.SAPI_ID               : MessageId.ENGINE_SAPI,
             clz.SPEECH_DISPATCHER_ID  : MessageId.ENGINE_SPEECH_DISPATCHER,
-            clz.INTERNAL_PLAYER_ID    : MessageId.ENGINE_INTERNAL,
+            clz.BUILT_IN_PLAYER_ID    : MessageId.ENGINE_INTERNAL,
             clz.LOG_ONLY_ID           : MessageId.ENGINE_LOG_ONLY,
             clz.PICO_TO_WAVE_ID       : MessageId.CONVERT_PICO_TO_WAV,
             clz.PIPER_ID              : MessageId.ENGINE_PIPER
@@ -144,21 +143,52 @@ class OrdStrEnum(MyStrEnum):
             return self.ordinal < other.ordinal
         return NotImplemented
 '''
-class Coordinate(str, Enum):
-    """
-    Coordinatete with binary codes that can be indexed by the int code.
-    """
-    def __new__(cls, value, label, unit):
-        obj = str.__new__(cls, [value])
-        obj._value_ = value
-        obj.label = label
-        obj.unit = unit
-        return obj
 
-    PX = (0, 'P.X', 'km')
-    PY = (1, 'P.Y', 'km')
-    VX = (2, 'V.X', 'km/s')
-    VY = (3, 'V.Y', 'km/s')
+
+class LabeledType(StrEnum):
+    """
+        A StrEnum that also includes an ordinal value (for preference
+        comparision) as well as messageId and a method to get the
+        translated label for the value.
+    """
+    def __new__(cls, value: str, ord_value: int, label_id: MessageId):
+        member = str.__new__(cls, value)
+        member._value_ = value
+        member.ordinal = ord_value
+        member.label_id = label_id
+        #  MY_LOGGER.debug(f'ord_value: {ord_value}')
+        return member
+
+    # def __init__(self, ordinal: int) -> None:
+    #     MY_LOGGER.debug(f'ordinal: {ordinal}')
+    #     self.ordinal = ordinal
+
+    def __ge__(self, other):
+        if self.__class__ is other.__class__:
+            return self.ordinal >= other.ordinal
+        return NotImplemented
+
+    def __gt__(self, other):
+        if self.__class__ is other.__class__:
+            return self.ordinal > other.ordinal
+        return NotImplemented
+
+    def __le__(self, other):
+        if self.__class__ is other.__class__:
+            return self.ordinal <= other.ordinal
+        return NotImplemented
+
+    def __lt__(self, other):
+        if self.__class__ is other.__class__:
+            return self.ordinal < other.ordinal
+        return NotImplemented
+
+    @property
+    def label(self) -> str:
+        clz = LabeledType
+        message_id: MessageId = self.label_id
+        msg: str = message_id[self].get_msg()
+        return msg
 
 
 class MyType(StrEnum):
@@ -267,66 +297,121 @@ class TTS_Type(StrEnum):
     VOLUME = 'volume'
 
 
-class EngineType(StrEnum):
-    AUTO_ENGINE = Services.AUTO_ENGINE_ID
-    EXPERIMENTAL_ENGINE = Services.EXPERIMENTAL_ENGINE_ID
-    GOOGLE = Services.GOOGLE_ID
-    FESTIVAL = Services.FESTIVAL_ID
-    FLITE = Services.FLITE_ID
-    ESPEAK = Services.ESPEAK_ID
-    LOG_ONLY = Services.LOG_ONLY_ID
-    POWERSHELL = Services.POWERSHELL_ID
-    SPEECH_DISPATCHER = Services.SPEECH_DISPATCHER_ID
-    NO_ENGINE = Services.NO_ENGINE_ID
-    RECITE = Services.RECITE_ID
+DEFAULT_MESSAGE_ID = MessageId.ENGINE_ESPEAK
+
+
+class EngineType(LabeledType):
+    AUTO_ENGINE = Services.AUTO_ENGINE_ID, 0, MessageId.ENGINE_AUTO
+    # EXPERIMENTAL_ENGINE = Services.EXPERIMENTAL_ENGINE_ID
+    GOOGLE = Services.GOOGLE_ID, 1, MessageId.ENGINE_GOOGLE
+    # FESTIVAL = Services.FESTIVAL_ID = -1, MessageId.ENGINE_FESTIVAL
+    # FLITE = Services.FLITE_ID = -1, MessageId.FLITE
+    ESPEAK = Services.ESPEAK_ID, 3, MessageId.ENGINE_ESPEAK
+    # LOG_ONLY = Services.LOG_ONLY_ID, 100, MessageId.ENGINE_LOG_ONLY
+    POWERSHELL = Services.POWERSHELL_ID, 2, MessageId.ENGINE_POWERSHELL
+    # SPEECH_DISPATCHER = Services.SPEECH_DISPATCHER_ID
+    NO_ENGINE = Services.NO_ENGINE_ID, 99, MessageId.ENGINE_NO_ENGINE
+    # RECITE = Services.RECITE_ID
     # SAPI_ID = 'sapi'
-    DEFAULT = Services.DEFAULT_ENGINE_ID
+    DEFAULT = Services.DEFAULT_ENGINE_ID, 0, DEFAULT_MESSAGE_ID
 
 
+DUMMY_ENGINES: List[EngineType] = [EngineType.AUTO_ENGINE,
+                                   EngineType.DEFAULT]
 ALL_ENGINES: List[EngineType] = list(EngineType)
+ALL_ENGINES.remove(EngineType.AUTO_ENGINE)
 
 
-class PlayerType(StrEnum):
-    NONE = Services.NONE_ID
-    SFX = Services.SFX_ID  # Kodi built-in, WAVE
-    WINDOWS = Services.WINDOWS_ID
-    APLAY = Services.APLAY_ID
-    PAPLAY = Services.PAPLAY_ID
-    AFPLAY = Services.AFPLAY_ID
-    SOX = Services.SOX_ID
-    MPLAYER = Services.MPLAYER_ID
-    MPV = Services.MPV_ID
-    MPG321 = Services.MPG321_ID
-    MPG123 = Services.MPG123_ID
-    MPG321_OE_PI = Services.MPG321_OE_PI_ID
+class BasePlayerType(StrEnum):
+    """
+        Indicates which services are provided
+    """
+    def __new__(cls, value: str, supports_cache: bool, ord_value: int):
+        member = str.__new__(cls, value)
+        member._value_ = value
+        member.supports_cache = supports_cache
+        member.ordinal = ord_value
+        #  MY_LOGGER.debug(f'ord_value: {ord_value}')
+        return member
 
-    # Engine's built-in player_key
+    # def __init__(self, ordinal: int) -> None:
+    #     MY_LOGGER.debug(f'ordinal: {ordinal}')
+    #     self.ordinal = ordinal
 
-    INTERNAL = Services.INTERNAL_PLAYER_ID
+    def __ge__(self, other):
+        if self.__class__ is other.__class__:
+            return self.ordinal >= other.ordinal
+        return NotImplemented
+
+    def __gt__(self, other):
+        if self.__class__ is other.__class__:
+            return self.ordinal > other.ordinal
+        return NotImplemented
+
+    def __le__(self, other):
+        if self.__class__ is other.__class__:
+            return self.ordinal <= other.ordinal
+        return NotImplemented
+
+    def __lt__(self, other):
+        if self.__class__ is other.__class__:
+            return self.ordinal < other.ordinal
+        return NotImplemented
+
+    def supports_cache(self) -> bool:
+        # Indicates whether this player supports a cache
+        return self.supports_cache
+
+
+class PlayerType(BasePlayerType):
+    """
+      Uses a StrEnum but with an extra attribute indicating preference, in
+      decreasing order
+
+      TODO: Review order and rational. Add more properties, such
+            as PLAYER_MODEs. (get rid of some stupid validators)
+      """
+    # MPV is big, but very capable. Great for caching.
+    MPV = Services.MPV_ID.value, True, 0
+    # Windows is WAVE, but built-in
+    WINDOWS = Services.WINDOWS_ID.value, True, 10
+    PAPLAY = Services.PAPLAY_ID.value, True, 13
+    AFPLAY = Services.AFPLAY_ID.value, True, 14
+    # MPLAYER is not the best at using cache. Slave mode
+    # not so great.
+    MPLAYER = Services.MPLAYER_ID.value, True, 15
+    SOX = Services.SOX_ID.value, True, 20
+    MPG321 = Services.MPG321_ID.value, True, 40
+    MPG123 = Services.MPG123_ID.value, True, 41
+    MPG321_OE_PI = Services.MPG321_OE_PI_ID.value, True, 42
+    APLAY = Services.APLAY_ID.value, True, 70
+    # Engine's built-in player
+    SFX = Services.SFX_ID.value, True, 90  # Kodi built-in, WAVE
+    BUILT_IN_PLAYER = Services.BUILT_IN_PLAYER_ID.value, False, 100
+
 
     @property
     def label(self) -> str:
         clz = PlayerType
         msg_id_lookup: Dict[str, MessageId] = {
-            PlayerType.NONE        : MessageId.PLAYER_NONE,
-            PlayerType.SFX         : MessageId.PLAYER_SFX,
-            PlayerType.WINDOWS     : MessageId.PLAYER_WINDOWS,
-            PlayerType.APLAY       : MessageId.PLAYER_APLAY,
-            PlayerType.PAPLAY      : MessageId.PLAYER_PAPLAY,
-            PlayerType.AFPLAY      : MessageId.PLAYER_AFPLAY,
-            PlayerType.SOX         : MessageId.PLAYER_SOX,
-            PlayerType.MPLAYER     : MessageId.PLAYER_MPLAYER,
-            PlayerType.MPV         : MessageId.PLAYER_MPV,
-            PlayerType.MPG321      : MessageId.PLAYER_MPG321,
-            PlayerType.MPG123      : MessageId.PLAYER_MPG123,
+            PlayerType.SFX            : MessageId.PLAYER_SFX,
+            PlayerType.WINDOWS        : MessageId.PLAYER_WINDOWS,
+            PlayerType.APLAY          : MessageId.PLAYER_APLAY,
+            PlayerType.PAPLAY         : MessageId.PLAYER_PAPLAY,
+            PlayerType.AFPLAY         : MessageId.PLAYER_AFPLAY,
+            PlayerType.SOX            : MessageId.PLAYER_SOX,
+            PlayerType.MPLAYER        : MessageId.PLAYER_MPLAYER,
+            PlayerType.MPV            : MessageId.PLAYER_MPV,
+            PlayerType.MPG321         : MessageId.PLAYER_MPG321,
+            PlayerType.MPG123         : MessageId.PLAYER_MPG123,
             PlayerType.MPG321_OE_PI: MessageId.PLAYER_MPG321_OE_PI,
-            PlayerType.INTERNAL    : MessageId.PLAYER_INTERNAL
+            PlayerType.BUILT_IN_PLAYER: MessageId.PLAYER_BUILT_IN
         }
         msg: str = msg_id_lookup[self].get_msg()
         return msg
 
 
-ALL_PLAYERS: List[StrEnum] = list(PlayerType)
+ALL_PLAYERS: List[PlayerType] = list(PlayerType)
 
 SERVICES_BY_TYPE: Final[Dict[ServiceType, List[StrEnum]]] = {
     ServiceType.ENGINE: ALL_ENGINES,
@@ -358,8 +443,9 @@ class ServiceID:
     for settings.
     """
 
-    def __init__(self, service_type: ServiceType, service_id: str | None = None,
-                 setting_id: str | None = None) -> None:
+    def __init__(self, service_type: ServiceType,
+                 service_id: str | StrEnum | None = None,
+                 setting_id: str | StrEnum | None = None) -> None:
         """
         Defines the 'path' to a setting. A path can have the nodes:
         <ServiceType>.<service_name>.<setting_name>
@@ -380,6 +466,9 @@ class ServiceID:
         if service_id is not None and not isinstance(service_id, str):
             raise ValueError(f'service_id should be str, NOT {type(service_id)} '
                              f'{service_id}')
+        # StrEnums are also considered strs, but we want real str (for now)
+        if isinstance(service_id, StrEnum):
+            service_id: str = service_id.value
         self._service_id: str = service_id
         if setting_id is not None and not isinstance(setting_id, str):
             raise ValueError(f'setting_id should be str, NOT {type(setting_id)} '
@@ -394,7 +483,7 @@ class ServiceID:
         else:
             self.key = f'{self.service_type.name.lower()}.{self.service_id}'
 
-    def with_prop(self, setting_id) -> ForwardRef('ServiceID'):
+    def with_prop(self, setting_id: str | StrEnum) -> ForwardRef('ServiceID'):
         return ServiceID(service_type=self.service_type,
                          service_id=self.service_id,
                          setting_id=setting_id)
@@ -437,7 +526,7 @@ class ServiceID:
         if self._setting_id is None:
             # raise ValueError('Missing setting_id')
             return self.service_key
-        path: str = f'{self.setting_id}.{self.service_id}'
+        path: str = f'{str(self.setting_id)}.{str(self.service_id)}'
         MY_LOGGER.debug(f'setting_path: {path}')
         return path
 
@@ -451,7 +540,7 @@ class ServiceID:
         Does NOT validate the path.
         :return:
         """
-        path: str = f'{self.service_id}.{self.service_type}'
+        path: str = f'{str(self.service_id)}.{self.service_type.value}'
         MY_LOGGER.debug(f'service_key for validator: {path} key: {self}')
         return path
 
@@ -471,6 +560,8 @@ class ServiceKey:
     TTS_KEY: ServiceID = ServiceID(ServiceType.TTS,
                                    Services.TTS_SERVICE,None)
     #  EXPERIMENTAL_ENGINE = Services.EXPERIMENTAL_ENGINE_ID
+    AUTO_KEY: ServiceID = ServiceID(ServiceType.ENGINE, Services.AUTO_ENGINE_ID,
+                                    None)
     GOOGLE_KEY: ServiceID = ServiceID(ServiceType.ENGINE,
                                       Services.GOOGLE_ID, None)
     #  FESTIVAL = Services.FESTIVAL_ID
@@ -483,6 +574,13 @@ class ServiceKey:
                                          Services.NO_ENGINE_ID, None)
     POWERSHELL_KEY: ServiceID = ServiceID(ServiceType.ENGINE,
                                           Services.POWERSHELL_ID, None)
+    # TODO: REWORK to be dynamic. Need shared safe place to update in
+    # bootstrap or config and use here
+    DEFAULT_KEY: ServiceID = ServiceID(ServiceType.ENGINE, EngineType.DEFAULT,
+                                       None)
+
+    MPV_KEY: ServiceID = ServiceID(ServiceType.PLAYER, PlayerType.MPV, None)
+
     #  RECITE = Services.RECITE_ID
     #  SAPI_ID = 'sapi'
     #  DEFAULT = Services.DEFAULT_ENGINE_ID

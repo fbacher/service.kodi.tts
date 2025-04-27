@@ -3,7 +3,6 @@ from __future__ import annotations  # For union operator |
 
 import os
 import sys
-import tempfile
 from pathlib import Path
 
 import xbmc
@@ -11,7 +10,7 @@ import xbmc
 from common import *
 
 from common.constants import Constants
-from common.logger import BasicLogger
+from common.logger import *
 from common.monitor import Monitor
 
 BASE_COMMAND = ('XBMC.NotifyAll(service.kodi.tts,SAY,"{{\\"text\\":\\"{0}\\",'
@@ -116,7 +115,8 @@ class TempFileUtils:
         """
         try:
             dirs_to_delete: List[Path] = []
-            MY_LOGGER.debug(f'tmp_dir: {tmp_dir}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'tmp_dir: {tmp_dir}')
             if not tmp_dir.exists():
                 tmp_dir.mkdir(mode=0o777, exist_ok=True, parents=True)
                 return
@@ -128,11 +128,13 @@ class TempFileUtils:
                 child: Path
                 try:
                     if child.is_dir():
-                        MY_LOGGER.debug(f'dir: {child}')
+                        if MY_LOGGER.isEnabledFor(DEBUG):
+                            MY_LOGGER.debug(f'dir: {child}')
                         dirs_to_delete.append(child)
                         continue
                     if child.is_file():
-                        MY_LOGGER.debug(f'file: {child}')
+                        if MY_LOGGER.isEnabledFor(DEBUG_V):
+                            MY_LOGGER.debug_v(f'unlink file: {child}')
                         child.unlink(missing_ok=True)
                 except:
                     MY_LOGGER.exception('')
@@ -140,7 +142,7 @@ class TempFileUtils:
             for child in dirs_to_delete:
                 child: Path
                 try:
-                    if not child.is_dir():
+                    if not child.is_dir() and MY_LOGGER.isEnabledFor(DEBUG):
                         MY_LOGGER.debug(f'Expected to be directory: {child}')
                     else:
                         cls.clean_tmp_dir(child)
@@ -151,6 +153,7 @@ class TempFileUtils:
             for child in deleted_dirs:
                 dirs_to_delete.remove(child)
             if len(dirs_to_delete) > 0:
-                MY_LOGGER.debug(f'Could not delete {len(dirs_to_delete)} directories')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'Could not delete {len(dirs_to_delete)} directories')
         except:
             MY_LOGGER.exception('')

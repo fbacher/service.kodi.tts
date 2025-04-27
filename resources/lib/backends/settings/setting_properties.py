@@ -28,7 +28,7 @@ class SettingProp:  # (ISettings):
     ESPEAK_ID: Final[str] = Services.ESPEAK_ID.value
     FESTIVAL_ID: Final[str] = Services.FESTIVAL_ID.value
     FLITE_ID: Final[str] = Services.FLITE_ID.value
-    INTERNAL_ID: Final[str] = Services.INTERNAL_PLAYER_ID.value
+    INTERNAL_ID: Final[str] = Services.BUILT_IN_PLAYER_ID.value
     NO_ENGINE_ID: Final[str] = Services.NO_ENGINE_ID.value
     PICO_TO_WAVE_ID: Final[str] = Services.PICO_TO_WAVE_ID.value
     RECITE_ID: Final[str] = Services.RECITE_ID.value

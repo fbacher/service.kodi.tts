@@ -7,7 +7,6 @@ Created on Feb 19, 2019
 """
 from __future__ import annotations
 
-
 # From six
 
 
@@ -78,6 +77,12 @@ class EmptyPhraseException(Exception):
 
 
 class ConfigurationError(Exception):
+
+    def __init__(self, msg: str = ''):
+        super().__init__(msg)
+
+
+class DownloaderBusyException(Exception):
 
     def __init__(self, msg: str = ''):
         super().__init__(msg)

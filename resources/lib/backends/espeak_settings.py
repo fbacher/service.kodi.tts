@@ -15,12 +15,14 @@ from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.i_validators import INumericValidator, ValueType
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.setting_properties import SettingProp
-from backends.settings.settings_map import Reason, SettingsMap
+from backends.settings.settings_map import Status, SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
                                           GenderValidator, NumericValidator,
                                           SimpleStringValidator, StringValidator)
+from common.config_exception import UnusableServiceException
 from common.constants import Constants
 from common.logger import BasicLogger
+from common.service_status import Progress, ServiceStatus
 from common.setting_constants import AudioType, Backends, Genders, PlayerMode, Players
 from common.settings import Settings
 from backends.settings.service_types import ServiceID
@@ -33,7 +35,7 @@ class ESpeakSettings:
     # Only returns .wav files, or speech
     ID: str = Backends.ESPEAK_ID
     engine_id = Backends.ESPEAK_ID
-    service_id: str = Services.ESPEAK_ID
+    service_id: Services = Services.ESPEAK_ID
     service_type: ServiceType = ServiceType.ENGINE
     service_key: ServiceID = ServiceID(service_type, service_id)
     NAME_KEY: ServiceID = service_key.with_prop(SettingProp.SERVICE_NAME)
@@ -43,16 +45,29 @@ class ESpeakSettings:
     # SettingName, default value
 
     initialized: bool = False
-    _available: bool | None = None
+    _service_status: ServiceStatus = ServiceStatus()
 
     @classmethod
-    def config_settings(cls, *args, **kwargs: Dict[str, str]):
+    def config_settings(cls, *args, **kwargs: Dict[str, str]) -> None:
+        BaseEngineSettings.config_settings(cls.service_key)
         if cls.initialized:
             return
+        # Basic checks that don't depend on config
+        cls.check_is_supported_on_platform()
+        cls.check_is_installed()
+        if cls._service_status.status != Status.OK:
+            SettingsMap.set_available(cls.service_key, cls._service_status)
+            raise UnusableServiceException(cls.service_key,
+                                           cls._service_status,
+                                           msg='')
         cls.initialized = True
         # Define each engine's default settings here, afterward, they can be
         # overridden by this class.
         cls._config(**kwargs)
+        cls.check_is_available()
+        cls.check_is_usable()
+        cls.is_usable()
+        return
 
     @classmethod
     def _config(cls, **kwargs: Dict[str, str]):
@@ -111,13 +126,12 @@ class ESpeakSettings:
 
         transcoder_service_key: ServiceID
         transcoder_service_key = cls.service_key.with_prop(SettingProp.TRANSCODER)
-        audio_validator: StringValidator
-        audio_converter_validator = StringValidator(transcoder_service_key,
-                                                    allowed_values=[Services.LAME_ID,
-                                                                    Services.MPLAYER_ID])
-
-        SettingsMap.define_setting(audio_converter_validator.service_key,
-                                   audio_converter_validator)
+        transcoder_val: StringValidator
+        transcoder_val = StringValidator(transcoder_service_key,
+                                         allowed_values=[Services.LAME_ID,
+                                                         Services.MPLAYER_ID])
+        SettingsMap.define_setting(transcoder_val.service_key,
+                                   transcoder_val)
         # Defines a very loose language validator. Basically it will accept
         # almost any strings. The real work is done by LanguageInfo and
         # SettingsHelper. Should revisit this validator
@@ -183,7 +197,7 @@ class ESpeakSettings:
                                    player_mode_validator)
 
         Settings.set_current_output_format(cls.service_key, AudioType.WAV)
-        output_audio_types: List[AudioType] = [AudioType.WAV, AudioType.NONE]
+        output_audio_types: List[AudioType] = [AudioType.WAV, AudioType.BUILT_IN]
         SoundCapabilities.add_service(cls.service_key,
                                       service_types=[ServiceType.ENGINE],
                                       supported_input_formats=[],
@@ -194,6 +208,7 @@ class ESpeakSettings:
                 service_type=ServiceType.PLAYER,
                 consumer_formats=[AudioType.WAV],
                 producer_formats=[])
+        MY_LOGGER.debug(f'candidates: {candidates}')
 
         #  TODO:  Need to eliminate un-available players
         #         Should do elimination in separate code
@@ -202,9 +217,8 @@ class ESpeakSettings:
                               Players.SFX, Players.WINDOWS, Players.APLAY,
                               Players.PAPLAY, Players.AFPLAY, Players.SOX,
                               Players.MPG321, Players.MPG123,
-                              Players.MPG321_OE_PI, Players.INTERNAL]
+                              Players.MPG321_OE_PI, Players.BUILT_IN]
 
-        MY_LOGGER.debug(f'candidates: {candidates}')
         valid_players: List[str] = []
         for player_id in candidates:
             player_id: str
@@ -215,16 +229,16 @@ class ESpeakSettings:
 
         MY_LOGGER.debug(f'valid_players: {valid_players}')
 
-        # TODO: what if default player_key is not available?
+        # TODO: what if default player is not available?
         player_validator: StringValidator
         player_validator = StringValidator(cls.service_key.with_prop(SettingProp.PLAYER),
                                            allowed_values=valid_players,
-                                           default=Players.INTERNAL)
+                                           default=Players.BUILT_IN)
         SettingsMap.define_setting(player_validator.service_key,
                                    player_validator)
 
         # If espeak native .wav is produced, then cache_speech = False.
-        # If espeak is converted to mp3, then cache_speech = True, otherwise, why
+        # If espeak is transcoded to mp3, then cache_speech = True, otherwise, why
         # bother to spend cpu to produce mp3?
 
         cache_validator: BoolValidator
@@ -260,31 +274,25 @@ class ESpeakSettings:
                                    speed_validator)
 
     @classmethod
-    def check_availability(cls) -> Reason:
-        availability: Reason = Reason.AVAILABLE
-        if not cls.isSupportedOnPlatform():
-            availability = Reason.NOT_SUPPORTED
-        if not cls.isInstalled():
-            availability = Reason.NOT_AVAILABLE
-        elif not cls.is_available():
-            availability = Reason.BROKEN
-        SettingsMap.set_is_available(cls.service_key,
-                                     availability)
-        return availability
-
-    @staticmethod
-    def isSupportedOnPlatform() -> bool:
-        return (SystemQueries.isLinux() or SystemQueries.isWindows()
-                or SystemQueries.isOSX())
+    def check_is_supported_on_platform(cls) -> None:
+        if cls._service_status.progress == Progress.START:
+            supported: bool = (SystemQueries.isLinux() or SystemQueries.isWindows()
+                               or SystemQueries.isOSX())
+            cls._service_status.progress = Progress.SUPPORTED
+            if not supported:
+                cls._service_status.status = Status.FAILED
+        MY_LOGGER.debug(f'state: {cls._service_status.progress} '
+                        f'status: {cls._service_status.status}')
 
     @classmethod
-    def isInstalled(cls) -> bool:
-        if not cls.isSupportedOnPlatform():
-            return False
-        return cls.is_available()
+    def check_is_installed(cls) -> None:
+        # Don't have a test for installed, just move on to available
+        if (cls._service_status.progress == Progress.SUPPORTED
+                and cls._service_status.status == Status.OK):
+            cls._service_status.progress = Progress.INSTALLED
 
     @classmethod
-    def is_available(cls) -> bool:
+    def check_is_available(cls) -> None:
         """
         Determines if the engine is functional. The test is only run once and
         remembered.
@@ -292,39 +300,77 @@ class ESpeakSettings:
         :return:
         """
         success: bool = False
-        if cls._available is not None:
-            return cls._available
-        completed: subprocess.CompletedProcess | None = None
-        try:
-            cmd_path = 'espeak-ng'
-            args = [cmd_path, '--version']
-            env = os.environ.copy()
-            completed: subprocess.CompletedProcess | None = None
-            if Constants.PLATFORM_WINDOWS:
-                MY_LOGGER.info(f'Running command: Windows')
-                completed = subprocess.run(args, stdin=None, capture_output=True,
-                                           text=True, env=env, close_fds=True,
-                                           encoding='utf-8', shell=False, check=True,
-                                           creationflags=subprocess.CREATE_NO_WINDOW)
-            else:
-                MY_LOGGER.info(f'Running command: Linux')
-                completed = subprocess.run(args, stdin=None, capture_output=True,
-                                           text=True, env=env, close_fds=True,
-                                           encoding='utf-8', shell=False, check=True)
-            for line in completed.stdout.split('\n'):
-                if len(line) > 0:
-                    if line.find('eSpeak NG text_to_speech'):
-                        success = True
-                        break
-            if completed.returncode != 0:
-                success = False
-        except subprocess.CalledProcessError:
-            MY_LOGGER.exception('')
-        except OSError:
-            MY_LOGGER.exception('')
-        except Exception:
-            MY_LOGGER.exception('')
+        if (cls._service_status.progress == Progress.INSTALLED
+                and cls._service_status.status == Status.OK):
+            try:
+                cmd_path = 'espeak-ng'
+                args = [cmd_path, '--version']
+                env = os.environ.copy()
+                completed: subprocess.CompletedProcess | None = None
+                if Constants.PLATFORM_WINDOWS:
+                    MY_LOGGER.info(f'Running command: Windows')
+                    completed = subprocess.run(args, stdin=None, capture_output=True,
+                                               text=True, env=env, close_fds=True,
+                                               encoding='utf-8', shell=False, check=True,
+                                               creationflags=subprocess.CREATE_NO_WINDOW)
+                else:
+                    MY_LOGGER.info(f'Running command: Linux')
+                    completed = subprocess.run(args, stdin=None, capture_output=True,
+                                               text=True, env=env, close_fds=True,
+                                               encoding='utf-8', shell=False, check=True)
+                for line in completed.stdout.split('\n'):
+                    if len(line) > 0:
+                        if line.find('eSpeak NG text_to_speech'):
+                            success = True
+                            break
+                if completed.returncode != 0:
+                    success = False
+            except subprocess.CalledProcessError:
+                MY_LOGGER.exception('')
+            except OSError:
+                MY_LOGGER.exception('')
+            except Exception:
+                MY_LOGGER.exception('')
 
-        cls._available = success
-        MY_LOGGER.debug(f'eSpeak available: {success}')
-        return cls._available
+            MY_LOGGER.debug(f'eSpeak available: {success}')
+            cls._service_status.progress = Progress.AVAILABLE
+            if not success:
+                cls._service_status.status = Status.FAILED
+        MY_LOGGER.debug(f'state: {cls._service_status.progress} '
+                        f'status: {cls._service_status.status}')
+
+    @classmethod
+    def check_is_usable(cls) -> None:
+        """
+        Determine if the engine is usable in this environment. Perhaps there is
+        no player that can work with this engine available.
+        :return None:
+        """
+        # eSpeak should always be usable, since it comes with its own player
+        if cls._service_status.progress == Progress.AVAILABLE:
+            cls._service_status.progress = Progress.USABLE
+            SettingsMap.set_available(cls.service_key, cls._service_status)
+
+        MY_LOGGER.debug(f'state: {cls._service_status.progress} '
+                        f'status: {cls._service_status.status}')
+
+    @classmethod
+    def is_usable(cls) -> bool:
+        """
+        Determines if there are any known reasons that this service is not
+        functional. Runs the check_ methods to determine the result.
+
+        :return True IFF functional:
+        :raises UnusableServiceException: when this service is not functional
+        :raises ValueError: when called before this module fully initialized.
+        """
+        if (cls._service_status.status != Status.OK or
+                cls._service_status.progress != Progress.USABLE):
+            raise UnusableServiceException(service_key=cls.service_key,
+                                           reason=cls._service_status,
+                                           msg='')
+        return True
+
+    @classmethod
+    def get_status(cls) -> ServiceStatus:
+        return cls._service_status

@@ -9,7 +9,7 @@ from backends.base import SimpleTTSBackend
 from backends.no_engine_settings import NoEngineSettings
 from backends.settings.language_info import LanguageInfo
 from backends.settings.service_types import ServiceID, Services
-from backends.settings.settings_map import Reason
+from backends.settings.settings_map import Status
 from backends.transcoders.trans import TransCode
 from cache.common_types import CacheEntryInfo
 from cache.voicecache import VoiceCache
@@ -46,8 +46,7 @@ class NoEngine(SimpleTTSBackend):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         clz = type(self)
-        self.voice_cache: VoiceCache = VoiceCache(clz.service_key,
-                                                  reset_engine_each_call=False)
+        clz.voice_cache = VoiceCache(clz.service_key, reset_engine_each_call=False)
         if not clz._initialized:
             clz._initialized = True
             BaseServices.register(self)
@@ -78,8 +77,7 @@ class NoEngine(SimpleTTSBackend):
     def get_player_mode(self) -> PlayerMode:
         return PlayerMode.FILE
 
-    @classmethod
-    def create_wave_phrase(cls, phrase: Phrase) -> Tuple[Phrase, CacheEntryInfo]:
+    def create_wave_phrase(self, phrase: Phrase) -> Tuple[Phrase, CacheEntryInfo]:
         """
         Copy the given phrase produced by an engine and create a wave file from
         the previously created audio for the phrase. The wave file is placed
@@ -87,8 +85,9 @@ class NoEngine(SimpleTTSBackend):
         :param phrase:
         :return: Phrase, CacheEntryInfo for the generated wave phrase
         """
-        if cls.voice_cache is None:
-            cls.voice_cache = VoiceCache(cls.service_key)
+        clz = type(self)
+        if clz.voice_cache is None:
+            clz.voice_cache = VoiceCache(clz.service_key)
         MY_LOGGER.debug(f'phrase: {phrase} \n'
                         f'text: {phrase.text} \n'
                         f'cache_path: {phrase.cache_path} \n'
@@ -102,8 +101,8 @@ class NoEngine(SimpleTTSBackend):
                                      check_expired=False)
         wave_phrase.language = phrase.language
         wave_phrase.lang_dir = phrase.lang_dir
-        wave_phrase.update_cache_path(active_engine=cls)
-        cache_info = cls.voice_cache.get_path_to_voice_file(wave_phrase, use_cache=True)
+        wave_phrase.update_cache_path(active_engine=self)
+        cache_info = clz.voice_cache.get_path_to_voice_file(wave_phrase, use_cache=True)
         MY_LOGGER.debug(f'wave_phrase: {wave_phrase} \n'
                         f'text: {wave_phrase.text} \n'
                         f'cache_path: {wave_phrase.cache_path} \n'
@@ -116,16 +115,16 @@ class NoEngine(SimpleTTSBackend):
         MY_LOGGER.debug(f'no_engine cache_info: {cache_info}')
         if not cache_info.audio_exists:
             mp3_file: Path = phrase.get_cache_path()
-            wave_file = cache_info.current_audio_path
-            # trans_id: str = Settings.get_converter(self.engine_id)
+            wave_file = cache_info.final_audio_path
+            # trans_id: str = Settings.get_transcoder(self.engine_id)
             trans_id: str = Converters.LAME
-            MY_LOGGER.debug(f'service_id: {cls.service_id} trans_id: {trans_id}')
+            MY_LOGGER.debug(f'service_id: {clz.service_id} trans_id: {trans_id}')
             success = TransCode.transcode(trans_id=trans_id,
                                           input_path=mp3_file,
                                           output_path=wave_file,
                                           remove_input=False)
             if success:
-                phrase.text_exists(check_expired=False)
+                phrase.text_exists(check_expired=False, active_engine=self)
             MY_LOGGER.debug(f'success: {success} wave_file: {wave_file} mp3: {mp3_file}')
         return wave_phrase, cache_info
 
@@ -247,5 +246,5 @@ class NoEngine(SimpleTTSBackend):
         return
 
     @staticmethod
-    def check_availability() -> Reason:
+    def check_availability() -> Status:
         return NoEngineSettings.check_availability()

@@ -167,13 +167,8 @@ class BaseCache(BaseServices):
     def voiceFile(self, text_to_voice: str, path: str):
         pass
 
-    def voiceByteS(self, text_to_voice, voice: bytes):
+    def voiceBytes(self, text_to_voice, voice: bytes):
         pass
-
-    def create_sound_file(self, voice_file_path: str,
-                          sound_file_type: str) -> Tuple[int, IO[io.BufferedWriter]]:
-
-        return VoiceCache.create_tmp_sound_file(voice_file_path, sound_file_type)
 
     def runCommandAndPipe(self, use_cache: bool, text_to_voice: str):
         clz = type(self)
@@ -184,10 +179,9 @@ class BaseCache(BaseServices):
         # does not exist, otherwise it is the contents of the cached file
 
         self.stop_processing = False
-        audio_pipe = None
         voice_file: str | None
         exists: bool
-        byte_stream: io.BinaryIO = None
+        byte_stream: BinaryIO | None = None
         voice_file, exists = self.get_path_to_voice_file(text_to_voice,
                                                          use_cache)
         if not voice_file or len(voice_file) == 0:

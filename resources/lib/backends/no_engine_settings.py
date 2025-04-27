@@ -10,12 +10,14 @@ from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.i_validators import INumericValidator, ValueType
 from backends.settings.service_types import GENERATE_BACKUP_SPEECH, Services, ServiceType
 from backends.settings.setting_properties import SettingProp
-from backends.settings.settings_map import Reason, SettingsMap
+from backends.settings.settings_map import Status, SettingsMap
 from backends.settings.validators import (BoolValidator, ConstraintsValidator,
                                           GenderValidator, NumericValidator,
                                           SimpleStringValidator, StringValidator)
+from common.config_exception import UnusableServiceException
 from common.constants import Constants
 from common.logger import BasicLogger
+from common.service_status import Progress, ServiceStatus
 from common.setting_constants import AudioType, Backends, Genders, PlayerMode, Players
 from common.settings import Settings
 from backends.settings.service_types import ServiceID
@@ -39,13 +41,25 @@ class NoEngineSettings:
     # SettingName, default value
 
     initialized: bool = False
+    _service_status: ServiceStatus = ServiceStatus()
 
     @classmethod
     def config_settings(cls, *args, **kwargs):
         if cls.initialized:
             return
+            # Basic checks that don't depend on config
+        cls.check_is_supported_on_platform()
+        cls.check_is_installed()
+        if cls._service_status.status != Status.OK:
+            SettingsMap.set_available(cls.service_key, cls._service_status)
+            raise UnusableServiceException(cls.service_key,
+                                           cls._service_status,
+                                           msg='')
         cls.initialized = True
         cls._config()
+        cls.check_is_available()
+        cls.check_is_usable()
+        cls.is_usable()
 
     @classmethod
     def _config(cls):
@@ -207,25 +221,69 @@ class NoEngineSettings:
         '''
 
     @classmethod
-    def check_availability(cls) -> Reason:
-        availability: Reason = Reason.AVAILABLE
-        if not cls.isSupportedOnPlatform():
-            availability = Reason.NOT_SUPPORTED
-        if not cls.isInstalled():
-            availability = Reason.NOT_AVAILABLE
-        elif not cls.is_available():
-            availability = Reason.BROKEN
-        SettingsMap.set_is_available(NoEngineSettings.service_key, availability)
-        return availability
+    def check_is_supported_on_platform(cls) -> None:
+        if cls._service_status.progress == Progress.START:
+            cls._service_status.progress = Progress.SUPPORTED
+        MY_LOGGER.debug(f'state: {cls._service_status.progress} '
+                        f'status: {cls._service_status.status}')
 
     @classmethod
-    def isSupportedOnPlatform(cls) -> bool:
-        return True
+    def check_is_installed(cls) -> None:
+        # Don't have a test for installed, just move on to available
+        if (cls._service_status.progress == Progress.SUPPORTED
+                and cls._service_status.status == Status.OK):
+            cls._service_status.progress = Progress.INSTALLED
+        MY_LOGGER.debug(f'state: {cls._service_status.progress} '
+                        f'status: {cls._service_status.status}')
 
     @classmethod
-    def isInstalled(cls) -> bool:
-        return True
+    def check_is_available(cls) -> None:
+        """
+        Determines if the engine is functional. The test is only run once and
+        remembered.
+
+        :return:
+        """
+        success: bool = True
+        if (cls._service_status.progress == Progress.INSTALLED
+                and cls._service_status.status == Status.OK):
+            cls._service_status.progress = Progress.AVAILABLE
+        MY_LOGGER.debug(f'state: {cls._service_status.progress} '
+                        f'status: {cls._service_status.status}')
 
     @classmethod
-    def is_available(cls) -> bool:
+    def check_is_usable(cls) -> None:
+        """
+        Determine if the engine is usable in this environment. Perhaps there is
+        no player that can work with this engine available.
+        :return None:
+        """
+        # eSpeak should always be usable, since it comes with its own player
+        if cls._service_status.progress == Progress.AVAILABLE:
+            cls._service_status.progress = Progress.USABLE
+            SettingsMap.set_available(cls.service_key, cls._service_status)
+        MY_LOGGER.debug(f'state: {cls._service_status.progress} '
+                        f'status: {cls._service_status.status}')
+
+    @classmethod
+    def is_usable(cls) -> bool:
+        """
+        Determines if there are any known reasons that this service is not
+        functional. Runs the check_ methods to determine the result.
+
+        :return True IFF functional:
+        :raises UnusableServiceException: when this service is not functional
+        :raises ValueError: when called before this module fully initialized.
+        """
+        MY_LOGGER.debug(f'state: {cls._service_status.progress} '
+                        f'status: {cls._service_status.status}')
+        if cls._service_status.status != Status.OK:
+            raise UnusableServiceException(service_key=cls.service_key,
+                                           reason=cls._service_status,
+                                           msg='')
+        progress: Progress = cls._service_status.progress
+        MY_LOGGER.debug(f'state: {cls._service_status.progress} '
+                        f'status: {cls._service_status.status}')
+        if progress != Progress.USABLE:
+            raise ValueError(f'Service: {cls.service_key} not fully initialized')
         return True

@@ -149,15 +149,18 @@ class SettingsManager:
         with cls._settings_lock:
             if stack_depth is not None:
                 while stack_depth < cls.get_stack_depth():
-                    MY_LOGGER.debug(f'poping stack_depth: {stack_depth} depth: '
-                                    f'{cls.get_stack_depth()}')
+                    if MY_LOGGER.isEnabledFor(DEBUG_V):
+                        MY_LOGGER.debug_v(f'poping stack_depth: {stack_depth} depth: '
+                                          f'{cls.get_stack_depth()}')
                     cls._settings_stack.pop()
             else:
-                MY_LOGGER.debug(f'pop one')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'pop one')
                 cls._settings_stack.pop()
             if settings_changes is not None:
                 cls.set_settings(settings_changes)
-        MY_LOGGER.debug(f'leaving with stack_depth: {cls.get_stack_depth()}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'leaving with stack_depth: {cls.get_stack_depth()}')
 
     @classmethod
     def get_stack_depth(cls) -> int:
@@ -205,7 +208,9 @@ class SettingsManager:
             value = default_value
             if setting_id == 'converter':
                 MY_LOGGER.dump_stack('Converter problem')
-        MY_LOGGER.debug(f'get_previous_setting setting_id: {setting_id} value: {value}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'get_previous_setting setting_id: {setting_id}'
+                              f' value: {value}')
         return value
 
     @classmethod
@@ -266,7 +271,8 @@ class SettingsWrapper:
         try:
             value = clz.old_api.getSettingBool(setting_path)
         except TypeError:
-            MY_LOGGER.debug(f'Error getting {setting_path}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'Error getting {setting_path}')
             value = None
 
         if isinstance(value, str):
@@ -294,7 +300,8 @@ class SettingsWrapper:
         try:
             value = clz.old_api.getSettingInt(setting_path)
         except TypeError as e:
-            MY_LOGGER.debug(f'Error getting {setting_path}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'Error getting {setting_path}')
             value = None
         return value
 
@@ -318,8 +325,9 @@ class SettingsWrapper:
         try:
             value: float = clz.old_api.getSettingNumber(setting_path)
         except TypeError:
-            MY_LOGGER.error(f'Setting {setting_path} is not a float. '
-                            f'Setting to None')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.error(f'Setting {setting_path} is not a float. '
+                                f'Setting to None')
             value = None
         return value
 
@@ -341,7 +349,8 @@ class SettingsWrapper:
             value = clz.old_api.getSettingString(setting_path)
             #  MY_LOGGER.debug(f'value: {value} id: {setting_path}')
         except TypeError as e:
-            MY_LOGGER.debug(f'Error getting {setting_path}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'Error getting {setting_path}')
             value = None
         return value
 
@@ -356,9 +365,9 @@ class SettingsWrapper:
 
         Example::
 
-            ..
+            ...
             enabled = settings.getBoolList('enabled')
-            ..
+            ...
         """
         raise NotImplementedError()
 
@@ -666,7 +675,8 @@ class SettingsLowLevel:
         # set SETTINGS_BEING_CONFIGURED, SETTINGS_LAST_CHANGED
         #
         SettingsManager.restore_settings(stack_depth)
-        MY_LOGGER.debug('TRACE Cancel changes')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug('TRACE Cancel changes')
 
     @staticmethod
     def get_changed_settings(settings_to_check: List[str]) -> List[str]:
@@ -675,7 +685,6 @@ class SettingsLowLevel:
         :param settings_to_check:
         :return:
         """
-        # MY_LOGGER.debug('entered')
         changed_settings = []
         for setting_id in settings_to_check:
             previous_value = SettingsManager.get_previous_setting(setting_id, None)
@@ -688,8 +697,8 @@ class SettingsLowLevel:
                 changed = True
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'setting changed: {setting_id} '
-                                                   f'previous_value: {previous_value} '
-                                                   f'current_value: {current_value}')
+                                    f'previous_value: {previous_value} '
+                                    f'current_value: {current_value}')
             else:
                 changed = False
 
@@ -772,8 +781,9 @@ class SettingsLowLevel:
             MY_LOGGER.exception(
                     f'TRACE: Bad setting_id: {setting_id}')
         if type_error:
-            MY_LOGGER.debug(f'TRACE: incorrect type for setting: {full_setting_id} '
-                              f'Expected {expected_type} got {str(type(value))}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'TRACE: incorrect type for setting: {full_setting_id} '
+                                f'Expected {expected_type} got {str(type(value))}')
         return type_error, type(value)
 
     all_engines_loaded: bool = False
@@ -815,10 +825,10 @@ class SettingsLowLevel:
                 services_to_add.remove(Services.AUTO_ENGINE_ID)
             except ValueError:
                 MY_LOGGER.exception('')
-            #  MY_LOGGER.debug(f'engine settings: {services_to_add}')
         elif service_key.service_type == ServiceType.PLAYER:
+            pass
             #  MY_LOGGER.debug(f'Loading PLAYER services')
-            services_to_add.extend(Players.ALL_PLAYER_IDS)
+            #  services_to_add.extend(Players.ALL_PLAYER_IDS)
         elif service_key.service_type == ServiceType.TTS:
             #  MY_LOGGER.debug(f'Loading TTS services')
             #  services_to_add.append(SettingProp.TTS_SERVICE)
@@ -1177,7 +1187,7 @@ class SettingsLowLevel:
         :param new_settings: Any settings found are returned with their values
                             via this dict
         :param service_key: Identifies the service to load
-        :param setting_id: load this service, if found.
+        :param setting_id: load this setting, if found.
                            ex. service_type = Engine, service_id = google
                            will return a value. But service_type = PLAYER and
                            service_id == google, will not
@@ -1210,16 +1220,19 @@ class SettingsLowLevel:
             service_key = ServiceID(service_type=service_key.service_type,
                                     service_id=service_key.service_id,
                                     setting_id=setting_id)
-            MY_LOGGER.debug(f'property\'s service_key: {service_key} path: '
-                            f'{service_key.setting_path}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'property\'s service_key: {service_key} path: '
+                                f'{service_key.setting_path}')
             if SettingsMap.is_valid_setting(service_key):
                 value = cls.load_setting(service_key)
             elif force_load:
-                MY_LOGGER.debug(f'FORCED load of property: {setting_id}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'FORCED load of property: {setting_id}')
                 value = cls.load_setting(service_key)
             else:
-                MY_LOGGER.debug(f'Not loading: {service_key} '
-                                f'NOT defined via SettingsMap.define_setting')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'Not loading: {service_key} '
+                                    f'NOT defined via SettingsMap.define_setting')
                 continue
             if value is not None:
                 if MY_LOGGER.isEnabledFor(DEBUG_XV):
@@ -1227,7 +1240,8 @@ class SettingsLowLevel:
                                        f'to settings cache')
                 new_settings[service_key] = value
             else:
-                MY_LOGGER.debug(f'FAILED to add {service_key} value: {value}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'FAILED to add {service_key} value: {value}')
 
     @classmethod
     def load_setting(cls, service_key: ServiceID) -> Any | None:
@@ -1380,8 +1394,8 @@ class SettingsLowLevel:
             return tmp_id[0], None
         if len(tmp_id) == 2:
             return tmp_id[1], tmp_id[0]
-
-        MY_LOGGER.debug(f'Malformed setting id: {expanded_setting}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'Malformed setting id: {expanded_setting}')
         return None, None
 
     @classmethod
@@ -1395,9 +1409,9 @@ class SettingsLowLevel:
     @classmethod
     def getRealSetting(cls, setting_id: str, engine_id: str | None,
                        default_value: Any | None) -> Any | None:
-        MY_LOGGER.debug(
-                f'TRACE getRealSetting NOT from cache id: {setting_id} backend: '
-                f'{engine_id}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'TRACE getRealSetting NOT from cache id: {setting_id}'
+                            f' backend: {engine_id}')
         if engine_id is None or len(engine_id) == 0:
             # engine_id = SettingsLowLevel._current_engine
             engine_src_id: ServiceID = SettingsLowLevel.get_engine_id_ll(
@@ -1489,7 +1503,8 @@ class SettingsLowLevel:
                     prefix: str = cls.getSettingIdPrefix(full_setting_id)
                     value_type = SettingProp.SettingTypes.get(prefix, None)
                     if value == 'NO_VALUE':
-                        MY_LOGGER.debug(f'Expected setting not found {prefix}')
+                        if MY_LOGGER.isEnabledFor(DEBUG):
+                            MY_LOGGER.debug(f'Expected setting not found {prefix}')
                         continue
                     """
                     match value_type:
@@ -1544,11 +1559,13 @@ class SettingsLowLevel:
                 # exits and pops the frame that it created on entering
 
                 final_stack_depth: int = SettingsManager.get_stack_depth()
-                MY_LOGGER.debug(f'stack_depth: {final_stack_depth}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'stack_depth: {final_stack_depth}')
                 SettingsManager.clear_settings()
                 for idx in range(1, final_stack_depth):
                     SettingsManager.load_settings(top_frame)
-                MY_LOGGER.debug(f'final stack_depth: {SettingsManager.get_stack_depth()}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'final stack_depth: {SettingsManager.get_stack_depth()}')
 
     @classmethod
     def get_engine_id_ll(cls, default: str = None,
@@ -1592,7 +1609,8 @@ class SettingsLowLevel:
             return success
         except:
             MY_LOGGER.exception('')
-            MY_LOGGER.debug(f'TRACE: type mismatch')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'TRACE: type mismatch')
 
     @classmethod
     def check_reload(cls):

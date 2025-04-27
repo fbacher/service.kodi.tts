@@ -25,8 +25,11 @@ class MessageId(Enum):
     ITEM_WITH_NUMBER = 32106  # item {number}
     ITEMS_WITH_NUMBER = 32107  # {number} items
 
+    GENDER_UNKNOWN = 32165
     TTS_ENGINE = 32181
     ENGINE_AUTO = 32184
+    GENDER_MALE = 32212
+    GENDER_FEMALE = 32213
     VOICE = 32216  # (As in Voice: <name of voice>)
     OK_BUTTON = 32220
     CANCEL_BUTTON = 32221
@@ -77,6 +80,7 @@ class MessageId(Enum):
     TRUE = 32820
     FALSE = 32821
     ENGINE_PIPER = 32331
+    ENGINE_NO_ENGINE = 32250
 
     PLAYER_NONE = 32304
     PLAYER_SFX = 32297
@@ -90,7 +94,7 @@ class MessageId(Enum):
     PLAYER_MPG123 = 32306
     PLAYER_MPG321_OE_PI = 32307
     SELECT_VOICE_BUTTON = 32308
-    PLAYER_INTERNAL = 32313
+    PLAYER_BUILT_IN = 32313
 
     PLAYER_MPV = 32330
 

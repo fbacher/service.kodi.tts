@@ -44,7 +44,7 @@ class SoundCapabilities:
                     supported_input_formats: List[AudioType],
                     supported_output_formats: List[AudioType]) -> None:
         """
-        :param service_key: Uniquely identifies the engine, player_key or converter that
+        :param service_key: Uniquely identifies the engine, player or converter that
                 these capabilities belong to (ex: 'mpv', 'google')
         :param service_types: services which this provides (ServiceType.PLAYER,
                               ServiceType.ENGINE, etc.)
@@ -52,8 +52,7 @@ class SoundCapabilities:
         :param supported_output_formats: mp3, wav
         """
         if not SettingsMap.is_available(service_key):
-            MY_LOGGER.debug(f'service: {service_key} is NOT available. Ignoring service')
-            return
+            MY_LOGGER.debug(f'service: {service_key} is NOT available, adding anyway')
 
         # Multiple ServicesTypes is most useful for players, which may also be able
         # to act as a Transcoder (mpv can play or transcode)
@@ -76,7 +75,7 @@ class SoundCapabilities:
         Removes a service, most likely because it is broken or otherwise not
         available for use
 
-        :param service_key: Uniquely identifies the engine, player_key or converter
+        :param service_key: Uniquely identifies the engine, player or converter
                 (ex: 'mpv', 'google')
         :param service_types: type of services provided (ServiceType.PLAYER,
                               ServiceType.ENGINE, etc.)
@@ -117,7 +116,7 @@ class SoundCapabilities:
               input (consumer) formats blah blah
         Returns services which meet the given criteria.
 
-        :param service_type: Input service stage. ex: engine, player_key, converter, etc.
+        :param service_type: Input service stage. ex: engine, player, converter, etc.
                None means the service type will be ignored
         :param consumer_formats: audio formats that this service must consume from
                the previous service
@@ -134,14 +133,14 @@ class SoundCapabilities:
 
         """
         A chain of tools is is_required to voice text:
-        examples: engine -> wav -> player_key
-                  engine -> wav -> converter -> .mp3 -> cache -> player_key
-                  cache -> mp3 -> player_key
+        examples: engine -> wav -> player
+                  engine -> wav -> converter -> .mp3 -> cache -> player
+                  cache -> mp3 -> player
                     
         The job of this module is to determine the candidate tools for the next stage
         in a sequence. For example, if we are at the engine stage that produces wave
-        and we next need to play the sound, then we need a player_key that can play wave,
-        or a converter to mp3 then a player_key.
+        and we next need to play the sound, then we need a player that can play wave,
+        or a converter to mp3 then a player.
         
         The major determinant is whether caching is used or not. If caching is used, 
         then mp3 is is_required (much smaller files). Otherwise, may as well do everything
@@ -221,7 +220,7 @@ class SoundCapabilities:
         the given consumer_formats, as well as one of the producer_formats (if
         specified).
 
-        :param service_type: Input service stage. ex: engine, player_key, converter, etc.
+        :param service_type: Input service stage. ex: engine, player, converter, etc.
                None means the service type will be ignored
         :param preferred_service_id: Preferred service to use, returned as first
                value, if found and meets criteria
@@ -243,14 +242,14 @@ class SoundCapabilities:
 
         """
         A chain of tools is is_required to voice text:
-        examples: engine -> wav -> player_key
-                  engine -> wav -> converter -> .mp3 -> cache -> player_key
-                  cache -> mp3 -> player_key
+        examples: engine -> wav -> player
+                  engine -> wav -> converter -> .mp3 -> cache -> player
+                  cache -> mp3 -> player
 
         The job of this module is to determine the candidate tools for the next stage
         in a sequence. For example, if we are at the engine stage that produces wave
-        and we next need to play the sound, then we need a player_key that can play wave,
-        or a converter to mp3 then a player_key.
+        and we next need to play the sound, then we need a player that can play wave,
+        or a converter to mp3 then a player.
 
         If caching is used, then mp3 is generally required (much smaller files).
         Otherwise, The advantage to wave format is that it is simpler to process.
@@ -366,7 +365,7 @@ class SoundCapabilities:
     @classmethod
     def get_service_pipeline(cls, engine_id: str) -> List[StrEnum]:
         """
-        Finds a player_key or transcoder/player_key combination that can play what is
+        Finds a player or transcoder/player combination that can play what is
         produced by the given engine.
         :param engine_id:
         :return:

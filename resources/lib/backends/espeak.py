@@ -27,7 +27,7 @@ from backends.audio.sound_capabilities import ServiceType
 from backends.base import BaseEngineService, SimpleTTSBackend
 from backends.settings.i_validators import AllowedValue, INumericValidator, IValidator
 from backends.settings.service_types import ServiceKey, Services, ServiceID
-from backends.settings.settings_map import Reason, SettingsMap
+from backends.settings.settings_map import Status, SettingsMap
 from common.base_services import BaseServices
 from common.constants import Constants
 from common.logger import *
@@ -44,6 +44,50 @@ from windowNavigation.choice import Choice
 MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
+class VoiceData:
+
+    def __init__(self, lang_id: str,  langcodes_lang: langcodes.Language,
+                 voice_name: str, voice_id: str, gender: Genders,
+                 available: bool = False) -> None:
+        self._lang_id: str = lang_id
+        self._langcodes_lang: langcodes.Language = langcodes_lang
+        self._voice_name: str = voice_name
+        self._voice_id: str = voice_id
+        self._gender: Genders = gender
+        self._available: bool = available
+
+    @property
+    def lang_id(self) -> str:
+        return self._lang_id
+
+    @property
+    def langcodes_lang(self) -> langcodes.Language:
+        return self._langcodes_lang
+
+    @property
+    def voice_name(self) -> str:
+        return self._voice_name
+
+    @property
+    def voice_id(self) -> str:
+        return self._voice_id
+
+    @property
+    def gender(self) -> Genders:
+        return self._gender
+
+    @property
+    def available(self) -> bool:
+        return self._available
+
+    @available.setter
+    def available(self, available: bool) -> None:
+        self._available = available
+
+    def __str__(self) -> str:
+        return (f'lang: {self.lang_id} voice_name: {self.voice_name} '
+                f'voice_id: {self.voice_id} gender: {self.gender} avail: {self.available}')
+
 class ESpeakTTSBackend(SimpleTTSBackend):
     """
 
@@ -57,7 +101,8 @@ class ESpeakTTSBackend(SimpleTTSBackend):
     displayName: str = 'eSpeak'
     UTF_8: Final[str] = '1'
 
-    voice_map: Dict[str, List[Tuple[str, str, Genders]]] = None
+    voice_map: Dict[str, List[VoiceData]] = None
+    FILE_DIR_TO_REAL_DIR: Dict[str, str] = {'mb': 'mbrola'}
     _logger: BasicLogger = None
     _class_name: str = None
     _initialized: bool = False
@@ -67,23 +112,9 @@ class ESpeakTTSBackend(SimpleTTSBackend):
     pitch_key: ServiceID = service_key.with_prop(SettingProp.PITCH)
     speed_key: ServiceID = service_key.with_prop(SettingProp.SPEED)
 
-    '''
-    class LangInfo:
-
-        lang_info_map: Dict[str, ForwardRef('LangInfo')] = {}
-        initialized: bool = False
-
-        def __init__(self, locale_id: str, language_code: str, country_code: str,
-                     language_name: str, country_name: str) -> None:
-            clz = type(self)
-            self.locale_id: str = locale_id
-            self.language_code: str = language_code
-            self.country_code: str = country_code
-            self.language_name: str = language_name
-            self.country_name: str = country_name
-
-            clz.lang_info_map[locale_id] = self
-    '''
+    cmd_path = 'espeak-ng'
+    espeak_data_path: Path = Path('c:/Program Files/eSpeak NG/espeak-ng-data')
+    espeak_data_arg: str = f'--path={espeak_data_path}'
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -123,8 +154,8 @@ class ESpeakTTSBackend(SimpleTTSBackend):
 
         cls.voice_map = {}
         env = os.environ.copy()
-        cmd_path = 'espeak-ng'
-        args = [cmd_path, '-b', cls.UTF_8, '--voices']
+        args = [cls.cmd_path, '-b', cls.UTF_8, '--voices',
+                f'--path={cls.espeak_data_arg}']
         voices = []
         try:
             completed: subprocess.CompletedProcess | None = None
@@ -208,33 +239,32 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             rc = -1
 
         # Read lines of voices, ignoring header
-
         for voice in voices:
             fields = voice.split(maxsplit=5)
             MY_LOGGER.debug(f'fields: {fields}')
-            priority_str: str = fields[0]
+            priority_str: str = fields[0]  # Higher is better
             priority: int = int(priority_str)
 
-            lang_str: str = fields[1]
-            if lang_str == 'chr-US-Qaaa-x-west':  # IETF will not parse
-                lang_str = 'chr-Qaaa-x-west'
-            if lang_str == 'en-us-nyc':
-                lang_str = 'en-us'
-            # locale: str = langcodes.standardize_tag(lang_str)
-            lang: langcodes.Language | None = None
+            lang_id: str = fields[1]
+            if lang_id == 'chr-US-Qaaa-x-west':  # IETF will not parse
+                lang_id = 'chr-Qaaa-x-west'
+            if lang_id == 'en-us-nyc':
+                lang_id = 'en-us'
+            # locale: str = langcodes.standardize_tag(lang_id)
+            langcodes_lang: langcodes.Language | None = None
             try:
-                lang = langcodes.Language.get(lang_str)
+                langcodes_lang = langcodes.Language.get(lang_id)
                 if MY_LOGGER.isEnabledFor(DEBUG_XV):
-                    MY_LOGGER.debug_xv(f'orig: {lang_str} '
-                                       f'language: {lang.language} '
-                                       f'script: {lang.script} '
-                                       f'territory: {lang.territory} '
-                                       f'extlangs: {lang.extlangs} '
-                                       f'variants: {lang.variants} '
-                                       f'extensions: {lang.extensions} '
-                                       f'private: {lang.private} '
+                    MY_LOGGER.debug_xv(f'orig: {lang_id} '
+                                       f'language: {langcodes_lang.language} '
+                                       f'script: {langcodes_lang.script} '
+                                       f'territory: {langcodes_lang.territory} '
+                                       f'extlangs: {langcodes_lang.extlangs} '
+                                       f'variants: {langcodes_lang.variants} '
+                                       f'extensions: {langcodes_lang.extensions} '
+                                       f'private: {langcodes_lang.private} '
                                        f'display: '
-                                       f'{lang.display_name(lang.language)}')
+                                       f'{langcodes_lang.display_name(langcodes_lang.language)}')
             except LanguageTagError:
                 MY_LOGGER.exception('')
 
@@ -251,29 +281,87 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             other_langs: str = ''
             if len(fields) > 5:
                 other_langs = fields[5]  # Fields 5 -> eol
-            entries: List[Tuple[str, str, Genders]] | None
-            entries = cls.voice_map.get(lang.language, None)
-            if entries is None:
-                entries = []
-                cls.voice_map[lang.language] = entries
-            entries.append((voice_name, voice_id, gender))
-            LanguageInfo.add_language(engine_key=ESpeakTTSBackend.service_key,
-                                      language_id=lang.language,
-                                      country_id=lang.territory,
-                                      ietf=lang,
-                                      region_id='',
-                                      gender=Genders.UNKNOWN,
-                                      voice=voice_name,
-                                      engine_lang_id=lang_str,
-                                      engine_voice_id=voice_id,
-                                      engine_name_msg_id=MessageId.ENGINE_ESPEAK,
-                                      engine_quality=3,
-                                      voice_quality=-1)
+            entries: List[VoiceData] | None
+            entries = cls.voice_map.setdefault(langcodes_lang.language, [])
+            entries.append(VoiceData(lang_id, langcodes_lang, voice_name, voice_id,
+                                     gender))
+
+        # Discover the directories of voice files referenced by the list of voices
+        voice_files_by_directory: Dict[str, Dict[str, None]] = {}
+        for lang, entries in cls.voice_map.items():
+            MY_LOGGER.debug(f'lang: {lang} entries: {entries}')
+            for entry in entries:
+                entry: VoiceData
+                MY_LOGGER.debug(f'entry: {entry}')
+                voice_file_path: Path = Path(entry.voice_id)
+                subdir_name: str = str(voice_file_path.parent)
+                MY_LOGGER.debug(f'subdir_name: {subdir_name}')
+                subdir_name = cls.FILE_DIR_TO_REAL_DIR.get(subdir_name)
+                if subdir_name is not None:
+                    voices_in_subdir: Dict[str, None]  # used as a set
+                    voices_in_subdir = voice_files_by_directory.setdefault(subdir_name, {})
+                    # Only need to scan a subdir once to capture all voices in it
+                    if len(voices_in_subdir) == 0:
+                        for voice_file in cls.get_installed_voice_files(subdir_name):
+                            voices_in_subdir[voice_file] = None
+                    # Mark any entry that has its voice_file in the subdir
+                    voice_file: str = str(voice_file_path.name)
+                    if voice_file in voices_in_subdir:
+                        entry.available = True
+                else:
+                    entry.available = True
+
+                if entry.available:
+                    # NOTE: Omitting voices that are NOT installed
+
+                    langcodes_lang: langcodes.Language = entry.langcodes_lang
+                    LanguageInfo.add_language(engine_key=ESpeakTTSBackend.service_key,
+                                              language_id=langcodes_lang.language,
+                                              country_id=langcodes_lang.territory,
+                                              ietf=langcodes_lang,
+                                              region_id='',
+                                              gender=Genders.UNKNOWN,
+                                              voice=entry.voice_name,
+                                              engine_lang_id=entry.lang_id,
+                                              engine_voice_id=entry.voice_id,
+                                              engine_name_msg_id=MessageId.ENGINE_ESPEAK,
+                                              engine_quality=3,
+                                              voice_quality=priority)
+
         cls.initialized_static = True
+
+    @classmethod
+    def get_installed_voice_files(cls, subdir: str) -> List[str]:
+        """
+        Supplements the info that espeak-ng -voices gives by checking to see
+        what voice files are installed for a given lang.
+
+        Espeak-ng --voices=<lang> can
+        return voices which are defined, but NOT installed. Mbrola voices are
+        a case in point. The voice files are typically stored in subdirectories
+        of the data-directory. Mbrola files are in the 'mb' subdirectory. The
+        subdirectory name comes from the --voices command.
+
+        LIMITATIONS: ONLY looks for data files stored in the default data-directory.
+
+        :param subdir: data-directory subdir to look for voice files
+        :return List[str]: A list of voice file names found from the given subdir
+        """
+        voice_files: List[str] = []
+        try:
+            subdir_path: Path = cls.espeak_data_path / subdir
+            for voice_file in subdir_path.glob('*'):
+                voice_file: Path
+                voice_files.append(str(voice_file))
+        except Exception:
+            MY_LOGGER.exception('')
+        MY_LOGGER.debug(f'voice_files: {voice_files}')
+        return voice_files
 
     def addCommonArgs(self, args, phrase: Phrase | None = None):
         clz = type(self)
         voice_id = Settings.get_voice(clz.service_key)
+        #  voice_id = 'gmw/en-US'
         if voice_id is None or voice_id in ('unknown', ''):
             voice_id = None
 
@@ -312,7 +400,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                        is or will be located.
         :param generate_voice: If true, then wait a bit to generate the speech
                                file.
-        :return: True if the voice file was handed to a player_key, otherwise False
+        :return: True if the voice file was handed to a player, otherwise False
         """
         clz = type(self)
         player_key: ServiceID = Settings.get_player_key()
@@ -335,7 +423,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         if is_sfx_player and phrase.cache_file_state() == CacheFileState.OK:
             return True
 
-        # If audio in cache is suitable for player_key, then we are done.
+        # If audio in cache is suitable for player, then we are done.
         result: CacheEntryInfo
         result = self.voice_cache.get_path_to_voice_file(phrase, use_cache=True)
         if result.audio_exists:
@@ -346,23 +434,23 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         if wave_file is not None:
             result: CacheEntryInfo
             result = self.voice_cache.get_path_to_voice_file(phrase, use_cache=True)
-            mp3_file = result.current_audio_path
-            trans_id: str = Settings.get_converter(clz.service_key)
+            mp3_file = result.final_audio_path
+            trans_id: str = Settings.get_transcoder(clz.service_key)
             MY_LOGGER.debug(f'service_id: {self.engine_id} trans_id: {trans_id}')
             success = TransCode.transcode(trans_id=trans_id,
                                           input_path=wave_file,
                                           output_path=mp3_file,
                                           remove_input=True)
             if success:
-                phrase.text_exists(check_expired=False)
+                phrase.text_exists(check_expired=False, active_engine=self)
             MY_LOGGER.debug(f'success: {success} wave_file: {wave_file} mp3: {mp3_file}')
         return success
 
     def runCommand(self, phrase: Phrase) -> Path | None:
         """
         Run command to generate speech and save voice to a file (mp3 or wave).
-        A player_key will then be scheduled to play the file. Note that there is
-        delay in starting speech generator, speech generation, starting player_key
+        A player will then be scheduled to play the file. Note that there is
+        delay in starting speech generator, speech generation, starting player
         up and playing. Consider using caching of speech files as well as
         using PlayerMode.SLAVE_FILE.
         :param phrase:
@@ -377,40 +465,36 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             - Can write to file, or pipe, or directly voice
             - Here we only care about writing to file.
             Destination:
-            - to player_key
-            - to cache, then player_key
-            - to mp3 converter, to cache, then player_key
+            - to player
+            - to cache, then player
+            - to mp3 converter, to cache, then player
             Player prefers wave (since that is native to eSpeak), but can be 
             mp3
             Cache strongly prefers .mp3 (space), but can do wave (useful for
-            fail-safe, when there is no mp3 player_key configured)).
+            fail-safe, when there is no mp3 player configured)).
             
         Assumptions:
             any cache has been checked to see if already voiced
         """
         sfx_player: bool = Settings.get_player_key().setting_id == Players.SFX
         use_cache: bool = Settings.is_use_cache() or sfx_player
-        # The SFX player_key is used when NO player_key is available. SFX is Kodi's
-        # internal player_key with limited functionality. Requires Wave.
-        exists: bool = False
+        # The SFX player is used when NO player is available. SFX is Kodi's
+        # internal player with limited functionality. Requires Wave.
+        audio_exists: bool = False
         result: CacheEntryInfo | None = None
         # For SFX, save eSpeak .wav directly into the cache
-        if not sfx_player:
-            result = self.voice_cache.get_path_to_voice_file(phrase, use_cache=use_cache)
-            exists = result.audio_exists
-        else:
-            result = self.voice_cache.get_path_to_voice_file(phrase, use_cache=True)
-            exists = result.audio_exists
-
+        result = self.voice_cache.get_path_to_voice_file(phrase, use_cache=use_cache)
+        audio_exists = result.audio_exists
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'espeak.runCommand '
                             f'result: {result} '
                             f'text: {phrase.text}')
-        if exists:
-            return result.current_audio_path
+        if audio_exists:
+            return result.final_audio_path
         env = os.environ.copy()
-        args = ['espeak-ng', '-b', clz.UTF_8, '-w',
-                str(result.temp_voice_path), '--stdin']
+        args = [clz.cmd_path, '-b', clz.UTF_8, '-w',
+                str(result.temp_voice_path), '--stdin',
+                f'{clz.espeak_data_arg}']
         self.addCommonArgs(args)
         try:
             if Constants.PLATFORM_WINDOWS:
@@ -447,13 +531,14 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                     MY_LOGGER.exception('')
                 return None
             try:
-                result.temp_voice_path.rename(result.current_audio_path)
-                phrase.set_cache_path(cache_path=result.current_audio_path,
-                                      text_exists=phrase.text_exists(check_expired=False),
+                result.temp_voice_path.rename(result.final_audio_path)
+                phrase.set_cache_path(cache_path=result.final_audio_path,
+                                      text_exists=phrase.text_exists(check_expired=False,
+                                                                     active_engine=self),
                                       temp=not result.use_cache)
             except Exception:
                 MY_LOGGER.exception(f'Could not rename {result.temp_voice_path} '
-                                    f'to {result.current_audio_path}')
+                                    f'to {result.final_audio_path}')
                 try:
                     result.temp_voice_path.unlink(missing_ok=True)
                 except:
@@ -463,12 +548,13 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.exception('')
                 return None
-        return result.current_audio_path  # Wave file
+        return result.final_audio_path  # Wave file
 
     def runCommandAndSpeak(self, phrase: Phrase):
         clz = type(self)
         env = os.environ.copy()
-        args = ['espeak-ng', '-b', clz.UTF_8, '--stdin']
+        args = [clz.cmd_path, '-b', clz.UTF_8, '--stdin',
+                f'{clz.espeak_data_arg}']
         self.addCommonArgs(args)
         MY_LOGGER.debug(f'args: {args}')
         try:
@@ -500,7 +586,8 @@ class ESpeakTTSBackend(SimpleTTSBackend):
     def runCommandAndPipe(self, phrase: Phrase):
         clz = type(self)
         env = os.environ.copy()
-        args = ['espeak-ng', '-b', clz.UTF_8, '--stdin', '--stdout']
+        args = [clz.cmd_path, '-b', clz.UTF_8, '--stdin', '--stdout',
+                f'{clz.espeak_data_arg}']
         self.addCommonArgs(args)
         MY_LOGGER.debug(f'args: {args}')
         try:
@@ -563,6 +650,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         MY_LOGGER.debug(f'In load_languages')
         cls.init_voices()
 
+    '''
     @classmethod
     def settingList(cls, setting, *args) -> Tuple[List[Choice], str]:
         if setting == SettingProp.LANGUAGE:
@@ -637,18 +725,21 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             current_lang = Settings.get_language(cls.service_key)
             voice_list = cls.voice_map.get(current_lang, [])
             genders: List[Choice] = []
+            idx: int = 0
             for voice_name, voice_id, gender_id in voice_list:
                 # TODO: verify
                 # Voice_name is from command and not translatable?
 
-                # Unlike voices and languages, we just return gender ids
-                # translation is handled by SettingsDialog
-
-                genders.append(Choice(value=gender_id))
+                # Unlike voices and languages, we just return gender ids.
+                # Translation is handled by SettingsDialog. Label and
+                # choice_index are ignored
+                genders.append(Choice(label='', value=gender_id, choice_index=idx))
+                idx += 1
             return genders, ''
 
+        
         elif setting == SettingProp.PLAYER:
-            # Get list of player_key ids. Id is same as is stored in settings.xml
+            # Get list of player ids. Id is same as is stored in settings.xml
             supported_players: List[AllowedValue]
             supported_players = SettingsMap.get_allowed_values(cls.player_key)
             choices: List[Choice] = []
@@ -665,9 +756,11 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                 idx += 1
 
             default_player: str
-            default_player = SettingsMap.get_default_value(cls.player_key)
+            default_player = SettingsMap.get_default_value(cls.runCommand)
             return choices, default_player
+        
         return None
+    '''
 
     '''
     @classmethod
@@ -678,15 +771,17 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         return default_lang
     '''
 
+    '''
     @classmethod
     def get_voice_id_for_name(cls, name):
         if len(cls.voice_map) == 0:
             cls.settingList(SettingProp.VOICE)
         return cls.voice_map[name]
+    '''
 
     def getVolume(self) -> int:
         # All volumes in settings use a common TTS db scale.
-        # Conversions to/from the engine's or player_key's scale are done using
+        # Conversions to/from the engine's or player's scale are done using
         # Constraints
         clz = type(self)
         if self.get_player_mode() != PlayerMode.ENGINE_SPEAK:
@@ -706,7 +801,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
 
     def get_pitch(self) -> int:
         # All pitches in settings use a common TTS scale.
-        # Conversions to/from the engine's or player_key's scale are done using
+        # Conversions to/from the engine's or player's scale are done using
         # Constraints
         clz = type(self)
         if self.get_player_mode != PlayerMode.ENGINE_SPEAK:
@@ -734,11 +829,11 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         :return:
         """
         # All settings use a common TTS scale.
-        # Conversions to/from the engine's or player_key's scale are done using
+        # Conversions to/from the engine's or player's scale are done using
         # Constraints
         clz = type(self)
         if self.get_player_mode != PlayerMode.ENGINE_SPEAK:
-            # Let player_key decide speed
+            # Let player decide speed
             speed = 176  # Default espeak speed of 176 words per minute.
             return speed
         else:
@@ -775,7 +870,3 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                 territory = ietf_lang.territory.lower()
             phrase.set_territory_dir(territory)
         return
-
-    @classmethod
-    def check_availability(cls) -> Reason:
-        return ESpeakSettings.check_availability()

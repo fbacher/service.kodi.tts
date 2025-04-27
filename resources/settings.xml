@@ -182,7 +182,7 @@
                     </control>
                     <visible>true</visible>
                 </setting>
-                 <setting help="" id="converter.eSpeak" label="32178" type="string">
+                 <setting help="" id="transcoder.eSpeak" label="32178" type="string">
                     <level>4</level>
                     <constraints>
                         <allowempty>true</allowempty>
@@ -374,7 +374,7 @@
                     </control>
                     <visible>true</visible>
                 </setting>
-                  <setting help="" id="converter.google" label="32178" type="string">
+                  <setting help="" id="transcoder.google" label="32178" type="string">
                     <level>4</level>
                     <constraints>
                         <allowempty>true</allowempty>
@@ -525,7 +525,7 @@
                     </control>
                     <visible>true</visible>
                 </setting>
-                 <setting help="" id="converter.powershell" label="32178" type="string">
+                 <setting help="" id="transcoder.powershell" label="32178" type="string">
                     <level>4</level>
                     <constraints>
                         <allowempty>true</allowempty>

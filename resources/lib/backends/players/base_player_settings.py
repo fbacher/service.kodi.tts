@@ -43,7 +43,7 @@ class BasePlayerSettings(BaseServiceSettings):
         valid_players: List[str] = [Players.SFX, Players.WINDOWS, Players.APLAY,
                                     Players.PAPLAY, Players.AFPLAY, Players.SOX,
                                     Players.MPLAYER, Players.MPG321, Players.MPG123,
-                                    Players.INTERNAL, Players.MPG321_OE_PI]
+                                    Players.BUILT_IN, Players.MPG321_OE_PI]
         player_validator: StringValidator
         player_validator = StringValidator(SettingProp.PLAYER, cls.service_id,
                                            allowed_values=valid_players,

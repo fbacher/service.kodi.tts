@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations  # For union operator |
 
+from backends.settings.service_unavailable_exception import ServiceUnavailable
 from common import *
 
 from backends.backend_info_bridge import BackendInfoBridge
@@ -17,23 +18,22 @@ from common.settings_bridge import SettingsBridge
 from common.system_queries import SystemQueries
 from windowNavigation.choice import Choice
 
+MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
+
 
 class BackendInfo(IBackendInfo):
 
-    module_logger = BasicLogger.get_logger(__name__)
     backendsByPriority: List[ITTSBackendBase] = []
     backendsById: Dict[str, ITTSBackendBase] = {}
     backendByClassName: Dict[str, Type[ITTSBackendBase]] = {}
     backendIds: List[str] = []
-    _logger: BasicLogger
     _initialized: bool = False
 
     @classmethod
     def init(cls):
         if not cls._initialized:
             cls._initialized = True
-            cls._logger = BasicLogger.get_logger(__name__)
-            cls._logger.debug(f'Setting BackendInfoBridge backend Ref')
+            MY_LOGGER.debug(f'Setting BackendInfoBridge backend Ref')
             BackendInfoBridge.setBackendInfo(BackendInfo)
 
     @classmethod
@@ -59,20 +59,22 @@ class BackendInfo(IBackendInfo):
     def getAvailableBackends(cls,
                              can_stream_wav: bool = False) -> List[ITTSBackendBase]:
         available: List[ITTSBackendBase] = []
-        cls._logger.debug_v(
+        MY_LOGGER.debug_v(
                 f'backends.__init__.getAvailableBackends can_stream_wav: '
                 f'{str(can_stream_wav)}')
         for engine_id in Backends.ALL_ENGINE_IDS:
             engine: ITTSBackendBase
-            engine = BaseServices.get_service(ServiceID(ServiceType.ENGINE, engine_id))
             try:
+                engine = BaseServices.get_service(ServiceID(ServiceType.ENGINE, engine_id))
                 if engine is None or not engine.is_available_and_usable():
                     continue
+            except ServiceUnavailable:
+                MY_LOGGER.debug(f'Could not Load {engine}')
             except AttributeError:
                 continue
 
-            if cls._logger.isEnabledFor(DEBUG_V):
-                cls._logger.debug_v(
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(
                     f'Available engine: {engine.__class__.__name__}')
             available.append(engine)
         return available
@@ -120,7 +122,7 @@ class BackendInfo(IBackendInfo):
         settings = None
         bClass: Callable | ITTSBackendBase = cls.getBackendByProvider(engine_id)
         if bClass:
-            cls._logger.debug(f'bClass: {type(bClass)}')
+            MY_LOGGER.debug(f'bClass: {type(bClass)}')
             settings = bClass.settingList(setting, *args)
         return settings
 
@@ -135,8 +137,8 @@ class BackendInfo(IBackendInfo):
     @classmethod
     def getBackend(cls, engine_id: str = SettingsBridge.BACKEND_DEFAULT) \
             -> ITTSBackendBase | None:
-        if cls._logger.isEnabledFor(DEBUG_V):
-            cls._logger.debug_v(f'getBackend engine_id: {engine_id}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'getBackend engine_id: {engine_id}')
 
         engine_id = SettingsBridge.get_engine_id() or engine_id
         b = cls.getBackendByProvider(engine_id)
@@ -158,25 +160,25 @@ class BackendInfo(IBackendInfo):
     @classmethod
     def getBackendByProvider(cls, provider_id: str = None) \
             -> Callable | Type[ITTSBackendBase] | None:
-        cls._logger.debug(f'provider_id: {provider_id}')
+        MY_LOGGER.debug(f'provider_id: {provider_id}')
         if provider_id == 'auto':
             return None
         for b in cls.backendsByPriority:
-            cls._logger.debug(f'backend {b.engine_id}')
-            cls._logger.debug(f'available: {b._available()}')
+            MY_LOGGER.debug(f'backend {b.engine_id}')
+            MY_LOGGER.debug(f'available: {b._available()}')
             if b.engine_id == provider_id and b._available():
                 return b
         return None
 
     @classmethod
     def getBackendByClassName(cls, name) -> Callable | ITTSBackendBase | None:
-        cls._logger.debug(f'getBackendByClassName name: {name}')
+        MY_LOGGER.debug(f'getBackendByClassName name: {name}')
         if name == Constants.AUTO:
             return None
         instance: Type[ITTSBackendBase] = cls.backendByClassName.get(name, None)
-        cls._logger.debug(f'instance: {instance}')
+        MY_LOGGER.debug(f'instance: {instance}')
         if instance:
-            cls._logger.debug(f'available: {instance._available}')
+            MY_LOGGER.debug(f'available: {instance._available}')
         if instance and instance._available():
             return instance
         return None

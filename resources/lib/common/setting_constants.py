@@ -24,7 +24,7 @@ class BaseSettingsConstants:
 
     @classmethod
     def get_label(cls, setting_id: str) -> str:
-        msg_handle = cls.settings_map.get(setting_id, setting_id)
+        msg_handle: MessageId = cls.settings_map.get(setting_id, setting_id)
         label = msg_handle.get_msg()
         return label
 
@@ -39,7 +39,7 @@ class Backends(BaseSettingsConstants):
     ESPEAK_ID: Final[str] = Services.ESPEAK_ID
     FESTIVAL_ID: Final[str] = Services.FESTIVAL_ID
     FLITE_ID: Final[str] = Services.FLITE_ID
-    INTERNAL_ID: Final[str] = Services.INTERNAL_PLAYER_ID
+    INTERNAL_ID: Final[str] = Services.BUILT_IN_PLAYER_ID
     LOG_ONLY_ID: Final[str] = Services.LOG_ONLY_ID
     NO_ENGINE_ID = Services.NO_ENGINE_ID
     PICO_TO_WAVE_ID: Final[str] = Services.PICO_TO_WAVE_ID
@@ -101,6 +101,7 @@ class Backends(BaseSettingsConstants):
         EXPERIMENTAL_ENGINE_ID: 'ex',
         GOOGLE_ID             : 'goo',
         PIPER_ID              : 'piper',
+        POWERSHELL_ID         : 'pwrsh',
         Services.MPLAYER_ID   : 'mplr'
     }
 
@@ -290,7 +291,7 @@ class Players(BaseSettingsConstants):
 
     # Engine's built-in player_key
 
-    INTERNAL: Final[str] = Services.INTERNAL_PLAYER_ID.value
+    BUILT_IN: Final[str] = Services.BUILT_IN_PLAYER_ID.value
 
     # HANDLERS
 
@@ -311,7 +312,7 @@ class Players(BaseSettingsConstants):
         MPG321      : MessageId.PLAYER_MPG321,
         MPG123      : MessageId.PLAYER_MPG123,
         MPG321_OE_PI: MessageId.PLAYER_MPG321_OE_PI,
-        INTERNAL    : MessageId.PLAYER_INTERNAL
+        BUILT_IN: MessageId.PLAYER_BUILT_IN
     }
 
     @classmethod
@@ -330,7 +331,7 @@ class Players(BaseSettingsConstants):
             # MPG321,
             # MPG123,
             # MPG321_OE_PI,
-            INTERNAL,
+            BUILT_IN,
             # NONE,
             # WavAudioPlayerHandler,
             # MP3AudioPlayerHandler,
@@ -450,7 +451,7 @@ class PlayerMode(StrEnum):
 class AudioType(StrEnum):
     MP3 = 'mp3'
     WAV = 'wav'
-    NONE = 'none'  # Only when engine is also playing, i.e. no audio file produced
+    BUILT_IN = 'built-in'  # Only when engine is also playing, i.e. no audio file produced
 
 
 class Converters(BaseSettingsConstants):
@@ -494,10 +495,10 @@ class Genders(StrEnum):
 
 
 class GenderSettingsMap(BaseSettingsConstants):
-    settings_map: Dict[Genders, Message] = {
-        Genders.MALE   : Messages.GENDER_MALE,
-        Genders.FEMALE : Messages.GENDER_FEMALE,
-        Genders.UNKNOWN: Messages.GENDER_UNKNOWN
+    settings_map: Dict[Genders, MessageId] = {
+        Genders.MALE   : MessageId.GENDER_MALE,
+        Genders.FEMALE : MessageId.GENDER_FEMALE,
+        Genders.UNKNOWN: MessageId.GENDER_UNKNOWN
     }
 
 

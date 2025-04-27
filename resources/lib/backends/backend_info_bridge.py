@@ -5,6 +5,7 @@ import common
 from backends.i_backend_info import IBackendInfo
 from backends.i_tts_backend_base import ITTSBackendBase
 from backends.settings.constraints import Constraints
+from backends.settings.service_types import ServiceID
 from common import *
 from common.base_services import BaseServices
 from common.logger import BasicLogger
@@ -21,7 +22,7 @@ class BackendInfoBridge(IBackendInfo):
         type(self)._class_name = self.__class__.__name__
 
     @classmethod
-    def getBackend(cls, engine_id: str = None) -> ITTSBackendBase:
+    def getBackend(cls, engine_id: ServiceID = None) -> ITTSBackendBase:
         return BaseServices.get_service(engine_id)
 
     @classmethod

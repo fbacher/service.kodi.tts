@@ -13,7 +13,7 @@ from common.settings_low_level import SettingProp
 
 
 class BasePlayerServiceSettings(BaseServiceSettings):
-    service_id: str = Services.NONE_ID
+    service_id: str = Services.BUILT_IN_PLAYER_ID
     displayName: str = 'NoPlayer'
     canStreamWav = False
     inWavStreamMode = False

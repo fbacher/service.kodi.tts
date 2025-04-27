@@ -16,13 +16,13 @@ from backends.players.player_index import PlayerIndex
 from backends.settings.i_validators import IChannelValidator, INumericValidator
 from backends.settings.service_types import ServiceID, ServiceKey, Services, ServiceType
 from backends.settings.setting_properties import SettingProp
-from backends.settings.settings_map import Reason, SettingsMap
+from backends.settings.settings_map import Status, SettingsMap
 from backends.settings.validators import (ChannelValidator, NumericValidator)
 from common import *
 from common.base_services import BaseServices
 from common.constants import Constants
 from common.exceptions import ExpiredException
-from common.logger import BasicLogger
+from common.logger import *
 from common.phrases import Phrase
 from common.setting_constants import Channels, Players
 from common.settings import Settings
@@ -169,7 +169,8 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
             args.append(f'{phrase.get_cache_path()}')
         except ExpiredException:
             reraise(*sys.exc_info())
-        MY_LOGGER.debug_v(f'args: {" ".join(args)}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'args: {" ".join(args)}')
         return args
 
     def get_slave_pipe_path(self) -> Path:
@@ -189,7 +190,8 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
         clz = MPVAudioPlayer
         slave_pipe_dir: Path = Path(tempfile.mkdtemp(dir=TempFileUtils.temp_dir()))
         self.slave_pipe_path = slave_pipe_dir.joinpath('mpv.tts')
-        MY_LOGGER.debug_v(f'slave_pipe_path: {self.slave_pipe_path}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'slave_pipe_path: {self.slave_pipe_path}')
         args: List[str] = []
         args.extend(clz.SLAVE_ARGS)
         args.append(f'--input-ipc-server={self.slave_pipe_path}')
@@ -231,7 +233,8 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
                 args.append(f'--speed={speed}')
         except ExpiredException:
             reraise(*sys.exc_info())
-        MY_LOGGER.debug_v(f'args: {" ".join(args)}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'args: {" ".join(args)}')
         return args
 
     def canSetSpeed(self) -> bool:
@@ -253,7 +256,8 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
     def get_player_speed(self) -> float:
         clz = MPVAudioPlayer
         speed: float = Settings.get_speed()
-        MY_LOGGER.debug(f'speed: {speed}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'speed: {speed}')
         return speed
 
     def get_player_volume(self, as_decibels: bool = True) -> float:
@@ -310,7 +314,3 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
     def register(cls, what):
         PlayerIndex.register(MPVAudioPlayer.ID, what)
         BaseServices.register(what)
-
-    @classmethod
-    def check_availability(cls) -> Reason:
-        return MPVPlayerSettings.check_availability()

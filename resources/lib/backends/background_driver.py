@@ -44,6 +44,7 @@ class BackgroundDriver(BaseServices):
         if clz._logger is None:
             clz._logger = module_logger
 
+        self.active_engine: BaseServices | None = None
         self.cache_directory: Path = None
         self.delay: Delay = None
         self.seconds_delay: int = clz._default_delay
@@ -70,6 +71,8 @@ class BackgroundDriver(BaseServices):
         """
         clz = type(self)
         engine_key: ServiceKey.ENGINE_KEY = Settings.get_engine_key()
+        self.active_engine = BaseServices.get_service(engine_key)
+
         cache_path: str = Settings.get_cache_base(engine_key.with_prop(
                 TTS_Type.CACHE_PATH))
         engine_code: str = Settings.get_cache_suffix(engine_key.with_prop(
@@ -129,7 +132,7 @@ class BackgroundDriver(BaseServices):
                 phrase: Phrase = Phrase(text, check_expired=False)
                 result: CacheEntryInfo
                 result = VoiceCache.get_path_to_voice_file(phrase, use_cache=True)
-                if not phrase.text_exists():  # Voice file does not exist
+                if not phrase.text_exists(self.active_engine):
                     self.generate_voice(phrase)
             except Exception as e:
                 clz._logger.exception('')
@@ -139,7 +142,7 @@ class BackgroundDriver(BaseServices):
         clz = type(self)
         Monitor.exception_on_abort(timeout=0.5)
         self.engine: SimpleTTSBackend
-        success: bool = self.engine.runCommand(phrase)
+        success: bool = self.active_engine.runCommand(phrase)
         if success:
             clz._logger.debug(f'generated voice file for {phrase.get_text()}')
             return phrase.get_cache_path()

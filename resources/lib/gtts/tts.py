@@ -106,12 +106,7 @@ class gTTS:
         lang="en",
         slow=False,
         lang_check=True,
-        pre_processor_funcs=[
-            pre_processors.tone_marks,
-            pre_processors.end_of_line,
-            pre_processors.abbreviations,
-            pre_processors.word_sub,
-        ],
+        pre_processor_funcs=[],
         tokenizer_func=Tokenizer(
             [
                 tokenizer_cases.tone_marks,
@@ -123,6 +118,13 @@ class gTTS:
         timeout=None,
     ):
 
+        if len(pre_processor_funcs) == 0:
+            pre_processor_funcs.extend([
+            pre_processors.tone_marks,
+            pre_processors.end_of_line,
+            pre_processors.abbreviations,
+            pre_processors.word_sub
+        ])
         # Debug
         for k, v in dict(locals()).items():
             if k == "self":

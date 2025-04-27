@@ -328,25 +328,36 @@ class Settings(SettingsLowLevel):
     @classmethod
     def is_use_cache(cls, engine_key: ServiceID | None = None) -> bool | None:
         result: bool | None = None
+        cache_speech_key: ServiceID = None
         try:
             if engine_key is None:
                 engine_key = cls.get_engine_key()
-            cache_speech_key: ServiceID
             cache_speech_key = engine_key.with_prop(SettingProp.CACHE_SPEECH)
             cache_validator: IBoolValidator
             cache_validator = SettingsMap.get_validator(cache_speech_key)
             if cache_validator is None:
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'MISSING VALIDATOR!')
                 return False
             result: bool = cache_validator.get_tts_value()
         except NotImplementedError:
             reraise(*sys.exc_info())
         except Exception as e:
             MY_LOGGER.exception('')
+        if MY_LOGGER.isEnabledFor(DEBUG_XV):
+            MY_LOGGER.debug_xv(f'use_cache: {cache_speech_key} {result}')
         return result
 
     @classmethod
     def set_use_cache(cls, use_cache: bool | None,
                       engine_key: ServiceID | None = None) -> None:
+        """
+        Configure an engine_key use of the voice_cache
+
+        :param use_cache: True indicates that all voicings will be cached
+        :param engine_key: The id of the engine that this impacts
+        :return:
+        """
         result: bool | None = None
         try:
             if engine_key is None:
@@ -356,6 +367,9 @@ class Settings(SettingsLowLevel):
             cache_validator: IBoolValidator
             cache_validator = SettingsMap.get_validator(cache_speech_key)
             cache_validator.set_tts_value(use_cache)
+            if MY_LOGGER.isEnabledFor(DEBUG_XV):
+                MY_LOGGER.debug_xv(f'Setting {cache_speech_key} cache_speech to:'
+                                   f' {use_cache}')
         except NotImplementedError:
             reraise(*sys.exc_info())
         except Exception as e:
@@ -412,11 +426,14 @@ class Settings(SettingsLowLevel):
                 allowed = allowed_value.enabled
                 break
         if not allowed:
-            MY_LOGGER.debug(f'Invalid player_mode {player_mode_str} for this '
-                            f'{engine_key}. Setting to default.')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'Invalid player_mode {player_mode_str} for this '
+                                f'{engine_key}. Setting to default.')
             for allowed_value in allowed_values:
-                MY_LOGGER.debug(f'Allowed_value: {allowed_value}')
-            MY_LOGGER.debug(f'player_mode: {player_mode_str}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'Allowed_value: {allowed_value}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'player_mode: {player_mode_str}')
         player_mode = PlayerMode(player_mode_str)
         return player_mode
 
@@ -432,8 +449,9 @@ class Settings(SettingsLowLevel):
             raise NotImplemented()
 
         val.set_tts_value(player_mode.value)
-        MY_LOGGER.debug(f'Setting {player_mode_key} player_mode to '
-                        f'{player_mode.value}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'Setting {player_mode_key} player_mode to '
+                            f'{player_mode.value}')
         return
 
     '''
@@ -583,7 +601,7 @@ class Settings(SettingsLowLevel):
         return cls.set_setting_str(service_key=trans_key, value=value)
 
     @classmethod
-    def get_converter(cls, service_key: ServiceID) -> str | None:
+    def get_transcoder(cls, service_key: ServiceID) -> str | None:
         trans_key: ServiceID
         trans_key = service_key.with_prop(SettingProp.TRANSCODER)
         value: str | None = cls.get_setting_str(service_key=trans_key,
@@ -595,8 +613,8 @@ class Settings(SettingsLowLevel):
         return value
 
     @classmethod
-    def set_converter(cls, value: str,
-                      engine_key: ServiceID | None = None) -> bool:
+    def set_transcoder(cls, value: str,
+                       engine_key: ServiceID | None = None) -> bool:
         """
         TODO: END HIGH LEVEL
         :param value:
@@ -605,15 +623,17 @@ class Settings(SettingsLowLevel):
         """
         if value is None:
             value = ''
-        MY_LOGGER.debug(f'setting {SettingProp.TRANSCODER}: {value} service_key: '
-                        f'{engine_key}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'setting {SettingProp.TRANSCODER}: {value} service_key: '
+                            f'{engine_key}')
         trans_key: ServiceID
         trans_key = engine_key.with_prop(SettingProp.TRANSCODER)
         return cls.set_setting_str(trans_key, value)
 
     @classmethod
     def get_cache_base(cls, service_key: ServiceID) -> str:
-        MY_LOGGER.debug(f'service_key: {service_key}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'service_key: {service_key}')
         cache_base: str
         cache_base_val: ISimpleValidator = SettingsMap.get_validator(service_key)
         cache_base = cache_base_val.get_value().strip()
@@ -673,7 +693,7 @@ class Settings(SettingsLowLevel):
     def set_current_output_format(cls, service_key: ServiceID,
                                   audio_type: AudioType) -> None:
         """
-        Holds the currently configured input audio_type of a particular service
+        Holds the currently configured output audio_type of a particular service
           ex: MPV currently consumes only MP3 audio output
 
         :param service_key:
@@ -681,6 +701,9 @@ class Settings(SettingsLowLevel):
         :return:
         """
         audio_service: ServiceID = service_key.with_prop(Transient.AUDIO_TYPE_OUTPUT)
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'service: {audio_service} type: {audio_type} '
+                            f'{type(audio_type)}')
         cls._transient_settings[audio_service.service_id] = audio_type
 
     @classmethod
@@ -692,7 +715,11 @@ class Settings(SettingsLowLevel):
         :return:
         """
         audio_service: ServiceID = service_key.with_prop(Transient.AUDIO_TYPE_OUTPUT)
-        return cls._transient_settings[audio_service.service_id]
+        audio_type: AudioType = cls._transient_settings[audio_service.service_id]
+        if MY_LOGGER.isEnabledFor(DEBUG_XV):
+            MY_LOGGER.debug_xv(f'service: {audio_service} type: {audio_type} '
+                               f'{type(audio_type)}')
+        return audio_type
 
     @classmethod
     def configuring_settings(cls):

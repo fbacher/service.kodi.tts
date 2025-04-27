@@ -1,7 +1,12 @@
 # coding=utf-8
 from __future__ import annotations
 
-from enum import StrEnum
+
+try:
+    from enum import StrEnum
+except ImportError:
+    from common.strenum import StrEnum
+
 from logging import DEBUG
 
 #  from backends.settings.langcodes_wrapper import LangCodesWrapper
@@ -28,8 +33,7 @@ from backends.settings.service_types import Services, ServiceType
 from backends.settings.setting_properties import SettingProp
 from backends.settings.settings_map import SettingsMap
 from common.base_services import BaseServices
-from common.debug import Debug
-from common.logger import BasicLogger, DEBUG_XV, DEBUG_V
+from common.logger import *
 from common.message_ids import MessageId, MessageUtils
 from common.messages import Message, Messages
 from common.setting_constants import Genders, GenderSettingsMap
@@ -218,18 +222,21 @@ class LanguageInfo:
         # langs_for_engine: indexed by lang: 'en'
         # Contains all languages for a specific engine
 
-        MY_LOGGER.debug(f'{self}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'{self}')
         langs_for_an_engine: Dict[str, List[ForwardRef('LanguageInfo')]]
         langs_for_an_engine = clz.entries_by_engine.get(engine_key)
         if langs_for_an_engine is None:
-            MY_LOGGER.debug(f'No languages for engine {engine_key}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'No languages for engine {engine_key}')
             langs_for_an_engine = {}
             clz.entries_by_engine[engine_key] = langs_for_an_engine
 
         lang_family_list: List[ForwardRef('LanguageInfo')]
         engine_specific_langs = langs_for_an_engine.setdefault(language_id, [])
         engine_specific_langs.append(self)  # TODO, put best entry first
-        MY_LOGGER.debug(f'Best entry for engine {engine_key} is {self}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'Best entry for engine {engine_key} is {self}')
 
         """
           Create a second table to look up all languges within a family for
@@ -280,6 +287,9 @@ class LanguageInfo:
         :param engine_voice_id: Code that engine may use for the voice
         :param engine_name_msg_id: msg_id to get translated engine name
         """
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'engine: {engine_key} lang: {language_id} '
+                            f'country: {country_id} region: {region_id}')
         if language_id not in cls.KODI_SUPPORTED_LANGS:
             return None
         if country_id is not None:
@@ -297,7 +307,8 @@ class LanguageInfo:
                                 lang_info.gender == gender and
                                 lang_info.engine_lang_id == engine_lang_id and
                                 lang_info.engine_voice_id == engine_voice_id):
-                            MY_LOGGER.debug_v(f'Dupe: ignored')
+                            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                                MY_LOGGER.debug_v(f'Dupe: ignored')
                             return
         '''
         MY_LOGGER.debug(f'setting_id: {setting_id}\n'
@@ -349,23 +360,26 @@ class LanguageInfo:
             ietf_lang: langcodes.Language
             _, _, _, ietf_lang = LanguageInfo.get_kodi_locale_info()
             lang_id = ietf_lang.language
-        MY_LOGGER.debug(f'{engine_key} voice_id: {engine_voice_id} '
-                        f'lang: {lang_id}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'{engine_key} voice_id: {engine_voice_id} '
+                            f'lang: {lang_id}')
         entries:  Dict[ServiceID, Dict[str, List[ForwardRef('LanguageInfo')]]]
         entries = cls.get_entries(engine_key=engine_key, lang_family=lang_id)
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             MY_LOGGER.debug_v(f'# entries: {len(entries.keys())} keys:'
                               f' {entries.keys()}')
         if entries is None:
-            MY_LOGGER.error(f"Can't find voice entry for: {engine_key} "
-                            f"# entries: {cls._number_of_entries}")
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.error(f"Can't find voice entry for: {engine_key} "
+                                f"# entries: {cls._number_of_entries}")
             return None
 
         engine_lang_entries:  Dict[str, List[ForwardRef('LanguageInfo')]] | None
         engine_lang_entries = entries.get(engine_key)
         if engine_lang_entries is None:
-            MY_LOGGER.error(f"Can't find voice entry for: {engine_key} "
-                            f"# entries: {cls._number_of_entries}")
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.error(f"Can't find voice entry for: {engine_key} "
+                                f"# entries: {cls._number_of_entries}")
             return None
 
         #  MY_LOGGER.debug(f'# engine_lang_entries: {len(engine_lang_entries.keys())} '
@@ -409,7 +423,8 @@ class LanguageInfo:
                        If not None, then return information for the engine
                        identified by 'engine'
         :param lang_family: Limits returned language information to this
-                     language family (i.e. 'de')
+                     language family (i.e. 'de'). If None, then returns all
+                     families
         :param deep: If True, then return all language info for the given
                     language ('en').
                     If False, then return only one language entry for each
@@ -430,17 +445,21 @@ class LanguageInfo:
         kodi_lang, kodi_locale, kodi_friendly_locale, kodi_language = \
             LanguageInfo.get_kodi_locale_info()
         if engine_key is not None:
+            langs_for_an_engine: Dict[str, List[ForwardRef('LanguageInfo')]]
             langs_for_an_engine = cls.entries_by_engine.get(engine_key)
             if langs_for_an_engine is None:
                 return_value:  Dict[ServiceID,
                                     Dict[str, List[ForwardRef('LanguageInfo')]] | None]
                 return_value = {engine_key: None}
-                MY_LOGGER.debug(f'engine supports no languages return value: {return_value}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'engine supports no languages return value:'
+                                    f' {return_value}')
                 return return_value
             langs_for_engines.append(langs_for_an_engine)
         else:
             # Get language info for EVERY engine
-            MY_LOGGER.debug(f'entries_by_engine.keys: {cls.entries_by_engine.keys()}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'entries_by_engine.keys: {cls.entries_by_engine.keys()}')
             for engine_key, langs_for_an_engine in cls.entries_by_engine.items():
                 engine_key: ServiceID
                 langs_for_engines.append(langs_for_an_engine)
@@ -462,7 +481,8 @@ class LanguageInfo:
             # Filter out any languages that we are not interested in
             # Add translated messages and additional detail to each entry
             for langs_for_an_engine in langs_for_engines:
-                MY_LOGGER.debug(f'langs_for_an_engine: engine: {langs_for_an_engine} ')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'langs_for_an_engine: engine: {langs_for_an_engine}')
                 for lang_family_id, engine_langs_in_family in langs_for_an_engine.items():
                     lang_family_id: str
                     if lang_family is not None and lang_family != lang_family_id:
@@ -490,7 +510,8 @@ class LanguageInfo:
             entry = cls.entries_by_engine.get(engine_key_arg)
             return {engine_key_arg: entry}
 
-        MY_LOGGER.debug(f'entries_by_engine.keys: {cls.entries_by_engine.keys()}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'entries_by_engine.keys: {cls.entries_by_engine.keys()}')
         '''
         for key in cls.entries_by_engine.keys():
             msg: str = f'key: {key} '
@@ -503,9 +524,9 @@ class LanguageInfo:
     @property
     def translated_gender_name(self) -> str:
         if self._translated_gender_name is None:
-            msg_id: Message = GenderSettingsMap.settings_map.get(
+            msg_id: MessageId = GenderSettingsMap.settings_map.get(
                     self.gender)
-            self._translated_gender_name = Messages.get_msg(msg_id)
+            self._translated_gender_name = msg_id.get_msg()
         return self._translated_gender_name
 
     @property
@@ -520,19 +541,21 @@ class LanguageInfo:
             if Constants.USE_LANGCODES_DATA:
                 self._translated_language_name = self.ietf.language_name(
                             language=kodi_lang)
-                xx = clz.get_language_name(self.ietf.to_tag(), kodi_lang)
-                MY_LOGGER.debug(f'LANGCODES lang: {self.ietf.to_tag()} '
-                                f'kodi_lang: {kodi_lang} '
-                                f'lang_name: {self._translated_language_name}')
-                MY_LOGGER.debug(f'LANGCODES2 lang {self.ietf.to_tag()} '
-                                f'kodi_lang: {kodi_lang} '
-                                f'lang_name: {xx}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    xx = clz.get_language_name(self.ietf.to_tag(), kodi_lang)
+                    MY_LOGGER.debug_v(f'LANGCODES lang: {self.ietf.to_tag()} '
+                                      f'kodi_lang: {kodi_lang} '
+                                      f'lang_name: {self._translated_language_name}')
+                    MY_LOGGER.debug_v(f'LANGCODES2 lang {self.ietf.to_tag()} '
+                                      f'kodi_lang: {kodi_lang} '
+                                      f'lang_name: {xx}')
             else:
                 self._translated_language_name = clz.get_language_name(self.ietf.to_tag(),
                                                                        kodi_lang)
-                MY_LOGGER.debug(f'LANGCODES lang: {self.ietf.to_tag()} '
-                                f'kodi_lang: {kodi_lang} '
-                                f'lang_name: {self._translated_language_name}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'LANGCODES lang: {self.ietf.to_tag()} '
+                                    f'kodi_lang: {kodi_lang} '
+                                    f'lang_name: {self._translated_language_name}')
         return self._translated_language_name
 
     @classmethod
@@ -542,11 +565,16 @@ class LanguageInfo:
         if Constants.USE_LANGCODES_DATA:
             result = langcode.language_name()
             result2: str = cls.get_language_name(langcode.to_tag(), kodi_lang)
-            MY_LOGGER.debug(f'LANGCODES langcode: {langcode.language} trans: {result}')
-            MY_LOGGER.debug(f'LANGCODES2 langcode: {langcode.language} trans: {result2}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'LANGCODES langcode: {langcode.language} trans: '
+                                  f'{result}')
+                MY_LOGGER.debug_v(f'LANGCODES2 langcode: {langcode.language} trans: '
+                                  f'{result2}')
         else:
             result: str = cls.get_language_name(langcode.to_tag(), kodi_lang)
-            MY_LOGGER.debug(f'LANGCODES langcode: {langcode.language} trans: {result}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'LANGCODES langcode: {langcode.language} trans: '
+                                  f'{result}')
         return result
 
     def get_display_name(self, locale_spec: langcodes) -> str:
@@ -565,19 +593,21 @@ class LanguageInfo:
             # there are some situations where different territories give different
             # results (spelling, script).
             result: str = self.ietf.display_name(locale_spec)
-            MY_LOGGER.debug(f'LANGCODES lang_id: {self.ietf.to_tag()} kodi_locale: '
-                            f'{locale_spec} result: {result}')
-            # When LANGCODES_DATA is not available, just look up in autonym
-            # table. Should generally give the same results.
-            result2: str = clz.get_autonym(self.ietf.to_tag())
-            MY_LOGGER.debug(f'LANGCODES2 lang_id: {self.ietf.to_tag().lower()} '
-                            f'locale_spec: '
-                            f'{locale_spec} result: {result2}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'LANGCODES lang_id: {self.ietf.to_tag()} kodi_locale: '
+                                  f'{locale_spec} result: {result}')
+                # When LANGCODES_DATA is not available, just look up in autonym
+                # table. Should generally give the same results.
+                result2: str = clz.get_autonym(self.ietf.to_tag())
+                MY_LOGGER.debug_v(f'LANGCODES2 lang_id: {self.ietf.to_tag().lower()} '
+                                  f'locale_spec: '
+                                  f'{locale_spec} result: {result2}')
         else:
             result: str = clz.get_autonym(self.ietf.to_tag())
-            MY_LOGGER.debug(f'LANGCODES lang_id: {self.ietf.to_tag().lower()} '
-                            f'locale_spec: '
-                            f'{locale_spec} result: {result}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'LANGCODES lang_id: {self.ietf.to_tag().lower()} '
+                                f'locale_spec: '
+                                f'{locale_spec} result: {result}')
         return result
 
     @classmethod
@@ -595,8 +625,9 @@ class LanguageInfo:
             result = langcode.display_name(kodi_language)  # Gets the English name
             #  kodi_lang_code = kodi_language.language
             result2 = cls.get_autonym(lang)
-            MY_LOGGER.debug(f'LANGCODES lang: {lang} {result}')
-            MY_LOGGER.debug(f'LANGCODES2 lang: {lang} {result2}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'LANGCODES lang: {lang} {result}')
+                MY_LOGGER.debug_v(f'LANGCODES2 lang: {lang} {result2}')
         else:
             """
              To do this properly, need to look up the given lang's locale in a
@@ -610,8 +641,8 @@ class LanguageInfo:
              """
             #  kodi_lang_code = kodi_language.language
             result = cls.get_autonym(lang)
-
-            MY_LOGGER.debug(f'LANGCODES lang: {lang} {result}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'LANGCODES lang: {lang} {result}')
         return result
 
     @property
@@ -628,21 +659,24 @@ class LanguageInfo:
                 self._translated_lang_country_name = (
                   self.ietf.display_name(
                             language=kodi_lang))
-                MY_LOGGER.debug(f'LANGCODES lang: {self.ietf.to_tag()} display: '
-                                f'{self._translated_lang_country_name}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug(f'LANGCODES lang: {self.ietf.to_tag()} display: '
+                                    f'{self._translated_lang_country_name}')
 
                 territory: str = self.ietf.territory
                 if territory is None:
                     territory = ''
                 key: str = f'{kodi_lang}-{territory.lower()}'
                 txt = clz.get_country_name(key)
-                MY_LOGGER.debug(f'LANGCODES2 lang: {key} display: '
-                                f'{txt}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'LANGCODES2 lang: {key} display: '
+                                      f'{txt}')
             else:
                 key: str = f'{kodi_lang}-{self.ietf.territory}'
                 self._translated_lang_country_name = clz.get_country_name(key)
-                MY_LOGGER.debug(f'LANGCODES lang: {key} display: '
-                                f'{self._translated_lang_country_name}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'LANGCODES lang: {key} display: '
+                                    f'{self._translated_lang_country_name}')
         return self._translated_lang_country_name
 
     @property
@@ -689,10 +723,11 @@ class LanguageInfo:
                 self._translated_country_name = country_name
             if self._translated_country_name is None:
                 self._translated_country_name = ''
-            MY_LOGGER.debug(f'LANGCODES lang: {self.ietf.to_tag().lower()} '
-                            f'{self._translated_country_name}')
-            MY_LOGGER.debug(f'LANGCODES2 lang: {self.ietf.to_tag().lower()} '
-                            f'{country_name}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'LANGCODES lang: {self.ietf.to_tag().lower()} '
+                                  f'{self._translated_country_name}')
+                MY_LOGGER.debug_v(f'LANGCODES2 lang: {self.ietf.to_tag().lower()} '
+                                  f'{country_name}')
         return self._translated_country_name
 
     @property
@@ -700,12 +735,16 @@ class LanguageInfo:
         clz = type(self)
         if Constants.USE_LANGCODES_DATA:
             display_autonym_choice: str = self.ietf.autonym()
-            x: str = clz.get_autonym(self.ietf.to_tag())
-            MY_LOGGER.debug(f'LANGCODES autonym: {self.ietf.to_tag().lower()} {self.ietf.autonym()}')
-            MY_LOGGER.debug(f'LANGCODES2 autonym: {self.ietf.to_tag().lower()} {x}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                x: str = clz.get_autonym(self.ietf.to_tag())
+                MY_LOGGER.debug_v(f'LANGCODES autonym: {self.ietf.to_tag().lower()} '
+                                  f'{self.ietf.autonym()}')
+                MY_LOGGER.debug_v(f'LANGCODES2 autonym: {self.ietf.to_tag().lower()} {x}')
         else:
             display_autonym_choice: str = clz.get_autonym(self.ietf.to_tag())
-            MY_LOGGER.debug(f'LANGCODES autonym: {self.ietf.to_tag().lower()} {self.ietf.autonym()}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'LANGCODES autonym: {self.ietf.to_tag().lower()} '
+                                f'{self.ietf.autonym()}')
         return display_autonym_choice
 
     @classmethod
@@ -762,7 +801,6 @@ class LanguageInfo:
 
         if MY_LOGGER.isEnabledFor(DEBUG_XV):
             MY_LOGGER.debug_xv(f'get_lang_info engine_keys: {len(avail_engines)}')
-        MY_LOGGER.debug(f'get_lang_info engine_keys: {len(avail_engines)}')
         failure: bool = False
         for engine_key in reversed(avail_engines):
             engine_key: ServiceID
@@ -771,11 +809,11 @@ class LanguageInfo:
                 MY_LOGGER.debug(f'getting lang for {engine_key}')
             try:
                 new_active_engine = BaseServices.get_service(engine_key)
-                MY_LOGGER.debug(f'active_engine: {new_active_engine}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'active_engine: {new_active_engine}')
                 if new_active_engine is None:
                     failure = True
                     continue
-                #  new_active_engine.settingList(SettingProp.LANGUAGE)
                 new_active_engine.load_languages()
             except ServiceUnavailable:
                 MY_LOGGER.exception(f'Error getting languages from {engine_key}.'
@@ -785,7 +823,8 @@ class LanguageInfo:
                                     f' Skipping')
         if not failure:
             cls.all_languages_loaded = True
-        MY_LOGGER.debug(f'Returned from load_languages()')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'Returned from load_languages()')
 
     @property
     def locale(self) -> str:
@@ -816,27 +855,28 @@ class LanguageInfo:
 
         :return: returns [kodi_lang, kodi_locale, kodi_friendly_locale_name,
                          langcodes.Language]
-
-            kodi_lang, kodi_locale, kodi_friendly_locale, kodi_language = \
-                cls.get_kodi_locale_info()
-            kodi_language: langcodes.Language
         """
         tmp: str = xbmc.getLanguage(xbmc.ISO_639_2)
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'xbmc.ISO_639_2: {tmp}')
         kodi_language: langcodes.Language
         kodi_language = langcodes.Language.get(tmp)
         kodi_lang: str = kodi_language.language
         kodi_locale: str = kodi_language.to_tag()
         if Constants.USE_LANGCODES_DATA:
             kodi_friendly_locale_name: str = kodi_language.display_name()
-            x: str = cls.get_language_name(kodi_language.to_tag(), kodi_lang)
-            MY_LOGGER.debug_xv(f'LANGCODES display_name {kodi_language.to_tag().lower()}'
-                               f' {kodi_friendly_locale_name}')
-            MY_LOGGER.debug_xv(f'LANGCODES2 display_name {kodi_language.to_tag().lower()} '
-                               f'{x}')
+            if MY_LOGGER.isEnabledFor(DEBUG_XV):
+                x: str = cls.get_language_name(kodi_language.to_tag(), kodi_lang)
+                MY_LOGGER.debug_xv(f'LANGCODES display_name '
+                                   f'{kodi_language.to_tag().lower()}'
+                                   f' {kodi_friendly_locale_name}')
+                MY_LOGGER.debug_xv(f'LANGCODES2 display_name '
+                                   f'{kodi_language.to_tag().lower()} {x}')
         else:
             kodi_friendly_locale_name: str = cls.get_language_name(kodi_language.to_tag(),
                                                                    kodi_lang)
-            MY_LOGGER.debug_v(f'LANGCODES display_name {kodi_friendly_locale_name}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'LANGCODES display_name {kodi_friendly_locale_name}')
         return kodi_lang, kodi_locale, kodi_friendly_locale_name, kodi_language
 
     @property
@@ -850,19 +890,21 @@ class LanguageInfo:
         if clz._locale_label is None:
             if Constants.USE_LANGCODES_DATA:
                 clz._locale_label = self.ietf.display_name(self.kodi_locale)
-                xx = clz.get_alt_display_name(self.ietf.to_tag())
-                MY_LOGGER.debug(f'LANGCODES kodi_locale {self.kodi_locale} '
-                                f'display_name {clz._locale_label}')
-                MY_LOGGER.debug(f'LANGCODES2 kodi_locale {self.kodi_locale}'
-                                f' display_name {xx}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    xx = clz.get_alt_display_name(self.ietf.to_tag())
+                    MY_LOGGER.debug_v(f'LANGCODES kodi_locale {self.kodi_locale} '
+                                      f'display_name {clz._locale_label}')
+                    MY_LOGGER.debug_v(f'LANGCODES2 kodi_locale {self.kodi_locale}'
+                                      f' display_name {xx}')
             else:
                 # Need to get self fully displayed (lang + territory) in kodi's
                 # language.
                 # ASSUME that the lang for both self and kodi language are the
                 # SAME since tts does not allow you to choose such a combination.
                 clz._locale_label = clz.get_alt_display_name(self.ietf.to_tag())
-                MY_LOGGER.debug(f'LANGCODES kodi_locale {self.kodi_locale} display_name '
-                                f'{clz._locale_label}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'LANGCODES kodi_locale {self.kodi_locale} '
+                                    f'display_name {clz._locale_label}')
         return clz._locale_label
 
     @classmethod
@@ -876,7 +918,8 @@ class LanguageInfo:
             for engine_key, enabled in entries:
                 engine_key: ServiceID
                 enabled: bool
-                MY_LOGGER.debug(f'service_key: {engine_key} enabled: {enabled}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'service_key: {engine_key} enabled: {enabled}')
 
     def __eq__(self, other):
         """
@@ -923,19 +966,19 @@ class LanguageInfo:
     @classmethod
     def get_autonym(cls, locale_id: str) -> str:
         locale_id = locale_id.lower()
-        return AUTONYMS.get(locale_id, f'Missing value for {locale_id}')
+        return AUTONYMS.get(locale_id, f'{locale_id} (no label)')
 
     @classmethod
     def get_alt_display_name(cls, locale_id: str) -> str:
         locale_id = locale_id.lower()
-        return LOCALE_SPEC.get(locale_id, f'Missing value for {locale_id}')
+        return LOCALE_SPEC.get(locale_id, f'{locale_id} (no label)')
 
     @classmethod
-    def get_language_name(cls, locale_id: str, kodi_lang_id: str) -> str:
+    def  get_language_name(cls, locale_id: str, kodi_lang_id: str) -> str:
         locale_id = locale_id.lower()
         kodi_lang_id: str = kodi_lang_id.lower()[0:2]
         key: str = f'{locale_id}-{kodi_lang_id}'
-        return LANGUAGE_NAME_FOR_ID.get(key, f'missing value for {key}')
+        return LANGUAGE_NAME_FOR_ID.get(key, f'{key} (no label)')
 
     @classmethod
     def get_country_name(cls, locale_id: str) -> str:

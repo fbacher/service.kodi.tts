@@ -13,9 +13,9 @@ from backends.settings.i_validators import (AllowedValue, IChannelValidator,
                                             ISimpleValidator, IStringValidator,
                                             IValidator, UIValues)
 from backends.settings.service_types import ServiceKey, Services, ServiceType
-from backends.settings.settings_map import Reason, SettingsMap
+from backends.settings.settings_map import Status, SettingsMap
 from backends.settings.service_unavailable_exception import ServiceUnavailable
-from common.logger import BasicLogger
+from common.logger import *
 from common.setting_constants import Channels, Genders
 from common.settings_low_level import SettingsLowLevel
 from backends.settings.service_types import ServiceID
@@ -52,13 +52,15 @@ class Validator(IValidator):
     def get_tts_validator(self) -> IValidator:
         if self.tts_validator is None:
             if self.service_key.service_id == Services.TTS_SERVICE:
-                MY_LOGGER.debug(f'current_key: {self.service_key} \n'
-                                f'service_id: {self.service_key.service_id}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'current_key: {self.service_key} \n'
+                                    f'service_id: {self.service_key.service_id}')
                 return self
         try:
             tts_key: ServiceID
             tts_key = ServiceKey.TTS_KEY.with_prop(self.service_key.setting_id)
-            MY_LOGGER.debug(f'tts_key: {tts_key}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'tts_key: {tts_key}')
             tts_val = SettingsMap.get_validator(tts_key)
             self.tts_validator = tts_val
         except Exception:
@@ -83,11 +85,13 @@ class BaseNumericValidator(Validator):
         self._default = default
         self.is_decibels: bool = is_decibels
         self.is_integer = is_integer
-        MY_LOGGER.debug(f'increment: {increment}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'increment: {increment}')
         if increment is None or increment <= 0.0:
             increment = (maximum - minimum) / 20.0
         self._increment = increment
-        MY_LOGGER.debug(f'_increment: {self._increment}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'_increment: {self._increment}')
         self.const: bool = const
         return
 
@@ -140,7 +144,8 @@ class TTSNumericValidator(BaseNumericValidator):
                  increment: int | float = 0.0,
                  const: bool = False
                  ) -> None:
-        MY_LOGGER.debug(f'Increment: {increment}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'Increment: {increment}')
         super().__init__(service_key=service_key,
                          minimum=minimum,
                          maximum=maximum,
@@ -268,8 +273,9 @@ class TTSNumericValidator(BaseNumericValidator):
                           #                              is_integer=is_integer),
                           increment=self.scale_value(self.increment),
                           is_integer=is_integer)
-        MY_LOGGER.debug(f'raw_value: {self.get_raw_value()} convert: {convert} '
-                        f' integer: {is_integer}  {result} inc: {self.increment}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'raw_value: {self.get_raw_value()} convert: {convert} '
+                            f' integer: {is_integer}  {result} inc: {self.increment}')
 
         return result
 
@@ -296,8 +302,9 @@ class TTSNumericValidator(BaseNumericValidator):
             value = -value
         current += value
         self.set_value(current)
-        MY_LOGGER.debug(f'adjust value: {value} '
-                            f'current: {current} result: {self.get_value()}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'adjust value: {value} '
+                                f'current: {current} result: {self.get_value()}')
         return self.get_value()   # Handles range checking
 
 
@@ -561,9 +568,9 @@ class StringValidator(IStringValidator):
                          const)
         self._service_key: ServiceID = service_key
         self.allowed_values: List[AllowedValue] = []
+        allowed: bool = SettingsMap.is_available(service_key, force=True)
         for p in allowed_values:
             p: str
-            allowed: bool = SettingsMap.is_available(service_key)
             allowed_value: AllowedValue = AllowedValue(p, allowed)
             self.allowed_values.append(allowed_value)
         if min_length is None:
@@ -618,7 +625,8 @@ class StringValidator(IStringValidator):
         allowed_value: AllowedValue | None = self.get_allowed_value(value)
         if allowed_value is not None:
             if not allowed_value.enabled:
-                MY_LOGGER.debug(f'{value} is NOT enabled.')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'{value} is NOT enabled.')
                 valid = False
                 value = default
 
@@ -643,12 +651,14 @@ class StringValidator(IStringValidator):
             valid = False
 
         if not valid:
-            MY_LOGGER.debug(f'INVALID setting {self.service_key.setting_path} '
-                            f'value: {value} '
-                            f'using {self.default} instead.')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'INVALID setting {self.service_key.setting_path} '
+                                f'value: {value} '
+                                f'using {self.default} instead.')
             internal_value = self.default
-        MY_LOGGER.debug(f'setting {self.service_key.setting_path} '
-                        f'value: {value} ')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'setting {self.service_key.setting_path} '
+                            f'value: {value} ')
         SettingsLowLevel.set_setting_str(self.service_key, internal_value)
 
     @property
@@ -659,7 +669,6 @@ class StringValidator(IStringValidator):
         default: str | None = None
         if allowed:
             default = self._default
-        MY_LOGGER.debug(f'{default}')
         return default
 
     def get_allowed_values(self, enabled: bool | None = None) -> List[AllowedValue]:
@@ -741,7 +750,8 @@ class StringValidator(IStringValidator):
             allowed_value: AllowedValue
             if value == allowed_value.value and allowed_value.enabled:
                 return True
-        MY_LOGGER.debug(f'INVALID value: {value}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'INVALID value: {value}')
         return False
 
     def preValidate(self, ui_value: str) -> Tuple[bool, str]:
@@ -831,8 +841,9 @@ class ConstraintsValidator(Validator):
         current_value: int | float = tts_constraints.currentValue(self.service_key)
         is_valid, _ = self.validate(current_value)
         if not is_valid:
-            MY_LOGGER.debug(f'Invalid value for {self.service_key} '
-                            f'Replaced with closest valid value')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'Invalid value for {self.service_key} '
+                                f'Replaced with closest valid value')
 
         min_value: float | int | str
         default_value: float | int | str
@@ -1157,7 +1168,7 @@ class EngineValidator:
         if SettingsMap.is_available(service_key):
             #  MY_LOGGER.debug(f'is_available: {service_key}')
             return service_key
-        raise ServiceUnavailable(service_key=service_key, reason=Reason.NOT_AVAILABLE,
+        raise ServiceUnavailable(service_key=service_key, reason=Status.UNKNOWN,
                                  active=True)
 
     def set_service_key(self, engine_key: ServiceID) -> None:
@@ -1166,14 +1177,16 @@ class EngineValidator:
         a ServiceUnavailable is thrown containing the failing setting_id
         and the reason.
         """
-        MY_LOGGER.debug(f'TRACE: engine_key: {engine_key} {type(engine_key)}' 
-                        f' service_id: {engine_key.service_id} '
-                        f' type: {type(engine_key.service_id)} ')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'TRACE: engine_key: {engine_key} {type(engine_key)}' 
+                            f' service_id: {engine_key.service_id} '
+                            f' type: {type(engine_key.service_id)} ')
 
         if not SettingsMap.is_available(engine_key):
-            raise ServiceUnavailable(service_key=engine_key, reason=Reason.NOT_AVAILABLE,
+            raise ServiceUnavailable(service_key=engine_key, reason=Status.UNKNOWN,
                                      active=True)
-        MY_LOGGER.debug(f'is_available: {engine_key}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'is_available: {engine_key}')
         SettingsLowLevel.set_engine(engine_key)
 
 
@@ -1246,7 +1259,8 @@ class DependencyValidator:  # (IDependencyValidator):
         allowed_value: AllowedValue | None = self.get_allowed_value(value)
         if allowed_value is not None:
             if not allowed_value.enabled:
-                MY_LOGGER.debug(f'{value} is NOT enabled.')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'{value} is NOT enabled.')
                 valid = False
         return value
 
@@ -1260,7 +1274,8 @@ class DependencyValidator:  # (IDependencyValidator):
         if not valid:
             raise ValueError(f'INVALID setting {self.service_key} '
                              f'value: {value}.')
-        MY_LOGGER.debug(f'setting {self.service_key} value: {value} ')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'setting {self.service_key} value: {value} ')
         SettingsLowLevel.set_setting_str(self.service_key, internal_value)
 
     def get_allowed_values(self, enabled: bool | None = None) -> List[AllowedValue]:
@@ -1333,7 +1348,8 @@ class SimpleIntValidator(ISimpleValidator):
                  const: bool = True) -> None:
         super().__init__(service_key=service_key, const=const)
         self._service_key: ServiceID = service_key
-        MY_LOGGER.debug(f'{self._service_key} value: {value} const: {const}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'{self._service_key} value: {value} const: {const}')
         self._value: int = value
         self._const: bool = const
         self._const_value: int | None = None
@@ -1341,7 +1357,8 @@ class SimpleIntValidator(ISimpleValidator):
             self._const_value = value
 
     def get_value(self) -> int:
-        MY_LOGGER.debug(f'{self._service_key} value: {self._value}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'{self._service_key} value: {self._value}')
         return self._value
 
     def get_const_value(self) -> int:
@@ -1349,7 +1366,8 @@ class SimpleIntValidator(ISimpleValidator):
             return self._const_value
 
     def is_const(self) -> bool:
-        MY_LOGGER.debug(f'{self._service_key} const: {self._const}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'{self._service_key} const: {self._const}')
         return self._const
 
     @property
@@ -1367,10 +1385,12 @@ class SimpleStringValidator(ISimpleValidator):
         self._const_value: str | None = None
         if const:
             self._const_value = value
-        MY_LOGGER.debug(f'{self._service_key} value: {value} const: {const}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'{self._service_key} value: {value} const: {const}')
 
     def get_value(self) -> str:
-        MY_LOGGER.debug(f'{self._service_key} value: {self._value} const: {self._const}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'{self._service_key} value: {self._value} const: {self._const}')
         return self._value
 
     def get_const_value(self) -> str:
@@ -1378,7 +1398,8 @@ class SimpleStringValidator(ISimpleValidator):
             return self._const_value
 
     def is_const(self) -> bool:
-        MY_LOGGER.debug(f'{self._service_key} value: {self._value} const: {self._const}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'{self._service_key} value: {self._value} const: {self._const}')
         return self._const
 
     @property
