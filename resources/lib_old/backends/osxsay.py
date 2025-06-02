@@ -10,7 +10,7 @@ from common import *
 from common import utils
 from common.constants import Constants
 from common.logger import *
-from common.settings_low_level import SettingsProperties
+from common.settings_low_level import SettingProp
 from common.system_queries import SystemQueries
 from backends.base import ThreadedTTSBackend
 from backends.settings.constraints import Constraints
@@ -23,18 +23,18 @@ class OSXSayTTSBackend_Internal(ThreadedTTSBackend):
     displayName = 'OSX Say (OSX Internal)'
     canStreamWav = True
     volumeConstraints: Constraints = Constraints(0, 100, 100, True, False, 1.0,
-                                                 SettingsProperties.VOLUME)
+                                                 SettingProp.VOLUME)
     speedConstraints: Constraints = Constraints(80, 200, 450, True, False, 1.0,
-                                                SettingsProperties.SPEED, 0)
+                                                SettingProp.SPEED, 0)
 
     volumeExternalEndpoints = (0, 100)
     volumeStep = 5
     volumeSuffix = '%'
     voicesPath = os.path.join(Constants.PROFILE_PATH, f'{engine_id}.voices')
     settings = {
-        SettingsProperties.SPEED : 0,
-        SettingsProperties.VOICE : '',
-        SettingsProperties.VOLUME: 100
+        SettingProp.SPEED : 0,
+        SettingProp.VOICE : '',
+        SettingProp.VOLUME: 100
     }
 
     #  def __new__(cls):
@@ -87,9 +87,9 @@ class OSXSayTTSBackend_Internal(ThreadedTTSBackend):
         return voices
 
     def update(self):
-        self.voice: str = self.setting(SettingsProperties.VOICE)
-        self.volume: float = self.setting(SettingsProperties.VOLUME) / 100.0
-        self.rate = self.setting(SettingsProperties.SPEED)
+        self.voice: str = self.setting(SettingProp.VOICE)
+        self.volume: float = self.setting(SettingProp.VOLUME) / 100.0
+        self.rate = self.setting(SettingProp.SPEED)
         if self.voice:
             self.synth.setVoice_(self.cocoapy.get_NSString(self.voice))
         if self.volume:
@@ -105,7 +105,7 @@ class OSXSayTTSBackend_Internal(ThreadedTTSBackend):
 
     @classmethod
     def settingList(cls, setting, *args):
-        if setting == SettingsProperties.VOICE:
+        if setting == SettingProp.VOICE:
             lvoices = cls.loadVoices()
             if not lvoices:
                 return None

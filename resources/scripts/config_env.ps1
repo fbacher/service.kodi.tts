@@ -1,0 +1,157 @@
+Function Config_Kodi_Env {
+<#
+.SYNOPSIS
+    Configure serveral environment variables, permissions, etc. for Kodi TTS on Windows.
+
+    REQUIRES that user MANUALLY set PowerShell's ExecutionPolicy on this file before
+    running:
+
+        powershell
+            Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+            Unblock-File -Path "c:\Users\<user_name>\AppData\Roaming\Kodi\addons\service.kodi.tts\resources\scripts\config_env.ps1"
+.NOTES
+    Name: New-Config_Kodi_Env
+    Author: Frank Feuerbacher
+    Version: 1.0
+    DateCreated: April 29, 2025
+
+.EXAMPLE
+#>
+
+    [CmdletBinding()]
+    param(
+        [Parameter(
+            Position = 0,
+            Mandatory = $false
+            )]
+
+        [string]    $KodiPath = 'C:\Program Files\Kodi21',
+
+        [Parameter(
+            Position = 1,
+            Mandatory = $false
+            )]
+
+        [string]  $TTSScriptPath = ("c:\Users\Frank" + "\AppData\Roaming\Kodi\addons\service.kodi.tts\resources\scripts"),
+
+        [Parameter(
+            Position = 2,
+            Mandatory = $false
+        )]
+
+        [string]    $MpvPath = 'C:\Program Files\mpv',
+
+
+        [Parameter(
+            Position = 3,
+            Mandatory = $false
+        )]
+
+        [string]    $MplayerPath = 'C:\Program Files\Mplayer',
+
+        [Parameter(
+            Position = 4,
+            Mandatory = $false
+        )]
+        [string]    $eSpeakPath = 'C:\Program Files\eSpeak NG\espeak-ng.exe',
+
+          [Parameter(
+            Position = 5,
+            Mandatory = $false
+        )]
+        [string]    $eSpeakDataPath = 'C:\Program Files\eSpeak NG\espeak-ng-data'
+    )
+    BEGIN {
+    }
+
+    PROCESS {
+
+        try {
+        if (-not (Test-Path $KodiPath))
+            {
+                Write-Host "$KodiPath does not exist"
+                $KodiPath = $null
+            }
+
+        if (-not (Test-Path $TTSScriptPath))
+           {
+                WRITE-HOST "$TTSScriptPath"
+                $USER_HOME = "$env:USERPROFILE"
+                $SUFFIX = "\AppData\Roaming\Kodi\addons\service.kodi.tts\resources\scripts"
+                $TSScriptPath = "$USER_HOME$SUFFIX"
+           }
+
+        if (-not (Test-Path $eSpeakPath))
+            {
+                Write-Host "$eSpeakPath does not exist"
+                $KodiPath = $null
+            }
+
+        if (-not (Test-Path $eSpeakDataPath))
+            {
+                Write-Host "$eSpeakDataPath does not exist"
+                $KodiPath = $null
+            }
+
+        if (-not (Test-Path $MpvPath))
+            {
+                Write-Host "$MpvPath does not exist: $MpvPath"
+                $MpvPath = $null
+            }
+        if (-not (Test-Path $MplayerPath))
+            {
+                Write-Host "$MplayerPath does not exist"
+                $MplayerPath = $null
+            }
+
+        if ($KodiPath)
+        {
+            [System.Environment]::SetEnvironmentVariable("KODI_PATH", $KodiPath,
+                [System.EnvironmentVariableTarget]::User)
+            Write-Host "Defined KODI_PATH environment variable as ${KodiPath}"
+        }
+
+        if ($TTSScriptPath)
+        {
+            Write-Host "$TTSScriptPath\voice.ps1"
+            Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+            Unblock-File -Path "$TTSScriptPath\voice.ps1"
+        }
+
+         if ($eSpeakPath)
+        {
+            [System.Environment]::SetEnvironmentVariable("ESPEAK_PATH", $eSpeakPath,
+                [System.EnvironmentVariableTarget]::User)
+            Write-Host "Defined ESPEAK_PATH environment variable as $eSpeakPath"
+        }
+
+         if ($eSpeakDataPath)
+        {
+            [System.Environment]::SetEnvironmentVariable("ESPEAK_DATA_PATH",
+                    $eSpeakDataPath,
+                [System.EnvironmentVariableTarget]::User)
+            Write-Host "Defined ESPEAK_DATA_PATH environment variable as $eSpeakDataPath"
+        }
+
+        if ($MpvPath)
+        {
+            [System.Environment]::SetEnvironmentVariable("MPV_PATH", $MpvPath,
+                [System.EnvironmentVariableTarget]::User)
+            Write-Host "Defined MPV_PATH environment variable as $MpvPath"
+        }
+
+        if ($MplayerPath)
+        {
+            [System.Environment]::SetEnvironmentVariable("MPLAYER_PATH", $MplayerPath,
+                [System.EnvironmentVariableTarget]::User)
+            Write-Host "Defined MPLAYER_PATH environment variable as $MplayerPath"
+        }
+
+        } catch {
+            Write-Error $_.Exception.Message
+        }
+
+    }
+
+    END { }
+}

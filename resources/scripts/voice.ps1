@@ -3,7 +3,6 @@ Function New-TextToSpeechMessage {
 .SYNOPSIS
     This will use Powershell to have a message read out loud through your computer speakers.
 
-
 .NOTES
     Name: New-TextToSpeechMessage
     Author: theSysadminChannel

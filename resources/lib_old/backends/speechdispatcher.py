@@ -19,7 +19,7 @@ from common.constants import Constants
 from common.logger import *
 from common.messages import Messages
 from common.setting_constants import Backends
-from common.settings_low_level import SettingsProperties
+from common.settings_low_level import SettingProp
 from common.system_queries import SystemQueries
 
 module_logger = BasicLogger.get_logger(__name__)
@@ -70,17 +70,17 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
     displayName = 'Speech Dispatcher'
 
     volume_validator: NumericValidator
-    volume_validator = NumericValidator(SettingsProperties.VOLUME,
+    volume_validator = NumericValidator(SettingProp.VOLUME,
                                         service_ID,
                                         minimum=-100, maximum=75,
                                         default=0, is_decibels=False,
                                         is_integer=True,
                                         increment=10)
     SettingsMap.define_setting(service_ID,
-                               SettingsProperties.VOLUME,
+                               SettingProp.VOLUME,
                                volume_validator)
     speed_validator: NumericValidator
-    speed_validator = NumericValidator(SettingsProperties.SPEED,
+    speed_validator = NumericValidator(SettingProp.SPEED,
                                        service_ID,
                                        minimum=-100, maximum=100,
                                        default=0,
@@ -88,7 +88,7 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
                                        is_integer=True,
                                        increment=10)
     SettingsMap.define_setting(service_ID,
-                               SettingsProperties.SPEED,
+                               SettingProp.SPEED,
                                speed_validator)
 
     # Pitch -- integer value within the range from -100 to 100, with 0
@@ -97,12 +97,12 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
     #    meaning higher pitch.
 
     pitch_validator: NumericValidator
-    pitch_validator = NumericValidator(SettingsProperties.PITCH,
+    pitch_validator = NumericValidator(SettingProp.PITCH,
                                        service_ID,
                                        minimum=-100, maximum=100, default=0,
                                        is_decibels=False, is_integer=True,
                                        increment=10)
-    SettingsMap.define_setting(service_ID, SettingsProperties.PITCH,
+    SettingsMap.define_setting(service_ID, SettingProp.PITCH,
                                pitch_validator)
 
     _supported_input_formats: List[str] = []
@@ -116,7 +116,7 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
     _logger: BasicLogger = None
 
     settings = {
-        SettingsProperties.MODULE: None  # More defined in init
+        SettingProp.MODULE: None  # More defined in init
     }
 
     def __init__(self, *args, **kwargs):
@@ -134,16 +134,16 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
         self.previous_module: str | None = None
         self.previous_voice: str | None = None
 
-        clz.settings[SettingsProperties.GENDER] = 'female',
-        clz.settings[SettingsProperties.LANGUAGE] = 'en-US',
-        clz.settings[SettingsProperties.VOICE] = None,
-        clz.settings[SettingsProperties.PIPE] = False,
+        clz.settings[SettingProp.GENDER] = 'female',
+        clz.settings[SettingProp.LANGUAGE] = 'en-US',
+        clz.settings[SettingProp.VOICE] = None,
+        clz.settings[SettingProp.PIPE] = False,
         clz.settings[
-            SettingsProperties.SPEED] = clz.speed_validator.get_default()
+            SettingProp.SPEED] = clz.speed_validator.get_default()
         clz.settings[
-            SettingsProperties.PITCH] = clz.pitch_validator.default
+            SettingProp.PITCH] = clz.pitch_validator.default
         clz.settings[
-            SettingsProperties.VOLUME] = clz.volume_validator.default
+            SettingProp.VOLUME] = clz.volume_validator.default
 
     def init(self):
         super().init()
@@ -183,7 +183,7 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
             if module and module != self.previous_module:
                 self.speechdObject.set_output_module(module)
                 self.previous_module = module
-            voice = self.setting(SettingsProperties.VOICE)
+            voice = self.setting(SettingProp.VOICE)
             if voice and voice != self.previous_voice:
                 self.speechdObject.set_language(self.getVoiceLanguage(voice))
                 self.speechdObject.set_synthesis_voice(voice)
@@ -234,7 +234,7 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
     def getVolumeDb(cls) -> float | None:
         volume_validator: ConstraintsValidator | IValidator
         volume_validator = SettingsMap.get_validator(cls.service_ID,
-                                                     property_id=SettingsProperties.VOLUME)
+                                                     property_id=SettingProp.VOLUME)
         volume = volume_validator.get_tts_value()
 
         return volume
@@ -251,7 +251,7 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
         """
         volume_validator: ConstraintsValidator
         volume_validator = cls.get_validator(cls.service_ID,
-                                             property_id=SettingsProperties.VOLUME)
+                                             property_id=SettingProp.VOLUME)
         volume, _, _, _ = volume_validator.get_tts_values()
         return volume
 
@@ -297,7 +297,7 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
             module = self.setting('module')
             if module:
                 self.speechdObject.set_output_module(module)
-            voice = self.setting(SettingsProperties.VOICE)
+            voice = self.setting(SettingProp.VOICE)
             if voice:
                 self.speechdObject.set_language(self.getVoiceLanguage(voice))
                 self.speechdObject.set_synthesis_voice(voice)
@@ -332,7 +332,7 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
     @classmethod
     def getLanguages(cls) -> Tuple[List[Tuple[str, str]], str]:
         so = getSpeechDSpeaker()
-        module: str = cls.setting(SettingsProperties.MODULE)
+        module: str = cls.setting(SettingProp.MODULE)
         if module:
             so.set_output_module(module)
         current_lang = cls.getCurrentLanguage()
@@ -358,7 +358,7 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
     def getVoices(cls, include_default: bool) -> Tuple[List[Tuple[str, str]], str] | List[
         Tuple[str, str]]:
         so = getSpeechDSpeaker()
-        module: str = cls.setting(SettingsProperties.MODULE)
+        module: str = cls.setting(SettingProp.MODULE)
         if module:
             so.set_output_module(module)
         voices: List[Tuple[str, str, str]] = so.list_synthesis_voices()
@@ -389,11 +389,11 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
     def settingList(cls, setting, *args) -> Tuple[List[Tuple[str, str]], str] | List[
         str] | List[int] | None:
         so = getSpeechDSpeaker()
-        if setting == SettingsProperties.LANGUAGE:  # originally VOICE
+        if setting == SettingProp.LANGUAGE:  # originally VOICE
             voices: Tuple[List[Tuple[str, str]], str] = cls.getLanguages()
             #  voice_name/language/variant , name/language/variant
             return voices
-        elif setting == SettingsProperties.MODULE:
+        elif setting == SettingProp.MODULE:
             # Return names of all active output modules as a tuple of strings.
             # Tuple[List[xbmcgui.ListItem], int]:
             choices: Tuple[List[Tuple[str, str]], int]
@@ -402,13 +402,13 @@ class SpeechDispatcherTTSBackend(ThreadedTTSBackend):
             default_module_idx = 0
             choices = module_list, default_module_idx
             return choices
-        elif setting == SettingsProperties.VOICE:
+        elif setting == SettingProp.VOICE:
             voices: Tuple[List[Tuple[str, str]], str] = cls.getVoices(
                     include_default=False)
 
             #  voice_name/language/variant , name/language/variant
             return voices
-        elif setting == SettingsProperties.GENDER:  # Only supported with generic voice
+        elif setting == SettingProp.GENDER:  # Only supported with generic voice
             # names
             # See client 'set_synthesis_voice'
             return [Messages.GENDER_UNKNOWN.get_msg_id()]

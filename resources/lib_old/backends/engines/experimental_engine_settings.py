@@ -14,7 +14,7 @@ from backends.settings.validators import (BoolValidator, ConstraintsValidator,
 from common.constants import Constants
 from common.logger import BasicLogger
 from common.setting_constants import AudioType, Backends, Players
-from common.settings_low_level import SettingsProperties
+from common.settings_low_level import SettingProp
 from common.system_queries import SystemQueries
 
 module_logger = BasicLogger.get_logger(__name__)
@@ -90,44 +90,44 @@ class ExperimentalSettings(BaseServiceSettings):
         # constraints/settings to the engine's constraints/settings
 
         volume_validator: NumericValidator
-        volume_validator = NumericValidator(SettingsProperties.VOLUME,
+        volume_validator = NumericValidator(SettingProp.VOLUME,
                                             cls.service_ID,
                                             minimum=5, maximum=400,
                                             default=100, is_decibels=False,
                                             is_integer=False)
         SettingsMap.define_setting(cls.service_ID,
-                                   SettingsProperties.VOLUME,
+                                   SettingProp.VOLUME,
                                    volume_validator)
         speed_validator: NumericValidator
-        speed_validator = NumericValidator(SettingsProperties.SPEED,
+        speed_validator = NumericValidator(SettingProp.SPEED,
                                            cls.service_ID,
                                            minimum=.25, maximum=5,
                                            default=1,
                                            is_decibels=False,
                                            is_integer=False)
         SettingsMap.define_setting(cls.service_ID,
-                                   SettingsProperties.SPEED,
+                                   SettingProp.SPEED,
                                    speed_validator)
 
         pitch_validator: NumericValidator
-        pitch_validator = NumericValidator(SettingsProperties.PITCH,
+        pitch_validator = NumericValidator(SettingProp.PITCH,
                                            cls.service_ID,
                                            minimum=0, maximum=99, default=50,
                                            is_decibels=False, is_integer=True)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PITCH,
+        SettingsMap.define_setting(cls.service_ID, SettingProp.PITCH,
                                    pitch_validator)
         language_validator: StringValidator
-        language_validator = StringValidator(SettingsProperties.LANGUAGE, cls.engine_id,
+        language_validator = StringValidator(SettingProp.LANGUAGE, cls.engine_id,
                                              allowed_values=[], min_length=2,
                                              max_length=5)
         voice_validator: StringValidator
-        voice_validator = StringValidator(SettingsProperties.VOICE, cls.engine_id,
+        voice_validator = StringValidator(SettingProp.VOICE, cls.engine_id,
                                           allowed_values=[], min_length=1, max_length=10)
         pipe_validator: BoolValidator
-        pipe_validator = BoolValidator(SettingsProperties.PIPE, cls.engine_id,
+        pipe_validator = BoolValidator(SettingProp.PIPE, cls.engine_id,
                                        default=False)
         cache_validator: BoolValidator
-        cache_validator = BoolValidator(SettingsProperties.CACHE_SPEECH, cls.engine_id,
+        cache_validator = BoolValidator(SettingProp.CACHE_SPEECH, cls.engine_id,
                                         default=True)
 
         #  TODO:  Need to eliminate un-available players
@@ -139,19 +139,19 @@ class ExperimentalSettings(BaseServiceSettings):
                                     Players.MPG321, Players.MPG123,
                                     Players.MPG321_OE_PI, Players.INTERNAL]
         player_validator: StringValidator
-        player_validator = StringValidator(SettingsProperties.PLAYER, cls.engine_id,
+        player_validator = StringValidator(SettingProp.PLAYER, cls.engine_id,
                                            allowed_values=valid_players,
                                            default=Players.MPLAYER)
 
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.LANGUAGE,
+        SettingsMap.define_setting(cls.service_ID, SettingProp.LANGUAGE,
                                    language_validator)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.VOICE,
+        SettingsMap.define_setting(cls.service_ID, SettingProp.VOICE,
                                    voice_validator)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PIPE,
+        SettingsMap.define_setting(cls.service_ID, SettingProp.PIPE,
                                    pipe_validator)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER,
+        SettingsMap.define_setting(cls.service_ID, SettingProp.PLAYER,
                                    player_validator)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.CACHE_SPEECH,
+        SettingsMap.define_setting(cls.service_ID, SettingProp.CACHE_SPEECH,
                                    cache_validator)
 
     @classmethod

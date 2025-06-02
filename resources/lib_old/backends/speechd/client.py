@@ -29,10 +29,7 @@ import socket
 import subprocess
 import sys
 
-try:
-    import threading
-except:
-    import dummy_threading as threading
+import threading
 
 from . import paths
 

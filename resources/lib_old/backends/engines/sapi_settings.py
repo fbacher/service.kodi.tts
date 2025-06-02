@@ -7,7 +7,7 @@ from backends.engines.base_engine_settings import BaseEngineSettings
 from backends.settings.constraints import Constraints
 from backends.settings.i_validators import ValueType
 from backends.settings.service_types import Services, ServiceType
-from backends.settings.setting_properties import SettingsProperties
+from backends.settings.setting_properties import SettingProp
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import ConstraintsValidator, StringValidator, NumericValidator
 from common.constants import Constants
@@ -43,24 +43,24 @@ class SAPI_Settings:
         SettingsMap.define_service(ServiceType.ENGINE, cls.service_ID,
                                    service_properties)
         volume_validator: NumericValidator
-        volume_validator = NumericValidator(SettingsProperties.VOLUME,
+        volume_validator = NumericValidator(SettingProp.VOLUME,
                                             cls.service_ID,
                                             minimum=0, maximum=200,
                                             default=100, is_decibels=False,
                                             is_integer=True)
         SettingsMap.define_setting(cls.service_ID,
-                                   SettingsProperties.VOLUME,
+                                   SettingProp.VOLUME,
                                    volume_validator)
 
         speed_validator: NumericValidator
-        speed_validator = NumericValidator(SettingsProperties.SPEED,
+        speed_validator = NumericValidator(SettingProp.SPEED,
                                            cls.service_ID,
                                            minimum=.25, maximum=5,
                                            default=1,
                                            is_decibels=False,
                                            is_integer=False)
         SettingsMap.define_setting(cls.service_ID,
-                                   SettingsProperties.SPEED,
+                                   SettingProp.SPEED,
                                    speed_validator)
 
         _supported_input_formats: List[str] = []
@@ -73,10 +73,10 @@ class SAPI_Settings:
 
         valid_players: List[str] = [Players.INTERNAL]
         player_validator: StringValidator
-        player_validator = StringValidator(SettingsProperties.PLAYER, cls.service_ID,
+        player_validator = StringValidator(SettingProp.PLAYER, cls.service_ID,
                                            allowed_values=valid_players,
                                            default=Players.INTERNAL)
-        SettingsMap.define_setting(cls.service_ID, SettingsProperties.PLAYER,
+        SettingsMap.define_setting(cls.service_ID, SettingProp.PLAYER,
                                    player_validator)
     @classmethod
     def available(cls) -> bool:

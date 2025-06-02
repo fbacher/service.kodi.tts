@@ -30,7 +30,7 @@ from common.logger import *
 from common.phrases import Phrase
 from common.setting_constants import Backends, Genders, Mode
 from common.settings import Settings
-from common.settings_low_level import SettingsProperties
+from common.settings_low_level import SettingProp
 
 module_logger = BasicLogger.get_logger(__name__)
 
@@ -293,7 +293,7 @@ class SAPIBackend(SimpleTTSBackend):
 
     @classmethod
     def settingList(cls, setting, *args):
-        if setting == SettingsProperties.LANGUAGE:
+        if setting == SettingProp.LANGUAGE:
             # Returns list of languages and index to closest match to current
             # locale
             # Get current process' language_code i.e. en-us
@@ -329,7 +329,7 @@ class SAPIBackend(SimpleTTSBackend):
 
             return languages, default_setting
 
-        if setting == SettingsProperties.VOICE:
+        if setting == SettingProp.VOICE:
             cls.init_voices()
             current_lang = cls.getLanguage()
             current_lang = current_lang[0:2]
@@ -345,7 +345,7 @@ class SAPIBackend(SimpleTTSBackend):
 
             return voices
 
-        elif setting == SettingsProperties.GENDER:
+        elif setting == SettingProp.GENDER:
             cls.init_voices()
             genders: List[str] = []
             current_lang = cls.getLanguage()
@@ -363,12 +363,12 @@ class SAPIBackend(SimpleTTSBackend):
 
             return genders
 
-        elif setting == SettingsProperties.PLAYER:
+        elif setting == SettingProp.PLAYER:
             # Get list of player ids. Id is same as is stored in settings.xml
-            default_player: str = cls.get_setting_default(SettingsProperties.PLAYER)
+            default_player: str = cls.get_setting_default(SettingProp.PLAYER)
             player_ids: List[str]
             player_ids = SettingsMap.get_allowed_values(cls.service_ID,
-                                                        SettingsProperties.PLAYER)
+                                                        SettingProp.PLAYER)
             return player_ids, default_player
         return None
 
@@ -376,20 +376,20 @@ class SAPIBackend(SimpleTTSBackend):
     def get_default_language(cls) -> str:
         languages: List[str]
         default_lang: str
-        languages, default_lang = cls.settingList(SettingsProperties.LANGUAGE)
+        languages, default_lang = cls.settingList(SettingProp.LANGUAGE)
         return default_lang
 
     @classmethod
     def get_voice_id_for_name(cls, name):
         if len(cls.voice_map) == 0:
-            cls.settingList(SettingsProperties.VOICE)
+            cls.settingList(SettingProp.VOICE)
         return cls.voice_map[name]
 
     @classmethod
     def getVolume(cls) -> int:
         volume_validator: NumericValidator
         volume_validator = cls.get_validator(cls.service_ID,
-                                             property_id=SettingsProperties.VOLUME)
+                                             property_id=SettingProp.VOLUME)
         volume: int = volume_validator.get_value()
         return volume
 
@@ -400,13 +400,13 @@ class SAPIBackend(SimpleTTSBackend):
         clz = type(self)
         if self.mode != Mode.ENGINESPEAK:
             pitch_val: IValidator = SettingsMap.get_validator(
-                    clz.service_ID, SettingsProperties.PITCH)
+                    clz.service_ID, SettingProp.PITCH)
             pitch: int = pitch_val.tts_line_value
             return pitch
         else:
             # volume = Settings.get_volume(clz.service_ID)
             pitch_val: IValidator = SettingsMap.get_validator(
-                    clz.service_ID, SettingsProperties.PITCH)
+                    clz.service_ID, SettingProp.PITCH)
             # volume: int = volume_val.get_tts_value()
             pitch: int = pitch_val.get_impl_value(clz.service_ID)
 
@@ -416,7 +416,7 @@ class SAPIBackend(SimpleTTSBackend):
     def get_speed(cls) -> float:
         speed_validator: NumericValidator
         speed_validator = cls.get_validator(cls.service_ID,
-                                            property_id=SettingsProperties.SPEED)
+                                            property_id=SettingProp.SPEED)
         speed: float
         speed = speed_validator.get_value()
         return speed

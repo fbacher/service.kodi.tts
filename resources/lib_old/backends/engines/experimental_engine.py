@@ -22,7 +22,7 @@ from backends.base import SimpleTTSBackend
 from backends.players.iplayer import IPlayer
 from backends.settings.i_validators import IValidator
 from backends.settings.service_types import Services
-from backends.settings.setting_properties import SettingsProperties
+from backends.settings.setting_properties import SettingProp
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import ConstraintsValidator
 from cache.voicecache import CacheEntryInfo, VoiceCache
@@ -245,7 +245,7 @@ class SpeechGenerator:
     def tts_generate(self, phrase: Phrase) -> ReturnCode:
         clz = type(self)
         failed: bool = False
-        if Settings.get_setting_bool(SettingsProperties.DELAY_VOICING,
+        if Settings.get_setting_bool(SettingProp.DELAY_VOICING,
                                      ExperimentalTTSBackend.service_ID,
                                      ignore_cache=False,
                                      default=True):
@@ -348,7 +348,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
     def getMode(self) -> Mode:
         clz = type(self)
         player: IPlayer = self.get_player(clz.service_ID)
-        if clz.getSetting(SettingsProperties.PIPE):
+        if clz.getSetting(SettingProp.PIPE):
             return Mode.PIPE
         else:
             return Mode.FILEOUT
@@ -535,7 +535,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
                                 clz._logger.error(
                                         f'Failed to save voiced text file: '
                                         f'{copy_text_file_path} Exception: {str(e)}')
-                if Settings.get_setting_bool(SettingsProperties.DELAY_VOICING,
+                if Settings.get_setting_bool(SettingProp.DELAY_VOICING,
                                              clz.service_ID, ignore_cache=False,
                                              default=True):
                     clz._logger.debug(f'Generation of voice files disabled by settings')
@@ -686,22 +686,22 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
         :param args:
         :return:
         """
-        if setting == SettingsProperties.LANGUAGE:
+        if setting == SettingProp.LANGUAGE:
             # Returns list of languages and value of closest match to current
             #
             # (Display value, setting_value), default_locale-index
             return [('US-English', 'en-US')], 'en-US'
 
-        elif setting == SettingsProperties.GENDER:
+        elif setting == SettingProp.GENDER:
             return [Genders.FEMALE.value]
 
-        elif setting == SettingsProperties.VOICE:
+        elif setting == SettingProp.VOICE:
             return [('fancy', 'only')]
 
-        elif setting == SettingsProperties.PLAYER:
+        elif setting == SettingProp.PLAYER:
             # Get list of player ids. Id is same as is stored in settings.xml
 
-            default_player: str = cls.get_setting_default(SettingsProperties.PLAYER)
+            default_player: str = cls.get_setting_default(SettingProp.PLAYER)
             player_ids: List[str] = []
             # for player in cls.player_handler_class().getAvailablePlayers():
             #     player_ids.append(player.ID)
@@ -731,7 +731,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
 
         volume_validator: ConstraintsValidator | IValidator
         volume_validator = SettingsMap.get_validator(cls.service_ID,
-                                                     property_id=SettingsProperties.VOLUME)
+                                                     property_id=SettingProp.VOLUME)
         # volume is hardcoded to a fixed value
         volume, _, _, _ = volume_validator.get_tts_values()
         return volume  # Find out if used
@@ -754,13 +754,13 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
     def getEngineVolume_str(cls) -> str:
         volume_validator: ConstraintsValidator
         volume_validator = cls.get_validator(cls.service_ID,
-                                             property_id=SettingsProperties.VOLUME)
+                                             property_id=SettingProp.VOLUME)
         volume: str = volume_validator.getUIValue()
         return volume
 
     @classmethod
     def getVoice(cls) -> str:
-        voice = cls.getSetting(SettingsProperties.VOICE)
+        voice = cls.getSetting(SettingProp.VOICE)
         if voice is None:
             lang = cls.voices_by_locale_map.get(cls.getLanguage())
             if lang is not None:
@@ -772,7 +772,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
     def getLanguage(cls) -> str:
         language_validator: ConstraintsValidator
         language_validator = cls.get_validator(cls.service_ID,
-                                               property_id=SettingsProperties.LANGUAGE)
+                                               property_id=SettingProp.LANGUAGE)
         language: str = language_validator.get_tts_value()
         language = 'en-US'
         return language
@@ -783,7 +783,7 @@ class ExperimentalTTSBackend(SimpleTTSBackend):
         # API 0.1 .. 1.0. 0.5 default
         pitch_validator: ConstraintsValidator
         pitch_validator = cls.get_validator(cls.service_ID,
-                                            property_id=SettingsProperties.PITCH)
+                                            property_id=SettingProp.PITCH)
         if Settings.is_use_cache():
             pitch = pitch_validator.default_value
         else:

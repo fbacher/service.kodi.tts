@@ -6,7 +6,7 @@ from backends.engines.base_engine_settings import BaseEngineSettings
 from backends.settings.constraints import Constraints
 from backends.settings.i_validators import ValueType
 from backends.settings.service_types import Services, ServiceType
-from backends.settings.setting_properties import SettingsProperties
+from backends.settings.setting_properties import SettingProp
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import ConstraintsValidator
 from common.constants import Constants
@@ -76,12 +76,12 @@ class SpeechDispatcherSettings:
         volumeConversionConstraints: Constraints = Constraints(minimum=0.1, default=1.0,
                                                                maximum=2.0, integer=False,
                                                                decibels=False, scale=1.0,
-                                                               property_name=SettingsProperties.VOLUME,
+                                                               property_name=SettingProp.VOLUME,
                                                                midpoint=1, increment=0.1)
         volume_constraints_validator = self.VolumeConstraintsValidator(
-                SettingsProperties.VOLUME, self.engine_id, volumeConversionConstraints)
+                SettingProp.VOLUME, self.engine_id, volumeConversionConstraints)
 
-        SettingsMap.define_setting(self.service_ID, SettingsProperties.VOLUME,
+        SettingsMap.define_setting(self.service_ID, SettingProp.VOLUME,
                                    volume_constraints_validator)
 
     @classmethod
