@@ -17,8 +17,8 @@ class ISettings:
         return None
 
     @classmethod
-    def setSetting(cls, setting_id: str, value: str | int | float | bool | List[str] |
-                                                List[bool] | List[float],
+    def setSetting(cls, setting_id: str,
+                   value: str | int | float | bool | List[str] | List[bool] | List[float],
                    engine_id: str) -> None:
         return None
 

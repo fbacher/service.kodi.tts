@@ -10,7 +10,7 @@ from backends.settings.settings_map import Status, SettingsMap
 from common import *
 from common.constants import Constants
 from common.logger import *
-from common.service_status import Progress, ServiceStatus
+from common.service_status import Progress, ServiceStatus, StatusType
 from common.setting_constants import Players
 from common.settings_low_level import SettingsLowLevel
 from backends.settings.service_types import ServiceID
@@ -21,9 +21,9 @@ MY_LOGGER = BasicLogger.get_logger(__name__)
 
 class BootstrapPlayers:
     player_ids: List[str] = [
+        Players.SFX,  # Make FIRST in list. Is failsafe, Kodi internal player
         Players.MPV,
         Players.MPLAYER,
-        Players.SFX,
         # Players.WINDOWS,
         # Players.APLAY,
         # Players.PAPLAY,
@@ -35,7 +35,7 @@ class BootstrapPlayers:
         # Players.NONE,
         # Players.WavAudioPlayerHandler,
         # Players.MP3AudioPlayerHandler,
-        Players.BUILT_IN
+        Players.BUILT_IN  # A player which is built into the engine being used
     ]
     _initialized: bool = False
 
@@ -53,47 +53,54 @@ class BootstrapPlayers:
                 MY_LOGGER.debug(f'load_player: {player_id}')
             cls.load_player(service_key)
             # Add all settings
-            SettingsLowLevel.load_settings(service_key)
+            #  SettingsLowLevel.load_settings(service_key)
 
     @classmethod
     def load_player(cls, player_key: ServiceID) -> None:
+        broken: bool = True
         try:
             player_id: str = player_key.service_id
-            service_status: ServiceStatus = ServiceStatus(status=Status.FAILED)
+            service_key: ServiceID | None = None
 
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'PLATFORM_WINDOWS: {Constants.PLATFORM_WINDOWS}')
             if player_id == Players.MPLAYER and not Constants.PLATFORM_WINDOWS:
-                from backends.players.mplayer_settings import MPlayerSettings
-                service_status = MPlayerSettings.config_settings()
-                if service_status.is_usable():
-                    from backends.audio.mplayer_audio_player import MPlayerAudioPlayer
-                    MPlayerAudioPlayer()
-                else:
-                    if MY_LOGGER.isEnabledFor(DEBUG):
-                        MY_LOGGER.debug(f'MPlayerSettings is NOT usable but: '
-                                        f'{service_status}')
-            elif player_id == Players.MPV:
                 try:
-                    from backends.players.mpv_player_settings import MPVPlayerSettings
-                    service_status = MPVPlayerSettings.config_settings()
+                    service_key = ServiceKey.MPLAYER_KEY
+                    from backends.players.mplayer_settings import MPlayerSettings
+                    MPlayerSettings.config_settings()
+                    if MPlayerSettings.is_usable():
+                        from backends.audio.mplayer_audio_player import MPlayerAudioPlayer
+                        MPlayerAudioPlayer()
+                        broken = False
                 except Exception:
                     MY_LOGGER.exception('')
-                    SettingsMap.set_available(ServiceKey.MPV_KEY,
-                                              ServiceStatus(status=Status.UNKNOWN))
-                if service_status.is_usable():
-                    from backends.audio.mpv_audio_player import MPVAudioPlayer
-                    MPVAudioPlayer()
+            elif player_id == Players.MPV:
+                try:
+                    service_key = ServiceKey.MPV_KEY
+                    from backends.players.mpv_player_settings import MPVPlayerSettings
+                    MPVPlayerSettings.config_settings()
+                    if MPVPlayerSettings.is_usable():
+                        from backends.audio.mpv_audio_player import MPVAudioPlayer
+                        MPVAudioPlayer()
+                        broken = False
+                except Exception:
+                    MY_LOGGER.exception('')
             elif player_id == Players.SFX:
-                from backends.players.sfx_settings import SFXSettings
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug('Loading SFXSettings')
-                service_status = SFXSettings.config_settings()
-                if service_status.is_usable():
+                try:
+                    service_key = ServiceKey.SFX_KEY
+                    from backends.players.sfx_settings import SFXSettings
                     if MY_LOGGER.isEnabledFor(DEBUG):
-                        MY_LOGGER.debug('Loading PlaySFXAudioPlayer')
-                    from backends.audio.sfx_audio_player import PlaySFXAudioPlayer
-                    PlaySFXAudioPlayer()
+                        MY_LOGGER.debug('Loading SFXSettings')
+                    SFXSettings.config_settings()
+                    if SFXSettings.is_usable():
+                        if MY_LOGGER.isEnabledFor(DEBUG):
+                            MY_LOGGER.debug('Loading PlaySFXAudioPlayer')
+                        from backends.audio.sfx_audio_player import PlaySFXAudioPlayer
+                        PlaySFXAudioPlayer()
+                        broken = False
+                except Exception:
+                    MY_LOGGER.exception('')
                 '''
                 elif player_id == Players.WINDOWS:
                     if SystemQueries.isWindows():
@@ -122,24 +129,36 @@ class BootstrapPlayers:
                     available = Mpg321OEPiAudioPlayer().available()
                 '''
             elif player_id == Players.BUILT_IN:
-                from backends.players.builtin_player_settings import BuiltinPlayerSettings
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'Loading BuiltInPlayerSettings')
-                service_status = BuiltinPlayerSettings.config_settings()
-                if service_status.is_usable():
-                    from backends.audio.builtin_player import BuiltInPlayer
-                    BuiltInPlayer()
+                try:
+                    service_key = ServiceKey.BUILT_IN_KEY
+                    from backends.players.builtin_player_settings import \
+                        BuiltinPlayerSettings
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug(f'Loading BuiltInPlayerSettings')
+                    BuiltinPlayerSettings.config_settings()
+                    if BuiltinPlayerSettings.is_usable():
+                        from backends.audio.builtin_player import BuiltInPlayer
+                        BuiltInPlayer()
+                        broken = False
+                except Exception:
+                    MY_LOGGER.exception('')
 
             # elif player_id == Players.MP3AudioPlayerHandler:
             #     from backends.audio.player_handler import MP3AudioPlayerHandler
             #     MP3AudioPlayerHandler()
             # elif player_id == Players.BuiltInAudioPlayerHandler:
             #     pass
+            if service_key is not None:
+                if broken:
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug(f'{service_key} is NOT usable')
+                    SettingsMap.set_available(service_key, StatusType.BROKEN)
+                else:
+                    SettingsMap.set_available(service_key, StatusType.OK)
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
             MY_LOGGER.exception('FAILED')
-            SettingsMap.set_available(player_key, ServiceStatus(status=Status.UNKNOWN))
 
 #  Explicitly called by BootstrapEngines
 #  BootstrapPlayers.init()

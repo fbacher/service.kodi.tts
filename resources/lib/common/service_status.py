@@ -1,5 +1,8 @@
 # coding=utf-8
 from typing import ForwardRef
+import xbmc
+
+from backends.settings.service_types import MyType
 
 try:
     from enum import StrEnum
@@ -40,13 +43,30 @@ class Progress(StrEnum):
     FORCE = 'force'
 
 
+class StatusType(MyType):
+    """
+    Uses a StrEnum but with an extra attribute for comparision
+    """
+    UNCHECKED = 'unchecked', 1  # Check not yet started
+    CHECKING = 'checking', 2    # Check in progress
+    OK = 'ok', 3                # Functional
+    NOT_ON_PLATFORM = 'not_on_platform', 4  # Not an option on this platform
+    NOT_FOUND = 'not_found', 5  # Command/service not found
+    BROKEN = 'broken', 6        # Broken
+
+
 class ServiceStatus:
 
+    UNKNOWN_STATUS: ForwardRef('ServiceStatus') = None
     GOOD_STATUS: ForwardRef('ServiceStatus') = None
     NOT_AVAILABLE_STATUS: ForwardRef('ServiceStatus') = None
 
     @classmethod
     def init_class(cls) -> None:
+        xbmc.log('In ServiceStatus.init_class')
+        cls.UNKNOWN_STATUS = ServiceStatus()
+        cls.UNKNOWN_STATUS.status = Status.UNKNOWN
+        cls.UNKNOWN_STATUS.progress = Progress.START
         cls.GOOD_STATUS = ServiceStatus()
         cls.GOOD_STATUS.status = Status.OK
         cls.GOOD_STATUS.progress = Progress.USABLE
@@ -60,6 +80,7 @@ class ServiceStatus:
         else:
             self._progress: Progress = Progress.START
         self._status: Status = status
+        self._status_summary: StatusType = StatusType.UNCHECKED
 
     @property
     def progress(self) -> Progress:
@@ -74,11 +95,20 @@ class ServiceStatus:
         return self._status
 
     @status.setter
-    def status(self, status:Status) -> None:
+    def status(self, status: Status) -> None:
         self._status = status
 
+    @property
+    def status_summary(self) -> StatusType:
+        return self._status_summary
+
+    @status_summary.setter
+    def status_summary(self, value: StatusType) -> None:
+        self._status_summary = value
+
     def is_usable(self) -> bool:
-        return self._progress == Progress.USABLE and self._status == Status.OK
+        usable: bool = self._progress == Progress.USABLE and self._status == Status.OK
+        return usable
 
     def __str__(self) -> str:
         return f'{self._progress.value} {self._status.value}'

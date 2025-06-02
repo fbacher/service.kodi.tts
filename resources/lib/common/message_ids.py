@@ -27,7 +27,7 @@ class MessageId(Enum):
 
     GENDER_UNKNOWN = 32165
     TTS_ENGINE = 32181
-    ENGINE_AUTO = 32184
+    #  ENGINE_AUTO = 32184
     GENDER_MALE = 32212
     GENDER_FEMALE = 32213
     VOICE = 32216  # (As in Voice: <name of voice>)
@@ -121,6 +121,7 @@ class MessageId(Enum):
     # Used as a Menu Heading to select a TTS engine and voice
     # Ex. Available Voices for English
     AVAIL_VOICES_FOR_LANG = 32716
+    TTS_SETTINGS = 32720
 
     # Enabled on new install
     READ_HINT_TEXT_ON_STARTUP = 32812

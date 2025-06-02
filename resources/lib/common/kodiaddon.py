@@ -69,7 +69,9 @@ class Addon:
         if not self.addon.getSetting("mac_hash"):
             self.addon.setSetting("mac_hash", mac_hash)
         elif self.addon.getSetting("mac_hash") != mac_hash:
-            xbmcgui.Dialog().notification("Error", "MAC id changed. Please enter password again in settings.")
+            xbmcgui.Dialog().notification("Error",
+                                          "MAC id changed. Please enter password"
+                                          " again in settings.")
             self.addon.setSetting("mac_hash", mac_hash)
             return None
         setting = self.addon.getSetting(setting_name)

@@ -1,22 +1,29 @@
 # coding=utf-8
 from __future__ import annotations  # For union operator |
 
+from io import BytesIO
+
+from backends.settings.setting_properties import SettingType
+from gtts import gTTS
+
+from backends.engines.google_downloader import MyGTTS
 from backends.settings.i_validators import IStringValidator
 from common import *
 
 from backends.audio.sound_capabilities import SoundCapabilities
 from backends.engines.base_engine_settings import (BaseEngineSettings)
-from backends.settings.base_service_settings import BaseServiceSettings
-from backends.settings.service_types import PlayerType, Services, ServiceType, TTS_Type
+from backends.settings.service_types import (PlayerType, ServiceKey, Services,
+                                             ServiceType,
+                                             TTS_Type)
 from backends.settings.settings_map import Status, SettingsMap
-from backends.settings.validators import (BoolValidator, ConstraintsValidator,
-                                          GenderValidator, IntValidator, NumericValidator,
+from backends.settings.validators import (BoolValidator,
                                           SimpleIntValidator, SimpleStringValidator,
                                           StringValidator)
 from common.config_exception import UnusableServiceException
 from common.constants import Constants
 from common.logger import *
-from common.service_status import Progress, ServiceStatus
+from common.message_ids import MessageId
+from common.service_status import Progress, ServiceStatus, StatusType
 from common.setting_constants import AudioType, Backends, Genders, PlayerMode, Players
 from common.settings import Settings
 from common.settings_low_level import SettingProp
@@ -32,11 +39,11 @@ class GoogleSettings:
     engine_id = Backends.GOOGLE_ID
     service_id: str = Services.GOOGLE_ID
     service_type: ServiceType = ServiceType.ENGINE
-    service_key: ServiceID = ServiceID(service_type, service_id)
-    GOOGLE_KEY: ServiceID = ServiceID(service_type, service_id)
+    service_key: ServiceID = ServiceKey.GOOGLE_KEY
+    GOOGLE_KEY: ServiceID = service_key
     NAME_KEY: ServiceID = service_key.with_prop(SettingProp.SERVICE_NAME)
     MAX_PHRASE_KEY: ServiceID = service_key.with_prop(SettingProp.MAX_PHRASE_LENGTH)
-    displayName = 'GoogleTTS'
+    displayName: str = MessageId.ENGINE_GOOGLE.get_msg()
 
     # Maximum phrase length that a remote engine can convert to speech at a time
     # None indicates that the engine does not download from a remote server
@@ -59,7 +66,6 @@ class GoogleSettings:
     
     In other words, create a custom validator which always returns a volume of 1
     (or just don't use the validator and such and hard code it inline).
-
     
     """
     # Every setting from settings.xml must be listed here
@@ -82,27 +88,29 @@ class GoogleSettings:
             raise UnusableServiceException(cls.service_key,
                                            cls._service_status,
                                            msg='')
+        cls.check_is_available()
+        cls.check_is_usable()
+        cls.is_usable()
         GoogleSettings.initialized = True
-        BaseEngineSettings.config_settings(GoogleSettings.service_key)
+        BaseEngineSettings.config_settings(cls.service_key,
+                                           settings=[])
 
-        name_validator: StringValidator
-        name_validator = StringValidator(service_key=cls.NAME_KEY,
-                                         allowed_values=[cls.displayName],
-                                         allow_default=False,
-                                         const=True
-                                         )
-
-        SettingsMap.define_setting(cls.NAME_KEY, name_validator)
+        name_validator: SimpleStringValidator
+        name_validator = SimpleStringValidator(service_key=cls.NAME_KEY,
+                                               value=cls.displayName,
+                                               const=True,
+                                               define_setting=True,
+                                               service_status=StatusType.OK,
+                                               persist=True)
 
         max_phrase_val: SimpleIntValidator
         max_phrase_val = SimpleIntValidator(service_key=cls.MAX_PHRASE_KEY,
                                             value=cls.MAXIMUM_PHRASE_LENGTH,
-                                            const=True)
-        SettingsMap.define_setting(cls.MAX_PHRASE_KEY, max_phrase_val)
+                                            const=True,
+                                            define_setting=True,
+                                            service_status=StatusType.OK,
+                                            persist=True)
         cls._config()
-        cls.check_is_available()
-        cls.check_is_usable()
-        cls.is_usable()
 
     @classmethod
     def _config(cls):
@@ -128,9 +136,10 @@ class GoogleSettings:
         language_validator: StringValidator
         language_validator = StringValidator(lang_svc_key,
                                              allowed_values=[], min_length=2,
-                                             max_length=10)
-        SettingsMap.define_setting(language_validator.service_key,
-                                   language_validator)
+                                             max_length=10,
+                                             define_setting=True,
+                                             service_status=StatusType.OK,
+                                             persist=True)
 
         # The free GoogleTTS only supplies basic voices which are determined
         # by language and country code. In short, the voice choices are
@@ -146,10 +155,10 @@ class GoogleSettings:
         voice_validator: StringValidator
         voice_validator = StringValidator(cls.service_key.with_prop(SettingProp.VOICE),
                                           allowed_values=[], min_length=1,
-                                          max_length=8, default='com')
-
-        SettingsMap.define_setting(voice_validator.service_key,
-                                   voice_validator)
+                                          max_length=8, default='com',
+                                          define_setting=True,
+                                          service_status=StatusType.OK,
+                                          persist=True)
 
         # Can't support PlayerMode.PIPE: 1) Google does download mp3, but the
         # response time would be awful. 2) You could simulate pipe mode for the
@@ -167,9 +176,10 @@ class GoogleSettings:
         player_mode_validator: StringValidator
         player_mode_validator = StringValidator(tmp_key,
                                                 allowed_values=allowed_player_modes,
-                                                default=PlayerMode.SLAVE_FILE.value)
-        SettingsMap.define_setting(player_mode_validator.service_key,
-                                   player_mode_validator)
+                                                default=PlayerMode.SLAVE_FILE.value,
+                                                define_setting=True,
+                                                service_status=StatusType.OK,
+                                                persist=True)
 
         Settings.set_current_output_format(GoogleSettings.service_key, AudioType.MP3)
         SoundCapabilities.add_service(GoogleSettings.service_key,
@@ -199,7 +209,7 @@ class GoogleSettings:
         for player_id in candidates:
             player_id: str
             player_key: ServiceID
-            player_key = ServiceID(ServiceType.PLAYER, player_id)
+            player_key = ServiceID(ServiceType.PLAYER, player_id, SettingProp.SERVICE_ID)
             if player_id in players and SettingsMap.is_available(player_key):
                 valid_players.append(player_id)
 
@@ -208,9 +218,10 @@ class GoogleSettings:
         player_validator: StringValidator
         player_validator = StringValidator(cls.service_key.with_prop(SettingProp.PLAYER),
                                            allowed_values=valid_players,
-                                           default=Players.MPV)
-        SettingsMap.define_setting(player_validator.service_key,
-                                   player_validator)
+                                           default=Players.MPV,
+                                           define_setting=True,
+                                           service_status=StatusType.OK,
+                                           persist=True)
         val: IStringValidator
         val = SettingsMap.get_validator(cls.service_key.with_prop(SettingProp.PLAYER))
         if MY_LOGGER.isEnabledFor(DEBUG):
@@ -218,46 +229,31 @@ class GoogleSettings:
                             f'{val.get_allowed_values(enabled=True)}'
                             f' default player: {val.default}')
 
+        cache_speech_key: ServiceID = cls.service_key.with_prop(SettingProp.CACHE_SPEECH)
         cache_validator: BoolValidator
-        cache_validator = BoolValidator(
-            cls.service_key.with_prop(SettingProp.CACHE_SPEECH),
-            default=True, const=True)
-
-        SettingsMap.define_setting(cache_validator.service_key,
-                                   cache_validator)
+        cache_validator = BoolValidator(cache_speech_key,
+                                        default=True, const=True,
+                                        define_setting=True,
+                                        service_status=StatusType.OK,
+                                        persist=True)
 
         cache_service_key: ServiceID = cls.service_key.with_prop(SettingProp.CACHE_PATH)
         cache_path_val: SimpleStringValidator
         cache_path_val = SimpleStringValidator(cache_service_key,
-                                               value=SettingProp.CACHE_PATH_DEFAULT)
-        SettingsMap.define_setting(cache_path_val.service_key,
-                                   cache_path_val)
+                                               value=SettingProp.CACHE_PATH_DEFAULT,
+                                               define_setting=True,
+                                               service_status=StatusType.OK,
+                                               persist=True)
 
         cache_suffix_key: ServiceID = cls.service_key.with_prop(SettingProp.CACHE_SUFFIX)
         cache_suffix: str = Backends.ENGINE_CACHE_CODE[Backends.GOOGLE_ID]
 
         cache_suffix_val: SimpleStringValidator
         cache_suffix_val = SimpleStringValidator(cache_suffix_key,
-                                                 value=cache_suffix)
-        SettingsMap.define_setting(cache_suffix_val.service_key,
-                                   cache_suffix_val)
-
-        '''
-        gender_validator = GenderValidator(SettingProp.GENDER,
-                                           GoogleSettings.setting_id,
-                                           min_value=Genders.FEMALE,
-                                           max_value=Genders.UNKNOWN,
-                                           default=Genders.UNKNOWN)
-        SettingsMap.define_setting(GoogleSettings.setting_id, SettingProp.GENDER,
-                                   gender_validator)
-        gender_visible: BoolValidator
-        gender_visible = BoolValidator(
-                SettingProp.GENDER_VISIBLE, GoogleSettings.setting_id,
-                default=True)
-        SettingsMap.define_setting(GoogleSettings.setting_id,
-                                   SettingProp.GENDER_VISIBLE,
-                                   gender_visible)
-        '''
+                                                 value=cache_suffix,
+                                                 define_setting=True,
+                                                 service_status=StatusType.OK,
+                                                 persist=True)
 
     @classmethod
     def check_is_supported_on_platform(cls) -> None:
@@ -267,15 +263,24 @@ class GoogleSettings:
             cls._service_status.progress = Progress.SUPPORTED
             if not supported:
                 cls._service_status.status = Status.FAILED
+                cls._service_status.status_summary = StatusType.NOT_ON_PLATFORM
+                SettingsMap.define_setting(cls.service_key,
+                                           setting_type=SettingType.STRING_TYPE,
+                                           service_status=StatusType.NOT_ON_PLATFORM,
+                                           validator=None)
 
     @classmethod
     def check_is_installed(cls) -> None:
         # Don't have a test for installed, just move on to available
-        if (cls._service_status.progress == Progress.SUPPORTED
-                and cls._service_status.status == Status.OK):
-            cls._service_status.progress = Progress.INSTALLED
-        else:
-            cls._service_status.status = Status.FAILED
+        if cls._service_status.progress == Progress.SUPPORTED:
+            if cls._service_status.status == Status.OK:
+                cls._service_status.progress = Progress.INSTALLED
+            else:
+                cls._service_status.status_summary = StatusType.NOT_FOUND
+                SettingsMap.define_setting(cls.service_key,
+                                           setting_type=SettingType.STRING_TYPE,
+                                           service_status=StatusType.NOT_FOUND,
+                                           validator=None)
 
     @classmethod
     def check_is_available(cls) -> None:
@@ -292,6 +297,11 @@ class GoogleSettings:
             cls._service_status.progress = Progress.AVAILABLE
         else:
             cls._service_status.status = Status.FAILED
+            cls._service_status.status_summary = StatusType.BROKEN
+            SettingsMap.define_setting(cls.service_key,
+                                       setting_type=SettingType.STRING_TYPE,
+                                       service_status=StatusType.BROKEN,
+                                       validator=None)
 
     @classmethod
     def check_is_usable(cls) -> None:
@@ -305,15 +315,43 @@ class GoogleSettings:
         if cls._service_status.progress == Progress.AVAILABLE:
             success: Status = cls._service_status.status
             if success == Status.OK:
-                val: StringValidator | IStringValidator
-                val = SettingsMap.get_validator(
-                    cls.service_key.with_prop(SettingProp.PLAYER))
-                if val.default is None and len(val.get_allowed_values(enabled=True)) == 0:
-                    cls._service_status.status = Status.FAILED
-                    if MY_LOGGER.isEnabledFor(DEBUG):
-                        MY_LOGGER.debug(f'No players found for Google')
-                cls._service_status.progress = Progress.USABLE
-                SettingsMap.set_available(cls.service_key, cls._service_status)
+                byte_stream: BinaryIO | None = None
+                byte_buffer: BytesIO = BytesIO()
+                status: StatusType = StatusType.BROKEN
+                try:
+                    my_gTTS = gTTS('test',
+                                   lang='en',
+                                   slow=False,
+                                   lang_check=False,
+                                   tld='com',
+                                   timeout=5.0
+                                   #  pre_processor_funcs=[
+                                   #     pre_processors.tone_marks,
+                                   #     pre_processors.end_of_line,
+                                   #     pre_processors.abbreviations,
+                                   #     pre_processors.word_sub,
+                                   # ],
+                                   # tokenizer_func=Tokenizer(
+                                   #         [
+                                   #             tokenizer_cases.tone_marks,
+                                   #             tokenizer_cases.period_comma,
+                                   #             tokenizer_cases.colon,
+                                   #             tokenizer_cases.other_punctuation,
+                                   #         ]
+                                   # ).run,
+                                   )
+                    my_gTTS.write_to_fp(byte_buffer)
+                    x = byte_buffer.getvalue()
+                    MY_LOGGER.debug(f'Size of test: {len(x)} bytes')
+                    if len(x) > 4000:
+                        status = StatusType.OK
+                except Exception:
+                    MY_LOGGER.exception('Blew up in gtts')
+                    status = StatusType.BROKEN
+                SettingsMap.define_setting(cls.service_key,
+                                           setting_type=SettingType.STRING_TYPE,
+                                           service_status=status,
+                                           validator=None)
 
     @classmethod
     def is_usable(cls) -> bool:

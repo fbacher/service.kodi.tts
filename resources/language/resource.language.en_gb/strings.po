@@ -1223,6 +1223,10 @@ msgctxt "#32719"
 msgid "Settings Spin-List"
 msgstr ""
 
+# Label for Generic TTS Settings
+msgctxt "#32720"
+msgid "TTS Settings"
+msgstr ""
 
 
 

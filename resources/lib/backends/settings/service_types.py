@@ -24,7 +24,7 @@ class Services(StrEnum):
     APLAY_ID = 'aplay'
     PLAYER_SERVICE = 'player'  # Generic player_key
     CURRENT_ENGINE_ID = 'current_engine'
-    AUTO_ENGINE_ID = 'auto'
+    #  AUTO_ENGINE_ID = 'auto'
     CACHE_WRITER_ID = 'cache_writer'
     CACHE_READER_ID = 'cache_reader'
     EXPERIMENTAL_ENGINE_ID = 'experimental'
@@ -66,7 +66,7 @@ class Services(StrEnum):
         clz = type(self)
         msg_id_lookup: Dict[str, MessageId] = {
             # TTS :
-            clz.AUTO_ENGINE_ID        : MessageId.ENGINE_AUTO,
+            #  clz.AUTO_ENGINE_ID        : MessageId.ENGINE_AUTO,
             clz.ESPEAK_ID             : MessageId.ENGINE_ESPEAK,
             clz.FESTIVAL_ID           : MessageId.ENGINE_FESTIVAL,
             clz.FLITE_ID              : MessageId.ENGINE_FLITE,
@@ -266,7 +266,9 @@ class TTS_Type(StrEnum):
     CACHE_PATH = 'cache_path'
     CACHE_EXPIRATION_DAYS = 'cache_expiration_days'
     CURRENT_ENGINE = 'current_engine'
+    CONFIGURE_ON_STARTUP = 'configure_on_startup'
     DISABLE_BROKEN_SERVICES = 'disable_broken_services'
+    SERVICE_ID = 'id'
     SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA = 'speak_background_progress_during_media'
     SPEAK_BACKGROUND_PROGRESS = 'speak_background_progress'
     SPEAK_ON_SERVER = 'speak_on_server'
@@ -277,13 +279,16 @@ class TTS_Type(StrEnum):
     EXTENDED_HELP_ON_STARTUP = 'extended_help_on_startup'
     # GUI=
     HINT_TEXT_ON_STARTUP = 'hint_text_on_startup'
+    HELP_CONFIG_ON_STARTUP = 'help_config_on_startup'
+    INITIAL_RUN = 'initial_run'
+    INTRODUCTION_ON_STARTUP = 'introduction_on_startup'
     # OUTPUT_VIA=
     #  OUTPUT_VISIBLE=
     OVERRIDE_POLL_INTERVAL = 'override_poll_interval'
     PITCH = 'pitch'
     POLL_INTERVAL = 'poll_interval'
     READER_ON = 'reader_on'
-    SETTINGS_DIGEST = 'settings_digest'
+    #  SETTINGS_DIGEST = 'settings_digest'
     #  SETTINGS_LAST_CHANGED=
     SPEAK_LIST_COUNT = 'speak_list_count'
     SPEAK_VIA_KODI = 'speak_via_kodi'
@@ -301,7 +306,7 @@ DEFAULT_MESSAGE_ID = MessageId.ENGINE_ESPEAK
 
 
 class EngineType(LabeledType):
-    AUTO_ENGINE = Services.AUTO_ENGINE_ID, 0, MessageId.ENGINE_AUTO
+    #  AUTO_ENGINE = Services.AUTO_ENGINE_ID, 0, MessageId.ENGINE_AUTO
     # EXPERIMENTAL_ENGINE = Services.EXPERIMENTAL_ENGINE_ID
     GOOGLE = Services.GOOGLE_ID, 1, MessageId.ENGINE_GOOGLE
     # FESTIVAL = Services.FESTIVAL_ID = -1, MessageId.ENGINE_FESTIVAL
@@ -316,10 +321,10 @@ class EngineType(LabeledType):
     DEFAULT = Services.DEFAULT_ENGINE_ID, 0, DEFAULT_MESSAGE_ID
 
 
-DUMMY_ENGINES: List[EngineType] = [EngineType.AUTO_ENGINE,
+DUMMY_ENGINES: List[EngineType] = [# EngineType.AUTO_ENGINE,
                                    EngineType.DEFAULT]
 ALL_ENGINES: List[EngineType] = list(EngineType)
-ALL_ENGINES.remove(EngineType.AUTO_ENGINE)
+#  ALL_ENGINES.remove(EngineType.AUTO_ENGINE)
 
 
 class BasePlayerType(StrEnum):
@@ -476,12 +481,17 @@ class ServiceID:
         if isinstance(setting_id, StrEnum):
             setting_id = setting_id.value
         self._setting_id: str | None = setting_id
-        self.key: str
-        if self._setting_id is not None and self._setting_id != '':
-            self.key = (f'{self.service_type.name.lower()}.{self.service_id}.'
-                        f'{self.setting_id}')
-        else:
-            self.key = f'{self.service_type.name.lower()}.{self.service_id}'
+
+        # key to identify the service: See @property service_key
+        self._service_key: str | None = None
+
+        # key to identify the service FOR settings. see @property short_service_key
+        self._short_service_key: str | None = None
+
+        # key to identify the full ServiceID: see @property key
+        self._key: str | None = None
+        # key to identify the full ServiceID: see @property short_key
+        self._short_key: str | None = None
 
     def with_prop(self, setting_id: str | StrEnum) -> ForwardRef('ServiceID'):
         return ServiceID(service_type=self.service_type,
@@ -498,7 +508,7 @@ class ServiceID:
                          setting_id=setting_id)
 
     def __str__(self) -> str:
-        #  MY_LOGGER.debug(f'key: {self.key}')
+        #  MY_LOGGER.debug(f'key: {self._key}')
         return self.key
 
     def __repr__(self) -> str:
@@ -517,36 +527,80 @@ class ServiceID:
         return self._setting_id
 
     @property
-    def setting_path(self) -> str:
+    def key(self) -> str:
+        """
+        Gets the key for the setting. Used by SettingsMap (and likely others) to
+        access a map of a list of settings.
+
+        :return:
+        """
+        if self._key is None:
+            if self._setting_id is not None and self._setting_id != '':
+                self._key = (f'{self.service_type.value}.{self.service_id}.'
+                             f'{self.setting_id}')
+            else:
+                self._key = (f'{self.service_type.value}.{self.service_id}.'
+                             f'{TTS_Type.SERVICE_ID}')
+            MY_LOGGER.debug(f'key: {self._key}')
+        return self._key
+
+    @property
+    def short_key(self) -> str:
         """
         Gets a path usable for settings stored in Settings.xml.
         Does NOT validate the path.
         :return:
         """
-        if self._setting_id is None:
-            # raise ValueError('Missing setting_id')
-            return self.service_key
-        path: str = f'{str(self.setting_id)}.{str(self.service_id)}'
-        MY_LOGGER.debug(f'setting_path: {path}')
-        return path
+        if self._short_key is None:
+            if self._setting_id is None:
+                # raise ValueError('Missing setting_id')
+                return self.service_key
+            self._short_key = f'{str(self.setting_id)}.{str(self.service_id)}'
+            MY_LOGGER.debug(f'short_key: {self._short_key}')
+        return self._short_key
 
     @property
     def service_key(self) -> str:
         """
-        Gets the key for the service. Used by SettingsMap (and likely others) to
-        access a map of a list of settings. ONLY the ServiceType and setting_id
-        are used for the key.
+        Gets the key for the service itself. Used by SettingsMap (and likely others) to
+        access a map of a list of settings. The key consists of:
+        ServiceType.service_id.id_property. Example: 'engine.google.id'. The
+        value of the service_key is the same as the service_id.
 
         Does NOT validate the path.
         :return:
         """
-        path: str = f'{str(self.service_id)}.{self.service_type.value}'
-        MY_LOGGER.debug(f'service_key for validator: {path} key: {self}')
-        return path
+        if self._service_key is None:
+            self._service_key: str = (f'{self.service_type.value}.{str(self.service_id)}.'
+                                      f'{TTS_Type.SERVICE_ID}')
+            MY_LOGGER.debug(f'service_type.service_id.id: {self._service_key}'
+                            f' service_key: {self.key}')
+        return self._service_key
+
+    @property
+    def short_service_key(self) -> str:
+        """
+        Gets the key for the service itself. Used by SettingsMap (and likely others) to
+        access a map of a list of settings. The key consists of:
+        id_property.service_id. Example: 'id.google'. The
+        value of the service_key is the same as the service_id.
+
+        Does NOT validate the path.
+        :return:
+        """
+        if self._short_service_key is None:
+            self._short_service_key: str = (f'{TTS_Type.SERVICE_ID}.'
+                                            f'{str(self.service_id)}')
+            MY_LOGGER.debug(f'id.service_id: {self._short_service_key}'
+                            f' key: {self}')
+        return self._short_service_key
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, ServiceID):
-            raise ValueError(f'Expected {type(self)} type not: {type(other)}')
+            if not isinstance(other, str):
+                raise ValueError(f'Expected {type(self)} or str type not: {type(other)}')
+            else:
+                return self.key == other
         other: ServiceID
         return self.key == other.key
 
@@ -558,29 +612,35 @@ class ServiceKey:
     ENGINE_KEY: ServiceID = ServiceID(ServiceType.ENGINE)
     PLAYER_KEY: ServiceID = ServiceID(ServiceType.PLAYER)
     TTS_KEY: ServiceID = ServiceID(ServiceType.TTS,
-                                   Services.TTS_SERVICE,None)
+                                   Services.TTS_SERVICE, TTS_Type.SERVICE_ID)
     #  EXPERIMENTAL_ENGINE = Services.EXPERIMENTAL_ENGINE_ID
-    AUTO_KEY: ServiceID = ServiceID(ServiceType.ENGINE, Services.AUTO_ENGINE_ID,
-                                    None)
+    #  AUTO_KEY: ServiceID = ServiceID(ServiceType.ENGINE, Services.AUTO_ENGINE_ID,
+    #                                  None)
     GOOGLE_KEY: ServiceID = ServiceID(ServiceType.ENGINE,
-                                      Services.GOOGLE_ID, None)
+                                      Services.GOOGLE_ID, TTS_Type.SERVICE_ID)
     #  FESTIVAL = Services.FESTIVAL_ID
     #  FLITE = Services.FLITE_ID
     ESPEAK_KEY: ServiceID = ServiceID(ServiceType.ENGINE,
-                                      Services.ESPEAK_ID, None)
+                                      Services.ESPEAK_ID, TTS_Type.SERVICE_ID)
     #  LOG_ONLY = Services.LOG_ONLY_ID
     #  SPEECH_DISPATCHER = Services.SPEECH_DISPATCHER_ID
     NO_ENGINE_KEY: ServiceID = ServiceID(ServiceType.ENGINE,
-                                         Services.NO_ENGINE_ID, None)
+                                         Services.NO_ENGINE_ID, TTS_Type.SERVICE_ID)
     POWERSHELL_KEY: ServiceID = ServiceID(ServiceType.ENGINE,
-                                          Services.POWERSHELL_ID, None)
+                                          Services.POWERSHELL_ID, TTS_Type.SERVICE_ID)
     # TODO: REWORK to be dynamic. Need shared safe place to update in
     # bootstrap or config and use here
     DEFAULT_KEY: ServiceID = ServiceID(ServiceType.ENGINE, EngineType.DEFAULT,
-                                       None)
+                                       TTS_Type.SERVICE_ID)
 
-    MPV_KEY: ServiceID = ServiceID(ServiceType.PLAYER, PlayerType.MPV, None)
-
+    MPV_KEY: ServiceID = ServiceID(ServiceType.PLAYER, PlayerType.MPV,
+                                   TTS_Type.SERVICE_ID)
+    MPLAYER_KEY: ServiceID = ServiceID(ServiceType.PLAYER, PlayerType.MPLAYER,
+                                       TTS_Type.SERVICE_ID)
+    SFX_KEY: ServiceID = ServiceID(ServiceType.PLAYER, PlayerType.SFX,
+                                   TTS_Type.SERVICE_ID)
+    BUILT_IN_KEY: ServiceID = ServiceID(ServiceType.PLAYER, PlayerType.BUILT_IN_PLAYER,
+                                        TTS_Type.SERVICE_ID)
     #  RECITE = Services.RECITE_ID
     #  SAPI_ID = 'sapi'
     #  DEFAULT = Services.DEFAULT_ENGINE_ID
@@ -596,8 +656,8 @@ class ServiceKey:
     BACKGROUND_PROGRESS_INTERVAL = TTS_KEY.with_prop(TTS_Type.BACKGROUND_PROGRESS_INTERVAL)
     CACHE_EXPIRATION_DAYS: ServiceID  #
     CACHE_EXPIRATION_DAYS = TTS_KEY.with_prop(TTS_Type.CACHE_EXPIRATION_DAYS)
-    CACHE_PATH: ServiceID  #
-    CACHE_PATH = TTS_KEY.with_prop(TTS_Type.CACHE_PATH)
+    # CACHE_PATH: ServiceID  #
+    # CACHE_PATH = TTS_KEY.with_prop(TTS_Type.CACHE_PATH)
     CURRENT_ENGINE_KEY: ServiceID
     CURRENT_ENGINE_KEY = TTS_KEY.with_prop(TTS_Type.CURRENT_ENGINE)
     DEBUG_LOG_LEVEL: ServiceID  #
@@ -608,6 +668,10 @@ class ServiceKey:
     EXTENDED_HELP_ON_STARTUP = TTS_KEY.with_prop(TTS_Type.EXTENDED_HELP_ON_STARTUP)
     HINT_TEXT_ON_STARTUP: ServiceID  #
     HINT_TEXT_ON_STARTUP = TTS_KEY.with_prop(TTS_Type.HINT_TEXT_ON_STARTUP)
+    INITIAL_RUN: ServiceID
+    INITIAL_RUN = TTS_KEY.with_prop(TTS_Type.INITIAL_RUN)
+    INTRODUCTION_ON_STARTUP: ServiceID
+    INTRODUCTION_ON_STARTUP = TTS_KEY.with_prop(TTS_Type.INTRODUCTION_ON_STARTUP)
     OVERRIDE_POLL_INTERVAL: ServiceID  #
     OVERRIDE_POLL_INTERVAL = TTS_KEY.with_prop(TTS_Type.OVERRIDE_POLL_INTERVAL)
     PITCH: ServiceID
@@ -616,8 +680,8 @@ class ServiceKey:
     POLL_INTERVAL = TTS_KEY.with_prop(TTS_Type.POLL_INTERVAL)
     READER_ON: ServiceID  #
     READER_ON = TTS_KEY.with_prop(TTS_Type.READER_ON)
-    SETTINGS_DIGEST: ServiceID  #
-    SETTINGS_DIGEST = TTS_KEY.with_prop(TTS_Type.SETTINGS_DIGEST)
+    #  SETTINGS_DIGEST: ServiceID  #
+    #  SETTINGS_DIGEST = TTS_KEY.with_prop(TTS_Type.SETTINGS_DIGEST)
     SPEAK_BACKGROUND_PROGRESS: ServiceID  #
     SPEAK_BACKGROUND_PROGRESS = TTS_KEY.with_prop(TTS_Type.SPEAK_BACKGROUND_PROGRESS)
     SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA: ServiceID  #

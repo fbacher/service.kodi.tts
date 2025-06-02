@@ -6,6 +6,7 @@ from enum import Enum
 from typing import NamedTuple
 
 from backends.settings.service_types import ServiceID
+from backends.settings.setting_properties import SettingType
 from common.constants import Constants
 from common.logger import BasicLogger
 
@@ -52,6 +53,10 @@ class INumericValidator:
                  is_decibels: bool = False,
                  is_integer: bool = True,
                  increment: int | float = 0.0) -> None:
+        pass
+
+    @property
+    def property_type(self) -> SettingType:
         pass
 
     def get_value(self) -> int | float:
@@ -108,10 +113,16 @@ class INumericValidator:
 class IValidator:
 
     def __init__(self, service_key: ServiceID,
+                 property_type: SettingType,
                  default: Any | None = None,
                  allow_default: bool = True,
                  const: bool = False) -> None:
+        self._property_type: SettingType = property_type
         pass
+
+    @property
+    def property_type(self) -> SettingType:
+        return self._property_type
 
     def is_const(self) -> bool | None:
         return None
@@ -175,10 +186,17 @@ class IValidator:
 class ISimpleValidator(IValidator):
 
     def __init__(self, service_key: ServiceID,
+                 property_type: SettingType,
                  const: bool = False) -> None:
-        super().__init__(service_key=service_key, const=const)
+        super().__init__(service_key=service_key, property_type=property_type,
+                         const=const)
         self._service_key: ServiceID = service_key
+        self._property_type: SettingType = property_type
         self._const: bool = const
+
+    @property
+    def property_type(self) -> SettingType:
+        return self._property_type
 
     def is_const(self) -> bool | None:
         raise NotImplementedError()
@@ -461,10 +479,15 @@ class IStringValidator(IValidator):
         :param const: If True, then the value can not be changed
         """
         super().__init__(service_key=service_key,
+                         property_type=SettingType.STRING_TYPE,
                          default=default_value,
                          allow_default=allow_default,
                          const=const
                          )
+
+    @property
+    def property_type(self) -> SettingType:
+        return super().property_type
 
     def get_tts_value(self, default: str | None = None,
                       setting_service_id: str = None) -> str:
@@ -518,10 +541,11 @@ class IStringValidator(IValidator):
         raise NotImplementedError()
 
 
+'''
 class IEnumValidator(IValidator):
 
     # Probably won't work as is, needs generics
-    def __init__(self, setting_id: str, service_id: str,
+    def __init__(self, setting_id: str, property_type: SettingType, service_id: str,
                  min_value: Enum, max_value: Enum,
                  default_value: Enum = None) -> None:
         pass
@@ -553,12 +577,12 @@ class IEnumValidator(IValidator):
 
     def preValidate(self, ui_value: Enum) -> Tuple[bool, Enum]:
         raise NotImplementedError()
+'''
 
 
 class IStrEnumValidator(IValidator):
 
-    # Probably won't work as is, needs generics
-    def __init__(self, setting_id: str, service_id: str,
+    def __init__(self, service_key: ServiceID,
                  min_value: StrEnum, max_value: StrEnum,
                  default_value: StrEnum = None) -> None:
         pass
@@ -594,9 +618,9 @@ class IStrEnumValidator(IValidator):
 
 class IConstraintsValidator:
 
-    def __init__(self, setting_id: str, service_id: str,
+    def __init__(self, service_key: ServiceID, property_type: SettingType,
                  constraints: IConstraints) -> None:
-        pass
+        self.constraints: IConstraints = constraints
 
     def setUIValue(self, ui_value: int) -> None:
         raise NotImplementedError()
@@ -671,7 +695,7 @@ class IConstraintsValidator:
 
 class IBoolValidator:
 
-    def __init__(self, setting_id: str, service_id: str,
+    def __init__(self, service_key: ServiceID, settingType: SettingType,
                  default: bool) -> None:
         pass
 
@@ -706,15 +730,19 @@ class IBoolValidator:
 
 class IGenderValidator(IValidator):
 
-    def __init__(self, setting_id: str, service_id: str,
+    def __init__(self, service_key: ServiceID,
                  min_value: Genders, max_value: Genders,
                  default_value: Genders = Genders.UNKNOWN) -> None:
-        super().__init__(setting_id, service_id)
+        super().__init__(service_key, property_type=SettingType.STRING_TYPE)
         pass
 
     @property
     def default(self) -> Genders:
         raise NotImplementedError()
+
+    @property
+    def property_type(self) -> SettingType:
+        return SettingType.STRING_TYPE
 
     def get_tts_value(self) -> Genders:
         raise NotImplementedError()
@@ -743,10 +771,10 @@ class IGenderValidator(IValidator):
 
 class IChannelValidator(IValidator):
 
-    def __init__(self, setting_id: str, service_id: str,
+    def __init__(self, service_key: ServiceID,
                  min_value: Channels, max_value: Channels,
                  default_value: Channels = Channels.NO_PREF) -> None:
-        super().__init__(setting_id, service_id)
+        super().__init__(service_key, property_type=SettingType.STRING_TYPE)
         pass
 
     @property

@@ -312,14 +312,18 @@ class VoiceCache:
             filename: str = self.get_hash(phrase.text)
             subdir: str = filename[0:2]
             cache_dir: str
-            # MY_LOGGER.debug(f'territory: {territory_dir} '
-            #                 f'cache_top: {cache_top} '
-            #                 f'lang_dir: {lang_dir} '
-            #                 f'subdir: {subdir}')
+            MY_LOGGER.debug(f'territory: {territory_dir} '
+                            f'cache_top: {cache_top} '
+                            f'lang_dir: {lang_dir} '
+                            f'subdir: {subdir}')
+            # TODO: Fix HACK
+            # HACK for when a phrase comes in when locale fields are not set up.
+            # Seems to occur when caching has just been turned on.
+            if lang_dir is None or lang_dir == '':
+                lang_dir = 'missing_lang'
             if territory_dir is None or territory_dir == '':
-                cache_dir = cache_top / lang_dir / subdir
-            else:
-                cache_dir = cache_top / lang_dir / territory_dir / subdir
+                territory_dir = 'missing_territory'
+            cache_dir = cache_top / lang_dir / territory_dir / subdir
             cache_path = cache_dir / filename
             final_audio_path = cache_path.with_suffix(self.audio_suffix)
             if MY_LOGGER.isEnabledFor(DEBUG):
@@ -589,7 +593,7 @@ class VoiceCache:
         except Exception as e:
             if MY_LOGGER.isEnabledFor(ERROR):
                 MY_LOGGER.error(
-                        'Failed to save text: {}'.format(str(e)))
+                        f'Failed to save text: {str(e)}')
             return False
         return True
 

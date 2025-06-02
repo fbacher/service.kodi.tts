@@ -24,7 +24,7 @@ class SettingType(Enum):
 class SettingProp:  # (ISettings):
     # Must list these engines in preference order. Or at least the first few
     # should be in this order.
-    AUTO_ID: Final[str] = Services.DEFAULT_ENGINE_ID.value
+    #  AUTO_ID: Final[str] = Services.DEFAULT_ENGINE_ID.value
     ESPEAK_ID: Final[str] = Services.ESPEAK_ID.value
     FESTIVAL_ID: Final[str] = Services.FESTIVAL_ID.value
     FLITE_ID: Final[str] = Services.FLITE_ID.value
@@ -37,14 +37,17 @@ class SettingProp:  # (ISettings):
     EXPERIMENTAL_ENGINE_ID: Final[str] = Services.EXPERIMENTAL_ENGINE_ID.value
 
     API_KEY: Final[str] = 'api_key'
+    AVAILABILITY: Final[str] = 'availability'
 
     ENGINE: Final[str] = 'engine'
-    ENGINE_DEFAULT: Final[str] = AUTO_ID
+    #  ENGINE_DEFAULT: Final[str] = AUTO_ID
     CACHE_SPEECH: Final[str] = 'cache_speech'
     CACHE_SUFFIX: Final[str] = 'cache_suffix'
     CACHE_TOP: Final[str] = 'cache_top'
     #  CACHE_VOICE_FILES: Final[str] = 'cache_voice_files'
     CAPITAL_RECOGNITION: Final[str] = 'capital_recognition'
+    COMMAND: Final[str] = 'command'
+    COMMAND_PATH: Final[str] = 'command_path'
     CHANNELS: Final[str] = 'channels'
     TRANSCODER: Final[str] = 'transcoder'
     DELAY_VOICING: Final[str] = 'delay_voicing'
@@ -110,9 +113,13 @@ class SettingProp:  # (ISettings):
     BACKGROUND_PROGRESS_INTERVAL: Final[str] = TTS_Type.BACKGROUND_PROGRESS_INTERVAL.value
     CACHE_PATH: Final[str] = TTS_Type.CACHE_PATH.value
     CACHE_EXPIRATION_DAYS: Final[str] = TTS_Type.CACHE_EXPIRATION_DAYS.value
+    CONFIGURE_ON_STARTUP: Final[str] = TTS_Type.CONFIGURE_ON_STARTUP.value
     CURRENT_ENGINE: Final[str] = TTS_Type.CURRENT_ENGINE.value
     DISABLE_BROKEN_SERVICES: Final[str] = TTS_Type.DISABLE_BROKEN_SERVICES.value
-    SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA: Final[str] = TTS_Type.SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA.value
+    HELP_CONFIG_ON_STARTUP: Final[str] = TTS_Type.HELP_CONFIG_ON_STARTUP.value
+    INTRODUCTION_ON_STARTUP: Final[str] = TTS_Type.INTRODUCTION_ON_STARTUP.value
+    SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA: Final[str] = (
+        TTS_Type.SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA.value)
     SPEAK_BACKGROUND_PROGRESS: Final[str] = TTS_Type.SPEAK_BACKGROUND_PROGRESS.value
     SPEAK_ON_SERVER: Final[str] = TTS_Type.SPEAK_ON_SERVER.value
     #  CACHE_VOICE_FILES=
@@ -122,6 +129,7 @@ class SettingProp:  # (ISettings):
     EXTENDED_HELP_ON_STARTUP: Final[str] = TTS_Type.EXTENDED_HELP_ON_STARTUP.value
     # GUI=
     HINT_TEXT_ON_STARTUP: Final[str] = TTS_Type.HINT_TEXT_ON_STARTUP.value
+    INITIAL_RUN: Final[str] = TTS_Type.INITIAL_RUN.value
     MAX_PHRASE_LENGTH: Final[str] = 'max_phrase_length'
     # OUTPUT_VIA=
     #  OUTPUT_VISIBLE=
@@ -129,7 +137,7 @@ class SettingProp:  # (ISettings):
     SERVICE_NAME: Final[str] = TTS_Type.SERVICE_NAME.value
     POLL_INTERVAL: Final[str] = TTS_Type.POLL_INTERVAL.value
     READER_ON: Final[str] = TTS_Type.READER_ON.value
-    SETTINGS_DIGEST: Final[str] = TTS_Type.SETTINGS_DIGEST.value
+    #  SETTINGS_DIGEST: Final[str] = TTS_Type.SETTINGS_DIGEST.value
     #  SETTINGS_LAST_CHANGED=
     SPEAK_LIST_COUNT: Final[str] = TTS_Type.SPEAK_LIST_COUNT.value
     SPEAK_VIA_KODI: Final[str] = TTS_Type.SPEAK_VIA_KODI.value
@@ -150,8 +158,9 @@ class SettingProp:  # (ISettings):
         AUTO_ITEM_EXTRA: None,
         AUTO_ITEM_EXTRA_DELAY: None,
         BACKGROUND_PROGRESS_INTERVAL: None,
-        CACHE_PATH: None,
+        #  CACHE_PATH: None,
         CACHE_EXPIRATION_DAYS: None,
+        CONFIGURE_ON_STARTUP: None,
         CURRENT_ENGINE: None,
         DISABLE_BROKEN_SERVICES: None,
         SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA: None,
@@ -162,14 +171,17 @@ class SettingProp:  # (ISettings):
         DEBUG_LOG_LEVEL: None,  #  Merge into Logging: None, get rid of verbose_logging
         EXTENDED_HELP_ON_STARTUP: None,
         # GUI: None,
+        HELP_CONFIG_ON_STARTUP: None,
         HINT_TEXT_ON_STARTUP: None,
+        INITIAL_RUN: None,
+        INTRODUCTION_ON_STARTUP: None,
         # OUTPUT_VIA: None,
         #  OUTPUT_VISIBLE: None,
         OVERRIDE_POLL_INTERVAL: None,
         POLL_INTERVAL: None,
         READER_ON: None,
-        SETTINGS_BEING_CONFIGURED: None,
-        SETTINGS_DIGEST: None,
+        #  SETTINGS_BEING_CONFIGURED: None,
+        #  SETTINGS_DIGEST: None,
         #  SETTINGS_LAST_CHANGED: None,
         SPEAK_LIST_COUNT: None,
         SPEAK_VIA_KODI: None,
@@ -214,6 +226,9 @@ class SettingProp:  # (ISettings):
         #  CACHE_VOICE_FILES: None, Not used
         CAPITAL_RECOGNITION: None,
         CHANNELS: None,
+        COMMAND: None,
+        COMMAND_PATH: None,
+        CONFIGURE_ON_STARTUP: None,
         TRANSCODER: None,
         #  DEBUG_LOGGING: None,
         DEBUG_LOG_LEVEL: None,
@@ -223,6 +238,7 @@ class SettingProp:  # (ISettings):
         GENDER: None,
         #  GENDER_VISIBLE: None,
         # GUI: None,
+        HELP_CONFIG_ON_STARTUP: None,
         HINT_TEXT_ON_STARTUP: None,
         LANGUAGE: None,
         MODULE: None,
@@ -242,8 +258,8 @@ class SettingProp:  # (ISettings):
         REMOTE_PITCH: None,
         REMOTE_SPEED: None,
         REMOTE_VOLUME: None,
-        SETTINGS_DIGEST: None,
-        SETTINGS_BEING_CONFIGURED: None,
+        #  SETTINGS_DIGEST: None,
+        #  SETTINGS_BEING_CONFIGURED: None,
         #  SETTINGS_LAST_CHANGED: None,
         SPEECH_DISPATCHER: None,
         SERVICE_ID: None,
@@ -366,6 +382,7 @@ class SettingProp:  # (ISettings):
             cls.CAPITAL_RECOGNITION                   : SettingType.BOOLEAN_TYPE,
             cls.CHANNELS                              : SettingType.STRING_TYPE,
             cls.CURRENT_ENGINE                        : SettingType.STRING_TYPE,
+            cls.CONFIGURE_ON_STARTUP                  : SettingType.BOOLEAN_TYPE,
             cls.TRANSCODER                            : SettingType.STRING_TYPE,
             cls.DEBUG_LOG_LEVEL                       : SettingType.INTEGER_TYPE,
             cls.DELAY_VOICING                         : SettingType.BOOLEAN_TYPE,
@@ -373,7 +390,10 @@ class SettingProp:  # (ISettings):
             cls.GENDER                                : SettingType.STRING_TYPE,
             cls.GENDER_VISIBLE                        : SettingType.BOOLEAN_TYPE,
             #  cls.GUI                         : SettingType.BOOLEAN_TYPE,
+            cls.HELP_CONFIG_ON_STARTUP                : SettingType.BOOLEAN_TYPE,
             cls.HINT_TEXT_ON_STARTUP                  : SettingType.BOOLEAN_TYPE,
+            cls.INITIAL_RUN                           : SettingType.BOOLEAN_TYPE,
+            cls.INTRODUCTION_ON_STARTUP               : SettingType.BOOLEAN_TYPE,
             cls.LANGUAGE                              : SettingType.STRING_TYPE,
             cls.MODULE                                : SettingType.STRING_TYPE,
             #  cls.OUTPUT_VIA                  : SettingType.STRING_TYPE,
@@ -394,8 +414,8 @@ class SettingProp:  # (ISettings):
             cls.REMOTE_SPEED                          : SettingType.INTEGER_TYPE,
             cls.REMOTE_VOLUME                         : SettingType.INTEGER_TYPE,
             cls.SERVICE_ID                            : SettingType.STRING_TYPE,
-            cls.SETTINGS_BEING_CONFIGURED             : SettingType.BOOLEAN_TYPE,
-            cls.SETTINGS_DIGEST                       : SettingType.STRING_TYPE,
+            # cls.SETTINGS_BEING_CONFIGURED             : SettingType.BOOLEAN_TYPE,
+            #  cls.SETTINGS_DIGEST                       : SettingType.STRING_TYPE,
             # cls.SETTINGS_LAST_CHANGED                 : SettingType.INTEGER_TYPE,
             cls.SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA: SettingType.BOOLEAN_TYPE,
             cls.SPEAK_BACKGROUND_PROGRESS             : SettingType.BOOLEAN_TYPE,

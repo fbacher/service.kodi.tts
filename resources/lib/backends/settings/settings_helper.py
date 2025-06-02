@@ -98,16 +98,22 @@ class SettingsHelper:
             services: List[EngineType | PlayerType]
             for service in services:
                 service: EngineType | PlayerType
-                service_key: ServiceID = ServiceID(service_type, service,
-                                                   SettingProp.PLAYER_MODE)
+                service_key: ServiceID = ServiceID(service_type, service)
+                if not SettingsMap.is_available(service_key):
+                    MY_LOGGER.debug(f'service NOT available: {service_key}')
+                    continue
+                player_mode_key: ServiceID
+                player_mode_key = service_key.with_prop(SettingProp.PLAYER_MODE)
                 player_mode_val: StringValidator | IStringValidator
-                player_mode_val = SettingsMap.get_validator(service_key)
+                player_mode_val = SettingsMap.get_validator(player_mode_key)
                 if player_mode_val is None:
-                    MY_LOGGER.info(f'No PLAYER_MODE validator for: {service_key}')
+                    MY_LOGGER.info(f'No PLAYER_MODE validator for: {player_mode_key}')
                     continue
                 allowed_player_modes: List[AllowedValue]
                 allowed_player_modes = player_mode_val.get_allowed_values()
-                cls.allowed_player_modes[f'{service_key}'] = allowed_player_modes
+                #  MY_LOGGER.debug(f'service: {player_mode_key} allowed_modes: '
+                #                  f'{allowed_player_modes}')
+                cls.allowed_player_modes[f'{player_mode_key}'] = allowed_player_modes
 
     @classmethod
     def get_valid_player_modes(cls, engine_key: ServiceID, player: PlayerType,
@@ -126,13 +132,19 @@ class SettingsHelper:
         """
         # TODO: Consider adding AllowedValue and Choice wrappers at a higher level
 
-        player_key: ServiceID = ServiceID(ServiceType.PLAYER, player,
-                                          SettingProp.PLAYER_MODE)
-        t_key: ServiceID = engine_key.with_prop(SettingProp.PLAYER_MODE)
+        player_player_mode_key: ServiceID = ServiceID(ServiceType.PLAYER, player,
+                                                      SettingProp.PLAYER_MODE)
+        engine_player_mode_key: ServiceID = engine_key.with_prop(SettingProp.PLAYER_MODE)
+        #  MY_LOGGER.debug(f'engine_key: {engine_key} '
+        #                  f'engine_player_mode_key: {engine_player_mode_key}')
+        #  MY_LOGGER.debug(f'player_player_mode_key: {player_player_mode_key}')
+        #  MY_LOGGER.debug(f'allowed_player_modes: {cls.allowed_player_modes}')
         engine_allowed_values: List[AllowedValue]
-        engine_allowed_values = cls.allowed_player_modes[f'{t_key}']
+        engine_allowed_values = cls.allowed_player_modes.get(f'{engine_player_mode_key}',
+                                                             [])
         player_allowed_values: List[AllowedValue]
-        player_allowed_values = cls.allowed_player_modes[f'{player_key}']
+        player_allowed_values = cls.allowed_player_modes.get(f'{player_player_mode_key}',
+                                                             [])
         engine_player_modes: List[PlayerMode] = []
         player_player_modes: List[PlayerMode] = []
 
@@ -158,6 +170,8 @@ class SettingsHelper:
 
         # Now, create list of player_modes that are common to both the engine
         # and player_key
+        #  MY_LOGGER.debug(f'engine_player_modes: {engine_player_modes}')
+        #  MY_LOGGER.debug(f'player_player_modes: {player_player_modes}')
         intersection: List[PlayerMode] = PlayerMode.intersection(engine_player_modes,
                                                                  player_player_modes)
         if MY_LOGGER.isEnabledFor(DEBUG):

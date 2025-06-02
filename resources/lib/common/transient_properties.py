@@ -13,5 +13,5 @@ except ImportError:
 
 
 class Transient(StrEnum):
-    AUDIO_TYPE_INPUT = auto()
-    AUDIO_TYPE_OUTPUT = auto()
+    AUDIO_TYPE_INPUT = 'audio_input'
+    AUDIO_TYPE_OUTPUT = 'audio_output'

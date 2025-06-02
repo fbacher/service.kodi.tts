@@ -763,8 +763,8 @@ class TTSService:
         try:
             if engine_id is None:
                 engine_key = Settings.get_engine_key()
-                if engine_key == ServiceKey.AUTO_KEY:
-                    engine_key = ServiceKey.DEFAULT_KEY
+                #  if engine_key == ServiceKey.AUTO_KEY:
+                #      engine_key = ServiceKey.DEFAULT_KEY
             else:
                 engine_key = ServiceID(ServiceType.ENGINE, engine_id)
             #  MY_LOGGER.debug(f'Setting player_id: {player_id} engine: {engine_key}')

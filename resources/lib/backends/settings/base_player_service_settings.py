@@ -22,10 +22,6 @@ class BasePlayerServiceSettings(BaseServiceSettings):
 
     initialized_settings: bool = False
 
-    # _supported_input_formats: List[str] = []
-    # _supported_output_formats: List[str] = []
-    # _provides_services: List[ServiceType] = [ServiceType.ENGINE]
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         clz = type(self)

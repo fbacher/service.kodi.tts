@@ -5,6 +5,7 @@ import faulthandler
 import io
 import logging
 from logging import *
+from pathlib import Path
 from typing import Dict, Final
 #
 import os
@@ -16,6 +17,7 @@ import xbmcaddon
 import xbmcvfs
 
 from backends.settings.service_types import ServiceKey, TTS_Type
+from backends.settings.settings_map import SettingsMap
 from common.debug import Debug
 
 '''
@@ -49,7 +51,8 @@ from common.logger import BasicLogger
 
 DEBUG_V: Final[int] = 8
 DEBUG_XV: Final[int] = 6
-
+import locale
+xbmc.log(f'Locale: {locale.getdefaultlocale()}', )
 
 # Default logging is info, otherwise debug_v
 if False:
@@ -65,32 +68,33 @@ else:
         'tts.backends.no_engine': INFO,
         'tts.backends.no_engine_settings': INFO,
         'tts.backends.engines.google_downloader': DEBUG,
-        'tts.backends.engines.google_settings': INFO,
+        'tts.backends.engines.google_settings': DEBUG,
         'tts.backends.engines.speech_generator': DEBUG,
         'tts.backends.engines.windows.powershell': DEBUG,
         'tts.backends.engines.windows.powershell_settings': DEBUG,
         'tts.backends.settings.language_info': DEBUG,
         #  'tts.backends.settings.langcodes_wrapper': DEBUG,
-        'tts.backends.settings.service_types': INFO,
-        'tts.backends.settings.settings_helper': INFO,
-        'tts.backends.settings.settings_map': INFO,
+        'tts.backends.settings.base_service_settings': DEBUG,
+        'tts.backends.settings.service_types': DEBUG,
+        'tts.backends.settings.settings_helper': DEBUG,
+        'tts.backends.settings.settings_map': DEBUG,
         'tts.backends.settings.validators': INFO,
         'tts.backends.base': INFO,
         'tts.backends.audio.base_audio': DEBUG,
         'tts.backends.audio.mpv_audio_player': DEBUG,
         'tts.backends.audio.mplayer_audio_player': INFO,
         'tts.backends.audio.sfx_audio_player': INFO,
-        'tts.backends.audio.sound_capabilities': DEBUG,
+        'tts.backends.audio.sound_capabilities': INFO,
         'tts.backends.audio.worker_thread': INFO,
         'tts.backends.transcoders.trans': INFO,
-        'tts.cache.voicecache': INFO,
+        'tts.cache.voicecache': DEBUG,
         'tts.common.base_services': INFO,
         'tts.common.garbage_collector': DEBUG,
         'tts.common.logger': INFO,
         'tts.common.monitor': INFO,
         'tts.common.phrases': INFO,
-        'tts.common.settings_low_level': INFO,
-        'tts.common.settings': INFO,
+        'tts.common.settings_low_level': DEBUG,
+        'tts.common.settings': DEBUG,
         'tts.common.slave_communication': DEBUG,
         'tts.common.simple_run_command': DEBUG,
         'tts.common.simple_pipe_command': DEBUG,
@@ -103,12 +107,14 @@ else:
         'tts.gui': INFO,
         'tts.gui.window_structure': INFO,
         # 'tts.gui.parser': INFO,
+        'tts.service': DEBUG,
         'tts.service_worker': DEBUG,
-        'tts.startup.bootstrap_engines': INFO,
+        'tts.startup.bootstrap_engines': DEBUG,
         'tts.startup.bootstrap_converters': DEBUG,
-        'backends.audio.bootstrap_players': INFO,
-        'backends.players.mpv_player_settings': DEBUG,
-        'backends.players.mplayer_settings': INFO,
+        'tts.backends.audio.bootstrap_players': DEBUG,
+        'tts.backends.players.mpv_player_settings': DEBUG,
+        'tts.backends.players.mplayer_settings': DEBUG,
+        'tts.utils.keymapeditor': DEBUG,
         'tts.windowNavigation.configure': DEBUG,
         'tts.windowNavigation.help_dialog': INFO,
         'tts.windowNavigation.selection_dialog': DEBUG,
@@ -170,11 +176,11 @@ except Exception as e:
 
 from common.logger import *
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 from backends import audio
 from common.settings import Settings
-from backends.settings.setting_properties import SettingProp
+from backends.settings.setting_properties import SettingProp, SettingType
 
 from common.constants import Constants
 from common.system_queries import SystemQueries
@@ -182,8 +188,8 @@ import enabler
 
 __version__ = Constants.VERSION
 
-module_logger.info(__version__)
-module_logger.info('Platform: {0}'.format(sys.platform))
+MY_LOGGER.info(__version__)
+MY_LOGGER.info(f'Platform: {sys.platform}')
 
 
 def resetAddon():
@@ -191,47 +197,66 @@ def resetAddon():
     if DO_RESET:
         return
     DO_RESET = True
-    module_logger.info('Resetting addon...')
+    MY_LOGGER.info('Resetting addon...')
     xbmc.executebuiltin(
             'RunScript(special://home/addons/service.kodi.tts/resources/lib/tools'
             '/enabler.py,RESET)')
 
 
-def preInstalledFirstRun():
-    if not SystemQueries.isPreInstalled():  # Do as little as possible if there is no
-        # pre-install
-        if SystemQueries.wasPreInstalled():
-            module_logger.info('PRE INSTALL: REMOVED')
-            # Set version to 0.0.0 so normal first run will execute and fix the
-            # keymap
-            Settings.setSetting(SettingProp.VERSION, '0.0.0', None)
+def preInstalledFirstRun() -> bool:
+    restart: bool = False
+    if False:
+        if not Settings.is_initial_run():  # Do as little as possible if there is no
+            xbmc.log('is NOT initial_run', xbmc.LOGINFO)
+            MY_LOGGER.debug(f'is NOT initial_run')
+            # pre-install
+            if SystemQueries.wasPreInstalled():
+                MY_LOGGER.info('PRE INSTALL: REMOVED')
+                # Set version to 0.0.0 so normal first run will execute and fix the
+                # keymap
+                Settings.setSetting(SettingProp.VERSION, '0.0.0', None)
+                enabler.markPreOrPost()  # Update the install status
+            return False
+
+        xbmc.log('is initial_run', xbmc.LOGINFO)
+        MY_LOGGER.debug(f'is initial_run')
+        lastVersion = Settings.getSetting(ServiceKey.VERSION)
+        xbmc.log(f'last_version: {lastVersion}', xbmc.LOGINFO)
+
+        if not enabler.isPostInstalled() and SystemQueries.wasPostInstalled():
+            MY_LOGGER.info('POST INSTALL: UN-INSTALLED OR REMOVED')
+            xbmc.log('POST INSTALL: UN-INSTALLED OR REMOVED')
+            # Add-on was removed. Assume un-installed and treat this as a
+            # pre-installed first run to disable the addon
+        elif lastVersion:
+            MY_LOGGER.debug(f'lastVersion')
+            xbmc.log('lastVersion', xbmc.LOGINFO)
             enabler.markPreOrPost()  # Update the install status
-        return False
+            return False
 
-    lastVersion = Settings.getSetting(ServiceKey.VERSION)
+        # Set version to 0.0.0 so normal first run will execute on first enable
+        Settings.set_service_setting(ServiceKey.VERSION, '0.0.0')
 
-    if not enabler.isPostInstalled() and SystemQueries.wasPostInstalled():
-        module_logger.info('POST INSTALL: UN-INSTALLED OR REMOVED')
-        # Add-on was removed. Assume un-installed and treat this as a
-        # pre-installed first run to disable the addon
-    elif lastVersion:
-        enabler.markPreOrPost()  # Update the install status
-        return False
+        xbmc.log(f'PRE-INSTALLED FIRST RUN', xbmc.LOGINFO)
+        MY_LOGGER.info('PRE-INSTALLED FIRST RUN')
 
-    # Set version to 0.0.0 so normal first run will execute on first enable
-    Settings.set_service_setting(ServiceKey.VERSION, '0.0.0')
-
-    module_logger.info('PRE-INSTALLED FIRST RUN')
-    module_logger.info('Installing basic keymap')
+    MY_LOGGER.info('Installing basic keymap')
 
     # Install keymap with just F12 enabling included
     from utils import keymapeditor
-    keymapeditor.installBasicKeymap()
+    restart = keymapeditor.installBasicKeymap()
 
-    module_logger.info('Pre-installed - DISABLING')
+    if restart:
+        Settings.set_extended_help_on_startup(True)
+        Settings.set_hint_text_on_startup(True)
+        Settings.set_configure_on_startup(True)
 
-    enabler.disableAddon()
-    return True
+    if False:
+        xbmc.log(f'Pre-installed - DISABLING', xbmc.LOGINFO)
+        MY_LOGGER.info('Pre-installed - DISABLING')
+
+        enabler.disableAddon()
+    return restart
 
 
 def startService():
@@ -241,24 +266,16 @@ def startService():
     :return:
     """
     try:
+        xbmc.log('starting service.startservice thread', xbmc.LOGDEBUG)
+        from backends.settings.base_service_settings import BaseServiceSettings
+        BaseServiceSettings.config_predefined_settings()
+
         if preInstalledFirstRun():
             return
         # Will crash with these lines
-
-        xbmc.log('starting service.startservice thread', xbmc.LOGDEBUG)
-        # Core dumps
-        # xbmcaddon.Addon().getSettings().setString('engine', 'google')
-        # setSettingString('engine', 'google')
-        # settings: xbmcaddon.Settings = xbmcaddon.Addon().getSettings()
-        # settings.setString('engine', 'zorgo')
-        # xbmcaddon.Addon().setSettingString('engine', 'google')
-        # xbmc.sleep(5000)
-        # xbmc.log(f'service.setting zorgo', xbmc.LOGDEBUG)
         #  Do NOT remove import!!
         from startup.bootstrap_engines import BootstrapEngines
         BootstrapEngines.init()
-        # from backends.audio.bootstrap_players import BootstrapPlayers
-
         from service_worker import TTSService
         TTSService().start()
         xbmc.log('started service.startService thread', xbmc.LOGDEBUG)
@@ -266,7 +283,7 @@ def startService():
         pass  # About to exit thread
     except Exception as e2:
         xbmc.log(f'Exception {repr(e2)}. Exiting')
-        module_logger.exception('')
+        MY_LOGGER.exception('')
         MinimalMonitor.set_abort_received()
     # while True:
     #     if xbmc.abortRequested(100):
@@ -301,7 +318,7 @@ class MainThreadLoop:
                 xbmc.log('service.kodi.tts: DISABLED - NOT STARTING')
                 return
 
-            xbmc.log(f'worker_thread_initialized')
+            xbmc.log(f'initializing worker_thread')
             worker_thread_initialized = False
 
             # For the first 10 seconds use a short timeout so that initialization
@@ -345,7 +362,7 @@ class MainThreadLoop:
             return
         except Exception as e:
             # xbmc.log('xbmc.log Exception: ' + str(e), xbmc.LOGERROR)
-            module_logger.exception(e)
+            MY_LOGGER.exception(e)
 
     @classmethod
     def start_worker_thread(cls) -> None:
@@ -361,7 +378,7 @@ class MainThreadLoop:
             reraise(*sys.exc_info())
         except Exception as e:
             xbmc.log('Exception: ' + str(e), xbmc.LOGERROR)
-            module_logger.exception('')
+            MY_LOGGER.exception('')
 
 
 if __name__ == '__main__':
@@ -378,7 +395,7 @@ if __name__ == '__main__':
     try:
         PythonDebugger.disable()
     except Exception as e:
-        module_logger.exception('')
+        MY_LOGGER.exception('')
     try:
         Debug.dump_all_threads()
         pending_threads: int = GarbageCollector.reap_the_dead()

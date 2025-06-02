@@ -133,7 +133,8 @@ class PlayerState:
                     cls._is_idle = True
                 if reason == 'quit':
                     # Shutting down player_key
-                    MY_LOGGER.debug(f'QUIT')
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug('QUIT')
                     cls._is_idle = True
             if event == 'start_file':
                 # Starting to play a file
@@ -142,9 +143,10 @@ class PlayerState:
                 cls._is_idle = False
             if event == 'idle':
                 cls._is_idle = True
-        MY_LOGGER.debug(f'last_played: {cls._last_played_idx}\n'
-                        f'last_entry: {cls._last_playlist_entry_idx}\n'
-                        f'idle: {cls._is_idle}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'last_played: {cls._last_played_idx}\n'
+                            f'last_entry: {cls._last_playlist_entry_idx}\n'
+                            f'idle: {cls._is_idle}')
 
     @classmethod
     def check_play_limits(cls) -> bool:
@@ -156,10 +158,11 @@ class PlayerState:
         :return:
         """
         more_needed: bool = False
-        MY_LOGGER.debug(f'current_serial#: {cls._current_phrase_serial_num} '
-                        f'Expired #: {PhraseList.expired_serial_number}')
-        MY_LOGGER.debug(f'chars_queued: {cls.chars_queued_to_play} '
-                        f'remaining: {cls.remaining_to_play()}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'current_serial#: {cls._current_phrase_serial_num} '
+                            f'Expired #: {PhraseList.expired_serial_number}')
+            MY_LOGGER.debug(f'chars_queued: {cls.chars_queued_to_play} '
+                            f'remaining: {cls.remaining_to_play()}')
         if cls._current_phrase_serial_num < PhraseList.expired_serial_number:
             # Dang, expired, Move up to an unexpired one. After return,
             # caller will note expired phrase and start over
@@ -216,7 +219,8 @@ class PlayerState:
         ok_to_play: bool = phrase.serial_number <= cls._current_phrase_serial_num
         if not ok_to_play or phrase.is_expired():
             cls.check_play_limits()
-            MY_LOGGER.debug(f'ok_to_play: {ok_to_play}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'ok_to_play: {ok_to_play}')
         return ok_to_play
 
     @classmethod
@@ -314,11 +318,13 @@ class SlaveCommunication:
             except OSError as e:
                 MY_LOGGER.exception(f'Failed to create FIFO: {fifo_path}')
 
-        MY_LOGGER.debug(f'Starting SlaveRunCommand args: {args}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'Starting SlaveRunCommand args: {args}')
         self.slave = SlaveRunCommand(args, thread_name='slv_run_cmd',
                                      count=count,
                                      post_start_callback=self.create_slave_pipe)
-        MY_LOGGER.debug(f'Back from starting SlaveRunCommand')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'Back from starting SlaveRunCommand')
 
     def create_slave_pipe(self) -> bool:
         """
@@ -358,10 +364,12 @@ class SlaveCommunication:
                                                         buffering=LINE_BUFFERING,
                                                         encoding='utf-8', errors=None,
                                                         newline=None)
-                    MY_LOGGER.debug(f'RC: {self.rc}')
+                    if MY_LOGGER.isEnabledFor(DEBUG_V):
+                        MY_LOGGER.debug_v(f'RC: {self.rc}')
                     if self.rc == 0:
                         self.run_state = RunState.PIPES_CONNECTED
-                        MY_LOGGER.debug(f'Set run_state PIPES_CONNECTED')
+                        if MY_LOGGER.isEnabledFor(DEBUG_V):
+                            MY_LOGGER.debug_v(f'Set run_state PIPES_CONNECTED')
                         self.run_state = RunState.RUNNING
                 except AbortException:
                     reraise(*sys.exc_info())
@@ -383,8 +391,8 @@ class SlaveCommunication:
                 break
             Monitor.exception_on_abort(timeout=0.1)
         try:
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'unlink {self.fifo_path}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'unlink {self.fifo_path}')
             self.fifo_path.unlink(missing_ok=True)
             pass
         except AbortException:
@@ -404,7 +412,8 @@ class SlaveCommunication:
                                              name=f'speak_{self.count}')
         self.speak_thread.start()
         GarbageCollector.add_thread(self.speak_thread)
-        MY_LOGGER.debug(f'Returning from create_slave_pipes')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'Returning from create_slave_pipes')
         return True
 
     def add_phrase(self, phrase: Phrase, volume: float = None,
@@ -441,8 +450,9 @@ class SlaveCommunication:
             speed = float(speed)
             volume = float(volume)
             clz._current_phrase_serial_num = phrase.serial_number
-            MY_LOGGER.debug(f'phrase serial: {phrase.serial_number} '
-                            f'{phrase.short_text()}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'phrase serial: {phrase.serial_number} '
+                                f'{phrase.short_text()}')
             if Monitor.abort_requested():
                 MY_LOGGER.debug(F'ABORT_REQUESTED')
                 self.empty_queue()
@@ -459,12 +469,14 @@ class SlaveCommunication:
                 if phrase.is_expired():
                     expired_check_str = f'{expired_check_str} EXPIRED'
             else:
-                MY_LOGGER.debug(f'check_expired is NOT enabled')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'check_expired is NOT enabled')
 
-            MY_LOGGER.debug(f'FIFO-ish {phrase.short_text()} '
-                            f'# {phrase.serial_number} expired #: '
-                            f'{PhraseList.expired_serial_number}'
-                            f' {expired_check_str} {interrupted_str}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'FIFO-ish {phrase.short_text()} '
+                                f'# {phrase.serial_number} expired #: '
+                                f'{PhraseList.expired_serial_number}'
+                                f' {expired_check_str} {interrupted_str}')
             if self.tts_player_idle and not phrase.speak_over_kodi:
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'player_key is IDLE')
@@ -474,7 +486,6 @@ class SlaveCommunication:
                                 f' < RUNNING.value: {RunState.RUNNING.value}')
             entry: PhraseQueueEntry = PhraseQueueEntry(phrase, volume, speed)
             self.phrase_queue.put(entry)
-            MY_LOGGER.debug(f'Added entry')
         except AbortException:
             reraise(*sys.exc_info())
         except:
@@ -494,7 +505,8 @@ class SlaveCommunication:
             try:
                 idle_counter += 1
                 if entry is not None and entry.phrase.is_expired():
-                    MY_LOGGER.debug(f'EXPIRED: {entry.phrase.short_text()}')
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug(f'EXPIRED: {entry.phrase.short_text()}')
                 entry = self.phrase_queue.get_nowait()
                 self._previous_entry = entry
             except queue.Empty:
@@ -527,7 +539,8 @@ class SlaveCommunication:
                     # Keep PhraseLists together.
                     if (not PlayerState.is_player_hungry() and
                             PlayerState.is_phraselist_complete(entry.phrase)):
-                        MY_LOGGER.debug(f'Not hungry')
+                        if MY_LOGGER.isEnabledFor(DEBUG_V):
+                            MY_LOGGER.debug_v(f'Not hungry')
                         # Usable or None  phrase kept in self._previous_entry
                         continue
                     self.play_phrase(entry.phrase, entry.volume, entry.speed)
@@ -537,7 +550,8 @@ class SlaveCommunication:
                     pass
         except AbortException:
             return
-        MY_LOGGER.debug('process_phrase_queue exiting')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug('process_phrase_queue exiting')
 
     def empty_queue(self) -> None:
         """
@@ -561,10 +575,11 @@ class SlaveCommunication:
             expired_check_str: str = ''
             if phrase.check_expired:
                 expired_check_str = 'CHECK'
-            MY_LOGGER.debug(f'FIFO-ish {phrase.short_text()} '
-                            f'# {phrase.serial_number} expired #: '
-                            f'{PhraseList.expired_serial_number}'
-                            f' {expired_check_str} {interrupted_str}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'FIFO-ish {phrase.short_text()} '
+                                f'# {phrase.serial_number} expired #: '
+                                f'{PhraseList.expired_serial_number}'
+                                f' {expired_check_str} {interrupted_str}')
             if self.tts_player_idle and not phrase.speak_over_kodi:
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'player_key is IDLE')
@@ -581,28 +596,33 @@ class SlaveCommunication:
                 pre_silence_path: Path = phrase.pre_pause_path()
                 self.send_line(f'loadfile {str(pre_silence_path)} {suffix}',
                                pre_pause=True)
-                MY_LOGGER.debug(f'LOADFILE pre_silence {phrase.get_pre_pause()} ms' )
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug(f'LOADFILE pre_silence {phrase.get_pre_pause()} ms' )
 
             if speed != self.current_speed:
-                MY_LOGGER.debug(f'speed: {speed} current:'
-                                f' {self.current_speed}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'speed: {speed} current: {self.current_speed}')
                 self.set_next_speed(speed)   # Speed, Volume is reset to initial values on each
             #  else:
             #      self.set_next_speed(speed)  # HACK ALWAYS set unless defaults changed
             if volume != self.default_volume:
-                MY_LOGGER.debug(f'volume: {volume} default: {self.default_volume}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'volume: {volume} default: {self.default_volume}')
                 self.set_next_volume(volume)  # file played
            #   else:
            #       self.set_next_volume(volume)  # HACK ALWAYS send volume or change defaults
             self.send_line(f'loadfile {str(phrase.get_cache_path())} {suffix}',
                            voiced=True)
-            MY_LOGGER.debug(f'LOADFILE {phrase.short_text(max_len=60)}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'LOADFILE {phrase.short_text(max_len=60)}')
 
             if phrase.get_post_pause() != 0 and phrase.post_pause_path() is not None:
                 post_silence_path: Path = phrase.post_pause_path()
                 self.send_line(f'loadfile {str(post_silence_path)} {suffix}',
                                post_pause=True)
-                MY_LOGGER.debug(f'LOADFILE post_silence {phrase.get_post_pause()} ms' )
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'LOADFILE post_silence {phrase.get_post_pause()}'
+                                      f' ms' )
         except ExpiredException:
             pass
         except AbortException:
@@ -688,8 +708,9 @@ class SlaveCommunication:
         """
         clz = type(self)
         try:
-            MY_LOGGER.debug(f'STOP PURGE: {purge} future: {keep_silent} '
-                            f'kill: {kill}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'STOP PURGE: {purge} future: {keep_silent} '
+                                f'kill: {kill}')
             if kill:
                 quit_str: str = f'quit'
                 self.run_state = RunState.DIE
@@ -711,7 +732,8 @@ class SlaveCommunication:
 
     def resume_voicing(self) -> None:
         clz = SlaveCommunication
-        MY_LOGGER.debug('RESUME')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v('RESUME')
         self.tts_player_idle = False
 
     '''
@@ -842,11 +864,13 @@ class SlaveCommunication:
         #                 f'serial: {self.phrase_serial}')
         if self.idle_on_play_video:
             if video_player_state == KodiPlayerState.PLAYING_VIDEO:
-                MY_LOGGER.debug(f'STOP playing TTS while Kodi player_key active')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug('STOP playing TTS while Kodi player_key active')
                 self.stop_player(purge=True, keep_silent=True)
             elif video_player_state != KodiPlayerState.PLAYING_VIDEO:
                 self.resume_voicing()  # Resume playing TTS content
-                MY_LOGGER.debug(f'Start playing TTS (Kodi not playing)')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug('Start playing TTS (Kodi not playing)')
         return False  # Don't unregister
 
     def start_service(self) -> int:

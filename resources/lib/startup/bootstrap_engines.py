@@ -5,7 +5,7 @@ import sys
 
 import xbmcaddon
 
-from backends.settings.service_types import ServiceKey, Services, ServiceType
+from backends.settings.service_types import ServiceKey, Services, ServiceType, TTS_Type
 from common import *
 
 from backends.base import BaseEngineService
@@ -13,7 +13,7 @@ from backends.settings.settings_map import Status, SettingsMap
 from common.constants import Constants
 from backends.settings.service_unavailable_exception import ServiceUnavailable
 from common.logger import *
-from common.service_status import ServiceStatus
+from common.service_status import ServiceStatus, StatusType
 from common.setting_constants import Backends
 from common.settings_low_level import SettingsLowLevel
 from backends.settings.service_types import ServiceID
@@ -59,13 +59,6 @@ class BootstrapEngines:
         # Initialize the players since engine availability depends upon player_key
         # availability. Further, Players don't have such dependencies on engines.
 
-        # Settings and SettingsLowLevel depend upon the settings being defined
-        # before they are loaded.
-
-        from backends.settings.base_service_settings import BaseServiceSettings
-        if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'About to define TTS_Key settings')
-        BaseServiceSettings.config_predefined_settings()
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug('About to load TTS_Key settings')
         # Populate the settings cache
@@ -100,7 +93,7 @@ class BootstrapEngines:
             except Exception as e:
                 MY_LOGGER.exception('')
                 SettingsMap.set_available(ServiceKey.ESPEAK_KEY,
-                                          ServiceStatus(status=Status.FAILED))
+                                          status=StatusType.BROKEN)
         '''
         try:
             from backends.engines.festival_settings import FestivalSettings
@@ -138,17 +131,17 @@ class BootstrapEngines:
         except Exception as e:
             MY_LOGGER.exception('')
             SettingsMap.set_available(ServiceKey.GOOGLE_KEY,
-                                      ServiceStatus(status=Status.FAILED))
+                                      StatusType.BROKEN)
 
         try:
             from backends.no_engine_settings import NoEngineSettings
-            service_status = NoEngineSettings.config_settings()
+            NoEngineSettings.config_settings()
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
             MY_LOGGER.exception('')
             SettingsMap.set_available(ServiceKey.NO_ENGINE_KEY,
-                                      ServiceStatus(status=Status.FAILED))
+                                      StatusType.BROKEN)
         '''
         try:
             from backends.settings.Pico2WaveSettings import Pico2WaveSettings
@@ -240,7 +233,7 @@ class BootstrapEngines:
             except Exception as e:
                 MY_LOGGER.exception('')
                 SettingsMap.set_available(ServiceKey.POWERSHELL_KEY,
-                                          ServiceStatus(status=Status.FAILED))
+                                          StatusType.BROKEN)
 
     @classmethod
     def load_engine(cls, engine_id: str) -> None:
@@ -255,7 +248,7 @@ class BootstrapEngines:
             engine: BaseEngineService | None = None
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'Loading service_id: {engine_id}')
-            if engine_id in (Backends.AUTO_ID, Backends.ESPEAK_ID):
+            if engine_id in (Backends.ESPEAK_ID):
                 from backends.espeak import ESpeakTTSBackend
                 engine = ESpeakTTSBackend()
             elif engine_id == Backends.FESTIVAL_ID:
@@ -301,13 +294,14 @@ class BootstrapEngines:
                 '''
             service_key: ServiceID | None = None
             try:
-                service_key = ServiceID(ServiceType.ENGINE, engine_id)
+                service_key = ServiceID(ServiceType.ENGINE, engine_id,
+                                        f'{TTS_Type.SERVICE_ID}')
                 # SettingsMap.set_available(service_key, Reason.AVAILABLE)
             except Exception:
                 MY_LOGGER.exception('')
                 if service_key is not None:
                     SettingsMap.set_available(service_key,
-                                              ServiceStatus(status=Status.FAILED))
+                                              StatusType.BROKEN)
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
@@ -319,8 +313,8 @@ class BootstrapEngines:
         from common.base_services import BaseServices
         for engine_id in cls.engine_ids_by_priority:
             engine_id: str
-            service_key: ServiceID = ServiceID(ServiceType.ENGINE,
-                                               engine_id)
+            service_key: ServiceID = ServiceID(ServiceType.ENGINE, engine_id,
+                                               f'{TTS_Type.SERVICE_ID}')
             try:
                 instance: BaseServices | None = None
                 try:
@@ -348,8 +342,8 @@ class BootstrapEngines:
         from common.base_services import BaseServices
         for engine_id in cls.engine_ids_by_priority:
             engine_id: str
-            service_key: ServiceID = ServiceID(ServiceType.ENGINE,
-                                               engine_id)
+            service_key: ServiceID = ServiceID(ServiceType.ENGINE, engine_id,
+                                               f'{TTS_Type.SERVICE_ID}')
             if not SettingsMap.is_available(service_key):
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'Engine NOT available: {service_key}')

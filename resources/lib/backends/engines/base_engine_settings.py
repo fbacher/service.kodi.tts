@@ -10,6 +10,7 @@ from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import (BoolValidator, GenderValidator, IntValidator,
                                           StringValidator, Validator)
 from common.logger import BasicLogger
+from common.service_status import StatusType
 from common.setting_constants import Backends, Genders
 
 module_logger = BasicLogger.get_logger(__name__)
@@ -49,17 +50,35 @@ class BaseEngineSettings:
     '''
 
     @staticmethod
-    def config_settings(service_key: ServiceID) -> None:
+    def config_settings(service_key: ServiceID,
+                        settings: List[str]) -> None:
+        """
+        Configures settings common to some engines
+
+        :param service_key: Identifies the engine being configured
+        :param settings: List of settings that are to be configured here for the
+                         engine being configured
+        :return:
+        """
         if BaseEngineSettings.initialized.setdefault(service_key, False):
             return
         BaseEngineSettings.initialized[service_key] = True
 
-        cache_validator: BoolValidator
-        cache_validator = BoolValidator(service_key.with_prop(SettingProp.CACHE_SPEECH),
-                                        default=False)
-        SettingsMap.define_setting(cache_validator.service_key, cache_validator)
+        for setting_id in settings:
+            if setting_id == SettingProp.CACHE_SPEECH:
+                service_id: ServiceID = service_key.with_prop(SettingProp.CACHE_SPEECH)
+                cache_validator: BoolValidator
+                cache_validator = BoolValidator(service_id,
+                                                default=False,
+                                                define_setting=True,
+                                                service_status=StatusType.OK,
+                                                persist=True)
 
-        gender_visible: BoolValidator
-        gender_visible = BoolValidator(service_key.with_prop(SettingProp.GENDER_VISIBLE),
-                                       default=True)
-        SettingsMap.define_setting(gender_visible.service_key, gender_visible)
+            if setting_id == SettingProp.GENDER_VISIBLE:
+                service_id: ServiceID = service_key.with_prop(SettingProp.GENDER_VISIBLE)
+                gender_visible: BoolValidator
+                gender_visible = BoolValidator(service_id,
+                                               default=True,
+                                               define_setting=True,
+                                               service_status=StatusType.OK,
+                                               persist=True)

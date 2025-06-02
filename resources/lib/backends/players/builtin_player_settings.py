@@ -2,19 +2,23 @@
 from __future__ import annotations  # For union operator |
 
 from backends.settings.i_validators import INumericValidator
+from backends.settings.setting_properties import SettingType
 from common import *
 
 from backends.audio.sound_capabilities import SoundCapabilities
 from backends.settings.base_service_settings import BaseServiceSettings
-from backends.settings.service_types import PlayerType, Services, ServiceType
+from backends.settings.service_types import PlayerType, ServiceKey, Services, ServiceType
 from backends.settings.settings_map import Status, SettingsMap
-from backends.settings.validators import (BoolValidator, ConstraintsValidator,
-                                          NumericValidator, StringValidator, Validator)
+from backends.settings.validators import (BoolValidator,
+                                          NumericValidator, SimpleStringValidator,
+                                          StringValidator, Validator)
 from common.config_exception import UnusableServiceException
 from common.constants import Constants
 from common.logger import BasicLogger
-from common.service_status import Progress, ServiceStatus
+from common.message_ids import MessageId
+from common.service_status import Progress, ServiceStatus, StatusType
 from common.setting_constants import AudioType, PlayerMode, Players
+from common.settings import Settings
 from common.settings_low_level import SettingProp
 from backends.settings.service_types import ServiceID
 from common.system_queries import SystemQueries
@@ -32,9 +36,9 @@ class BuiltinPlayerSettings:
     ID = Players.BUILT_IN
     service_id: Services = Services.BUILT_IN_PLAYER_ID
     service_type: ServiceType = ServiceType.PLAYER
-    service_key: ServiceID = ServiceID(service_type, service_id)
+    service_key: ServiceID = ServiceKey.BUILT_IN_KEY
     NAME_KEY: ServiceID = service_key.with_prop(SettingProp.SERVICE_NAME)
-    displayName = 'Built-in'
+    displayName: str = MessageId.PLAYER_BUILT_IN.get_msg()
 
     settings: Dict[str, Validator] = {}
 
@@ -52,57 +56,63 @@ class BuiltinPlayerSettings:
     _service_status: ServiceStatus = ServiceStatus()
 
     @classmethod
-    def config_settings(cls, *args, **kwargs) -> ServiceStatus:
+    def config_settings(cls, *args, **kwargs) -> None:
         if cls.initialized:
-            return cls.get_status()
+            return
         # Basic checks that don't depend on config
         cls.check_is_supported_on_platform()
         cls.check_is_installed()
         if cls._service_status.status != Status.OK:
-            SettingsMap.set_available(cls.service_key, cls._service_status)
             raise UnusableServiceException(cls.service_key,
                                            cls._service_status,
                                            msg='')
-        cls.initialized = True
-        cls._config()
         cls.check_is_available()
         cls.check_is_usable()
         cls.is_usable()
-        return cls.get_status()
+        cls.initialized = True
+        cls._config()
+        return
 
     @classmethod
     def _config(cls):
         #  service_properties = {Constants.NAME: cls.displayName}
         #  SettingsMap.define_service_properties(cls.service_key,
         #                                        service_properties)
-
+        name_validator: SimpleStringValidator
+        name_validator = SimpleStringValidator(service_key=cls.NAME_KEY,
+                                               value=cls.displayName,
+                                               const=True,
+                                               define_setting=True,
+                                               service_status=StatusType.OK,
+                                               persist=False)
         t_service_key: ServiceID
         t_service_key = cls.service_key.with_prop(SettingProp.VOLUME)
-        tts_volume_validator: INumericValidator
-        tts_volume_validator = SettingsMap.get_validator(cls.service_key)
         volume_validator: NumericValidator
         volume_validator = NumericValidator(t_service_key,
                                             minimum=5, maximum=400,
                                             default=100, is_decibels=False,
-                                            is_integer=False)
-        SettingsMap.define_setting(volume_validator.service_key,
-                                   volume_validator)
+                                            is_integer=False,
+                                            define_setting=True,
+                                            service_status=StatusType.OK,
+                                            persist=True)
 
         t_service_key = cls.service_key.with_prop(SettingProp.SPEED)
         speed_validator: NumericValidator
         speed_validator = NumericValidator(t_service_key,
                                            minimum=0.25, maximum=3,
                                            is_decibels=False,
-                                           is_integer=False)
-        SettingsMap.define_setting(speed_validator.service_key,
-                                   speed_validator)
+                                           is_integer=False,
+                                           define_setting=True,
+                                           service_status=StatusType.OK,
+                                           persist=True)
 
         t_service_key = cls.service_key.with_prop(SettingProp.CACHE_SPEECH)
         cache_validator: BoolValidator
         cache_validator = BoolValidator(t_service_key,
-                                        default=False)
-        SettingsMap.define_setting(cache_validator.service_key,
-                                   cache_validator)
+                                        default=False,
+                                        define_setting=True,
+                                        service_status=StatusType.OK,
+                                        persist=True)
 
         allowed_player_modes: List[str] = [
             PlayerMode.ENGINE_SPEAK.value
@@ -111,24 +121,28 @@ class BuiltinPlayerSettings:
         player_mode_validator: StringValidator
         player_mode_validator = StringValidator(t_service_key,
                                                 allowed_values=allowed_player_modes,
-                                                default=PlayerMode.ENGINE_SPEAK.value)
-        SettingsMap.define_setting(player_mode_validator.service_key,
-                                   player_mode_validator)
+                                                default=PlayerMode.ENGINE_SPEAK.value,
+                                                define_setting=True,
+                                                service_status=StatusType.OK,
+                                                persist=True)
 
     @classmethod
     def check_is_supported_on_platform(cls) -> None:
         if cls._service_status.progress == Progress.START:
             cls._service_status.progress = Progress.SUPPORTED
-        MY_LOGGER.debug(f'state: {cls._service_status.progress} '
-                        f'status: {cls._service_status.status}')
 
     @classmethod
     def check_is_installed(cls) -> None:
         # Don't have a test for installed, just move on to available
-        if (cls._service_status.progress == Progress.SUPPORTED
-                and cls._service_status.status == Status.OK):
-            cls._service_status.progress = Progress.INSTALLED
-
+        if cls._service_status.progress == Progress.SUPPORTED:
+            if cls._service_status.status == Status.OK:
+                cls._service_status.progress = Progress.INSTALLED
+            else:
+                cls._service_status.status_summary = StatusType.NOT_FOUND
+                SettingsMap.define_setting(cls.service_key,
+                                           setting_type=SettingType.STRING_TYPE,
+                                           service_status=StatusType.NOT_FOUND,
+                                           validator=None)
     @classmethod
     def check_is_available(cls) -> None:
         """
@@ -147,13 +161,18 @@ class BuiltinPlayerSettings:
     def check_is_usable(cls) -> None:
         """
         Determine if the player is usable in this environment.
+        ALWAYS available
         :return None:
         """
         if cls._service_status.progress == Progress.AVAILABLE:
             if cls._service_status.status == Status.OK:
                 cls._service_status.progress = Progress.USABLE
-            SettingsMap.set_available(cls.service_key, cls._service_status)
-
+                cls._service_status.status_summary = StatusType.OK
+            cls._service_status.status_summary = StatusType.OK
+            SettingsMap.define_setting(cls.service_key,
+                                       setting_type=SettingType.STRING_TYPE,
+                                       service_status=cls._service_status.status_summary,
+                                       validator=None)
     @classmethod
     def is_usable(cls) -> bool:
         """
@@ -164,18 +183,7 @@ class BuiltinPlayerSettings:
         :raises UnusableServiceException: when this service is not functional
         :raises ValueError: when called before this module fully initialized.
         """
-        MY_LOGGER.debug(f'state: {cls._service_status.progress} '
-                        f'status: {cls._service_status.status}')
-        if cls._service_status.status != Status.OK:
-            raise UnusableServiceException(service_key=cls.service_key,
-                                           reason=cls._service_status,
-                                           msg='')
-        check_state: Progress = cls._service_status.progress
-        MY_LOGGER.debug(f'state: {cls._service_status.progress} '
-                        f'status: {cls._service_status.status}')
-        if check_state != Progress.USABLE:
-            raise ValueError(f'Service: {cls.service_key} not fully initialized')
-        return True
+        return SettingsMap.is_available(cls.service_key)
 
     @classmethod
     def get_status(cls) -> ServiceStatus:

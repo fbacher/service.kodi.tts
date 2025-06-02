@@ -164,7 +164,7 @@ class Messages:
     CANNOT_ADJUST_VOLUME = Message('Cannot adjust volume', 32180)
     NOT_AVAILABLE = Message('Not Available', 32182)
     NO_PLAYERS_TO_SELECT = Message('No players to select.', 32183)
-    AUTO = Message('Auto', 32184)
+    #  AUTO = Message('Auto', 32184)
     CHOOSE_PLAYER = Message('Choose Player', 32185)
     NO_OPTIONS_TO_SELECT = Message('No options to select.', 32186)
     CHOOSE_OPTION = Message('Choose Option', 32187)

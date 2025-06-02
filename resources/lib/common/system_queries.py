@@ -11,7 +11,7 @@ from common import *
 from common.constants import Constants
 from common.logger import *
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class SystemQueries:
@@ -19,9 +19,6 @@ class SystemQueries:
     is_windows: bool | None = None
     is_android: bool | None = None
     is_osx: bool | None = None
-
-    def __init__(self):
-        SystemQueries._logger = module_logger
 
     @classmethod
     def isWindows(cls):
@@ -72,7 +69,7 @@ class SystemQueries:
                 uname = subprocess.check_output(['uname', '-a'], text=True,
                                                 shell=False, close_fds=True)
         except:
-            module_logger.error('raspberryPiDistro() - Failed to get uname output')
+            MY_LOGGER.error('raspberryPiDistro() - Failed to get uname output')
         if uname and 'raspbmc' in uname:
             return 'RASPBMC'
         return 'UNKNOWN'

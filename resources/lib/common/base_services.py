@@ -17,7 +17,7 @@ from backends.settings.i_validators import IValidator
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.setting_properties import SettingProp
 from backends.settings.settings_map import Status, SettingsMap
-from backends.settings.validators import (BoolValidator, ConstraintsValidator,
+from backends.settings.validators import (BoolValidator,
                                           IntValidator, NumericValidator,
                                           StringValidator)
 from common.debug import Debug
@@ -130,45 +130,51 @@ class BaseServices(IServices):
     def get_available_service_ids(cls, service_type: ServiceType) -> List[ServiceID]:
         return SettingsMap.get_available_services(service_type)
 
+    '''
     @classmethod
     def getValidator(cls, service_key: ServiceID,
                      setting_id: str) -> ConstraintsValidator:
         validator: ConstraintsValidator | IValidator
         validator = SettingsMap.get_validator(service_key=service_key)
         return validator
+    '''
 
     '''
         'Global' SERVICES
     '''
-
+    '''
     @classmethod
     def get_tts_version(cls) -> str:
         version_validator: StringValidator | IValidator
         version_validator = cls.getValidator(ServiceKey.TTS_KEY,
                                              SettingProp.VERSION)
         return version_validator.get_tts_value()
-
+    '''
+    '''
     @classmethod
     def get_addons_md5(cls) -> str:
         addons_md5_val: StringValidator | IValidator
         addons_md5_val = cls.getValidator(ServiceKey.TTS_KEY,
                                           SettingProp.ADDONS_MD5)
         return addons_md5_val.get_tts_value()
-
+    '''
+    '''
     @classmethod
     def is_disable_broken_engines(cls) -> bool:
         disable_broken_engines_val: BoolValidator | IValidator
         disable_broken_engines_val = cls.getValidator(ServiceKey.TTS_KEY,
                                                       SettingProp.DISABLE_BROKEN_SERVICES)
         return disable_broken_engines_val.get_tts_value()
-
+    '''
+    '''
     @classmethod
     def is_speak_background_progress(cls) -> bool:
         speak_background_progress_validator: BoolValidator | IValidator
         speak_background_progress_validator = cls.getValidator(ServiceKey.TTS_KEY,
                                                                SettingProp.SPEAK_BACKGROUND_PROGRESS)
         return speak_background_progress_validator.get_tts_value()
-
+    '''
+    '''
     @classmethod
     def is_speak_background_progress_during_media(cls) -> bool:
         speak_background_progress_during_media_validator: BoolValidator | IValidator
@@ -176,13 +182,14 @@ class BaseServices(IServices):
             ServiceKey.TTS_KEY,
             SettingProp.SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA)
         return speak_background_progress_during_media_validator.get_tts_value()
-
+    '''
+    '''
     @classmethod
     def uses_tempfs(cls) -> bool:
         cache_validator: BoolValidator | IValidator
         cache_validator = cls.getValidator(ServiceKey.USE_TMPFS)
         return cache_validator.get_tts_value()
-
+    '''
     """
     @classmethod
     def is_auto_item_extra(cls) -> bool:
@@ -191,56 +198,62 @@ class BaseServices(IServices):
                                                SettingProp.AUTO_ITEM_EXTRA)
         return auto_item_extra_val.get_tts_value()
     """
-
+    '''
     @classmethod
     def is_speak_list_count(cls) -> bool:
         cache_validator: BoolValidator | IValidator
         cache_validator = cls.getValidator(ServiceKey.TTS_KEY,
                                            SettingProp.SPEAK_LIST_COUNT)
         return cache_validator.get_tts_value()
-
+    '''
+    '''
     @classmethod
     def is_reader_on(cls) -> bool:
         cache_validator: BoolValidator | IValidator
         cache_validator = cls.getValidator(ServiceKey.TTS_KEY,
                                            SettingProp.READER_ON)
         return cache_validator.get_tts_value()
-
+    '''
+    '''
     @classmethod
     def is_override_poll_interval(cls) -> bool:
         overide_poll_validator: BoolValidator | IValidator
         overide_poll_validator = cls.getValidator(ServiceKey.TTS_KEY,
                                                   SettingProp.OVERRIDE_POLL_INTERVAL)
         return overide_poll_validator.get_tts_value()
-
+    '''
+    '''
     @classmethod
     def get_debug_log_level(cls) -> int:
         debug_log_level_validator: IntValidator | IValidator
         debug_log_level_validator = cls.getValidator(ServiceKey.TTS_KEY,
                                                      SettingProp.DEBUG_LOG_LEVEL)
         return debug_log_level_validator.get_tts_value()
-
+    '''
+    '''
     @classmethod
     def get_poll_interval(cls) -> int:
         poll_interval_validator: IntValidator | IValidator
         poll_interval_validator = cls.getValidator(ServiceKey.TTS_KEY,
                                                    SettingProp.POLL_INTERVAL)
         return poll_interval_validator.get_tts_value()
-
+    '''
+    '''
     @classmethod
     def get_cache_expiration_days(cls) -> int:
         expiration_validator: IntValidator | IValidator
         expiration_validator = cls.getValidator(ServiceKey.TTS_KEY,
                                                 SettingProp.CACHE_EXPIRATION_DAYS)
         return expiration_validator.get_tts_value()
-
+    '''
+    '''
     @classmethod
     def get_background_progress_interval(cls) -> int:
         background_progress_interval_val: IntValidator | IValidator
         background_progress_interval_val = cls.getValidator(ServiceKey.TTS_KEY,
                                                             SettingProp.BACKGROUND_PROGRESS_INTERVAL)
         return background_progress_interval_val.get_tts_value()
-
+    '''
     """
     @classmethod
     def get_auto_item_extra_delay(cls) -> int:
@@ -274,7 +287,7 @@ class BaseServices(IServices):
     Adapter code for SettingsMap. Can't have SettingsMap and BaseServices
     import each other
     """
-
+    '''
     @classmethod
     def is_valid_property(cls, service_or_id: ServiceID,
                           property_id: str) -> bool:
@@ -285,10 +298,11 @@ class BaseServices(IServices):
             service_or_id: IServices
             service_id = service_or_id.service_id
         return SettingsMap.is_valid_setting(service_id, property_id)
-
+    '''
+    '''
     @classmethod
     def get_validator(cls, service_or_id: str,
-                      property_id: str) -> IValidator | ConstraintsValidator | \
+                      property_id: str) -> IValidator | \
                                            StringValidator | IntValidator | \
                                            BoolValidator | NumericValidator | None:
         service_id: str
@@ -297,7 +311,8 @@ class BaseServices(IServices):
         else:
             service_id = service_or_id
         return SettingsMap.get_validator(service_id)
-
+    '''
+    '''
     @classmethod
     def get_default_value(cls, service_or_id: str,
                           property_id: str) -> int | bool | str | float | None:
@@ -308,7 +323,8 @@ class BaseServices(IServices):
         else:
             service_id = service_or_id
         return SettingsMap.get_default_value(service_id, property_id)
-
+    '''
+    '''
     @classmethod
     def get_value(cls, service_or_id: str, property_id: str) \
             -> int | bool | float | str | None:
@@ -319,7 +335,8 @@ class BaseServices(IServices):
         else:
             service_id = service_or_id
         return SettingsMap.get_default_value(service_id, property_id)
-
+    '''
+    '''
     @classmethod
     def get_active_engine_id(cls) -> str:
         """
@@ -358,6 +375,6 @@ class BaseServices(IServices):
         Engine replies what it is allowing player_key to control
         """
         pass
-
+    '''
 
 BaseServices.class_init()

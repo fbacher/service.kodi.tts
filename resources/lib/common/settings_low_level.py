@@ -85,7 +85,7 @@ class SettingsManager:
     def set_settings(cls,
                      settings_to_update: Dict[ServiceID, int | str | bool | None]) -> None:
         for service_key, value in settings_to_update.items():
-            cls.set_setting(service_key.setting_path, value)
+            cls.set_setting(service_key.short_key, value)
 
     @classmethod
     def load_settings(cls,
@@ -274,6 +274,9 @@ class SettingsWrapper:
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'Error getting {setting_path}')
             value = None
+        except Exception:
+            MY_LOGGER.exception('')
+            value = None
 
         if isinstance(value, str):
             value = value.lower() == 'true'
@@ -347,7 +350,7 @@ class SettingsWrapper:
         value: str | None = None
         try:
             value = clz.old_api.getSettingString(setting_path)
-            #  MY_LOGGER.debug(f'value: {value} id: {setting_path}')
+            #  MY_LOGGER.debug(f'value: {value} id: {short_key}')
         except TypeError as e:
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'Error getting {setting_path}')
@@ -442,7 +445,7 @@ class SettingsWrapper:
             ..
         """
         clz = type(self)
-        #  MY_LOGGER.debug(f'Saving {setting_path} value {type(value)} {value}')
+        #  MY_LOGGER.debug(f'Saving {short_key} value {type(value)} {value}')
         value = clz.old_api.setSettingBool(setting_path, value)
 
     def setInt(self, setting_path: str, value: int) -> None:
@@ -738,7 +741,10 @@ class SettingsLowLevel:
         PROTO_LIST_STRINGS: List[str] = ['a', 'b']
         try:
             try:
-                setting_type = SettingProp.SettingTypes[service_key.setting_id]
+                try:
+                    setting_type = SettingsMap.get_setting_type(service_key)
+                except ValueError:
+                    setting_type = SettingProp.SettingTypes[service_key.setting_id]
                 if setting_type == SettingType.BOOLEAN_TYPE:
                     expected_type = 'bool'
                     if not isinstance(value, bool):
@@ -779,7 +785,7 @@ class SettingsLowLevel:
                     f'Probably not defined in resources/settings.xml')
         except Exception:
             MY_LOGGER.exception(
-                    f'TRACE: Bad setting_id: {setting_id}')
+                    f'TRACE: Bad full_setting_id: {full_setting_id}')
         if type_error:
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'TRACE: incorrect type for setting: {full_setting_id} '
@@ -816,17 +822,17 @@ class SettingsLowLevel:
             engine_id: str
             cls.all_engines_loaded = True
             full_setting_id, engine_id = cls.load_setting(ServiceKey.CURRENT_ENGINE_KEY)
-            if engine_id == Backends.AUTO_ID:
-                engine_id = Backends.DEFAULT_ENGINE_ID
+            #  if engine_id == Backends.AUTO_ID:
+            #      engine_id = Backends.DEFAULT_ENGINE_ID
             new_settings[full_setting_id] = engine_id
             #  services_to_add.append(engine_id)  # Do the requested one first
             services_to_add.extend(Backends.ALL_ENGINE_IDS)
-            try:
-                services_to_add.remove(Services.AUTO_ENGINE_ID)
-            except ValueError:
-                MY_LOGGER.exception('')
-        elif service_key.service_type == ServiceType.PLAYER:
-            pass
+            #  try:
+            #     services_to_add.remove(Services.AUTO_ENGINE_ID)
+            # except ValueError:
+            #     MY_LOGGER.exception('')
+        # elif service_key.service_type == ServiceType.PLAYER:
+        #     pass
             #  MY_LOGGER.debug(f'Loading PLAYER services')
             #  services_to_add.extend(Players.ALL_PLAYER_IDS)
         elif service_key.service_type == ServiceType.TTS:
@@ -873,7 +879,7 @@ class SettingsLowLevel:
         'background_progress_interval.powershell': '',
         #  'background_progress_interval.tts': '',
         'cache_expiration_days.eSpeak': '',
-        'cache_expiration_days.tts': '',
+        #  'cache_expiration_days.tts': '',
         # 'cache_path.eSpeak': '',
         # 'cache_path.google': '',
         # 'cache_path.powershell': '',
@@ -1220,9 +1226,9 @@ class SettingsLowLevel:
             service_key = ServiceID(service_type=service_key.service_type,
                                     service_id=service_key.service_id,
                                     setting_id=setting_id)
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'property\'s service_key: {service_key} path: '
-                                f'{service_key.setting_path}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'property\'s service_key: {service_key} path: '
+                                  f'{service_key.short_key}')
             if SettingsMap.is_valid_setting(service_key):
                 value = cls.load_setting(service_key)
             elif force_load:
@@ -1257,10 +1263,10 @@ class SettingsLowLevel:
             found = True
         if not force_load and not SettingsMap.is_valid_setting(service_key):
             found = False
-        if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'Setting {service_key.setting_id} supported: {found} for '
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'Setting {service_key.setting_id} supported: {found} for '
                             f'{service_key.service_id}')
-        setting_path: str = service_key.setting_path
+        setting_path: str = service_key.short_key
         if setting_path in cls.ignore:
             return None
         # MY_LOGGER.debug(f'key: {key}')
@@ -1344,9 +1350,9 @@ class SettingsLowLevel:
                 except Exception as e:
                     MY_LOGGER.exception(
                         f'Second attempt to read setting'
-                        f' {service_key.setting_path} failed')
+                        f' {service_key.short_key} failed')
         #  if value is not None:
-        #     MY_LOGGER.debug(f'Loaded {service_key.setting_path}')
+        #     MY_LOGGER.debug(f'Loaded {service_key.short_key}')
         if value is None:
             try:
                 value = SettingsMap.get_default_value(service_key)
@@ -1622,14 +1628,14 @@ class SettingsLowLevel:
     @classmethod
     def get_service_setting(cls, service_key: ServiceID, default: Any = None) -> Any:
         cls.check_reload()
-        value: Any = SettingsManager.get_setting(service_key.setting_path,
+        value: Any = SettingsManager.get_setting(service_key.short_key,
                                                  default_value=default)
         return value
 
     @classmethod
     def set_service_setting(cls, service_key: ServiceID, value: Any) -> None:
         cls.check_reload()
-        SettingsManager.set_setting(service_key.setting_path, value)
+        SettingsManager.set_setting(service_key.short_key, value)
 
     @classmethod
     def getSetting(cls, service_key: ServiceID,
@@ -1652,7 +1658,7 @@ class SettingsLowLevel:
         value: Any = None
         try:
             cls.check_reload()
-            value: Any = SettingsManager.get_setting(service_key.setting_path,
+            value: Any = SettingsManager.get_setting(service_key.short_key,
                                                      default_value)
             # MY_LOGGER.debug(f'full_setting_id: {full_setting_id} '
             #                   f'default: {default} value: {value}')
@@ -1671,7 +1677,7 @@ class SettingsLowLevel:
                 MY_LOGGER.debug(f'TRACE service_key: {service_key} '
                                 f'value: {value} value_type: {type(value)}')
         success, found_type = cls.type_and_validate_settings(service_key, value)
-        passed: bool = SettingsManager.set_setting(service_key.setting_path, value)
+        passed: bool = SettingsManager.set_setting(service_key.short_key, value)
         return passed
 
     @classmethod
@@ -1681,17 +1687,17 @@ class SettingsLowLevel:
         force_load: bool = False
         # MY_LOGGER.debug(f'ignore_cache: {ignore_cache} service_key: {service_key} '
         #                 f'setting_id: {service_key.setting_id}'
-        #                 f' setting_path: {service_key.setting_path}')
+        #                 f' short_key: {service_key.short_key}')
         if ignore_cache and service_key.setting_id == SettingProp.ENGINE:
             if MY_LOGGER.isEnabledFor(DEBUG_XV):
                 MY_LOGGER.debug_xv(
                     f'TRACE get_setting_str IGNORING CACHE id: {service_key}')
         if ignore_cache:
             try:
-                value: str = cls.settings_wrapper.getString(service_key.setting_path)
+                value: str = cls.settings_wrapper.getString(service_key.short_key)
                 return value.strip()
             except Exception as e:
-                MY_LOGGER.exception('')
+                MY_LOGGER.exception(f'None value for {service_key.short_key}')
                 return default
         # MY_LOGGER.debug(f'setting_id: {service_key.setting_id} service_id: '
         #                 f'{service_key.service_id}')
@@ -1710,7 +1716,8 @@ class SettingsLowLevel:
         value: bool | None = None
         if ignore_cache:
             try:
-                value = cls.settings_wrapper.getBool(service_key.setting_path)
+                value = cls.settings_wrapper.getBool(service_key.short_key)
+                return value
             except Exception as e:
                 MY_LOGGER.exception('')
         value = cls._getSetting(service_key, default)
@@ -1723,7 +1730,7 @@ class SettingsLowLevel:
         :return:
         """
         success, found_type = cls.type_and_validate_settings(service_key, value)
-        return_value = SettingsManager.set_setting(service_key.setting_path, value)
+        return_value = SettingsManager.set_setting(service_key.short_key, value)
         return return_value
 
     @classmethod
@@ -1743,7 +1750,7 @@ class SettingsLowLevel:
         :return:
         """
         cls.check_reload()
-        value: int = SettingsManager.get_setting(service_key.setting_path, default_value)
+        value: int = SettingsManager.get_setting(service_key.short_key, default_value)
         # MY_LOGGER.debug(f'real_key: {real_key} value: {value}')
         return value
 
@@ -1754,11 +1761,11 @@ class SettingsLowLevel:
         :return:
         """
         success, found_type = cls.type_and_validate_settings(service_key, value)
-        return SettingsManager.set_setting(service_key.setting_path, value)
+        return SettingsManager.set_setting(service_key.short_key, value)
 
     @classmethod
     def update_cached_setting(cls, service_key: ServiceID, value: Any) -> None:
-        SettingsManager.set_setting(service_key.setting_path, value)
+        SettingsManager.set_setting(service_key.short_key, value)
 
     '''
     def getBoolList(self, id: str) -> List[bool]:

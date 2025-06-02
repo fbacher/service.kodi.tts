@@ -8,9 +8,10 @@ from backends.audio.sound_capabilities import SoundCapabilities
 from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.service_types import ServiceID, Services, ServiceType
 from backends.settings.settings_map import SettingsMap
-from backends.settings.validators import (BoolValidator, ConstraintsValidator,
+from backends.settings.validators import (BoolValidator,
                                           NumericValidator, StringValidator, Validator)
 from common.constants import Constants
+from common.service_status import StatusType
 from common.setting_constants import AudioType, Converters, PlayerMode, Players
 from common.settings import Settings
 from common.settings_low_level import SettingProp
@@ -53,10 +54,10 @@ class LAMESettings:
         name_validator = StringValidator(service_key=cls.NAME_KEY,
                                          allowed_values=[cls.displayName],
                                          allow_default=False,
-                                         const=True
-                                         )
-
-        SettingsMap.define_setting(cls.NAME_KEY, name_validator)
+                                         const=True,
+                                         define_setting=True,
+                                         service_status=StatusType.OK,
+                                         persist=True)
 
         allowed_player_modes: List[str] = [
             PlayerMode.FILE.value
@@ -66,6 +67,7 @@ class LAMESettings:
         player_mode_validator: StringValidator
         player_mode_validator = StringValidator(t_svc_key,
                                                 allowed_values=allowed_player_modes,
-                                                default=PlayerMode.FILE.value)
-        SettingsMap.define_setting(player_mode_validator.service_key,
-                                   player_mode_validator)
+                                                default=PlayerMode.FILE.value,
+                                                define_setting=True,
+                                                service_status=StatusType.OK,
+                                                persist=True)

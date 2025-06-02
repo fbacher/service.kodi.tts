@@ -5,8 +5,9 @@ from logging import DEBUG
 from pathlib import Path
 from typing import Union
 
-from backends.settings.service_types import ServiceID, SERVICES_BY_TYPE
-from common.service_status import Progress, ServiceStatus, Status
+from backends.settings.service_types import ALL_ENGINES, ServiceID, SERVICES_BY_TYPE
+from backends.settings.setting_properties import SettingProp, SettingType
+from common.service_status import Progress, ServiceStatus, Status, StatusType
 
 try:
     from enum import StrEnum
@@ -30,6 +31,95 @@ from common.logger import *
 MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
+class ServiceInfo:
+    """
+    Contains information about the given service or service property. The information
+    includes:
+        Type of the service or service property,
+        status of the service (does not apply to a service's property)
+        validator, if any
+    """
+    def __init__(self, service_id: ServiceID,
+                 property_type: SettingType | None,
+                 service_status: StatusType = StatusType.UNCHECKED,
+                 validator: (IBoolValidator |
+                             IChannelValidator |
+                             IConstraintsValidator |
+                             IEngineValidator | IGenderValidator |
+                             IIntValidator |
+                             INumericValidator | ISimpleValidator |
+                             IStrEnumValidator |
+                             IStringValidator | IValidator | None) = None,
+                 persist: bool = True):
+        """
+        :param service_id: Fully qualified id for the service, or service's property
+        :param property_type: Type of service's property
+        :param service_status: Status of the service (working, broken, unknown, etc.)
+        :param validator: Any validator associated with this service
+        :param persist: If True, then the value is saved in settings.xml, otherwise
+                        the value is not saved.
+        """
+        if property_type is None:
+            if validator is None or validator.property_type is None:
+                MY_LOGGER.warning(f'property_type not specified and not found in '
+                                  f'validator for service: {service_id} validator:'
+                                  f' {type(validator)}')
+            else:
+                property_type = validator.property_type
+        self._service_id: ServiceID = service_id
+        self._property_type: SettingType | None = property_type
+        self._service_status: StatusType = service_status
+        self._validator: (IBoolValidator |
+                          IChannelValidator |
+                          IConstraintsValidator |
+                          IEngineValidator | IGenderValidator |
+                          IIntValidator |
+                          INumericValidator | ISimpleValidator |
+                          IStrEnumValidator |
+                          IStringValidator | IValidator | None) = validator
+        self._persist: bool = persist
+
+    @property
+    def service_id(self) -> ServiceID:
+        return self._service_id
+
+    @property
+    def property_type(self) -> SettingType | None:
+        return self._property_type
+
+    @property
+    def service_status(self) -> StatusType:
+        return self._service_status
+
+    @service_status.setter
+    def service_status(self, service_status: StatusType) -> None:
+        self._service_status = service_status
+
+    @property
+    def validator(self) -> (IBoolValidator |
+                            IChannelValidator |
+                            IConstraintsValidator |
+                            IEngineValidator | IGenderValidator |
+                            IIntValidator |
+                            INumericValidator | ISimpleValidator |
+                            IStrEnumValidator |
+                            IStringValidator | IValidator | None):
+        MY_LOGGER.debug(f'{self.service_id} validator: {self._validator}')
+        return self._validator
+
+    @property
+    def persist(self) -> bool:
+        return self._persist
+
+    def __repr__(self) -> str:
+        val_str: str = ''
+        if self.validator is not None:
+            val_str = self.validator.__class__.__name__
+        return (f'service: {self.service_id} type: {self.property_type} '
+                f'status: {self.service_status} persist: {self.persist} '
+                f'val: {val_str}')
+
+
 class SettingsMap:
     """
     A map of all possible settings and their type.
@@ -43,7 +133,7 @@ class SettingsMap:
     it needs to reliably know: 1) the properties, 2) at least the
     default values. Better yet, if it knows 3) which values are valid.
 
-    Settings are kept in a two-level map. The first level maps the setting_id to
+    Settings are kept in a two-level map. The first level maps the service_id to
     a secondary map of that service's settings.
     """
 
@@ -65,7 +155,7 @@ class SettingsMap:
     #
     # Dict[unique_service_id, Dict[service_property, Validator]]
     # Ex [googleTTS, [volume]] = volume_validator
-    service_to_settings_map: Dict[str, Dict[str, IValidator]] = {}
+    service_to_settings_map: Dict[str, Dict[str, ServiceInfo]] = {}
 
     # service_type_to_svcs_map maps a ServiceType into all services
     # of that type.
@@ -74,11 +164,13 @@ class SettingsMap:
     # service_key_to_val_map is similar to service_to_settings_map, above.
     # service_key_to_val maps a service setting or property to any validator
     # associated with it.
-    service_key_to_val_map: Dict[ServiceID, IValidator | None] = {}
+    # service_key_to_val_map: Dict[ServiceID, IValidator | None] = {}
+
+    service_info_map: Dict[str, ServiceInfo] = {}
 
     # service_availability_map holds the most recent availability status of a
     # given service.
-    service_availability_map: Dict[str, ServiceStatus] = {}
+    # service_availability_map: Dict[str, ServiceStatus] = {}
 
     # service_to_properties_map maps a service (without property id) to a map of
     # the service's properties to its initial values. Note that property ids do
@@ -97,9 +189,9 @@ class SettingsMap:
     # src_to_cand_svc, or service-to-candidate-services.
     #
     # Like with Settings, a key is formed from the service_type and
-    # setting_id: ex setting_id.service_type. But in this case there
+    # service_id: ex service_id.service_type. But in this case there
     # are two levels of lookup
-    #   Dict[setting_id.service_type] -> Dict[dep_service_type]
+    #   Dict[service_id.service_type] -> Dict[dep_service_type]
     #     -> List[dep_service_id]
     #
     # Example, EngineType GoogleTTS is able to use specific instances
@@ -115,7 +207,7 @@ class SettingsMap:
         :return:
         """
         result: List[ServiceID] = []
-        service_types: List[ServiceType]
+        service_types: List[ServiceType]  # Engine, player, etc.
         if service_type is None:  # Get all service Types
             service_types = list(ServiceType)
         else:
@@ -123,147 +215,181 @@ class SettingsMap:
         # MY_LOGGER.debug(f'service_types: {service_types}')
         for service_type in service_types:
             service_type: ServiceType
-            for service_id in SERVICES_BY_TYPE[service_type]:
-                service_id: StrEnum
-                service_key: ServiceID = ServiceID(service_type, service_id)
-                if MY_LOGGER.isEnabledFor(DEBUG_XV):
-                    MY_LOGGER.debug_xv(f'service_key: {service_key} # keys:'
-                                       f' {cls.service_availability_map.keys()}')
-                key: str = service_key.service_key
-                status: ServiceStatus
-                status = cls.service_availability_map.get(key)
+            for service_key in SERVICES_BY_TYPE[service_type]:
+                # example: service_key Engine.google, Engine.espeak, player.mpv
+                # Does NOT include tts.tts.*
+                service_key: StrEnum
+                service_id: ServiceID = ServiceID(service_type, service_key,
+                                                  SettingProp.SERVICE_ID)
+                MY_LOGGER.debug(f'service_type: {service_type} '
+                                f'service_key: {service_key} \n'
+                                f'service_id: {service_id} '
+                                f'service_id.key: {service_id.key}')
+                # if MY_LOGGER.isEnabledFor(DEBUG_XV):
+                #     MY_LOGGER.debug_xv(f'service_key: {service_key} # keys:'
+                #                        f' {cls.service_info_map.keys()}')
+                service_info: ServiceInfo
+                service_info = cls.service_info_map.get(service_id.key)
+                service_status: StatusType = service_info.service_status
 
                 if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'availability: {key} status: {status}')
-                if status is not None and status.is_usable():
-                    result.append(service_key)
+                    MY_LOGGER.debug(f'availability: key: '
+                                    f'{service_id.key} '
+                                    f'status: {service_status}')
+                if service_status is not None and service_status == StatusType.OK:
+                    result.append(service_id)
         #  MY_LOGGER.debug(f'result: {result}')
         return result
 
     @classmethod
-    def set_available(cls, service_key: ServiceID,
-                      status: ServiceStatus = ServiceStatus.GOOD_STATUS) -> None:
+    def set_available(cls, service_id: ServiceID,
+                      status: StatusType = StatusType.OK) -> None:
         """
         Sets the current status of the given service.
 
-        :param service_key: Identifies the service
+        :param service_id: Identifies the service
         :param status:
         :return:
         """
         if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'key: {service_key} status: {status}')
+            MY_LOGGER.debug(f'key: {service_id.key} status: {status}')
         if status is None:
             if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'{service_key.service_key} is NOT available -'
+                MY_LOGGER.debug(f'{service_id.key} is NOT available -'
                                 f' status None')
             return
-        elif status.status != Status.OK or status.progress != Progress.USABLE:
+        elif status != StatusType.OK:
             if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'{service_key.service_key} is NOT available status'
-                                f'status: {status.status} '
-                                f'state: {status.progress}')
-        cls.service_availability_map[service_key.service_key] = status
+                MY_LOGGER.debug(f'{service_id.key} is NOT available status'
+                                f'status: {status}')
+        service_info: ServiceInfo = cls.service_info_map.get(service_id.key)
+        if service_info is None:
+            service_info = ServiceInfo(service_id, property_type=SettingType.STRING_TYPE,
+                                       service_status=status,
+                                       validator=None,
+                                       persist=False)
+        else:
+            service_info.service_status = status
+        cls.service_info_map[service_id.key] = service_info
 
     @classmethod
-    def is_available(cls, service_key: ServiceID, force: bool = False) -> bool:
-        status: ServiceStatus
-        status = cls.service_availability_map.get(service_key.service_key, None)
-        #  MY_LOGGER.debug(f'{service_key} force: {force} status: {status}')
-        if status is None:
-            if force:
-                cls.set_available(service_key=service_key)
-                status = cls.service_availability_map.get(service_key.service_key, None)
-            else:
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'{service_key} is NOT registered.')
-                return False
+    def is_available(cls, service_id: ServiceID, force: bool = False) -> bool:
+        """
+        Determine if the SERVICE for the given setting is available. Ex. for the
+        setting engine.google.player, the SERVICE is engine.google
 
-        if status.status != Status.OK or status.progress != Progress.USABLE:
+        If the SERVICE is not available, then neither are any of its settings
+
+        :param service_id:
+        :param force:
+        :return:
+        """
+        service_info: ServiceInfo
+        service_info = cls.service_info_map.get(service_id.key, None)
+        MY_LOGGER.debug(f'{service_id} force: {force} service: '
+                        f'{service_id.key} '
+                        f'service_info: {service_info}')
+        service_status: StatusType = StatusType.UNCHECKED
+        if service_info is None:
+            MY_LOGGER.debug(f'service_info is None force: {force}')
             if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'{service_key.service_key} is NOT available status'
-                                f'status: {status.status} '
-                                f'state: {status.progress}')
+                MY_LOGGER.debug(f'{service_id} is NOT registered.')
+            return False
+        else:
+            service_status = service_info.service_status
+        if service_status != StatusType.OK:
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'{service_id.key} is NOT available '
+                                f'status: {service_status}')
             return False
         return True
 
     @classmethod
-    def define_setting(cls, service_key: ServiceID,
-                       validator: IValidator | None):
+    def define_setting(cls, service_id: ServiceID,
+                       setting_type: SettingType | None = None,
+                       service_status: StatusType | None = StatusType.OK,
+                       validator: (IBoolValidator |
+                                   IChannelValidator |
+                                   IConstraintsValidator |
+                                   IEngineValidator | IGenderValidator |
+                                   IIntValidator |
+                                   INumericValidator | ISimpleValidator |
+                                   IStrEnumValidator |
+                                   IStringValidator | IValidator | None) = None,
+                       persist: bool = True):
         """
-        Defines a validator to use for a given setting of a service
-        :param service_key: Identifies the service_type, service and setting_id
-        :param validator: If None, then the setting is NOT supported and any
-                          prior definition is removed.
+        Defines a property of a service
+        :param service_id: Identifies the service_type and service id. For
+        a service property, then also includes the property_id
+        :param setting_type: Identifies the type of service property
+        :param service_status: Indicates whether the service is available, not
+        yet determined, etc. Does NOT apply to service properties
+        :param validator: Specifies any validator used, otherwise no validation is
+        performed
+        :param persist: When True, values are persisted in settings.xml.
         """
-        # MY_LOGGER.debug(f'DEFINE settings for {setting_id} property: {setting_id} '
+        # MY_LOGGER.debug(f'DEFINE settings for {service_id} property: {service_id} '
         #                 f'validator: {type(validator)}')
 
         #  MY_LOGGER.debug(f'service_key: {service_key}')
-        settings_for_service: Dict[str, IValidator]
+        settings_for_service: Dict[str, ServiceInfo]
         settings_for_service = (
-            cls.service_to_settings_map.setdefault(service_key.service_key, {}))
+            cls.service_to_settings_map.setdefault(service_id.key, {}))
         #  MY_LOGGER.debug(f'service_to_settings for: '
-        #                  f'{service_key.service_key} \n service_to_settings_map: '
+        #                  f'{service_key.key} \n service_to_settings_map: '
         #                  f'{cls.service_to_settings_map}')
 
-        # Don't add stupid None entry for the ServiceID id without any setting_id
+        # Don't add stupid None entry for the ServiceID id without any service_id
         # in it, that is, the entry that acts like the root node for that service.
-        # TODO: is such a 'root node' even required? The info it has is contained
-        #       in each setting. Also, adding a setting, creates settings_for_service.
-        if True:  # service_key.setting_id is not None:
-            #
-            # Allow to override any previous entry since doing otherwise would complicate
-            # initialization order since it is normal to initialize your ancestor
-            # prior to yourself
-
-            if validator is None:
-                settings_for_service.pop(service_key.setting_id, None)
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'Undefining setting {service_key.setting_id}'
-                                    f' from {service_key}')
-                cls.service_key_to_val_map[service_key] = None
-            else:
-                cls.service_key_to_val_map.setdefault(service_key, validator)
-                settings_for_service[service_key.setting_id] = validator
-                #  MY_LOGGER.debug(f'Defining setting: '
-                #                  f'{service_key} \n'
-                #                  f'settings_for_service: {settings_for_service}')
+        service_info = cls.service_info_map.get(service_id.key)
+        if service_info is not None:
+            if MY_LOGGER.isEnabledFor(WARNING):
+                MY_LOGGER.warn(f'Service {service_id} already defined. Ignoring '
+                               f'redefinition')
+                return
+        service_info = ServiceInfo(service_id, property_type=setting_type,
+                                   service_status=service_status,
+                                   validator=validator,
+                                   persist=persist)
+        MY_LOGGER.debug(f'Defining {service_id} '
+                        f'service_info: {service_info}')
+        cls.service_info_map[service_id.key] = service_info
+        settings_for_service[service_id.key] = service_info
 
     @classmethod
-    def is_setting_available(cls, key: ServiceID, property_id: str) -> bool:
-        assert isinstance(property_id, str), 'setting_id must be a str'
-        assert not isinstance(property_id, StrEnum), 'setting_id must NOT be StrEnum'
+    def is_setting_available(cls, service_id: ServiceID, property_id: str) -> bool:
+        assert isinstance(property_id, str), 'property_id must be a str'
+        assert not isinstance(property_id, StrEnum), 'property_id must NOT be StrEnum'
 
-        return cls.is_valid_setting(key)
+        return cls.is_valid_setting(service_id)
 
     @classmethod
-    def is_valid_setting(cls, key: ServiceID) -> bool:
+    def is_valid_setting(cls, service_id: ServiceID) -> bool:
         """
+        Verfies that every setting has been explicitly defined.
+
         Note that this can give FALSE results during startup, when the settings
         have not yet all been defined. This should be benign since things should
         return to normal after the settngs are defined, which should be quick.
 
-        :param key:
+        :param service_id:
         :return:
         """
-        settings_for_service: Dict[str, IValidator]
-        settings_for_service = cls.service_to_settings_map.get(key.service_key)
-        if settings_for_service is None:
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'No settings for {key.setting_path} {key.service_key}')
+        # Verify that
+        if service_id.key not in cls.service_info_map.keys():
+            MY_LOGGER.debug(f'{service_id.key} not in service_info_map')
             return False
-
-        if key.setting_id not in settings_for_service.keys():
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'{key.setting_id} not in settings')
-            return False
-        #  if MY_LOGGER.isEnabledFor(DEBUG):
-        #      MY_LOGGER.debug(f'{key.setting_id} is VALID because in {key} setting: '
-        #                      f'{settings_for_service.get(key.setting_id)}')
         return True
 
     @classmethod
-    def get_const_value(cls, service_key: ServiceID) -> Any | None:
+    def get_setting_type(cls, service_id: ServiceID) -> SettingType:
+        service_info: ServiceInfo | None = cls.service_info_map.get(service_id.key)
+        if service_info is None:
+            raise ValueError(f'Invalid service_id: {service_id}')
+        return service_info.property_type
+
+    @classmethod
+    def get_const_value(cls, service_id: ServiceID) -> Any | None:
         """
         Some settings are a fixed value, depending upon service capabilities.
         For example, services which download voice really need a cache to be
@@ -273,18 +399,18 @@ class SettingsMap:
         The loading occurs AFTER settings are defined (which defines the constant values).
         Therefore, after loading the settings, this is called to correct any conflicts.
 
-        :param service_key:
+        :param service_id:
         :return: None if the setting is not constant, otherwise the fixed value
         """
 
-        val: IValidator = cls.get_validator(service_key)
+        val: IValidator = cls.get_validator(service_id)
         if val is None:
             return None
         return val.get_const_value()  # Returns None if not constant
 
     @classmethod
     def get_validator(cls,
-                      service_key: ServiceID) -> (IBoolValidator |
+                      service_id: ServiceID) -> (IBoolValidator |
                                                   IStringValidator |
                                                   IIntValidator |
                                                   IStrEnumValidator |
@@ -294,34 +420,33 @@ class SettingsMap:
                                                   IChannelValidator |
                                                   IEngineValidator |
                                                   ISimpleValidator | None):
-        #  MY_LOGGER.debug(f'service_key: {service_key}')
-        settings_for_service: Dict[str, IValidator]
-        settings_for_service = cls.service_to_settings_map.get(service_key.service_key)
-        #  MY_LOGGER.debug(f'service_key: {service_key}'
-        #                  f' settings_for_service: {settings_for_service}')
-        if settings_for_service is None:
+        MY_LOGGER.debug(f'service_id: {service_id} key: {service_id.key}')
+        service_info: ServiceInfo = cls.service_info_map.get(service_id.key)
+        MY_LOGGER.debug(f'service_info: {service_info}')
+        if service_info is None:
             return None
-        validator = settings_for_service.get(service_key.setting_id)
+        validator = service_info.validator
+        MY_LOGGER.debug(f'validator: {validator}')
         return validator
 
     @classmethod
-    def get_constraints(cls, key: ServiceID) -> IConstraints:
+    def get_constraints(cls, service_id: ServiceID) -> IConstraints:
         validator: IConstraintsValidator
-        validator = cls.get_validator(key)
+        validator = cls.get_validator(service_id)
         constraints: IConstraints
         constraints = validator.constraints
         return constraints
 
     @classmethod
-    def get_default_value(cls, key: ServiceID) -> int | bool | str | float | None:
-        validator: IValidator = cls.get_validator(key)
+    def get_default_value(cls, service_id: ServiceID) -> int | bool | str | float | None:
+        validator: IValidator = cls.get_validator(service_id)
         if validator is None:
             return None
         return validator.default
 
     @classmethod
-    def get_allowed_values(cls, key: ServiceID) -> List[AllowedValue] | None:
-        validator: IValidator = cls.get_validator(key)
+    def get_allowed_values(cls, service_id: ServiceID) -> List[AllowedValue] | None:
+        validator: IValidator = cls.get_validator(service_id)
         if validator is None:
             return None
         if not isinstance(validator, IStringValidator):
@@ -330,13 +455,13 @@ class SettingsMap:
         return validator.get_allowed_values()
 
     @classmethod
-    def get_value(cls, key: ServiceID,
+    def get_value(cls, service_id: ServiceID,
                   property_id: str) -> int | bool | float | str | None:
         if property_id is None:
             property_id = ''
-        assert isinstance(property_id, str), 'setting_id must be a str'
-        assert not isinstance(property_id, StrEnum), 'setting_id must NOT be StrEnum'
-        validator: IValidator = cls.get_validator(key)
+        assert isinstance(property_id, str), 'property_id must be a str'
+        assert not isinstance(property_id, StrEnum), 'property_id must NOT be StrEnum'
+        validator: IValidator = cls.get_validator(service_id)
         if validator is None:
             return None
         value = validator.get_tts_value()

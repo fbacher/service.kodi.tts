@@ -321,48 +321,6 @@ class SimpleRunCommand:
             self.run_state = RunState.COMPLETE
         return
 
-    '''
-    def stderr_reader(self):
-        GarbageCollector.add_thread(self.stderr_thread)
-        if Monitor.is_abort_requested():
-            try:
-                self.process.kill()
-            except Exception:
-                pass
-        clz = type(self)
-        finished = False
-        try:
-            while not Monitor.exception_on_abort():
-                try:
-                    if finished or self.die:
-                        break
-                    line = self.process.stderr.readline()
-                    if len(line) > 0:
-                        self.stderr_lines.append(line)
-                except ValueError as e:
-                    rc = self.process.poll()
-                    if rc is not None:
-                        self.rc = rc
-                        # Command complete
-                        finished = True
-                        break
-                    else:
-                        MY_LOGGER.exception('')
-                        finished = True
-
-        except AbortException as e:
-            return
-        except Exception as e:
-            MY_LOGGER.exception('')
-            return
-
-        try:
-            if self.process.stderr is not None:
-                self.process.stderr.close()
-        except Exception:
-            pass
-    '''
-
     def stdout_reader(self):
         clz = type(self)
         GarbageCollector.add_thread(self.stdout_thread)

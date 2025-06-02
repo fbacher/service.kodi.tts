@@ -4,6 +4,7 @@ from __future__ import annotations  # For union operator |
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 import xbmc
 
@@ -14,15 +15,16 @@ from backends.engines.base_engine_settings import (BaseEngineSettings)
 from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.i_validators import INumericValidator, ValueType
 from backends.settings.service_types import Services, ServiceType
-from backends.settings.setting_properties import SettingProp
+from backends.settings.setting_properties import SettingProp, SettingType
 from backends.settings.settings_map import Status, SettingsMap
-from backends.settings.validators import (BoolValidator, ConstraintsValidator,
+from backends.settings.validators import (BoolValidator,
                                           GenderValidator, NumericValidator,
                                           SimpleStringValidator, StringValidator)
 from common.config_exception import UnusableServiceException
 from common.constants import Constants
 from common.logger import BasicLogger
-from common.service_status import Progress, ServiceStatus
+from common.message_ids import MessageId
+from common.service_status import Progress, ServiceStatus, StatusType
 from common.setting_constants import AudioType, Backends, Genders, PlayerMode, Players
 from common.settings import Settings
 from backends.settings.service_types import ServiceID
@@ -37,9 +39,10 @@ class ESpeakSettings:
     engine_id = Backends.ESPEAK_ID
     service_id: Services = Services.ESPEAK_ID
     service_type: ServiceType = ServiceType.ENGINE
-    service_key: ServiceID = ServiceID(service_type, service_id)
+    service_key: ServiceID = ServiceID(service_type, service_id, SettingProp.SERVICE_ID)
     NAME_KEY: ServiceID = service_key.with_prop(SettingProp.SERVICE_NAME)
-    displayName = 'eSpeak'
+    displayName: str = MessageId.ENGINE_ESPEAK.get_msg()
+    ESPEAK_CMD: str = 'espeak-ng'
 
     # Every setting from settings.xml must be listed here
     # SettingName, default value
@@ -49,24 +52,24 @@ class ESpeakSettings:
 
     @classmethod
     def config_settings(cls, *args, **kwargs: Dict[str, str]) -> None:
-        BaseEngineSettings.config_settings(cls.service_key)
+        BaseEngineSettings.config_settings(cls.service_key,
+                                           settings=[SettingProp.GENDER_VISIBLE])
         if cls.initialized:
             return
         # Basic checks that don't depend on config
         cls.check_is_supported_on_platform()
         cls.check_is_installed()
         if cls._service_status.status != Status.OK:
-            SettingsMap.set_available(cls.service_key, cls._service_status)
             raise UnusableServiceException(cls.service_key,
                                            cls._service_status,
                                            msg='')
+        cls.check_is_available()
+        cls.check_is_usable()
+        cls.is_usable()
         cls.initialized = True
         # Define each engine's default settings here, afterward, they can be
         # overridden by this class.
         cls._config(**kwargs)
-        cls.check_is_available()
-        cls.check_is_usable()
-        cls.is_usable()
         return
 
     @classmethod
@@ -77,31 +80,31 @@ class ESpeakSettings:
                               Constants.CACHE_SUFFIX: 'espk'}
         SettingsMap.define_service_properties(cls.service_key, service_properties)
         '''
+        name_validator: SimpleStringValidator
+        name_validator = SimpleStringValidator(service_key=cls.NAME_KEY,
+                                               value=cls.displayName,
+                                               const=True,
+                                               define_setting=True,
+                                               service_status=StatusType.OK,
+                                               persist=False)
 
         cache_service_key: ServiceID = cls.service_key.with_prop(SettingProp.CACHE_PATH)
         cache_path_val: SimpleStringValidator
         cache_path_val = SimpleStringValidator(cache_service_key,
-                                               value=SettingProp.CACHE_PATH_DEFAULT)
-        SettingsMap.define_setting(cache_path_val.service_key,
-                                   cache_path_val)
+                                               value=SettingProp.CACHE_PATH_DEFAULT,
+                                               define_setting=True,
+                                               service_status=StatusType.OK,
+                                               persist=True)
 
         cache_suffix_key: ServiceID = cls.service_key.with_prop(SettingProp.CACHE_SUFFIX)
         cache_suffix: str = Backends.ENGINE_CACHE_CODE[Backends.ESPEAK_ID]
 
         cache_suffix_val: SimpleStringValidator
         cache_suffix_val = SimpleStringValidator(cache_suffix_key,
-                                                 value=cache_suffix)
-        SettingsMap.define_setting(cache_suffix_val.service_key,
-                                   cache_suffix_val)
-
-        name_validator: StringValidator
-        name_validator = StringValidator(service_key=cls.NAME_KEY,
-                                         allowed_values=[cls.displayName],
-                                         allow_default=False,
-                                         const=True
-                                         )
-
-        SettingsMap.define_setting(cls.NAME_KEY, name_validator)
+                                                 value=cache_suffix,
+                                                 define_setting=True,
+                                                 service_status=StatusType.OK,
+                                                 persist=True)
         #
         # Need to define Conversion Constraints between the TTS 'standard'
         # constraints/settings to the engine's constraints/settings
@@ -110,16 +113,19 @@ class ESpeakSettings:
         pitch_validator = NumericValidator(cls.service_key.with_prop(SettingProp.PITCH),
                                            minimum=0, maximum=99, default=50,
                                            is_decibels=False, is_integer=True,
-                                           increment=1)
-        SettingsMap.define_setting(pitch_validator.service_key, pitch_validator)
+                                           increment=1,
+                                           define_setting=True,
+                                           service_status=StatusType.OK,
+                                           persist=True)
 
         volume_validator: NumericValidator
         volume_validator = NumericValidator(cls.service_key.with_prop(SettingProp.VOLUME),
                                             minimum=0, maximum=200,
                                             default=100, is_decibels=False,
-                                            is_integer=True)
-        SettingsMap.define_setting(volume_validator.service_key,
-                                   volume_validator)
+                                            is_integer=True,
+                                            define_setting=True,
+                                            service_status=StatusType.OK,
+                                            persist=True)
 
         # Can use LAME to convert to mp3. This code is untested
         # TODO: test, expose capability in settings config
@@ -129,9 +135,10 @@ class ESpeakSettings:
         transcoder_val: StringValidator
         transcoder_val = StringValidator(transcoder_service_key,
                                          allowed_values=[Services.LAME_ID,
-                                                         Services.MPLAYER_ID])
-        SettingsMap.define_setting(transcoder_val.service_key,
-                                   transcoder_val)
+                                                         Services.MPLAYER_ID],
+                                         define_setting=True,
+                                         service_status=StatusType.OK,
+                                         persist=True)
         # Defines a very loose language validator. Basically it will accept
         # almost any strings. The real work is done by LanguageInfo and
         # SettingsHelper. Should revisit this validator
@@ -140,34 +147,29 @@ class ESpeakSettings:
         language_validator: StringValidator
         language_validator = StringValidator(t_svc_key,
                                              allowed_values=[], min_length=2,
-                                             max_length=10)
-        SettingsMap.define_setting(language_validator.service_key,
-                                   language_validator)
+                                             max_length=10,
+                                             define_setting=True,
+                                             service_status=StatusType.OK,
+                                             persist=True)
 
         voice_validator: StringValidator
         voice_validator = StringValidator(cls.service_key.with_prop(SettingProp.VOICE),
                                           allowed_values=[], min_length=1, max_length=20,
-                                          default=None)
-
-        SettingsMap.define_setting(voice_validator.service_key,
-                                   voice_validator)
+                                          default=None,
+                                          define_setting=True,
+                                          service_status=StatusType.OK,
+                                          persist=True)
 
         gender_validator = GenderValidator(cls.service_key.with_prop(SettingProp.GENDER),
                                            min_value=Genders.FEMALE,
                                            max_value=Genders.UNKNOWN,
-                                           default=Genders.UNKNOWN)
+                                           default=Genders.UNKNOWN,
+                                           define_setting=True,
+                                           service_status=StatusType.OK,
+                                           persist=True)
 
-        SettingsMap.define_setting(gender_validator.service_key,
-                                   gender_validator)
         gender_validator.set_tts_value(Genders.FEMALE)
 
-        gender_visible_service_key: ServiceID
-        gender_visible_service_key = cls.service_key.with_prop(SettingProp.GENDER_VISIBLE)
-        gender_visible: BoolValidator
-        gender_visible = BoolValidator(gender_visible_service_key,
-                                       default=True)
-        SettingsMap.define_setting(gender_visible.service_key,
-                                   gender_visible)
 
         # Player Options:
         #  1 Use internal player_key and don't produce .wav. Currently don't support
@@ -192,9 +194,10 @@ class ESpeakSettings:
         player_mode_validator: StringValidator
         player_mode_validator = StringValidator(t_svc_key,
                                                 allowed_values=allowed_player_modes,
-                                                default=PlayerMode.ENGINE_SPEAK.value)
-        SettingsMap.define_setting(player_mode_validator.service_key,
-                                   player_mode_validator)
+                                                default=PlayerMode.ENGINE_SPEAK.value,
+                                                define_setting=True,
+                                                service_status=StatusType.OK,
+                                                persist=True)
 
         Settings.set_current_output_format(cls.service_key, AudioType.WAV)
         output_audio_types: List[AudioType] = [AudioType.WAV, AudioType.BUILT_IN]
@@ -223,7 +226,7 @@ class ESpeakSettings:
         for player_id in candidates:
             player_id: str
             player_key: ServiceID
-            player_key = ServiceID(ServiceType.PLAYER, player_id)
+            player_key = ServiceID(ServiceType.PLAYER, player_id, SettingProp.SERVICE_ID)
             if player_id in players and SettingsMap.is_available(player_key):
                 valid_players.append(player_id)
 
@@ -233,20 +236,22 @@ class ESpeakSettings:
         player_validator: StringValidator
         player_validator = StringValidator(cls.service_key.with_prop(SettingProp.PLAYER),
                                            allowed_values=valid_players,
-                                           default=Players.BUILT_IN)
-        SettingsMap.define_setting(player_validator.service_key,
-                                   player_validator)
+                                           default=Players.BUILT_IN,
+                                           define_setting=True,
+                                           service_status=StatusType.OK,
+                                           persist=True)
 
         # If espeak native .wav is produced, then cache_speech = False.
         # If espeak is transcoded to mp3, then cache_speech = True, otherwise, why
         # bother to spend cpu to produce mp3?
 
+        setting_id: ServiceID = cls.service_key.with_prop(SettingProp.CACHE_SPEECH)
         cache_validator: BoolValidator
-        cache_validator = BoolValidator(cls.service_key.with_prop(SettingProp.CACHE_SPEECH),
-                                        default=False)
-
-        SettingsMap.define_setting(cache_validator.service_key,
-                                   cache_validator)
+        cache_validator = BoolValidator(setting_id,
+                                        default=False,
+                                        define_setting=True,
+                                        service_status=StatusType.OK,
+                                        persist=True)
 
         # For consistency (and simplicity) any speed adjustments are actually
         # done by a player_key that supports it. Direct adjustment of player_key speed
@@ -269,9 +274,10 @@ class ESpeakSettings:
                                            minimum=43, maximum=700,
                                            default=176,
                                            is_decibels=False,
-                                           is_integer=True, increment=45)
-        SettingsMap.define_setting(speed_validator.service_key,
-                                   speed_validator)
+                                           is_integer=True, increment=45,
+                                           define_setting=True,
+                                           service_status=StatusType.OK,
+                                           persist=True)
 
     @classmethod
     def check_is_supported_on_platform(cls) -> None:
@@ -281,15 +287,27 @@ class ESpeakSettings:
             cls._service_status.progress = Progress.SUPPORTED
             if not supported:
                 cls._service_status.status = Status.FAILED
+                cls._service_status.status_summary = StatusType.NOT_ON_PLATFORM
+                SettingsMap.define_setting(cls.service_key,
+                                           setting_type=SettingType.STRING_TYPE,
+                                           service_status=StatusType.NOT_ON_PLATFORM,
+                                           validator=None)
+
         MY_LOGGER.debug(f'state: {cls._service_status.progress} '
                         f'status: {cls._service_status.status}')
 
     @classmethod
     def check_is_installed(cls) -> None:
         # Don't have a test for installed, just move on to available
-        if (cls._service_status.progress == Progress.SUPPORTED
-                and cls._service_status.status == Status.OK):
-            cls._service_status.progress = Progress.INSTALLED
+        if cls._service_status.progress == Progress.SUPPORTED:
+            if cls._service_status.status == Status.OK:
+                cls._service_status.progress = Progress.INSTALLED
+            else:
+                cls._service_status.status_summary = StatusType.NOT_FOUND
+                SettingsMap.define_setting(cls.service_key,
+                                           setting_type=SettingType.STRING_TYPE,
+                                           service_status=StatusType.NOT_FOUND,
+                                           validator=None)
 
     @classmethod
     def check_is_available(cls) -> None:
@@ -303,18 +321,18 @@ class ESpeakSettings:
         if (cls._service_status.progress == Progress.INSTALLED
                 and cls._service_status.status == Status.OK):
             try:
-                cmd_path = 'espeak-ng'
+                cmd_path: Path = Constants.ESPEAK_PATH / 'espeak-ng.exe'
                 args = [cmd_path, '--version']
                 env = os.environ.copy()
                 completed: subprocess.CompletedProcess | None = None
                 if Constants.PLATFORM_WINDOWS:
-                    MY_LOGGER.info(f'Running command: Windows')
+                    MY_LOGGER.info(f'Running command: Windows args: {args}')
                     completed = subprocess.run(args, stdin=None, capture_output=True,
                                                text=True, env=env, close_fds=True,
                                                encoding='utf-8', shell=False, check=True,
                                                creationflags=subprocess.CREATE_NO_WINDOW)
                 else:
-                    MY_LOGGER.info(f'Running command: Linux')
+                    MY_LOGGER.info(f'Running command: Linux args: {args}')
                     completed = subprocess.run(args, stdin=None, capture_output=True,
                                                text=True, env=env, close_fds=True,
                                                encoding='utf-8', shell=False, check=True)
@@ -336,6 +354,11 @@ class ESpeakSettings:
             cls._service_status.progress = Progress.AVAILABLE
             if not success:
                 cls._service_status.status = Status.FAILED
+                cls._service_status.status_summary = StatusType.BROKEN
+                SettingsMap.define_setting(cls.service_key,
+                                           setting_type=SettingType.STRING_TYPE,
+                                           service_status=StatusType.BROKEN,
+                                           validator=None)
         MY_LOGGER.debug(f'state: {cls._service_status.progress} '
                         f'status: {cls._service_status.status}')
 
@@ -349,7 +372,11 @@ class ESpeakSettings:
         # eSpeak should always be usable, since it comes with its own player
         if cls._service_status.progress == Progress.AVAILABLE:
             cls._service_status.progress = Progress.USABLE
-            SettingsMap.set_available(cls.service_key, cls._service_status)
+            cls._service_status.status_summary = StatusType.OK
+            SettingsMap.define_setting(cls.service_key,
+                                       setting_type=SettingType.STRING_TYPE,
+                                       service_status=StatusType.OK,
+                                       validator=None)
 
         MY_LOGGER.debug(f'state: {cls._service_status.progress} '
                         f'status: {cls._service_status.status}')

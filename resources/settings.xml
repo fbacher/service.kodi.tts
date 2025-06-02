@@ -22,12 +22,27 @@
                     <default>true</default>
                     <control type="toggle"/>
                 </setting>
+                <setting help="" id="initial_run.tts" label="32812" type="boolean">
+                    <level>4</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                </setting>
                  <setting help="" id="hint_text_on_startup.tts" label="32812" type="boolean">
                     <level>4</level>
                     <default>true</default>
                     <control type="toggle"/>
                 </setting>
                 <setting help="" id="extended_help_on_startup.tts" label="32813" type="boolean">
+                    <level>4</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                </setting>
+                  <setting help="" id="help_config_on_startup.tts" label="32813" type="boolean">
+                    <level>4</level>
+                    <default>true</default>
+                    <control type="toggle"/>
+                </setting>
+                  <setting help="" id="introduction_on_startup.tts" label="32813" type="boolean">
                     <level>4</level>
                     <default>true</default>
                     <control type="toggle"/>
@@ -44,6 +59,12 @@
                     <default>false</default>
                     <control type="toggle"/>
                 </setting>
+             <setting help="" id="configure_on_startup.tts" label="32047"
+                         type="boolean">
+                    <level>4</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                </setting>
                 <setting help="" id="poll_interval.tts" label="32048"
                          type="integer">
                     <level>4</level>
@@ -55,15 +76,6 @@
                     <control format="integer" type="slider">
                         <popup>false</popup>
                     </control>
-                </setting>
-                <setting help="" id="cache_path.tts" label="32207"
-                         type="path">
-                    <level>4</level>
-                    <default>special://userdata/addon_data/service.kodi.tts/cache</default>
-                    <control format="path" type="button">
-                        <heading>32208</heading>
-                    </control>
-                    <visible>true</visible>
                 </setting>
                 <setting help="" id="cache_expiration_days.tts" label="32209"
                          type="integer">
@@ -285,32 +297,15 @@
                     </control>
                     <visible>true</visible>
                 </setting>
-                <setting help="" id="settings_digest.tts" label="32211" type="string">
-                    <level>4</level>
-                    <constraints>
-                        <allowempty>true</allowempty>
-                    </constraints>
-                    <control type="edit" format="string">
-                        <heading>32178</heading>
-                    </control>
-                    <visible>true</visible>
-                </setting>
                 <setting help="" id="version.tts" label="32211" type="string">
                     <level>4</level>
                     <constraints>
-                        <allowempty>true</allowempty>
+                        <allowempty>false</allowempty>
                     </constraints>
-                    <default>ab1.2.3.4</default>
+                    <default>0.0.0</default>
                     <control type="edit" format="string">
                         <heading>32178</heading>
                     </control>
-                    <visible>true</visible>
-                </setting>
-                <setting help="" id="settings_being_configured.tts" label="32013"
-                         type="boolean">
-                    <level>4</level>
-                    <default>false</default>
-                    <control type="toggle"/>
                     <visible>true</visible>
                 </setting>
                 <setting help="" id="speak_via_kodi" label="32013"

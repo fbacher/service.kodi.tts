@@ -4,6 +4,7 @@ from __future__ import annotations  # For union operator |
 import enum
 import math
 
+from backends.settings.setting_properties import SettingType
 from common import *
 
 from backends.settings.constraints import Constraints
@@ -16,6 +17,7 @@ from backends.settings.service_types import ServiceKey, Services, ServiceType
 from backends.settings.settings_map import Status, SettingsMap
 from backends.settings.service_unavailable_exception import ServiceUnavailable
 from common.logger import *
+from common.service_status import StatusType
 from common.setting_constants import Channels, Genders
 from common.settings_low_level import SettingsLowLevel
 from backends.settings.service_types import ServiceID
@@ -32,16 +34,37 @@ class ConvertType(enum.Enum):
 class Validator(IValidator):
 
     def __init__(self, service_key: ServiceID,
-                 default: Any | None = None, const: bool = False) -> None:
+                 property_type: SettingType,
+                 default: Any | None = None, const: bool = False,
+                 define_setting: bool = True,
+                 service_status: StatusType = StatusType.OK,
+                 persist: bool = True) -> None:
         self._default = None
-        super().__init__(service_key)
+        super().__init__(service_key, property_type)
         self._service_key: ServiceID = service_key
+        self._property_type: SettingType = property_type
         self.const: bool = const
         self.tts_validator: IValidator | None = None
+        self._define_setting: bool = define_setting
+        self._service_status: StatusType = service_status
+        self._persist: bool = persist
+        if self._define_setting:
+            self.define_setting()
 
     @property
     def service_key(self) -> ServiceID:
         return self._service_key
+
+    @property
+    def property_type(self) -> SettingType:
+        return self._property_type
+
+    def define_setting(self) -> None:
+        SettingsMap.define_setting(service_id=self._service_key,
+                                   setting_type=self._property_type,
+                                   service_status=self._service_status,
+                                   validator=self,
+                                   persist=self._persist)
 
     def is_const(self) -> bool:
         return self.const
@@ -76,24 +99,33 @@ class BaseNumericValidator(Validator):
                  is_decibels: bool = False,
                  is_integer: bool = True,
                  increment: int | float = 0.0,
-                 const: bool = False
-                 ) -> None:
-        super().__init__(service_key, const=const)
+                 const: bool = False,
+                 define_setting: bool = True,
+                 service_status: StatusType = StatusType.OK,
+                 persist: bool = True) -> None:
+        property_type: SettingType = SettingType.INTEGER_TYPE
+        if not is_integer:
+            property_type = SettingType.FLOAT_TYPE
+        super().__init__(service_key, property_type, const=const,
+                         define_setting=define_setting,
+                         service_status=service_status,
+                         persist=persist)
         self._service_key: ServiceID = service_key
         self.minimum: int = minimum
         self.maximum: int = maximum
         self._default = default
         self.is_decibels: bool = is_decibels
+        MY_LOGGER.debug(f'is_decibels: {is_decibels} self: {self.is_decibels}')
         self.is_integer = is_integer
-        if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'increment: {increment}')
         if increment is None or increment <= 0.0:
             increment = (maximum - minimum) / 20.0
         self._increment = increment
-        if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'_increment: {self._increment}')
         self.const: bool = const
         return
+
+    @property
+    def property_type(self) -> SettingType:
+        return super().property_type
 
     @property
     def service_key(self) -> ServiceID:
@@ -142,10 +174,11 @@ class TTSNumericValidator(BaseNumericValidator):
                  is_integer: bool = True,
                  internal_scale_factor: int | float = 1,
                  increment: int | float = 0.0,
-                 const: bool = False
-                 ) -> None:
-        if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'Increment: {increment}')
+                 const: bool = False,
+                 define_setting: bool = True,
+                 service_status: StatusType = StatusType.OK,
+                 persist: bool = True) -> None:
+        MY_LOGGER.debug(f'is_decibels: {is_decibels}')
         super().__init__(service_key=service_key,
                          minimum=minimum,
                          maximum=maximum,
@@ -153,13 +186,30 @@ class TTSNumericValidator(BaseNumericValidator):
                          is_decibels=is_decibels,
                          is_integer=is_integer,
                          increment=increment,
-                         const=False)
+                         const=False,
+                         define_setting=define_setting,
+                         service_status=service_status,
+                         persist=persist)
+        MY_LOGGER.debug(f'is_decibels: {is_decibels}')
+        try:
+            MY_LOGGER.debug(f'self.is_decibels: {self.is_decibels}')
+        except:
+            MY_LOGGER.exception('')
+        self.is_decibels = is_decibels
         self.internal_scale_factor: int | float = internal_scale_factor
         if const:
             self.set_value(default)
             super().const = const
             self.const = const
         return
+
+    @property
+    def property_type(self) -> SettingType:
+        return super().property_type
+
+    @property
+    def service_key(self) -> ServiceID:
+        return super().service_key
 
     def is_const(self) -> bool:
         return self.const
@@ -273,14 +323,14 @@ class TTSNumericValidator(BaseNumericValidator):
                           #                              is_integer=is_integer),
                           increment=self.scale_value(self.increment),
                           is_integer=is_integer)
-        if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'raw_value: {self.get_raw_value()} convert: {convert} '
-                            f' integer: {is_integer}  {result} inc: {self.increment}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'raw_value: {self.get_raw_value()} convert: {convert} '
+                              f' integer: {is_integer}  {result} inc: {self.increment}')
 
         return result
 
     def __repr__(self) -> str:
-        return f'service: {self.service_key} db: {self.is_decibels}'
+        return f'service: {self.service_key}'
 
     def adjust(self, positive_increment: bool) -> float | int:
         """
@@ -304,7 +354,7 @@ class TTSNumericValidator(BaseNumericValidator):
         self.set_value(current)
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'adjust value: {value} '
-                                f'current: {current} result: {self.get_value()}')
+                            f'current: {current} result: {self.get_value()}')
         return self.get_value()   # Handles range checking
 
 
@@ -316,8 +366,10 @@ class NumericValidator(BaseNumericValidator):
                  is_decibels: bool = False,
                  is_integer: bool = True,
                  increment: int | float = 0.0,
-                 const: bool = False
-                 ) -> None:
+                 const: bool = False,
+                 define_setting: bool = True,
+                 service_status: StatusType = StatusType.OK,
+                 persist: bool = True) -> None:
         self._service_key: ServiceID = service_key
         super().__init__(service_key=service_key,
                          minimum=minimum,
@@ -326,7 +378,10 @@ class NumericValidator(BaseNumericValidator):
                          is_decibels=is_decibels,
                          is_integer=is_integer,
                          increment=increment,
-                         const=False)
+                         const=False,
+                         define_setting=define_setting,
+                         service_status=service_status,
+                         persist=persist)
         self.tts_validator: TTSNumericValidator | None = None
         if const:
             self.set_value(default)
@@ -451,22 +506,34 @@ class NumericValidator(BaseNumericValidator):
                                              is_integer=self.is_integer)
 
     def __repr__(self) -> str:
-        return (f'service_key: {self.service_key} '
-                f'max: {self.maximum} db: {self.is_decibels}')
-
+        result: str = ''
+        if hasattr(self, 'service_key'):
+            result = f'{result} service_key: {self.service_key}'
+        if hasattr(self, 'maximum'):
+            result = f'{result} service_key: {self.service_key}'
+        if hasattr(self, 'is_decibels'):
+            result = f'{result} is_decibels: {self.is_decibels}'
+        return result
 
 class IntValidator(Validator):
 
     def __init__(self, service_key: ServiceID,
                  min_value: int, max_value: int, default: int,
-                 step: int, scale_internal_to_external: int = 1) -> None:
-        super().__init__(service_key)
+                 step: int, scale_internal_to_external: int = 1,
+                 define_setting: bool = True,
+                 service_status: StatusType = StatusType.OK,
+                 persist: bool = True) -> None:
+        super().__init__(service_key, property_type=SettingType.INTEGER_TYPE,
+                         define_setting=define_setting,
+                         service_status=service_status,
+                         persist=persist)
         self._service_key: ServiceID = service_key
         self.min_value: int = min_value
         self.max_value: int = max_value
         self._default = default
         self.step: int = step
         self.scale_internal_to_external: int = scale_internal_to_external
+
         return
 
     @property
@@ -547,7 +614,10 @@ class StringValidator(IStringValidator):
                  allowed_values: List[str], min_length: int = 0,
                  max_length: int = 4096, default: str = None,
                  allow_default: bool = True,
-                 const: bool = False) -> None:
+                 const: bool = False,
+                 define_setting: bool = True,
+                 service_status: StatusType | None = StatusType.OK,
+                 persist: bool = True) -> None:
         """
         Defines the values which a property of the given service_key can
         be.
@@ -563,14 +633,48 @@ class StringValidator(IStringValidator):
                can be used, otherwise, ignore the default parameter
         :param const: If True, then the value can not be changed
         """
-        super().__init__(service_key, allowed_values, min_length,
+        super().__init__(service_key,
+                         allowed_values, min_length,
                          max_length, default, allow_default,
                          const)
         self._service_key: ServiceID = service_key
         self.allowed_values: List[AllowedValue] = []
-        allowed: bool = SettingsMap.is_available(service_key, force=True)
+        self._default: str = default
+        self._allow_default: bool = allow_default
+        self._define_setting: bool = define_setting
+        self._service_status: StatusType = service_status
+        self._persist: bool = persist
+        if self._define_setting:
+            self.define_setting()
+
+        """
+        TODO: DISABLED allowed /is_available checking. For this to work properly
+              1) It must be done dynamically on each call
+              2) It must take into account if this service (service_key) is 
+                 available/usable. 
+              3) It must take into account if each choice (allowed_value) that is 
+                 a SERVICE (player, engine, etc.) is available.
+              4) For choices that are not a SERVICE but a setting for a service,
+                 then it is allowed if the underlying service is available
+              5) To pull 4 off, the ssetting id must include the fully qualified
+                ServiceID for the setting
+              6) Note that tts.tts is not a service, but perhaps a quasi-one. 
+                 tts.tts.current_engine is a setting that contains a service value
+                 also, all of the choices for tts.tts.current_engine are services.
+        For is_available to work it must have fully 
+              qualified service_keys. Here, allowed has simple ids (ex. player_ids).
+        
+        We may be choosing which player to use for an engine. In this case if 
+        the engine is not available, then there are no viable players. However,
+        if the engine is available, then we only want to choose from the players
+        which are available. 
+        
+        
+        """
         for p in allowed_values:
             p: str
+            #  allowed: bool = SettingsMap.is_available(service_key, force=True)
+            allowed: bool = True  # Hack
             allowed_value: AllowedValue = AllowedValue(p, allowed)
             self.allowed_values.append(allowed_value)
         if min_length is None:
@@ -579,21 +683,38 @@ class StringValidator(IStringValidator):
             max_length = 4096
         self.min_value: int = min_length
         self.max_value: int = max_length
-        self.allow_default: bool = allow_default
-        if not self.allow_default:
+        if not self._allow_default:
             default = None
         self._default: str = default
         return
 
+    def define_setting(self) -> None:
+        SettingsMap.define_setting(service_id=self._service_key,
+                                   setting_type=self._property_type,
+                                   service_status=self._service_status,
+                                   validator=self,
+                                   persist=self._persist)
+
     def __repr__(self) -> str:
-        result: str = f'{self.service_key} allowed: {self.allowed_values}'
-        if self.allow_default:
-            result = f'{result} default: {self._default}'
+        result: str = ''
+        if hasattr(self, 'service_key'):
+            result = f'{result} service_key: {self.service_key}'
+        if hasattr(self, 'allowed_values'):
+            result = f'{result} allowed: {self.allowed_values}'
+        if hasattr(self, 'property_type'):
+            result = f'{result} property_type: {self.property_type}'
+        if hasattr(self, '_allow_default') and hasattr(self, '_default'):
+            result = (f'{result} allow_default: {self._allow_default} '
+                      f'default: {self._default}')
         return result
 
     @property
     def service_key(self) -> ServiceID:
         return self._service_key
+
+    @property
+    def property_type(self) -> SettingType:
+        return super().property_type
 
     def get_tts_value(self, default: str | None = None,
                       setting_service_id: str = None) -> str | None:
@@ -609,7 +730,7 @@ class StringValidator(IStringValidator):
         :return:
         """
         valid: bool = True
-        if self.allow_default:
+        if self._allow_default:
             if default is None:
                 default = self._default
         else:
@@ -652,18 +773,18 @@ class StringValidator(IStringValidator):
 
         if not valid:
             if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'INVALID setting {self.service_key.setting_path} '
+                MY_LOGGER.debug(f'INVALID setting {self.service_key.short_key} '
                                 f'value: {value} '
                                 f'using {self.default} instead.')
             internal_value = self.default
         if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'setting {self.service_key.setting_path} '
+            MY_LOGGER.debug(f'setting {self.service_key.short_key} '
                             f'value: {value} ')
         SettingsLowLevel.set_setting_str(self.service_key, internal_value)
 
     @property
     def default(self) -> str | None:
-        if not self.allow_default:
+        if not self._allow_default:
             return None
         allowed: bool = self.is_value_valid(self._default)
         default: str | None = None
@@ -675,7 +796,7 @@ class StringValidator(IStringValidator):
         """
         Determine which values are allowed and which normally allowed values
         are disabled, due to other settings. For example, while an engine
-        may support PlayerMode.SLAVE_FILE an already chosen player_key may not,
+        may support PlayerMode.SLAVE_FILE an already chosen player may not,
         therefore blocking you from changing the PlayerMode
 
         :param enabled: If specified, then only return values which have the
@@ -690,7 +811,7 @@ class StringValidator(IStringValidator):
         for setting in self.allowed_values:
             if enabled is None or setting.enabled == enabled:
                 allowed.append(setting)
-            # Check with each allowed player_key to determine if setting is
+            # Check with each allowed player to determine if setting is
         return allowed
 
     def get_allowed_value(self, value: str) -> AllowedValue | None:
@@ -758,6 +879,7 @@ class StringValidator(IStringValidator):
         pass
 
 
+'''
 class EnumValidator(Validator):
 
     # Probably won't work as is, needs generics
@@ -808,13 +930,21 @@ class EnumValidator(Validator):
 
     def preValidate(self, ui_value: enum.Enum) -> Tuple[bool, enum.Enum]:
         pass
+'''
 
-
+'''
 class ConstraintsValidator(Validator):
 
     def __init__(self, service_key: ServiceID,
-                 constraints: Constraints | IConstraints | None) -> None:
-        super().__init__(service_key)
+                 property_type: SettingType,
+                 constraints: Constraints | IConstraints | None,
+                 define_setting: bool = True,
+                 service_status: StatusType = StatusType.OK,
+                 persist: bool = True) -> None:
+        super().__init__(service_key, property_type,
+                         define_setting=define_setting,
+                         service_status=service_status,
+                         persist=persist)
         self.constraints: Constraints | IConstraints = constraints
         self._tts_line_value: float | int = constraints.tts_line_value
 
@@ -876,9 +1006,9 @@ class ConstraintsValidator(Validator):
                        limit: bool | None = None) -> int | float | str:
         """
             Translates the 'TTS' value (used internally) to the implementation's
-            scale (player_key or engine).
+            scale (player or engine).
 
-            :setting_service_id: The service (engine, player_key, etc.) to get
+            :setting_service_id: The service (engine, player, etc.) to get
                 this validator's property from.
             :as_decibels: Converts between decibel and percentage units.
                          True, convert to decibels
@@ -976,7 +1106,6 @@ class ConstraintsValidator(Validator):
             value = float(value)
         return value
 
-    '''
     def get_default_value(self) -> int | float | str:
         value: float | int = self.constraints.default
         if self.constraints.integer:
@@ -990,8 +1119,14 @@ class ConstraintsValidator(Validator):
 class BoolValidator(Validator):
 
     def __init__(self, service_key: ServiceID,
-                 default: bool, const: bool = False) -> None:
-        super().__init__(service_key, default=default, const=const)
+                 default: bool, const: bool = False,
+                 define_setting: bool = True,
+                 service_status: StatusType | None = StatusType.OK,
+                 persist: bool = True) -> None:
+        super().__init__(service_key, property_type=SettingType.BOOLEAN_TYPE,
+                         default=default, const=const,
+                         define_setting=define_setting,
+                         service_status=service_status, persist=persist)
         self._service_key: ServiceID = service_key
         self._default: bool = default
         self.const: bool = False  # Force set_tts_value to persist in settings
@@ -1048,17 +1183,32 @@ class GenderValidator(IGenderValidator):
 
     def __init__(self, service_key: ServiceID,
                  min_value: Genders, max_value: Genders,
-                 default: Genders = Genders.UNKNOWN) -> None:
+                 default: Genders = Genders.UNKNOWN,
+                 define_setting: bool = True,
+                 service_status: StatusType = StatusType.OK,
+                 persist: bool = True) -> None:
         self._service_key: ServiceID = service_key
         self.current_value: Genders = default
         self.min_value: Genders = min_value
         self.max_value: Genders = max_value
         self._default: Genders = default
+        self._define_setting: bool = define_setting
+        self._service_status: StatusType = service_status
+        self._persist: bool = persist
+        if self._define_setting:
+            self.define_setting()
         return
 
     @property
     def service_key(self) -> ServiceID:
         return self._service_key
+
+    def define_setting(self) -> None:
+        SettingsMap.define_setting(service_id=self._service_key,
+                                   setting_type=SettingType.STRING_TYPE,
+                                   service_status=self._service_status,
+                                   validator=self,
+                                   persist=self._persist)
 
     def get_tts_value(self) -> Genders:
         str_value: str = SettingsLowLevel.get_setting_str(self.service_key,
@@ -1097,17 +1247,37 @@ class ChannelValidator(IChannelValidator):
 
     def __init__(self, service_key: ServiceID,
                  min_value: Channels, max_value: Channels,
-                 default: Channels = Channels.NO_PREF) -> None:
+                 default: Channels = Channels.NO_PREF,
+                 define_setting: bool = True,
+                 service_status: StatusType = StatusType.OK,
+                 persist: bool = True) -> None:
         self._service_key: ServiceID = service_key
+        self._property_type: SettingType = SettingType.STRING_TYPE
         self.current_value: Channels = default
         self.min_value: Channels = min_value
         self.max_value: Channels = max_value
         self._default: Channels = default
+        self._define_setting: bool = define_setting
+        self._service_status: StatusType = service_status
+        self._persist: bool = persist
+        if self._define_setting:
+            self.define_setting()
         return
 
     @property
     def service_key(self) -> ServiceID:
         return self._service_key
+
+    @property
+    def property_type(self) -> SettingType:
+        return SettingType.STRING_TYPE
+
+    def define_setting(self) -> None:
+        SettingsMap.define_setting(service_id=self._service_key,
+                                   setting_type=self._property_type,
+                                   service_status=self._service_status,
+                                   validator=self,
+                                   persist=self._persist)
 
     def get_tts_value(self) -> Channels:
         str_value: str = SettingsLowLevel.get_setting_str(self.service_key,
@@ -1156,6 +1326,10 @@ class EngineValidator:
     def __init__(self) -> None:
         return
 
+    @property
+    def property_type(self) -> SettingType:
+        return SettingType.STRING_TYPE
+
     def get_service_key(self) -> ServiceID:
         """
         Gets the current engine_id. If the engine is non-functional, then
@@ -1193,7 +1367,7 @@ class EngineValidator:
 class DependencyValidator:  # (IDependencyValidator):
     """
         Used when one service has a dependency on another service. Example:
-        engines frequently depend upon a player_key. If a player_key is not available
+        engines frequently depend upon a player. If a player is not available
         then it should not be considered for use. The validator will
         dynimically verify that settings are valid and act accordingly.
     """
@@ -1203,18 +1377,18 @@ class DependencyValidator:  # (IDependencyValidator):
                  dep_srvc_ids: List[str]) -> None:
         """
         Creates a validator for a service (ex. an engine) which requires another
-        service (ex. a player_key). This is created by the user of the service
-        (ex: eSpeak) and populated with the service type it needs (player_key) as
+        service (ex. a player). This is created by the user of the service
+        (ex: eSpeak) and populated with the service type it needs (player) as
         well as a list of the players which it will accept (internal, mpv, etc.).
 
-        To help determine which player_key to choose for the engine, each
-        candidate player_key is examined. To get more data about a player_key (such is
-        it broken) a service_key is created for the player_key.
+        To help determine which player to choose for the engine, each
+        candidate player is examined. To get more data about a player (such is
+        it broken) a service_key is created for the player.
 
         :param service_key: Identifies the service type and service id
                             ex engine, google
         :param dep_svc_type: Type that the service_type depends on:
-                                       ex: player_key
+                                       ex: player
         :param dep_srvc_ids:  service ids that are instances of the
                               dependent_service_type: ex mplayer, sfx
         """
@@ -1223,11 +1397,11 @@ class DependencyValidator:  # (IDependencyValidator):
         self._service_key: ServiceID = service_key
         # create a Service.Key for the dependency so that it's health, etc.
         # can be examined:
-        # Ex. Engine google_tts wants to pick the best player_key from a list of
-        # players. dep_svc_type is 'player_key' and each dep_srvc_id is the player_key id
-        # to look up. For some things (like looking up the player_key's health)
+        # Ex. Engine google_tts wants to pick the best player from a list of
+        # players. dep_svc_type is 'player' and each dep_srvc_id is the player id
+        # to look up. For some things (like looking up the player's health)
         # this is all that is needed. For checking other things specific
-        # settings for the player_key can be looked up.
+        # settings for the player can be looked up.
 
         self.allowed_values: List[AllowedValue] = []
         for dep_serv_id in dep_srvc_ids:
@@ -1242,6 +1416,10 @@ class DependencyValidator:  # (IDependencyValidator):
     @property
     def service_key(self) -> ServiceID:
         return self._service_key
+
+    @property
+    def property_type(self) -> SettingType:
+        return SettingType.STRING_TYPE
 
     def get_value(self) -> str | None:
         """
@@ -1282,7 +1460,7 @@ class DependencyValidator:  # (IDependencyValidator):
         """
         Determine which values are allowed and which normally allowed values
         are disabled, due to other settings. For example, while an engine
-        may support PlayerMode.SLAVE_FILE an already chosen player_key may not,
+        may support PlayerMode.SLAVE_FILE an already chosen player may not,
         therefore blocking you from changing the PlayerMode
 
         :param enabled: If specified, then only return values which have the
@@ -1297,7 +1475,7 @@ class DependencyValidator:  # (IDependencyValidator):
         for setting in self.allowed_values:
             if enabled is None or setting.enabled == enabled:
                 allowed.append(setting)
-            # Check with each allowed player_key to determine if setting is
+            # Check with each allowed player to determine if setting is
         return allowed
 
     def get_allowed_value(self, value: str) -> AllowedValue | None:
@@ -1345,8 +1523,13 @@ class DependencyValidator:  # (IDependencyValidator):
 
 class SimpleIntValidator(ISimpleValidator):
     def __init__(self, service_key: ServiceID, value: int,
-                 const: bool = True) -> None:
-        super().__init__(service_key=service_key, const=const)
+                 const: bool = True,
+                 define_setting: bool = True,
+                 service_status: StatusType = StatusType.OK,
+                 persist: bool = True) -> None:
+        super().__init__(service_key=service_key,
+                         property_type=SettingType.INTEGER_TYPE,
+                         const=const)
         self._service_key: ServiceID = service_key
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'{self._service_key} value: {value} const: {const}')
@@ -1355,6 +1538,18 @@ class SimpleIntValidator(ISimpleValidator):
         self._const_value: int | None = None
         if const:
             self._const_value = value
+        self._define_setting: bool = define_setting
+        self._service_status: StatusType = service_status
+        self._persist: bool = persist
+        if self._define_setting:
+            self.define_setting()
+
+    def define_setting(self) -> None:
+        SettingsMap.define_setting(service_id=self._service_key,
+                                   setting_type=self._property_type,
+                                   service_status=self._service_status,
+                                   validator=self,
+                                   persist=self._persist)
 
     def get_value(self) -> int:
         if MY_LOGGER.isEnabledFor(DEBUG):
@@ -1376,9 +1571,15 @@ class SimpleIntValidator(ISimpleValidator):
 
 
 class SimpleStringValidator(ISimpleValidator):
-    def __init__(self, service_key: ServiceID, value: str,
-                 const: bool = True) -> None:
-        super().__init__(service_key=service_key, const=const)
+    def __init__(self, service_key: ServiceID,
+                 value: str,
+                 const: bool = True,
+                 define_setting: bool = True,
+                 service_status: StatusType | None = StatusType.OK,
+                 persist: bool = True) -> None:
+        super().__init__(service_key=service_key,
+                         property_type=SettingType.STRING_TYPE,
+                         const=const)
         self._service_key: ServiceID = service_key
         self._value: str = value
         self._const: bool = const
@@ -1387,6 +1588,22 @@ class SimpleStringValidator(ISimpleValidator):
             self._const_value = value
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'{self._service_key} value: {value} const: {const}')
+        self._define_setting: bool = define_setting
+        self._service_status: StatusType = service_status
+        self._persist: bool = persist
+        if self._define_setting:
+            self.define_setting()
+
+    @property
+    def property_type(self) -> SettingType:
+        return super().property_type
+
+    def define_setting(self) -> None:
+        SettingsMap.define_setting(service_id=self._service_key,
+                                   setting_type=self._property_type,
+                                   service_status=self._service_status,
+                                   validator=self,
+                                   persist=self._persist)
 
     def get_value(self) -> str:
         if MY_LOGGER.isEnabledFor(DEBUG):

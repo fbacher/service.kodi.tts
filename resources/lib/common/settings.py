@@ -20,6 +20,7 @@ from backends.settings.settings_map import SettingsMap
 from common.exceptions import *
 from common.logger import *
 from common.service_broker import ServiceBroker
+from common.service_status import StatusType
 from common.setting_constants import AudioType, Genders, PlayerMode
 from common.settings_bridge import SettingsBridge
 from common.settings_low_level import SettingsLowLevel
@@ -65,6 +66,18 @@ class Settings(SettingsLowLevel):
         :return:
         """
         # Settings.load_settings()
+
+    @classmethod
+    def set_availability(cls, service_key: ServiceID, availability: StatusType) -> None:
+        service_key = service_key.with_prop(SettingProp.AVAILABILITY)
+        SettingsMap.set_available(service_key, availability)
+        SettingsLowLevel.set_setting_str(service_key, availability)
+
+    @classmethod
+    def get_availability(cls, service_key: ServiceID) -> StatusType:
+        service_key = service_key.with_prop(SettingProp.AVAILABILITY)
+        availability: str = SettingsLowLevel.get_setting_str(service_key)
+        return StatusType(availability)
 
     @classmethod
     def get_addons_md5(cls) -> str:
@@ -187,6 +200,55 @@ class Settings(SettingsLowLevel):
                                           extended_help_enabled)
 
     @classmethod
+    def get_hint_text_on_startup(cls) -> bool:
+        service_key: ServiceID
+        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.HINT_TEXT_ON_STARTUP)
+        return SettingsLowLevel.get_setting_bool(service_key)
+
+    @classmethod
+    def set_hint_text_on_startup(cls, startup_hint_text_enabled: bool) -> bool:
+        service_key: ServiceID
+        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.HINT_TEXT_ON_STARTUP)
+        return SettingsLowLevel.get_setting_bool(service_key)
+
+    @classmethod
+    def get_configure_on_startup(cls) -> bool:
+        service_key: ServiceID
+        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.CONFIGURE_ON_STARTUP)
+        return SettingsLowLevel.get_setting_bool(service_key)
+
+    @classmethod
+    def set_configure_on_startup(cls, configure_on_startup: bool) -> None:
+        service_key: ServiceID
+        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.CONFIGURE_ON_STARTUP)
+        SettingsLowLevel.set_setting_bool(service_key, configure_on_startup)
+
+    @classmethod
+    def get_introduction_on_startup(cls) -> bool:
+        service_key: ServiceID
+        service_key = ServiceKey.TTS_KEY.with_prop(
+                SettingProp.INTRODUCTION_ON_STARTUP)
+        return SettingsLowLevel.get_setting_bool(service_key)
+
+    @classmethod
+    def set_introduction_on_startup(cls, introduction_on_startup: bool) -> None:
+        service_key: ServiceID
+        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.INTRODUCTION_ON_STARTUP)
+        SettingsLowLevel.set_setting_bool(service_key, introduction_on_startup)
+
+    @classmethod
+    def get_help_config_on_startup(cls) -> bool:
+        service_key: ServiceID
+        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.HELP_CONFIG_ON_STARTUP)
+        return SettingsLowLevel.get_setting_bool(service_key)
+
+    @classmethod
+    def set_help_config_on_startup(cls, help_config_on_startup: bool) -> None:
+        service_key: ServiceID
+        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.HELP_CONFIG_ON_STARTUP)
+        SettingsLowLevel.set_setting_bool(service_key, help_config_on_startup)
+
+    @classmethod
     def get_gender(cls, engine_key: ServiceID | None = None) -> Genders:
         if engine_key is None:
             engine_key = Settings.get_engine_key()
@@ -220,6 +282,18 @@ class Settings(SettingsLowLevel):
     def set_hint_text_on_startup(cls, hint_text_enabled: bool)  -> None:
         SettingsLowLevel.set_setting_bool(ServiceKey.HINT_TEXT_ON_STARTUP,
                                           hint_text_enabled)
+
+    @classmethod
+    def is_initial_run(cls) -> bool:
+        MY_LOGGER.debug(f'initial_run key: {ServiceKey.INITIAL_RUN} short_key: '
+                        f'{ServiceKey.INITIAL_RUN.short_key}')
+        return SettingsLowLevel.get_setting_bool(ServiceKey.INITIAL_RUN,
+                                                 ignore_cache=True)
+
+    @classmethod
+    def set_initial_run(cls, initial_run: bool) -> None:
+        SettingsLowLevel.set_setting_bool(ServiceKey.INITIAL_RUN,
+                                          initial_run)
 
     @classmethod
     def get_language(cls, engine_key: ServiceID | None = None) -> str:
@@ -328,7 +402,7 @@ class Settings(SettingsLowLevel):
     @classmethod
     def is_use_cache(cls, engine_key: ServiceID | None = None) -> bool | None:
         result: bool | None = None
-        cache_speech_key: ServiceID = None
+        cache_speech_key: ServiceID | None = None
         try:
             if engine_key is None:
                 engine_key = cls.get_engine_key()
@@ -412,7 +486,7 @@ class Settings(SettingsLowLevel):
         # in context with other settings.
         player_mode_key: ServiceID
         player_mode_key = engine_key.with_prop(SettingProp.PLAYER_MODE)
-        val = SettingsMap.get_validator(service_key=player_mode_key)
+        val = SettingsMap.get_validator(service_id=player_mode_key)
         if val is None:
             raise NotImplemented()
 
@@ -444,7 +518,7 @@ class Settings(SettingsLowLevel):
             service_key = cls.get_engine_key()
         player_mode_key: ServiceID
         player_mode_key = service_key.with_prop(SettingProp.PLAYER_MODE)
-        val = SettingsMap.get_validator(service_key=player_mode_key)
+        val = SettingsMap.get_validator(service_id=player_mode_key)
         if val is None:
             raise NotImplemented()
 
@@ -632,8 +706,6 @@ class Settings(SettingsLowLevel):
 
     @classmethod
     def get_cache_base(cls, service_key: ServiceID) -> str:
-        if MY_LOGGER.isEnabledFor(DEBUG_V):
-            MY_LOGGER.debug_v(f'service_key: {service_key}')
         cache_base: str
         cache_base_val: ISimpleValidator = SettingsMap.get_validator(service_key)
         cache_base = cache_base_val.get_value().strip()

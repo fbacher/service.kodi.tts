@@ -34,7 +34,7 @@ class BaseSettingsConstants:
 
 
 class Backends(BaseSettingsConstants):
-    AUTO_ID: Final[str] = Services.AUTO_ENGINE_ID
+    #  AUTO_ID: Final[str] = Services.AUTO_ENGINE_ID
     DEFAULT_ENGINE_ID: Final[str] = Services.DEFAULT_ENGINE_ID
     ESPEAK_ID: Final[str] = Services.ESPEAK_ID
     FESTIVAL_ID: Final[str] = Services.FESTIVAL_ID
@@ -53,7 +53,7 @@ class Backends(BaseSettingsConstants):
     SAPI_ID: Final[str] = Services.SAPI_ID
 
     ALL_ENGINE_IDS: List[str] = [
-        AUTO_ID,
+        #  AUTO_ID,
         ESPEAK_ID,
         # EXPERIMENTAL_ENGINE_ID,
         # FESTIVAL_ID,
@@ -72,7 +72,7 @@ class Backends(BaseSettingsConstants):
     ]
 
     settings_map: Dict[str, Message] = {
-        AUTO_ID             : MessageId.ENGINE_AUTO,
+        #  AUTO_ID             : MessageId.ENGINE_AUTO,
         ESPEAK_ID           : MessageId.ENGINE_ESPEAK,
         FESTIVAL_ID         : MessageId.ENGINE_FESTIVAL,
         FLITE_ID            : MessageId.ENGINE_FLITE,

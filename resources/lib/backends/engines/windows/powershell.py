@@ -138,7 +138,7 @@ class PowerShellTTS(SimpleTTSBackend):
 
     POWERSHELL_PATH = "powershell.exe"  # POWERSHELL EXE PATH
     #  ps_script_path = "C:\\PowershellScripts\\FTP_UPLOAD.PS1"
-    script_dir: Path = Constants.PYTHON_ROOT_PATH / 'backends/engines/windows'
+    script_dir: Path = Constants.SHELL_SCRIPTS_PATH
     ps_script = 'voice.ps1'
     script_path: Path = script_dir / ps_script
     voice: str = 'Zira'
@@ -610,7 +610,7 @@ class PowerShellTTS(SimpleTTSBackend):
                 f'{voice_id} '
                 f'{windows_path}'
                 f'}}']
-        #  MY_LOGGER.debug(f'args: {args}')
+        MY_LOGGER.debug(f'args: {args}')
         return args
 
     @classmethod
@@ -713,7 +713,8 @@ class PowerShellTTS(SimpleTTSBackend):
             if locale is None:
                 locale = kodi_locale
             ietf_lang: langcodes.Language = langcodes.get(locale)
-            MY_LOGGER.debug(f'locale: {locale} ietf_lang: {ietf_lang}')
+            MY_LOGGER.debug(f'locale: {locale} ietf_lang: {ietf_lang.language} '
+                            f'{ietf_lang.territory}')
             phrase.set_lang_dir(ietf_lang.language)
             # Horrible, crude, hack due to kodi xbmc.getLanguage bug
             if ietf_lang.territory is not None:

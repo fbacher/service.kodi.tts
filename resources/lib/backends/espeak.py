@@ -111,10 +111,11 @@ class ESpeakTTSBackend(SimpleTTSBackend):
     volume_key: ServiceID = service_key.with_prop(SettingProp.VOLUME)
     pitch_key: ServiceID = service_key.with_prop(SettingProp.PITCH)
     speed_key: ServiceID = service_key.with_prop(SettingProp.SPEED)
-
-    cmd_path = 'espeak-ng'
-    espeak_data_path: Path = Path('c:/Program Files/eSpeak NG/espeak-ng-data')
-    espeak_data_arg: str = f'--path={espeak_data_path}'
+    cmd_path: Path = Constants.ESPEAK_PATH / 'espeak-ng'
+    data_path: Path = Constants.ESPEAK_DATA_PATH
+    if Constants.PLATFORM_WINDOWS:
+        cmd_path = Constants.ESPEAK_PATH_WINDOWS / 'espeak-ng'
+        data_path = Constants.ESPEAK_DATA_PATH_WINDOWS
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -154,13 +155,13 @@ class ESpeakTTSBackend(SimpleTTSBackend):
 
         cls.voice_map = {}
         env = os.environ.copy()
-        args = [cls.cmd_path, '-b', cls.UTF_8, '--voices',
-                f'--path={cls.espeak_data_arg}']
+        args = [str(cls.cmd_path), '-b', cls.UTF_8, '--voices',
+                f'--path={str(cls.data_path)}']
         voices = []
         try:
             completed: subprocess.CompletedProcess | None = None
             if Constants.PLATFORM_WINDOWS:
-                MY_LOGGER.info(f'Running command: Windows')
+                MY_LOGGER.info(f'Running command: Windows: {args}')
                 completed = subprocess.run(args, stdin=None, capture_output=True,
                                            text=True, env=env, close_fds=True,
                                            encoding='utf-8', shell=False, check=True,
@@ -349,7 +350,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         """
         voice_files: List[str] = []
         try:
-            subdir_path: Path = cls.espeak_data_path / subdir
+            subdir_path: Path = cls.data_path / subdir
             for voice_file in subdir_path.glob('*'):
                 voice_file: Path
                 voice_files.append(str(voice_file))
@@ -492,9 +493,9 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         if audio_exists:
             return result.final_audio_path
         env = os.environ.copy()
-        args = [clz.cmd_path, '-b', clz.UTF_8, '-w',
+        args = [str(clz.cmd_path), '-b', clz.UTF_8, '-w',
                 str(result.temp_voice_path), '--stdin',
-                f'{clz.espeak_data_arg}']
+                f'--path={str(clz.data_path)}']
         self.addCommonArgs(args)
         try:
             if Constants.PLATFORM_WINDOWS:
@@ -553,8 +554,8 @@ class ESpeakTTSBackend(SimpleTTSBackend):
     def runCommandAndSpeak(self, phrase: Phrase):
         clz = type(self)
         env = os.environ.copy()
-        args = [clz.cmd_path, '-b', clz.UTF_8, '--stdin',
-                f'{clz.espeak_data_arg}']
+        args = [str(clz.cmd_path), '-b', clz.UTF_8, '--stdin',
+                str(clz.data_path)]
         self.addCommonArgs(args)
         MY_LOGGER.debug(f'args: {args}')
         try:
@@ -586,8 +587,8 @@ class ESpeakTTSBackend(SimpleTTSBackend):
     def runCommandAndPipe(self, phrase: Phrase):
         clz = type(self)
         env = os.environ.copy()
-        args = [clz.cmd_path, '-b', clz.UTF_8, '--stdin', '--stdout',
-                f'{clz.espeak_data_arg}']
+        args = [str(clz.cmd_path), '-b', clz.UTF_8, '--stdin', '--stdout',
+                f'--path={str(clz.data_path)}']
         self.addCommonArgs(args)
         MY_LOGGER.debug(f'args: {args}')
         try:

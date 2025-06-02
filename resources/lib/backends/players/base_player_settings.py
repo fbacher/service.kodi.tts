@@ -1,7 +1,7 @@
 # coding=utf-8
 from __future__ import annotations  # For union operator |
 
-from backends.settings.service_types import Services
+from backends.settings.service_types import ServiceID, Services
 from common import *
 
 from backends.i_tts_backend_base import ITTSBackendBase
@@ -16,7 +16,7 @@ from common.setting_constants import Players
 
 
 class BasePlayerSettings(BaseServiceSettings):
-    service_id: str = Services.PLAYER_SERVICE
+    service_id: ServiceID | None = None  # Overridden
     broken = False
 
     settings: Dict[str, Validator] = {}
@@ -33,9 +33,7 @@ class BasePlayerSettings(BaseServiceSettings):
         if not clz.initialized_settings:
             clz.initialized_settings = True
 
-        allowed_engine_ids: List[str] = [
-
-        ]
+        allowed_engine_ids: List[str] = []
 
     @classmethod
     def init_settings(cls):
@@ -45,12 +43,12 @@ class BasePlayerSettings(BaseServiceSettings):
                                     Players.MPLAYER, Players.MPG321, Players.MPG123,
                                     Players.BUILT_IN, Players.MPG321_OE_PI]
         player_validator: StringValidator
-        player_validator = StringValidator(SettingProp.PLAYER, cls.service_id,
+        player_validator = StringValidator(cls.service_id,
                                            allowed_values=valid_players,
                                            default=Players.MPV)
 
-        SettingsMap.define_setting(cls.service_id, SettingProp.PLAYER,
-                                   player_validator)
+        SettingsMap.define_setting(cls.service_id,
+                                   validator=player_validator)
 
     @classmethod
     def register(cls, what: Type[ITTSBackendBase]) -> None:

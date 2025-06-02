@@ -42,15 +42,16 @@ class BackendInfoBridge(IBackendInfo):
         return cls._backendInfoImpl.isValidBackend(engine_id)
 
     @classmethod
-    def isBackendSettingSupported(cls, engine_id: str, setting_id: str) -> bool:
+    def isBackendSettingSupported(cls, engine_id: ServiceID,
+                                  setting_id: str) -> bool:
         return cls.getBackend(engine_id).isSettingSupported(setting_id)
 
     @classmethod
-    def getBackendConstraints(cls, engine_id: str, setting_id: str) -> Constraints:
+    def getBackendConstraints(cls, engine_id: ServiceID, setting_id: str) -> Constraints:
         return cls.getBackend(engine_id).getConstraints(setting_id)
 
     @classmethod
-    def negotiate_engine_config(cls, engine_id: str, player_volume_adjustable: bool,
+    def negotiate_engine_config(cls, engine_id: ServiceID, player_volume_adjustable: bool,
                                 player_speed_adjustable: bool,
                                 player_pitch_adjustable: bool) -> Tuple[bool, bool, bool]:
 

@@ -63,7 +63,7 @@ class BackendInfo(IBackendInfo):
                 f'backends.__init__.getAvailableBackends can_stream_wav: '
                 f'{str(can_stream_wav)}')
         for engine_id in Backends.ALL_ENGINE_IDS:
-            engine: ITTSBackendBase
+            engine: ITTSBackendBase | None = None
             try:
                 engine = BaseServices.get_service(ServiceID(ServiceType.ENGINE, engine_id))
                 if engine is None or not engine.is_available_and_usable():
@@ -118,7 +118,7 @@ class BackendInfo(IBackendInfo):
     @classmethod
     def getSettingsList(cls, engine_id, setting,
                         *args) -> List[Choice]:
-        settings: List[Choice]
+        settings: List[Choice] | None
         settings = None
         bClass: Callable | ITTSBackendBase = cls.getBackendByProvider(engine_id)
         if bClass:
@@ -173,8 +173,8 @@ class BackendInfo(IBackendInfo):
     @classmethod
     def getBackendByClassName(cls, name) -> Callable | ITTSBackendBase | None:
         MY_LOGGER.debug(f'getBackendByClassName name: {name}')
-        if name == Constants.AUTO:
-            return None
+        #  if name == Constants.AUTO:
+        #      return None
         instance: Type[ITTSBackendBase] = cls.backendByClassName.get(name, None)
         MY_LOGGER.debug(f'instance: {instance}')
         if instance:

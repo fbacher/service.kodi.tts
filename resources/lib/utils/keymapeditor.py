@@ -2,6 +2,7 @@
 from __future__ import annotations  # For union operator |
 
 import os
+from pathlib import Path
 from threading import Timer
 
 import xbmc
@@ -17,7 +18,7 @@ from common.logger import *
 from common.messages import Messages
 from common.system_queries import SystemQueries
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 ACTIONS = (
     ('REPEAT', 'f1'),
@@ -49,29 +50,25 @@ def processCommand(command):
         removeKeymap()
 
 
-def _keymapTarget():
-    return os.path.join(xbmcvfs.translatePath('special://userdata'), 'keymaps',
-                        'service.kodi.tts.keyboard.xml')
+def _keymapTarget() -> Path:
+    return Constants.KEYMAPS_PATH / 'service.kodi.tts.keyboard.xml'
 
 
-def _keymapSource(kind='base'):
-    return os.path.join(
-            xbmcvfs.translatePath(xbmcaddon.Addon(Constants.ADDON_ID)
-                                  .getAddonInfo('path')), 'resources', 'keymap.{0}.xml'
-            .format(kind))
+def _keymapSource(kind='base') -> Path:
+    source: Path = Constants.KEYMAPS_PROTO_PATH / f'keymap.{kind}.xml'
+    MY_LOGGER.debug(f'keymap source: {source}')
+    return source
 
 
-def _keyMapDefsPath():
-    return os.path.join(
-            xbmcvfs.translatePath(xbmcaddon.Addon(Constants.ADDON_ID)
-                                  .getAddonInfo('profile')), 'custom.keymap.defs')
+def _keyMapDefsPath() -> Path:
+    return Constants.PROFILE_PATH / 'custom.keymap.defs'
 
 
 def loadCustomKeymapDefs():
-    path = _keyMapDefsPath()
-    if not os.path.exists(path):
+    path: Path = _keyMapDefsPath()
+    if not path.exists():
         return {}
-    with open(path, 'r', encoding='utf-8') as f:
+    with path.open('r', encoding='utf-8') as f:
         lines = f.read().splitlines()
     defs = {}
     try:
@@ -82,7 +79,7 @@ def loadCustomKeymapDefs():
             defs[key] = val
         return defs
     except:
-        module_logger.error('Error reading custom keymap definitions')
+        MY_LOGGER.error('Error reading custom keymap definitions')
     return {}
 
 
@@ -90,8 +87,8 @@ def saveCustomKeymapDefs(defs):
     out = ''
     for k, v in list(defs.items()):
         out += '{0}={1}\n'.format(k, v)
-    path = _keyMapDefsPath()
-    with open(path, 'w', encoding='utf-8') as f:
+    path: Path = _keyMapDefsPath()
+    with path.open('w', encoding='utf-8') as f:
         f.write(out)
 
 
@@ -102,14 +99,25 @@ def installDefaultKeymap(quiet=False):
                             Messages.get_msg(Messages.DEFAULT_KEYMAP_INSTALLED))
 
 
-def installBasicKeymap():
+def installBasicKeymap() -> bool:
+    restart: bool = False
+    target_path: Path = _keymapTarget()
+    if target_path.exists():
+        MY_LOGGER.debug(f'keymap {target_path} already exists. Delete before replacing')
+        return restart
+
     xml = None
-    with open(_keymapSource('basic'), 'r', encoding='utf-8') as f:
+    key_map: Path = _keymapSource('basic')
+    if not key_map.exists():
+        MY_LOGGER.debug(f'{key_map} prototype keymap {key_map} does NOT exist.')
+        return restart
+    with _keymapSource('basic').open('r', encoding='utf-8') as f:
         xml = f.read()
-    if not xml:
-        return
+    if xml:
+        restart = True
 
     saveKeymapXML(xml)
+    return restart
 
 
 def installCustomKeymap():
@@ -126,26 +134,24 @@ def resetKeymap():
 
 
 def removeKeymap():
-    targetPath = _keymapTarget()
-    if os.path.exists(targetPath):
-        xbmcvfs.delete(targetPath)
+    target_path: Path = _keymapTarget()
+    target_path.unlink(missing_ok=True)
     xbmc.executebuiltin("action(reloadkeymaps)")
     xbmcgui.Dialog().ok(Messages.get_msg(Messages.REMOVED),
                         Messages.get_msg(Messages.KEYMAP_REMOVED))
 
 
 def saveKeymapXML(xml):
-    targetPath = _keymapTarget()
-    if os.path.exists(targetPath):
-        xbmcvfs.delete(targetPath)
-    with open(targetPath, 'w', encoding='utf-8') as f:
+    target_path: Path = _keymapTarget()
+    target_path.unlink(missing_ok=True)
+    with target_path.open('w', encoding='utf-8') as f:
         f.write(xml)
     xbmc.executebuiltin("action(reloadkeymaps)")
 
 
 def buildKeymap(defaults=False):  # TODO: Build XML with ElementTree?
     xml = None
-    with open(_keymapSource(), 'r', encoding='utf-8') as f:
+    with _keymapSource().open('r', encoding='utf-8') as f:
         xml = f.read()
     if not xml:
         return
@@ -154,14 +160,15 @@ def buildKeymap(defaults=False):  # TODO: Build XML with ElementTree?
     else:
         defs = loadCustomKeymapDefs()
     for action, default in ACTIONS:
-        key = defs.get('key.{0}'.format(action))
+        key = defs.get(f'key.{action}')
         if key:
-            xml = xml.replace('<{0}>'.format(action),
-                              '<key id="{0}">'.format(key)).replace(
-                    '</{0}>'.format(action), '</key>')
+            xml = xml.replace(f'<{action}>',
+                              f'<key id="{key}">').replace(
+                    f'</{action}>', '</key>')
         else:
-            xml = xml.replace('<{0}>'.format(action), '<{0}>'.format(default)).replace(
-                    '</{0}>'.format(action), '</{0}>'.format(default.split(' ', 1)[0]))
+            xml = xml.replace(f'<{action}>', f'<{default}>'.replace(
+                    f'</{action}>',
+                    f'</{default.split(" ", 1)[0]}>'[0]))
 
     xml = xml.format(SPECIAL=SystemQueries.isPreInstalled() and 'kodi' or 'home')
 
