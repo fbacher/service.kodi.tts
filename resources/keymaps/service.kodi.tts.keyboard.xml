@@ -1,0 +1,47 @@
+<keymap>
+  <global>
+	<keyboard>
+      <d>Notification(Keypress, You pressed D!, 3)</d>
+<d mod="ctrl,alt">Notification(Keypress, You pressed ctrl-alt-D!, 3)</d>
+<d mod="shift">Notification(Keypress, You pressed shift-D!, 3)</d>
+<d mod="super">Notification(Keypress, You pressed super-D!, 3)</d>
+<d mod="longpress">Notification(Keypress, You kept pressing D!, 3)</d>
+      <g mod="ctrl">Notification(Keypress ctrl-g, 10)</g>
+<f11 mod="ctrl">NotifyAll(service.kodi.tts,DUMP_THREADS)</f11>
+<f12 mod="shift,ctrl">Notification(Keypress, you pressed ctrl-shift-f12, 5)</f12>
+<f12 mod="shift">NotifyAll(service.kodi.tts,REPEAT)</f12>
+<f12 mod="alt">Notification(Keypress, you pressed alt-f12, 5)</f12>
+<f12 mod="alt,shift">Notification(Keypress, you pressed alt-shift-f12, 5)</f12>
+<f12 mod="longpress">Notification(Keypress, you pressed long f12, 5)</f12>
+<h mod="alt">NotifyAll(service.kodi.tts, VOICE_HINT)</h> 
+<h mod="alt,longpress">NotifyAll(service.kodi.tts, VOICE_HINT_PAUSE)</h> 
+
+
+  <STOP>NotifyAll(service.kodi.tts,STOP)</STOP>
+  <SETTINGS>Addon.OpenSettings(service.kodi.tts)</SETTINGS>
+
+  <f1 mod="ctrl">NotifyAll(service.kodi.tts,HELP_DIALOG)</f1>
+
+  <f11>NotifyAll(service.kodi.tts,CYCLE_DEBUG)</f11> 
+  <f11 mod="ctrl">NotifyAll(service.kodi.tts,DUMP_THREADS)</f11> 
+
+  <f12>NotifyAll(service.kodi.tts,TOGGLE_ON_OFF)</f12> 
+  <f12 mod="ctrl">NotifyAll(service.kodi.tts,SETTINGS.BACKEND_GUI)</f12>
+  <plus mod="ctrl">NotifyAll(service.kodi.tts,VOL_UP)</plus>
+  <minus mod="ctrl">NotifyAll(service.kodi.tts,VOL_DOWN)</minus>
+  <plus mod="alt">NotifyAll(service.kodi.tts,SPEED_UP)</plus>
+  <minus mod="alt">NotifyAll(service.kodi.tts,SLOW_DOWN)</minus>
+
+      <!-- Buttons not defined:
+      <REPEAT>NotifyAll(service.kodi.tts,REPEAT)</REPEAT>
+      <EXTRA>NotifyAll(service.kodi.tts,EXTRA)</EXTRA>
+      <ITEM_EXTRA>NotifyAll(service.kodi.tts,ITEM_EXTRA)</ITEM_EXTRA>
+      <DISABLE>NotifyAll(service.kodi.tts,TOGGLE_ON_OFF)</DISABLE> -->
+</keyboard>
+<!--    <remote>
+      <red>NotifyAll(service.kodi.tts,VOL_UP)</red>
+      <green>NotifyAll(service.kodi.tts,VOL_DOWN)</green> 
+      <subtitle>NotifyAll(service.kodi.tts,TOGGLE_ON_OFF)</subtitle>
+    </remote> -->
+  </global> 
+</keymap>
