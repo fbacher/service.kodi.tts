@@ -130,27 +130,13 @@ class PowerShellTTSSettings:
                                             service_status=StatusType.OK,
                                             persist=True)
 
-        # Defines a very loose language validator. Basically it will accept
-        # almost any strings. The real work is done by LanguageInfo and
-        # SettingsHelper. Should revisit this validator
-
         t_key = cls.service_key.with_prop(SettingProp.LANGUAGE)
-        language_validator: StringValidator
-        language_validator = StringValidator(t_key,
-                                             allowed_values=[], min_length=2,
-                                             max_length=10,
-                                             define_setting=True,
-                                             service_status=StatusType.OK,
-                                             persist=True)
+        SettingsMap.define_setting(t_key, SettingType.STRING_TYPE,
+                                   service_status=StatusType.OK)
 
         t_key = cls.service_key.with_prop(SettingProp.VOICE)
-        voice_validator: StringValidator
-        voice_validator = StringValidator(t_key,
-                                          allowed_values=[], min_length=1, max_length=20,
-                                          default=None,
-                                          define_setting=True,
-                                          service_status=StatusType.OK,
-                                          persist=True)
+        SettingsMap.define_setting(t_key, SettingType.STRING_TYPE,
+                                   service_status=StatusType.OK)
 
         allowed_player_modes: List[str] = [
             PlayerMode.SLAVE_FILE.value,
@@ -173,7 +159,7 @@ class PowerShellTTSSettings:
                                       supported_input_formats=[],
                                       supported_output_formats=[AudioType.WAV,
                                                                 AudioType.BUILT_IN])
-        candidates: List[str]
+        candidates: List[ServiceID]
         candidates = SoundCapabilities.get_capable_services(
                 service_type=ServiceType.PLAYER,
                 consumer_formats=[AudioType.BUILT_IN, AudioType.WAV, AudioType.MP3],
@@ -202,10 +188,10 @@ class PowerShellTTSSettings:
                               Players.MPG321_OE_PI, Players.BUILT_IN]
 
         valid_players: List[str] = []
-        for player_id in candidates:
+        for player_key in candidates:
             player_id: str
             player_key: ServiceID
-            player_key = ServiceID(ServiceType.PLAYER, player_id, SettingProp.SERVICE_ID)
+            player_id = player_key.service_id
             if player_id in players and SettingsMap.is_available(player_key):
                 valid_players.append(player_id)
 

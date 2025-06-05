@@ -755,7 +755,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             if action_id == xbmcgui.ACTION_MOUSE_MOVE:
                 return
 
-            if MY_LOGGER.isEnabledFor(DEBUG):
+            if MY_LOGGER.isEnabledFor(DEBUG_XV):
                 action_mapper = Action.get_instance()
                 matches = action_mapper.getKeyIDInfo(action)
 
@@ -784,7 +784,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 #  MY_LOGGER.debug(
                 #         f'Key found: {",".join(key_codes)}')
 
-                MY_LOGGER.debug(f'action_id: {action_id}')
+                MY_LOGGER.debug_xv(f'action_id: {action_id}')
             if (action_id == xbmcgui.ACTION_PREVIOUS_MENU
                     or action_id == xbmcgui.ACTION_NAV_BACK):
                 exit_dialog = True
@@ -1067,7 +1067,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                                                   engine_voice_id=lang_voice_id,
                                                   lang_id=None)
             choices, current_choice_index = SettingsHelper.get_language_choices(
-                    engine_key=engine_key, get_best_match=False)
+                    engine_key=engine_key, get_best_match=False,
+                    format_type=FormatType.LONG)
             self.cfg.save_current_choices(choices, current_choice_index)
             MY_LOGGER.debug(f'# choices: {len(choices)} current_choice_index: '
                             f'{current_choice_index}')
@@ -1095,7 +1096,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 return
             choice: Choice = choices[current_choice_index]
             voice = choice.lang_info.translated_voice
-            lang_id: str = choice.lang_info.locale
+            lang_id: str = choice.lang_info.engine_lang_id
+            voice_id: str = choice.lang_info.engine_voice_id
             #  MY_LOGGER.debug(f'language: {language} # choices {len(choices)}')
             self.engine_language_value.setLabel(voice)
             self.engine_language_group.setVisible(True)
@@ -1104,6 +1106,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             else:
                 self.engine_language_value.setEnabled(True)
             Settings.set_language(lang_id)
+            Settings.set_voice(voice_id, engine_key=engine_key)
         except Exception as e:
             MY_LOGGER.exception('')
 
@@ -1891,7 +1894,6 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         :return:
         """
         try:
-            MY_LOGGER.debug('FOOO set_lang_field')
             lang_id: str | None = None
             voice_id: str | None = None
             if engine_key is None:
@@ -1899,13 +1901,14 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             if lang_info is None:
                 raise ValueError('lang_info value required')
             lang_id = lang_info.engine_lang_id
-            voice_name: str = lang_info.translated_voice
             self.cfg.set_lang_fields(engine_key=engine_key, lang_info=lang_info)
             if update_ui:
+                voice_name: str = lang_info.translated_voice
                 visible: bool = lang_id != SettingProp.UNKNOWN_VALUE
                 self.engine_language_group.setVisible(visible)
                 self.engine_language_value.setEnabled(visible)
                 self.engine_language_value.setLabel(voice_name)
+                MY_LOGGER.debug(f'voice_name: {voice_name} visible: {visible}')
         except Exception as e:
             MY_LOGGER.exception('')
 

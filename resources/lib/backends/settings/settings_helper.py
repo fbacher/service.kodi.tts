@@ -224,6 +224,29 @@ class SettingsHelper:
 
         :param current_engine_key: id of the currently running engine
         :return:
+
+            TODO: Rework all of the language related methods. There is a ton of
+            redundancy in these methods. This is due to the conception of how
+            the menus would work. Originally the idea is that you would first
+            choose your language from the universe of languages and then drill
+            down to the engine that supported your language and finly pick the
+            language variant and voice.   Well, it don't work that way...
+
+            Instead, you always choose your Kodi language and territory, etc.
+            first. So for TTS, you are presented with the variations of your
+            major language ('en') supported by the current engine. The model is
+            that you can choose language variant (territory) and voice. You can
+            also filter on gender. Of course engines vary widely on how the variants
+            and voices are represented and organized. It is a work in progress.
+
+            Anyway, The code here can probably be reduced to two methods:
+            1) Discover the language capabilities of each engine, building a
+            master table
+            2) A method for getting the language info for a specific engine and
+            language, based on what was discovered in 1).
+
+            This won't be trivial, but it shouldn't be that big of a job either.
+            It will make the code much better.
         """
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'current_engine_key: {current_engine_key}')
@@ -282,17 +305,6 @@ class SettingsHelper:
             # So to sort, we need to sort both the second level dict's keys
             # and the List of LangInfos
 
-            '''
-            current_value: str = cls.getSetting(SettingProp.LANGUAGE,
-                                                kodi_locale)
-            if current_value == 'unknown':
-                current_value = kodi_locale
-            current_language: langcodes.Language.get(current_value)
-            
-            default_setting_index: int = -1
-            # MY_LOGGER.debug(f'FLOYD About to sort choices')
-            # entries: Dict[str, Dict[str, List[LanguageInfo]]] = None
-            '''
             # First, create sorted list of engine keys by sorting on their label
             engine_choices: List[Choice] = []
             for engine_key in entries.keys():
@@ -314,6 +326,12 @@ class SettingsHelper:
                 choice: Choice
                 engines_langs: List[Choice] = []
                 engine_key: ServiceID = choice.engine_key
+                current_matching_choice: Choice | None = None
+                current_engine_voice_id: str = Settings.get_voice(engine_key)
+                current_engine_lang_id: str = Settings.get_language(engine_key)
+                MY_LOGGER.debug(f'engine_key: {engine_key} '
+                                f'current_voice: {current_engine_voice_id} '
+                                f'current_lang_id: {current_engine_lang_id}')
                 language_entry:  Dict[str, List[LanguageInfo]]
                 language_entry = entries[engine_key]
                 # We only care about the current language
@@ -333,16 +351,19 @@ class SettingsHelper:
                     lang_info: LanguageInfo
                     engine_label = lang_info.translated_engine_name
                     engine_supported_voices += 1
+                    '''
                     if lang_info.engine_key != engine_key:
                         if MY_LOGGER.isEnabledFor(DEBUG):
                             MY_LOGGER.debug(f'ERROR lang_info.service_key:'
                                             f' {lang_info.engine_key} != '
                                             f'service_key: {engine_key}')
+                            
                     choice: Choice
                     choice = Choice(label=engine_label, value=engine_key.service_id,
                                     choice_index=0, engine_key=engine_key,
                                     lang_info=lang_info)
                     engines_langs.append(choice)
+                    '''
 
                     # Get (text) language differences between the current locale
                     # and the proposed language
@@ -365,6 +386,15 @@ class SettingsHelper:
                                     engine_key=lang_info.engine_key,
                                     match_distance=match_distance)
                     engines_langs.append(choice)
+                    MY_LOGGER.debug(f'engine_key: {engine_key} '
+                                    f'engine_voice_id: {lang_info.engine_voice_id} '
+                                    f'lang_id: {lang_info.engine_lang_id}')
+                    if (current_engine_voice_id == lang_info.engine_voice_id and
+                            current_engine_lang_id == lang_info.engine_lang_id):
+                        current_matching_choice = choice
+                        MY_LOGGER.debug(f'current_engine_lang_id: '
+                                        f'{current_engine_lang_id}')
+
                 # Done with creating a list of language variants for an engine
                 # which to sort and further manipulate
 
@@ -378,16 +408,37 @@ class SettingsHelper:
                 # Now, simply pick the best match. Since each engine is being
                 # processed in sorted order, these entries will be sorted correctly.
 
-                choice_to_add: Choice = engines_langs[0]
+                # If we have a saved setting for this engine, then try to use the
+                # previous voice_id and lang_id
+                matching_choice: Choice | None = None
+                if current_matching_choice is not None:
+                    for choice_to_check in engines_langs:
+                        choice_to_check: Choice
+                        MY_LOGGER.debug(f'current voice: {current_engine_voice_id} '
+                                        f'lang_id: {current_engine_lang_id} '
+                                        f'distance: {choice.match_distance} '
+                                        f'matching_sort_key: '
+                                        f'{current_matching_choice.sort_key}')
+                        if current_matching_choice.sort_key == choice_to_check.sort_key:
+                            matching_choice = choice_to_check
+                            break
+
+                if matching_choice is None:
+                    choice_to_add: Choice = engines_langs[0]
+                else:
+                    choice_to_add = matching_choice
                 choice_to_add.choice_index = idx
                 if current_engine_key is not None:
                     if current_engine_key == choice_to_add.engine_key:
                         current_choice_index = idx
                     if MY_LOGGER.isEnabledFor(DEBUG):
+
                         MY_LOGGER.debug(f'current_engine_key: {current_engine_key} '
                                         f'idx: {current_choice_index} '
-                                        f'choice_key: {choice_to_add.engine_key}')
-                    final_choices.append(engines_langs[0])
+                                        f'choice_key: {choice_to_add.engine_key} '
+                                        f'voice: {choice.lang_info.engine_voice_id} '
+                                        f'distance: {choice.match_distance}')
+                    final_choices.append(choice_to_add)
                 idx += 1
             # Finished processing all engines
 
@@ -524,8 +575,6 @@ class SettingsHelper:
                                                          kodi_language,
                                                          choices)
                     sort_choices.extend(more_choices)
-            # Sort the choices and fix indices
-
             choices: List[Choice]
             best_idx: int
             choices, best_idx = cls.identify_closet_match(sort_choices, kodi_locale)
@@ -585,6 +634,8 @@ class SettingsHelper:
                           kodi_language: langcodes.Language,
                           sort_choices: List[Choice]) -> List[Choice]:
         """
+        Sorts language entries for a single engine, returning a list of
+        Choices.
         Sorts by match_distance then label.
         Also adds the match distance between Kodi's current language and the
         languages being sorted.
@@ -594,7 +645,6 @@ class SettingsHelper:
         :param sort_choices:
         :return:
         """
-
         idx: int = 0
         for lang_info in engine_langs_in_family:
             lang_info: LanguageInfo
@@ -626,12 +676,8 @@ class SettingsHelper:
             sort_choices.append(choice)
 
         # Sort the choices by language match
-
-        # MY_LOGGER.debug(f'FLOYD # sort_choices: {len(sort_choices)}')
         sorted_choices: List[Choice]
         sorted_choices = sorted(sort_choices, key=lambda chc: chc.sort_key)
-        # MY_LOGGER.debug(f'FLOYD # sort_choices: {len(sort_choices)}')
-
         return sorted_choices
 
     @classmethod
@@ -669,7 +715,8 @@ class SettingsHelper:
     def identify_closet_match(cls, sorted_choices: List[Choice],
                               kodi_locale: str) -> Tuple[List[Choice], int]:
         """
-        Identifies the closet language match in the given choices and returns
+        Given a sorted list of languages and variants for a single engine,
+        identify the closet language and varient (voice) match and returns
         an index to it. Also adds information from lang_info to the Choices.
 
         Requires that match information already be set prior to call. See
@@ -680,6 +727,17 @@ class SettingsHelper:
         :return:
         """
         idx: int = 0
+        if len(sorted_choices) == 0:
+            return sorted_choices, -1
+        engine_key: ServiceID = sorted_choices[0].engine_key
+        # Mark any entry with the same voice and lang_id as the currently selected one.
+        current_matching_choice: Choice | None = None
+        current_engine_voice_id: str = Settings.get_voice(engine_key)
+        current_engine_lang_id: str = Settings.get_language(engine_key)
+        MY_LOGGER.debug(f'engine_key: {engine_key} '
+                        f'current_voice: {current_engine_voice_id} '
+                        f'current_lang_id: {current_engine_lang_id}')
+
         current_choice_index: int = -1
         closest_match_index: int = -1
         closest_match: int = 10000
@@ -691,11 +749,19 @@ class SettingsHelper:
             lang_id: str = lang_info.language_id
             choice.engine_key = lang_info.engine_key
             choice.choice_index = idx
-            # MY_LOGGER.debug(f'FLOYD lang_id: {lang_id} current_lang: {kodi_lang}')
             if choice.match_distance < closest_match:
                 closest_match = choice.match_distance
                 closest_match_index = idx
             if current_choice_index == -1 and locale == kodi_locale:
+                current_choice_index = idx
+            MY_LOGGER.debug(f'engine_key: {engine_key} '
+                            f'engine_voice_id: {lang_info.engine_voice_id} '
+                            f'lang_id: {lang_info.engine_lang_id}')
+            if (current_engine_voice_id == lang_info.engine_voice_id and
+                    current_engine_lang_id == lang_info.engine_lang_id):
+                current_matching_choice = choice
+                MY_LOGGER.debug(f'current_engine_lang_id: '
+                                f'{current_engine_lang_id}')
                 current_choice_index = idx
 
             choices.append(choice)
@@ -703,11 +769,12 @@ class SettingsHelper:
                 MY_LOGGER.debug_xv(f'{choice}')
             idx += 1
 
-        # MY_LOGGER.debug(f'current_choice_index: {current_choice_index} '
-        #                   f'closest_match_idx: {closest_match_index} '
-        #                   f'closest_match: {closest_match}')
         if current_choice_index == -1:
             current_choice_index = closest_match_index
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'choice_idx: {current_choice_index} choice: '
+                            f'{choices[current_choice_index].lang_info.engine_lang_id} '
+                            f'{choices[current_choice_index].lang_info.engine_voice_id}')
         return choices, current_choice_index
 
     @classmethod
@@ -750,8 +817,11 @@ class SettingsHelper:
                                                ordered=True,
                                                engine_key=engine_key)
             count: int = 0
-            for key, value in entries.items():
+            for service_key, value in entries.items():
+                service_key: ServiceID  # Identifies the engine which the value belongs
                 for lang, lang_values in value.items():
+                    lang: str  # Engine can support Multiple langs
+                    lang_values: List[LanguageInfo]  # langs can have multiple variants
                     count += len(lang_values)
                     # MY_LOGGER.debug(f'key: {key} lang:{lang} '
                     #                   f'# values {len(lang_values)}')
@@ -780,19 +850,19 @@ class SettingsHelper:
             # being a List of every LanguageInfo that is within the
             # same language family as it's key.
             # So to sort, we need to sort both the second level dict's keys
-            # and the List of LangInfos
+            # and the List of LangInfo
             for engine_key, langs_for_an_engine in entries.items():
                 engine_key: ServiceID
                 sort_choices: List[Choice] = []
                 langs_for_an_engine: Dict[str, List[ForwardRef('LanguageInfo')]]
-                for lang_family_id, engine_langs_in_family in langs_for_an_engine.items():
+                for lang_family_id, langs_in_family in langs_for_an_engine.items():
                     lang_family_id: str
-                    engine_langs_in_family: List[ForwardRef('LanguageInfo')]
+                    langs_in_family: List[ForwardRef('LanguageInfo')]
                     if lang_family_id != kodi_lang:
                         continue
                     more_chc: List[Choice]
                     cur_idx: int
-                    more_chc = cls.sort_engine_langs(engine_langs_in_family,
+                    more_chc = cls.sort_engine_langs(langs_in_family,
                                                      kodi_language,
                                                      sort_choices=sort_choices)
                     choices.extend(more_chc)

@@ -109,18 +109,13 @@ class NoEngineSettings:
                                             service_status=StatusType.OK,
                                             persist=True)
 
-        # Defines a very loose language validator. Basically it will accept
-        # almost any strings. The real work is done by LanguageInfo and
-        # SettingsHelper. Should revisit this validator
+        t_key = cls.service_key.with_prop(SettingProp.LANGUAGE)
+        SettingsMap.define_setting(t_key, SettingType.STRING_TYPE,
+                                   service_status=StatusType.OK)
 
-        tmp_key = cls.service_key.with_prop(SettingProp.LANGUAGE)
-        language_validator: StringValidator
-        language_validator = StringValidator(tmp_key,
-                                             allowed_values=[], min_length=2,
-                                             max_length=10,
-                                             define_setting=True,
-                                             service_status=StatusType.OK,
-                                             persist=True)
+        t_key = cls.service_key.with_prop(SettingProp.VOICE)
+        SettingsMap.define_setting(t_key, SettingType.STRING_TYPE,
+                                   service_status=StatusType.OK)
 
         allowed_player_modes: List[str] = [
             PlayerMode.FILE.value
@@ -140,7 +135,7 @@ class NoEngineSettings:
                                       supported_input_formats=[],
                                       supported_output_formats=[AudioType.WAV])
 
-        candidates: List[str]
+        candidates: List[ServiceID]
         candidates = SoundCapabilities.get_capable_services(
                 service_type=ServiceType.PLAYER,
                 consumer_formats=[AudioType.WAV],
@@ -150,10 +145,10 @@ class NoEngineSettings:
 
         MY_LOGGER.debug(f'candidates: {candidates}')
         valid_players: List[str] = []
-        for player_id in candidates:
+        for player_key in candidates:
             player_id: str
             player_key: ServiceID
-            player_key = ServiceID(ServiceType.PLAYER, player_id, SettingProp.SERVICE_ID)
+            player_id = player_key.service_id
             if player_id in players and SettingsMap.is_available(player_key):
                 valid_players.append(player_id)
 

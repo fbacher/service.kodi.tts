@@ -301,15 +301,12 @@ class Settings(SettingsLowLevel):
             engine_key = Settings.get_engine_key()
         language: str | None = None
         try:
-            # MY_LOGGER.debug(f'getting language for setting_id: {setting_id}')
-            lang_service_key: ServiceID
-            lang_service_key = engine_key.with_prop(SettingProp.LANGUAGE)
-            e_lang_val: IValidator
-            e_lang_val = SettingsMap.get_validator(lang_service_key)
-            if e_lang_val is not None:
-                language = e_lang_val.get_tts_value()
-            else:
-                language = cls.get_setting_str(lang_service_key, default=None)
+            language_key: ServiceID
+            language_key = engine_key.with_prop(SettingProp.LANGUAGE)
+            language = SettingsLowLevel.get_setting_str(language_key,
+                                                        load_on_demand=True)
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'{language_key} value: {language}')
         except Exception as e:
             MY_LOGGER.exception('')
         return language
@@ -317,16 +314,14 @@ class Settings(SettingsLowLevel):
     @classmethod
     def set_language(cls, language: str,
                      engine_key: ServiceID | None = None) -> None:
-        # MY_LOGGER.debug(f'setting language: {language}')
         if engine_key is None:
             engine_key = Settings.get_engine_key()
         try:
-            # MY_LOGGER.debug(f'setting language for setting_id: {setting_id}')
-            lang_service_key: ServiceID
-            lang_service_key = engine_key.with_prop(SettingProp.LANGUAGE)
-            e_lang_val: IValidator
-            e_lang_val = SettingsMap.get_validator(lang_service_key)
-            e_lang_val.set_tts_value(language)
+            language_key: ServiceID
+            language_key = engine_key.with_prop(SettingProp.LANGUAGE)
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'{language_key} value: {language}')
+            SettingsLowLevel.set_setting_str(language_key, language)
         except Exception as e:
             MY_LOGGER.exception('')
 
@@ -384,19 +379,20 @@ class Settings(SettingsLowLevel):
         if engine_key is None:
             engine_key = Settings.get_engine_key()
         voice_key: ServiceID = engine_key.with_prop(SettingProp.VOICE)
-        voice_val: IValidator = SettingsMap.get_validator(voice_key)
-        voice: str = voice_val.get_tts_value()
+        voice = SettingsLowLevel.get_setting_str(voice_key, load_on_demand=True)
+        MY_LOGGER.debug(f'voice: {voice} voice_key: {voice_key}')
+        MY_LOGGER.debug(f'{voice_key} in cache: '
+                        f'{SettingsLowLevel.is_in_cache(voice_key)}')
         return voice
 
     @classmethod
     def set_voice(cls, voice: str, engine_key: ServiceID | None) -> None:
         if engine_key is None:
-            engine_id = Settings.get_engine_key()
-            # setting_id = super()._current_engine
+            engine_key = Settings.get_engine_key()
         voice_key: ServiceID = engine_key.with_prop(SettingProp.VOICE)
-        voice_val: IValidator = SettingsMap.get_validator(voice_key)
-        #  MY_LOGGER.debug(f'Setting voice {voice} for: {engine_key}')
-        voice_val.set_tts_value(voice)
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'{voice_key} value: {voice}')
+        SettingsLowLevel.set_setting_str(voice_key, voice)
         return None
 
     @classmethod

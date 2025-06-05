@@ -16,9 +16,7 @@ from gui.window_model import WindowModel
 from gui.window_structure import WindowStructure
 from windows.window_state_monitor import WinDialogState, WindowStateMonitor
 
-module_logger = BasicLogger.get_logger(__name__)
-# _logger: BasicLogger = Logger.get_logger(Logger.SCRAPER)
-# _noisy_logger: BasicLogger = Logger.get_logger(Logger.NOISY_SCRAPER)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class GuiWorkerQueue:
@@ -36,7 +34,6 @@ class GuiWorkerQueue:
     sequence_number: int = 0
     canceled_sequence_number: int = -1
     _instance: 'GuiWorkerQueue' = None
-    _logger: BasicLogger = module_logger
 
     class QueueItem:
 
@@ -81,8 +78,8 @@ class GuiWorkerQueue:
 
     def _handleQueue(self):
         clz = type(self)
-        if clz._logger.isEnabledFor(DEBUG):
-            self._logger.debug_v(f'Threaded GuiWorkerQueue started')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug_v(f'Threaded GuiWorkerQueue started')
         try:
             while self.active_queue and not Monitor.wait_for_abort(timeout=0.1):
                 item: GuiWorkerQueue.QueueItem | None = None
@@ -93,14 +90,14 @@ class GuiWorkerQueue:
                     GuiWorker.process_queue(item.windialog_state,
                                             clz.sequence_number)
                 except queue.Empty:
-                    # self._logger.debug_v('queue empty')
+                    # MY_LOGGER.debug_v('queue empty')
                     pass
                 except AbortException:
                     return  # Let thread die
                 except ValueError as e:
-                    clz._logger.exception('')
+                    MY_LOGGER.exception('')
                 except Exception:
-                    clz._logger.exception('')
+                    MY_LOGGER.exception('')
         except AbortException:
             return  # Let thread die
 
@@ -108,7 +105,7 @@ class GuiWorkerQueue:
 
     @classmethod
     def empty_queue(cls):
-        #  cls._logger.debug(f'empty_queue')
+        #  MY_LOGGER.debug(f'empty_queue')
         try:
             while True:
                 cls.canceled_sequence_number = cls.sequence_number
@@ -122,8 +119,8 @@ class GuiWorkerQueue:
         focus_id: str = str(windialog_state.focus_id)
         visible: bool = windialog_state.is_control_visible
 
-        if cls._logger.isEnabledFor(DEBUG_V):
-            cls._logger.debug_v(f'Add task {windialog_state.succinct}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'Add task {windialog_state.succinct}')
         current_windialog_id: int = windialog_state.window_id
         from windows import CustomTTSReader
         current_reader: CustomTTSReader
@@ -158,7 +155,6 @@ class GuiWorkerQueue:
 
 
 class GuiWorker:
-    _logger: BasicLogger = module_logger
     # _window_state_listener_lock: threading.RLock = None
     _window_state_lock: threading.RLock = None
     # _window_state_listeners: Dict[str, Callable[[int], bool]] = {}
@@ -184,8 +180,8 @@ class GuiWorker:
         from service_worker import TTSService
         clz = GuiWorker
         self.service_prop = TTSService.instance
-        if clz._logger.isEnabledFor(DEBUG_XV):
-            clz._logger.debug_xv('TTSService engine:'
+        if MY_LOGGER.isEnabledFor(DEBUG_XV):
+            MY_LOGGER.debug_xv('TTSService engine:'
                                  f' {self.service_prop.active_backend.engine_id} '
                                  f'instance: {self.service_prop} ')
         return self.service_prop
@@ -216,7 +212,7 @@ class GuiWorker:
         #  occasionally to catch windows that don't need input (all labels).
         #  But very expensive to do all of the time when changed = 0 is probably right.
 
-        #  clz._logger.debug(f'windialog_state: {windialog_state.verbose}')
+        #  MY_LOGGER.debug(f'windialog_state: {windialog_state.verbose}')
 
         from windows import CustomTTSReader
         current_reader: CustomTTSReader
@@ -229,32 +225,33 @@ class GuiWorker:
         if GuiGlobals.require_focus_change and not windialog_state.focus_changed:
             return True
         if not GuiGlobals.require_focus_change and windialog_state.focus_changed:
-            if clz._logger.isEnabledFor(DEBUG_V):
-                clz._logger.debug_v('require_focus_change = True because FOCUS CHANGED')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v('require_focus_change = True because FOCUS CHANGED')
             GuiGlobals.require_focus_change = True
 
         if windialog_state.difficult_to_detect:
             return True
 
-        if clz._logger.isEnabledFor(DEBUG_V):
-            clz._logger.debug_v(f'In determine_focus_changed windialog_state: '
-                                f'{windialog_state}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'In determine_focus_changed windialog_state: '
+                              f'{windialog_state}')
         try:
             if windialog_state.window_changed or windialog_state.revoice:
+                MY_LOGGER.debug(f'CLEAR QUEUE window changed')
                 # May later change to be specific to window vs dialog
                 GuiWorker.previous_topic_chain.clear()
                 GuiWorkerQueue.empty_queue()
             elif windialog_state.focus_changed:
+                MY_LOGGER.debug(f'CLEAR QUEUE focus changed changed')
                 GuiWorkerQueue.empty_queue()
             elif windialog_state.visibility_changed:
-                GuiWorkerQueue.empty_queue()
-            elif windialog_state.focus_changed:
+                MY_LOGGER.debug(f'CLEAR QUEUE visibility changed')
                 GuiWorkerQueue.empty_queue()
 
-            clz._logger.debug(f'Calling add_task')
+            #  MY_LOGGER.debug(f'Calling add_task')
             GuiWorkerQueue.add_task(windialog_state)
         except Exception:
-            clz._logger.exception('')
+            MY_LOGGER.exception('')
         return True
 
     @staticmethod
@@ -278,16 +275,16 @@ class GuiWorker:
         """
         clz = GuiWorker
         focus_id: int = windialog_state.focus_id
-        if clz._logger.isEnabledFor(DEBUG_V):
-            clz._logger.debug(windialog_state.succinct)
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug(windialog_state.succinct)
         window_id: int = windialog_state.window_id
         from windows import CustomTTSReader
         current_reader: CustomTTSReader
         current_reader = CustomTTSReader.get_instance(window_id,
                                                       windialog_state=windialog_state)
         if current_reader is None:
-            if clz._logger.isEnabledFor(DEBUG_V):
-                clz._logger.debug_v('reader is None')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v('reader is None')
             return
 
         window_struct: WindowStructure = current_reader.window_struct
@@ -295,14 +292,14 @@ class GuiWorker:
         window: WindowModel = current_reader.window_model
         window.windialog_state = windialog_state
         focused_topic: TopicModel | None = None
-        # clz._logger.debug(f'changed: {changed} revoice: {windialog_state.revoice}')
+        # MY_LOGGER.debug(f'changed: {changed} revoice: {windialog_state.revoice}')
         if windialog_state.focus_changed or not GuiGlobals.require_focus_change:
-            # clz._logger.debug(f'focus_id: {focus_id}')
+            # MY_LOGGER.debug(f'focus_id: {focus_id}')
             focused_topic = window_struct.get_topic_by_tree_id(str(focus_id))
-            # clz._logger.debug(f'focused_topic: {focused_topic}')
+            # MY_LOGGER.debug(f'focused_topic: {focused_topic}')
 
         if GuiWorkerQueue.canceled_sequence_number >= sequence_number:
-            clz._logger.debug(f'Abandoning. canceled sequence #')
+            MY_LOGGER.debug(f'Abandoning. canceled sequence #')
             return
         # Is it worth to scrape to find out if something has changed (label, etc.)
         # that otherwise does not show up because no api directly detects it?
@@ -320,29 +317,29 @@ class GuiWorker:
                 topics_to_voice = GuiWorker.get_topics_for_voicing(window_struct,
                                                                    focused_topic_id,
                                                                    focus_changed=False)
-                if clz._logger.isEnabledFor(DEBUG):
-                    clz._logger.debug(f'windialog_state focus: {windialog_state.focus_id} '
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'windialog_state focus: {windialog_state.focus_id} '
                                       f'revoice: {windialog_state.revoice}')
                 # Now, take the state of the window into account
                 current_reader.direct_voicing_topics(topics_to_voice,
                                                      windialog_state=windialog_state,
                                                      sequence_number=sequence_number)
             except Exception as e:
-                clz._logger.exception(f'focus_id: {focus_id} window_id: {window_id} '
+                MY_LOGGER.exception(f'focus_id: {focus_id} window_id: {window_id} '
                                       f'\n {focused_topic}')
             return
 
         focused_topic_id: str = ''
         if focused_topic is not None:
             focused_topic_id = focused_topic.name
-            if clz._logger.isEnabledFor(DEBUG_V):
-                clz._logger.debug_v(f'focused_topic: {focused_topic_id} '
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'focused_topic: {focused_topic_id} '
                                     f'require_focus_change: '
                                     f'{GuiGlobals.require_focus_change}')
         else:
             pass
-            if clz._logger.isEnabledFor(DEBUG):
-                clz._logger.debug(f'focused_topic is None or not real:'
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'focused_topic is None or not real:'
                                   f' focus_id: {focus_id} '
                                   f' topic_id: {focused_topic_id} {focused_topic}')
             #  Must look for window header and see where that takes us
@@ -351,15 +348,15 @@ class GuiWorker:
         topics_to_voice = GuiWorker.get_topics_for_voicing(window_struct,
                                                            focused_topic_id)
         if GuiWorkerQueue.canceled_sequence_number >= sequence_number:
-            if clz._logger.isEnabledFor(DEBUG):
-                clz._logger.debug(f'ABANDONING')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'ABANDONING')
             return
 
-        # clz._logger.debug(f'About to call direct_voicing_topics')
+        # MY_LOGGER.debug(f'About to call direct_voicing_topics')
         current_reader.direct_voicing_topics(topics_to_voice,
                                              windialog_state=windialog_state,
                                              sequence_number=sequence_number)
-        # clz._logger.debug(f'Returned from direct_voicing_topics')
+        # MY_LOGGER.debug(f'Returned from direct_voicing_topics')
         return
 
     @staticmethod
@@ -409,8 +406,8 @@ class GuiWorker:
         topic: TopicModel | None = None
         if focused_topic_id == '':
             topic = window_struct.root_topic
-            if clz._logger.isEnabledFor(DEBUG):
-                clz._logger.debug(f'No focused topic. Getting root topic: {topic.name}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'No focused topic. Getting root topic: {topic.name}')
         else:
             # TODO: next check for a control (without topic) having focus
             # From there see if there is a topic with a neighboring controlId
@@ -421,15 +418,15 @@ class GuiWorker:
             # Fake topics are created for controls which have no <topic> in the
             # xml. Can't use them for this purpose.
             if topic is None or not topic.is_real_topic:
-                if clz._logger.isEnabledFor(DEBUG):
-                    clz._logger.debug(f'Can not find topic for focus control: '
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'Can not find topic for focus control: '
                                       f'{focused_topic_id}')
                 topic = None
                 if topic is None or not topic.is_real_topic:
-                    clz._logger.debug('No topics found for root')
+                    MY_LOGGER.debug('No topics found for root')
                 return []
-            if clz._logger.isEnabledFor(DEBUG_V):
-                clz._logger.debug_v(f'focus_changed: {focus_changed} '
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'focus_changed: {focus_changed} '
                                     f'focused topic: {topic.name} '
                                     f'control_id: {control_model.control_id}')
         if not focus_changed:
@@ -438,12 +435,12 @@ class GuiWorker:
 
         while topic is not None:
             if not topic.is_real_topic:
-                if clz._logger.isEnabledFor(DEBUG_V):
-                    clz._logger.debug_v(f'Skipping over fake topic: {topic}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'Skipping over fake topic: {topic}')
                 continue
             current_focus_chain.append(topic)
-            if clz._logger.isEnabledFor(DEBUG_V):
-                clz._logger.debug_v(f'topic: {topic.name} ctrl: '
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'topic: {topic.name} ctrl: '
                                           f'{topic.parent.control_id} '
                                           f'outer_topic: {topic.outer_topic}')
             control, topic = window_struct.get_control_and_topic_for_id(topic.outer_topic)

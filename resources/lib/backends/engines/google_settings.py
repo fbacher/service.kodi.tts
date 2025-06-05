@@ -127,20 +127,6 @@ class GoogleSettings:
 
         # Uses default volume_validator defined in base_engine_settings
 
-        # Defines a very loose language validator. Basically it will accept
-        # almost any strings. The real work is done by LanguageInfo and
-        # SettingsHelper. Should revisit this validator
-
-        lang_svc_key: ServiceID
-        lang_svc_key = cls.service_key.with_prop(SettingProp.LANGUAGE)
-        language_validator: StringValidator
-        language_validator = StringValidator(lang_svc_key,
-                                             allowed_values=[], min_length=2,
-                                             max_length=10,
-                                             define_setting=True,
-                                             service_status=StatusType.OK,
-                                             persist=True)
-
         # The free GoogleTTS only supplies basic voices which are determined
         # by language and country code. In short, the voice choices are
         # essentially the locale (en-us, en-gb, etc.).Not all combinations are
@@ -152,13 +138,13 @@ class GoogleSettings:
         # system works fairly well. Google doesn't document this nor does it
         # work in all situations.
 
-        voice_validator: StringValidator
-        voice_validator = StringValidator(cls.service_key.with_prop(SettingProp.VOICE),
-                                          allowed_values=[], min_length=1,
-                                          max_length=8, default='com',
-                                          define_setting=True,
-                                          service_status=StatusType.OK,
-                                          persist=True)
+        t_key = cls.service_key.with_prop(SettingProp.LANGUAGE)
+        SettingsMap.define_setting(t_key, SettingType.STRING_TYPE,
+                                   service_status=StatusType.OK)
+
+        t_key = cls.service_key.with_prop(SettingProp.VOICE)
+        SettingsMap.define_setting(t_key, SettingType.STRING_TYPE,
+                                   service_status=StatusType.OK)
 
         # Can't support PlayerMode.PIPE: 1) Google does download mp3, but the
         # response time would be awful. 2) You could simulate pipe mode for the
@@ -188,7 +174,7 @@ class GoogleSettings:
                                       supported_output_formats=[AudioType.MP3])
 
         consumer_formats: List[AudioType] = [AudioType.MP3]
-        candidates: List[str]
+        candidates: List[ServiceID]
         candidates = SoundCapabilities.get_capable_services(
                 service_type=ServiceType.PLAYER,
                 consumer_formats=consumer_formats,
@@ -206,10 +192,9 @@ class GoogleSettings:
                               Players.MPG321_OE_PI]
 
         valid_players: List[str] = []
-        for player_id in candidates:
-            player_id: str
+        for player_key in candidates:
             player_key: ServiceID
-            player_key = ServiceID(ServiceType.PLAYER, player_id, SettingProp.SERVICE_ID)
+            player_id = player_key.service_key
             if player_id in players and SettingsMap.is_available(player_key):
                 valid_players.append(player_id)
 

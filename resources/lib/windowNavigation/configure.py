@@ -21,6 +21,7 @@ from __future__ import annotations
 import xbmc
 
 import langcodes
+from backends.audio.sound_capabilities import AudioTypes
 from backends.backend_info import BackendInfo
 from backends.base import *
 from backends.settings.i_validators import (IBoolValidator, INumericValidator,
@@ -31,7 +32,8 @@ from backends.settings.service_types import (GENERATE_BACKUP_SPEECH, PlayerType,
 from backends.settings.service_unavailable_exception import ServiceUnavailable
 from backends.settings.settings_helper import FormatType, SettingsHelper
 from backends.settings.settings_map import SettingsMap
-from backends.settings.validators import (AllowedValue, BoolValidator, StringValidator)
+from backends.settings.validators import (AllowedValue, BoolValidator, NumericValidator,
+                                          StringValidator)
 from common.exceptions import ConfigurationError
 from common.logger import *
 from common.setting_constants import (AudioType, Genders, GenderSettingsMap,
@@ -358,7 +360,7 @@ class Configure:
                                 f'player_mode: {engine_config.player_mode} '
                                 f'transcoder: {engine_config.transcoder} '
                                 f'trans_audio_in: {engine_config.trans_audio_in} '
-                                f'trans_audio_out: {engine_config.trans_audio_out}'
+                                f'trans_audio_out: {engine_config.trans_audio_out} '
                                 f'lang_info: {lang_info}')
             engine_config.lang_info = lang_info
             self.set_lang_fields(engine_key=engine_key,
@@ -709,7 +711,7 @@ class Configure:
         the criteria.
 
         :param engine_key:
-        :param lang_info:
+        :param lang_info: Can not be None
         :param engine_audio:
         :param player_mode: If not None, then the player_mode of player must match
         :param use_cache:
@@ -1034,26 +1036,30 @@ class Configure:
         return tran_id
 
     def get_player_choices(self,
-                           engine_key: ServiceID) -> Tuple[List[Choice], int]:
+                           engine_key: ServiceID,
+                           ignore_player_mode: bool = True) -> Tuple[List[Choice], int]:
         """
-            Get players which are compatible with the engine as well as player_Mode.
+            Get players which are compatible with the engine as well as player_mode.
             The 'ranking' of players may influence the suggested player.
 
             The player_mode should be checked to see if it requires changing
 
         :param engine_key:
+        :param ignore_player_mode: if False, then return choices which are compatible
+                 with the player mode. Otherwise, ignore the current player_mode.
         :return: List of compatible players and an index referencing the current
                  or suggested player.
         """
         choices: List[Choice] = []
         current_choice_index = -1
         '''
-            # We want the players which can handle what our TTS engine produces
+            # We want the players which can handle what our engine produces
         '''
-        return self.get_compatible_players(engine_key)
+        return self.get_compatible_players(engine_key, ignore_player_mode)
 
-    def get_compatible_players(self,
-                               engine_key: ServiceID) -> Tuple[List[Choice], int]:
+    def get_compatible_players(self, engine_key: ServiceID,
+                               ignore_player_mode: bool = False) \
+            -> Tuple[List[Choice], int]:
         """
             TODO: verify that this is needed or can't utilize other player
                 methods (find_player, etc)
@@ -1064,9 +1070,12 @@ class Configure:
                The player_mode should be checked to see if it requires changing
 
            :param engine_key: Engine to get players for
+           :param ignore_player_mode: If False, then ignore the current player mode
+                  when choicing players.
            :return: List of compatible players and an index referencing the current
                  or suggested player.
         """
+        allow_transcoder: bool = False
         choices: List[Choice] = []
         current_choice_index: int = -1
         try:
@@ -1076,46 +1085,55 @@ class Configure:
                     MY_LOGGER.info(f'There is no PLAYER for {engine_key}')
                 return choices, current_choice_index
 
-            # Make sure that any player complies with the engine's player
-            # validator
-
-            val: IStringValidator
-            val = SettingsMap.get_validator(engine_key.with_prop(SettingProp.PLAYER))
             current_choice: ServiceID
             current_choice = Settings.get_player_key(engine_key)
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'current player: {current_choice} '
                                 f'engine: {engine_key} ')
 
-            supported_players_with_enable: List[AllowedValue]
-            supported_players_with_enable = val.get_allowed_values()
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'supported_players_with_enable:'
-                                f' {supported_players_with_enable}')
-            default_choice: PlayerType = PlayerType(val.default)
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'default: {val.default}')
+            engine_formats: List[AudioType]
+            engine_formats = SoundCapabilities.get_output_formats(engine_key)
+            engine_audio_types: AudioTypes = AudioTypes(engine_formats)
+            cand_players: List[ServiceID]
+            cand_players = SoundCapabilities.get_capable_services(ServiceType.PLAYER,
+                                                                  engine_formats)
+            mp3_players: List[ServiceID] = []
+            wav_players: List[ServiceID] = []
+            builtin_player: ServiceID | None = None  # Can only be one
+            for cand_player in cand_players:
+                cand_player: ServiceID
+                if not SettingsMap.is_available(cand_player):
+                    MY_LOGGER.debug(f'player NOT available: {cand_player}')
+                    continue
+                player_formats: List[AudioType]
+                player_formats = SoundCapabilities.get_input_formats(cand_player,
+                                                                     engine_audio_types)
+                common_audio: AudioTypes
+                common_audio = AudioTypes(player_formats).common(engine_audio_types)
+                if common_audio.has_mp3:
+                    mp3_players.append(cand_player)
+                if common_audio.has_wav:
+                    wav_players.append(cand_player)
+                if common_audio.has_builtin:
+                    builtin_player = cand_player
 
-            if supported_players_with_enable is None:
-                supported_players_with_enable = []
-            supported_players: List[Tuple[PlayerType, bool]] = []
+            supported_players: List[Tuple[AllowedValue, int]] = []
             idx: int = 0
-            default_choice_idx: int = -1
+            default_choice_idx: int = 1
             current_enabled: bool = True
             default_enabled: bool = True
-            for supported_player in supported_players_with_enable:
-                supported_player: AllowedValue
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'player_str: {supported_player.value} '
-                                    f'enabled: {supported_player.enabled}')
-                player: PlayerType = PlayerType(supported_player.value)
-                supported_players.append((player, supported_player.enabled))
-                if player == PlayerType(current_choice.service_id):
+            all_players: List[ServiceID] = mp3_players
+            all_players.extend(wav_players)
+            all_players.append(builtin_player)
+            for player in all_players:
+                player: ServiceID
+                MY_LOGGER.debug(f'player: {player}')
+                supported_players.append((AllowedValue(value=player.service_id,
+                                                       enabled=True, service_key=player),
+                                          idx))
+                if player == current_choice:
                     current_choice_index = idx
-                    current_enabled = supported_player.enabled
-                if player == default_choice:
-                    default_choice_idx = idx
-                    default_enabled = supported_player.enabled
+                    current_enabled = True
                 idx += 1
 
             if current_choice_index < 0:
@@ -1124,11 +1142,14 @@ class Configure:
             if not current_enabled:  # Must pick something else
                 current_choice_index = 0
             idx: int = 0
-            for player, enabled in supported_players:
-                player: PlayerType
-                label: str = Players.get_msg(player)
-                choices.append(Choice(label=label, value=player,
-                                      choice_index=idx, enabled=enabled))
+            for allowed_value, _ in supported_players:
+                allowed_value: AllowedValue
+                MY_LOGGER.debug(f'allowed_value: {allowed_value}')
+                player: ServiceID = allowed_value.service_key
+                player_id: PlayerType = PlayerType(allowed_value.value)
+                label: str = Players.get_msg(player_id)
+                choices.append(Choice(label=label, value=player_id,
+                                      choice_index=idx, enabled=True))
         except Exception as e:
             MY_LOGGER.exception('')
         return choices, current_choice_index
@@ -1487,6 +1508,7 @@ class Configure:
             lang_id: str = lang_info.engine_lang_id
             voice_id: str = lang_info.engine_voice_id
 
+            MY_LOGGER.debug(f'language: {lang_id} voice: {voice_id}')
             Settings.set_language(lang_id, engine_key)
             Settings.set_voice(voice_id, engine_key)
         except Exception as e:
@@ -1782,9 +1804,9 @@ class Configure:
             idx: int = 0
             for choice in choices:
                 choice: Choice
-                if MY_LOGGER.isEnabledFor(DEBUG_V):
-                    MY_LOGGER.debug_v(f'engine: {choice.engine_key} '
-                                      f'lang_info: {choice.lang_info}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'engine: {choice.engine_key} '
+                                      f'lang_info: {choice.lang_info} idx: {idx}')
                 choice.label = SettingsHelper.get_formatted_label(
                         choice.lang_info,
                         kodi_language=kodi_language,

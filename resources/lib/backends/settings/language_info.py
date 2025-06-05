@@ -956,7 +956,8 @@ class LanguageInfo:
         translated_engine_name_str: str = (f'   translated_engine_name: '
                                            f'{self.translated_engine_name}{field_sep} ')
         result = (f'{engine_key_str}{language_id_str}{country_id_str}'
-                  f'{region_id_str}'  # {gender_str}{voice_str}{engine_lang_id_str}'
+                  f'{region_id_str}{engine_lang_id_str}{engine_voice_id_str}'
+                  # {gender_str}{voice_str}{engine_lang_id_str}'
                   #  f'{engine_voice_id_str}{engine_name_msg_id_str}'
                   #  f'{engine_quality_str}{voice_quality_str}{translated_gender_name_str}'
                   f'\n{translated_language_name_str}{translated_lang_country_name_str}'

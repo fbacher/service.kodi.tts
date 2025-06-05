@@ -276,6 +276,10 @@ class AllowedValue:
     def value(self) -> str:
         return self._value
 
+    @property
+    def service_key(self) -> ServiceID:
+        return self._service_key
+
     def set_enabled(self, enabled: bool) -> None:
         self._enabled = enabled
 

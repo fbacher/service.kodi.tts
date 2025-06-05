@@ -251,10 +251,10 @@ class PowerShellTTS(SimpleTTSBackend):
         """
         clz = type(self)
         clz.update_voice_path(phrase)
-        if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'phrase: {phrase.get_text()} {phrase.get_debug_info()} '
-                            f'cache_path: {phrase.get_cache_path()} use_cache: '
-                            f'{Settings.is_use_cache()}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'phrase: {phrase.get_text()} {phrase.get_debug_info()} '
+                              f'cache_path: {phrase.get_cache_path()} use_cache: '
+                              f'{Settings.is_use_cache()}')
         self.get_voice_cache().get_path_to_voice_file(phrase,
                                                       use_cache=Settings.is_use_cache())
         # Wave files only added to cache when SFX is used.
@@ -328,14 +328,13 @@ class PowerShellTTS(SimpleTTSBackend):
         clz.update_voice_path(phrase)
         sfx_player: bool = Settings.get_player_key().setting_id == Players.SFX
         use_cache: bool = Settings.is_use_cache() or sfx_player
-        if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'phrase: {phrase.get_text()} {phrase.get_debug_info()} '
-                            f'cache_path: {phrase.get_cache_path()} ')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'phrase: {phrase.get_text()} {phrase.get_debug_info()} '
+                              f'cache_path: {phrase.get_cache_path()} ')
         # Get path to audio-temp file, or cache location for audio
         result: CacheEntryInfo | None = None
         result = self.get_voice_cache().get_path_to_voice_file(phrase,
                                                                use_cache=use_cache)
-        MY_LOGGER.debug(f'use_cache: {use_cache} result: {result}')
         audio_exists: bool = result.audio_exists  # True ONLY if using cache
         if audio_exists:
             return result.final_audio_path
@@ -349,7 +348,6 @@ class PowerShellTTS(SimpleTTSBackend):
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             MY_LOGGER.debug_v(f'temp_voice_path type: {type(result.temp_voice_path)}')
         try:
-            MY_LOGGER.debug(f'COMMAND STARTED phrase: {phrase.text}')
             if Constants.PLATFORM_WINDOWS:
                 if MY_LOGGER.isEnabledFor(DEBUG_V):
                     MY_LOGGER.debug_v(f'Running command: Windows {args}')
@@ -368,17 +366,20 @@ class PowerShellTTS(SimpleTTSBackend):
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.exception('')
                 return None
-        MY_LOGGER.debug(f'COMMAND FINISHED phrase: {phrase.text}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'COMMAND FINISHED phrase: {phrase.text}')
         if not result.temp_voice_path.exists():
-            MY_LOGGER.info(f'voice file not created: {result.temp_voice_path}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'voice file not created: {result.temp_voice_path}')
             return None
         if result.temp_voice_path.stat().st_size <= 1000:
-            MY_LOGGER.info(f'voice file too small. Deleting: '
-                           f'{result.temp_voice_path}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debig(f'voice file too small. Deleting: '
+                                f'{result.temp_voice_path}')
             try:
                 result.temp_voice_path.unlink(missing_ok=True)
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'unlink {result.temp_voice_path}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'unlink {result.temp_voice_path}')
             except:
                 MY_LOGGER.exception('')
             return None
@@ -391,8 +392,8 @@ class PowerShellTTS(SimpleTTSBackend):
         except ExpiredException:
             try:
                 result.temp_voice_path.unlink(missing_ok=True)
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'EXPIRED: unlink {result.temp_voice_path}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'EXPIRED: unlink {result.temp_voice_path}')
             except:
                 MY_LOGGER.exception(f'Can not delete {result.temp_voice_path}')
             return None
@@ -412,7 +413,6 @@ class PowerShellTTS(SimpleTTSBackend):
             except:
                 MY_LOGGER.exception(f'Can not delete {result.temp_voice_path}')
             return None
-        MY_LOGGER.debug(f'FINISHED')
         return result.final_audio_path  # Wave file
 
     def runCommandAndSpeak(self, phrase: Phrase):
@@ -420,8 +420,8 @@ class PowerShellTTS(SimpleTTSBackend):
         clz.update_voice_path(phrase)
         env = os.environ.copy()
         args: List[str] = self.get_args(phrase)
-        if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'args: {args}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'args: {args}')
         try:
             if Constants.PLATFORM_WINDOWS:
                 subprocess.run(args,
@@ -483,7 +483,8 @@ class PowerShellTTS(SimpleTTSBackend):
         if setting == SettingProp.LANGUAGE:
             # Returns list of languages and index to the closest match to current
             # locale
-            MY_LOGGER.debug(f'In LANGUAGE')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'In LANGUAGE')
             cls.init_voices()
             langs = cls.voice_map.keys()  # Not locales
 
@@ -589,7 +590,6 @@ class PowerShellTTS(SimpleTTSBackend):
         text: str = f'{phrase.text}'
 
         voice_id = Settings.get_voice(clz.service_key)
-        #  MY_LOGGER.debug(f'voice: {voice_id}')
         if voice_id is None or voice_id in ('unknown', ''):
             voice_id = ''
         else:
@@ -597,7 +597,6 @@ class PowerShellTTS(SimpleTTSBackend):
 
         clz.suffix += 1
         t_file: str = f'temp_{clz.suffix}'
-        #  wave_output = Path(f'c:/Users/fbacher/{t_file}')
         windows_path: str = ''
         if wave_output is not None:
             windows_path = f'-AudioPath \'{str(wave_output)}\''
@@ -610,7 +609,8 @@ class PowerShellTTS(SimpleTTSBackend):
                 f'{voice_id} '
                 f'{windows_path}'
                 f'}}']
-        MY_LOGGER.debug(f'args: {args}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'args: {args}')
         return args
 
     @classmethod
@@ -700,21 +700,23 @@ class PowerShellTTS(SimpleTTSBackend):
         :return:
         """
         if Settings.is_use_cache() and not phrase.is_lang_territory_set():
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'lang: {phrase.language} \n'
-                                f'voice: {phrase.voice}\n'
-                                f'lang_dir: {phrase.lang_dir}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'lang: {phrase.language} \n'
+                                  f'voice: {phrase.voice}\n'
+                                  f'lang_dir: {phrase.lang_dir}')
             locale: str = phrase.language  # IETF format
             kodi_lang, kodi_locale, _, ietf_lang = LanguageInfo.get_kodi_locale_info()
-            MY_LOGGER.debug(f'locale: {locale} kodi_lang: {kodi_lang} '
-                            f'kodi_locale: {kodi_locale} '
-                            f'ietf_lang: {ietf_lang}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'locale: {locale} kodi_lang: {kodi_lang} '
+                                  f'kodi_locale: {kodi_locale} '
+                                  f'ietf_lang: {ietf_lang}')
             # MY_LOGGER.debug(f'orig Phrase locale: {locale}')
             if locale is None:
                 locale = kodi_locale
             ietf_lang: langcodes.Language = langcodes.get(locale)
-            MY_LOGGER.debug(f'locale: {locale} ietf_lang: {ietf_lang.language} '
-                            f'{ietf_lang.territory}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'locale: {locale} ietf_lang: {ietf_lang.language} '
+                                  f'{ietf_lang.territory}')
             phrase.set_lang_dir(ietf_lang.language)
             # Horrible, crude, hack due to kodi xbmc.getLanguage bug
             if ietf_lang.territory is not None:

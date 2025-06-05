@@ -366,7 +366,7 @@ class SettingsMap:
     @classmethod
     def is_valid_setting(cls, service_id: ServiceID) -> bool:
         """
-        Verfies that every setting has been explicitly defined.
+        Verfies that a setting has been explicitly defined.
 
         Note that this can give FALSE results during startup, when the settings
         have not yet all been defined. This should be benign since things should

@@ -18,7 +18,7 @@ from backends.settings.settings_map import Status, SettingsMap
 from backends.settings.service_unavailable_exception import ServiceUnavailable
 from common.logger import *
 from common.service_status import StatusType
-from common.setting_constants import Channels, Genders
+from common.setting_constants import AudioType, Channels, Genders
 from common.settings_low_level import SettingsLowLevel
 from backends.settings.service_types import ServiceID
 
