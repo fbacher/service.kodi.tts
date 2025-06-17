@@ -167,6 +167,9 @@ class BasicLogger(Logger):
     def __init__(self, name):
         super().__init__(name)
 
+    # def isEnabledFor(self, level: int) -> bool:
+    #     return False
+
     def log(self, level: int, msg: str, *args: Any, **kwargs: Any) -> None:
         """
             Creates a log entry
@@ -201,7 +204,7 @@ class BasicLogger(Logger):
                 raise TypeError("level must be an integer")
             else:
                 return
-        if self.isEnabledFor(level):
+        if super().isEnabledFor(level):
             kwargs.setdefault('ignore_frames', 0)
             ignore_frames = kwargs.pop('ignore_frames') + IGNORE_FRAMES  # 1
             trace = kwargs.pop('trace', None)
@@ -495,7 +498,7 @@ class BasicLogger(Logger):
         :param kwargs: str  Meant for Trace usage:
         :return:
         """
-        if self.isEnabledFor(DEBUG_V):
+        if super().isEnabledFor(DEBUG_V):
             ignore_frames: int = kwargs.setdefault('ignore_frames', 0) + 1
             kwargs['ignore_frames'] = ignore_frames
 
@@ -509,7 +512,7 @@ class BasicLogger(Logger):
         :param kwargs: str  Meant for Trace usage:
         :return:
         """
-        if self.isEnabledFor(DEBUG_XV):
+        if super().isEnabledFor(DEBUG_XV):
             kwargs.setdefault('ignore_frames', 0)
             ignore_frames = kwargs['ignore_frames'] + 1
             kwargs['ignore_frames'] = ignore_frames
@@ -527,7 +530,7 @@ class BasicLogger(Logger):
 
         get.info("Houston, we have a %s", "interesting problem", exc_info=1)
         """
-        if self.isEnabledFor(INFO):
+        if super().isEnabledFor(INFO):
             kwargs.setdefault('ignore_frames', 0)
             ignore_frames = kwargs['ignore_frames'] + 1
             kwargs['ignore_frames'] = ignore_frames
@@ -542,7 +545,7 @@ class BasicLogger(Logger):
 
         get.warning("Houston, we have a %s", "bit of a problem", exc_info=1)
         """
-        if self.isEnabledFor(WARNING):
+        if super().isEnabledFor(WARNING):
             kwargs.setdefault('ignore_frames', 0)
             ignore_frames = kwargs['ignore_frames'] + 1
             kwargs['ignore_frames'] = ignore_frames
@@ -565,7 +568,7 @@ class BasicLogger(Logger):
 
         get.error("Houston, we have a %s", "major problem", exc_info=1)
         """
-        if self.isEnabledFor(ERROR):
+        if super().isEnabledFor(ERROR):
             kwargs.setdefault('ignore_frames', 0)
             ignore_frames = kwargs['ignore_frames'] + 1
             kwargs['ignore_frames'] = ignore_frames

@@ -31,6 +31,7 @@ except ImportError:
     from common.strenum import StrEnum
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
+DEBUG_LOG: bool = MY_LOGGER.isEnabledFor(DEBUG)
 LINE_BUFFERING: int = 1
 
 MINIMUM_PHRASES_IN_QUEUE: Final[int] = 5
@@ -40,7 +41,7 @@ TARGET_PLAYER_QUEUED_SECONDS: int = 10
 words_per_interval: float = (float(AVERAGE_ENGLISH_WORDS_PER_MINUTE) /
                              float(TARGET_PLAYER_QUEUED_SECONDS))
 chars_per_interval: float = words_per_interval * float(AVERAGE_ENGLISH_CHARS_PER_WORD)
-# Approx characters to have queued in player_key to achieve ~ 10 seconds of speech.
+# Approx characters to have queued in player to achieve ~ 10 seconds of speech.
 TARGET_PLAYER_CHAR_LIMIT: int = int(chars_per_interval + 0.5)
 
 
@@ -66,53 +67,54 @@ class PhraseQueueEntry:
 
 class PlayerState:
     """
-    The mpv player_key allows sound files to be queued up into a playlist. To improve
+    The mpv player allows sound files to be queued up into a playlist. To improve
     response time and smooth playing, TTS tries to keep a minimum 10-15 seconds of
     voice queued in the playlist. Having much more in the queue is avoided since
     voicings are frequently canceled by user activity. The playlist is purged
     when a voicing is canceled.
 
     The playlist is always played in order. Every item in the playlist is
-    identified by a montomic index. The index is used to determine how many
-    played and unplayed entries in the list. Otherwise, TTS does not care about
+    identified by a monatomic index. The index is used to determine how many
+    played and unplayed entries are in the list. Otherwise, TTS does not care about
     the index of individual voicings.
     """
-    data: Dict[str, str | int] | None = None
 
-    # Note. mpv does NOT reset any player_key position indexes when it is stopped
-    # (drained). playlist_base_idx gives the index of the first item
-    # in the playlist. It is adjusted after every STOP command.
-    # NOTE: mpv uses ONE-based indices
-    # Initialized to one, even though there are 0 entries. Makes consistent
-    # with what happens when a STOP event arrives. It is a bit of a lie, but
-    # should do no harm.
-    _first_playlist_entry_idx: int = 1
+    def __init__(self) -> None:
+        self.data: Dict[str, str | int] | None = None
 
-    # Index of the last item added to playlist.
-    _last_playlist_entry_idx: int = 0
+        # Note. mpv does NOT reset any player position indexes when it is stopped
+        # (drained). playlist_base_idx gives the index of the first item
+        # in the playlist. It is adjusted after every STOP command.
+        # NOTE: mpv uses ONE-based indices
+        # Initialized to one, even though there are 0 entries. Makes consistent
+        # with what happens when a STOP event arrives. It is a bit of a lie, but
+        # should do no harm.
+        self._first_playlist_entry_idx: int = 1
 
-    # All phrases and silent pauses in a PhraseList are added to player_key's
-    # playlist as a group. The phrases in a PhraseList share the same serial number.
-    _current_phrase_serial_num: int = -1
-    _last_played_idx: int = 0
-    _is_idle: bool = False
-    # Player Hungry is used to limit how many phrases to fed to the
-    # player_key at a time. Phrases are fed to the player_key in PhraseList units.
-    _player_hungry: bool = True
-    # A count of the characters that have been queued up to play in the
-    # current 'batch'of phrases. Some may already have been played, but
-    # usually they are fed to the player_key much faster than they can be played.
-    chars_queued_to_play: int = 0
+        # Index of the last item added to playlist.
+        self._last_playlist_entry_idx: int = 0
 
-    @classmethod
-    def update_data(cls, data: str):
-        cls.data = json.loads(data)
+        # All phrases and silent pauses in a PhraseList are added to player's
+        # playlist as a group. The phrases in a PhraseList share the same serial number.
+        self._current_phrase_serial_num: int = -1
+        self._last_played_idx: int = 0
+        self._is_idle: bool = False
+        # Player Hungry is used to limit how many phrases to fed to the
+        # player at a time. Phrases are fed to the player in PhraseList units.
+        self._player_hungry: bool = True
+        # A count of the characters that have been queued up to play in the
+        # current 'batch'of phrases. Some may already have been played, but
+        # usually they are fed to the player much faster than they can be played.
+        self.chars_queued_to_play: int = 0
+
+    def update_data(self, data: str):
+        self.data = json.loads(data)
         #  clz.get.debug(f'data: {data}')
         #  Debug.dump_json('line_out:', data, DEBUG)
-        event = cls.data.get('event', None)
-        mpv_error = cls.data.get('error', None)
-        reason = cls.data.get('reason', None)
-        entry_id: int = cls.data.get('playlist_entry_id', None)
+        event = self.data.get('event', None)
+        mpv_error = self.data.get('error', None)
+        reason = self.data.get('reason', None)
+        entry_id: int = self.data.get('playlist_entry_id', None)
 
         # playing_entry
         if event is not None:
@@ -123,33 +125,32 @@ class PlayerState:
                 #  {"event":"end-file","reason":"eof","playlist_entry_id":4}
                 if reason == 'eof':
                     # Just finished playing a file
-                    cls._last_played_idx = entry_id
-                    cls._is_idle = False
+                    self._last_played_idx = entry_id
+                    self._is_idle = False
                 if reason == 'stop':
                     # After a stop request, mpv clears its playlist
                     # playing_idx does not get reset.
-                    cls._last_played_idx = cls._last_playlist_entry_idx
-                    cls._first_playlist_entry_idx = cls._last_played_idx + 1
-                    cls._is_idle = True
+                    self._last_played_idx = self._last_playlist_entry_idx
+                    self._first_playlist_entry_idx = self._last_played_idx + 1
+                    self._is_idle = True
                 if reason == 'quit':
-                    # Shutting down player_key
+                    # Shutting down player
                     if MY_LOGGER.isEnabledFor(DEBUG):
                         MY_LOGGER.debug('QUIT')
-                    cls._is_idle = True
+                    self._is_idle = True
             if event == 'start_file':
                 # Starting to play a file
                 # {"event":"start-file","playlist_entry_id":17}
-                cls._last_played_idx = entry_id
-                cls._is_idle = False
+                self._last_played_idx = entry_id
+                self._is_idle = False
             if event == 'idle':
-                cls._is_idle = True
+                self._is_idle = True
         if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'last_played: {cls._last_played_idx}\n'
-                            f'last_entry: {cls._last_playlist_entry_idx}\n'
-                            f'idle: {cls._is_idle}')
+            MY_LOGGER.debug(f'last_played: {self._last_played_idx}\n'
+                            f'last_entry: {self._last_playlist_entry_idx}\n'
+                            f'idle: {self._is_idle}')
 
-    @classmethod
-    def check_play_limits(cls) -> bool:
+    def check_play_limits(self) -> bool:
         """
         Determine if an additional PhraseList should be added to the play_list
         or if a different PhraseList should be chosen due to the current one
@@ -159,54 +160,48 @@ class PlayerState:
         """
         more_needed: bool = False
         if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'current_serial#: {cls._current_phrase_serial_num} '
+            MY_LOGGER.debug(f'current_serial#: {self._current_phrase_serial_num} '
                             f'Expired #: {PhraseList.expired_serial_number}')
-            MY_LOGGER.debug(f'chars_queued: {cls.chars_queued_to_play} '
-                            f'remaining: {cls.remaining_to_play()}')
-        if cls._current_phrase_serial_num < PhraseList.expired_serial_number:
+            MY_LOGGER.debug(f'chars_queued: {self.chars_queued_to_play} '
+                            f'remaining: {self.remaining_to_play()}')
+        if self._current_phrase_serial_num < PhraseList.expired_serial_number:
             # Dang, expired, Move up to an unexpired one. After return,
             # caller will note expired phrase and start over
-            cls.current_phrase_serial_num = PhraseList.expired_serial_number + 1
+            self._current_phrase_serial_num = PhraseList.expired_serial_number + 1
             more_needed = True
-        elif (cls.chars_queued_to_play < TARGET_PLAYER_CHAR_LIMIT or
-                cls.remaining_to_play() < MINIMUM_PHRASES_IN_QUEUE):
+        elif (self.chars_queued_to_play < TARGET_PLAYER_CHAR_LIMIT or
+                self.remaining_to_play() < MINIMUM_PHRASES_IN_QUEUE):
             #  Add another PhraseList
-            cls._current_phrase_serial_num += 1
+            self._current_phrase_serial_num += 1
             more_needed = True
         return more_needed
 
-    @classmethod
-    def first_playlist_entry_idx(cls) -> int:
-        return cls._first_playlist_entry_idx
+    def first_playlist_entry_idx(self) -> int:
+        return self._first_playlist_entry_idx
 
-    @classmethod
-    def last_played_idx(cls) -> int | None:
-        return cls._last_played_idx
+    def last_played_idx(self) -> int | None:
+        return self._last_played_idx
 
-    @classmethod
-    def remaining_to_play(cls) -> int | None:
+    def remaining_to_play(self) -> int | None:
         """
            Gets the number of remaining sound files to play
            Frequently voice files have pre and/or post silent files
        :return:
        """
-        return cls._last_playlist_entry_idx - cls._last_played_idx
+        return self._last_playlist_entry_idx - self._last_played_idx
 
-    @classmethod
-    def is_idle(cls) -> bool:
-        return cls._is_idle
+    def is_idle(self) -> bool:
+        return self._is_idle
 
-    @classmethod
-    def is_player_hungry(cls) -> bool:
+    def is_player_hungry(self) -> bool:
         """
-        The player_key becomes hungry when there are not enough phrases queued to
+        The player becomes hungry when there are not enough phrases queued to
         keep it  busy.
         :return:
         """
-        return cls.check_play_limits()
+        return self.check_play_limits()
 
-    @classmethod
-    def is_phraselist_complete(cls, phrase: Phrase) -> bool:
+    def is_phraselist_complete(self, phrase: Phrase) -> bool:
         """
         Determines if this phrase is from the same (or earlier) group of phrases
         (PhraseList)  that is allowed to voice.
@@ -216,24 +211,21 @@ class PlayerState:
         :param phrase:
         :return:
         """
-        ok_to_play: bool = phrase.serial_number <= cls._current_phrase_serial_num
+        ok_to_play: bool = phrase.serial_number <= self._current_phrase_serial_num
         if not ok_to_play or phrase.is_expired():
-            cls.check_play_limits()
+            self.check_play_limits()
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'ok_to_play: {ok_to_play}')
         return ok_to_play
 
-    @classmethod
-    def add_voiced_file(cls) -> None:
-        cls._last_playlist_entry_idx += 1
+    def add_voiced_file(self) -> None:
+        self._last_playlist_entry_idx += 1
 
-    @classmethod
-    def add_pre_pause(cls) -> None:
-        cls._last_playlist_entry_idx += 1
+    def add_pre_pause(self) -> None:
+        self._last_playlist_entry_idx += 1
 
-    @classmethod
-    def add_post_pause(cls) -> None:
-        cls._last_playlist_entry_idx += 1
+    def add_post_pause(self) -> None:
+        self._last_playlist_entry_idx += 1
 
 
 class SlaveCommunication:
@@ -263,7 +255,7 @@ class SlaveCommunication:
         :param channels: The number of audio channels to use for play
 
         """
-        clz = type(self)
+        self._player_state: PlayerState = PlayerState()
         if default_volume < 0:  # mplayer interpreted -1 as no-change
             default_volume = 100  # mpv interprets it as 0 (no volume). Set to default
 
@@ -280,7 +272,7 @@ class SlaveCommunication:
 
         # clz.get.debug(f'run_state now NOT_STARTED')
         self.idle_on_play_video: bool = stop_on_play
-        # This player_key is inactive due to Kodi exclusive access (ex: playing movie)
+        # This player is inactive due to Kodi exclusive access (ex: playing movie)
         self.tts_player_idle: bool = False
         self.fifo_in = None    # FIFO output from mpv
         self.socket = None  # Socket output from mpv
@@ -307,7 +299,7 @@ class SlaveCommunication:
         self._previous_entry: PhraseQueueEntry | None = None
 
         Monitor.register_abort_listener(self.abort_listener, name=self.thread_name)
-        # clz.get.debug(f'Starting slave player_key args: {args}')
+        # clz.get.debug(f'Starting slave player args: {args}')
         if self.idle_on_play_video:
             KodiPlayerMonitor.register_player_status_listener(
                     self.kodi_player_status_listener,
@@ -425,13 +417,13 @@ class SlaveCommunication:
             1) Phrases can be prepared to be voiced much faster than they are
               voiced
             2) The vocing of phrases is frequently canceled due to 1.
-        Phrases are placed into a Queue to be voiced and given to the player_key
+        Phrases are placed into a Queue to be voiced and given to the player
         in hopefully logical chunks or thoughts. The minimum chunk are the
-        phrases of a PhraseList, or ~20 phrases (you don't want the player_key to
+        phrases of a PhraseList, or ~20 phrases (you don't want the player to
         starve).
 
         When 'stop_player' is called, the queue will be drained. The
-        player_key most likely will also be cleared. Voicing will proceed with the
+        player most likely will also be cleared. Voicing will proceed with the
         newest phrases.
 
         :param phrase:
@@ -454,7 +446,8 @@ class SlaveCommunication:
                 MY_LOGGER.debug_v(f'phrase serial: {phrase.serial_number} '
                                 f'{phrase.short_text()}')
             if Monitor.abort_requested():
-                MY_LOGGER.debug(F'ABORT_REQUESTED')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(F'ABORT_REQUESTED')
                 self.empty_queue()
                 return
 
@@ -479,7 +472,7 @@ class SlaveCommunication:
                                 f' {expired_check_str} {interrupted_str}')
             if self.tts_player_idle and not phrase.speak_over_kodi:
                 if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'player_key is IDLE')
+                    MY_LOGGER.debug(f'player is IDLE')
                 return
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'run_state.value: {self.run_state.value}'
@@ -535,10 +528,10 @@ class SlaveCommunication:
                     if entry is None:
                         continue
                     # Now that there is a usable entry, see if it is needed
-                    # or if we should wait until the player_key needs it.
+                    # or if we should wait until the player needs it.
                     # Keep PhraseLists together.
-                    if (not PlayerState.is_player_hungry() and
-                            PlayerState.is_phraselist_complete(entry.phrase)):
+                    if (not self._player_state.is_player_hungry() and
+                            self._player_state.is_phraselist_complete(entry.phrase)):
                         if MY_LOGGER.isEnabledFor(DEBUG_V):
                             MY_LOGGER.debug_v(f'Not hungry')
                         # Usable or None  phrase kept in self._previous_entry
@@ -582,7 +575,7 @@ class SlaveCommunication:
                                 f' {expired_check_str} {interrupted_str}')
             if self.tts_player_idle and not phrase.speak_over_kodi:
                 if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'player_key is IDLE')
+                    MY_LOGGER.debug(f'player is IDLE')
                 return
             if MY_LOGGER.isEnabledFor(DEBUG_V):
                 MY_LOGGER.debug_v(f'run_state.value: {self.run_state.value}'
@@ -638,7 +631,7 @@ class SlaveCommunication:
         if volume == -1:
             volume = 100
         self.next_volume = volume
-        # self.get.debug(f'Sending FIFO volume {volume} to player_key')
+        # self.get.debug(f'Sending FIFO volume {volume} to player')
         self.send_volume()
 
     def set_channels(self, channels: Channels):
@@ -691,18 +684,18 @@ class SlaveCommunication:
                     keep_silent: bool = False,
                     kill: bool = False):
         """
-        Stop player_key (most likely because current text is expired)
+        Stop player (most likely because current text is expired)
         Engines may wish to override this method, particularly when
-        the player_key is built-in.
+        the player is built-in.
 
         :param purge: if True, then purge any queued vocings
                       if False, then only stop playing current phrase
         :param keep_silent: if True, ignore any new phrases until restarted
                             by resume_player.
                             If False, then play any new content
-        :param kill: If True, kill any player_key processes. Implies purge and
+        :param kill: If True, kill any player processes. Implies purge and
                      keep_silent.
-                     If False, then the player_key will remain ready to play new
+                     If False, then the player will remain ready to play new
                      content, depending upon keep_silent
         :return:
         """
@@ -765,18 +758,18 @@ class SlaveCommunication:
             if self.fifo_out is not None:
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'FIFO_OUT: {text}| last_played_idx: '
-                                    f'{PlayerState.last_played_idx()} '
-                                    f'delta: {PlayerState.remaining_to_play()} '
+                                    f'{self._player_state.last_played_idx()} '
+                                    f'delta: {self._player_state.remaining_to_play()} '
                                     'transaction # : '
                                     f'{self.latest_config_transaction_num}')
                 self.fifo_out.write(f'{text}\n')
                 self.fifo_out.flush()
                 if pre_pause:
-                    PlayerState.add_pre_pause()
+                    self._player_state.add_pre_pause()
                 elif voiced:
-                    PlayerState.add_voiced_file()
+                    self._player_state.add_voiced_file()
                 elif post_pause:
-                    PlayerState.add_post_pause()
+                    self._player_state.add_post_pause()
                 #  MY_LOGGER.debug(f'FLUSHED')
         except AbortException:
             reraise(*sys.exc_info())
@@ -805,14 +798,15 @@ class SlaveCommunication:
 
     def destroy(self):
         """
-        Destroy this player_key and any dependent player_key process, etc. Typicaly done
+        Destroy this player and any dependent player process, etc. Typicaly done
         when either stopping TTS (F12) or shutdown, or switching players,
         players, etc.
 
         :return:
         """
         clz = type(self)
-        xbmc.log(f'In {self.thread_name} destroy', xbmc.LOGDEBUG)
+        if DEBUG_LOG:
+            xbmc.log(f'In {self.thread_name} destroy', xbmc.LOGDEBUG)
 
         self.stop_player(kill=True)
         xbmc.sleep(10)
@@ -822,7 +816,7 @@ class SlaveCommunication:
     def close_slave_files(self) -> None:
         """
         Shut down files with slave. SlaveRunCommand.stop_player(kill) will cause
-        it to close the process files, which will kill the player_key.
+        it to close the process files, which will kill the player.
 
         :return:
         """
@@ -865,7 +859,7 @@ class SlaveCommunication:
         if self.idle_on_play_video:
             if video_player_state == KodiPlayerState.PLAYING_VIDEO:
                 if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug('STOP playing TTS while Kodi player_key active')
+                    MY_LOGGER.debug('STOP playing TTS while Kodi player active')
                 self.stop_player(purge=True, keep_silent=True)
             elif video_player_state != KodiPlayerState.PLAYING_VIDEO:
                 self.resume_voicing()  # Resume playing TTS content
@@ -915,7 +909,7 @@ class SlaveCommunication:
                     line: str = ''
                 try:
                     if line and len(line) > 0:
-                        PlayerState.update_data(line)
+                        self._player_state.update_data(line)
                 except AbortException:
                     reraise(*sys.exc_info())
                 except Exception as e:

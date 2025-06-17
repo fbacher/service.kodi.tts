@@ -1,8 +1,12 @@
 # coding=utf-8
+from common.logger import *
+
 try:
     from enum import StrEnum
 except ImportError:
     from common.strenum import StrEnum
+
+MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class StrEnumWithPriority(StrEnum):

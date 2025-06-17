@@ -15,7 +15,7 @@ from common import *
 from common.monitor import *
 from utils.util import runInThread
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class KodiPlayerState(StrEnum):
@@ -42,14 +42,11 @@ class KodiPlayerMonitor(Player):
     _player_status_listeners: Dict[str, KodiPlayerMonitorListener] = {}
     _player_status_lock: threading.RLock = threading.RLock()
     _player_state: KodiPlayerState = KodiPlayerState.VIDEO_PLAYER_IDLE
-    _logger: BasicLogger = None
     _instance: 'KodiPlayerMonitor' = None
 
     def __init__(self) -> None:
         super().__init__()
         clz = type(self)
-        if clz._logger is None:
-            clz._logger = module_logger
         self.playing: bool = False
 
     @classmethod
@@ -129,10 +126,10 @@ class KodiPlayerMonitor(Player):
         listener_id: str
         listener: KodiPlayerMonitorListener
         for listener_id, listener in listeners.items():
-            if cls._logger.isEnabledFor(DEBUG_V):
-                cls._logger.debug_v(f'Notifying listener: {listener_id} '
-                                          f'status: {status}',
-                                    trace=Trace.TRACE_AUDIO_START_STOP)
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'Notifying listener: {listener_id} '
+                                  f'status: {status}',
+                                  trace=Trace.TRACE_AUDIO_START_STOP)
             try:
                 Monitor.exception_on_abort()
                 delete_after_call = listener.listener(status)
@@ -143,7 +140,7 @@ class KodiPlayerMonitor(Player):
             except AbortException:
                 reraise(*sys.exc_info())
             except Exception as e:
-                cls._logger.exception('')
+                MY_LOGGER.exception('')
 
     @classmethod
     @property
@@ -160,7 +157,8 @@ class KodiPlayerMonitor(Player):
             play_state = 'paused'
         else:
             play_state = 'stopped'
-        clz._logger.debug_xv('play_state: ' + play_state)
+        if MY_LOGGER.isEnabledFor(DEBUG_XV):
+            MY_LOGGER.debug_xv(f'play_state: {play_state}')
         # self._dump_state()  # TODO: remove
         return play_state
 
@@ -183,7 +181,8 @@ class KodiPlayerMonitor(Player):
         playing a media file (i.e, if a stream is available)
         """
         clz = type(self)
-        clz._logger.debug(f'onPlayBackStarted')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug('onPlayBackStarted')
 
     def onAVStarted(self) -> None:
         """
@@ -194,7 +193,8 @@ class KodiPlayerMonitor(Player):
         @python_v18 New function added.
         """
         clz = type(self)
-        clz._logger.debug(f'onAVStarted')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug('onAVStarted')
         clz._inform_player_status_listeners(KodiPlayerState.PLAYING_VIDEO)
 
     def onAVChange(self) -> None:
@@ -207,7 +207,8 @@ class KodiPlayerMonitor(Player):
         @python_v18 New function added.
         """
         clz = type(self)
-        clz._logger.debug(f'onAVChange')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug('onAVChange')
         clz._inform_player_status_listeners(KodiPlayerState.PLAYING_VIDEO)
 
 

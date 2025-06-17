@@ -10,14 +10,12 @@ import pathlib
 import re
 import sys
 from collections import UserList
-from os import stat_result
 from pathlib import Path
 
-from backends.audio.sound_capabilities import SoundCapabilities
+from backends.settings.service_types import ServiceID
 from cache.common_types import CacheEntryInfo
 from cache.cache_file_state import CacheFileState
 from common.setting_constants import AudioType
-from common.settings import Settings
 
 try:
     import regex
@@ -127,6 +125,7 @@ class Phrase:
                  territory_dir: str | None = None,
                  debug_info: str | None = None,
                  debug_context: int = 1,
+                 engine_key: ServiceID | None = None,
                  events: List[PhraseEvent] = None):
         """
 
@@ -157,7 +156,7 @@ class Phrase:
         :param gender: When None, then use current gender, otherwise voice phrase in
                        specified gender. One use is during language configuration.
         :param voice:  When None, then use current voice. Otherwse, voice phrase
-                       using specified voice. One us is during language configuration.
+                       using specified voice. One use is during language configuration.
                        Voice values are engine specific, so only applies to current
                        engine
         :param lang_dir: Part of the cache path is the 2-3 char IETF language
@@ -167,6 +166,7 @@ class Phrase:
         :param debug_info:
         :param debug_context: A debug string can be associated with a phrase to
                              aid in tracking down where originally generated
+        :param engine_key: ServiceID of the engine that this phrase is to voiced
         """
         clz = type(self)
         Monitor.exception_on_abort()
@@ -181,6 +181,7 @@ class Phrase:
         self.cache_path: Path = cache_path
         self.download_pending: bool = False
         self._cache_file_state: CacheFileState = CacheFileState.UNKNOWN
+        self._engine_key: ServiceID = engine_key
         self._events: List[PhraseEvent] = []
         self._text_exists: bool = text_exists
         self._temp: bool = temp
@@ -321,7 +322,8 @@ class Phrase:
                         voice=self.voice,
                         lang_dir=self.lang_dir,
                         territory_dir=self.territory_dir,
-                        events=self._events
+                        events=self._events,
+                        engine_key=self._engine_key
                         )
         phrase.text_id = self.text_id
         return phrase
@@ -439,6 +441,12 @@ class Phrase:
     def history(self) -> str:
         return f'{self.text}  {self.get_recent_events()}'
 
+    def set_engine(self, engine_key: ServiceID | None):
+        self._engine_key = engine_key
+
+    def get_engine(self) -> ServiceID | None:
+        return self._engine_key
+
     def set_text(self, text: str, context: int = 1,
                  preserve_debug_info: bool = True) -> None:
         clz = type(self)
@@ -473,8 +481,11 @@ class Phrase:
         if isinstance(cache_path, str):
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'PATH is STRING: {cache_path}')
-        #  else:
-        #     MY_LOGGER.debug(f'PATH: {cache_path}')
+        else:
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'cache_path: {cache_path}')
+        if cache_path is None:
+            raise ValueError('cache_path is None')
         self.cache_path = cache_path
         self._text_exists = text_exists
         self._temp = temp
@@ -489,6 +500,8 @@ class Phrase:
         """
         if check_expired:
             self.test_expired()
+        if self.cache_path is None:
+            raise ValueError('cache_path is None')
         return self.cache_path
 
     def update_cache_path(self,
@@ -498,10 +511,14 @@ class Phrase:
         :param active_engine:
         :return:
         """
+        service_key: ServiceID = active_engine.service_key
         voice_cache: ForwardRef('VoiceCache') = active_engine.get_voice_cache()
         result: CacheEntryInfo
         result = voice_cache.get_path_to_voice_file(self, use_cache=True)
         cache_path: Path = result.final_audio_path
+        if cache_path is None:
+            raise ValueError('cache_path is None')
+
         audio_exists: bool = result.audio_exists
         text_exists: bool = result.text_exists
         suffixes: List[str] = result.audio_suffixes
@@ -662,6 +679,17 @@ class Phrase:
     def is_empty(self) -> bool:
         return self.text == ''
 
+    def is_voice_set(self) -> bool:
+        if self.voice is None or self.voice == '':
+            return False
+        return True
+
+    def set_voice(self, voice: str) -> None:
+        self.voice = voice
+
+    def get_voice(self) -> str:
+        return self.voice
+
     def is_lang_territory_set(self) -> bool:
         if ((self.territory_dir is None or self.territory_dir == '')
                 or (self.lang_dir is None or self.lang_dir == '')):
@@ -762,7 +790,22 @@ class Phrase:
         return False
 
     def test_expired(self) -> None:
+        seed_cache: bool = True
         if self.is_expired():
+            if seed_cache:
+                if not (self.cache_path is None or self.cache_path.exists()):
+                    if self.cache_path.with_suffix('.txt').exists():
+                        from common.base_services import BaseServices
+                        if self._engine_key is None:
+                            if MY_LOGGER.isEnabledFor(DEBUG):
+                                MY_LOGGER.debug('engine_key is None')
+                        else:
+                            engine: BaseServices
+                            engine = BaseServices.get_service(self._engine_key)
+                            voice_cache = engine.get_voice_cache()
+                            if MY_LOGGER.isEnabledFor(DEBUG):
+                                MY_LOGGER.debug(f'engine_key: {self._engine_key}')
+                            voice_cache.text_referenced(self)
             raise ExpiredException()
 
     @property

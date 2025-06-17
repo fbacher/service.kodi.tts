@@ -8,7 +8,6 @@ from backends.settings.i_validators import INumericValidator
 from common import *
 
 from backends.audio.sound_capabilities import SoundCapabilities
-from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.service_types import ServiceKey, Services, ServiceType, TTS_Type
 from backends.settings.settings_map import Status, SettingsMap
 from backends.settings.validators import (BoolValidator,
@@ -33,6 +32,7 @@ class MPVPlayerSettings:
     service_id: str = Services.MPV_ID
     service_type: ServiceType = ServiceType.PLAYER
     service_key: ServiceID = ServiceKey.MPV_KEY
+    PLAYER_KEY: ServiceID = service_key
     CACHE_SPEECH_KEY = service_key.with_prop(SettingProp.CACHE_SPEECH)
     MPV_VOLUME_KEY: ServiceID = service_key.with_prop(SettingProp.VOLUME)
     PLAYER_MODE_KEY = service_key.with_prop(SettingProp.PLAYER_MODE)
@@ -42,7 +42,7 @@ class MPVPlayerSettings:
 
     """
     In an attempt to bring some consistency between the various players, engines and 
-    converters, standard "TTS" constraints are defined which every engine, player_key,
+    converters, standard "TTS" constraints are defined which every engine, player,
     converter, etc. is to convert to/from. Hopefully this will help these settings
     to remain sane regardless of the combination of services used. 
     

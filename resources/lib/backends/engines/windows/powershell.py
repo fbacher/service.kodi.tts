@@ -2,56 +2,41 @@
 from __future__ import annotations  # For union operator |
 
 import os
-import pathlib
 import subprocess
 import sys
-import tempfile
-
-import xbmc
 
 import langcodes
 
 from pathlib import Path
 
-from backends.engines.windows.powershell_settings import PowerShellTTSSettings
 from backends.ispeech_generator import ISpeechGenerator
-from backends.players.iplayer import IPlayer
 from backends.settings.language_info import LanguageInfo
-from backends.settings.settings_helper import SettingsHelper
 from backends.settings.validators import NumericValidator
 from backends.transcoders.trans import TransCode
 from cache.voicecache import VoiceCache
 from cache.cache_file_state import CacheFileState
 from cache.common_types import CacheEntryInfo
-from common import *
+from common.typing import *
 
-from backends.audio.builtin_player import BuiltInPlayer
-# from backends.audio.player_handler import BasePlayerHandler, WavAudioPlayerHandler
 from backends.audio.sound_capabilities import ServiceType
 from backends.base import BaseEngineService, SimpleTTSBackend
-from backends.settings.i_validators import AllowedValue, INumericValidator, IValidator
+from backends.settings.i_validators import AllowedValue, INumericValidator
 from backends.settings.service_types import ServiceID, ServiceKey, Services
-from backends.settings.settings_map import Status, SettingsMap
-from common import utils
+from backends.settings.settings_map import SettingsMap
 from common.base_services import BaseServices
 from common.constants import Constants, ReturnCode
 from common.exceptions import ExpiredException
-from common.kodi_player_monitor import KodiPlayerMonitor
 from common.logger import *
 from common.message_ids import MessageId
-from common.messages import Messages
-from common.monitor import Monitor
-from common.phrases import Phrase, PhraseList, PhraseUtils
-from common.setting_constants import (AudioType, Backends, Genders, Mode, PlayerMode,
+from common.phrases import Phrase, PhraseList
+from common.setting_constants import (Backends, Genders, PlayerMode,
                                       Players)
 from common.settings import Settings
 from common.settings_low_level import SettingProp
 from langcodes import LanguageTagError
-from utils.util import runInThread
 from windowNavigation.choice import Choice
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
-
 
 
 class Results:
@@ -237,16 +222,14 @@ class PowerShellTTS(SimpleTTSBackend):
     def get_cached_voice_file(self, phrase: Phrase,
                               generate_voice: bool = True) -> bool:
         """
-        Return cached file if present, otherwise, generate speech, place in cache
-        and return cached speech.
+        Return cached file if present. Optionally creates the cache file.
 
         Very similar to runCommand, except that the cached files are expected
         to be sent to a slave player, or some other player that can play a sound
         file.
         :param phrase: Contains the text to be voiced as wll as the path that it
                        is or will be located.
-        :param generate_voice: If true, then wait a bit to generate the speech
-                               file.
+        :param generate_voice: If true, generate the speech file, as needed,
         :return: True if the voice file was handed to a player, otherwise False
         """
         clz = type(self)
@@ -262,7 +245,7 @@ class PowerShellTTS(SimpleTTSBackend):
         # This Only checks if a .wav file exists. That is good enough, the
         # player should check for existence of what it wants and to transcode
         # if needed.
-        player_key: ServiceID = Settings.get_player_key()
+        player_key: ServiceID = Settings.get_player()
         sfx_player: bool = player_key == Players.SFX
         if sfx_player and phrase.cache_file_state() == CacheFileState.OK:
             return True
@@ -326,7 +309,7 @@ class PowerShellTTS(SimpleTTSBackend):
             any cache has been checked to see if already voiced
         """
         clz.update_voice_path(phrase)
-        sfx_player: bool = Settings.get_player_key().setting_id == Players.SFX
+        sfx_player: bool = Settings.get_player().setting_id == Players.SFX
         use_cache: bool = Settings.is_use_cache() or sfx_player
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             MY_LOGGER.debug_v(f'phrase: {phrase.get_text()} {phrase.get_debug_info()} '
@@ -449,12 +432,18 @@ class PowerShellTTS(SimpleTTSBackend):
         clz = type(self)
         self.get_voice_cache().seed_text_cache(phrases)
 
+    '''
     @classmethod
     def get_speech_generator(cls) -> SpeechGenerator:
-        return SpeechGenerator()
+        return SpeechGenerator(None, engine=)
+    '''
 
     @classmethod
     def has_speech_generator(cls) -> bool:
+        """
+        TODO: This is needed, but also a lie. SpeechGenerator exists, but is not
+            used. Instead get_cached_voice_file is doing the work.
+        """
         return True
 
     def stop(self):
@@ -705,7 +694,12 @@ class PowerShellTTS(SimpleTTSBackend):
                                   f'voice: {phrase.voice}\n'
                                   f'lang_dir: {phrase.lang_dir}')
             locale: str = phrase.language  # IETF format
+            voice_id: str = Settings.get_voice(cls.service_key)
             kodi_lang, kodi_locale, _, ietf_lang = LanguageInfo.get_kodi_locale_info()
+            if voice_id is None or voice_id == '':
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug('Fix Settings.get_voice to use kodi_locale by '
+                                    'default')
             if MY_LOGGER.isEnabledFor(DEBUG_V):
                 MY_LOGGER.debug_v(f'locale: {locale} kodi_lang: {kodi_lang} '
                                   f'kodi_locale: {kodi_locale} '
@@ -718,6 +712,7 @@ class PowerShellTTS(SimpleTTSBackend):
                 MY_LOGGER.debug_v(f'locale: {locale} ietf_lang: {ietf_lang.language} '
                                   f'{ietf_lang.territory}')
             phrase.set_lang_dir(ietf_lang.language)
+            phrase.set_voice(voice_id)
             # Horrible, crude, hack due to kodi xbmc.getLanguage bug
             if ietf_lang.territory is not None:
                 phrase.set_territory_dir(ietf_lang.territory.lower())

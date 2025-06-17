@@ -1,11 +1,7 @@
 # coding=utf-8
 from __future__ import annotations  # For union operator |
 
-from pathlib import Path
-
-from backends.ispeech_generator import ISpeechGenerator
-from backends.settings.service_unavailable_exception import ServiceUnavailable
-from cache.cache_file_state import CacheFileState
+from common.constants import Constants
 
 """
 Classes which orchestrates the voicing of text.
@@ -14,19 +10,21 @@ Basically a request comes in to voice some text
 
  say "" ->
 """
+
+from pathlib import Path
+
+from backends.settings.service_unavailable_exception import ServiceUnavailable
+from cache.cache_file_state import CacheFileState
+
 import sys
 
 from common import *
 
-from backends.audio.sound_capabilities import SoundCapabilities
 from backends.audio.worker_thread import TTSQueueData, WorkerThread
-from backends.backend_info_bridge import BackendInfoBridge
 from backends.base import BaseEngineService
-from backends.cache_writer import CacheReader
-from backends.i_tts_backend_base import ITTSBackendBase
 from backends.players.iplayer import IPlayer
 from backends.players.player_index import PlayerIndex
-from backends.settings.service_types import ServiceID, Services, ServiceType
+from backends.settings.service_types import ServiceID, Services
 from backends.settings.settings_map import SettingsMap
 from cache.voicecache import VoiceCache
 from cache.common_types import CacheEntryInfo
@@ -34,8 +32,8 @@ from common.base_services import BaseServices
 from common.exceptions import ExpiredException
 from common.logger import *
 from common.monitor import Monitor
-from common.phrases import Phrase, PhraseList, PhraseUtils
-from common.setting_constants import AudioType, Mode
+from common.phrases import Phrase, PhraseList
+from common.setting_constants import Mode
 from common.settings import Settings
 from common.settings_low_level import SettingProp
 
@@ -56,7 +54,6 @@ class Driver(BaseServices):
         if not clz._initialized:
             self.worker_thread: WorkerThread = WorkerThread('worker',
                                                             task=None)
-            self.cache_reader = CacheReader()
             clz._initialized = True
         super().__init__()
 
@@ -116,7 +113,7 @@ class Driver(BaseServices):
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug('Expired at Interrupt')
 
-            player_key: ServiceID = Settings.get_player_key(engine_servc_id)
+            player_key: ServiceID = Settings.get_player(engine_servc_id)
             try:
                 phrase: Phrase | None = None
                 success: bool = True
@@ -144,7 +141,8 @@ class Driver(BaseServices):
                         MY_LOGGER.debug(f'cache: {Settings.is_use_cache()} '
                                         f'active generator: '
                                         f'{active_engine.has_speech_generator()}')
-                    if (Settings.is_use_cache()
+                    if (Constants.SEED_CACHE_WITH_EXPIRED_PHRASES and
+                            Settings.is_use_cache()
                             and phrase.cache_file_state() != CacheFileState.OK
                             and active_engine.has_speech_generator()):
                         # Clone phrases to seed voice cache
@@ -157,11 +155,6 @@ class Driver(BaseServices):
                         self._seed_text_cache(active_engine, phrases_new)
                         # Mark original phrase as being downloaded
                         phrase.set_download_pending()
-                        '''
-                        generator: ISpeechGenerator
-                        generator = active_engine.create_speech_generator()
-                        generator.generate_speech(phrase, timeout=0.0)
-                        '''
 
                     tts_data: TTSQueueData
                     tts_data = TTSQueueData(None, state='play_file',
@@ -244,7 +237,7 @@ class Driver(BaseServices):
         try:
             if phrase.get_cache_path is None:
                 result: CacheEntryInfo
-                result = VoiceCache.get_path_to_voice_file(phrase, use_cache=True)
+                result = VoiceCache.get_path_to_voice_file(phrase=phrase, use_cache=True)
             if phrase.text_exists(active_engine):
                 return self.say_file(active_engine, player_key, phrase)
             return False
@@ -268,7 +261,8 @@ class Driver(BaseServices):
             phrases = phrases_arg.clone(check_expired=False)
             phrases_arg.add_event('driver.seed_text')
             if MY_LOGGER.isEnabledFor(INFO):
-                MY_LOGGER.info(f'seed_cache: engine: {active_engine}')
+                MY_LOGGER.info(f'seed_cache: engine: {active_engine} phrase: '
+                               f'{phrases.short_text()}')
             tts_data: TTSQueueData = TTSQueueData(None, state='seed_cache',
                                                   phrases=phrases,
                                                   engine_key=active_engine.service_key)

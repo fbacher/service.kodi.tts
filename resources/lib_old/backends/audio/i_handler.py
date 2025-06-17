@@ -7,7 +7,7 @@ from common import *
 from common.logger import *
 from common.settings import Settings
 
-module_logger: BasicLogger = BasicLogger.get_logger(__name__)
+MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class PlayerHandlerType:
@@ -16,12 +16,10 @@ class PlayerHandlerType:
     sound_file_types: List[str] = ['.wav']
     sound_file_base = '{speech_file_name}{sound_file_type}'
     sound_dir: str = None
-    _logger: BasicLogger
 
     def __init__(self):
         clz = type(self)
         self.hasAdvancedPlayer: bool
-        clz._logger = module_logger
         self.availablePlayers: List[Type[IPlayer]] | None
 
     @classmethod
@@ -45,11 +43,11 @@ class PlayerHandlerType:
         return volumeDb
 
     def setSpeed(self, speed: float):
-        self._logger.debug(f'setSpeed: {speed}')
+        MY_LOGGER.debug(f'setSpeed: {speed}')
         pass  # self.speed = speed
 
     def setVolume(self, volume: float):
-        self._logger.debug(f'setVolume: {volume}')
+        MY_LOGGER.debug(f'setVolume: {volume}')
         pass  # self.volume = volume
 
     def player(self) -> str | None:

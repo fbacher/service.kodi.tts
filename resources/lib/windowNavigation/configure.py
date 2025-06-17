@@ -316,19 +316,18 @@ class Configure:
             # GENERATE_BACKUP_SPEECH, sfx_audio_player, no_engine and voicecache
 
             player_mode: PlayerMode | None = None
+            #  player_mode = Settings.get_player_mode(engine_key)
+            # HACK HACK
             player: PlayerType | None = None
             engine_audio: AudioType | None = None
             use_cache: bool | None = None
             if not repair:
                 use_cache = Settings.is_use_cache(engine_key)
                 player_mode = Settings.get_player_mode(engine_key)
-                player_id: str = Settings.get_player_key(engine_key).service_id
+                player_id: str = Settings.get_player(engine_key).service_id
                 player = PlayerType(player_id)
                 speed: float = Settings.get_speed()
                 volume: float = Settings.get_volume()
-                # self.set_speed_field(speed=1.0)
-                # self.set_volume_field(volume=0.0)
-                #  engine_audio =?
 
             if GENERATE_BACKUP_SPEECH:
                 player_mode = PlayerMode.FILE
@@ -494,17 +493,23 @@ class Configure:
         e_pm_val: IStringValidator
         e_pm_val = SettingsMap.get_validator(engine_key.with_prop(
                 SettingProp.PLAYER_MODE))
+        if player is not None and player == PlayerType.BUILT_IN_PLAYER:
+            player_mode = PlayerMode.ENGINE_SPEAK
+            engine_audio = AudioType.BUILT_IN
+            use_cache = False
         if player_mode is not None and player_mode == PlayerMode.ENGINE_SPEAK:
             if not e_pm_val.validate(player_mode):
                 # Engine does NOT support BUILT-IN player
-                MY_LOGGER.info(f'Unsupported player mode: {player_mode} for '
-                               f'engine: {engine_key}. Ignoring')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'Unsupported player mode: {player_mode} for '
+                                    f'engine: {engine_key}. Ignoring')
                 player_mode = None
                 if repair:
                     repairs_made = True
                 if player is not None and player == PlayerType.BUILT_IN_PLAYER:
-                    MY_LOGGER.info(f'Engine: {engine_key} does not support '
-                                   f'built-in player. Ignoring player.')
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug(f'Engine: {engine_key} does not support '
+                                        f'built-in player. Ignoring player.')
                     player = None
                     if repair:
                         repairs_made = True
@@ -533,8 +538,9 @@ class Configure:
         val: IStringValidator
         val = SettingsMap.get_validator(engine_key.with_prop(SettingProp.PLAYER))
         if player is not None and not val.validate(player):
-            MY_LOGGER.info(f'engine: {engine_key} does not support player: {player}. '
-                           f'Ignoring player')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'engine: {engine_key} does not support player: {player}. '
+                                f'Ignoring player')
             player = None
             if repair:
                 repairs_made = True
@@ -1012,7 +1018,7 @@ class Configure:
 
     def find_transcoder(self, engine_key: ServiceID,
                         trans_audio_out: AudioType,
-                        repair_mode: bool = False) -> str | None:
+                        repair_mode: bool = False) -> ServiceID | None:
         """
 
         :param engine_key:
@@ -1023,7 +1029,7 @@ class Configure:
         repairs: bool = False
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'trans_audio_out: {trans_audio_out} {engine_key}')
-        tran_id: str | None = None
+        tran_id: ServiceID | None = None
         if trans_audio_out is not None:
             try:
                 tran_id = SoundCapabilities.get_transcoder(engine_key,
@@ -1086,7 +1092,7 @@ class Configure:
                 return choices, current_choice_index
 
             current_choice: ServiceID
-            current_choice = Settings.get_player_key(engine_key)
+            current_choice = Settings.get_player(engine_key)
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'current player: {current_choice} '
                                 f'engine: {engine_key} ')
@@ -1103,7 +1109,8 @@ class Configure:
             for cand_player in cand_players:
                 cand_player: ServiceID
                 if not SettingsMap.is_available(cand_player):
-                    MY_LOGGER.debug(f'player NOT available: {cand_player}')
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug(f'player NOT available: {cand_player}')
                     continue
                 player_formats: List[AudioType]
                 player_formats = SoundCapabilities.get_input_formats(cand_player,
@@ -1124,10 +1131,12 @@ class Configure:
             default_enabled: bool = True
             all_players: List[ServiceID] = mp3_players
             all_players.extend(wav_players)
-            all_players.append(builtin_player)
+            if builtin_player is not None:
+                all_players.append(builtin_player)
             for player in all_players:
                 player: ServiceID
-                MY_LOGGER.debug(f'player: {player}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'player: {player}')
                 supported_players.append((AllowedValue(value=player.service_id,
                                                        enabled=True, service_key=player),
                                           idx))
@@ -1144,7 +1153,8 @@ class Configure:
             idx: int = 0
             for allowed_value, _ in supported_players:
                 allowed_value: AllowedValue
-                MY_LOGGER.debug(f'allowed_value: {allowed_value}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'allowed_value: {allowed_value}')
                 player: ServiceID = allowed_value.service_key
                 player_id: PlayerType = PlayerType(allowed_value.value)
                 label: str = Players.get_msg(player_id)
@@ -1248,7 +1258,6 @@ class Configure:
         """
         choices: List[Choice] = []
         current_choice_index: int = -1
-        MY_LOGGER.debug('FOOO get_voice_choices')
 
         try:
             # current_value: str = self.getSetting(SettingProp.VOICE)
@@ -1507,8 +1516,8 @@ class Configure:
                 raise ValueError('lang_info value required')
             lang_id: str = lang_info.engine_lang_id
             voice_id: str = lang_info.engine_voice_id
-
-            MY_LOGGER.debug(f'language: {lang_id} voice: {voice_id}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'language: {lang_id} voice: {voice_id}')
             Settings.set_language(lang_id, engine_key)
             Settings.set_voice(voice_id, engine_key)
         except Exception as e:
@@ -1709,8 +1718,8 @@ class Configure:
                 self._original_stack_depth = SettingsManager.get_stack_depth()
             if MY_LOGGER.isEnabledFor(DEBUG_V):
                 MY_LOGGER.debug_v(f'{msg}\nBEFORE save_settings original_depth: '
-                                f'{self._original_stack_depth} '
-                                f'stack_depth: {SettingsManager.get_stack_depth()}')
+                                  f'{self._original_stack_depth} '
+                                  f'stack_depth: {SettingsManager.get_stack_depth()}')
             SettingsLowLevel.save_settings()
             if MY_LOGGER.isEnabledFor(DEBUG_V):
                 MY_LOGGER.debug_v(f'{msg}\nAFTER save_settings original_depth: '
@@ -1758,8 +1767,9 @@ class Configure:
                 # This occurs because a check is made before modifying
                 # any setting to make sure that the stack is at the proper
                 # depth.
-                MY_LOGGER.debug(f'{msg}  already at the proper stack_depth: '
-                                f'{stack_depth}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'{msg} already at the proper stack_depth: '
+                                    f'{stack_depth}')
                 return
             if (stack_depth > SettingsManager.get_stack_depth() or
                     stack_depth < self._original_stack_depth):
@@ -1806,7 +1816,7 @@ class Configure:
                 choice: Choice
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'engine: {choice.engine_key} '
-                                      f'lang_info: {choice.lang_info} idx: {idx}')
+                                    f'lang_info: {choice.lang_info} idx: {idx}')
                 choice.label = SettingsHelper.get_formatted_label(
                         choice.lang_info,
                         kodi_language=kodi_language,

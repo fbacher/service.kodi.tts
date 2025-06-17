@@ -20,7 +20,7 @@ from common.logger import *
 from common.monitor import Monitor
 from common.settings import Settings
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 ADDON_ID = 'service.kodi.tts'
 ADDON = xbmcaddon.Addon(ADDON_ID)
@@ -140,11 +140,12 @@ def xbmcVersionGreaterOrEqual(major, minor=0, tag=None):
 def get_language_code() -> str:
     global language_code
     if language_code is None:
-        language_code, encoding = locale.getdefaultlocale()
+        language_code, _ = locale.getlocale()
 
         language = xbmc.getInfoLabel('System.Language')
-        module_logger.debug_v('locale: ' + language_code)
-        module_logger.debug_v('System.Language:' + language)
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v('locale: ' + language_code)
+            MY_LOGGER.debug_v('System.Language:' + language)
     return language_code
 
 
@@ -152,21 +153,37 @@ def configuring_settings():
     return Settings.configuring_settings()
 
 
+'''
 def getSetting(key, engine_id: str = None, default=None):
     return Settings.getSetting(key, engine_id, default)
 
 
 def setSetting(key, value, engine_id: str = None):
     Settings.setSetting(key, value, engine_id)
+'''
 
 
-def runInThread(func: Callable, args: List[Any] = [], name: str = '?',
+def runInThread(func: Callable, args: List[Any] = None, name: str = '?',
                 delay: float = 0.0, **kwargs) -> None:
+    """
+    Runs a function in a thread. The thread catches and reports exceptions,
+    handles thread garbage collection as well as unhandled AbortException
+    (lets thread die).
+    :param func: function to run
+    :param args: args for function
+    :param name: thread name (the shorter the better)
+    :param delay: Seconds to delay before starting
+    :param kwargs: More aregs for function
+    :return:
+    """
     import threading
+    if args is None:
+        args = []
     thread = threading.Thread(target=thread_wrapper, name=f'Utl_{name}',
                               args=args, kwargs={'target': func,
-                                                 'delay' : delay, **kwargs})
-    xbmc.log(f'util.runInThread starting thread {name}', xbmc.LOGINFO)
+                                                 'delay': delay, **kwargs})
+    if MY_LOGGER.isEnabledFor(DEBUG):
+        MY_LOGGER.debug(f'util.runInThread starting thread {name}')
     thread.start()
     GarbageCollector.add_thread(thread)
 
@@ -182,7 +199,7 @@ def thread_wrapper(*args, **kwargs):
     except AbortException:
         return  # Let thread die
     except Exception as e:
-        module_logger.exception('')
+        MY_LOGGER.exception('')
 
 
 BASE_COMMAND = ('XBMC.NotifyAll(service.kodi.tts,SAY,"{{\\"text\\":\\"{0}\\",'

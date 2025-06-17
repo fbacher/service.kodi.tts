@@ -12,8 +12,6 @@ from common import *
 
 from backends.audio.sound_capabilities import SoundCapabilities
 from backends.engines.base_engine_settings import (BaseEngineSettings)
-from backends.settings.base_service_settings import BaseServiceSettings
-from backends.settings.i_validators import INumericValidator, ValueType
 from backends.settings.service_types import Services, ServiceType
 from backends.settings.setting_properties import SettingProp, SettingType
 from backends.settings.settings_map import Status, SettingsMap
@@ -22,7 +20,7 @@ from backends.settings.validators import (BoolValidator,
                                           SimpleStringValidator, StringValidator)
 from common.config_exception import UnusableServiceException
 from common.constants import Constants
-from common.logger import BasicLogger
+from common.logger import *
 from common.message_ids import MessageId
 from common.service_status import Progress, ServiceStatus, StatusType
 from common.setting_constants import AudioType, Backends, Genders, PlayerMode, Players
@@ -74,7 +72,8 @@ class ESpeakSettings:
 
     @classmethod
     def _config(cls, **kwargs: Dict[str, str]):
-        MY_LOGGER.debug(f'Adding eSpeak to engine service')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'Adding eSpeak to engine service')
         '''
         service_properties = {Constants.NAME: cls.displayName,
                               Constants.CACHE_SUFFIX: 'espk'}
@@ -159,7 +158,7 @@ class ESpeakSettings:
 
 
         # Player Options:
-        #  1 Use internal player_key and don't produce .wav. Currently don't support
+        #  1 Use internal player and don't produce .wav. Currently don't support
         #    adjusting volume/speed, etc. this way. Not difficult to add.
         #  2 Produce .wav from engine (no mp3 support) and use mpv (or mplayer)
         #     to play the .wav via file. Better control of speed/volume but adds
@@ -198,7 +197,8 @@ class ESpeakSettings:
                 service_type=ServiceType.PLAYER,
                 consumer_formats=[AudioType.WAV],
                 producer_formats=[])
-        MY_LOGGER.debug(f'candidates: {candidates}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'candidates: {candidates}')
 
         #  TODO:  Need to eliminate un-available players
         #         Should do elimination in separate code
@@ -216,7 +216,8 @@ class ESpeakSettings:
             if player_id in players and SettingsMap.is_available(player_key):
                 valid_players.append(player_id)
 
-        MY_LOGGER.debug(f'valid_players: {valid_players}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'valid_players: {valid_players}')
 
         # TODO: what if default player is not available?
         player_validator: StringValidator
@@ -231,13 +232,10 @@ class ESpeakSettings:
         # If espeak is transcoded to mp3, then cache_speech = True, otherwise, why
         # bother to spend cpu to produce mp3?
 
-        setting_id: ServiceID = cls.service_key.with_prop(SettingProp.CACHE_SPEECH)
-        cache_validator: BoolValidator
-        cache_validator = BoolValidator(setting_id,
-                                        default=False,
-                                        define_setting=True,
-                                        service_status=StatusType.OK,
-                                        persist=True)
+        cache_speech_key: ServiceID = cls.service_key.with_prop(SettingProp.CACHE_SPEECH)
+        SettingsMap.define_setting(cache_speech_key,
+                                   setting_type=SettingType.BOOLEAN_TYPE,
+                                   service_status=StatusType.OK, persist=True)
 
         # For consistency (and simplicity) any speed adjustments are actually
         # done by a player_key that supports it. Direct adjustment of player_key speed
@@ -279,8 +277,9 @@ class ESpeakSettings:
                                            service_status=StatusType.NOT_ON_PLATFORM,
                                            validator=None)
 
-        MY_LOGGER.debug(f'state: {cls._service_status.progress} '
-                        f'status: {cls._service_status.status}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'state: {cls._service_status.progress} '
+                            f'status: {cls._service_status.status}')
 
     @classmethod
     def check_is_installed(cls) -> None:
@@ -307,18 +306,20 @@ class ESpeakSettings:
         if (cls._service_status.progress == Progress.INSTALLED
                 and cls._service_status.status == Status.OK):
             try:
-                cmd_path: Path = Constants.ESPEAK_PATH / 'espeak-ng.exe'
+                cmd_path: Path = Constants.ESPEAK_PATH / Constants.ESPEAK_COMMAND
                 args = [cmd_path, '--version']
                 env = os.environ.copy()
                 completed: subprocess.CompletedProcess | None = None
                 if Constants.PLATFORM_WINDOWS:
-                    MY_LOGGER.info(f'Running command: Windows args: {args}')
+                    if MY_LOGGER.isEnabledFor(DEBUG_V):
+                        MY_LOGGER.debug_v(f'Running command: Windows args: {args}')
                     completed = subprocess.run(args, stdin=None, capture_output=True,
                                                text=True, env=env, close_fds=True,
                                                encoding='utf-8', shell=False, check=True,
                                                creationflags=subprocess.CREATE_NO_WINDOW)
                 else:
-                    MY_LOGGER.info(f'Running command: Linux args: {args}')
+                    if MY_LOGGER.isEnabledFor(DEBUG_V):
+                        MY_LOGGER.debug_v(f'Running command: Linux args: {args}')
                     completed = subprocess.run(args, stdin=None, capture_output=True,
                                                text=True, env=env, close_fds=True,
                                                encoding='utf-8', shell=False, check=True)
@@ -336,7 +337,8 @@ class ESpeakSettings:
             except Exception:
                 MY_LOGGER.exception('')
 
-            MY_LOGGER.debug(f'eSpeak available: {success}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'eSpeak available: {success}')
             cls._service_status.progress = Progress.AVAILABLE
             if not success:
                 cls._service_status.status = Status.FAILED
@@ -345,8 +347,9 @@ class ESpeakSettings:
                                            setting_type=SettingType.STRING_TYPE,
                                            service_status=StatusType.BROKEN,
                                            validator=None)
-        MY_LOGGER.debug(f'state: {cls._service_status.progress} '
-                        f'status: {cls._service_status.status}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'state: {cls._service_status.progress} '
+                            f'status: {cls._service_status.status}')
 
     @classmethod
     def check_is_usable(cls) -> None:
@@ -363,9 +366,9 @@ class ESpeakSettings:
                                        setting_type=SettingType.STRING_TYPE,
                                        service_status=StatusType.OK,
                                        validator=None)
-
-        MY_LOGGER.debug(f'state: {cls._service_status.progress} '
-                        f'status: {cls._service_status.status}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'state: {cls._service_status.progress} '
+                            f'status: {cls._service_status.status}')
 
     @classmethod
     def is_usable(cls) -> bool:

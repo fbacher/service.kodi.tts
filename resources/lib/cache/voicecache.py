@@ -16,26 +16,16 @@ from pathlib import Path
 
 import xbmcvfs
 
-from backends.settings.i_validators import IStringValidator
 from backends.settings.service_types import (MyType, ServiceID, ServiceKey, ServiceType,
                                              TTS_Type)
-from backends.settings.validators import StringValidator
 from cache.common_types import CacheEntryInfo
 from common import *
-
-from backends.audio.sound_capabilities import SoundCapabilities
-from backends.i_tts_backend_base import ITTSBackendBase
-from backends.players.iplayer import IPlayer
-from backends.players.player_index import PlayerIndex
-from backends.settings.settings_map import SettingsMap
-from common import utils
-from common.base_services import BaseServices
 from common.constants import Constants
 from common.exceptions import ExpiredException
 from common.logger import *
 from common.monitor import Monitor
 from common.phrases import Phrase, PhraseList
-from common.setting_constants import AudioType, Backends, Players
+from common.setting_constants import AudioType, Backends
 from common.settings import Settings
 from common.settings_low_level import SettingProp
 from common.utils import TempFileUtils
@@ -50,8 +40,8 @@ class VoiceCache:
 
     """
     ignore_cache_count: int = 0
-    # Does not have full path, just directory name
-    referenced_cache_dirs: Dict[str, str] = {}  # Acts as a set with value == key
+    # Key is full path to directory containing .txt files to generate .voice files
+    referenced_cache_dirs: Dict[str, None] = {}  # Acts as a set
     cache_change_listener: Callable = None
     tmp_dir: Path | None = None
     # Provide for a simple means to purge old, un-cached audio files.
@@ -119,7 +109,7 @@ class VoiceCache:
         cls.current_tmp_subdir = 0
         temp_root: Path = TempFileUtils.temp_dir()
         tmp_dir: Path
-        while not Monitor.real_waitForAbort(120.0):
+        while not Monitor.real_waitForAbort(Constants.ROTATE_TEMP_VOICE_DIR_SECONDS):
             if cls.current_tmp_subdir == 0:
                 cls.current_tmp_subdir = 1
             else:
@@ -309,13 +299,16 @@ class VoiceCache:
             cache_top: Path = self.cache_directory
             lang_dir: str = phrase.lang_dir
             territory_dir: str = phrase.territory_dir
+            voice_dir: str = phrase.voice
             filename: str = self.get_hash(phrase.text)
             subdir: str = filename[0:2]
             cache_dir: str
-            MY_LOGGER.debug(f'territory: {territory_dir} '
-                            f'cache_top: {cache_top} '
-                            f'lang_dir: {lang_dir} '
-                            f'subdir: {subdir}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'territory: {territory_dir} '
+                                  f'cache_top: {cache_top} '
+                                  f'lang_dir: {lang_dir} '
+                                  f'voice_dir: {voice_dir} '
+                                  f'subdir: {subdir}')
             # TODO: Fix HACK
             # HACK for when a phrase comes in when locale fields are not set up.
             # Seems to occur when caching has just been turned on.
@@ -323,7 +316,13 @@ class VoiceCache:
                 lang_dir = 'missing_lang'
             if territory_dir is None or territory_dir == '':
                 territory_dir = 'missing_territory'
-            cache_dir = cache_top / lang_dir / territory_dir / subdir
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'cache_top: {cache_top} '
+                                f'lang_dir: {lang_dir} '
+                                f'territory_dir: {territory_dir} '
+                                f'voice_dir: {voice_dir} '
+                                f'subdir: {subdir}')
+            cache_dir = cache_top / lang_dir / territory_dir / voice_dir / subdir
             cache_path = cache_dir / filename
             final_audio_path = cache_path.with_suffix(self.audio_suffix)
             if MY_LOGGER.isEnabledFor(DEBUG):
@@ -339,6 +338,8 @@ class VoiceCache:
             phrase.set_audio_type(self.audio_type)
             if not cache_dir.exists():
                 try:
+                    if MY_LOGGER.isEnabledFor(DEBUG_V):
+                        MY_LOGGER.debug_v(f'mkdir: {cache_dir}')
                     cache_dir.mkdir(mode=0o777, exist_ok=True, parents=True)
                 except Exception:
                     MY_LOGGER.error(f'Can not create directory: {cache_dir}')
@@ -557,13 +558,23 @@ class VoiceCache:
 
         try:
             phrases = phrases.clone(check_expired=False)
+            engine_key: ServiceID | None = None
+            if self.service_key.service_type == ServiceType.ENGINE:
+                engine_key = self.service_key
             for phrase in phrases:
                 phrase: Phrase
+                phrase.set_engine(engine_key)
                 self.create_txt_cache_file(phrase)
         except Exception as e:
             MY_LOGGER.exception('')
 
     def create_txt_cache_file(self, phrase: Phrase) -> bool:
+        """
+        Adds the text contained in the phrase if it is not already in
+        the cache.
+        :param phrase: Phrase containing text
+        :return: True if the text is added to the cache, otherwise, False
+        """
         if not Settings.is_use_cache():
             return False
 
@@ -571,14 +582,18 @@ class VoiceCache:
         result: CacheEntryInfo
         result = self.get_path_to_voice_file(phrase, use_cache=True)
         voice_file_path: Path = result.final_audio_path
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'voice_file_path: {voice_file_path}')
         rc: int = 0
         try:
             text_file: Path | None
             text_file = voice_file_path.with_suffix('.txt')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'text_file path: {text_file}')
             try:
                 if not text_file.is_file():
-                    if MY_LOGGER.isEnabledFor(DEBUG):
-                        MY_LOGGER.debug(f'{text_file} is NOT a file')
+                    with text_file.open('wt', encoding='utf-8') as f:
+                        f.write(text)
                 else:
                     if text_file.stat().st_size < len(phrase.text):
                         text_file.unlink(missing_ok=True)
@@ -606,23 +621,32 @@ class VoiceCache:
           Example: cache_path =  ~/.kodi/userdata/addon_data/service.kodi.tts/cache
                    engine_code = goo (for google)
                    lang = 'en'
-                   voice='us'  # For gtts
+                   voice='en-us'  # For gtts
                    first-two-chars-of-cache-file-name = d4
                    hash of text  = cache_file_name = d4562ab3243c84746a670e47dbdc61a2
                    suffix = .mp3 or .txt
         """
         clz = type(self)
         try:
-            engine_code: str = Settings.get_setting_str(self.service_key.with_prop(
-                    SettingProp.CACHE_SUFFIX))
+            engine_code: str = Settings.get_cache_suffix(self.service_key.with_prop(
+                    Constants.CACHE_SUFFIX))
+
+            #  engine_code: str = Backends.ENGINE_CACHE_CODE[self.service_key.service_id]
             assert engine_code is not None, \
                 f'Can not find voice-cache dir for: {self.service_key}'
 
             cache_file_path: Path = phrase.get_cache_path()
-            phrase_engine_code: str = str(cache_file_path.parent.parent.parent.name)
-            if phrase_engine_code == engine_code:
-                cache_dir: str = str(cache_file_path.parent.parent.parent.parent.name)
-                clz.referenced_cache_dirs[cache_dir] = cache_dir
+            cache_dir: str = str(cache_file_path.parent)
+            eng_code: str
+            eng_code = str(cache_file_path.parent.parent.parent.parent.parent.name)
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'cache_file_path: {cache_file_path} eng_code: '
+                                f'{eng_code} cache_dir: {cache_dir}')
+            if engine_code == eng_code:
+                clz.referenced_cache_dirs[cache_dir] = None
+            else:
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'engine_code: {engine_code} eng_code: {eng_code}')
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
@@ -633,28 +657,35 @@ class VoiceCache:
     def register_cache_change_listener(cls,
                                        cache_change_listener: Callable[[str],
                                                                        None]) -> None:
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'listener: {cache_change_listener}')
         cls.cache_change_listener = cache_change_listener
-        if not cls.cache_changed():
-            # Re-register if not fired
-            cls.cache_change_listener = cache_change_listener
 
     @classmethod
-    def cache_changed(cls) -> bool:
+    def send_change_cache_dir(cls) -> bool:
         """
+        Background cache_change_listener requesting a cache directory to examine
+        for phrase text that may have not been voiced. This may occur when user
+        moves the cursor prior to enough time to generate and play the voice.
 
         :return: True if the change_listener called, else False
         """
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'in send_change_cache_dir')
         if cls.cache_change_listener is None:
             return False
         try:
-            value: str | None = None
-            subdir: str | None = None
-            while value is None:
-                subdir, value = cls.referenced_cache_dirs.popitem()
-            cls.cache_change_listener(subdir)
+            path: str | None = None
+            # popitem is LIFO, but not a big concern
+            path, _ = cls.referenced_cache_dirs.popitem()
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'referenced_cache_dirs: {path}')
+            cls.cache_change_listener(path)
             return True
         except KeyError:
             pass
+        except Exception:
+            MY_LOGGER.exception('')
         return False
 
 

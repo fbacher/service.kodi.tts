@@ -19,7 +19,7 @@ from cache.prefetch_movie_data.json_utils_basic import JsonUtilsBasic
 from common.logger import *
 from common.monitor import Monitor
 
-module_logger: Final[BasicLogger] = BasicLogger.get_logger(__name__)
+MY_LOGGER: Final[BasicLogger] = BasicLogger.get_logger(__name__)
 
 
 class DBAccess:
@@ -65,13 +65,6 @@ class DBAccess:
         "votes"
     ]
 
-    _logger: BasicLogger = None
-
-    @classmethod
-    def _class_init_(cls):
-        if cls._logger is None:
-            cls._logger = module_logger
-
     @classmethod
     def create_details_query(cls) -> str:
         """
@@ -92,8 +85,8 @@ class DBAccess:
 
         query = f'{prefix}{query_properties}{query_suffix}'
 
-        if cls._logger.isEnabledFor(DISABLED):
-            cls._logger.debug_v(f'query: {query}')
+        if MY_LOGGER.isEnabledFor(DISABLED):
+            MY_LOGGER.debug_v(f'query: {query}')
 
         return query
 
@@ -101,11 +94,12 @@ class DBAccess:
     def get_movie_details(cls, query: str) -> List[Dict[str, Any]]:
         movies: List[Dict[str, Any]] = []
         try:
-            if cls._logger.isEnabledFor(DISABLED):
+            if MY_LOGGER.isEnabledFor(DISABLED):
                 import json as json
                 # json_encoded: Dict = json.loads(query)
                 dump: str = json.dumps(query, indent=3, sort_keys=True)
-                cls._logger.debug_xv(f'JASON DUMP: {dump}')
+                if MY_LOGGER.isEnabledFor(DEBUG_XV):
+                    MY_LOGGER.debug_xv(f'JASON DUMP: {dump}')
         except AbortException:
             reraise(*sys.exc_info())
         except Exception:
@@ -126,9 +120,9 @@ class DBAccess:
             movie: Dict[str, Any] = result.get('movies', None)
             if movie is None:
                 movies = result.get('movies', [])
-                if cls._logger.isEnabledFor(DISABLED):
-                    cls._logger.error(f'Got back movies {len(movies)} '
-                                      f'instead of moviedetails.')
+                if MY_LOGGER.isEnabledFor(DISABLED):
+                    MY_LOGGER.error(f'Got back movies {len(movies)} '
+                                    'instead of moviedetails.')
             else:
                 movies.append(movie)
 
@@ -141,12 +135,13 @@ class DBAccess:
                 error = query_result.get('error')
                 if error is not None:
                     message: str = error.get('message')
-            cls._logger.exception(message)
+            MY_LOGGER.exception(message)
             try:
                 import json as json
                 # json_encoded: Dict = json.loads(query)
                 dump: str = json.dumps(query, indent=3, sort_keys=True)
-                cls._logger.debug_xv(f'JASON DUMP: {dump}')
+                if MY_LOGGER.isEnabledFor(DEBUG_XV):
+                    MY_LOGGER.debug_xv(f'JASON DUMP: {dump}')
             except Exception:
                 movies = []
 
@@ -194,17 +189,15 @@ class DBAccess:
                 f'{{ "field": "year", "operator": "is", "value": "{year}" }} ' \
                 f'] }} }}, "id": 1}}'
 
-        if cls._logger.isEnabledFor(DISABLED):
-            cls._logger.debug_v(f'title: {title} year: {year}')
-            cls._logger.debug_v(f'query: {query}')
+        if MY_LOGGER.isEnabledFor(DISABLED):
+            MY_LOGGER.debug_v(f'title: {title} year: {year}')
+            MY_LOGGER.debug_v(f'query: {query}')
             try:
                 x = json.loads(query)
                 query_str = json.dumps(x, indent=4, sort_keys=True)
-                cls._logger.debug_xv(f'query: {query_str}')
+                if MY_LOGGER.isEnabledFor(DEBUG_XV):
+                    MY_LOGGER.debug_xv(f'query: {query_str}')
             except Exception:
                 pass
 
         return query
-
-
-DBAccess._class_init_()

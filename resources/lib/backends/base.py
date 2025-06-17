@@ -10,9 +10,9 @@ from pathlib import Path
 from backends.ispeech_generator import ISpeechGenerator
 from backends.settings.service_types import ServiceID, ServiceKey, Services, TTS_Type
 from backends.settings.service_unavailable_exception import ServiceUnavailable
+from cache.cache_file_state import CacheFileState
 from common import *
 
-from backends import audio
 from backends.audio.sound_capabilities import ServiceType, SoundCapabilities
 from backends.i_tts_backend_base import ITTSBackendBase
 from backends.players.iplayer import IPlayer
@@ -22,7 +22,6 @@ from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import TTSNumericValidator
 from backends.tts_backend_bridge import TTSBackendBridge
 from cache.voicecache import VoiceCache
-from common import utils
 from common.base_services import BaseServices
 from common.constants import Constants
 from common.deprecated import deprecated
@@ -226,7 +225,7 @@ class EngineQueue:
             if phrase.text_exists():
                 #  TODO: Add ability to deal with converter
                 #  Bypass engine and go straight to playing
-                player_id: str = Settings.get_player_key(engine.setting_id)
+                player_id: str = Settings.get_player(engine.setting_id)
                 zelf.say_file(phrase, player_id, engine)
             else:
                 MY_LOGGER.debug(f'queue.put {phrase.get_text()}')
@@ -371,12 +370,12 @@ class BaseEngineService(BaseServices):
          Gets the player instance for the given engine. If settings are changed
          then the new player will be instantiated.
 
-         :param service_key: key for identifying the engine Settings.get_player_key
+         :param service_key: key for identifying the engine Settings.get_player
                              will adjust the engine's service_key appropriately.
         """
 
         clz = type(self)
-        player_key: ServiceID = Settings.get_player_key(service_key)
+        player_key: ServiceID = Settings.get_player(service_key)
         #  MY_LOGGER.debug(f'player_key: {player_key}')
         if self.player is not None and player_key != self.player.service_key:
             # Stop old player
@@ -740,7 +739,7 @@ class BaseEngineService(BaseServices):
             MY_LOGGER.warning(
                 f'{SettingProp.PLAYER}, not supported by voicing engine: '
                 f'{setting_id}')
-        previous_value = Settings.get_player_key(setting_id=setting_id)
+        previous_value = Settings.get_player(setting_id=setting_id)
         changed = previous_value != value
         Settings.set_player(value, setting_id)
         return changed
@@ -1060,7 +1059,7 @@ class SimpleTTSBackend(ThreadedTTSBackend):
         return super().say_phrase(phrase)
 
     def get_cached_voice_file(self, phrase: Phrase,
-                              generate_voice: bool = True) -> bool:
+                              generate_voice: bool = True) -> CacheFileState:
         """
         Assumes that cache is used. Normally missing voiced files are placed in
         the cache by an earlier step, but can be initiated here as well.
@@ -1110,6 +1109,9 @@ class SimpleTTSBackend(ThreadedTTSBackend):
             if phrase.get_interrupt():
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'stop_player phrase prior to: {phrase}')
+                kill: bool = True
+                if player_mode in (PlayerMode.SLAVE_FILE, PlayerMode.SLAVE_PIPE):
+                    kill = False
                 self.stop_player(purge=True)
 
             #  MY_LOGGER.debug(f'player_mode: {player_mode} engine: {self.service_id}')

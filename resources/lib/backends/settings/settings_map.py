@@ -1,10 +1,6 @@
 # coding=utf-8
 from __future__ import annotations  # For union operator |
 
-from logging import DEBUG
-from pathlib import Path
-from typing import Union
-
 from backends.settings.service_types import ALL_ENGINES, ServiceID, SERVICES_BY_TYPE
 from backends.settings.setting_properties import SettingProp, SettingType
 from common.service_status import Progress, ServiceStatus, Status, StatusType
@@ -28,7 +24,7 @@ from backends.settings.i_validators import (AllowedValue, IBoolValidator,
 from backends.settings.service_types import ServiceType
 from common.logger import *
 
-MY_LOGGER = BasicLogger.get_logger(__name__)
+MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class ServiceInfo:
@@ -104,7 +100,8 @@ class ServiceInfo:
                             INumericValidator | ISimpleValidator |
                             IStrEnumValidator |
                             IStringValidator | IValidator | None):
-        MY_LOGGER.debug(f'{self.service_id} validator: {self._validator}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'{self.service_id} validator: {self._validator}')
         return self._validator
 
     @property
@@ -212,7 +209,6 @@ class SettingsMap:
             service_types = list(ServiceType)
         else:
             service_types = [service_type]
-        # MY_LOGGER.debug(f'service_types: {service_types}')
         for service_type in service_types:
             service_type: ServiceType
             for service_key in SERVICES_BY_TYPE[service_type]:
@@ -221,15 +217,19 @@ class SettingsMap:
                 service_key: StrEnum
                 service_id: ServiceID = ServiceID(service_type, service_key,
                                                   SettingProp.SERVICE_ID)
-                MY_LOGGER.debug(f'service_type: {service_type} '
-                                f'service_key: {service_key} \n'
-                                f'service_id: {service_id} '
-                                f'service_id.key: {service_id.key}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'service_type: {service_type} '
+                                    f'service_key: {service_key} \n'
+                                    f'service_id: {service_id} '
+                                    f'service_id.key: {service_id.key}')
                 # if MY_LOGGER.isEnabledFor(DEBUG_XV):
                 #     MY_LOGGER.debug_xv(f'service_key: {service_key} # keys:'
                 #                        f' {cls.service_info_map.keys()}')
                 service_info: ServiceInfo
                 service_info = cls.service_info_map.get(service_id.key)
+                if service_info is None:
+                    MY_LOGGER.warning(f'No ServiceInfo found for {service_id.key}')
+                    continue
                 service_status: StatusType = service_info.service_status
 
                 if MY_LOGGER.isEnabledFor(DEBUG):
@@ -238,7 +238,6 @@ class SettingsMap:
                                     f'status: {service_status}')
                 if service_status is not None and service_status == StatusType.OK:
                     result.append(service_id)
-        #  MY_LOGGER.debug(f'result: {result}')
         return result
 
     @classmethod
@@ -286,13 +285,14 @@ class SettingsMap:
         """
         service_info: ServiceInfo
         service_info = cls.service_info_map.get(service_id.key, None)
-        MY_LOGGER.debug(f'{service_id} force: {force} service: '
-                        f'{service_id.key} '
-                        f'service_info: {service_info}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'{service_id} force: {force} service: '
+                            f'{service_id.key} '
+                            f'service_info: {service_info}')
         service_status: StatusType = StatusType.UNCHECKED
         if service_info is None:
-            MY_LOGGER.debug(f'service_info is None force: {force}')
             if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'service_info is None force: {force}')
                 MY_LOGGER.debug(f'{service_id} is NOT registered.')
             return False
         else:
@@ -344,15 +344,16 @@ class SettingsMap:
         service_info = cls.service_info_map.get(service_id.key)
         if service_info is not None:
             if MY_LOGGER.isEnabledFor(WARNING):
-                MY_LOGGER.warn(f'Service {service_id} already defined. Ignoring '
-                               f'redefinition')
+                MY_LOGGER.warning(f'Service {service_id} already defined. Ignoring '
+                                  f'redefinition')
                 return
         service_info = ServiceInfo(service_id, property_type=setting_type,
                                    service_status=service_status,
                                    validator=validator,
                                    persist=persist)
-        MY_LOGGER.debug(f'Defining {service_id} '
-                        f'service_info: {service_info}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'Defining {service_id} '
+                            f'service_info: {service_info}')
         cls.service_info_map[service_id.key] = service_info
         settings_for_service[service_id.key] = service_info
 
@@ -377,7 +378,8 @@ class SettingsMap:
         """
         # Verify that
         if service_id.key not in cls.service_info_map.keys():
-            MY_LOGGER.debug(f'{service_id.key} not in service_info_map')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'{service_id.key} not in service_info_map')
             return False
         return True
 
@@ -420,13 +422,16 @@ class SettingsMap:
                                                   IChannelValidator |
                                                   IEngineValidator |
                                                   ISimpleValidator | None):
-        MY_LOGGER.debug(f'service_id: {service_id} key: {service_id.key}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'service_id: {service_id} key: {service_id.key}')
         service_info: ServiceInfo = cls.service_info_map.get(service_id.key)
-        MY_LOGGER.debug(f'service_info: {service_info}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'service_info: {service_info}')
         if service_info is None:
             return None
         validator = service_info.validator
-        MY_LOGGER.debug(f'validator: {validator}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'validator: {validator}')
         return validator
 
     @classmethod

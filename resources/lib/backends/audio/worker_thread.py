@@ -107,6 +107,14 @@ class WorkerThread:
                         try:
                             engine: IServices = BaseServices.get_service(engine_key)
                             engine.seed_text_cache(phrases)
+                            engine: BaseServices
+                            engine = BaseServices.get_service(engine_key)
+                            voice_cache = engine.get_voice_cache()
+                            if MY_LOGGER.isEnabledFor(DEBUG):
+                                MY_LOGGER.debug(f'engine_key: {engine_key}')
+                            for phrase in phrases:
+                                phrase: Phrase
+                                voice_cache.text_referenced(phrase)
                         except Exception as e:
                             MY_LOGGER.exception('')
                 except AbortException as e:

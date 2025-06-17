@@ -9,25 +9,17 @@ from cache.prefetch_movie_data.movie import LibraryMovie
 from cache.prefetch_movie_data.movie_constants import MovieField, MovieType
 from common.logger import *
 
-module_logger: BasicLogger = BasicLogger.get_logger(__name__)
+MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class ParseLibrary:
     DEFAULT_LAST_PLAYED_DATE: str = '1900-01-01 01:01:01'
 
-    _logger: BasicLogger = None
-
     def __init__(self, library_entry: Dict[str, Any]) -> None:
-        type(self).class_init()
         self._library_entry: Dict[str, Any] = library_entry
         library_id: int = self._library_entry[MovieField.MOVIEID]
         self._movie: LibraryMovie = LibraryMovie(None)
         self._movie.set_library_id(library_id)
-
-    @classmethod
-    def class_init(cls):
-        if cls._logger is None:
-            cls._logger = module_logger
 
     def get_movie(self) -> LibraryMovie:
         return self._movie
@@ -129,7 +121,7 @@ class ParseLibrary:
     def parse_movie(cls,
                     is_sparse: bool = True,
                     raw_movie: MovieType = None) -> LibraryMovie:
-        movie: LibraryMovie = None
+        movie: LibraryMovie | None = None
         try:
             movie_parser: ParseLibrary = ParseLibrary(raw_movie)
             movie_parser.parse_title()
@@ -153,7 +145,7 @@ class ParseLibrary:
         except AbortException:
             reraise(*sys.exc_info())
         except Exception:
-            cls._logger.exception('')
+            MY_LOGGER.exception('')
             movie = None
 
         return movie

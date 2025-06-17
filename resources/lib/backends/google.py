@@ -1,11 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations  # For union operator |
 
-import os
-import pathlib
 import sys
 
-import xbmc
 import gtts
 import langcodes
 from backends import base
@@ -18,7 +15,6 @@ from backends.settings.language_info import LanguageInfo
 from backends.settings.service_types import ServiceID, ServiceKey, Services, ServiceType
 from backends.settings.setting_properties import SettingProp
 from backends.settings.settings_helper import SettingsHelper
-from cache.cache_entry import CacheEntryMgr
 from cache.common_types import CacheEntryInfo
 from cache.cache_file_state import CacheFileState
 from cache.voicecache import VoiceCache
@@ -234,12 +230,16 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         """
         if Settings.is_use_cache() and not phrase.is_lang_territory_set():
             locale: str = phrase.language  # IETF format
+            voice_id: str = Settings.get_voice(cls.service_key)
+            #  lang_info.engine_voice_id
             _, kodi_locale, _, ietf_lang = LanguageInfo.get_kodi_locale_info()
-            voice: str = Settings.get_voice(cls.service_key)
-            if voice is None or voice == '':
-                voice = kodi_locale
-            else:
-                ietf_lang: langcodes.Language = langcodes.get(voice)
+            if voice_id is None or voice_id == '':
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug('Fix Settings.get_voice to use kodi_locale by'
+                                    ' default')
+            #     voice_id = kodi_locale
+            # else:
+            #    ietf_lang: langcodes.Language = langcodes.get(voice_id)
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'orig Phrase locale: {locale}')
             if locale is None:
@@ -247,10 +247,13 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'locale: {locale}')
             ietf_lang: langcodes.Language
-            phrase.set_lang_dir(ietf_lang.language)
-            if ietf_lang.territory is not None:
-                phrase.set_territory_dir(ietf_lang.territory.lower())
 
+            phrase.set_lang_dir(ietf_lang.language)
+            phrase.set_voice(voice_id)
+            #  HACK for broken xbmc.getLanguage
+            if ietf_lang.territory is None:
+                ietf_lang = langcodes.get(voice_id)
+            phrase.set_territory_dir(ietf_lang.territory.lower())
         return
 
     def create_speech_generator(self) -> ISpeechGenerator | None:
@@ -276,6 +279,12 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         # It can also be called by the TTS engine during configuration. In this case
         # it is okay if it is a little slow.
         #
+        cache_file_state: CacheFileState
+        cache_file_state = self.get_cached_voice_file(phrase)
+        MY_LOGGER.debug(f'cache_file_state: {cache_file_state} phrase: {phrase}')
+        return cache_file_state == CacheFileState.OK
+
+        '''
         try:
             clz.update_voice_path(phrase)
             file_state: CacheFileState = phrase.cache_file_state()
@@ -305,30 +314,24 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         if MY_LOGGER.isEnabledFor(DEBUG) and phrase.cache_file_state != CacheFileState.OK:
             MY_LOGGER.debug(f'cache_file_state: {phrase.cache_file_state()}')
         return phrase.cache_file_state() == CacheFileState.OK
+        '''
 
     def get_cached_voice_file(self, phrase: Phrase,
                               generate_voice: bool = True) -> CacheFileState:
         """
-        Assumes that cache is used. Normally missing voiced files are placed in
-        the cache by an earlier step, but can be initiated here as well.
+        Return cached file if present. Optionally creates the cache file.
 
         Very similar to runCommand, except that the cached files are expected
-        to be sent to a slave player_key, or some other player_key than can play a sound
+        to be sent to a slave player, or some other player than can play a sound
         file.
         :param phrase: Contains the text to be voiced as wll as the path that it
                        is or will be located.
-        :param generate_voice: If true, then wait a bit to generate the speech
-                               file.
-        :return: True if the voice file was handed to a player_key, otherwise False
+        :param generate_voice: NOT USED
+        :return: True if the voice file was handed to a player, otherwise False
         """
         clz = type(self)
-
-        # If caching disabled, then voice_file and byte_stream are always None.
-        # If caching is enabled, voice_file contains path of cached file,
-        # or path where to download to. byte_stream is None if cached file
-        # does not exist, otherwise it is the contents of the cached file
-
         try:
+            clz.update_voice_path(phrase)
             result: CacheEntryInfo
             result = self.get_voice_cache().get_path_to_voice_file(phrase,
                                                        use_cache=Settings.is_use_cache())
@@ -370,10 +373,26 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
             MY_LOGGER.debug(f'cache_file_state: {phrase.cache_file_state()}')
         return phrase.cache_file_state()
 
-    def runCommandAndPipe(self, phrase: Phrase) -> BinaryIO:
+    def runCommandAndPipe(self, phrase: Phrase) -> BinaryIO | None:
+        """
+        TODO: Change to pass a byte-stream back (or into) get_cached_voice_file/generate.
+              Do in such a way that the pipe is opened asap to avoid rereading
+              cache.
+        :param phrase:
+        :return:
+        """
         clz = type(self)
+        cache_file_state: CacheFileState
+        cache_file_state = self.get_cached_voice_file(phrase)
+        MY_LOGGER.debug(f'cache_file_state: {cache_file_state} phrase: {phrase}')
+        if cache_file_state != CacheFileState.OK:
+            return None
+        byte_stream: BinaryIO | None = None
+        byte_stream = phrase.get_cache_path().open(mode='br')
+        return byte_stream
 
-        # If caching disabled, then voice_file and byte_stream are always None.
+        '''
+            # If caching disabled, then voice_file and byte_stream are always None.
         # If caching is enabled, voice_file contains path of cached file,
         # or path where to download to. byte_stream is None if cached file
         # does not exist, otherwise it is the contents of the cached file
@@ -381,10 +400,32 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         audio_pipe = None
         byte_stream: BinaryIO | None = None
         try:
+
+            if attempts >= 0:
+                byte_stream = phrase.get_cache_path().open(mode='br')
+            except AbortException as e:
+            reraise(*sys.exc_info())
+        except FileNotFoundError:
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'File not found: {phrase.get_cache_path()}')
+            byte_stream = None
+        except ExpiredException:
+            reraise(*sys.exc_info())
+        except Exception:
+            MY_LOGGER.exception('')
+            byte_stream = None
+
+        except ExpiredException:
+            reraise(*sys.exc_info())
+        return byte_stream
+
+        
+        try:
             clz.update_voice_path(phrase)
+            voice_cache: VoiceCache = self.get_voice_cache()
             result: CacheEntryInfo
-            result = self.get_voice_cache().get_path_to_voice_file(phrase,
-                                                                   use_cache=Settings.is_use_cache())
+            result = voice_cache.get_path_to_voice_file(phrase,
+                                                        use_cache=Settings.is_use_cache())
             if not result.audio_exists:
                 tmp_phrase: Phrase = phrase.clone(check_expired=False)
                 # Can use eSpeak as a backup in case generator is not fast enough,
@@ -427,6 +468,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         except ExpiredException:
             reraise(*sys.exc_info())
         return byte_stream
+        '''
 
     def seed_text_cache(self, phrases: PhraseList) -> None:
         """
@@ -492,7 +534,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
             return choices, default_setting
 
         elif setting == SettingProp.PLAYER:
-            # Get list of player_key ids. Id is same as is stored in settings.xml
+            # Get list of player ids. Id is same as is stored in settings.xml
 
             default_player: str = cls.get_setting_default(SettingProp.PLAYER)
             player_ids: List[Choice] = []

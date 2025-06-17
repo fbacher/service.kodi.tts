@@ -5,8 +5,7 @@ from common import *
 
 from backends.settings.constraints import Constraints
 from backends.settings.service_types import ServiceID, ServiceKey, Services
-from backends.settings.setting_properties import SettingProp
-from backends.settings.settings_map import SettingsMap
+from backends.settings.setting_properties import SettingProp, SettingType
 from backends.settings.validators import (BoolValidator, GenderValidator, IntValidator,
                                           StringValidator, Validator)
 from common.logger import BasicLogger
@@ -65,15 +64,6 @@ class BaseEngineSettings:
         BaseEngineSettings.initialized[service_key] = True
 
         for setting_id in settings:
-            if setting_id == SettingProp.CACHE_SPEECH:
-                service_id: ServiceID = service_key.with_prop(SettingProp.CACHE_SPEECH)
-                cache_validator: BoolValidator
-                cache_validator = BoolValidator(service_id,
-                                                default=False,
-                                                define_setting=True,
-                                                service_status=StatusType.OK,
-                                                persist=True)
-
             if setting_id == SettingProp.GENDER_VISIBLE:
                 service_id: ServiceID = service_key.with_prop(SettingProp.GENDER_VISIBLE)
                 gender_visible: BoolValidator

@@ -44,7 +44,7 @@ class BaseServiceSettings:
                                               minimum=0, maximum=99, default=50,
                                               is_decibels=False, is_integer=True,
                                               internal_scale_factor=1,
-                                              persist=False)
+                                              persist=True)
 
     tts_volume_validator: TTSNumericValidator
     tts_volume_validator = TTSNumericValidator(ServiceKey.VOLUME,
@@ -52,7 +52,7 @@ class BaseServiceSettings:
                                                default=0, is_decibels=True,
                                                is_integer=True,
                                                internal_scale_factor=10,
-                                               persist=False)
+                                               persist=True)
     tts_speed_validator: TTSNumericValidator
     tts_speed_validator = TTSNumericValidator(ServiceKey.SPEED,
                                               minimum=50, maximum=200,
@@ -61,7 +61,7 @@ class BaseServiceSettings:
                                               is_decibels=False,
                                               is_integer=False,
                                               internal_scale_factor=100,
-                                              persist=False)
+                                              persist=True,)
 
     global_settings_initialized: bool = False
 

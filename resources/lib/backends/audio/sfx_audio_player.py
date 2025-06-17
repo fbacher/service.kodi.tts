@@ -24,7 +24,7 @@ from common.base_services import BaseServices
 from common.constants import Constants
 from common.exceptions import ExpiredException
 from common.kodi_player_monitor import KodiPlayerMonitor, KodiPlayerState
-from common.logger import BasicLogger, DEBUG_V
+from common.logger import *
 from common.monitor import Monitor
 from common.phrases import Phrase
 from common.setting_constants import AudioType, Players
@@ -100,7 +100,8 @@ class PlaySFXAudioPlayer(AudioPlayer, BaseServices):
         # Support for running with NO ENGINE nor PLAYER using limited pre-generated
         # cache. The intent is to provide enough TTS so the user can cfg
         # to use an engine and player_key.
-        MY_LOGGER.debug(f'GENERATE_BACKUP_SPEECH: {GENERATE_BACKUP_SPEECH}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'GENERATE_BACKUP_SPEECH: {GENERATE_BACKUP_SPEECH}')
         if GENERATE_BACKUP_SPEECH:
             # Convert .mp3 files into .wav and save in NO_ENGINE engine's cache
             no_engine = BaseServices.get_service(EngineType.NO_ENGINE.value)
@@ -109,7 +110,8 @@ class PlaySFXAudioPlayer(AudioPlayer, BaseServices):
             wave_file = audio_path.with_suffix(f'.{AudioType.WAV}')
         else:
             cache_info = self.voice_cache.get_path_to_voice_file(phrase, use_cache=True)
-            MY_LOGGER.debug(f'result: {cache_info}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'result: {cache_info}')
             audio_path: Path = cache_info.final_audio_path
             wave_file = audio_path.with_suffix(f'.{AudioType.WAV}')
             if not wave_file.exists():
@@ -119,28 +121,35 @@ class PlaySFXAudioPlayer(AudioPlayer, BaseServices):
                     target_audio: AudioType
                     target_audio = Settings.get_current_input_format(clz.service_key)
 
+                    tran_id: ServiceID
                     tran_id = SoundCapabilities.get_transcoder(
                                                              service_key=clz.service_key,
                                                              target_audio=target_audio)
                     if tran_id is not None:
-                        MY_LOGGER.debug(f'Setting converter: {tran_id} for '
-                                        f'{clz.service_id}')
-                        Settings.set_transcoder(tran_id, clz.service_key)
+                        if MY_LOGGER.isEnabledFor(DEBUG):
+                            MY_LOGGER.debug(f'Setting converter: {tran_id} for '
+                                            f'{clz.service_id}')
+                        Settings.set_transcoder(tran_id.service_id, clz.service_key)
                         x = Settings.get_transcoder(clz.service_key)
-                        MY_LOGGER.debug(f'Setting converter: {x}')
+                        if MY_LOGGER.isEnabledFor(DEBUG):
+                            MY_LOGGER.debug(f'Setting converter: {x}')
                 except ValueError:
                     # Can not find a match. Don't recover, for now
                     reraise(*sys.exc_info())
 
                 trans_id: str = Settings.get_transcoder(clz.service_key)
-                MY_LOGGER.debug(f'service_id: {clz.service_id} trans_id: {trans_id}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'service_id: {clz.service_id} trans_id: {trans_id}')
                 success = TransCode.transcode(trans_id=trans_id,
                                               input_path=mp3_file,
                                               output_path=wave_file,
                                               remove_input=False)
-                MY_LOGGER.debug(f'success: {success} wave_file: {wave_file} mp3: {mp3_file}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'success: {success} wave_file: {wave_file} '
+                                    f'mp3: {mp3_file}')
                 if not success:
-                    MY_LOGGER.debug(f'Failed to convert to WAVE file: {mp3_file}')
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug(f'Failed to convert to WAVE file: {mp3_file}')
                     return
         stop_on_play: bool = not phrase.speak_over_kodi
         if stop_on_play:
@@ -162,10 +171,12 @@ class PlaySFXAudioPlayer(AudioPlayer, BaseServices):
             waited_ms = waited / timedelta(microseconds=1000)
             delta_ms = delay_ms - waited_ms
             if delta_ms > 0.0:
-                additional_wait_needed_s: float = delta_ms / 1000.0
-                MY_LOGGER.debug(f'pausing {additional_wait_needed_s} ms')
+                additional_wait_needed_s: float = delta_ms / 1000.
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'pausing {additional_wait_needed_s} ms')
                 Monitor.exception_on_abort(timeout=float(additional_wait_needed_s))
-            MY_LOGGER.debug(f'wave: {wave_file}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'wave: {wave_file}')
             self.doPlaySFX(str(wave_file))
             f = wave.open(str(wave_file), 'rb')
             frames = f.getnframes()
@@ -179,7 +190,8 @@ class PlaySFXAudioPlayer(AudioPlayer, BaseServices):
             self.stop(now=True)
             reraise(*sys.exc_info())
         except ExpiredException:
-            MY_LOGGER.debug('EXPIRED')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug('EXPIRED')
             return
         except Exception as e:
             MY_LOGGER.exception(f'{phrase.get_cache_path()}')
@@ -225,7 +237,3 @@ class PlaySFXAudioPlayer(AudioPlayer, BaseServices):
 
     def close(self) -> None:
         self.stop()
-
-    @classmethod
-    def check_availability(cls) -> Status:
-        return SFXSettings.check_availability()

@@ -8,7 +8,6 @@ from backends.settings.i_validators import INumericValidator
 from common import *
 
 from backends.audio.sound_capabilities import SoundCapabilities
-from backends.settings.base_service_settings import BaseServiceSettings
 from backends.settings.service_types import ServiceKey, Services, ServiceType
 from backends.settings.settings_map import Status, SettingsMap
 from backends.settings.validators import (BoolValidator,
@@ -16,7 +15,7 @@ from backends.settings.validators import (BoolValidator,
                                           StringValidator, Validator)
 from common.config_exception import UnusableServiceException
 from common.constants import Constants
-from common.logger import BasicLogger
+from common.logger import *
 from common.message_ids import MessageId
 from common.service_status import Progress, ServiceStatus, StatusType
 from common.setting_constants import AudioType, Backends, PlayerMode, Players
@@ -57,13 +56,6 @@ class MPlayerSettings:
                                         cls.volumeConversionConstraints, volumeDb)
     
     """
-    _supported_input_formats: List[AudioType] = [AudioType.WAV, AudioType.MP3]
-    _supported_output_formats: List[AudioType] = []
-    _provides_services: List[ServiceType] = [ServiceType.PLAYER,
-                                             ServiceType.TRANSCODER]
-    SoundCapabilities.add_service(service_key, _provides_services,
-                                  _supported_input_formats,
-                                  _supported_output_formats)
 
     _available: bool | None = None
     _availableArgs = (Constants.MPLAYER_PATH, '--help')
@@ -117,6 +109,14 @@ class MPlayerSettings:
                                                define_setting=True,
                                                service_status=StatusType.OK,
                                                persist=True)
+
+        _supported_input_formats: List[AudioType] = [AudioType.WAV, AudioType.MP3]
+        _supported_output_formats: List[AudioType] = []
+        _provides_services: List[ServiceType] = [ServiceType.PLAYER,
+                                                 ServiceType.TRANSCODER]
+        SoundCapabilities.add_service(cls.service_key, _provides_services,
+                                      _supported_input_formats,
+                                      _supported_output_formats)
 
         cache_service_key: ServiceID = cls.service_key.with_prop(SettingProp.CACHE_PATH)
         cache_path_val: SimpleStringValidator
@@ -179,7 +179,6 @@ class MPlayerSettings:
         allowed_player_modes: List[str] = [
             PlayerMode.FILE.value
         ]
-        MY_LOGGER.debug(f'About to import mplayer PLAYER_MODE')
         player_mode_validator: StringValidator
         player_mode_validator = StringValidator(cls.PLAYER_MODE_KEY,
                                                 allowed_values=allowed_player_modes,
@@ -187,8 +186,6 @@ class MPlayerSettings:
                                                 define_setting=True,
                                                 service_status=StatusType.OK,
                                                 persist=True)
-        MY_LOGGER.debug(f'{cls.PLAYER_MODE_KEY} validator: '
-                        f'{SettingsMap.get_validator(cls.PLAYER_MODE_KEY)}')
 
     @classmethod
     def check_is_supported_on_platform(cls) -> None:
@@ -228,14 +225,16 @@ class MPlayerSettings:
                 env = os.environ.copy()
                 completed: subprocess.CompletedProcess | None = None
                 if Constants.PLATFORM_WINDOWS:
-                    MY_LOGGER.info(f'Running command: Windows')
+                    if MY_LOGGER.isEnabledFor(DEBUG_V):
+                        MY_LOGGER.debug_v(f'Running command: Windows')
                     # mplayer returns RC=1
                     completed = subprocess.run(args, stdin=None, capture_output=True,
                                                text=True, env=env, close_fds=True,
                                                encoding='utf-8', shell=False, check=False,
                                                creationflags=subprocess.CREATE_NO_WINDOW)
                 else:
-                    MY_LOGGER.info(f'Running command: Linux')
+                    if MY_LOGGER.isEnabledFor(DEBUG_V):
+                        MY_LOGGER.debug_v(f'Running command: Linux')
                     # mplayer returns RC=1
                     completed = subprocess.run(args, stdin=None, capture_output=True,
                                                text=True, env=env, close_fds=True,

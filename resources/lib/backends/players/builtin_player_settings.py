@@ -42,13 +42,6 @@ class BuiltinPlayerSettings:
 
     settings: Dict[str, Validator] = {}
 
-    _supported_input_formats: List[AudioType] = [AudioType.BUILT_IN]
-    _supported_output_formats: List[AudioType] = []
-    _provides_services: List[ServiceType] = [ServiceType.PLAYER]
-    SoundCapabilities.add_service(service_key, _provides_services,
-                                  _supported_input_formats,
-                                  _supported_output_formats)
-
     # Every setting from settings.xml must be listed here
     # SettingName, default value
 
@@ -85,6 +78,14 @@ class BuiltinPlayerSettings:
                                                define_setting=True,
                                                service_status=StatusType.OK,
                                                persist=False)
+
+        _supported_input_formats: List[AudioType] = [AudioType.BUILT_IN]
+        _supported_output_formats: List[AudioType] = []
+        _provides_services: List[ServiceType] = [ServiceType.PLAYER]
+        SoundCapabilities.add_service(cls.service_key, _provides_services,
+                                      _supported_input_formats,
+                                      _supported_output_formats)
+
         t_service_key: ServiceID
         t_service_key = cls.service_key.with_prop(SettingProp.VOLUME)
         volume_validator: NumericValidator
@@ -143,6 +144,7 @@ class BuiltinPlayerSettings:
                                            setting_type=SettingType.STRING_TYPE,
                                            service_status=StatusType.NOT_FOUND,
                                            validator=None)
+
     @classmethod
     def check_is_available(cls) -> None:
         """
@@ -173,6 +175,7 @@ class BuiltinPlayerSettings:
                                        setting_type=SettingType.STRING_TYPE,
                                        service_status=cls._service_status.status_summary,
                                        validator=None)
+
     @classmethod
     def is_usable(cls) -> bool:
         """

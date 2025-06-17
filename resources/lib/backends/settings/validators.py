@@ -33,6 +33,12 @@ class ConvertType(enum.Enum):
 
 class Validator(IValidator):
 
+    """
+    Validators are helpers for getting and setting values. The validator can verify
+    that the values are valid, supply defaults and be queried for what value choices
+    there are. In addition,
+    """
+
     def __init__(self, service_key: ServiceID,
                  property_type: SettingType,
                  default: Any | None = None, const: bool = False,
@@ -232,7 +238,10 @@ class TTSNumericValidator(BaseNumericValidator):
         internal_value = max(internal_value, self.minimum)
         tts_value: int | float = internal_value / self.internal_scale_factor
         if self.is_integer:
-            return int(round(tts_value))
+            tts_value: int = int(round(tts_value))
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'tts_value: {tts_value} int: {self.is_integer} '
+                            f'scale: {self.internal_scale_factor}')
         return tts_value
 
     def scale_value(self, raw_value: int) -> float:
@@ -260,6 +269,8 @@ class TTSNumericValidator(BaseNumericValidator):
             internal_value = min(internal_value, self.maximum)
             internal_value = max(internal_value, self.minimum)
             SettingsLowLevel.set_setting_int(self.service_key, internal_value)
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'in_value: {value} internal_value: {internal_value}')
         return
 
     def validate(self, value: int | None) -> bool:
@@ -397,6 +408,8 @@ class NumericValidator(BaseNumericValidator):
             return self.default
 
     def _get_value(self) -> int | float:
+        if self.const:
+            return self.const
         if self.tts_validator is None:
             self.tts_validator: IValidator = self.get_tts_validator()
         self.tts_validator: TTSNumericValidator
@@ -432,18 +445,22 @@ class NumericValidator(BaseNumericValidator):
 
     def set_value(self, value: int | float) -> None:
         if self.const:
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug('const_value:, set ignored')
             return
 
-        value = min(value, self.maximum)
-        value = max(value, self.minimum)
+        adj_value: int | float = min(value, self.maximum)
+        adj_value = max(adj_value, self.minimum)
         if self.tts_validator is None:
             self.tts_validator: IValidator = self.get_tts_validator()
         self.tts_validator: TTSNumericValidator
         if self.tts_validator.is_decibels:
-            value = self.to_decibels(value)
+            adj_value = self.to_decibels(adj_value)
         else:
-            value = self.to_percent(value)
-        self.tts_validator.set_value(value)
+            adj_value = self.to_percent(adj_value)
+        self.tts_validator.set_value(adj_value)
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'orig_value: {value} adj_value: {adj_value}')
         return
 
     def validate(self, value: int | None) -> bool:
@@ -1607,7 +1624,8 @@ class SimpleStringValidator(ISimpleValidator):
 
     def get_value(self) -> str:
         if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'{self._service_key} value: {self._value} const: {self._const}')
+            MY_LOGGER.debug(f'{self._service_key} value: {self._value} '
+                            f'const: {self._const}')
         return self._value
 
     def get_const_value(self) -> str:
@@ -1616,7 +1634,8 @@ class SimpleStringValidator(ISimpleValidator):
 
     def is_const(self) -> bool:
         if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'{self._service_key} value: {self._value} const: {self._const}')
+            MY_LOGGER.debug(f'{self._service_key} value: {self._value} const: '
+                            f'{self._const}')
         return self._const
 
     @property

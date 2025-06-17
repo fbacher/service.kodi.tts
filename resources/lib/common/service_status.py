@@ -63,7 +63,6 @@ class ServiceStatus:
 
     @classmethod
     def init_class(cls) -> None:
-        xbmc.log('In ServiceStatus.init_class')
         cls.UNKNOWN_STATUS = ServiceStatus()
         cls.UNKNOWN_STATUS.status = Status.UNKNOWN
         cls.UNKNOWN_STATUS.progress = Progress.START

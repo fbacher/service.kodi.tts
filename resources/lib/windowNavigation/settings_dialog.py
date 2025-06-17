@@ -108,9 +108,9 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         # self.backend_changed: bool = False
         # self.gender_id: int | None = None
         # self.language: str | None = None
-        # elf.pitch: float | None = None
-        # elf.player_key: str | None = None
-        # elf.player_mode: str | None = None
+        # self.pitch: float | None = None
+        # self.player: str | None = None
+        # self.player_mode: str | None = None
         # self.module: str | None = None
         # self.speed: float | None = None
         # self.volume: int | None = None
@@ -119,13 +119,15 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         # self.previous_player_mode: PlayerMode | None = None
         initial_backend: ServiceID
         initial_backend = Settings.get_engine_key()
-        MY_LOGGER.debug(f'initial_backend: {initial_backend}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'initial_backend: {initial_backend}')
 
         # if initial_backend == ServiceKey.ESPEAK_KEY:  # 'auto'
         #     initial_backend = BackendInfo.getAvailableBackends()[0].engine_id
         self.cfg.getEngineInstance(initial_backend)
 
-        MY_LOGGER.debug_xv('SettingsDialog.__init__')
+        if MY_LOGGER.isEnabledFor(DEBUG_XV):
+            MY_LOGGER.debug_xv('SettingsDialog.__init__')
         self.header: ControlLabel | None = None
         self.basic_config_label: ControlLabel | None = None
         # self.engine_tab: ControlRadioButton | None = None
@@ -158,7 +160,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         self.engine_pitch_label: ControlLabel | None = None
         self.engine_player_group: ControlGroup | None = None
         self.engine_player_button: ControlButton | None = None
-        self.engine_player_value: ControlButton | None = None  # player_key and module
+        self.engine_player_value: ControlButton | None = None  # player and module
         self.engine_module_value: ControlButton | None = None  # share button real-estate
         self.engine_pipe_audio_group: ControlGroup | None = None
         self.engine_player_mode_group: ControlGroup | None = None
@@ -197,7 +199,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         return self.cfg.engine_key
 
     def re_init(self) -> None:
-        MY_LOGGER.debug(f'In re-init')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'In re-init')
         self.closing = False
         self.exit_dialog = False
         # self.api_key = None
@@ -209,7 +212,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         """
         #  super().onInit()
         clz = type(self)
-        MY_LOGGER.debug_v('SettingsDialog.onInit')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v('SettingsDialog.onInit')
         self.re_init()
         engine_key: ServiceID = self.engine_key
 
@@ -308,7 +312,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 # Disable setting pitch for now
                 self.engine_pitch_group.setVisible(False)
 
-                # NOTE: player_key and module share control. Only one active at a
+                # NOTE: player and module share control. Only one active at a
                 #       time. Probably should create two distinct buttons and
                 #       control visibility
 
@@ -318,7 +322,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                         clz.SELECT_PLAYER_BUTTON)
                 self.engine_player_group.setVisible(False)
                 #   TODO:   !!!!!
-                #         Move to where player_key or module are about to be displayed
+                #         Move to where player or module are about to be displayed
 
                 self.engine_player_value = self.get_control_button(
                         clz.SELECT_PLAYER_VALUE_LABEL)
@@ -432,12 +436,14 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             self.engine_engine_value.setLabel(engine_label)
 
             engine_voice_id: str = Settings.get_voice(engine_key)
-            MY_LOGGER.debug(f'setting_id: {engine_key.service_id} '
-                            f'engine_voice_id: {engine_voice_id}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'setting_id: {engine_key.service_id} '
+                                f'engine_voice_id: {engine_voice_id}')
             lang_info = LanguageInfo.get_entry(engine_key,
                                                engine_voice_id=engine_voice_id,
                                                lang_id=None)
-            MY_LOGGER.debug(f'lang_info: {lang_info}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'lang_info: {lang_info}')
             lang_info: LanguageInfo
             kodi_language: langcodes.Language
             _, _, _, kodi_language = LanguageInfo.get_kodi_locale_info()
@@ -469,9 +475,10 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             voice_key: ServiceID = engine_key.with_prop(SettingProp.VOICE)
             avail: bool = SettingsMap.is_setting_available(voice_key,
                                                            SettingProp.VOICE)
-            MY_LOGGER.debug(f'is voice available engine: {engine_key} {avail}')
             valid: bool = SettingsMap.is_valid_setting(voice_key)
-            MY_LOGGER.debug(f'is voice valid: {valid}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'is voice available engine: {engine_key} {avail}')
+                MY_LOGGER.debug(f'is voice valid: {valid}')
             if not valid:
                 self.engine_voice_group.setVisible(False)
             else:
@@ -479,14 +486,15 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                         MessageId.SELECT_VOICE_BUTTON.get_msg())
                 self.engine_voice_group.setVisible(True)
                 self.engine_voice_value.setLabel(self.get_language(label=True))
-                MY_LOGGER.debug(f'engine_voice_value: '
-                                f'{self.engine_voice_value.getLabel()}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'engine_voice_value: '
+                                    f'{self.engine_voice_value.getLabel()}')
 
             if not SettingsMap.is_valid_setting(engine_key.with_prop(SettingProp.GENDER)):
                 self.engine_gender_group.setVisible(False)
             else:
                 self.engine_gender_button.setLabel(
-                        Messages.get_msg(Messages.SELECT_VOICE_GENDER))
+                        MessageId.VOICE_GENDER_BUTTON.get_msg())
                 try:
                     gender: Genders = Settings.get_gender(engine_key)
                     self.engine_gender_value.setLabel(gender.name)
@@ -500,17 +508,17 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             #  self.set_pitch_field(update_ui=True, engine_id=service_key,
             #                      pitch=Settings.get_pitch(engine_id=self.engine_id))
 
-            # NOTE: player_key and module share control. Only one active at a
+            # NOTE: player and module share control. Only one active at a
             #       time. Probably should create two distinct buttons and
             #       control visibility
 
             #   TODO:   !!!!!
-            # Move to where player_key or module are about to be displayed
+            # Move to where player or module are about to be displayed
 
             if SettingsMap.is_valid_setting(engine_key.with_prop(SettingProp.PLAYER)):
                 self.engine_player_button.setLabel(
                         MessageId.SELECT_PLAYER.get_msg())
-                player_id: str = Settings.get_player_key().service_id
+                player_id: str = Settings.get_player().service_id
                 player: PlayerType = PlayerType(player_id)
                 self.set_player_field(update_ui=True,
                                       engine_key=engine_key,
@@ -529,14 +537,15 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
             self.engine_player_mode_button.setLabel(
                     Messages.get_msg_by_id(32336))
-            MY_LOGGER.debug(f'player_mode_button label: '
-                            f'{Messages.get_msg_by_id(32336)}')
-            MY_LOGGER.debug(f'player_mode button label: '
-                            f'{Messages.get_msg(Messages.PLAYER_MODE)}')
-            MY_LOGGER.debug(f'player_mode button label: '
-                            f'{xbmc.getLocalizedString(32336)}')
-            MY_LOGGER.debug(f'player_mode button label: '
-                            f'{xbmcaddon.Addon().getLocalizedString(32336)}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'player_mode_button label: '
+                                f'{Messages.get_msg_by_id(32336)}')
+                MY_LOGGER.debug(f'player_mode button label: '
+                                f'{Messages.get_msg(Messages.PLAYER_MODE)}')
+                MY_LOGGER.debug(f'player_mode button label: '
+                                f'{xbmc.getLocalizedString(32336)}')
+                MY_LOGGER.debug(f'player_mode button label: '
+                                f'{xbmcaddon.Addon().getLocalizedString(32336)}')
 
             # self.engine_api_key_label = self.get_control_label(
             #         clz.SELECT_API_KEY_LABEL)
@@ -545,6 +554,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             #         Messages.get_msg(Messages.API_KEY))
 
             speed: float = Settings.get_speed()
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'speed: {speed}')
             self.set_speed_field(update_ui=True, speed=speed)
             volume: float = Settings.get_volume()
             self.set_volume_field(update_ui=True, volume=volume)
@@ -660,19 +671,19 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             self.set_voice_field(update_ui=True)
             # self.set_gender_field() # Not that useful at this time.
             # Player and player_mode are inter-dependent
-            # Speed, volume and pitch are also closely related to player_key, but not as
-            # much as player_key/player_key-mode
-            self.set_player_mode_field(update_ui=True)
+            # Speed, volume and pitch are also closely related to player, but not as
+            # much as player/player-mode
             if SettingsMap.is_valid_setting(engine_key.with_prop(SettingProp.PLAYER)):
                 self.set_player_field(update_ui=True)
             elif SettingsMap.is_valid_setting(engine_key.with_prop(SettingProp.MODULE)):
                 self.set_module_field()
+            self.set_player_mode_field(update_ui=True)
             self.set_pitch_range()
             self.set_speed_field(update_ui=True, speed=None)  # Update ui, not value
             self.set_volume_field(update_ui=True, volume=None)  # Update ui, not value
             self.set_api_field(engine_key)
             # self.set_pipe_audio_field()
-            self.set_cache_speech_field(update_ui=True)
+            self.set_cache_speech_field(update_ui=True, engine_key=engine_key)
             # TTSService.onSettingsChanged()
         except Exception as e:
             MY_LOGGER.exception('')
@@ -798,7 +809,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         :param controlId:
         :return:
         """
-        MY_LOGGER.debug(f'onClick:{controlId} closing: {self.closing}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'onClick:{controlId} closing: {self.closing}')
         if self.closing:
             return
 
@@ -854,7 +866,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 self.close()
 
             elif controlId == self.DEFAULTS_BUTTON:
-                MY_LOGGER.debug(f'defaults button')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'defaults button')
                 self.select_defaults()
 
         except Exception as e:
@@ -887,7 +900,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             elif controlId == clz.SELECT_PITCH_SLIDER:
                 self.select_pitch()
             elif controlId == clz.SELECT_PLAYER_BUTTON:
-                if SettingsMap.is_valid_setting(self.engine_key.with_prop(SettingProp.PLAYER)):
+                if SettingsMap.is_valid_setting(
+                        self.engine_key.with_prop(SettingProp.PLAYER)):
                     self.select_player()
                 else:
                     self.select_module()
@@ -918,21 +932,19 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         clz = type(self)
         try:
             engine_key: ServiceID = self.engine_key
-            MY_LOGGER.debug(f'FOOO select_engine current: {engine_key}'
-                            f' {Settings.get_engine_id()}')
             # Make sure that Settings stack depth is the same as when this module
             # was entered (should be 2).
             self.cfg.restore_settings('enter select_engine BEFORE do_modal')
-            MY_LOGGER.debug(f'After reset: {Settings.get_engine_id()}')
             self.cfg.save_settings('select_engine enter BEFORE do_modal')
             choices, current_choice_index = self.cfg.get_engine_choices(
                     engine_key=engine_key)
             choices: List[Choice]
             if current_choice_index < 0:
                 current_choice_index = 0
-            MY_LOGGER.debug(f'# choices: {len(choices)} current_choice_idx: '
-                            f'{current_choice_index}')
-            MY_LOGGER.debug(f'sub_title: {MessageId.SELECT_TTS_ENGINE.get_msg()}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'# choices: {len(choices)} current_choice_idx: '
+                                f'{current_choice_index}')
+                MY_LOGGER.debug(f'sub_title: {MessageId.SELECT_TTS_ENGINE.get_msg()}')
             dialog: SelectionDialog
             dialog = self.selection_dialog(
                     title=MessageId.CHOOSE_TTS_ENGINE.get_msg(),
@@ -954,9 +966,10 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             self.cfg.restore_settings(msg='select_engine after doModal')  # Pops one
             # Get selected index
             idx = dialog.close_selected_idx
-            MY_LOGGER.debug_v(f'SelectionDialog value: '
-                              f'{MessageId.TTS_ENGINE.get_msg()} '
-                              f'idx: {str(idx)}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'SelectionDialog value: '
+                                  f'{MessageId.TTS_ENGINE.get_msg()} '
+                                  f'idx: {str(idx)}')
             if idx < 0:  # No selection made or CANCELED
                 return
 
@@ -967,7 +980,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             # for new engine's settings can safely be done without impacting
             # the current one. Therefore,change settings tightly coupled to
             # engine settings BEFORE switching to use the new engine.
-            # First, change: voice, player_key, player_mode, use of cache, any transcoder.
+            # First, change: voice, player, player_mode, use of cache, any transcoder.
             # Secondary settings that are less critical to set: speed, volume,
 
             choice: Choice = choices[idx]
@@ -1015,15 +1028,16 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                                  engine_key=engine_key)
             # self.set_gender_field(update_ui=True,
             #                       engine_key=engine_key)
-            self.set_cache_speech_field(update_ui=True,
-                                        engine_key=engine_key,
-                                        use_cache=engine_config.use_cache)
             self.set_player_mode_field(update_ui=True,
                                        engine_key=engine_key,
                                        player_mode=engine_config.player_mode)
             self.set_player_field(update_ui=True,
                                   engine_key=engine_key,
                                   player=engine_config.player)
+            # cache setting visibility depends upon player/player_mode
+            self.set_cache_speech_field(update_ui=True,
+                                        engine_key=engine_key,
+                                        use_cache=engine_config.use_cache)
             Settings.set_transcoder(engine_config.transcoder, engine_key)
             self.set_speed_field(update_ui=True,
                                  speed=engine_config.speed)
@@ -1070,8 +1084,9 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                     engine_key=engine_key, get_best_match=False,
                     format_type=FormatType.LONG)
             self.cfg.save_current_choices(choices, current_choice_index)
-            MY_LOGGER.debug(f'# choices: {len(choices)} current_choice_index: '
-                            f'{current_choice_index}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'# choices: {len(choices)} current_choice_index: '
+                                f'{current_choice_index}')
             if current_choice_index < 0:
                 current_choice_index = 0
             idx: int = 0
@@ -1081,11 +1096,12 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                     break
                 idx += 1
             if idx >= len(choices):
-                MY_LOGGER.debug(f'Could not find current lang_variant in choices\n'
-                                f'service_key: {engine_key}  lang_id: '
-                                f'{lang_id} lang_voice_id: '
-                                f'{lang_voice_id}\n'
-                                f'current: {lang_variant} \n choices: {choices}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'Could not find current lang_variant in choices\n'
+                                    f'service_key: {engine_key}  lang_id: '
+                                    f'{lang_id} lang_voice_id: '
+                                    f'{lang_voice_id}\n'
+                                    f'current: {lang_variant} \n choices: {choices}')
 
             if current_choice_index < 0 or current_choice_index > len(choices) - 1:
                 Settings.set_language(SettingProp.UNKNOWN_VALUE)
@@ -1098,7 +1114,6 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             voice = choice.lang_info.translated_voice
             lang_id: str = choice.lang_info.engine_lang_id
             voice_id: str = choice.lang_info.engine_voice_id
-            #  MY_LOGGER.debug(f'language: {language} # choices {len(choices)}')
             self.engine_language_value.setLabel(voice)
             self.engine_language_group.setVisible(True)
             if len(choices) < 2:
@@ -1131,7 +1146,6 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         """
         clz = type(self)
         try:
-            MY_LOGGER.debug(f'FOOO select_language service_key: {self.engine_key}')
             choices: List[Choice]
             engine_key: ServiceID = self.engine_key
             # Gets every language variant for the current engine and language
@@ -1143,7 +1157,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                     format_type=FormatType.LONG)
             if len(choices) == 0:
                 # Do NOT change UI. These values will not be committed
-                MY_LOGGER.debug(f'No language choices found. No changes made')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'No language choices found. No changes made')
                 return
             self.cfg.save_current_choices(choices, current_choice_index)
             #  MY_LOGGER.debug(f'In select_language # choices: {len(choices)} '
@@ -1166,7 +1181,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             sub_title = (MessageId.DIALOG_LANG_SUB_HEADING.get_msg())
             self.cfg.restore_settings(msg='select_language BEFORE do_modal')
             self.cfg.save_settings('select_language BEFORE do_modal')
-            MY_LOGGER.debug(f'sub_title: {sub_title}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'sub_title: {sub_title}')
             dialog: SelectionDialog
             dialog = self.selection_dialog(title=title,
                                            sub_title=sub_title,
@@ -1190,9 +1206,10 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                     self.set_lang_fields(update_ui=True,
                                          lang_info=choice.lang_info,
                                          engine_key=engine_key)
-                    MY_LOGGER.debug(f'engine: {engine_key} '
-                                    f'language: {choice.lang_info.engine_lang_id}'
-                                    f' voice: {choice.lang_info.engine_voice_id}')
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug(f'engine: {engine_key} '
+                                        f'language: {choice.lang_info.engine_lang_id}'
+                                        f' voice: {choice.lang_info.engine_voice_id}')
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'Set engine_language_value to '
                                 f'{self.engine_language_value.getLabel()}')
@@ -1208,15 +1225,16 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         :param selection_idx: index of Choice from Choices list. Redundant
         :return:
         """
-        MY_LOGGER.debug('FOOO voice_language')
-        MY_LOGGER.debug(f'idx: {selection_idx}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'idx: {selection_idx}')
         engine_key: ServiceID = self.engine_key
         # gets the language_id, a unique id for the focused language
         # and the matching engine.
         if choice is not None:
             lang_info: LanguageInfo = choice.lang_info
-            MY_LOGGER.debug(f'CHOICE idx: {choice.value} lang: '
-                            f'{lang_info.ietf.to_tag()}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'CHOICE idx: {choice.value} lang: '
+                                f'{lang_info.ietf.to_tag()}')
             if lang_info is not None:
                 current_lang: LanguageInfo
                 #   TODO: this is pretty crude.
@@ -1239,7 +1257,6 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         """
         clz = type(self)
         try:
-            MY_LOGGER.debug('FOOO select_voice')
             engine_key: ServiceID = self.engine_key
             choices: List[Choice]
             choices, current_choice_index = self.cfg.get_voice_choices(
@@ -1277,10 +1294,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
     def get_pitch_range(self) -> UIValues:
         return
-        """
+        '''
 
-        :return:
-        """
         result: UIValues | None = None
         try:
             pitch_key: ServiceID = ServiceID(ServiceType.ENGINE, Services.GOOGLE_ID,
@@ -1294,6 +1309,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         except NotImplementedError:
             result = UIValues()
         return result
+        '''
 
     def select_pitch(self) -> None:
         """
@@ -1345,12 +1361,11 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         """
         clz = type(self)
         try:
-            MY_LOGGER.debug('FOOO select_gender')
             engine_key: ServiceID = self.engine_key
             choices: List[Choice]
             choices, current_choice_index = self.cfg.get_gender_choices(engine_key)
             # xbmc.executebuiltin('Skin.ToggleDebug')
-            title: str = Messages.get_msg(Messages.SELECT_VOICE_GENDER)
+            title: str = MessageId.VOICE_GENDER_BUTTON.get_msg()
             self.cfg.restore_settings(msg='select_gender BEFORE doModal')
             self.cfg.save_settings('select_gender BEFORE doModal')
             dialog: SelectionDialog
@@ -1379,9 +1394,9 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         """
         Launches SelectionDialog for user to try out and choose a player.
         Call-back functions (onclick, onfocus, etc.) will respond to user
-        actions in real time. For example, if a player_key is selected which
+        actions in real time. For example, if a player is selected which
         does not support PlayerMode.SLAVE_FILE, then the SLAVE_FILE option
-        will be disabled and the player_key mode will be switched from SLAVE_FILE
+        will be disabled and the player mode will be switched from SLAVE_FILE
         if necessary.
 
         :return:
@@ -1417,7 +1432,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                                   f'enabled: {enabled}')
 
             player_mode: PlayerMode
-            player_mode = Settings.get_player_mode(engine_key)
+            #  player_mode = Settings.get_player_mode(engine_key)
             engine_config: EngineConfig | None = None
             try:
                 engine_config = self.cfg.configure_player(engine_key=engine_key,
@@ -1430,17 +1445,15 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 MY_LOGGER.exception('Config Error')
                 return None
 
-            MY_LOGGER.debug(f'engine_config: service_key: {engine_config.engine_key} '
-                            f'use_cache: {engine_config.use_cache} '
-                            f'player: {engine_config.player} '
-                            f'engine_audio: {engine_config.engine_audio} '
-                            f'player_mode: {engine_config.player_mode} '
-                            f'transcoder: {engine_config.transcoder} '
-                            f'trans_audio_in: {engine_config.trans_audio_in} '
-                            f'trans_audio_out: {engine_config.trans_audio_out}')
-            # MY_LOGGER.debug(f'Setting engine: {service_key} '
-            #                 f'player_mode: {player_mode} '
-            #                 f'values: {allowed_values}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'engine_config: service_key: {engine_config.engine_key} '
+                                f'use_cache: {engine_config.use_cache} '
+                                f'player: {engine_config.player} '
+                                f'engine_audio: {engine_config.engine_audio} '
+                                f'player_mode: {engine_config.player_mode} '
+                                f'transcoder: {engine_config.transcoder} '
+                                f'trans_audio_in: {engine_config.trans_audio_in} '
+                                f'trans_audio_out: {engine_config.trans_audio_out}')
             self.set_player_mode_field(update_ui=True,
                                        engine_key=engine_key,
                                        player_mode=engine_config.player_mode)
@@ -1574,7 +1587,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                     result: UIValues = self.get_speed_range()  # Uses setting just saved
                     if MY_LOGGER.isEnabledFor(DEBUG):
                         MY_LOGGER.debug(f'min: {result.minimum} max: {result.maximum} '
-                                        f'inc: {result.increment} current: {result.current}')
+                                        f'inc: {result.increment} current: '
+                                        f'{result.current}')
                     if result.minimum == result.maximum:
                         self.engine_speed_group.setVisible(False)
                     else:
@@ -1605,6 +1619,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             result = speed_val.get_values()
         except NotImplementedError:
             result = UIValues()
+            MY_LOGGER.debug(f'speed_range: {result}')
         return result
 
     def select_cache_speech(self):
@@ -1613,8 +1628,9 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         """
         try:
             cache_speech: bool = self.engine_cache_speech_radio_button.isSelected()
-            MY_LOGGER.debug(f'Setting cache_speech for {self.engine_key}'
-                            f' to {cache_speech}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'Setting cache_speech for {self.engine_key}'
+                                f' to {cache_speech}')
             Settings.set_use_cache(cache_speech)
             self.engine_cache_speech_group.setVisible(True)
             # self.update_engine_values()
@@ -1632,11 +1648,11 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         clz = type(self)
         try:
             engine_key = self.engine_key
-            player_id: str = Settings.get_player_key(engine_key).service_id
+            player_id: str = Settings.get_player(engine_key).service_id
             player: PlayerType = PlayerType(player_id)
             choices: List[Choice]
             choices, current_choice_index = self.cfg.get_player_mode_choices(engine_key,
-                                                                             player_id)
+                                                                             player)
             if current_choice_index < 0:
                 current_choice_index = 0
             title: str = Messages.get_msg(Messages.SELECT_PLAYER_MODE)
@@ -1661,16 +1677,19 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             choice: Choice = choices[idx]
             prev_choice: Choice = choices[current_choice_index]
             if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'engine: {self.engine_key} new player_key mode: {choice.label}'
+                MY_LOGGER.debug(f'engine: {self.engine_key} new player mode:'
+                                f' {choice.label}'
                                 f' previous: {prev_choice.label} ')
             new_player_mode: PlayerMode = PlayerMode(choice.value)
             previous_player_mode: PlayerMode
             previous_player_mode = PlayerMode(prev_choice.value)
 
-            MY_LOGGER.debug(f'new_player_mode: {new_player_mode} type: '
-                            f'{type(new_player_mode)}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'new_player_mode: {new_player_mode} type: '
+                                f'{type(new_player_mode)}')
             if new_player_mode != previous_player_mode:
-                MY_LOGGER.debug(f'setting player_key mode to: {new_player_mode}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'setting player mode to: {new_player_mode}')
                 self.set_player_mode_field(update_ui=True,
                                            engine_key=self.engine_key,
                                            player_mode=new_player_mode)
@@ -1741,14 +1760,16 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             choices: List[Choice]
             if current_choice_index < 0:
                 current_choice_index = 0
-            MY_LOGGER.debug(f'# choices: {len(choices)} current_choice_idx: '
-                            f'{current_choice_index}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'# choices: {len(choices)} current_choice_idx: '
+                                f'{current_choice_index}')
             # The first engine listed should be the best available and universal
             # (GoogleTTS)
             idx = 0
-            MY_LOGGER.debug_v(f'SelectionDialog value: '
-                              f'{MessageId.TTS_ENGINE.get_msg()} '
-                              f'idx: {str(idx)}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'SelectionDialog value: '
+                                  f'{MessageId.TTS_ENGINE.get_msg()} '
+                                  f'idx: {str(idx)}')
             if idx < 0:  # No selection made or CANCELED
                 return
 
@@ -1784,16 +1805,26 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             if engine_key is None:
                 engine_key = Settings.get_engine_key()
             if player is None:
-                player = PlayerType(Settings.get_player_key().service_id)
-                MY_LOGGER.debug(f'player: {player}')
+                player = PlayerType(Settings.get_player().service_id)
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'player: {player}')
             else:
-                MY_LOGGER.debug(f'orig player: {player}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'orig player: {player}')
 
             player_str: str = player.label
             if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'Setting player_key to {player}')
+                MY_LOGGER.debug(f'Setting player to {player}')
             self.cfg.set_player_field(engine_key=engine_key, player=player)
             if update_ui:
+                allow_cache: bool
+                allow_cache = not (
+                        Settings.get_player_mode(engine_key) == PlayerMode.ENGINE_SPEAK
+                        or Settings.get_player(
+                            engine_key).service_id == PlayerType.BUILT_IN_PLAYER)
+                #  MY_LOGGER.debug(f'allow_cache: {allow_cache}')
+                self.engine_cache_speech_group.setVisible(allow_cache)
+                self.engine_cache_speech_radio_button.setVisible(allow_cache)
                 self.engine_module_value.setVisible(False)
                 self.engine_player_value.setLabel(player_str)
                 self.engine_player_value.setVisible(True)
@@ -1852,11 +1883,18 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 player_mode = Settings.get_player_mode(engine_key)
             player_mode_str: str = player_mode.translated_name
             if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'Setting player_key mode to {player_mode_str}')
+                MY_LOGGER.debug(f'Setting player mode to {player_mode_str}')
 
             self.cfg.set_player_mode_field(engine_key=engine_key,
                                            player_mode=player_mode)
             if update_ui:
+                allow_cache: bool
+                allow_cache = not (
+                        Settings.get_player_mode(engine_key) == PlayerMode.ENGINE_SPEAK
+                        or Settings.get_player(
+                            engine_key).service_id == PlayerType.BUILT_IN_PLAYER)
+                self.engine_cache_speech_group.setVisible(allow_cache)
+                self.engine_cache_speech_radio_button.setVisible(allow_cache)
                 self.engine_player_mode_label.setLabel(player_mode_str)
                 self.engine_player_mode_button.setVisible(True)
                 self.engine_player_mode_label.setVisible(True)
@@ -1908,7 +1946,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 self.engine_language_group.setVisible(visible)
                 self.engine_language_value.setEnabled(visible)
                 self.engine_language_value.setLabel(voice_name)
-                MY_LOGGER.debug(f'voice_name: {voice_name} visible: {visible}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'voice_name: {voice_name} visible: {visible}')
         except Exception as e:
             MY_LOGGER.exception('')
 
@@ -1928,7 +1967,6 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         """
         clz = type(self)
         try:
-            MY_LOGGER.debug('FOOO set_voice_field')
             if engine_key is None:
                 engine_key = self.engine_key
             has_voice: bool
@@ -1968,7 +2006,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'Setting voice to: {voice_id}')
 
-            MY_LOGGER.debug(f'voice label: {voice_label}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'voice label: {voice_label}')
             if update_ui:
                 self.engine_voice_value.setLabel(voice_label)
                 if len(choices) < 2:
@@ -1985,6 +2024,11 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                                use_cache: bool | None = None) -> None:
         """
         Propagates cache_speech setting to Settings and the UI
+
+        Settings for Engine, player and player_mode MUST all be set prior to
+        calling this method to update the UI, since those settings control
+        whether caching is an option.
+
         :param update_ui: If True, update the UI as well as Settings, otherwise,
                           only update Settings
         :param engine_key: Specifies the service_key to update. If None, then the
@@ -1998,11 +2042,23 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 engine_key = self.engine_key
             if use_cache is None:
                 use_cache = Settings.is_use_cache(engine_key)
-            self.cfg.set_cache_speech_field(engine_key=engine_key, use_cache=use_cache)
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'update_ui: {update_ui} player_mode: '
+                                f'{Settings.get_player_mode(engine_key)} '
+                                f'player_type: '
+                                f'{Settings.get_player(engine_key).service_id}')
             if update_ui:
+                allow_cache: bool
+                allow_cache = not (
+                    Settings.get_player_mode(engine_key) == PlayerMode.ENGINE_SPEAK
+                    or Settings.get_player(engine_key).service_id == PlayerType.BUILT_IN_PLAYER)
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'allow_cache: {allow_cache}')
+                self.engine_cache_speech_group.setVisible(allow_cache)
+                self.engine_cache_speech_radio_button.setVisible(allow_cache)
+                self.cfg.set_cache_speech_field(engine_key=engine_key,
+                                                use_cache=use_cache)
                 self.engine_cache_speech_radio_button.setSelected(use_cache)
-                self.engine_cache_speech_group.setVisible(True)
-                self.engine_cache_speech_radio_button.setVisible(True)
         except NotImplementedError:
             self.engine_cache_speech_group.setVisible(False)
         except Exception as e:
@@ -2042,11 +2098,11 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         :return:
         """
         try:
-            MY_LOGGER.debug('FOOO set_gender_field')
             choices: List[Choice]
             valid: bool = SettingsMap.is_valid_setting(engine_key.with_prop(
                                                        SettingProp.GENDER))
-            MY_LOGGER.debug(f'setting_id: {engine_key} GENDER valid: {valid}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'setting_id: {engine_key} GENDER valid: {valid}')
             if update_ui:
                 if not valid:
                     if MY_LOGGER.isEnabledFor(DEBUG):
@@ -2165,7 +2221,6 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         try:
             language = Settings.get_language(self.engine_key)
             if language is None:
-                MY_LOGGER.debug(f'Getting language from old call')
                 _, default_setting = self.cfg.getEngineInstance().settingList(
                         SettingProp.LANGUAGE)
                 language = default_setting

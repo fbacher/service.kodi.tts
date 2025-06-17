@@ -53,16 +53,19 @@ class SlaveRunCommand:
         self.stdout_closed: bool = False
         self.process: Popen | None = None
         self.run_thread: threading.Thread | None = None
-        MY_LOGGER.debug(f'Calling post_start_callback')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'Calling post_start_callback')
         self.post_start_callback: Callable[[], bool] = post_start_callback
-        MY_LOGGER.debug(f'Returned from post_start_callback')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'Returned from post_start_callback')
         Monitor.register_abort_listener(self.abort_listener, name=thread_name)
 
     def terminate(self):
         if self.process is not None and self.run_state.value <= RunState.RUNNING.value:
             self.process.kill()
         clz = type(self)
-        MY_LOGGER.debug(f'slave terminate')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'slave terminate')
 
     def kill(self):
         pass
@@ -78,7 +81,7 @@ class SlaveRunCommand:
 
     def destroy(self):
         """
-        Destroy this player_key and any dependent player_key process, etc. Typicaly done
+        Destroy this player and any dependent player process, etc. Typicaly done
         when either stopping TTS (F12) or shutdown, or switching players,
         players, etc.
 
@@ -86,35 +89,39 @@ class SlaveRunCommand:
         """
         self.run_state = RunState.COMPLETE
         if self.cmd_finished:
-            MY_LOGGER.debug(f'slave destroy, cmd_finished')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'slave destroy, cmd_finished')
             return
 
         clz = type(self)
-        MY_LOGGER.debug(f'In slave destroy')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'In slave destroy')
         self.cmd_finished = True
         killed: bool = False
 
         if self.process is not None:
             self.close_files()
-            MY_LOGGER.debug(f'slave closed files')
             try:
                 self.process.poll()
                 if self.process.returncode is not None:
-                    MY_LOGGER.debug(f'RC: {self.process.returncode}')
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug(f'RC: {self.process.returncode}')
                     return
             except:
                 MY_LOGGER.exception('')
             # self.process.wait(0.1)
             try:
-                MY_LOGGER.debug(f'slave process.kill')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'slave process.kill')
                 self.process.kill()
                 killed = True
             except:
                 MY_LOGGER.exception('')
         try:
-            MY_LOGGER.debug(f'Slave Destroyed:stdin: {self.stdin_closed} '
-                            f'stdout: {self.stdout_closed} killed: {killed} '
-                            f'RC: {self.process.returncode}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'Slave Destroyed:stdin: {self.stdin_closed} '
+                                f'stdout: {self.stdout_closed} killed: {killed} '
+                                f'RC: {self.process.returncode}')
         except:
             MY_LOGGER.exception('')
 
@@ -137,6 +144,8 @@ class SlaveRunCommand:
                 self.stdout_closed = True
         except:
             pass
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'slave closed files')
 
     def start_service(self) -> int:
         """
@@ -177,7 +186,8 @@ class SlaveRunCommand:
     def run_service(self) -> None:
         clz = type(self)
         self.rc = 0
-        MY_LOGGER.debug(f'run_service started')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'run_service started')
         env = os.environ.copy()
         try:
             if Constants.PLATFORM_WINDOWS:
@@ -200,9 +210,10 @@ class SlaveRunCommand:
                 # for p1 to receive a SIGPIPE if p2 exits before p1.
 
                 # self.args.append('/home/fbacher/.kodi/userdata/addon_data/service.kodi.tts/cache/goo/df/df16f1fee15ac535aed684fab4a54fd4.mp3')
-                MY_LOGGER.debug(f'Running command: Windows')
-                MY_LOGGER.debug(f'mpv_path: {Constants.MPV_PATH} '
-                                f'args: {self.args} ')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'Running command: Windows')
+                    MY_LOGGER.debug(f'mpv_path: {Constants.MPV_PATH} '
+                                    f'args: {self.args} ')
                 self.process = subprocess.Popen(self.args, stdin=subprocess.PIPE,
                                                 stdout=subprocess.PIPE,
                                                 stderr=subprocess.STDOUT, shell=False,
@@ -211,7 +222,8 @@ class SlaveRunCommand:
                                                 close_fds=True,
                                                 creationflags=subprocess.DETACHED_PROCESS)
             else:
-                MY_LOGGER.info(f'Running command: Linux')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.info(f'Running command: Linux')
                 self.process = subprocess.Popen(self.args, stdin=subprocess.PIPE,
                                                 stdout=subprocess.PIPE,
                                                 stderr=subprocess.STDOUT, shell=False,
@@ -222,7 +234,8 @@ class SlaveRunCommand:
             if self.post_start_callback is not None:
                 if self.post_start_callback():
                     self.run_state = RunState.PIPES_CONNECTED
-                    MY_LOGGER.debug(f'pipes connected')
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug(f'pipes connected')
                     # Now that remote process is connected to stdout, we can close
                     # our local stdout. This allows our process to die if the other
                     # process dies.
@@ -235,5 +248,6 @@ class SlaveRunCommand:
         except Exception as e:
             MY_LOGGER.exception('')
         Monitor.unregister_abort_listener(listener=self.abort_listener)
-        MY_LOGGER.debug(f'slave returning from run_service')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'slave returning from run_service')
         return

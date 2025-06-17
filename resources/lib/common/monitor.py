@@ -24,7 +24,8 @@ from common.critical_settings import CriticalSettings
 from common.logger import *
 from common.minimal_monitor import MinimalMonitor
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
+DEBUG_LOG: bool = MY_LOGGER.isEnabledFor(DEBUG)
 
 
 class Monitor(MinimalMonitor):
@@ -108,10 +109,10 @@ class Monitor(MinimalMonitor):
 
     # End class NotificationMonitor
 
+    _initialized: bool = False
     _NotificationMonitor = NotificationMonitor()
     startup_complete_event: threading.Event = None
     _monitor_changes_in_settings_thread: threading.Thread = None
-    _logger: BasicLogger = None
     _notification_listeners: Dict[Callable[[Dict[str, Any]], None], str] = None
     _notification_listener_lock: threading.RLock = None
     _screen_saver_listeners: Dict[str, Callable[[Dict[str, Any]], None]] = None
@@ -137,8 +138,8 @@ class Monitor(MinimalMonitor):
         """
 
         """
-        if cls._logger is None:
-            cls._logger: BasicLogger = module_logger
+        if not cls._initialized:
+            cls._initialized = True
             # Weird problems with recursion if we make requests to the super
 
             cls._screen_saver_listeners = {}
@@ -198,12 +199,12 @@ class Monitor(MinimalMonitor):
                 changed = True
             else:
                 if not os.access(change_file, os.R_OK | os.W_OK):
-                    cls._logger.error('No rw access: {}'.format(change_file))
+                    MY_LOGGER.error('No rw access: {}'.format(change_file))
                     changed = True
                     try:
                         os.remove(change_file)
                     except Exception as e:
-                        cls._logger.error('Can not delete {}'.format(change_file))
+                        MY_LOGGER.error('Can not delete {}'.format(change_file))
 
             if not changed:
                 try:
@@ -217,11 +218,11 @@ class Monitor(MinimalMonitor):
                         changed = True
 
                 except (IOError) as e:
-                    cls._logger.error('Error reading {} or {}'.format(
+                    MY_LOGGER.error('Error reading {} or {}'.format(
                         change_file, settings_file))
                     changed = True
                 except (Exception) as e:
-                    cls._logger.error('Error processing {} or {}'.format(
+                    MY_LOGGER.error('Error processing {} or {}'.format(
                         change_file, settings_file))
                     changed = True
 
@@ -239,14 +240,14 @@ class Monitor(MinimalMonitor):
                 except AbortException:
                     reraise(*sys.exc_info())
                 except Exception:
-                    cls._logger.exception('')
+                    MY_LOGGER.exception('')
             else:
                 from cache.voicecache import VoiceCache
                 VoiceCache.clean_cache(changed)
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            cls._logger.exception('')
+            MY_LOGGER.exception('')
 
         """
         last_time_changed: datetime.datetime
@@ -256,7 +257,7 @@ class Monitor(MinimalMonitor):
             file_stat = os.stat(settings_path)
             last_time_changed = datetime.datetime.fromtimestamp(file_stat.st_mtime)
         except Exception as e:
-            cls._logger.debug("Failed to read settings.xml")
+            MY_LOGGER.debug("Failed to read settings.xml")
             last_time_changed = datetime.datetime.now()
 
         # It seems that if multiple xbmc.WaitForAborts are pending, xbmc
@@ -281,7 +282,7 @@ class Monitor(MinimalMonitor):
                     mod_time: datetime.datetime = datetime.datetime.fromtimestamp(
                         file_stat.st_mtime)
                 except Exception as e:
-                    cls._logger.debug("Failed to read settings.xml")
+                    MY_LOGGER.debug("Failed to read settings.xml")
                     mod_time: datetime.datetime = datetime.datetime.now()
 
                 # Wait at least a minute after settings changed, just in case there
@@ -305,8 +306,8 @@ class Monitor(MinimalMonitor):
                 delta: datetime.timedelta = now - mod_time
 
                 if delta.total_seconds() > 60:
-                    if cls._logger.isEnabledFor(DEBUG_V):
-                        cls._logger.debug_v('Settings Changed!')
+                    if MY_LOGGER.isEnabledFor(DEBUG_V):
+                        MY_LOGGER.debug_v('Settings Changed!')
                     last_time_changed = mod_time
                     cls.on_settings_changed()
 
@@ -325,7 +326,8 @@ class Monitor(MinimalMonitor):
                                   name=f'MonHlpr_{cls._thread_count}:{name}',
                                   args=args, kwargs={'target': func,
                                                      'delay': delay, **kwargs})
-        xbmc.log(f'monitor.runInThread starting thread {name}', xbmc.LOGINFO)
+        if DEBUG_LOG:
+            xbmc.log(f'monitor.runInThread starting thread {name}', xbmc.LOGINFO)
         thread.start()
         from common.garbage_collector import GarbageCollector
         GarbageCollector.add_thread(thread)
@@ -342,7 +344,7 @@ class Monitor(MinimalMonitor):
         except AbortException:
             pass  # Let thread die
         except Exception as e:
-            cls._logger.exception('')
+            MY_LOGGER.exception('')
 
     @classmethod
     def get_listener_name(cls,
@@ -502,8 +504,8 @@ class Monitor(MinimalMonitor):
         with cls._abort_listener_lock:
             if cls._abort_listeners_informed:
                 return
-            if cls._logger.isEnabledFor(DEBUG_V):
-                cls._logger.debug_v('Entered')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v('Entered')
             listeners_copy = copy.copy(cls._abort_listeners)
             cls._abort_listeners.clear()  # Unregister all
             cls._abort_listeners_informed = True
@@ -514,23 +516,30 @@ class Monitor(MinimalMonitor):
             thread = threading.Thread(
                     target=cls._listener_wrapper, name=listener_name,
                     args=(), kwargs={'listener': listener})
-            xbmc.log(f'SHUTDOWN Informing thread {listener_name} to shutdown')
+            if DEBUG_LOG:
+                xbmc.log(f'SHUTDOWN Informing thread {listener_name} to shutdown')
             thread.start()
             from common.garbage_collector import GarbageCollector
             GarbageCollector.add_thread(thread)
 
-        xbmc.log(f'SHUTDOWN finished informing threads of shutdown')
+        if DEBUG_LOG:
+            xbmc.log(f'SHUTDOWN finished informing threads of shutdown')
         cls.startup_complete_event.set()
-        xbmc.log(f'SHUTDOWN startup_complete_event.set')
+        if DEBUG_LOG:
+            xbmc.log(f'SHUTDOWN startup_complete_event.set')
         with cls._settings_changed_listener_lock:
-            xbmc.log(f'SHUTDOWN about to clear settings_changed_listeners')
+            if DEBUG_LOG:
+                xbmc.log(f'SHUTDOWN about to clear settings_changed_listeners')
             cls._settings_changed_listeners.clear()
-        xbmc.log(f'SHUTDOWN finished settings_changed_listeners.clear()')
+        if DEBUG_LOG:
+            xbmc.log(f'SHUTDOWN finished settings_changed_listeners.clear()')
 
         with cls._screen_saver_listener_lock:
-            xbmc.log(f'SHUTDOWN About to clear screen_saver_listeners')
+            if DEBUG_LOG:
+                xbmc.log(f'SHUTDOWN About to clear screen_saver_listeners')
             cls._screen_saver_listeners.clear()
-        xbmc.log(f'SHUTDOWN LISTENER FINISHED')
+        if DEBUG_LOG:
+            xbmc.log(f'SHUTDOWN LISTENER FINISHED')
 
     @classmethod
     def _listener_wrapper(cls, listener):
@@ -554,8 +563,8 @@ class Monitor(MinimalMonitor):
                 cls._settings_changed_listeners.clear()
 
         for listener, listener_name in listeners.items():
-            if cls._logger.isEnabledFor(DEBUG_V):
-                cls._logger.debug_v(
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(
                         f'Notifying listener: {listener_name}')
             thread = threading.Thread(
                     target=listener, name=f'nform_{listener_name}')
@@ -576,8 +585,8 @@ class Monitor(MinimalMonitor):
             if cls.is_abort_requested():
                 cls._screen_saver_listeners.clear()
 
-        if cls._logger.isEnabledFor(DEBUG_V):
-            cls._logger.debug_v(f'Screensaver activated: {activated}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'Screensaver activated: {activated}')
         for listener, listener_name in listeners_copy.items():
             thread = threading.Thread(
                     target=listener, name=f'nform_{listener_name}',
@@ -663,15 +672,15 @@ class Monitor(MinimalMonitor):
             if cls.is_abort_requested():
                 cls._notification_listeners.clear()
 
-        if cls._logger.isEnabledFor(DEBUG_V):
-            cls._logger.debug_v(f'Notification received sender: {sender}'
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'Notification received sender: {sender}'
                                       f' method: {method} data: {data}')
         for listener, listener_name in listeners_copy.items():
             try:
                 cls.runInThread(listener, [], name=listener_name,
                                 **{'sender': sender, 'method': method, 'data': data})
             except Exception as e:
-                cls._logger.exception('')
+                MY_LOGGER.exception('')
 
     def waitForAbort(self, timeout: float | None = None) -> bool:
         """
@@ -753,8 +762,8 @@ class Monitor(MinimalMonitor):
         :return:
         """
         cls.startup_complete_event.set()
-        if cls._logger.isEnabledFor(DEBUG):
-            cls._logger.debug(
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(
                     'startup_complete_event set', trace=Trace.TRACE_MONITOR)
 
     @classmethod

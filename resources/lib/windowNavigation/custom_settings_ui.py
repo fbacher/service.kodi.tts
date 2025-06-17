@@ -69,25 +69,19 @@ import queue
 import threading
 from typing import ForwardRef, Tuple
 
-import xbmc
-
 from common import AbortException
 from common.constants import Constants
 from common.garbage_collector import GarbageCollector
-from common.logger import BasicLogger
+from common.logger import *
 from common.monitor import Monitor
 
 
-if Constants.INCLUDE_MODULE_PATH_IN_LOGGER:
-    module_logger = BasicLogger.get_logger(__name__)
-else:
-    module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class SettingsGUI(threading.Thread):
 
     instance: ForwardRef('HelpManager') = None
-    logger: BasicLogger = None
 
     #  HELP: str = 'help'
     #  ELP_DIALOG: str = 'help_dialog'
@@ -100,8 +94,6 @@ class SettingsGUI(threading.Thread):
         """
         Constructor
         """
-        clz = type(self)
-        clz.logger = module_logger  # .getChild(self.__class__.__name__)
         SettingsGUI.instance = self
         self.gui: SettingsDialog = None
         self.dialog_ready: bool = False
@@ -113,7 +105,8 @@ class SettingsGUI(threading.Thread):
         self.thread: threading.Thread | None = None
         self.launch_thread: threading.Thread | None = None
 
-        clz.logger.debug(f'Initialized SettingsGUI')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'Initialized SettingsGUI')
         self.thread = threading.Thread(target=self.dialog_queue_processor,
                                        name=f'dialg_Q')
         self.thread.start()
@@ -137,18 +130,19 @@ class SettingsGUI(threading.Thread):
         except AbortException:
             return   # Let thread die
         except Exception:
-            self.logger.exception('')
+            MY_LOGGER.exception('')
 
         try:
             while not Monitor.exception_on_abort(timeout=0.20):
                 try:
                     cmd: Tuple[str, str, str] = self.dialog_queue.get_nowait()
                     if cmd[0] != 'blah':  # clz.VISIBLE:
-                        self.logger.debug(f'About to go Modal')
-                        xbmc.log(f'About to go Modal')
+                        if MY_LOGGER.isEnabledFor(DEBUG):
+                            MY_LOGGER.debug(f'About to go Modal')
                         if self.gui is None:
                             #  TODO FIXME!
-                            self.logger.debug('Dialog not running')
+                            if MY_LOGGER.isEnabledFor(DEBUG):
+                                MY_LOGGER.debug('Dialog not running')
                         elif self.is_modal.acquire(blocking=False):
                             # NOT modal
                             self.wants_modal = True
@@ -161,11 +155,11 @@ class SettingsGUI(threading.Thread):
                 except AbortException:
                     return  # Let thread die
                 except Exception as e:
-                    self.logger.exception('')
+                    MY_LOGGER.exception('')
         except AbortException:
             return  # Let thread die
         except Exception as e:
-            self.logger.exception('')
+            MY_LOGGER.exception('')
 
     '''
     def gui_callback(self, **kwargs):
@@ -179,35 +173,40 @@ class SettingsGUI(threading.Thread):
 
     @staticmethod
     def notify(cmd: str, text: str = ''):
-
-        module_logger.debug(f'In notify: {cmd} {text}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'In notify: {cmd} {text}')
 
         if SettingsGUI.instance is None:
             if SettingsGUI.instance is None:
-                module_logger.debug(f'creating instance')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'creating instance')
                 SettingsGUI()
-        module_logger.debug(f'Setting cmd: {cmd} {text}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'Setting cmd: {cmd} {text}')
         SettingsGUI.instance.dialog_queue.put_nowait((cmd, text))
 
     def launch(self):
         clz = self.__class__
         try:
-            self.logger.debug(f'In launch')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'In launch')
             if self.gui is None:
-                self.logger.debug(f'creating gui')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'creating gui')
                 script_path: Path = Constants.ADDON_PATH
                 self.gui = SettingsDialog('script-tts-settings-dialog.xml',
                                           str(script_path),
                                           'Custom',
                                           defaultRes='1080i')
-                self.logger.debug(f'launched SettingsDialog.gui')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'launched SettingsDialog.gui')
                 self.dialog_ready = False
         except AbortException:
             del SettingsGUI.instance
             return  # Let thread die
         except Exception as e:
             self.gui = None
-            self.logger.exception('')
+            MY_LOGGER.exception('')
 
         # Loop that simply calls doModal (and waits) whenever needed.
         first_time: bool = True
@@ -228,8 +227,8 @@ class SettingsGUI(threading.Thread):
                 except AbortException:
                     return  # Let thread die
                 except Exception:
-                    self.logger.exception('')
+                    MY_LOGGER.exception('')
         except AbortException:
             return  # Let thread die
         except Exception:
-            self.logger.exception('')
+            MY_LOGGER.exception('')

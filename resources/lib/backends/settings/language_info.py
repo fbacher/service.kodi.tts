@@ -7,8 +7,6 @@ try:
 except ImportError:
     from common.strenum import StrEnum
 
-from logging import DEBUG
-
 #  from backends.settings.langcodes_wrapper import LangCodesWrapper
 from backends.settings.service_unavailable_exception import ServiceUnavailable
 from common.constants import Constants
@@ -30,12 +28,10 @@ import langcodes
 
 from backends.settings.i_validators import AllowedValue, IStringValidator
 from backends.settings.service_types import Services, ServiceType
-from backends.settings.setting_properties import SettingProp
 from backends.settings.settings_map import SettingsMap
 from common.base_services import BaseServices
 from common.logger import *
-from common.message_ids import MessageId, MessageUtils
-from common.messages import Message, Messages
+from common.message_ids import MessageId
 from common.setting_constants import Genders, GenderSettingsMap
 from common.settings import Settings
 
@@ -389,7 +385,6 @@ class LanguageInfo:
         territory_entries: List[ForwardRef('LanguageInfo')]
 
         if lang_id is None:
-            #  MY_LOGGER.debug(f'lang_id is None')
             for territory_entries in engine_lang_entries.values():
                 #  MY_LOGGER.debug(f'# territory_entries: {len(territory_entries)} ')
                 for lang_info in territory_entries:
@@ -935,6 +930,9 @@ class LanguageInfo:
         return NotImplemented
 
     def __repr__(self) -> str:
+        if not MY_LOGGER.isEnabledFor(DEBUG_V):
+            return ''
+
         field_sep: str = ''  # '{field_sep}'
         engine_key_str: str = f'   setting_id: {self.engine_key}{field_sep}'
         language_id_str: str = f'   language_id: {self.language_id}{field_sep}'

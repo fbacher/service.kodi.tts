@@ -32,7 +32,6 @@ from common.base_services import BaseServices
 from common.constants import Constants
 from common.logger import *
 from common.message_ids import MessageId
-from common.monitor import Monitor
 from common.phrases import Phrase
 from common.setting_constants import (AudioType, Backends, Genders, Mode, PlayerMode,
                                       Players)
@@ -111,11 +110,8 @@ class ESpeakTTSBackend(SimpleTTSBackend):
     volume_key: ServiceID = service_key.with_prop(SettingProp.VOLUME)
     pitch_key: ServiceID = service_key.with_prop(SettingProp.PITCH)
     speed_key: ServiceID = service_key.with_prop(SettingProp.SPEED)
-    cmd_path: Path = Constants.ESPEAK_PATH / 'espeak-ng'
+    cmd_path: Path = Constants.ESPEAK_PATH / Constants.ESPEAK_COMMAND
     data_path: Path = Constants.ESPEAK_DATA_PATH
-    if Constants.PLATFORM_WINDOWS:
-        cmd_path = Constants.ESPEAK_PATH_WINDOWS / 'espeak-ng'
-        data_path = Constants.ESPEAK_DATA_PATH_WINDOWS
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -161,13 +157,15 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         try:
             completed: subprocess.CompletedProcess | None = None
             if Constants.PLATFORM_WINDOWS:
-                MY_LOGGER.info(f'Running command: Windows: {args}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'Running command: Windows: {args}')
                 completed = subprocess.run(args, stdin=None, capture_output=True,
                                            text=True, env=env, close_fds=True,
                                            encoding='utf-8', shell=False, check=True,
                                            creationflags=subprocess.CREATE_NO_WINDOW)
             else:
-                MY_LOGGER.info(f'Running command: Linux args: {args}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'Running command: Linux args: {args}')
                 completed = subprocess.run(args, stdin=None, capture_output=True,
                                            text=True, env=env, close_fds=True,
                                            encoding='utf-8', shell=False, check=True)
@@ -230,7 +228,8 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                   using the available BCP 47 language tags.
             """
             for line in completed.stdout.split('\n'):
-                MY_LOGGER.debug(f'line: {line}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'line: {line}')
                 if len(line) > 0:
                     voices.append(line)
 
@@ -242,7 +241,8 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         # Read lines of voices, ignoring header
         for voice in voices:
             fields = voice.split(maxsplit=5)
-            MY_LOGGER.debug(f'fields: {fields}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'fields: {fields}')
             priority_str: str = fields[0]  # Higher is better
             priority: int = int(priority_str)
 
@@ -290,13 +290,16 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         # Discover the directories of voice files referenced by the list of voices
         voice_files_by_directory: Dict[str, Dict[str, None]] = {}
         for lang, entries in cls.voice_map.items():
-            MY_LOGGER.debug(f'lang: {lang} entries: {entries}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'lang: {lang} entries: {entries}')
             for entry in entries:
                 entry: VoiceData
-                MY_LOGGER.debug(f'entry: {entry}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'entry: {entry}')
                 voice_file_path: Path = Path(entry.voice_id)
                 subdir_name: str = str(voice_file_path.parent)
-                MY_LOGGER.debug(f'subdir_name: {subdir_name}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'subdir_name: {subdir_name}')
                 subdir_name = cls.FILE_DIR_TO_REAL_DIR.get(subdir_name)
                 if subdir_name is not None:
                     voices_in_subdir: Dict[str, None]  # used as a set
@@ -356,7 +359,8 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                 voice_files.append(str(voice_file))
         except Exception:
             MY_LOGGER.exception('')
-        MY_LOGGER.debug(f'voice_files: {voice_files}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'voice_files: {voice_files}')
         return voice_files
 
     def addCommonArgs(self, args, phrase: Phrase | None = None):
@@ -385,7 +389,8 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         clz = type(self)
         player: IPlayer = self.get_player(self.service_key)
         player_mode: PlayerMode = Settings.get_player_mode(clz.service_key)
-        MY_LOGGER.debug(f'player_mode: {player_mode}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'player_mode: {player_mode}')
         return player_mode
 
     def get_cached_voice_file(self, phrase: Phrase,
@@ -404,17 +409,19 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         :return: True if the voice file was handed to a player, otherwise False
         """
         clz = type(self)
-        player_key: ServiceID = Settings.get_player_key()
-        MY_LOGGER.debug(f'phrase: {phrase.get_text()} {phrase.get_debug_info()} '
-                        f'cache_path: {phrase.get_cache_path()} use_cache: '
-                        f'{Settings.is_use_cache()}')
+        player_key: ServiceID = Settings.get_player()
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'phrase: {phrase.get_text()} {phrase.get_debug_info()} '
+                            f'cache_path: {phrase.get_cache_path()} use_cache: '
+                            f'{Settings.is_use_cache()}')
         cache_info: CacheEntryInfo
         cache_info = self.get_voice_cache().get_path_to_voice_file(phrase,
                                                       use_cache=Settings.is_use_cache())
-        MY_LOGGER.debug(f'cache_info: {cache_info} player_key: {player_key}')
-        MY_LOGGER.debug(f'cache_file_state: {phrase.cache_file_state()} '
-                        f'cache_path: {phrase.get_cache_path()} '
-                        f'temp_path: {cache_info.temp_voice_path}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'cache_info: {cache_info} player_key: {player_key}')
+            MY_LOGGER.debug(f'cache_file_state: {phrase.cache_file_state()} '
+                            f'cache_path: {phrase.get_cache_path()} '
+                            f'temp_path: {cache_info.temp_voice_path}')
         # Wave files only added to cache when SFX is used.
 
         # This Only checks if a .wav file exists. That is good enough, the
@@ -437,14 +444,17 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             result = self.voice_cache.get_path_to_voice_file(phrase, use_cache=True)
             mp3_file = result.final_audio_path
             trans_id: str = Settings.get_transcoder(clz.service_key)
-            MY_LOGGER.debug(f'service_id: {self.engine_id} trans_id: {trans_id}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'service_id: {self.engine_id} trans_id: {trans_id}')
             success = TransCode.transcode(trans_id=trans_id,
                                           input_path=wave_file,
                                           output_path=mp3_file,
                                           remove_input=True)
             if success:
                 phrase.text_exists(check_expired=False, active_engine=self)
-            MY_LOGGER.debug(f'success: {success} wave_file: {wave_file} mp3: {mp3_file}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'success: {success} wave_file: {wave_file} mp3: '
+                                f'{mp3_file}')
         return success
 
     def runCommand(self, phrase: Phrase) -> Path | None:
@@ -477,7 +487,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         Assumptions:
             any cache has been checked to see if already voiced
         """
-        sfx_player: bool = Settings.get_player_key().setting_id == Players.SFX
+        sfx_player: bool = Settings.get_player().setting_id == Players.SFX
         use_cache: bool = Settings.is_use_cache() or sfx_player
         # The SFX player is used when NO player is available. SFX is Kodi's
         # internal player with limited functionality. Requires Wave.
@@ -487,8 +497,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         result = self.voice_cache.get_path_to_voice_file(phrase, use_cache=use_cache)
         audio_exists = result.audio_exists
         if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'espeak.runCommand '
-                            f'result: {result} '
+            MY_LOGGER.debug(f'espeak.runCommand result: {result} '
                             f'text: {phrase.text}')
         if audio_exists:
             return result.final_audio_path
@@ -499,7 +508,8 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         self.addCommonArgs(args)
         try:
             if Constants.PLATFORM_WINDOWS:
-                MY_LOGGER.info(f'Running command: WINDOWS args: {args}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'Running command: WINDOWS args: {args}')
                 subprocess.run(args,
                                input=f'{phrase.text} ',
                                text=True,
@@ -510,7 +520,8 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                                check=True,
                                creationflags=subprocess.CREATE_NO_WINDOW)
             else:
-                MY_LOGGER.info(f'Running command: LINUX: args {args}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'Running command: LINUX: args {args}')
                 subprocess.run(args,
                                input=f'{phrase.text} ',
                                text=True,
@@ -546,9 +557,8 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                     MY_LOGGER.exception(f'Can not delete {result.temp_voice_path}')
                 return None
         except subprocess.CalledProcessError as e:
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.exception('')
-                return None
+            MY_LOGGER.exception('')
+            return None
         return result.final_audio_path  # Wave file
 
     def runCommandAndSpeak(self, phrase: Phrase):
@@ -557,7 +567,8 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         args = [str(clz.cmd_path), '-b', clz.UTF_8, '--stdin',
                 str(clz.data_path)]
         self.addCommonArgs(args)
-        MY_LOGGER.debug(f'args: {args}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'args: {args}')
         try:
             if Constants.PLATFORM_WINDOWS:
                 MY_LOGGER.info(f'Running command: Windows')
@@ -856,18 +867,30 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             if MY_LOGGER.isEnabledFor(DEBUG_XV):
                 MY_LOGGER.debug_xv(f'lang: {phrase.language} \n'
                                    f'voice: {phrase.voice}\n'
-                                   f'lang_dir: {phrase.lang_dir}\n'
-                                   f'')
+                                   f'lang_dir: {phrase.lang_dir}\n')
             locale: str = phrase.language  # IETF format
-            _, kodi_locale, _, ietf_lang = LanguageInfo.get_kodi_locale_info()
+            voice_id: str = Settings.get_voice(cls.service_key)
+            kodi_lang, kodi_locale, _, ietf_lang = LanguageInfo.get_kodi_locale_info()
+            if voice_id is None or voice_id == '':
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug('Fix Settings.get_voice to use kodi_locale by '
+                                    'default')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'locale: {locale} kodi_lang: {kodi_lang} '
+                                  f'kodi_locale: {kodi_locale} '
+                                  f'ietf_lang: {ietf_lang}')
             # MY_LOGGER.debug(f'orig Phrase locale: {locale}')
             if locale is None:
                 locale = kodi_locale
             ietf_lang: langcodes.Language = langcodes.get(locale)
-            # MY_LOGGER.debug(f'locale: {locale}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'locale: {locale} ietf_lang: {ietf_lang.language} '
+                                  f'{ietf_lang.territory}')
             phrase.set_lang_dir(ietf_lang.language)
-            territory: str = '-'
+            phrase.set_voice(voice_id)
+            # Horrible, crude, hack due to kodi xbmc.getLanguage bug
             if ietf_lang.territory is not None:
-                territory = ietf_lang.territory.lower()
-            phrase.set_territory_dir(territory)
+                phrase.set_territory_dir(ietf_lang.territory.lower())
+            else:
+                phrase.set_territory_dir('us')
         return

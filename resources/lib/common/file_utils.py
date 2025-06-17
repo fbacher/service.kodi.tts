@@ -101,13 +101,13 @@ class FindTextToVoice:
     def __init__(self, top: Path) -> None:
         self.unvoiced_files: queue.Queue = queue.Queue(maxsize=200)
         self.glob_pattern: str = '**/*.txt'
+        #  MY_LOGGER.debug(f'Configuring find files top: {top} pattern: {self.glob_pattern}')
         self.finder: FindFiles = FindFiles(top, self.glob_pattern)
         self.worker = threading.Thread
         self.worker = threading.Thread(target=self.find_thread,
                                        name='fndtxt2vce', args=(), kwargs={}, daemon=None)
         self.worker.start()
         GarbageCollector.add_thread(self.worker)
-
 
     def get_next(self) -> Path:
         #  Delay one second on each call.
@@ -120,11 +120,14 @@ class FindTextToVoice:
         try:
             for path in self.finder:
                 voice_path: Path = path.with_suffix('.mp3')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'voice_path: {voice_path}')
                 if not voice_path.exists():
                     Monitor.exception_on_abort(timeout=1.0)
                     try:
-                        #  MY_LOGGER.debug(f'found .txt without .mp3: {voice_path}')
-                        self.unvoiced_files.put_nowait(str(path))
+                        if MY_LOGGER.isEnabledFor(DEBUG):
+                            MY_LOGGER.debug(f'found .txt without .mp3: {voice_path}')
+                        self.unvoiced_files.put_nowait(path)
                     except AbortException:
                         reraise(*sys.exc_info())
                     except queue.Full:

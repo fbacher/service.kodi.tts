@@ -36,6 +36,7 @@ class MessageId(Enum):
     DEFAULTS_BUTTON = 32222
     CHOOSE_TTS_ENGINE = 32224
     LANG_VARIANT_BUTTON = 32227
+    VOICE_GENDER_BUTTON = 32228
 
     # Displays current voicing pitch, a simple float
     # Pitch: {0}

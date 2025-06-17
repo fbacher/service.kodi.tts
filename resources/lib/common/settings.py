@@ -14,7 +14,7 @@ from backends.settings.i_validators import (AllowedValue, IBoolValidator,
                                             IValidator)
 from backends.settings.service_types import (PlayerType, ServiceKey, Services,
                                              ServiceType,
-                                             ServiceID)
+                                             ServiceID, TTS_Type)
 from backends.settings.setting_properties import SettingProp
 from backends.settings.settings_map import SettingsMap
 from common.exceptions import *
@@ -285,8 +285,9 @@ class Settings(SettingsLowLevel):
 
     @classmethod
     def is_initial_run(cls) -> bool:
-        MY_LOGGER.debug(f'initial_run key: {ServiceKey.INITIAL_RUN} short_key: '
-                        f'{ServiceKey.INITIAL_RUN.short_key}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'initial_run key: {ServiceKey.INITIAL_RUN} short_key: '
+                            f'{ServiceKey.INITIAL_RUN.short_key}')
         return SettingsLowLevel.get_setting_bool(ServiceKey.INITIAL_RUN,
                                                  ignore_cache=True)
 
@@ -380,9 +381,10 @@ class Settings(SettingsLowLevel):
             engine_key = Settings.get_engine_key()
         voice_key: ServiceID = engine_key.with_prop(SettingProp.VOICE)
         voice = SettingsLowLevel.get_setting_str(voice_key, load_on_demand=True)
-        MY_LOGGER.debug(f'voice: {voice} voice_key: {voice_key}')
-        MY_LOGGER.debug(f'{voice_key} in cache: '
-                        f'{SettingsLowLevel.is_in_cache(voice_key)}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'voice: {voice} voice_key: {voice_key}')
+            MY_LOGGER.debug(f'{voice_key} in cache: '
+                            f'{SettingsLowLevel.is_in_cache(voice_key)}')
         return voice
 
     @classmethod
@@ -396,27 +398,25 @@ class Settings(SettingsLowLevel):
         return None
 
     @classmethod
-    def is_use_cache(cls, engine_key: ServiceID | None = None) -> bool | None:
-        result: bool | None = None
+    def is_use_cache(cls, engine_key: ServiceID | None = None) -> bool:
+        use_cache: bool = False
         cache_speech_key: ServiceID | None = None
         try:
             if engine_key is None:
                 engine_key = cls.get_engine_key()
+            cache_speech_key: ServiceID
             cache_speech_key = engine_key.with_prop(SettingProp.CACHE_SPEECH)
-            cache_validator: IBoolValidator
-            cache_validator = SettingsMap.get_validator(cache_speech_key)
-            if cache_validator is None:
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'MISSING VALIDATOR!')
-                return False
-            result: bool = cache_validator.get_tts_value()
+            if not SettingsMap.is_valid_setting(cache_speech_key):
+                raise ValueError(f'service: {cache_speech_key} NOT supported')
+            use_cache: bool = SettingsLowLevel.get_setting_bool(cache_speech_key,
+                                                                default=False)
         except NotImplementedError:
             reraise(*sys.exc_info())
         except Exception as e:
             MY_LOGGER.exception('')
         if MY_LOGGER.isEnabledFor(DEBUG_XV):
-            MY_LOGGER.debug_xv(f'use_cache: {cache_speech_key} {result}')
-        return result
+            MY_LOGGER.debug_xv(f'use_cache: {cache_speech_key} {use_cache}')
+        return use_cache
 
     @classmethod
     def set_use_cache(cls, use_cache: bool | None,
@@ -434,14 +434,12 @@ class Settings(SettingsLowLevel):
                 engine_key = cls.get_engine_key()
             cache_speech_key: ServiceID
             cache_speech_key = engine_key.with_prop(SettingProp.CACHE_SPEECH)
-            cache_validator: IBoolValidator
-            cache_validator = SettingsMap.get_validator(cache_speech_key)
-            cache_validator.set_tts_value(use_cache)
+            if not SettingsMap.is_valid_setting(cache_speech_key):
+                raise ValueError(f'service: {cache_speech_key} NOT supported')
+            SettingsLowLevel.set_setting_bool(cache_speech_key, use_cache)
             if MY_LOGGER.isEnabledFor(DEBUG_XV):
                 MY_LOGGER.debug_xv(f'Setting {cache_speech_key} cache_speech to:'
                                    f' {use_cache}')
-        except NotImplementedError:
-            reraise(*sys.exc_info())
         except Exception as e:
             MY_LOGGER.exception('')
         return
@@ -626,7 +624,7 @@ class Settings(SettingsLowLevel):
     '''
 
     @classmethod
-    def get_player_key(cls, engine_key: ServiceID | None = None) -> ServiceID:
+    def get_player(cls, engine_key: ServiceID | None = None) -> ServiceID:
         if engine_key is None:
             engine_key = cls.get_engine_key()
         # MY_LOGGER.debug(f'service_key: {engine_key} '
@@ -635,8 +633,8 @@ class Settings(SettingsLowLevel):
         player_val = SettingsMap.get_validator(
                 engine_key.with_prop(SettingProp.PLAYER))
         player_id: str = player_val.get_tts_value()
-        # MY_LOGGER.debug(f'player_id: {player_id}')
-        player_key: ServiceID = ServiceID(ServiceType.PLAYER, service_id=player_id)
+        player_key: ServiceID = ServiceID(ServiceType.PLAYER, service_id=player_id,
+                                          setting_id=TTS_Type.SERVICE_ID)
         # MY_LOGGER.debug(f'player_key: {player_key}')
         return player_key
 
@@ -649,7 +647,6 @@ class Settings(SettingsLowLevel):
         :param engine_key:
         :return:
         """
-        # MY_LOGGER.debug(f'setting {SettingProp.PLAYER}: {value}')
         if isinstance(value, PlayerType):
             value = value.value
         if value is None:
@@ -665,7 +662,6 @@ class Settings(SettingsLowLevel):
         :param service_key:
         :return:
         """
-        # MY_LOGGER.debug(f'setting {SettingProp.PLAYER}: {value}')
         trans_key: ServiceID
         trans_key = service_key.with_prop(SettingProp.MODULE)
         return cls.set_setting_str(service_key=trans_key, value=value)
@@ -677,7 +673,6 @@ class Settings(SettingsLowLevel):
         value: str | None = cls.get_setting_str(service_key=trans_key,
                                                 ignore_cache=False,
                                                 default=None)
-        # MY_LOGGER.debug(f'converter.{setting_id} = {value}')
         if value == '':
             value = None
         return value

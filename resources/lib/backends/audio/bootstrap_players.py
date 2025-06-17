@@ -3,18 +3,14 @@ from __future__ import annotations  # For union operator |
 
 import sys
 
-import xbmc
-
 from backends.settings.service_types import ServiceKey, ServiceType
 from backends.settings.settings_map import Status, SettingsMap
 from common import *
 from common.constants import Constants
 from common.logger import *
-from common.service_status import Progress, ServiceStatus, StatusType
+from common.service_status import StatusType
 from common.setting_constants import Players
-from common.settings_low_level import SettingsLowLevel
 from backends.settings.service_types import ServiceID
-from common.system_queries import SystemQueries
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
 
@@ -125,7 +121,8 @@ class BootstrapPlayers:
                     from backends.audio.mpg123_audio_player import Mpg123AudioPlayer
                     available = Mpg123AudioPlayer().available()
                 elif player_id == Players.MPG321_OE_PI:
-                    from backends.audio.mpg321oep_audio_player import Mpg321OEPiAudioPlayer
+                    from backends.audio.mpg321oep_audio_player import 
+                    Mpg321OEPiAudioPlayer
                     available = Mpg321OEPiAudioPlayer().available()
                 '''
             elif player_id == Players.BUILT_IN:

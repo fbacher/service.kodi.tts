@@ -70,10 +70,11 @@ __version__ = Constants.VERSION
 
 MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 
-if audio.PLAYSFX_HAS_USECACHED:
-    MY_LOGGER.info('playSFX() has useCached')
-else:
-    MY_LOGGER.info('playSFX() does NOT have useCached')
+if MY_LOGGER.isEnabledFor(DEBUG_V):
+    if audio.PLAYSFX_HAS_USECACHED:
+        MY_LOGGER.debug_v('playSFX() has useCached')
+    else:
+        MY_LOGGER.debug_v('playSFX() does NOT have useCached')
 
 # util.initCommands()
 BaseServiceSettings()
@@ -150,7 +151,7 @@ class TTSService:
     readerOn: bool = True
     stop: bool = False
     disable: bool = False
-    notice_queue: queue.Queue[PhraseList] = queue.Queue(20)
+    notice_queue: queue.Queue[PhraseList] = queue.Queue(Constants.SEED_CACHE_DIR_LIMIT)
     noticeQueueCount: int = 0
     noticeQueueFullCount: int = 0
     active_backend: ITTSBackendBase | None = None
@@ -173,7 +174,6 @@ class TTSService:
     waitingToReadItemExtra = None
     driver: Driver = None
     background_driver: BackgroundDriver = None
-    background_driver_instance: BackgroundDriver = None
 
     def __init__(self):
         """
@@ -515,7 +515,8 @@ class TTSService:
             operation: str = 'STOPPED'
             msg = MessageId.DATABASE_SCAN_FINISHED.get_formatted_msg(database)
 
-        MY_LOGGER.info(f'DB SCAN {operation}: {database} - Notifying...')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug(f'DB SCAN {operation}: {database} - Notifying...')
         try:
             cls.queueNotice(PhraseList.create(texts=msg))
         except ExpiredException:
@@ -537,7 +538,8 @@ class TTSService:
             operation: str = 'STOPPED'
             msg = MessageId.LIBRARY_CLEAN_COMPLETE.get_msg()
 
-        MY_LOGGER.info(f'LIBRARY CLEAN {operation} - Notifying...')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'LIBRARY CLEAN {operation} - Notifying...')
         cls.queueNotice(PhraseList.create(texts=msg))
 
     @classmethod
@@ -553,7 +555,8 @@ class TTSService:
             operation: str = 'STOPPED'
             msg = MessageId.SCREEN_SAVER_INTERRUPTED.get_msg()
 
-        MY_LOGGER.info(f'SCREENSAVER {operation}: - Notifying...')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'SCREENSAVER {operation}: - Notifying...')
         cls.queueNotice(PhraseList.create(texts=msg))
 
     @classmethod
@@ -819,15 +822,16 @@ class TTSService:
             MY_LOGGER.debug(f'starting TTSService.start '
                             f'instance_count: {cls.instance_count}')
         cls.initTTS()
-        seed_cache: bool = False  # True
+        seed_cache: bool = Constants.SEED_CACHE_ADD_MOVIE_INFO
         service_key: ServiceID = cls.get_active_backend().service_key
         Monitor.register_notification_listener(cls.onNotification,
                                                f'srvic.notfy_{cls.instance_count}')
         Monitor.register_abort_listener(cls.onAbortRequested, name='')
         if seed_cache and Settings.is_use_cache(service_key):
             call: callable = SeedCache.discover_movie_info
-            runInThread(call, args=[service_key.service_id],
-                        name='seed_cache', delay=360)
+            runInThread(call, args=[service_key],
+                        name='seed_cache',
+                        delay=Constants.SEED_CACHE_MOVIE_INFO_START_DELAY_SECONDS)
 
         WindowStateMonitor.register_window_state_listener(cls.handle_ui_changes,
                                                           "main",
@@ -874,45 +878,6 @@ class TTSService:
             # Because we don't want to kill speech on an error
             MY_LOGGER.exception("")
             cls.initState()  # To help keep errors from repeating on the loop
-
-        """
-            # Idle mode
-            while ((not cls.readerOn) and
-                   (not Monitor.exception_on_abort(timeout=cls.interval_ms())) and (
-                           not cls.stop)):
-                try:
-                    phrases: PhraseList = cls.notice_queue.get_nowait()
-                    cls.sayText(phrases)
-                    cls.notice_queue.task_done()
-                except AbortException:
-                    reraise(*sys.exc_info())
-                except queue.Empty:
-                    pass
-                except RuntimeError:
-                    MY_LOGGER.error('start()')
-                except SystemExit:
-                    MY_LOGGER.info('SystemExit: Quitting')
-                    break
-                except TTSClosedException:
-                    MY_LOGGER.info('TTSCLOSED')
-                except:  # Because we don't want to kill speech on an error
-                    MY_LOGGER.error('start()', notify=True)
-                    cls.initState()  # To help keep errors from repeating on the loop
-                for x in range(
-                        5):  # Check the queue every 100ms, check state every 500ms
-                    if cls.notice_queue.empty():
-                        Monitor.wait_for_abort(timeout=0.1)
-                break
-        
-
-        finally:
-            cls.close_tts()
-            cls.end()
-            utils.playSound('off')
-            MY_LOGGER.info('SERVICE STOPPED')
-            if cls.disable:
-                enabler.disableAddon()
-        """
 
     @classmethod
     def end(cls):
@@ -984,9 +949,7 @@ class TTSService:
 
         :return:
         """
-        if cls.background_driver_instance is None:
-            cls.background_driver_instance = BackgroundDriver()
-            cls.background_driver = cls.background_driver_instance
+        BackgroundDriver.class_init()
 
     @classmethod
     def checkBackend(cls) -> None:

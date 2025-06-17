@@ -19,7 +19,7 @@ except ImportError:
 from common import *
 
 from backends.settings.service_types import Services, ServiceType
-from common.logger import BasicLogger
+from common.logger import *
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
 
@@ -80,14 +80,15 @@ class SoundCapabilities:
                     supported_output_formats: List[AudioType]) -> None:
         """
         :param service_key: Uniquely identifies the engine, player or converter that
-                these capabilities belong to (ex: 'mpv', 'google')
+                these capabilities belong to (ex: 'player.mpv.id', 'engine.google.id')
         :param service_types: services which this provides (ServiceType.PLAYER,
                               ServiceType.ENGINE, etc.)
         :param supported_input_formats: ex: mp3, wav
         :param supported_output_formats: mp3, wav
         """
         if not SettingsMap.is_available(service_key):
-            MY_LOGGER.debug(f'service: {service_key} is NOT available, adding anyway')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'service: {service_key} is NOT available, adding anyway')
 
         # Multiple ServicesTypes is most useful for players, which may also be able
         # to act as a Transcoder (mpv can play or transcode)
@@ -117,7 +118,9 @@ class SoundCapabilities:
         :return:
         """
         if not SettingsMap.is_available(service_key):
-            MY_LOGGER.debug(f'service: {service_key} is NOT available. removing service')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'service: {service_key}'
+                                f' is NOT available. removing service')
         for service_type in service_types:
             services_in_type: Dict[str, None]
             services_in_type = cls._services_by_service_type.get(service_type)
@@ -198,9 +201,10 @@ class SoundCapabilities:
         elif not isinstance(producer_formats, list):
             MY_LOGGER.exception('producer not an AudioType nor list of AudioType')
             raise ValueError('Producer not an AudioType nor list of AudioType')
-        MY_LOGGER.debug(f'service_type: {service_type}')
-        MY_LOGGER.debug(f'consumer_formats: {consumer_formats}')
-        MY_LOGGER.debug(f'producer_formats: {producer_formats}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'service_type: {service_type}')
+            MY_LOGGER.debug(f'consumer_formats: {consumer_formats}')
+            MY_LOGGER.debug(f'producer_formats: {producer_formats}')
         services_of_this_type: Dict[str, None]
         services_of_this_type = cls._services_by_service_type.get(service_type)
         if services_of_this_type is None:
@@ -209,22 +213,25 @@ class SoundCapabilities:
         # requirements
 
         eligible_services: List[ServiceID] = []
-        MY_LOGGER.debug(f'services_of_this_type: {services_of_this_type.keys()}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'services_of_this_type: {services_of_this_type.keys()}')
         for service_id in services_of_this_type.keys():
             service_id: str
             input_formats: List[AudioType]
             output_formats: List[AudioType]
 
             input_formats, output_formats = cls._capabilities_by_service[service_id]
-            MY_LOGGER.debug(f'setting_id: {service_id} input_formats: {input_formats}')
-            MY_LOGGER.debug(f'output_formats: {output_formats}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'setting_id: {service_id} input_formats: {input_formats}')
+                MY_LOGGER.debug(f'output_formats: {output_formats}')
             supports_consumer: bool = False
             if len(consumer_formats) == 0:  # When no consumer then any is acceptable
                 supports_consumer = True
             else:
                 for audio_format in consumer_formats:
-                    MY_LOGGER.debug(f'audio_format: {audio_format} type:'
-                                    f' {type(audio_format)}')
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug(f'audio_format: {audio_format} type:'
+                                        f' {type(audio_format)}')
                     if audio_format in input_formats:
                         supports_consumer = True
                         break
@@ -238,10 +245,11 @@ class SoundCapabilities:
                         supports_producer = True
                         break
                     for output_format in output_formats:
-                        MY_LOGGER.debug(f'output_format: {output_format} type:'
-                                        f' {type(output_format)}')
-                        MY_LOGGER.debug(f'audio_format: {audio_format} type:'
-                                        f' {type(audio_format)}')
+                        if MY_LOGGER.isEnabledFor(DEBUG):
+                            MY_LOGGER.debug(f'output_format: {output_format} type:'
+                                            f' {type(output_format)}')
+                            MY_LOGGER.debug(f'audio_format: {audio_format} type:'
+                                            f' {type(audio_format)}')
             if supports_consumer and supports_producer:
                 eligible_services.append(ServiceID(service_type, service_id,
                                                    TTS_Type.SERVICE_ID))
@@ -249,7 +257,7 @@ class SoundCapabilities:
 
     @staticmethod
     def get_transcoder(service_key: ServiceID,
-                       target_audio: AudioType = AudioType.MP3) -> str | None:
+                       target_audio: AudioType = AudioType.MP3) -> ServiceID | None:
         """
         Finds a transcoder for the given service based upon its preference,
         availability and Transcoder preference
@@ -267,21 +275,24 @@ class SoundCapabilities:
             #                                              default=None)
             audio_types: List[AudioType]
             audio_types = SoundCapabilities.get_output_formats(service_key)
-            MY_LOGGER.debug(f'{service_key} output_formats: {audio_types}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'{service_key} output_formats: {audio_types}')
             if target_audio in audio_types:
                 return None  # No converter needed
 
-            eligible_converters: List[str]
+            eligible_converters: List[ServiceID]
             eligible_converters = \
                 SoundCapabilities.get_capable_services(ServiceType.TRANSCODER,
                                                        audio_types,
                                                        AudioType.MP3)
-            MY_LOGGER.debug(f'eligible_converters: {eligible_converters}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'eligible_converters: {eligible_converters}')
             if len(eligible_converters) > 0:
                 converter_id = eligible_converters[0]
             else:
                 raise ValueError(f'No audio converter found for engine: {service_key}')
-            MY_LOGGER.debug(f'converter_id: {converter_id}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'converter_id: {converter_id}')
             return converter_id
         except AbortException:
             reraise(*sys.exc_info())

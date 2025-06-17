@@ -100,18 +100,19 @@ class SettingsManager:
             for frame in range(0, cls.get_stack_depth()):
                 if cls._settings_stack[frame].settings.get(setting_id) != value:
                     changed = True
-                    MY_LOGGER.debug(f'frame: {frame} setting: {setting_id} != {value}')
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug(f'frame: {frame} setting:'
+                                        f' {setting_id} != {value}')
                     '''
                     Don't record as a change since this is loading from settings.xml.
                     A change indicates that results need to be saved to settings.xml
-                    
-                    cls._settings_stack[frame].settings_changed = True
-                    if cls._settings_stack[frame].settings_update_begin is None:
-                        cls._settings_stack[frame].settings_update_begin = time.time()
                     '''
                     cls._settings_stack[frame].settings[setting_id] = value
-                    MY_LOGGER.debug(f'{setting_id} in setting_stack[{frame}] = '
-                                    f'{setting_id in cls._settings_stack[frame].settings.keys()}')
+                    if MY_LOGGER.isEnabledFor(DEBUG_V):
+                        loaded: bool
+                        loaded = setting_id in cls._settings_stack[frame].settings.keys()
+                        MY_LOGGER.debug_v(f'{setting_id} in setting_stack[{frame}] = '
+                                          f'{loaded}')
             return changed
 
     @classmethod
@@ -248,11 +249,10 @@ class SettingsManager:
                 return None
             value = cls._settings_stack[-2].settings.get(setting_id)
         if value is None or (isinstance(value, str) and value == ''):
-            # MY_LOGGER.debug(f'Using default value {setting_id} {default}')
             value = default_value
-            if setting_id == 'converter':
-                MY_LOGGER.dump_stack('Converter problem')
         if MY_LOGGER.isEnabledFor(DEBUG_V):
+            if setting_id == 'converter':
+                    MY_LOGGER.dump_stack('Converter problem')
             MY_LOGGER.debug_v(f'get_previous_setting setting_id: {setting_id}'
                               f' value: {value}')
         return value
@@ -489,7 +489,6 @@ class SettingsWrapper:
             ..
         """
         clz = type(self)
-        #  MY_LOGGER.debug(f'Saving {short_key} value {type(value)} {value}')
         value = clz.old_api.setSettingBool(setting_path, value)
 
     def setInt(self, setting_path: str, value: int) -> None:
@@ -712,7 +711,6 @@ class SettingsLowLevel:
         """
         try:
             return SettingsManager.push_settings()
-            #  MY_LOGGER.debug('Backed up settings')
         except Exception:
             MY_LOGGER.exception("")
 
@@ -776,8 +774,7 @@ class SettingsLowLevel:
             MY_LOGGER.debug(f'service_key: {service_key} value: {value}')
         if not SettingsMap.is_valid_setting(service_key):
             if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(
-                    f'TRACE Setting NOT supported for {service_key}')
+                MY_LOGGER.debug(f'TRACE Setting NOT supported for {service_key}')
 
         PROTO_LIST_BOOLS: List[bool] = [True, False]
         PROTO_LIST_FLOATS: List[float] = [0.7, 8.2]
@@ -898,6 +895,7 @@ class SettingsLowLevel:
         finally:
             SettingsLowLevel._loading.set()
 
+    #   TODO: Eliminate this by declaring all settings in SettingsMap.
     # Ignore Settings in this dict
     ignore: Dict[str, str] = {
         'addons_MD5.eSpeak': '',
@@ -1256,7 +1254,8 @@ class SettingsLowLevel:
             value: Any | None
             full_path: str = f'{setting_id}.{service_key.service_id}'
             if full_path in cls.ignore:
-                MY_LOGGER.debug(f'full_path: {full_path} ignored')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'full_path: {full_path} ignored')
                 continue
             else:
                 if MY_LOGGER.isEnabledFor(DEBUG_XV):
@@ -1307,17 +1306,23 @@ class SettingsLowLevel:
             found = True
         if not force_load and not SettingsMap.is_valid_setting(service_key):
             found = False
-            MY_LOGGER.debug(f'valid_setting: {service_key} {service_key.short_key} '
-                            f'{SettingsMap.is_valid_setting(service_key)}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'valid_setting: {service_key} {service_key.short_key} '
+                                f'{SettingsMap.is_valid_setting(service_key)}')
+        persist: bool = SettingsMap.service_info_map.get(service_key.key).persist
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             MY_LOGGER.debug_v(f'Setting {service_key.setting_id} supported: {found} for '
-                              f'{service_key.service_id}')
-        setting_path: str = service_key.short_key
-        MY_LOGGER.debug(f'is_in_cache: {cls.is_in_cache(service_key)}')
-        if setting_path in cls.ignore:
-            MY_LOGGER.debug(f'IGNORE {setting_path}')
+                              f'{service_key.service_id} persist: {persist}')
+        if not persist:
+            MY_LOGGER.debug(f'Setting {service_key} is NOT persisted.')
             return None
-        # MY_LOGGER.debug(f'key: {key}')
+        setting_path: str = service_key.short_key
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'is_in_cache: {cls.is_in_cache(service_key)}')
+        if setting_path in cls.ignore:
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'IGNORE {setting_path}')
+            return None
         # A few values are constant (such as some engines can't play audio,
         # or adjust volume)
         const_value: Any = SettingsMap.get_const_value(service_key)
@@ -1647,8 +1652,6 @@ class SettingsLowLevel:
 
     @classmethod
     def set_engine(cls, engine_key: ServiceID) -> None:
-        # MY_LOGGER.debug(f'TRACE set_engine: {engine_key.service_id}'
-        #                 f' type: {type(engine_key.service_id)}')
         service_key = ServiceKey.CURRENT_ENGINE_KEY
         success: bool = cls.set_setting_str(service_key, engine_key.service_id)
 
@@ -1711,28 +1714,28 @@ class SettingsLowLevel:
         """
         value: Any = None
 
-        MY_LOGGER.debug(f'{service_key} is_in_cache: {cls.is_in_cache(service_key)}')
         cls.check_reload()
-        MY_LOGGER.debug(f'{service_key} is_in_cache: {cls.is_in_cache(service_key)}')
+        load_on_demand = True
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'{service_key} is_in_cache: {cls.is_in_cache(service_key)}')
         if load_on_demand and not cls.is_in_cache(service_key):
             # value is NOT stored in settings cache. Need to manually push it to
             # all stack frames of cache (yuk).
             value = cls.load_setting(service_key)
-            MY_LOGGER.debug(f'loading {service_key.short_key} value: {value}')
             SettingsManager.load_setting_to_all_frames(service_key.short_key, value)
             value = SettingsManager.get_setting(service_key.short_key,
                                                 default_value)
-            MY_LOGGER.debug(f'Getting from cache: {service_key.short_key} '
-                            f'value: {value} is_in_cache: '
-                            f'{cls.is_in_cache(service_key)}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'Getting from cache: {service_key.short_key} '
+                                f'value: {value} is_in_cache: '
+                                f'{cls.is_in_cache(service_key)}')
         else:
             value = SettingsManager.get_setting(service_key.short_key,
                                                 default_value)
-            MY_LOGGER.debug(f'Getting from cache: {service_key.short_key} '
-                            f'value: {value} is_in_cache: '
-                            f'{cls.is_in_cache(service_key)}')
-        # MY_LOGGER.debug(f'full_setting_id: {full_setting_id} '
-        #                   f'default: {default} value: {value}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'Getting from cache: {service_key.short_key} '
+                                f'value: {value} is_in_cache: '
+                                f'{cls.is_in_cache(service_key)}')
         return value
 
     @classmethod
@@ -1781,10 +1784,7 @@ class SettingsLowLevel:
             except Exception as e:
                 MY_LOGGER.exception(f'None value for {service_key.short_key}')
                 return default
-        # MY_LOGGER.debug(f'setting_id: {service_key.setting_id} service_id: '
-        #                 f'{service_key.service_id}')
         value = cls._getSetting(service_key, default, load_on_demand)
-        # MY_LOGGER.debug(f'value: {value}')
         return value
 
     @classmethod
@@ -1802,7 +1802,7 @@ class SettingsLowLevel:
                 return value
             except Exception as e:
                 MY_LOGGER.exception('')
-        value = cls._getSetting(service_key, default)
+        value = cls._getSetting(service_key, default, load_on_demand=True)
         return value
 
     @classmethod
@@ -1833,7 +1833,6 @@ class SettingsLowLevel:
         """
         cls.check_reload()
         value: int = SettingsManager.get_setting(service_key.short_key, default_value)
-        # MY_LOGGER.debug(f'real_key: {real_key} value: {value}')
         return value
 
     @classmethod

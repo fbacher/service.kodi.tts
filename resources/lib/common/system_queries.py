@@ -60,12 +60,14 @@ class SystemQueries:
         import subprocess
         try:
             if Constants.PLATFORM_WINDOWS:
-                MY_LOGGER.info(f'Running command:')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'Running command:')
                 uname = subprocess.check_output(
                             ['uname', '-a'], text=True, shell=False,
                             close_fds=True, creationflags=subprocess.DETACHED_PROCESS)
             else:
-                MY_LOGGER.info(f'Running command:')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'Running command:')
                 uname = subprocess.check_output(['uname', '-a'], text=True,
                                                 shell=False, close_fds=True)
         except:

@@ -74,7 +74,6 @@ class Messages:
     OPTIONS = Message('Options', 32029)
     KEYMAP = Message('Keymap', 32030)
     ADVANCED = Message('Advanced', 32031)
-    SELECT_VOICE_GENDER = Message('Voice Gender', 32228)
     PIPE_AUDIO = Message('Pipe Audio', 32234)
     # VOLUME_DB = Message('Volume: {0}dB', 32232)
     API_KEY = Message('API Key', 32233)

@@ -30,12 +30,11 @@ from common.logger import *
 
 import xml.etree.ElementTree as ET
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 USE_NEW_FUNCTIONS: Final[bool] = True
 USE_OLD_FUNCTIONS: Final[bool] = False
-VERBOSE_DEBUG: bool = False
 REVERSE_ATTRIB: Final[str] = '__REVERSE__'
 
 
@@ -50,11 +49,12 @@ def currentWindowXMLFile() -> Path | None:
     simple_path: Path = Path(xbmc.getInfoLabel('Window.Property(xmlfile)'))
     skin_path: Path = get_xbmc_skin_path(simple_path)
     possible_paths: Tuple[Path, Path] = simple_path, skin_path
-    module_logger.debug(f'simple_path: {simple_path} skin_path: {skin_path} '
+    if MY_LOGGER.isEnabledFor(DEBUG):
+        MY_LOGGER.debug(f'simple_path: {simple_path} skin_path: {skin_path} '
                         f'cwd: {Path.cwd()}')
     for path in possible_paths:
         if path.is_file() and path.exists():
-            module_logger.debug(f'path_is_file: {path.absolute()}')
+            MY_LOGGER.debug(f'path_is_file: {path.absolute()}')
             return path.absolute()
     return None
 
@@ -88,8 +88,8 @@ def get_xbmc_skin_path(fname) -> Path:
     path: Path = skin_path / fname
     if not (path.is_file() and path.exists()):
         path = Path('')
-    if module_logger.isEnabledFor(DEBUG_V):
-        module_logger.debug_v(f'Including: {path}')
+    if MY_LOGGER.isEnabledFor(DEBUG_V):
+        MY_LOGGER.debug_v(f'Including: {path}')
     return path
 
 
@@ -100,14 +100,15 @@ def getInfoLabel(info, container):
                 'ListItem.', f'Container({container}).ListItem.')
     return xbmc.getInfoLabel(info)
 
+
 def dump_dom(entries) -> str:
     dom_impl = minidom.getDOMImplementation()
     wrapper = dom_impl.createDocument(None, 'fake_root', None)
     fake_root = wrapper.documentElement
     dump: str | None = None
     if isinstance(entries, list):
-        if module_logger.isEnabledFor(DEBUG_V):
-            module_logger.debug_v(f'list of DOM entries len: {len(entries)}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'list of DOM entries len: {len(entries)}')
         for x in entries:
             fake_root.appendChild(x)
     else:
@@ -149,7 +150,7 @@ def nodeParents(dom, node) -> List[Any] | None:
     except AbortException:
         reraise(*sys.exc_info())
     except Exception:
-        module_logger.exception('')
+        MY_LOGGER.exception('')
         return None
 
 
@@ -159,8 +160,8 @@ def new_get_ancestors(dom: ET.ElementTree, node: ET.Element) -> List[ET.Element]
     while parent is not None:
         parents.append(parent)
         next_parent = parent.find("..")
-        if module_logger.isEnabledFor(DEBUG_XV):
-            module_logger.debug_xv(f'parent: {parent}'
+        if MY_LOGGER.isEnabledFor(DEBUG_XV):
+            MY_LOGGER.debug_xv(f'parent: {parent}'
                                               f' parent_new: {next_parent}')
         parent = next_parent
     return parents
@@ -173,7 +174,7 @@ def lxml_get_ancestors(dom: lxml_ET.ElementTree,
     while new_parent is not None:
         new_parents.append(new_parent)
         new_parent = new_parent.getparent()
-        #  module_logger.debug_v(f'parent: {parent} parent_new: {parent_new}')
+        #  MY_LOGGER.debug_v(f'parent: {parent} parent_new: {parent_new}')
     return new_parents
 
 
@@ -225,16 +226,13 @@ class WindowParser:
     is a tree of Elements (xml.etree.ElementTree). Each has its own
     top-level root Element.
     """
-    _logger: BasicLogger = None
     includes: ForwardRef('Includes') = None
     forest_map: Dict[str, Dict[ET.Element, ET.Element]] = {}
 
     def __init__(self, xml_path: Path):
         clz = type(self)
         self.xml_path = xml_path
-        if clz._logger is None:
-            clz._logger = module_logger
-        # clz._logger.debug(f'Parsing: {xml_path}')
+
         self.current_window_path: Path = xml_path
         if USE_OLD_FUNCTIONS:
             self.xml = minidom.parse(str(xml_path))
@@ -243,22 +241,18 @@ class WindowParser:
             self.lxml_root: lxml_ET.Element = self.lxml_includes_xml.getroot()
         self.et_includes_xml: ET.ElementTree = ET.parse(xml_path)
         self.et_root: ET.Element = self.et_includes_xml.getroot()
-        #  clz._logger.debug(f'window_type: {dump_subtree(self.et_root)}')
+        #  MY_LOGGER.debug(f'window_type: {dump_subtree(self.et_root)}')
         self.build_reverse_tree_map(self.et_root, xml_path)
 
-        if clz._logger.isEnabledFor(DEBUG_V):
-            clz._logger.debug_v(f'xml: {xml_path}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'xml: {xml_path}')
         self.currentControl = None
         if clz.includes is None:
             clz.includes = Includes()
 
-        clz._logger.debug(f'{xml_path} isAddon: {currentWindowIsAddon()}')
+        MY_LOGGER.debug(f'{xml_path} isAddon: {currentWindowIsAddon()}')
         if not currentWindowIsAddon():
             self.processIncludes()
-
-    #            import codecs
-    #            with codecs.open(os.path.join(get_xbmc_skin_path(''),'TESTCurrent.xml'),
-    #            'w','utf-8') as f: f.write(self.soup.prettify())
 
     def get_xml_root(self) -> ET.Element:
         return self.et_root
@@ -269,9 +263,9 @@ class WindowParser:
 
         :return: value of type attribute
         """
-        clz = type(self)
-        if module_logger.isEnabledFor(DEBUG_V):
-            clz._logger.debug_v(f'Calling get_window_element')
+        type(self)
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'Calling get_window_element')
         window_element: ET.Element = self.get_window_element()
         attrib_type: str | None = window_element.attrib.get(f'type')
         window_type: WindowType = WindowType.UNKNOWN
@@ -280,14 +274,15 @@ class WindowParser:
         except AbortException:
             reraise(*sys.exc_info())
         except Exception:
-            clz._logger.exception(f'Incorrect window type: {attrib_type}'
+            MY_LOGGER.exception(f'Incorrect window type: {attrib_type}'
                                   f' name: {WindowType.DIALOG.name}')
         return window_type
 
     def get_default_control(self) -> int | None:
-        clz = type(self)
+        type(self)
         window_element: ET.Element = self.get_window_element()
         child: ET.Element = window_element.find('./defaultcontrol')
+        default_control: int | None = None
         try:
             # TODO: should test to see if it text_exists (may be difficult since
             #       you can't instantiate every control via python).
@@ -295,7 +290,7 @@ class WindowParser:
         except AbortException:
             reraise(*sys.exc_info())
         except Exception:
-            clz._logger.exception('Invalid defaultcontrol')
+            MY_LOGGER.exception('Invalid defaultcontrol')
             default_control = None
 
         return default_control
@@ -346,13 +341,13 @@ class WindowParser:
         return ancestors
 
     def processIncludes(self):
-        clz = type(self)
+        type(self)
         dummy_root: ET.Element = ET.Element(f'dummy_root')
         dummy_root.append(self.et_root)
         result_dummy_root: ET.Element = self.expand_includes(dummy_root)
         result: ET.Element = result_dummy_root.find('./*')
-        if VERBOSE_DEBUG:
-            clz._logger.debug_v(f'expanded result: {dump_subtree(result)}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'expanded result: {dump_subtree(result)}')
         self.et_root = result
 
     def expand_includes(self, parent: ET.Element) -> ET.Element:
@@ -368,9 +363,9 @@ class WindowParser:
                     if child.attrib.get('file') is not None:
                         include_file_name: str = child.attrib.get('file')
                         included_file_path: Path = get_xbmc_skin_path(include_file_name)
-                        if module_logger.isEnabledFor(DEBUG_V):
-                            clz._logger.debug_v(f'Ignoring Include file import:'
-                                                      f' {included_file_path}')
+                        if MY_LOGGER.isEnabledFor(DEBUG_V):
+                            MY_LOGGER.debug_v(f'Ignoring Include file import:'
+                                              f' {included_file_path}')
                         # included_xml: ET = ET.parse(str(included_file_path))
                         # root = included_xml.getroot()
                         # new_dest: ET.Element = ET.Element('dummy_root')
@@ -385,9 +380,9 @@ class WindowParser:
 
                         include_name: str = child.attrib.get('name')
                         if include_name is not None:
-                            if module_logger.isEnabledFor(DEBUG_V):
-                                clz._logger.debug_v(f'Ignoring Include file '
-                                                          f'definition: {include_name}')
+                            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                                MY_LOGGER.debug_v(f'Ignoring Include file '
+                                                  f'definition: {include_name}')
                             # new_parent: ET.Element = child
                             # include_root: ET.Element = ET.Element('dummy_root')
                             # include_tree: ET.ElementTree = ET.ElementTree(include_root)
@@ -396,18 +391,18 @@ class WindowParser:
                             # Add this include definition into a dictionary
                             # for quick access
                             # if include_name in clz._new_includes_map.keys():
-                            #     clz._logger.debug_v(
+                            #     MY_LOGGER.debug_v(
                             #         f'ERROR entry already in new map: {include_name}')
                             # else:
                             #     text: str = dump_subtree(new_parent)
-                            #     clz._logger.debug_v(f'ORIG: {text}')
+                            #     MY_LOGGER.debug_v(f'ORIG: {text}')
                             #     text: str = dump_subtree(include_root)
-                            #     clz._logger.debug_v(f'COMPLETE: {text}')
+                            #     MY_LOGGER.debug_v(f'COMPLETE: {text}')
                             #     include_child: ET.Element = include_root.find('.*')
                             #     if include_child is not None:
                             #         clz._new_includes_map[include_name] = include_child
                             #     else:
-                            #         clz._logger.debug_v(f'Include: {
+                            #         MY_LOGGER.debug_v(f'Include: {
                             #         include_name} omitted due to empty')
                             continue
                     if child.attrib.get('content') is not None or child.text is not None:
@@ -416,29 +411,29 @@ class WindowParser:
                             include_name = child.text
                         include_root: ET.Element = clz.includes.get_include(include_name)
                         if include_root is None:
-                            if module_logger.isEnabledFor(DEBUG):
-                                clz._logger.debug(f'Could not find definition '
-                                                  f'for include: {include_name}')
+                            if MY_LOGGER.isEnabledFor(DEBUG):
+                                MY_LOGGER.debug(f'Could not find definition '
+                                                f'for include: {include_name}')
                         else:
-                            if VERBOSE_DEBUG:
-                                clz._logger.debug_v(f'found definition for '
-                                                          f'include: {include_name}')
-                                clz._logger.debug_v(dump_subtree(include_root))
+                            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                                MY_LOGGER.debug_v(f'found definition for '
+                                                  f'include: {include_name}')
+                                MY_LOGGER.debug_v(dump_subtree(include_root))
                             expanded_dummy: ET.Element
                             expanded_dummy = self.expand_includes(include_root)
-                            if VERBOSE_DEBUG:
-                                clz._logger.debug_v(f'Expanded includes: '
-                                                          f'{include_name} '
-                                                          f'{dump_subtree(expanded_dummy)}')
+                            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                                MY_LOGGER.debug_v(f'Expanded includes: '
+                                                  f'{include_name} '
+                                                  f'{dump_subtree(expanded_dummy)}')
                             result.extend(expanded_dummy.findall(''))
                         x = result.findall('.//include')
                         if x is not None and len(x) > 0:
-                            if module_logger.isEnabledFor(DEBUG_V):
-                                clz._logger.debug_v(f'include FOUND in result')
-                                clz._logger.debug_v(f'{dump_subtree(include_root)}')
+                            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                                MY_LOGGER.debug_v(f'include FOUND in result')
+                                MY_LOGGER.debug_v(f'{dump_subtree(include_root)}')
                         continue
-                    if module_logger.isEnabledFor(DEBUG):
-                        clz._logger.debug(
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug(
                             f'Unexpected include element without "file" or "name".')
                     continue
                 # Probably don't need to do this. Kodi probably expands this in any
@@ -449,7 +444,7 @@ class WindowParser:
                         constant_name: str = child.attrib.get('name')
                         value: Any = child.text
                         if constant_name in clz.constant_definitions.keys():
-                            clz._logger.debug_v(f'ERROR: constant already defined: '
+                            MY_LOGGER.debug_v(f'ERROR: constant already defined: '
                                               f'{constant_name} value: {value}')
                         else:
                             clz.constant_definitions[constant_name] = value
@@ -462,7 +457,7 @@ class WindowParser:
                         expression_name: str = child.attrib.get('name')
                         value: str = child.text
                         if expression_name in clz.expression_definitions.keys():
-                            clz._logger.debug_v(f'ERROR: constant already defined: '
+                            MY_LOGGER.debug_v(f'ERROR: constant already defined: '
                                               f'{expression_name} value: {value}')
                         else:
                             clz.expression_definitions[expression_name] = value
@@ -470,11 +465,11 @@ class WindowParser:
                 '''
                 # x = result_dummy_root.findall('.//include')
                 # if x is not None and len(x) > 0:
-                #     clz._logger.debug_v(f'include FOUND in result')
+                #     MY_LOGGER.debug_v(f'include FOUND in result')
                 dummy_root: ET.Element | None = self.expand_other(child)
                 # x = dummy_root.findall('.//include')
                 # if x is not None and len(x) > 0:
-                #     clz._logger.debug_v(f'include FOUND in result')
+                #     MY_LOGGER.debug_v(f'include FOUND in result')
                 result_dummy_root.extend(dummy_root.findall('./*'))
 
         except StopIteration:
@@ -482,15 +477,15 @@ class WindowParser:
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            clz._logger.exception('Boom!')
+            MY_LOGGER.exception('Boom!')
 
-        if VERBOSE_DEBUG:
-            clz._logger.debug_v(
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(
                 f'expand includes: {dump_subtree(result_dummy_root)}')
         return result_dummy_root
 
     def expand_other(self, child: ET.Element) -> ET.Element | None:
-        clz = type(self)
+        type(self)
         # Copy this non-handled or excluded child node to the new tree
         dummy_root: ET.Element = ET.Element('dummy_root')
         try:
@@ -498,24 +493,24 @@ class WindowParser:
             # orig_text: str = dump_subtree(child)
             new_child: ET.Element = ET.SubElement(dummy_root, child.tag, child.attrib)
             new_child.text = child.text
-            if VERBOSE_DEBUG and new_child.tag == 'include':
-                clz._logger.debug_v(f'include FOUND in result')
+            if MY_LOGGER.isEnabledFor(DEBUG_V) and new_child.tag == 'include':
+                MY_LOGGER.debug_v(f'include FOUND in result')
             result_dummy_root: ET.Element = self.expand_includes(child)
             new_child.extend(result_dummy_root.findall('./*'))
 
-            # clz._logger.debug_v(f'orig: {orig_text}')
-            text: str = ''
+            # MY_LOGGER.debug_v(f'orig: {orig_text}')
+            ''
             # text = dump_subtree(dest_node)
-            # clz._logger.debug_v(f'changed: {text}')
+            # MY_LOGGER.debug_v(f'changed: {text}')
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            clz._logger.exception('Boom!')
-        if VERBOSE_DEBUG:
-            clz._logger.debug_v(f'expand_other: {dump_subtree(dummy_root)}')
+            MY_LOGGER.exception('Boom!')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'expand_other: {dump_subtree(dummy_root)}')
             x = dummy_root.findall('.//include')
             if x is not None and len(x) > 0:
-                clz._logger.debug_v(f'include FOUND in result')
+                MY_LOGGER.debug_v(f'include FOUND in result')
         return dummy_root
 
     def old_processIncludes(self):
@@ -523,13 +518,13 @@ class WindowParser:
         Includes provides a means to import Elements from the same or
         other ElementTrees.
 
-        Includes is a tree of includes from all of the Include files,
+        Includes is a tree of includes from the Include files,
         starting with Includes.xml.
         :return:
         """
         clz = type(self)
-        if VERBOSE_DEBUG:
-            clz._logger.debug_v(
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(
                     f'In old_processIncludes xml file: {self.current_window_path}')
 
         # Now, for the current window, examine the includes, pruning
@@ -540,19 +535,19 @@ class WindowParser:
             # Ignore any includes which are not relevant, due to it not
             # being visible. (Is it always true that an invisible
             # item has no impact on gui?)
-            if VERBOSE_DEBUG:
-                clz._logger.debug_v(f"include tag: {include.tagName}")
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f"include tag: {include.tagName}")
             parent = xpath.findnode('..', include)
             conditionAttr = include.attributes.get('condition')
             if conditionAttr and not xbmc.getCondVisibility(conditionAttr.value):
                 # Not visible, include is not relevant
-                if VERBOSE_DEBUG:
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
                     dump = dump_dom(parent)
-                    clz._logger.debug_v(f'parent of include: {dump}')
+                    MY_LOGGER.debug_v(f'parent of include: {dump}')
                 parent.removeChild(include)
-                if VERBOSE_DEBUG:
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
                     dump = dump_dom(parent)
-                    clz._logger.debug_v(
+                    MY_LOGGER.debug_v(
                             f'parent of include after removing child include: \n{dump}')
                 continue
 
@@ -564,13 +559,13 @@ class WindowParser:
             #  if matchingInclude:
             #     child = include.childNodes[0]
             #     dump = dump_dom(include)
-            #     clz._logger.debug_v(f'INCLUDE FOUND: {child}')
-            #     clz._logger.debug_v(f'{dump}')
+            #     MY_LOGGER.debug_v(f'INCLUDE FOUND: {child}')
+            #     MY_LOGGER.debug_v(f'{dump}')
 
             if not matchingInclude:
                 #  for child in include.childNodes:
                 #  dump = dump_dom(child)
-                #  clz._logger.debug_v(f'INCLUDE NOT FOUND: {child}\n{dump}')
+                #  MY_LOGGER.debug_v(f'INCLUDE NOT FOUND: {child}\n{dump}')
                 continue
 
             # Yes, the window refers to an include which our include tree
@@ -578,14 +573,14 @@ class WindowParser:
             # our Window's tree.
 
             new = matchingInclude.cloneNode(True)
-            if VERBOSE_DEBUG:
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
                 dump = dump_dom(parent)
-                clz._logger.debug_v(f'parent of include: {dump}')
+                MY_LOGGER.debug_v(f'parent of include: {dump}')
 
             parent.replaceChild(new, include)
-            if VERBOSE_DEBUG:
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
                 dump = dump_dom(parent)
-                clz._logger.debug_v(
+                MY_LOGGER.debug_v(
                     f'parent of include after expanding include: \n{dump}')
 
     def lxml_processIncludes(self):
@@ -611,24 +606,24 @@ class WindowParser:
 
             include_parent: lxml_ET.Element = include.getparent()
             conditionAttr: str | None = include.attrib.get('condition')
-            if VERBOSE_DEBUG:
-                clz._logger.debug_v(
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(
                         f'include {include.tag} {include.attrib} {include.text}')
             if conditionAttr:  # and not xbmc.getCondVisibility(conditionAttr):
-                name: str = include.attrib.get('name')
-                if VERBOSE_DEBUG:
-                    clz._logger.debug_v(f'{include.tag} {include.attrib}'
+                include.attrib.get('name')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'{include.tag} {include.attrib}'
                                               f' text: {include.text} tail:'
                                               f' {include.tail}')
 
                     dump: str = lxml_ET.tostring(include_parent, encoding='unicode')
-                    clz._logger.debug_v(f'parent before removing include:\n {dump}')
-                    clz._logger.debug_v(
+                    MY_LOGGER.debug_v(f'parent before removing include:\n {dump}')
+                    MY_LOGGER.debug_v(
                             f'removing include {include.text} from {include_parent.tag}')
                 include_parent.remove(include)
-                if VERBOSE_DEBUG:
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
                     dump: str = lxml_ET.tostring(include_parent, encoding='unicode')
-                    clz._logger.debug_v(f'parent after removing include:\n {dump}')
+                    MY_LOGGER.debug_v(f'parent after removing include:\n {dump}')
                 continue
 
             # Does this include for this window refer to one in the
@@ -638,7 +633,7 @@ class WindowParser:
             matchingInclude: lxml_ET.Element = clz.includes.get_include(include.text)
 
             if matchingInclude is None:
-                # clz._logger.debug_v(f'INCLUDE NOT FOUND: {include.text}')
+                # MY_LOGGER.debug_v(f'INCLUDE NOT FOUND: {include.text}')
                 continue
 
             # Yes, the window refers to an include which our include tree
@@ -646,13 +641,13 @@ class WindowParser:
             # our Window's tree.
 
             # print 'INCLUDE FOUND: %s' % i.string
-            if VERBOSE_DEBUG:
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
                 dump: str = lxml_ET.tostring(include_parent, encoding='unicode')
-                clz._logger.debug_v(f'parent before replacing include:\n {dump}')
+                MY_LOGGER.debug_v(f'parent before replacing include:\n {dump}')
             include_parent.replace(include, matchingInclude)
-            if VERBOSE_DEBUG:
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
                 dump: str = lxml_ET.tostring(include_parent, encoding='unicode')
-                clz._logger.debug_v(f'parent after replacing include:\n {dump}')
+                MY_LOGGER.debug_v(f'parent after replacing include:\n {dump}')
 
     def new_processIncludes(self):
         """
@@ -726,25 +721,25 @@ class WindowParser:
             # We just need the name of the include and any condition
             include: ET.Element = include_parent.find('include')
             condition: str | None = include.attrib.get('condition')
-            if VERBOSE_DEBUG:
-                clz._logger.debug_v(
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(
                         f'include {include.tag} {include.attrib} {include.text}')
             if condition and not xbmc.getCondVisibility(condition):
                 # Purge this inactive branch
-                include_name: str = include.text
-                if VERBOSE_DEBUG:
-                    clz._logger.debug_v(f'{include.tag} {include.attrib}'
+                include.text
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'{include.tag} {include.attrib}'
                                               f' text: {include.text} tail: '
                                               f'{include.tail}')
 
                     dump: str = ET.tostring(include_parent, encoding='unicode')
-                    clz._logger.debug_v(f'parent before removing include:\n {dump}')
-                    clz._logger.debug_v(
+                    MY_LOGGER.debug_v(f'parent before removing include:\n {dump}')
+                    MY_LOGGER.debug_v(
                             f'removing include {include.text} from {include_parent.tag}')
                 include_parent.remove(include)
-                if VERBOSE_DEBUG:
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
                     dump: str = ET.tostring(include_parent, encoding='unicode')
-                    clz._logger.debug_v(f'parent after removing include:\n {dump}')
+                    MY_LOGGER.debug_v(f'parent after removing include:\n {dump}')
                 continue
             else:
                 #  The include stays. Replace the include element with it's
@@ -756,7 +751,7 @@ class WindowParser:
 
                 expanded_include: ET.Element = clz.includes.get_include(include.text)
                 if expanded_include is None:
-                    # clz._logger.debug_v(f'INCLUDE NOT FOUND: {include.text}')
+                    # MY_LOGGER.debug_v(f'INCLUDE NOT FOUND: {include.text}')
                     continue
 
                 # Yes, the window refers to an include which our include tree
@@ -764,20 +759,20 @@ class WindowParser:
                 # our Window's tree.
 
                 # print 'INCLUDE FOUND: %s' % i.string
-                if VERBOSE_DEBUG:
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
                     dump: str = ET.tostring(include_parent, encoding='unicode')
-                    clz._logger.debug_v(
+                    MY_LOGGER.debug_v(
                         f'parent before replacing include:\n {dump}')
                 include_parent.remove(include)
-                if VERBOSE_DEBUG:
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
                     dump: str = ET.tostring(include, encoding='unicode')
-                    clz._logger.debug_v(f'removed include: \n{dump}')
+                    MY_LOGGER.debug_v(f'removed include: \n{dump}')
                     dump: str = ET.tostring(expanded_include, encoding='unicode')
-                    clz._logger.debug_v(f'expanded_include to append: \n{dump}')
+                    MY_LOGGER.debug_v(f'expanded_include to append: \n{dump}')
                 include_parent.append(expanded_include)  # Order should not matter
-                if VERBOSE_DEBUG:
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
                     dump: str = ET.tostring(include_parent, encoding='unicode')
-                    clz._logger.debug_v(f'parent after replacing include:\n {dump}')
+                    MY_LOGGER.debug_v(f'parent after replacing include:\n {dump}')
 
     def addonReplacer(self, m):
         return xbmc.getInfoLabel(m.group(0))
@@ -789,7 +784,7 @@ class WindowParser:
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            module_logger.exception(f'variableReplace Exception: {e}')
+            MY_LOGGER.exception(f'variableReplace Exception: {e}')
 
     def localizeReplacer(self, m):
         return xbmc.getLocalizedString(int(m.group(1)))
@@ -807,7 +802,7 @@ class WindowParser:
         return text
 
     def getControl(self, control_id) -> ET.Element | None:
-        clz = type(self)
+        type(self)
         new_control: ET.Element = None
         old_control: ET.Element = None
         if USE_OLD_FUNCTIONS:
@@ -815,7 +810,7 @@ class WindowParser:
         if USE_NEW_FUNCTIONS:
             new_control = self.new_getControl(control_id)
             if USE_OLD_FUNCTIONS and old_control != new_control:
-                clz._logger.debug_v(f'DIFFERENCE results old: {old_control} '
+                MY_LOGGER.debug_v(f'DIFFERENCE results old: {old_control} '
                                           f'new: {new_control}')
         if USE_OLD_FUNCTIONS:
             return old_control
@@ -839,24 +834,25 @@ class WindowParser:
         return new_control
 
     def getLabelText(self, label) -> str | None:
-        clz = type(self)
-        old_text = None
+        type(self)
+        old_text: str | None = None
         if USE_OLD_FUNCTIONS:
             old_text: str = self.old_getLabelText(label)
-        new_text = None
+        new_text: str | None = None
         if USE_NEW_FUNCTIONS:
             new_text: str = self.new_getLabelText(label)
             if USE_OLD_FUNCTIONS and old_text != new_text:
-                clz._logger.debug_v(f'DIFFERENCE: results old: {old_text} '
-                                          f'new: {new_text}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'DIFFERENCE: results old: {old_text} '
+                                      f'new: {new_text}')
         if USE_OLD_FUNCTIONS:
             return old_text
         return new_text
 
     def old_getLabelText(self, label) -> str | None:
-        clz = type(self)
-        if VERBOSE_DEBUG:
-            module_logger.debug_v(f'In getLabelText')
+        type(self)
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'In getLabelText')
         text = None
         label_id = label.attributes.get('id')
         if label_id:
@@ -886,14 +882,14 @@ class WindowParser:
         return value
 
     def new_getLabelText(self, label: ET.Element) -> str:
-        clz = type(self)
+        type(self)
         Monitor.exception_on_abort()
-        if module_logger.isEnabledFor(DEBUG_V):
-            module_logger.debug_v(f'In new_getLabelText')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'In new_getLabelText')
         new_label_id: str = label.attrib.get('id')
         new_text: str | None = None
-        if module_logger.isEnabledFor(DEBUG_V):
-            module_logger.debug_v(f'new_label_id: {new_label_id}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'new_label_id: {new_label_id}')
         if new_label_id:
             # Try getting programmatically set label first.
             new_text = xbmc.getInfoLabel(f'Control.GetLabel({new_label_id})')
@@ -901,13 +897,13 @@ class WindowParser:
         if new_text is None or new_text == '-':
             new_text = None
             new_label_node: ET.Element = label.find('label')
-            if clz._logger.isEnabledFor(DEBUG_V):
-                clz._logger.debug_v(f'new_label_node: {new_label_node.tag} '
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'new_label_node: {new_label_node.tag} '
                                           f'text: {new_label_node.text}')
             if new_label_node is not None and new_label_node.text:
                 new_text = new_label_node.text
-                if clz._logger.isEnabledFor(DEBUG_V):
-                    clz._logger.debug_v(f'new_text: {new_text}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'new_text: {new_text}')
             if new_text:
                 if new_text.isdigit():
                     new_text = f'$LOCALIZE[{new_text}]'
@@ -915,8 +911,8 @@ class WindowParser:
                 i_new: ET.Element = new_label_node.find('info')
                 if i_new is not None and i_new.find('*'):
                     new_text: str = i_new.find('*').text
-                    if clz._logger.isEnabledFor(DEBUG_V):
-                        clz._logger.debug_v(f'i_new text: {new_text}')
+                    if MY_LOGGER.isEnabledFor(DEBUG_V):
+                        MY_LOGGER.debug_v(f'i_new text: {new_text}')
                     if new_text.isdigit():
                         new_text = f'$LOCALIZE[{new_text}]'
                     else:
@@ -945,10 +941,9 @@ class WindowParser:
         if USE_NEW_FUNCTIONS:
             new_texts = self.new_getListItemTexts(control_id)
             if USE_OLD_FUNCTIONS and old_texts != new_texts:
-                clz = type(self)
-                if clz._logger.isEnabledFor(DEBUG_V):
-                    clz._logger.debug_v(f'DIFFERENCE: old != new old: {old_texts} '
-                                              f'new: {new_texts}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'DIFFERENCE: old != new old: {old_texts} '
+                                      f'new: {new_texts}')
         if USE_OLD_FUNCTIONS:
             return old_texts
         return new_texts
@@ -989,7 +984,7 @@ class WindowParser:
             if newclist is None:
                 return None
             new_lts: List[Any] = []
-            new_lt: List[ET.Element] = []
+            []
             new_fl = newclist.find('focusedlayout')
             if new_fl is None:
                 return None
@@ -1015,7 +1010,6 @@ class WindowParser:
             self.currentControl = None
 
     def new_getListItemTexts(self, control_id: int) -> List[str]:
-        clz = type(self)
         if control_id < 0:
             control_id = - control_id
         self.currentControl = control_id
@@ -1037,10 +1031,10 @@ class WindowParser:
 
                 parent_pat: str = f".//control[@type='{pat}']/.."
                 some_parents: List[ET.Element] = fl.findall(parent_pat)
-                if clz._logger.isEnabledFor(DEBUG_V):
-                    clz._logger.debug_v(f'control_id: {control_id} '
-                                              f'xml: {self.current_window_path} '
-                                              f'parent_pat: {parent_pat}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'control_id: {control_id} '
+                                      f'xml: {self.current_window_path} '
+                                      f'parent_pat: {parent_pat}')
                 if some_parents is None:
                     continue
 
@@ -1048,8 +1042,8 @@ class WindowParser:
                 child_pat = f"./control[@type='{pat}']"
                 for parent in some_parents:
                     parent: ET.Element
-                    if clz._logger.isEnabledFor(DEBUG_V):
-                        clz._logger.debug_v(
+                    if MY_LOGGER.isEnabledFor(DEBUG_V):
+                        MY_LOGGER.debug_v(
                             f'control_id: {control_id} child_pat: {child_pat} '
                             f'parent: {parent.tag}')
                     some_children = parent.findall(child_pat)
@@ -1059,23 +1053,23 @@ class WindowParser:
                     for child in some_children:
                         child: ET.Element
                         # <label>$INFO[ListItem.Label2]</label>
-                        if clz._logger.isEnabledFor(DEBUG_V):
-                            clz._logger.debug_v(f'control_id: {control_id} '
-                                                      f'child_id: {child.attrib.get("id")} ')
+                        if MY_LOGGER.isEnabledFor(DEBUG_V):
+                            MY_LOGGER.debug_v(f'control_id: {control_id} '
+                                              f'child_id: {child.attrib.get("id")} ')
                         if not self.new_controlIsVisibleGlobally(parent,
                                                                  child):
-                            if clz._logger.isEnabledFor(DEBUG_V):
-                                clz._logger.debug_v(f'child not visible')
+                            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                                MY_LOGGER.debug_v(f'child not visible')
                             continue
                         text: str = self.new_getLabelText(child)
-                        if clz._logger.isEnabledFor(DEBUG_V):
-                            clz._logger.debug_v(f'child text: {text}')
+                        if MY_LOGGER.isEnabledFor(DEBUG_V):
+                            MY_LOGGER.debug_v(f'child text: {text}')
                         if text and text not in texts:
                             texts[text] = text
             all_texts: List[str] = self.processTextList(texts.values())
-            # clz._logger.debug_v(f'texts: {texts}')
-            if clz._logger.isEnabledFor(DEBUG_V):
-                clz._logger.debug_v(f'all_texts {all_texts}')
+            # MY_LOGGER.debug_v(f'texts: {texts}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'all_texts {all_texts}')
             return all_texts
         finally:
             self.currentControl = None
@@ -1088,10 +1082,10 @@ class WindowParser:
         if USE_NEW_FUNCTIONS:
             new: List[str] = self.new_getWindowTexts()
             if USE_OLD_FUNCTIONS and old != new:
-                clz = type(self)
-                if clz._logger.isEnabledFor(DEBUG_V):
-                    clz._logger.debug_v(f'DIFFERENCE: old != new old: {old} '
-                                              f'new: {new}')
+                type(self)
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'DIFFERENCE: old != new old: {old} '
+                                      f'new: {new}')
         if USE_OLD_FUNCTIONS:
             if old is None:
                 old = []
@@ -1126,7 +1120,6 @@ class WindowParser:
         return list_1
 
     def new_getWindowTexts(self) -> List[str]:
-        clz = type(self)
         Monitor.exception_on_abort()
         query: str = ".//control[@type='label' or @type='fadelabel' or " \
                      "@type='textbox' or @type='slider']"
@@ -1134,21 +1127,21 @@ class WindowParser:
         parents: List[ET.Element] = self.et_includes_xml.findall(query + "/..")
         new_texts: List[str] = []
         parent: ET.Element
-        clz._logger.debug(f'In getWindowTexts')
+        MY_LOGGER.debug(f'In getWindowTexts')
         for parent in parents:
             # If parent is not visible, then neither is branch of children
             if not self.new_controlIsVisible(parent):
-                clz._logger.debug(f'file: {self.xml_path} Skipping Parent: {parent.tag}')
+                MY_LOGGER.debug(f'file: {self.xml_path} Skipping Parent: {parent.tag}')
                 continue
             # Now query to find the children that match the query
             children: List[ET.Element] = parent.findall(query)
             for child in children:
-                clz._logger.debug(f'child: {child.tag} attrib: {child.attrib} '
+                MY_LOGGER.debug(f'child: {child.tag} attrib: {child.attrib} '
                                   f'text: {child.text}')
                 # Omit any branches that don't apply to the state of this control
 
                 if not self.new_controlIsVisible(child):
-                    clz._logger.debug(f'child NOT visible')
+                    MY_LOGGER.debug(f'child NOT visible')
                     continue
 
                 type_attr: str = child.attrib.get('type')
@@ -1163,7 +1156,7 @@ class WindowParser:
                     new_text = xbmc.getInfoLabel(f'Control.GetLabel({label_id})')
                     if new_text and new_text not in new_texts:
                         new_texts.append(f'{new_text}. You fucker')
-                    clz._logger.debug(f'SliderLabel found. Added text: {new_texts}')
+                    MY_LOGGER.debug(f'SliderLabel found. Added text: {new_texts}')
                 else:
                     new_text = self.new_getLabelText(child)
                     if new_text and new_text not in new_texts:
@@ -1200,7 +1193,6 @@ class WindowParser:
         :param control:
         :return:
         """
-        clz = type(self)
         new_x = None
         new_y = None
         old_x = None
@@ -1211,11 +1203,11 @@ class WindowParser:
             new_x, new_y = self.new_controlGlobalPosition(control)
             if USE_OLD_FUNCTIONS:
                 if old_x != new_x:
-                    clz._logger.debug_v(f'DIFFERENCE: old_x != new_x old: {old_x} '
-                                              f'new: {new_x}')
+                    MY_LOGGER.debug_v(f'DIFFERENCE: old_x != new_x old: {old_x} '
+                                      f'new: {new_x}')
                 if old_y != new_y:
-                    clz._logger.debug_v(f'DIFFERENCE: old_y != new_y old: {old_y} '
-                                              f'new: {new_y}')
+                    MY_LOGGER.debug_v(f'DIFFERENCE: old_y != new_y old: {old_y} '
+                                      f'new: {new_y}')
         if USE_OLD_FUNCTIONS:
             return old_x, old_y
         return new_x, new_y
@@ -1270,8 +1262,8 @@ class WindowParser:
         if USE_NEW_FUNCTIONS:
             new: bool = self.new_controlIsVisibleGlobally(control)
             if USE_OLD_FUNCTIONS and old != new:
-                clz = type(self)
-                clz._logger.debug_v(f'DIFFERENCE: old != new old: {old} new: {new}')
+                type(self)
+                MY_LOGGER.debug_v(f'DIFFERENCE: old != new old: {old} new: {new}')
         if USE_OLD_FUNCTIONS:
             return old
         return new
@@ -1288,8 +1280,8 @@ class WindowParser:
         if USE_NEW_FUNCTIONS:
             new: bool = self.new_controlIsVisible(control)
             if old != new:
-                clz = type(self)
-                clz._logger.debug_v(f'DIFFERENCE: Old != New old: {old} new: {new}')
+                type(self)
+                MY_LOGGER.debug_v(f'DIFFERENCE: Old != New old: {old} new: {new}')
         if USE_OLD_FUNCTIONS:
             return old
         return new
@@ -1371,9 +1363,9 @@ class Includes:
     def __init__(self):
         clz = type(self)
         if clz._logger is None:
-            clz._logger = module_logger
+            clz._logger = MY_LOGGER
         path = get_xbmc_skin_path('Includes.xml')
-        clz._logger.debug_v(f'includes path: {path}')
+        MY_LOGGER.debug_v(f'includes path: {path}')
         self.xml = minidom.parse(str(path))
         if USE_LXML:
             self.lxml_includes_xml: lxml_ET.ElementTree = lxml_ET.parse(path)
@@ -1444,7 +1436,7 @@ class Includes:
 
     def load_includes_files(self):
         clz = type(self)
-        clz._logger.debug_v(f'in load_includes_files')
+        MY_LOGGER.debug_v(f'in load_includes_files')
         if clz._old_includes_files_loaded or clz._new_includes_files_loaded:
             return
 
@@ -1460,13 +1452,13 @@ class Includes:
 
         if USE_OLD_FUNCTIONS and USE_NEW_FUNCTIONS:
             if len(clz._old_includes_map.keys()) != len(clz._new_includes_map.keys()):
-                clz._logger.debug_v(f'Include maps of different size: old: '
+                MY_LOGGER.debug_v(f'Include maps of different size: old: '
                                           f'{len(clz._old_includes_map.keys())} new: '
                                           f'{len(clz._new_includes_map.keys())}')
             printed_one: bool = False
             for old_key, old_elements in clz._old_includes_map.items():
                 old_xml: str = dump_dom(old_elements)
-                from_old: ET = ET.fromstring(old_xml)
+                ET.fromstring(old_xml)
                 from_new_elements: ET.Element = clz._new_includes_map.get(old_key)
                 old_canonical: str = ET.canonicalize(xml_data=old_xml,
                                                      strip_text=True)
@@ -1474,15 +1466,15 @@ class Includes:
                         xml_data=ET.tostring(from_new_elements, encoding='unicode'),
                         strip_text=True)
                 if old_canonical != new_canonical:
-                    clz._logger.debug_v(f'old != new key: {old_key}')
+                    MY_LOGGER.debug_v(f'old != new key: {old_key}')
                     if not printed_one:
-                        clz._logger.debug_v(f'Old canonical')
-                        clz._logger.debug_v(f'{old_canonical}')
-                        clz._logger.debug_v('New canonical')
-                        clz._logger.debug_v(f'{new_canonical}')
+                        MY_LOGGER.debug_v(f'Old canonical')
+                        MY_LOGGER.debug_v(f'{old_canonical}')
+                        MY_LOGGER.debug_v('New canonical')
+                        MY_LOGGER.debug_v(f'{new_canonical}')
                         printed_one = True
                 # else:
-                #    clz._logger.debug_v(f'old == new key: {old_key}')
+                #    MY_LOGGER.debug_v(f'old == new key: {old_key}')
 
     def old_load_includes_files(self):
         clz = type(self)
@@ -1493,17 +1485,17 @@ class Includes:
         for i in xpath.find('//include', xpath.findnode('//includes', self.xml)):
             file_attrib = i.attributes.get('file')
             if file_attrib:
-                if VERBOSE_DEBUG:
-                    clz._logger.debug_v(f'fileAttr: {file_attrib.value}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'fileAttr: {file_attrib.value}')
                 included_file_name: str = file_attrib.value
                 included_file_path: Path = get_xbmc_skin_path(included_file_name)
                 if not (included_file_path.is_file() and included_file_path.exists()):
                     continue
-                xml = minidom.parse(included_file_path)
+                xml = minidom.parse(str(included_file_path))
                 includes = xpath.findnode('includes', xml)
-                if VERBOSE_DEBUG:
-                    clz._logger.debug_v(f"includes tag: {includes.tagName}")
-                x = xpath.findnode('..', i)
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f"includes tag: {includes.tagName}")
+                xpath.findnode('..', i)
                 # print(f"type x: {type(x)}")
                 # print(f"parent tag: {x.tagName}")
                 # print(f"child tag: {i.tagName}")
@@ -1544,7 +1536,7 @@ class Includes:
                     name_attrib = sub_i.attributes.get('name')
                     if name_attrib:
                         if name_attrib in clz._old_includes_map.keys():
-                            clz._logger.debug_v(
+                            MY_LOGGER.debug_v(
                                     f'WARNING entry already in old map: {name_attrib}')
                         clz._old_includes_map[name_attrib.value] = sub_i
                         #  print(f'old_sub_i: {nameAttr} {sub_i.tagName} {
@@ -1554,7 +1546,7 @@ class Includes:
                 name_attrib = i.attributes.get('name')
                 if name_attrib:
                     if name_attrib in clz._old_includes_map.keys():
-                        clz._logger.debug_v(
+                        MY_LOGGER.debug_v(
                             f'WARNING entry already in old map: {name_attrib}')
                     clz._old_includes_map[name_attrib.value] = i.cloneNode(True)
                     # print(f'old name entry: {name_attrib.value}')
@@ -1650,7 +1642,7 @@ class Includes:
             </includes>
          
         """
-        clz._logger.debug_v(f'In new_load_includes_files')
+        MY_LOGGER.debug_v(f'In new_load_includes_files')
         # Start with each <Include> in Includes.xml
         includes_root: ET.Element = self.et_includes_xml.getroot()
 
@@ -1668,7 +1660,7 @@ class Includes:
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            clz._logger.debug_v(f'Exception: {e}')
+            MY_LOGGER.debug_v(f'Exception: {e}')
         clz._new_includes_files_loaded = True
         return
 
@@ -1686,7 +1678,7 @@ class Includes:
                         included_xml: ET = ET.parse(str(included_file_path))
                         root = included_xml.getroot()
                         new_dest: ET.Element = ET.Element('dummy_root')
-                        new_dest_tree: ET.ElementTree = ET.ElementTree(new_dest)
+                        ET.ElementTree(new_dest)
                         self.parse_includes_tree(root, new_dest)
                         # Nothing to put in new ElementTree. All includes were
                         # put into parse_includes_tree by call.
@@ -1704,25 +1696,25 @@ class Includes:
                             # Add this include definition into a dictionary
                             # for quick access
                             if include_name in clz._new_includes_map.keys():
-                                clz._logger.debug_v(
+                                MY_LOGGER.debug_v(
                                         f'ERROR entry already in new map: {include_name}')
                             else:
                                 # text: str = dump_subtree(new_parent)
-                                # clz._logger.debug_v(f'ORIG: {text}')
+                                # MY_LOGGER.debug_v(f'ORIG: {text}')
                                 # text: str = dump_subtree(include_root)
-                                # clz._logger.debug_v(f'COMPLETE: {text}')
-                                if VERBOSE_DEBUG:
+                                # MY_LOGGER.debug_v(f'COMPLETE: {text}')
+                                if MY_LOGGER.isEnabledFor(DEBUG_V):
                                     include_child: ET.Element = include_root.find('.*')
                                     if include_child is None:
-                                        clz._logger.debug_v(
+                                        MY_LOGGER.debug_v(
                                             f'Include: {include_name} omitted due to '
                                             f'empty')
 
                                 clz._new_includes_map[include_name] = include_root
-                                if VERBOSE_DEBUG:
-                                    clz._logger.debug_v(
+                                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                                    MY_LOGGER.debug_v(
                                         f'Include {include_name} is:')
-                                    clz._logger.debug_v(
+                                    MY_LOGGER.debug_v(
                                         f'{dump_subtree(include_root)}')
                             continue
                     if child.attrib.get('content') is not None or child.text is not None:
@@ -1730,7 +1722,7 @@ class Includes:
                         self.parse_other(child, dest_node)
                         continue
 
-                    clz._logger.debug_v(
+                    MY_LOGGER.debug_v(
                         f'Unexpected include element without "file" or "name".')
                     continue
                 # Probably don't need to do this. Kodi probably expands this in any
@@ -1740,7 +1732,7 @@ class Includes:
                         constant_name: str = child.attrib.get('name')
                         value: Any = child.text
                         if constant_name in clz.constant_definitions.keys():
-                            clz._logger.debug_v(f'ERROR: constant already defined: '
+                            MY_LOGGER.debug_v(f'ERROR: constant already defined: '
                                                       f'{constant_name} value: {value}')
                         else:
                             clz.constant_definitions[constant_name] = value
@@ -1752,7 +1744,7 @@ class Includes:
                         expression_name: str = child.attrib.get('name')
                         value: str = child.text
                         if expression_name in clz.expression_definitions.keys():
-                            clz._logger.debug_v(
+                            MY_LOGGER.debug_v(
                                 f'ERROR: expression already defined: '
                                 f'{expression_name} value: {value}')
                         else:
@@ -1765,11 +1757,11 @@ class Includes:
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            clz._logger.exception('Boom!')
+            MY_LOGGER.exception('Boom!')
         return
 
     def parse_other(self, child: ET.Element, dest_node: ET.Element) -> None:
-        clz = type(self)
+        type(self)
         # Copy this non-handled or excluded child node to the new tree
 
         try:
@@ -1779,17 +1771,17 @@ class Includes:
 
             # Recurse to deal with grandchildren
             # orig_text: str = dump_subtree(child)
-            include_root: ET.Element = ET.Element('dummy_root')
+            ET.Element('dummy_root')
             self.parse_includes_tree(child, new_child)
 
-            # clz._logger.debug_v(f'orig: {orig_text}')
-            text: str = ''
+            # MY_LOGGER.debug_v(f'orig: {orig_text}')
+            ''
             # text = dump_subtree(dest_node)
-            # clz._logger.debug_v(f'changed: {text}')
+            # MY_LOGGER.debug_v(f'changed: {text}')
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            clz._logger.exception('Boom!')
+            MY_LOGGER.exception('Boom!')
 
     def new_load_includes_files_save(self):
         clz = type(self)
@@ -1879,7 +1871,7 @@ class Includes:
             </includes>
 
         """
-        clz._logger.debug_v(f'In new_load_includes_files')
+        MY_LOGGER.debug_v(f'In new_load_includes_files')
         # Start with each <Include> in Includes.xml
         includes_root: ET.Element = self.et_includes_xml.getroot()
         include_parent: ET.Element  # should be the same as root node (no nesting)
@@ -1887,11 +1879,11 @@ class Includes:
         # (nested).
         try:
             for include_parent in self.et_includes_xml.findall('.//include/..'):
-                clz._logger.debug_v(f'parent: {include_parent.tag}')
+                MY_LOGGER.debug_v(f'parent: {include_parent.tag}')
                 assert (include_parent == includes_root)
                 include_element: ET.Element
                 for include_element in include_parent.findall('.//include'):
-                    clz._logger.debug_v(
+                    MY_LOGGER.debug_v(
                         f'child (include_element): {include_element.tag} '
                         f'file: {include_element.attrib.get("file")}')
                     #
@@ -1899,9 +1891,9 @@ class Includes:
                     # the list of include elements defined in the included file,
                     # or in-line.
                     xml_data = ET.tostring(include_element, encoding='unicode')
-                    clz._logger.debug_v(f'include_element: {xml_data}')
+                    MY_LOGGER.debug_v(f'include_element: {xml_data}')
                     xml_data = ET.tostring(includes_root, encoding='unicode')
-                    clz._logger.debug_v(f'includes_root: {xml_data}')
+                    MY_LOGGER.debug_v(f'includes_root: {xml_data}')
                     includes_root.remove(include_element)
 
                     included_file_name: str = include_element.attrib.get('file')
@@ -1915,7 +1907,7 @@ class Includes:
                         included_root: ET.Element = included_xml.getroot()
 
                         if DEBUG:
-                            clz._logger.debug_v(
+                            MY_LOGGER.debug_v(
                                 f'included_file: {included_file_path}')
                         # new_includes: List[ET.Element] = root.find('includes')
                         # i.getparent().replace(i, root)
@@ -1926,8 +1918,8 @@ class Includes:
                         # else:
                         #    i.extend(new_includes)
 
-                        # clz._logger.debug_v('new_includes', len(new_includes))
-                        #  clz._logger.debug_v('i', len(i))
+                        # MY_LOGGER.debug_v('new_includes', len(new_includes))
+                        #  MY_LOGGER.debug_v('i', len(i))
                         for include_definition in included_root.findall('.//include'):
                             include_definition: ET.Element
                             name_attrib: str
@@ -1936,7 +1928,7 @@ class Includes:
                                 # Add this include definition into a dictionary
                                 # for quick access
                                 if name_attrib in clz._new_includes_map.keys():
-                                    clz._logger.debug_v(
+                                    MY_LOGGER.debug_v(
                                             f'ERROR entry already in new map: '
                                             f'{name_attrib}')
                                 tmp_tree: ET = ET.ElementTree()
@@ -1954,7 +1946,7 @@ class Includes:
                             # Add this include definition into a dictionary
                             # for quick access
                             if name_attrib in clz._new_includes_map.keys():
-                                clz._logger.debug_v(
+                                MY_LOGGER.debug_v(
                                         f'ERROR entry already in new map: {name_attrib}')
                             tmp_tree: ET = ET.ElementTree()
                             tmp_tree._setroot(copy.deepcopy(include_definition))
@@ -1964,7 +1956,7 @@ class Includes:
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            clz._logger.debug_v(f'Exception: {e}')
+            MY_LOGGER.debug_v(f'Exception: {e}')
         clz._new_includes_files_loaded = True
 
     def lxml_load_includes_files(self):
@@ -1991,8 +1983,8 @@ class Includes:
                 # Should we replace a reference to the include file
                 # or should every include in the tree be expanded?
 
-                if VERBOSE_DEBUG:
-                    clz._logger.debug_v(f'include_file: {included_file}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'include_file: {included_file}')
                 # new_includes: List[ET.Element] = root.find('includes')
                 # i.getparent().replace(i, root)
                 # Replace reference to include file with actual include(s)
@@ -2002,15 +1994,15 @@ class Includes:
                 # else:
                 #    i.extend(new_includes)
 
-                # clz._logger.debug_v('new_includes', len(new_includes))
-                #  clz._logger.debug_v('i', len(i))
+                # MY_LOGGER.debug_v('new_includes', len(new_includes))
+                #  MY_LOGGER.debug_v('i', len(i))
                 child.getparent().replace(child, includes_root)
                 for new_sub_i in includes_root.findall('.//include'):
                     new_sub_i: lxml_ET.Element
                     name_attrib = new_sub_i.attrib.get('name')
                     if name_attrib:
                         if name_attrib in clz._new_includes_map.keys():
-                            clz._logger.debug_v(
+                            MY_LOGGER.debug_v(
                                     f'ERROR entry already in new map: {name_attrib}')
                         tmp_tree: lxml_ET = lxml_ET.ElementTree()
                         tmp_tree._setroot(copy.deepcopy(new_sub_i))
@@ -2020,7 +2012,7 @@ class Includes:
                 name_attrib: str = child.attrib.get('name')
                 if name_attrib:
                     if name_attrib in clz._new_includes_map.keys():
-                        clz._logger.debug_v(
+                        MY_LOGGER.debug_v(
                             f'ERROR entry already in new map: {name_attrib}')
                     tmp_tree: lxml_ET = lxml_ET.ElementTree()
                     tmp_tree._setroot(copy.deepcopy(child))
@@ -2029,9 +2021,9 @@ class Includes:
         '''
         for i in self.lxml_includes_xml.findall('.//include'):
             if isinstance(i, list):
-                clz._logger.debug_v('length i: ', len(i))
+                MY_LOGGER.debug_v('length i: ', len(i))
             else:
-                clz._logger.debug_v(i.tag, i.attrib, i.text)
+                MY_LOGGER.debug_v(i.tag, i.attrib, i.text)
         '''
 
         clz._lxml_includes_files_loaded = True
@@ -2066,7 +2058,7 @@ class Includes:
             new_val: ET.Element
             condition_attr = new_val.get('condition')
             if not condition_attr:
-                x = new_val.find('*')
+                new_val.find('*')
             else:
                 if xbmc.getCondVisibility(condition_attr):
                     return new_val
@@ -2107,13 +2099,13 @@ IGNORED_TAGS: Set[str] = {'default',  # I think we don't care
 
 def getWindowParser() -> WindowParser:
     path: Path = currentWindowXMLFile()
-    module_logger.debug_xv(f'getWindowParser path: {path}')
-    module_logger.debug(f'getWindowParser path: {path}')
+    MY_LOGGER.debug_xv(f'getWindowParser path: {path}')
+    MY_LOGGER.debug(f'getWindowParser path: {path}')
     if not path:
         return
     return WindowParser(path)
 
 
 def getWindowParser2(xml_path: Path) -> WindowParser:
-    module_logger.debug_xv(f'getWindowParser2 path: {xml_path}')
+    MY_LOGGER.debug_xv(f'getWindowParser2 path: {xml_path}')
     return WindowParser(xml_path)

@@ -21,7 +21,7 @@ from common.logger import *
 from common.monitor import Monitor
 from cache.prefetch_movie_data.movie_constants import MovieType
 
-module_logger: BasicLogger = BasicLogger.get_logger(__name__)
+MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class JsonReturnCode(Enum):
@@ -132,16 +132,7 @@ class JsonUtilsBasic:
 
     UNLIMITED = 'unlimited'
 
-    _logger: BasicLogger = None
     _instance = None
-
-    @classmethod
-    def class_init(cls) -> None:
-        """
-
-        """
-        if cls._logger is None:
-            cls._logger = module_logger
 
     @classmethod
     def get_kodi_json(cls,
@@ -158,10 +149,10 @@ class JsonUtilsBasic:
         Monitor.exception_on_abort()
         movie_results = json.loads(json_text, encoding='utf-8',
                                    object_hook=JsonUtilsBasic.abort_checker)
-        if dump_results and cls._logger.isEnabledFor(DEBUG_XV):
+        if dump_results and MY_LOGGER.isEnabledFor(DEBUG_XV):
             Monitor.exception_on_abort()
-            cls._logger.debug_xv(f'JASON DUMP: '
-                                            f'{json.dumps(json_text, indent=3, sort_keys=True)}')
+            MY_LOGGER.debug_xv('JASON DUMP: '
+                               f'{json.dumps(json_text, indent=3, sort_keys=True)}')
         return movie_results
 
     @staticmethod
@@ -173,7 +164,3 @@ class JsonUtilsBasic:
         """
         Monitor.exception_on_abort()
         return dct
-
-
-# Force initialization of config_logger
-JsonUtilsBasic.class_init()

@@ -32,14 +32,13 @@ import xbmc
 from common.constants import Constants
 from common.logger import *
 
-module_logger: BasicLogger = BasicLogger.get_logger(__name__)
+MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class Debug:
     """
         Define several methods useful for debugging
     """
-    _logger: BasicLogger = module_logger
     _currentAddonName = CriticalSettings.get_plugin_name()
     _debug_file = None
 
@@ -54,14 +53,14 @@ class Debug:
         :param level:
         :return:
         """
-        if cls._logger.isEnabledFor(level):
+        if MY_LOGGER.isEnabledFor(level):
             if data is None:
-                cls._logger.log(level=level, msg='json None')
+                MY_LOGGER.log(level=level, msg='json None')
             else:
                 dump = json.dumps(data, ensure_ascii=False,
                                   encoding='unicode', indent=4,
                                   sort_keys=True)
-                cls._logger.log(level=level, msg=f'{text} {dump}')
+                MY_LOGGER.log(level=level, msg=f'{text} {dump}')
 
     @classmethod
     def dump_all_threads(cls, delay: float = None) -> None:
@@ -81,7 +80,7 @@ class Debug:
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
-            cls._logger.exception('')
+            MY_LOGGER.exception('')
 
     @classmethod
     def dump_current_thread(cls) -> None:
@@ -120,7 +119,7 @@ class Debug:
         #  Monitor.dump_wait_counts()
         #  for threadId, stack in sys._current_frames().items():
         for th in threading.enumerate():
-            sio.write(f'\n# ThreadID: {th.name} Daemon: {th.isDaemon()}\n\n')
+            sio.write(f'\n# ThreadID: {th.name} Daemon: {th.daemon}\n\n')
             stack = sys._current_frames().get(th.ident, None)
             if stack is not None:
                 traceback.print_stack(stack, file=sio)
@@ -145,7 +144,7 @@ class Debug:
                                 f'   *** STACKTRACE - END ***\n\n')
 
         except Exception as e:
-            cls._logger.exception(msg='')
+            MY_LOGGER.exception(msg='')
 
     @classmethod
     def total_size(cls, o, handlers: Dict[Any, Any] = None, verbose: bool = False):
@@ -182,7 +181,7 @@ class Debug:
             s = getsizeof(o, default_size)
 
             if verbose:
-                cls._logger.debug_v(f'size: {s} type: {type(o)} repr: {repr(o)}')
+                MY_LOGGER.debug_v(f'size: {s} type: {type(o)} repr: {repr(o)}')
 
             for typ, handler in all_handlers.items():
                 if isinstance(o, typ):

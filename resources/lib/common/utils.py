@@ -4,6 +4,7 @@ from __future__ import annotations  # For union operator |
 import os
 import sys
 from pathlib import Path
+from threading import RLock
 
 import xbmc
 
@@ -67,6 +68,7 @@ def notifySayText(text, interrupt=False):
 
 class TempFileUtils:
 
+    single_thread_lock: RLock = RLock()
     tmp_dir: Path | None = None
 
     @classmethod
@@ -77,13 +79,14 @@ class TempFileUtils:
         """
         if sys.platform.startswith('win'):
             return None
-        temp_path: Path
-        for tmp_dir in ('/run/shm', '/dev/shm', '/tmp'):
-            tmp_dir: str
-            temp_path = Path(tmp_dir)
-            if temp_path.exists():
-                break
-        return temp_path
+        with cls.single_thread_lock:
+            temp_path: Path
+            for tmp_dir in ('/run/shm', '/dev/shm', '/tmp'):
+                tmp_dir: str
+                temp_path = Path(tmp_dir)
+                if temp_path.exists():
+                    break
+            return temp_path
 
     @classmethod
     def temp_dir(cls) -> Path:
@@ -93,17 +96,18 @@ class TempFileUtils:
         to decide.
         :return:
         """
-        if cls.tmp_dir is None:
-            tmpfs: Path | None = None
-            tmpfs = cls.getTmpfs()
-            if tmpfs is None:
-                tmpfs = Path(Constants.PROFILE_PATH)
-            tmpfs = tmpfs / 'kodi_speech'
-            if tmpfs.exists():
-                cls.clean_tmp_dir(tmpfs)
-            tmpfs.mkdir(mode=0o777, parents=True, exist_ok=True)
-            cls.tmp_dir = tmpfs
-        return cls.tmp_dir
+        with cls.single_thread_lock:
+            if cls.tmp_dir is None:
+                tmpfs: Path | None = None
+                tmpfs = cls.getTmpfs()
+                if tmpfs is None:
+                    tmpfs = Path(Constants.PROFILE_PATH)
+                tmpfs = tmpfs / 'kodi_speech'
+                if tmpfs.exists():
+                    cls.clean_tmp_dir(tmpfs)
+                tmpfs.mkdir(mode=0o777, parents=True, exist_ok=True)
+                cls.tmp_dir = tmpfs
+            return cls.tmp_dir
 
     @classmethod
     def clean_tmp_dir(cls, tmp_dir: Path) -> None:
@@ -113,47 +117,43 @@ class TempFileUtils:
         :param tmp_dir:
         :return:
         """
-        try:
-            dirs_to_delete: List[Path] = []
-            if MY_LOGGER.isEnabledFor(DEBUG_V):
-                MY_LOGGER.debug_v(f'tmp_dir: {tmp_dir}')
-            if not tmp_dir.exists():
-                tmp_dir.mkdir(mode=0o777, exist_ok=True, parents=True)
-                return
-            if not tmp_dir.is_dir():
-                tmp_dir.unlink(missing_ok=True)
-                tmp_dir.mkdir(mode=0o777, exist_ok=True, parents=True)
-                return
-            for child in tmp_dir.iterdir():
-                child: Path
+        with cls.single_thread_lock:
+            try:
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'tmp_dir: {tmp_dir}')
+                if tmp_dir.exists and not tmp_dir.is_dir():
+                    try:
+                        MY_LOGGER.debug(f'exists, but not a dir. Delete: {tmp_dir}')
+                        tmp_dir.unlink(missing_ok=True)
+                    except:
+                        MY_LOGGER.exception('')
+                if not tmp_dir.exists():
+                    try:
+                        MY_LOGGER.debug(f'dir does not exists, create: {tmp_dir}')
+                        tmp_dir.mkdir(mode=0o777, exist_ok=True, parents=True)
+                    except:
+                        MY_LOGGER.exception('')
+                cls.delete_tree(top=tmp_dir)
+            except Exception:
+                MY_LOGGER.exception('')
+
+    @classmethod
+    def delete_tree(cls, top: Path) -> None:
+        if not top.is_dir:
+            MY_LOGGER.error(f'Expected a dir: {top} exists: {top.exists()}')
+        for item in top.iterdir():
+            item: Path
+            MY_LOGGER.debug(f'item: {item} is_dir: {item.is_dir()}')
+            if item.is_dir():
+                cls.delete_tree(item)
                 try:
-                    if child.is_dir():
-                        if MY_LOGGER.isEnabledFor(DEBUG):
-                            MY_LOGGER.debug(f'dir: {child}')
-                        dirs_to_delete.append(child)
-                        continue
-                    if child.is_file():
-                        if MY_LOGGER.isEnabledFor(DEBUG_V):
-                            MY_LOGGER.debug_v(f'unlink file: {child}')
-                        child.unlink(missing_ok=True)
-                except:
+                    MY_LOGGER.debug(f'rmdir: {item}')
+                    item.rmdir()
+                except Exception:
                     MY_LOGGER.exception('')
-            deleted_dirs: List[Path] = []
-            for child in dirs_to_delete:
-                child: Path
+            else:
                 try:
-                    if not child.is_dir() and MY_LOGGER.isEnabledFor(DEBUG):
-                        MY_LOGGER.debug(f'Expected to be directory: {child}')
-                    else:
-                        cls.clean_tmp_dir(child)
-                        child.rmdir()
-                        deleted_dirs.append(child)
-                except:
+                    MY_LOGGER.debug(f'is_file: {item.is_file()}')
+                    item.unlink(missing_ok=True)
+                except Exception:
                     MY_LOGGER.exception('')
-            for child in deleted_dirs:
-                dirs_to_delete.remove(child)
-            if len(dirs_to_delete) > 0:
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'Could not delete {len(dirs_to_delete)} directories')
-        except:
-            MY_LOGGER.exception('')

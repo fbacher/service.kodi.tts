@@ -5,13 +5,10 @@ from common import *
 
 from backends.audio.sound_capabilities import SoundCapabilities
 from backends.engines.base_engine_settings import (BaseEngineSettings)
-from backends.settings.base_service_settings import BaseServiceSettings
-from backends.settings.i_validators import INumericValidator, ValueType
-from backends.settings.service_types import PlayerType, Services, ServiceType
+from backends.settings.service_types import Services, ServiceType
 from backends.settings.setting_properties import SettingProp, SettingType
 from backends.settings.settings_map import Status, SettingsMap
-from backends.settings.validators import (BoolValidator,
-                                          GenderValidator, NumericValidator,
+from backends.settings.validators import (GenderValidator, NumericValidator,
                                           SimpleStringValidator, StringValidator)
 from common.config_exception import UnusableServiceException
 from common.constants import Constants
@@ -21,7 +18,6 @@ from common.service_status import Progress, ServiceStatus, StatusType
 from common.setting_constants import AudioType, Backends, Genders, PlayerMode, Players
 from common.settings import Settings
 from backends.settings.service_types import ServiceID
-from common.system_queries import SystemQueries
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
 
@@ -35,9 +31,6 @@ class PowerShellTTSSettings:
     OUTPUT_FILE_TYPE: str = '.wav'
     NAME_KEY: ServiceID = service_key.with_prop(SettingProp.SERVICE_NAME)
     displayName: str = MessageId.ENGINE_POWERSHELL.get_msg()
-
-    # Every setting from settings.xml must be listed here
-    # SettingName, default value
 
     initialized: bool = False
     _available: bool | None = None
@@ -71,16 +64,12 @@ class PowerShellTTSSettings:
                                                persist=False)
 
         BaseEngineSettings.config_settings(cls.service_key,
-                                           settings=[SettingProp.GENDER_VISIBLE,
-                                                     SettingProp.CACHE_SPEECH])
-        cache_service: ServiceID = cls.service_key.with_prop(SettingProp.CACHE_SPEECH)
+                                           settings=[SettingProp.GENDER_VISIBLE])
 
-        cache_validator: BoolValidator
-        cache_validator = BoolValidator(cache_service,
-                                        default=True, const=False,
-                                        define_setting=True,
-                                        service_status=StatusType.OK,
-                                        persist=True)
+        cache_speech_key: ServiceID = cls.service_key.with_prop(SettingProp.CACHE_SPEECH)
+        SettingsMap.define_setting(cache_speech_key,
+                                   setting_type=SettingType.BOOLEAN_TYPE,
+                                   service_status=StatusType.OK, persist=True)
 
         cache_service_key: ServiceID = cls.service_key.with_prop(SettingProp.CACHE_PATH)
         cache_path_val: SimpleStringValidator
@@ -206,26 +195,13 @@ class PowerShellTTSSettings:
                                            service_status=StatusType.OK,
                                            persist=True)
 
-        # For consistency (and simplicity) any speed adjustments are actually
-        # done by a player_key that supports it. Direct adjustment of player_key speed
-        # could be re-added, but it would complicate configuration a bit.
-        #
-        # TTS scale is based upon mpv/mplayer which is a multiplier which
-        # has 1 = no change in speed, 0.25 slows down by 4, and 4 speeds up by 4
-        #
-        # eSpeak-ng 'normal speed' is 175 words per minute.
-        # The slowest supported rate appears to be about 70, any slower doesn't
-        # seem to make any real difference. The maximum speed is unbounded, but
-        # 4x (4 * 175 = 700) is hard to listen to.
-        #
-        # In other words espeak speed = 175 * mpv speed
         t_key = cls.service_key.with_prop(SettingProp.SPEED)
         speed_validator: NumericValidator
         speed_validator = NumericValidator(t_key,
-                                           minimum=43, maximum=700,
-                                           default=176,
+                                           minimum=.50, maximum=2.0,
+                                           default=1.2,
                                            is_decibels=False,
-                                           is_integer=True, increment=45,
+                                           is_integer=False, increment=45,
                                            define_setting=True,
                                            service_status=StatusType.OK,
                                            persist=True)

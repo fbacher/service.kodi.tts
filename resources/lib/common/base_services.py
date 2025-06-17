@@ -5,6 +5,7 @@ from backends.settings.service_types import ServiceKey
 from backends.settings.service_unavailable_exception import ServiceUnavailable
 
 from backends.settings.service_types import ServiceID
+from cache.voicecache import VoiceCache
 
 try:
     from enum import StrEnum
@@ -13,17 +14,11 @@ except ImportError:
 
 from common import *
 
-from backends.settings.i_validators import IValidator
 from backends.settings.service_types import Services, ServiceType
-from backends.settings.setting_properties import SettingProp
 from backends.settings.settings_map import Status, SettingsMap
-from backends.settings.validators import (BoolValidator,
-                                          IntValidator, NumericValidator,
-                                          StringValidator)
 from common.debug import Debug
-from common.logger import BasicLogger
+from common.logger import *
 from common.phrases import Phrase, PhraseList
-from common.settings import Settings
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
 
@@ -89,9 +84,10 @@ class BaseServices(IServices):
         service_key: ServiceID = service.service_key
         key: str = service_key.service_key
         BaseServices.service_index[key] = service
-        MY_LOGGER.debug(f'Registered {key} {type(key)} '
-                        f'type: {type(service.service_id)} '
-                        f'{repr(service)}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'Registered {key} {type(key)} '
+                            f'type: {type(service.service_id)} '
+                            f'{repr(service)}')
         #  MY_LOGGER.debug(f'{BaseServices.service_index}')
 
     '''
@@ -116,8 +112,8 @@ class BaseServices(IServices):
         service = BaseServices.service_index.get(key, None)
 
         if service is None:
-            MY_LOGGER.info(f'Could not get service: {key} ')
-            #  MY_LOGGER.info(f'services: {BaseServices.service_index}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'Could not get service: {key} ')
             active_service: bool = False
             raise ServiceUnavailable(service_key=service_key, reason=Status.UNKNOWN,
                                      active=active_service)
@@ -129,6 +125,9 @@ class BaseServices(IServices):
     @classmethod
     def get_available_service_ids(cls, service_type: ServiceType) -> List[ServiceID]:
         return SettingsMap.get_available_services(service_type)
+
+    def get_voice_cache(self) -> VoiceCache:
+        raise NotImplementedError
 
     '''
     @classmethod
@@ -362,7 +361,7 @@ class BaseServices(IServices):
     @classmethod
     def get_active_player_id(cls) -> str:
         # setting_id: str = cls.get_active_engine_id()
-        # player_id: str = Settings.get_player_key(setting_id)
+        # player_id: str = Settings.get_player(setting_id)
         # return player_id
         pass
 

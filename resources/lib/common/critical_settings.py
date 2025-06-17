@@ -159,7 +159,8 @@ class CriticalSettings:
     def get_log_level(cls) -> int:
         level_setting: int = CriticalSettings.KODI_SETTINGS.getInt(
                                                 CriticalSettings.DEBUG_LOG_LEVEL_SETTING)
-        xbmc.log(f'log_level: {level_setting}')
+        if level_setting <= CriticalSettings.DEBUG:
+            xbmc.log(f'log_level: {level_setting}')
         return level_setting
 
     @classmethod

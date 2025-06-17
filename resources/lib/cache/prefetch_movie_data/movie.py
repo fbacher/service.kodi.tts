@@ -13,13 +13,11 @@ from common import *
 from cache.prefetch_movie_data.movie_constants import MovieField, MovieType
 from common.logger import *
 
-module_logger: BasicLogger = BasicLogger.get_logger(__name__)
+MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 CHECK_FOR_NULLS: bool = True
 
 
 class BaseMovie:
-
-    _logger: BasicLogger = None
 
     def __init__(self, movie_id: str = None, source: str = None) -> None:
         self._movie_id = None
@@ -33,11 +31,6 @@ class BaseMovie:
         self._library_id: int = None
         self._folder_id: str = None
         self._tmdb_id: int = None
-
-    @classmethod
-    def class_init(cls):
-        if cls._logger is None:
-            cls._logger = module_logger
 
     def __str__(self) -> str:
         return f'{type(self).__name__} id: {self._movie_id} tmdb_id: {self._tmdb_id}'
@@ -61,18 +54,11 @@ class BaseMovie:
 
 class AbstractMovieId(BaseMovie):
 
-    _logger: BasicLogger = None
-
     def __init__(self, movie_id: str, source: str) -> None:
         super().__init__(movie_id, source)
 
     def __str__(self):
         return f'{type(self)}.__name__ id: {self.get_id()}'
-
-    @classmethod
-    def class_init(cls):
-        if cls._logger is None:
-            cls._logger = module_logger
 
     def get_id(self) -> str:
         return str(self._movie_id)
@@ -99,8 +85,9 @@ class AbstractMovieId(BaseMovie):
     def __eq__(self, other):
         if not isinstance(other, type(self)):
             clz = type(self)
-            clz._logger.debug(f'instances dose not match self: {type(self)} '
-                              f'other: {type(other)}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'instances dose not match self: {type(self)} '
+                                f'other: {type(other)}')
             raise NotImplementedError()
 
         if other.get_id() == self.get_id():
@@ -118,8 +105,6 @@ class AbstractMovieId(BaseMovie):
 
 
 class RawMovie(BaseMovie):
-
-    _logger: BasicLogger = None
 
     def __init__(self, movie_id: str = None, source: str = None,
                  movie_info: MovieType = None) -> None:
@@ -149,14 +134,9 @@ class RawMovie(BaseMovie):
             if value is None:
                 nulls_found.append(key)
 
-        if clz._logger.isEnabledFor(DEBUG_XV):
+        if MY_LOGGER.isEnabledFor(DEBUG_XV):
             if len(nulls_found) > 0:
-                clz._logger.debug_xv(', '.join(nulls_found))
-
-    @classmethod
-    def class_init(cls):
-        if cls._logger is None:
-            cls._logger = module_logger
+                MY_LOGGER.debug_xv(', '.join(nulls_found))
 
     def get_property_with_default(self, property_name: str,
                                   default_value: Any = None) -> Any:
@@ -177,8 +157,6 @@ class RawMovie(BaseMovie):
 
 
 class AbstractMovie(RawMovie):
-
-    _logger: BasicLogger = None
 
     def __init__(self, movie_id: str = None, source: str = None,
                  movie_info: MovieType = None) -> None:
@@ -210,14 +188,9 @@ class AbstractMovie(RawMovie):
             if value is None:
                 nulls_found.append(key)
 
-        if clz._logger.isEnabledFor(DEBUG_XV):
+        if MY_LOGGER.isEnabledFor(DEBUG_XV):
             if len(nulls_found) > 0:
-                clz._logger.debug_xv(', '.join(nulls_found))
-
-    @classmethod
-    def class_init(cls):
-        if cls._logger is None:
-            cls._logger = module_logger
+                MY_LOGGER.debug_xv(', '.join(nulls_found))
 
     def get_property_with_default(self, property_name: str,
                                   default_value: Any = None) -> Any:
@@ -261,7 +234,7 @@ class AbstractMovie(RawMovie):
             int_year: int = int(year)
         except:
             clz = type(self)
-            clz._logger.error(f'Invalid year: {year} for movie: {self.get_title()} ')
+            MY_LOGGER.error(f'Invalid year: {year} for movie: {self.get_title()} ')
             return
         if year is not None:
             self._movie_info[MovieField.YEAR] = year
@@ -512,7 +485,6 @@ class AbstractMovie(RawMovie):
 
 
 class LibraryMovie(AbstractMovie):
-    _logger: BasicLogger = None
 
     def __init__(self, movie_id: str = None, source: str = None,
                  movie_info: MovieType = None) -> None:
@@ -520,21 +492,9 @@ class LibraryMovie(AbstractMovie):
             movie_id = movie_info.get(MovieField.MOVIEID, None)
         super().__init__(movie_id, MovieField.LIBRARY_SOURCE, movie_info)
 
-    @classmethod
-    def class_init(cls):
-        if cls._logger is None:
-            cls._logger = module_logger
-
     def get_id(self) -> str:
         return str(self.get_property(MovieField.MOVIEID))
 
     def set_id(self, library_id: str):
         self.set_library_id(int(library_id))
         self._movie_id = library_id
-
-
-BaseMovie.class_init()
-AbstractMovieId.class_init()
-RawMovie.class_init()
-AbstractMovie.class_init()
-LibraryMovie.class_init()

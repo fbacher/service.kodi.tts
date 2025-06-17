@@ -1,12 +1,13 @@
 # coding=utf-8
 from __future__ import annotations  # For union operator |
 
+import socket
 from io import BytesIO
 
+import gtts
 from backends.settings.setting_properties import SettingType
 from gtts import gTTS
 
-from backends.engines.google_downloader import MyGTTS
 from backends.settings.i_validators import IStringValidator
 from common import *
 
@@ -17,10 +18,10 @@ from backends.settings.service_types import (PlayerType, ServiceKey, Services,
                                              TTS_Type)
 from backends.settings.settings_map import Status, SettingsMap
 from backends.settings.validators import (BoolValidator,
-                                          SimpleIntValidator, SimpleStringValidator,
+                                          NumericValidator, SimpleIntValidator,
+                                          SimpleStringValidator,
                                           StringValidator)
 from common.config_exception import UnusableServiceException
-from common.constants import Constants
 from common.logger import *
 from common.message_ids import MessageId
 from common.service_status import Progress, ServiceStatus, StatusType
@@ -60,9 +61,9 @@ class GoogleSettings:
     
     In the case of Experimental engine, it's volume (it might be configureable) 
     appears to be equivalent to be about 8db (as compared to TTS). Since we
-    have to use a different player_key AND since
+    have to use a different player AND since
     it is almost guaranteed that the voiced text is cached, just set volume
-    to fixed 8db and let player_key handle make the necessary adjustments to the volume.
+    to fixed 8db and let player handle make the necessary adjustments to the volume.
     
     In other words, create a custom validator which always returns a volume of 1
     (or just don't use the validator and such and hard code it inline).
@@ -90,7 +91,9 @@ class GoogleSettings:
                                            msg='')
         cls.check_is_available()
         cls.check_is_usable()
-        cls.is_usable()
+        if not cls.is_usable():
+            return
+
         GoogleSettings.initialized = True
         BaseEngineSettings.config_settings(cls.service_key,
                                            settings=[])
@@ -122,7 +125,7 @@ class GoogleSettings:
         #  SettingsMap.define_service_properties(GoogleSettings.service_key,
         #                                        service_properties)
 
-        # Can't adjust Pitch except via a player_key that supports it. Not bothering
+        # Can't adjust Pitch except via a player that supports it. Not bothering
         # with at this time.
 
         # Uses default volume_validator defined in base_engine_settings
@@ -145,6 +148,38 @@ class GoogleSettings:
         t_key = cls.service_key.with_prop(SettingProp.VOICE)
         SettingsMap.define_setting(t_key, SettingType.STRING_TYPE,
                                    service_status=StatusType.OK)
+
+        # For consistency (and simplicity) most speed adjustments are actually
+        # done by a player that supports it.
+        #
+        # Speed adjustments always belong to the engine, whether the engine
+        # actually makes the adjustments or not. Usually it is a player that
+        # perform the adjustment. Speed is always translated to 'tts' scale.
+        # TTS scale is based upon mpv/mplayer which is a multiplier which
+        # has 1 = no change in speed, 0.25 slows down by 4, and 4 speeds up by 4
+        #
+        # eSpeak-ng 'normal speed' is 175 words per minute.
+        # The slowest supported rate appears to be about 70, any slower doesn't
+        # seem to make any real difference. The maximum speed is unbounded, but
+        # 4x (4 * 175 = 700) is hard to listen to.
+        #
+        # In other words espeak speed = 175 * mpv speed
+        #
+        # Whatever actually plays the speech needs to convert the tts speed into
+        # its own scale.
+        #
+        # Each engine has its own speed value since desired speed depends much on
+        # the voice used.
+        #
+        speed_validator: NumericValidator
+        speed_validator = NumericValidator(cls.service_key.with_prop(SettingProp.SPEED),
+                                           minimum=.50, maximum=2.0,
+                                           default=1.2,
+                                           is_decibels=False,
+                                           is_integer=False, increment=45,
+                                           define_setting=True,
+                                           service_status=StatusType.OK,
+                                           persist=True)
 
         # Can't support PlayerMode.PIPE: 1) Google does download mp3, but the
         # response time would be awful. 2) You could simulate pipe mode for the
@@ -215,12 +250,9 @@ class GoogleSettings:
                             f' default player: {val.default}')
 
         cache_speech_key: ServiceID = cls.service_key.with_prop(SettingProp.CACHE_SPEECH)
-        cache_validator: BoolValidator
-        cache_validator = BoolValidator(cache_speech_key,
-                                        default=True, const=True,
-                                        define_setting=True,
-                                        service_status=StatusType.OK,
-                                        persist=True)
+        SettingsMap.define_setting(cache_speech_key,
+                                   setting_type=SettingType.BOOLEAN_TYPE,
+                                   service_status=StatusType.OK, persist=True)
 
         cache_service_key: ServiceID = cls.service_key.with_prop(SettingProp.CACHE_PATH)
         cache_path_val: SimpleStringValidator
@@ -236,9 +268,10 @@ class GoogleSettings:
         cache_suffix_val: SimpleStringValidator
         cache_suffix_val = SimpleStringValidator(cache_suffix_key,
                                                  value=cache_suffix,
+                                                 const=True,
                                                  define_setting=True,
                                                  service_status=StatusType.OK,
-                                                 persist=True)
+                                                 persist=False)
 
     @classmethod
     def check_is_supported_on_platform(cls) -> None:
@@ -330,6 +363,12 @@ class GoogleSettings:
                     MY_LOGGER.debug(f'Size of test: {len(x)} bytes')
                     if len(x) > 4000:
                         status = StatusType.OK
+                except socket.gaierror:
+                    MY_LOGGER.error('Can not communicate with gtts server')
+                    status = StatusType.BROKEN
+                except gtts.tts.gTTSError:
+                    MY_LOGGER.error('Can not communicate with gtts server')
+                    status = StatusType.BROKEN
                 except Exception:
                     MY_LOGGER.exception('Blew up in gtts')
                     status = StatusType.BROKEN

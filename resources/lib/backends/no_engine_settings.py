@@ -1,29 +1,24 @@
 # coding=utf-8
 from __future__ import annotations  # For union operator |
 
-
+from backends.engines.base_engine_settings import BaseEngineSettings
 from common import *
 
 from backends.audio.sound_capabilities import SoundCapabilities
-from backends.engines.base_engine_settings import (BaseEngineSettings)
-from backends.settings.base_service_settings import BaseServiceSettings
-from backends.settings.i_validators import INumericValidator, ValueType
 from backends.settings.service_types import (GENERATE_BACKUP_SPEECH, ServiceKey, Services,
                                              ServiceType)
 from backends.settings.setting_properties import SettingProp, SettingType
 from backends.settings.settings_map import Status, SettingsMap
-from backends.settings.validators import (BoolValidator,
-                                          GenderValidator, NumericValidator,
+from backends.settings.validators import (NumericValidator,
                                           SimpleStringValidator, StringValidator)
 from common.config_exception import UnusableServiceException
 from common.constants import Constants
 from common.logger import BasicLogger
 from common.message_ids import MessageId
 from common.service_status import Progress, ServiceStatus, StatusType
-from common.setting_constants import AudioType, Backends, Genders, PlayerMode, Players
+from common.setting_constants import AudioType, Backends, PlayerMode, Players
 from common.settings import Settings
 from backends.settings.service_types import ServiceID
-from common.system_queries import SystemQueries
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
 
@@ -62,7 +57,11 @@ class NoEngineSettings:
         cls.is_usable()
         cls.initialized = True
         BaseEngineSettings.config_settings(cls.service_key,
-                                           settings=[SettingProp.CACHE_SPEECH])
+                                           settings=[])
+        cache_speech_key: ServiceID = cls.service_key.with_prop(SettingProp.CACHE_SPEECH)
+        SettingsMap.define_setting(cache_speech_key,
+                                   setting_type=SettingType.BOOLEAN_TYPE,
+                                   service_status=StatusType.OK, persist=True)
         cls._config()
 
     @classmethod
@@ -97,6 +96,15 @@ class NoEngineSettings:
                                                  define_setting=True,
                                                  service_status=StatusType.OK,
                                                  persist=True)
+        speed_validator: NumericValidator
+        speed_validator = NumericValidator(cls.service_key.with_prop(SettingProp.SPEED),
+                                           minimum=.50, maximum=2.0,
+                                           default=1.2,
+                                           is_decibels=False,
+                                           is_integer=False, increment=45,
+                                           define_setting=True,
+                                           service_status=StatusType.OK,
+                                           persist=True)
 
         tmp_key: ServiceID
         tmp_key = cls.service_key.with_prop(SettingProp.VOLUME)

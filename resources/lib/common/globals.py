@@ -6,6 +6,8 @@ import xbmc
 
 from common.message_ids import MessageUtils
 
+DEBUG_ENABLED: bool = False
+
 
 class VoiceHintToggle(Enum):
     """
@@ -28,7 +30,8 @@ class VoiceHintToggle(Enum):
         current_value: ForwardRef('VoiceHintToggle') = Globals.voice_hint
         current_value = VoiceHintToggle((current_value.value + 1) % len(VoiceHintToggle))
         Globals.voice_hint = current_value
-        xbmc.log(f'HINT_TOGGLE: {current_value}')
+        if DEBUG_ENABLED:
+            xbmc.log(f'HINT_TOGGLE: {current_value}')
         return current_value
 
 

@@ -343,7 +343,7 @@
                 </setting>
                  <setting help="" id="speed.tts" label="32178" type="integer">
                     <level>4</level>
-                    <default>100</default>
+                    <default>120</default>
                     <control type="edit" format="integer">
                         <heading>32005</heading>
                     </control>
@@ -471,18 +471,6 @@
                     </control>
                     <visible>true</visible>
                 </setting>
-                <!--
-                <setting help="" id="voice.google" label="32178" type="string">
-                    <level>4</level>
-                    <constraints>
-                        <allowempty>true</allowempty>
-                    </constraints>
-                    <default>un-gb</default>
-                    <control type="edit" format="string">
-                        <heading>32178</heading>
-                    </control>
-                    <visible>true</visible>
-                </setting> -->
                 <setting help="" id="cache_speech.no_engine" label="32178"
                          type="boolean">
                     <level>4</level>

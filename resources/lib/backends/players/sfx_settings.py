@@ -44,13 +44,6 @@ class SFXSettings:
     service when none other is available
     """
 
-    _supported_input_formats: List[AudioType] = [AudioType.WAV]
-    _supported_output_formats: List[AudioType] = []
-    _provides_services: List[ServiceType] = [ServiceType.PLAYER]
-    SoundCapabilities.add_service(service_key, _provides_services,
-                                  _supported_input_formats,
-                                  _supported_output_formats)
-
     initialized: bool = False
     _available: bool | None = None
     _service_status: ServiceStatus = ServiceStatus()
@@ -83,6 +76,13 @@ class SFXSettings:
                                                define_setting=True,
                                                service_status=StatusType.OK,
                                                persist=True)
+
+        _supported_input_formats: List[AudioType] = [AudioType.WAV]
+        _supported_output_formats: List[AudioType] = []
+        _provides_services: List[ServiceType] = [ServiceType.PLAYER]
+        SoundCapabilities.add_service(cls.service_key, _provides_services,
+                                      _supported_input_formats,
+                                      _supported_output_formats)
 
         volume_validator = NumericValidator(cls.SFX_VOLUME_KEY,
                                             minimum=5, maximum=400,

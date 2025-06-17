@@ -4,7 +4,7 @@ from __future__ import annotations
 import threading
 from typing import Dict
 
-from common.logger import BasicLogger
+from common.logger import *
 from common.phrases import Phrase
 
 MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
@@ -52,6 +52,7 @@ class CacheEntryMgr:
     def work_complete(cls, phrase: Phrase) -> None:
         with cls.active_audio_lock:
             if cls.active_audio_creation.get(phrase.text) is None:
-                MY_LOGGER.debug(f'NOT LOCKED!!')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'NOT LOCKED!!')
             else:
                 del cls.active_audio_creation[phrase.text]

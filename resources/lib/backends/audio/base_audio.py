@@ -9,15 +9,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from backends.players.iplayer import IPlayer
-from backends.settings.i_constraints import IConstraints
-from backends.settings.i_validators import IConstraintsValidator
-from backends.settings.service_types import ServiceID, ServiceKey
+from backends.settings.service_types import ServiceID
 from backends.settings.service_unavailable_exception import ServiceUnavailable
-from backends.settings.setting_properties import SettingProp
-from backends.settings.settings_map import SettingsMap
 from cache.voicecache import VoiceCache
 from common import *
-from common import utils
 from common.base_services import BaseServices
 from common.constants import Constants
 from common.exceptions import ExpiredException
@@ -122,20 +117,22 @@ class AudioPlayer(IPlayer, BaseServices):
         phrase_serial: int = phrase.serial_number
         try:
             phrase.test_expired()  # Throws ExpiredException
-            # Use previous phrase's post_play_pause
-            delay_ms = max(phrase.get_pre_pause(), self._post_play_pause_ms)
-            self._post_play_pause_ms = phrase.get_post_pause()
-            #  pre_silence_path: Path = phrase.pre_pause_path()
-            #  post_silence_path: Path = phrase.post_pause_path()
-            waited: timedelta = datetime.now() - self._time_of_previous_play_ended
-            # TODO: Get rid of this wait loop and use phrase pauses
-            waited_ms = waited / timedelta(microseconds=1000)
-            delta_ms = delay_ms - waited_ms
-            if delta_ms > 0.0:
-                additional_wait_needed_s: float = delta_ms / 1000.0
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'pausing {additional_wait_needed_s} ms')
-                Monitor.exception_on_abort(timeout=float(additional_wait_needed_s))
+            DO_DELAY: bool = False
+            if DO_DELAY:
+                # Use previous phrase's post_play_pause
+                delay_ms = max(phrase.get_pre_pause(), self._post_play_pause_ms)
+                self._post_play_pause_ms = phrase.get_post_pause()
+                #  pre_silence_path: Path = phrase.pre_pause_path()
+                #  post_silence_path: Path = phrase.post_pause_path()
+                waited: timedelta = datetime.now() - self._time_of_previous_play_ended
+                # TODO: Get rid of this wait loop and use phrase pauses
+                waited_ms = waited / timedelta(microseconds=1000)
+                delta_ms = delay_ms - waited_ms
+                if delta_ms > 0.0:
+                    additional_wait_needed_s: float = delta_ms / 1000.0
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug(f'pausing {additional_wait_needed_s} ms')
+                    Monitor.exception_on_abort(timeout=float(additional_wait_needed_s))
 
             Monitor.exception_on_abort()
         except AbortException:
@@ -186,7 +183,6 @@ class AudioPlayer(IPlayer, BaseServices):
 
 
 class SubprocessAudioPlayer(AudioPlayer):
-    _logger: BasicLogger = None
     _availableArgs = None
     # Count appended to thread_name to make unique
     slave_player_count: int = 0
@@ -423,7 +419,7 @@ class SubprocessAudioPlayer(AudioPlayer):
             self._player_process = SimpleRunCommand(args,
                                                     phrase_serial=phrase_serial,
                                                     delete_after_run=delete_after_run,
-                                                    name='mplyr',
+                                                    name='plyr',
                                                     stop_on_play=stop_on_play)
             if MY_LOGGER.isEnabledFor(DEBUG_V):
                 MY_LOGGER.debug_v(
@@ -552,7 +548,7 @@ class SubprocessAudioPlayer(AudioPlayer):
                                                       keep_silent=keep_silent,
                                                       kill=kill)
         if self._player_process is not None:
-            self.destroy_simple_process()
+            self.destroy_simple_process(kill=True)
 
     def destroy(self):
         """
@@ -576,7 +572,7 @@ class SubprocessAudioPlayer(AudioPlayer):
         :return:
         """
         self.destroy_slave_process()
-        self.destroy_simple_process()
+        self.destroy_simple_process(kill=True)
 
     def destroy_slave_process(self):
         clz = type(self)
@@ -595,7 +591,7 @@ class SubprocessAudioPlayer(AudioPlayer):
             self.slave_player_process = None
             return
 
-    def destroy_simple_process(self):
+    def destroy_simple_process(self, kill: bool = True):
         clz = type(self)
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             MY_LOGGER.debug_v(f'DESTROY {clz.ID}')
@@ -605,7 +601,7 @@ class SubprocessAudioPlayer(AudioPlayer):
                 self._player_process = None
                 return
             try:
-                if self.kill:
+                if kill:
                     self._player_process.kill()
                 else:
                     self._player_process.terminate()
@@ -647,5 +643,5 @@ class SubprocessAudioPlayer(AudioPlayer):
 
     @classmethod
     def available(cls, ext=None) -> bool:
-        #  player_id: str = Settings.get_player_key()
+        #  player_id: str = Settings.get_player()
         raise NotImplementedError('base class')
