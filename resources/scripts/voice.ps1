@@ -29,6 +29,7 @@ Function New-TextToSpeechMessage {
 
 .EXAMPLE
     New-TextToSpeechMessage 'This is the text I want to have read out loud' -Voice Zira
+    or powershell.exe  "& { . '.\voice.ps1'; New-TextToSpeechMessage 'This is the text I want to have read out loud' Zira './foo.wav' }"
 #>
     [CmdletBinding()]
     param(
