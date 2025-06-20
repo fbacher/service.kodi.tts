@@ -493,7 +493,7 @@
                            <topic name="voice_topic_value" rank="7">
                               <labeled_by/>
                               <flows_from>106</flows_from>
-                              <outer_topic>voice_goup</outer_topic>
+                              <outer_topic>voice_group</outer_topic>
                               <topic_left/>
                               <topic_right/>
                               <topic_up>language</topic_up>
