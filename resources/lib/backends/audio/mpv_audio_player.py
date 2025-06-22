@@ -189,7 +189,7 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
         """
         clz = MPVAudioPlayer
         slave_pipe_dir: Path = Path(tempfile.mkdtemp(dir=TempFileUtils.temp_dir()))
-        self.slave_pipe_path = slave_pipe_dir.joinpath('mpv.tts')
+        self.slave_pipe_path = slave_pipe_dir / 'mpv.tts'
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             MY_LOGGER.debug_v(f'slave_pipe_path: {self.slave_pipe_path}')
         args: List[str] = []

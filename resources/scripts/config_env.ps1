@@ -6,9 +6,19 @@ Function Config_Kodi_Env {
     REQUIRES that user MANUALLY set PowerShell's ExecutionPolicy on this file before
     running:
 
+	From the 'search' menu on bottom of screen enter 'powershell'
         powershell
+        select 'Run as Administrator'
             Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+        When prompted, enter 'A' for 'all'
+        Enter your userid in place of <user_name>, below
             Unblock-File -Path "c:\Users\<user_name>\AppData\Roaming\Kodi\addons\service.kodi.tts\resources\scripts\config_env.ps1"
+        Finally, run the script (while still in powershell):
+        cd c:\Users\<user_name>\AppData\Roaming\Kodi\addons\service.kodi.tts\resources\scripts
+        . config_env
+        Config_Kodi_Env
+
+
 .NOTES
     Name: New-Config_Kodi_Env
     Author: Frank Feuerbacher
@@ -32,7 +42,8 @@ Function Config_Kodi_Env {
             Mandatory = $false
             )]
 
-        [string]  $TTSScriptPath = ("c:\Users\Frank" + "\AppData\Roaming\Kodi\addons\service.kodi.tts\resources\scripts"),
+        [string]  $TTSScriptPath = ("c:\Users\fbacher" + "\AppData\Roaming\Kodi\addons\service.kodi.tts\resources\scripts"),
+        [string]  $MPVScriptPath = ("c:\Users\fbacher" + "\AppData\Roaming\Kodi\addons\service.kodi.tts\resources\scripts"),
 
         [Parameter(
             Position = 2,
@@ -65,7 +76,6 @@ Function Config_Kodi_Env {
     }
 
     PROCESS {
-
         try {
         if (-not (Test-Path $KodiPath))
             {
@@ -116,6 +126,13 @@ Function Config_Kodi_Env {
             Write-Host "$TTSScriptPath\voice.ps1"
             Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
             Unblock-File -Path "$TTSScriptPath\voice.ps1"
+        }
+
+          if ($MPVScriptPath)
+        {
+            Write-Host "$MPVScriptPath\mpv_socket.ps1"
+            Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+            Unblock-File -Path "$MPVScriptPath\mpv_socket.ps1"
         }
 
          if ($eSpeakPath)

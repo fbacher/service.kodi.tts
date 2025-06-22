@@ -13,19 +13,17 @@
 <f12 mod="alt">Notification(Keypress, you pressed alt-f12, 5)</f12>
 <f12 mod="alt,shift">Notification(Keypress, you pressed alt-shift-f12, 5)</f12>
 <f12 mod="longpress">Notification(Keypress, you pressed long f12, 5)</f12>
-<h mod="alt">NotifyAll(service.kodi.tts, VOICE_HINT)</h> 
-<h mod="alt,longpress">NotifyAll(service.kodi.tts, VOICE_HINT_PAUSE)</h> 
-
+<h mod="alt">NotifyAll(service.kodi.tts, VOICE_HINT)</h>
 
   <STOP>NotifyAll(service.kodi.tts,STOP)</STOP>
   <SETTINGS>Addon.OpenSettings(service.kodi.tts)</SETTINGS>
 
   <f1 mod="ctrl">NotifyAll(service.kodi.tts,HELP_DIALOG)</f1>
 
-  <f11>NotifyAll(service.kodi.tts,CYCLE_DEBUG)</f11> 
-  <f11 mod="ctrl">NotifyAll(service.kodi.tts,DUMP_THREADS)</f11> 
+  <f11>NotifyAll(service.kodi.tts,CYCLE_DEBUG)</f11>
+  <f11 mod="ctrl">NotifyAll(service.kodi.tts,DUMP_THREADS)</f11>
 
-  <f12>NotifyAll(service.kodi.tts,TOGGLE_ON_OFF)</f12> 
+  <f12>NotifyAll(service.kodi.tts,TOGGLE_ON_OFF)</f12>
   <f12 mod="ctrl">NotifyAll(service.kodi.tts,SETTINGS.BACKEND_GUI)</f12>
   <plus mod="ctrl">NotifyAll(service.kodi.tts,VOL_UP)</plus>
   <minus mod="ctrl">NotifyAll(service.kodi.tts,VOL_DOWN)</minus>
@@ -40,8 +38,8 @@
 </keyboard>
 <!--    <remote>
       <red>NotifyAll(service.kodi.tts,VOL_UP)</red>
-      <green>NotifyAll(service.kodi.tts,VOL_DOWN)</green> 
+      <green>NotifyAll(service.kodi.tts,VOL_DOWN)</green>
       <subtitle>NotifyAll(service.kodi.tts,TOGGLE_ON_OFF)</subtitle>
     </remote> -->
-  </global> 
+  </global>
 </keymap>
