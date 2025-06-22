@@ -46,7 +46,7 @@ definitions: Dict[str, int]
 from common.logger import *
 
 # Default logging is info, otherwise debug_v
-if False:
+if True:
     definitions = {'tts': INFO}
 else:
     definitions = {
