@@ -1,6 +1,6 @@
-Welcome to the **Alpha1 **release of Kodi Text To Speech which provides basic TTS functionality to Kodi. It is based upon XBMC TTS which is no longer supported. This version of Kodi TTS is maintained by a different team and is a major release.
+Welcome to the **Alpha2 **release of Kodi Text To Speech which provides basic TTS functionality to Kodi. It is based upon XBMC TTS which is no longer supported. This version of Kodi TTS is maintained by a different team and is a major release.
 
-The goals of this early release are to provide basic functionality, iron out installation and configuration issues as well as get feedback. Functionality is limited: 
+The goals of this early release are to provide basic functionality, iron out installation and configuration issues as well as get feedback. Functionality is limited to just several TTS engines and players:
 
 For Linux:
 
@@ -15,40 +15,49 @@ For Windows:
 
 #Installation
 
-Since this Alpha release is not available from the Kodi repository, you will have to manually download and install Kodi TTS and dependent addons.
+First, install the latest released version of Kodi.
 
-Download and install two addons which are NOT available from the repository.
+Next, install the Kodi TTS addon as well as its dependents. Since this Alpha release is not available from the Kodi repository, you will have to manually download and install Kodi TTS and a dependent addon.
 
-  * script.module.langcodes from https://github.com/fbacher/script.module.langcodes/archive/refs/tags/v0.0.1-alpha.zip
-  * service.kodi.tts from https://github.com/fbacher/service.kodi.tts/archive/refs/tags/v.0.0.2-alpha.zip
+Download the two addons:
 
-In Kodi, go to **Settings -> Add-ons -> Add-on browser -> Install from zip file**. There will probably be a warning about installing from unofficial sites. Select to allow the installation (only if you want to). **Install script.module.langcodes** first. Choose the path where you downloaded each zip file above. After installation is complete, exit Kodi.
+  * [script.module.langcodes](https://github.com/fbacher/script.module.langcodes/archive/refs/tags/v0.0.1-alpha.zip)
+  * [service.kodi.tts](https://github.com/fbacher/service.kodi.tts/archive/refs/tags/v.0.0.2-alpha.zip)
+
+To install, in Kodi, go to **Settings -> Add-ons -> Add-on browser -> Install from zip file**. There will probably be a warning about installing from unofficial sites. Select to allow the installation. Install **script.module.langcodes** first. Choose the path where you downloaded each zip file above. After the installation of both is complete, exit Kodi.
 
 ##Install optional TTS engines and Players
 After installing the kodi addons, you may need to install one or more players and TTS engines.
 
 ###Linux
-I suggest that you install **mpv** to play audio. It is frugal with resources, has very good quality and when using caching and slave mode, is very responsive.
+I suggest that you install **mpv** to play audio. It is frugal with resources, is of very good quality, is very responsive when used with caching and slave mode. **mplayer** is the predessor to mpv and is supported for those who want it.
 
-Optionally install eSpeak-NG, which is typically available from your distribution
+Optionally install eSpeak-NG, which is typically available from your distribution.
 
-Almost certainly mpv, eSpeak and mplayer are available from your normal Linux distribution channels. Should be easy to find and install.
+Almost certainly mpv, eSpeak and mplayer are available from your normal Linux distribution channels. They should be easy to find and install.
 
 ###Windows
+Windows TTS (Navigator) is fairly high quality, runs locally and is builtin. It does require a Powershell script to use, which must be configured.
+
+Google TTS comes with Kodi TTS and requires no configuration. It does require mpv, however.
+
 I suggest that you install **mpv** to play audio on Windows, it can play the audio produced by either Google TTS or Navigator. It supports cached audio as well as both mp3 and wave files. **mpv** is NOT required if you use Windows TTS (Navigator), but I prefer using the cache and mpv.
 
-####Optionally install mpv
+eSpeak is available for those who like it.
 
-Install images can be found at https://github.com/shinchiro/mpv-winbuild-cmake/releases (this link is on the https://mpv.io/installation page). MPV version 0.37.0 or newer should be fine.
+####mpv
+
+Install images for [**mpv** are here](https://github.com/shinchiro/mpv-winbuild-cmake/releases) (this link is from [the official mpv installation page](the https://mpv.io/installation)). MPV version 0.37.0 or newer should be fine.
 
 Carefully choose the correct image for your platform. You want something like: https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20250621/**mpv-aarch64-**20250621-git-18defc8.7z. You DON'T want ffmpeg or a 'dev' build.
 
-The following file operations will require Admin privelege. I my case I was prompted to get Admin privelege.
+The following file operations will require Admin privilege.
 
-Create the folder **C:\Program Files\mpv**
-Unzip the downloaded files into the directory just created
-As admin, run the script **C:\Program Files\mpv\installer\mpv-install.bat**
+  * Create the folder **C:\Program Files\mpv**
+  * Unzip the downloaded files into the directory just created
+  * As admin, run the script **C:\Program Files\mpv\installer\mpv-install.bat**
 
+##
 ####Optionally install eSpeak-NG
 Install eSpeak-NG through the Windows App installer.
 
@@ -59,25 +68,34 @@ Here you have to launch PowerShell and enter several commands.
 REQUIRES that user MANUALLY set PowerShell's ExecutionPolicy on this file before running:
 
 From the 'search' menu on bottom of desktop enter 'powershell'
-    powershell
-    select 'Run as Administrator'
-Run the command
-     Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
-When prompted, enter 'A' for 'all'
-Enter your userid in place of <user_name>, below
+    * **powershell** should display as a choice to run
+    * select 'Run as Administrator'
+
+
+From Powershell, run the command
+
+        Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+        When prompted, enter 'A' for 'all'
+
+        Enter your userid in place of <user_name>, below
 
 While still in powershell, run the commands:
-cd "c:\Users\<user_name>\AppData\Roaming\Kodi\addons\service.kodi.tts\resources\scripts"
 
-Unblock-File -Path  .\config_env.ps1
+        cd "c:\Users\<user_name>\AppData\Roaming\Kodi\addons\service.kodi.tts\resources\scripts"
 
-Finally, run the script 
- . config_env       # Loads the script into powershell
-  Config_Kodi_Env   # Runs the function defined in the script
+        Unblock-File -Path  .\config_env.ps1
+
+Finally, run the script: 
+
+        . config_env       # Loads the script into powershell
+        Config_Kodi_Env    # Runs the function defined in the script
 
 
 At this point you should be able to run Kodi. A few seconds after starting Kodi you should hear a note, followed by speech. To see the configuration menu, you can press ***F12*** on the keyboard. If there is no voice or no configuration menu, then something went wrong and you should collect a log and send it to me.
+
+To exit configuration, enter Escape, or select the Cancel button at the bottom of the page.
 
 ###Third-party software:
 
@@ -105,59 +123,70 @@ Keyboard (and other input device) mappings are configured in .xml files in Kodi�
 
 What follows are the current definitions for all platforms:
 
-keyboard shortcut F11
 Function: Advanced to next logging mode
-Cycles through Severe, error, warning, debug and info
 
-keyboard shortcut ctrl F11
+        keyboard shortcut F11
+        Cycles through severe, error, warning, debug and info
+
 Function: dumps every python thread to the log
 
+        keyboard shortcut ctrl F11
+        Useful for debugging
+
 Function: Open Settings
-Launches the Kodi TTS configuration settings dialog
-keyboard shortcut: Ctrl-F12
+
+        keyboard shortcut: Ctrl-F12
+        Launches the Kodi TTS configuration settings dialog
 
 Function: STOP
-Causes currently voiced text to be skipped
-keyboard shortcut: STOP
+        keyboard shortcut: STOP
+        Causes currently voiced text to be skipped
 
 Function: VOICE_HINT
-Voice hint toggles voicing hint text which is currently only embedded in the kodi.tts dialogs.
-keyboard shortcut: Alt-h
+
+        keyboard shortcut: Alt-h
+        Voice hint toggles voicing hint text which is currently only embedded in the kodi.tts configuration and help dialogs.
 
 
 Function: REPEAT
-Repeat voicing the previous item, including complete context (Window name, heading, etc. on down to the item itself).
-keyboard shortcut: shift-F12
+
+        keyboard shortcut: shift-F12
+
+        Repeat voicing the previous item, including complete context (Window name, heading, etc. on down to the item itself).
 
 Function EXTRA
-Increase verbosity (more context)
+        Increase verbosity (more context)
 
 Function ITEM_EXTRA
 
 Function TOGGLE_ON_OFF
-Starts/stops Kodi TTS
-keyboard shortcut: f12
 
-Changes the volume of the voiced text (not general volume)
+        keyboard shortcut: f12
+        Starts/stops Kodi TTS
 
 Function VOL_UP
-keyboard shortcut: ctrl + (control plus) TTS volume UP
+
+        keyboard shortcut: ctrl + (control plus) TTS volume UP
+        Changes the volume of the voiced text (not general volume)
+
 
 Function VOL_DOWN
-keyboard shortcut: ctrl - (control minus) TTS volume Down
 
-Changes the speed of Voiced Text
+        keyboard shortcut: ctrl - (control minus) TTS volume Down
+        Changes the speed of Voiced Text
 
-Function: SPEED_UP / SLOW_DOWN
-keyboard shortcut: alt +
+Function: SPEED_UP
+        keyboard shortcut: alt +
+        Increases how fast the text is spoken
 
 Function: SLOW_DOWN
-keyboard shortcut: alt -
-Changes how fast text is read
+        keyboard shortcut: alt -
+        Reduces how fast text is read
 
 Function: Display Help Dialog
-This will launch Kodi’s document reader where you can get more information about how to use Kodi TTS.
-keyboard shortcut: ctrl F1
+
+        keyboard shortcut: ctrl F1
+        This will launch Kodi’s document reader where you can get more information about how to use Kodi TTS.
 
 
 ###Configuration
