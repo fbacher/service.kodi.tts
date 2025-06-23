@@ -3,8 +3,6 @@ from __future__ import annotations  # For union operator |
 
 import faulthandler
 import io
-import logging
-from logging import *
 from typing import Dict, Final
 #
 import os
@@ -46,7 +44,7 @@ definitions: Dict[str, int]
 from common.logger import *
 
 # Default logging is info, otherwise debug_v
-if True:
+if False:
     definitions = {'tts': INFO}
 else:
     definitions = {
@@ -63,12 +61,12 @@ else:
         'tts.backends.engines.speech_generator': DEBUG,
         'tts.backends.engines.windows.powershell': DEBUG_V,
         'tts.backends.engines.windows.powershell_settings': DEBUG,
-        'tts.backends.settings.language_info': DEBUG,
+        'tts.backends.settings.language_info': INFO,
         'tts.backends.settings.langcodes_wrapper': INFO,
         'tts.backends.settings.service_types': INFO,
         'tts.backends.settings.settings_helper': DEBUG,
         'tts.backends.settings.settings_map': INFO,
-        'tts.backends.settings.validators': INFO,
+        'tts.backends.settings.validators': DEBUG,
         'tts.backends.base': DEBUG,
         'tts.backends.audio.base_audio': DEBUG,
         'tts.backends.audio.mpv_audio_player': DEBUG,
@@ -85,10 +83,10 @@ else:
         'tts.common.phrases': INFO,
         'tts.common.settings_low_level': INFO,
         'tts.common.settings': INFO,
-        'tts.common.slave_communication': DEBUG_XV,
-        'tts.common.simple_run_command': DEBUG_V,
+        'tts.common.slave_communication': DEBUG,
+        'tts.common.simple_run_command': DEBUG,
         'tts.common.simple_pipe_command': DEBUG,
-        'tts.common.slave_run_command': DEBUG_XV,
+        'tts.common.slave_run_command': DEBUG,
         'tts.common.utils': INFO,
         'tts.utils.util': INFO,
         'tts.windows': INFO,
@@ -104,7 +102,7 @@ else:
         'tts.backends.audio.bootstrap_players': INFO,
         'tts.backends.players.mpv_player_settings': DEBUG,
         'tts.backends.players.mplayer_settings': INFO,
-        'tts.windowNavigation.configure': INFO,
+        'tts.windowNavigation.configure': DEBUG,
         'tts.windowNavigation.help_dialog': INFO,
         'tts.windowNavigation.selection_dialog': INFO,
         'tts.windowNavigation.settings_dialog': DEBUG

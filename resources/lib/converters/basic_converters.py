@@ -12,7 +12,7 @@ from common import *
 from backends.audio.sound_capabilities import ServiceType, SoundCapabilities
 from backends.backend_info_bridge import BackendInfoBridge
 from backends.settings.constraints import Constraints
-from backends.settings.service_types import Services
+from backends.settings.service_types import ServiceID, Services
 from common import utils
 from common.base_services import BaseServices
 from common.constants import Constants
@@ -313,10 +313,10 @@ class MPlayerAudioConverter(AudioConverter, BaseServices):
         self.configPitch: bool = False
 
     def init(self):
-        engine_id: str = Settings.get_engine_id()
+        engine_key: ServiceID = Settings.get_engine_key()
         self.configVolume, self.configSpeed, self.configPitch = \
             BackendInfoBridge.negotiate_engine_config(
-                    engine_id, self.canSetVolume(),
+                    engine_key, self.canSetVolume(),
                     self.canSetSpeed(), self.canSetPitch())
 
     def playArgs(self, path: str):
@@ -380,12 +380,12 @@ class MPlayerAudioConverter(AudioConverter, BaseServices):
         return True
 
     def getPlayerSpeed(self) -> float | None:
-        engine_id: str = Settings.get_engine_id()
+        engine_key: ServiceID = Settings.get_engine_key()
         engine_constraints: Constraints = BackendInfoBridge.getBackendConstraints(
-                engine_id, SettingProp.SPEED)
+                engine_key, SettingProp.SPEED)
         if engine_constraints is None:
             return None
-        engine_speed: float = engine_constraints.currentValue(engine_id)
+        engine_speed: float = engine_constraints.currentValue(engine_key)
         # Kodi TTS speed representation is 0.25 .. 4.0
         # 0.25 = 1/4 speed, 4.0 is 4x speed
         player_speed: float = engine_speed

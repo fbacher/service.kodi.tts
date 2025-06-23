@@ -10,7 +10,6 @@ from backends.settings.validators import (BoolValidator, GenderValidator, IntVal
                                           StringValidator, Validator)
 from common.logger import BasicLogger
 from common.service_status import StatusType
-from common.setting_constants import Backends, Genders
 
 module_logger = BasicLogger.get_logger(__name__)
 

@@ -10,7 +10,7 @@ from backends.settings.validators import EngineValidator
 
 
 class ServiceBroker:
-    _engine_validator: IEngineValidator = None
+    _engine_validator: IEngineValidator | EngineValidator = None
 
     @classmethod
     def get_engine_validator(cls) -> IEngineValidator | EngineValidator:

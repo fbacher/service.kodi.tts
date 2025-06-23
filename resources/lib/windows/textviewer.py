@@ -68,7 +68,7 @@ class TextViewerReader(WindowReaderBase):
     def processLines(self, lines) -> List[str]:
         ret: List[str] = []
         for l in lines:
-            if not re.search('\w', l):
+            if not re.search(r'\w', l):
                 continue
             ret.append(l.strip())
         return ret

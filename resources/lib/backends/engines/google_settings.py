@@ -343,32 +343,20 @@ class GoogleSettings:
                                    lang_check=False,
                                    tld='com',
                                    timeout=5.0
-                                   #  pre_processor_funcs=[
-                                   #     pre_processors.tone_marks,
-                                   #     pre_processors.end_of_line,
-                                   #     pre_processors.abbreviations,
-                                   #     pre_processors.word_sub,
-                                   # ],
-                                   # tokenizer_func=Tokenizer(
-                                   #         [
-                                   #             tokenizer_cases.tone_marks,
-                                   #             tokenizer_cases.period_comma,
-                                   #             tokenizer_cases.colon,
-                                   #             tokenizer_cases.other_punctuation,
-                                   #         ]
-                                   # ).run,
                                    )
                     my_gTTS.write_to_fp(byte_buffer)
                     x = byte_buffer.getvalue()
                     MY_LOGGER.debug(f'Size of test: {len(x)} bytes')
                     if len(x) > 4000:
                         status = StatusType.OK
-                except socket.gaierror:
-                    MY_LOGGER.error('Can not communicate with gtts server')
+                except socket.gaierror as e:
+                    MY_LOGGER.info(f'Can not communicate with gtts server {e}')
                     status = StatusType.BROKEN
-                except gtts.tts.gTTSError:
-                    MY_LOGGER.error('Can not communicate with gtts server')
+                    MY_LOGGER.exception('')
+                except gtts.tts.gTTSError as e:
+                    MY_LOGGER.info(f'Can not communicate with gtts server: {e.msg}')
                     status = StatusType.BROKEN
+                    MY_LOGGER.exception('')
                 except Exception:
                     MY_LOGGER.exception('Blew up in gtts')
                     status = StatusType.BROKEN

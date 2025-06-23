@@ -635,7 +635,7 @@ class BaseEngineService(BaseServices):
 
     @classmethod
     def update_voice_path(cls, phrase: Phrase) -> None:
-        raise NotImplementedError(f'active_engine: {Settings.get_engine_id()} \n'
+        raise NotImplementedError(f'active_engine: {Settings.get_engine_key()} \n'
                                   f'alt: {Settings.get_alternate_engine_id()}')
     '''
     @classmethod
@@ -746,12 +746,13 @@ class BaseEngineService(BaseServices):
     '''
 
     @classmethod
+    @deprecated
     def get_current_engine_id(cls) -> str:
         """
 
         @return:
         """
-        return Settings.get_engine_id()
+        return Settings.get_engine_key().service_key
 
     @classmethod
     def is_current_engine(cls, engine: ForwardRef('BaseEngineService')) -> bool:

@@ -688,7 +688,6 @@ class LanguageInfo:
         trans_name: str = Services(engine_key.service_id).translated_name
         return trans_name
 
-
     @property
     def translated_country_name(self) -> str:
         """
@@ -934,7 +933,7 @@ class LanguageInfo:
             return ''
 
         field_sep: str = ''  # '{field_sep}'
-        engine_key_str: str = f'   setting_id: {self.engine_key}{field_sep}'
+        engine_key_str: str = f'   engine_key: {self.engine_key}{field_sep}'
         language_id_str: str = f'   language_id: {self.language_id}{field_sep}'
         country_id_str: str = f'   country_id: {self.country_id}{field_sep}'
         region_id_str: str = f'   region_id: {self.region_id}{field_sep}'

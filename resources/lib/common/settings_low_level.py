@@ -1691,7 +1691,7 @@ class SettingsLowLevel:
     @classmethod
     def getSetting(cls, service_key: ServiceID,
                    default_value: Any | None = None) -> Any:
-        if service_key.setting_id == SettingProp.ENGINE:
+        if service_key.service_type == SettingProp.ENGINE:
             return cls.get_engine_id_ll()  # Returns ServiceID
 
         value: Any = cls._getSetting(service_key, default_value)

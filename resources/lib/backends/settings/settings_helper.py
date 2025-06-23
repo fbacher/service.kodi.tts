@@ -228,7 +228,7 @@ class SettingsHelper:
             Dict's indexed by language (en, fr, but not en-us).
             Values of this language dict are lists that contain
             all supported variations of a single language (en-us, en-gb...).
-            entries_by_engine: key: setting_id
+            entries_by_engine: key: engine_key
                         value: Dict[lang_family, List[languageInfo]]
                         lang_family (iso-639-1 or -2 code)
                         List[languageInfo} list of all languages supported by 
@@ -261,7 +261,8 @@ class SettingsHelper:
                 LanguageInfo.get_kodi_locale_info()
             kodi_language: langcodes.Language
             if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'kodi_lang: {kodi_lang}')
+                MY_LOGGER.debug(f'kodi_lang: {kodi_lang} kodi_locale: {kodi_locale} '
+                                f'kodi_language: {kodi_language}')
 
             #  Dict[str, Dict[str, List[LanguageInfo]]]
             # sorted_keys: List[Tuple[str, str]] = []
@@ -273,13 +274,13 @@ class SettingsHelper:
             # So to sort, we need to sort both the second level dict's keys
             # and the List of LangInfos
 
-            # First, create sorted list of engine keys by sorting on their label
+            # First, create sorted list of engines by sorting on their label
             engine_choices: List[Choice] = []
             for engine_key in entries.keys():
                 engine_key: ServiceID
                 choice: Choice
                 if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'service_key: {engine_key} type: {type(engine_key)}')
+                    MY_LOGGER.debug(f'engine_key: {engine_key} type: {type(engine_key)}')
                 engine_label: str = LanguageInfo.get_translated_engine_name(engine_key)
                 choice = Choice(label=engine_label, value=engine_key.service_id,
                                 choice_index=0, engine_key=engine_key,
@@ -303,9 +304,10 @@ class SettingsHelper:
                                     f'current_lang_id: {current_engine_lang_id}')
                 language_entry:  Dict[str, List[LanguageInfo]]
                 language_entry = entries[engine_key]
-                # We only care about the current language
+
+                # We only care about Kodi's language
                 languages: List[LanguageInfo] = language_entry.get(kodi_lang)
-                if languages is None:
+                if languages is None or len(languages) == 0:
                     if MY_LOGGER.isEnabledFor(DEBUG):
                         MY_LOGGER.debug(f'Language {kodi_lang} not supported for'
                                         f' this engine: {engine_key}')
@@ -315,12 +317,10 @@ class SettingsHelper:
 
                 engine_supported_voices: int = 0
                 engine_label: str = ''
-                lang_info = None
                 for lang_info in languages:
                     lang_info: LanguageInfo
                     engine_label = lang_info.translated_engine_name
                     engine_supported_voices += 1
-
                     # Get (text) language differences between the current locale
                     # and the proposed language
                     match_distance: int
@@ -337,7 +337,8 @@ class SettingsHelper:
                     choice: Choice
                     choice = Choice(label=label, value=engine_key.service_id,
                                     choice_index=-1,
-                                    sort_key=key, lang_info=lang_info,
+                                    sort_key=key,
+                                    lang_info=lang_info,
                                     engine_key=lang_info.engine_key,
                                     match_distance=match_distance)
                     engines_langs.append(choice)
@@ -373,6 +374,7 @@ class SettingsHelper:
                                               f'distance: {choice.match_distance} '
                                               f'matching_sort_key: '
                                               f'{current_matching_choice.sort_key}')
+                            MY_LOGGER.debug_v(f'choice_to_check: {choice_to_check}')
                         if current_matching_choice.sort_key == choice_to_check.sort_key:
                             matching_choice = choice_to_check
                             break
@@ -391,7 +393,7 @@ class SettingsHelper:
                                           f'choice_key: {choice_to_add.engine_key} '
                                           f'voice: {choice.lang_info.engine_voice_id} '
                                           f'distance: {choice.match_distance}')
-                    final_choices.append(choice_to_add)
+                final_choices.append(choice_to_add)
                 idx += 1
             # Finished processing all engines
 

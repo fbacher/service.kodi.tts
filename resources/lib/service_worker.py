@@ -704,7 +704,7 @@ class TTSService:
         :param engine_id:
         :return:
         """
-        new_active_engine: BaseServices
+        new_active_engine: BaseServices | ITTSBackendBase
         if GENERATE_BACKUP_SPEECH:
             new_active_engine = cls.start_engine(engine_id=EngineType.GOOGLE,
                                                  player_id=PlayerType.SFX)
@@ -777,20 +777,29 @@ class TTSService:
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'engine_id set')
         except ServiceUnavailable:
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'Got ServiceUnavailable engine: {engine_id} '
+                                f'player_key: {player_id}\n Configuring engine')
+            engine_key = None
+        if engine_key is None:
             try:
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'Got ServiceUnavailable engine: {engine_id} '
-                                    f'player_key: {player_id}\n Configuring engine')
-                try:
-                    configure: Configure = Configure.instance()
-                    configure.validate_repair(engine_key=engine_key)
-                except ServiceUnavailable:
-                    engine_key = ServiceID(ServiceType.ENGINE, EngineType.NO_ENGINE)
-                    player_id = PlayerType.SFX
-                    Settings.set_player(player_id, engine_key=engine_key)
+                configure: Configure = Configure.instance()
+                engine_key = configure.validate_repair(engine_key=engine_key,
+                                                       commit_current_engine_on_repair=
+                                                       True)
+                if engine_key is not None:
                     Settings.set_engine(engine_key)
+            except ServiceUnavailable:
+               engine_key = None
             except Exception:
                 MY_LOGGER.exception('')
+        if engine_key is None:
+            # Use fail-safe non-engine to voice some fixed messages
+            MY_LOGGER.info(f'Using fail-safe engine: {EngineType.NO_ENGINE}')
+            engine_key = ServiceID(ServiceType.ENGINE, EngineType.NO_ENGINE)
+            player_id = PlayerType.SFX
+            Settings.set_player(player_id, engine_key=engine_key)
+            Settings.set_engine(engine_key)
         try:
             new_active_backend = BaseServices.get_service(engine_key)
             if MY_LOGGER.isEnabledFor(DEBUG):
@@ -958,9 +967,9 @@ class TTSService:
 
         :return:
         """
-        engine_id = Settings.get_engine_id()
+        engine_key: ServiceID = Settings.get_engine_key()
         if (cls.active_backend is not None
-                and engine_id == cls.active_backend.service_id):
+                and engine_key == cls.active_backend.service_key):
             return
         cls.initTTS()
 

@@ -200,6 +200,9 @@ class SettingsMap:
         Retrieves the id of available services of the given service_type, or all types
         if omitted. Settings are not returned, just services.
 
+        For Engine and Player types, the results are in Engine or Player preference
+        order.
+
         :param service_type:
         :return:
         """
@@ -212,6 +215,8 @@ class SettingsMap:
         for service_type in service_types:
             service_type: ServiceType
             for service_key in SERVICES_BY_TYPE[service_type]:
+                # For engine and player types, these are in preference order.
+                # Therefore, the returned available values will be in preference order
                 # example: service_key Engine.google, Engine.espeak, player.mpv
                 # Does NOT include tts.tts.*
                 service_key: StrEnum
@@ -228,7 +233,8 @@ class SettingsMap:
                 service_info: ServiceInfo
                 service_info = cls.service_info_map.get(service_id.key)
                 if service_info is None:
-                    MY_LOGGER.warning(f'No ServiceInfo found for {service_id.key}')
+                    if MY_LOGGER.isEnabledFor(DEBUG_V):
+                        MY_LOGGER.debug_v(f'No ServiceInfo found for {service_id.key}')
                     continue
                 service_status: StatusType = service_info.service_status
 

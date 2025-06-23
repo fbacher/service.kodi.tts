@@ -301,7 +301,7 @@ class Configure:
             current_engine_key: ServiceID = ServiceKey.CURRENT_ENGINE_KEY
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'engine: {engine_key} current_engine: '
-                                f'{Settings.get_engine_id()} '
+                                f'{Settings.get_engine_key} '
                                 f'repair: {repair} '
                                 f'save_as_current: {save_as_current}')
             # See if we can cfg engine
@@ -1333,7 +1333,8 @@ class Configure:
                 standalone = True
                 self.restore_settings(msg='exit select_defaults', initial_frame=False)
 
-    def validate_repair(self, engine_key: ServiceID) -> None:
+    def validate_repair(self, engine_key: ServiceID | None,
+                        commit_current_engine_on_repair: bool = False) -> ServiceID:
         """
         Verifies that the given engine's configuration is valid and repair as
         needed.
@@ -1341,8 +1342,18 @@ class Configure:
         Looks for conflicting settings or for use of broken or missing services.
         Repairs problems as needed to produce a usable configuration.
 
-        :param engine_key: Engine to examine
-        :return:
+        Note that commit_current_engine_on_repair is to be used outside normal
+        configuration, when a repair must be made to an existing configuration
+        in order to get TTS running (such as startup). You COULD just let it
+        do the repair on ever restart, but the logs may get cluttered and the
+        users could be confused.
+
+        :param engine_key: Engine to examine, if None, then the best available
+            engine is used
+        :param commit_current_engine_on_repair: If True, then IFF the engine config
+               is invalid, then commit the repaired configuration's engine as the
+               current_engine
+        :return: Returns the engine_key of the rapaired, or replaced engine
 
         :raises ServiceUnavailable: When engine is broken/unavailable
         """
@@ -1359,21 +1370,33 @@ class Configure:
             else:
                 self.restore_settings('enter validate_repair')
             # Ensure settings for engine are loaded
-            try:
-                BaseServices.get_service(engine_key)
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'got service: {engine_key}')
-            except ServiceUnavailable as e:
-                active: bool = False
-                if engine_key.service_id == SettingsLowLevel.get_engine_id_ll(
-                        ignore_cache=True).service_id:
-                    active = True
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'Service Unavailable: {e}')
-                    MY_LOGGER.exception('')
-                raise ServiceUnavailable(service_key=engine_key,
-                                         reason=e.reason,
-                                         active=active)
+            if engine_key is not None:
+                try:
+                    BaseServices.get_service(engine_key)
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug(f'got service: {engine_key}')
+                except ServiceUnavailable:
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.exception(f'Bad engine choice: {engine_key} choosing '
+                                            f'another engine.')
+                    engine_key = None
+                except Exception:
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.exception(f'Bad engine choice: {engine_key} choosing '
+                                            f'another engine.')
+                    engine_key = None
+                    '''
+                    active: bool = False
+                    if engine_key.service_id == SettingsLowLevel.get_engine_id_ll(
+                            ignore_cache=True).service_id:
+                        active = True
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug(f'Service Unavailable: {e}')
+                        MY_LOGGER.exception('')
+                    raise ServiceUnavailable(service_key=engine_key,
+                                             reason=e.reason,
+                                             active=active)
+                '''
             choices, current_choice_index = self.get_engine_choices(
                     engine_key=engine_key)
             choices: List[Choice]
@@ -1391,18 +1414,23 @@ class Configure:
                     if MY_LOGGER.isEnabledFor(DEBUG):
                         MY_LOGGER.debug(f'Can not use previous configuration. '
                                         f'Reconfiguring')
-                    self.configure_engine(choice, repair=True, save_as_current=False)
+                    self.configure_engine(choice, repair=True,
+                                          save_as_current=commit_current_engine_on_repair)
                 self.commit_settings()
+                engine_key = choice.engine_key
+            else:
+                engine_key = None
         except ServiceUnavailable:
             reraise(*sys.exc_info())
         except Exception as e:
             MY_LOGGER.exception('')
         finally:
             if standalone:
-                self.restore_settings(msg='exit select_defaults', initial_frame=True)
+                self.restore_settings(msg='exit validate_repair', initial_frame=True)
             else:
                 standalone = True
-                self.restore_settings(msg='exit select_defaults', initial_frame=False)
+                self.restore_settings(msg='exit validate_repair', initial_frame=False)
+        return engine_key
 
     def set_engine_field(self, engine_key: ServiceID | None = None) -> None:
         """
@@ -1696,8 +1724,8 @@ class Configure:
             MY_LOGGER.debug_v(f'Settings saved/committed')
         #  TTSService.get_instance().checkBackend()
         if MY_LOGGER.isEnabledFor(DEBUG_V):
-          MY_LOGGER.debug_v(f'original_depth: {self._original_stack_depth} stack_depth: '
-                            f'{SettingsManager.get_stack_depth()}')
+            MY_LOGGER.debug_v(f'original_depth: {self._original_stack_depth}: '
+                              f'stack_depth: {SettingsManager.get_stack_depth()}')
 
     def save_settings(self, msg: str, initial_frame: bool = False) -> None:
         """

@@ -17,6 +17,7 @@ from backends.settings.service_types import (PlayerType, ServiceKey, Services,
                                              ServiceID, TTS_Type)
 from backends.settings.setting_properties import SettingProp
 from backends.settings.settings_map import SettingsMap
+from common.deprecated import deprecated
 from common.exceptions import *
 from common.logger import *
 from common.service_broker import ServiceBroker
@@ -127,7 +128,7 @@ class Settings(SettingsLowLevel):
                         service_id: str | None = None,
                         service_type: ServiceType = ServiceType.ENGINE) -> ServiceID:
         if service_id is None:
-            service_id = cls.get_engine_id()
+            service_id = cls.get_engine_key().service_id
         return ServiceID(service_type, service_id, property_id)
 
     @classmethod
@@ -142,6 +143,7 @@ class Settings(SettingsLowLevel):
         return engine_id_validator.get_service_key()
 
     @classmethod
+    @deprecated
     def get_engine_id(cls, bootstrap: bool = False) -> str | None:
         """
         Gets the current engine_id
@@ -171,6 +173,7 @@ class Settings(SettingsLowLevel):
         return
 
     @classmethod
+    @deprecated
     def get_alternate_engine_id(cls) -> str | None:
         """
            Returns the id of the engine to use in case the current/ctive
