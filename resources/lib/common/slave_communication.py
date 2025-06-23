@@ -756,12 +756,12 @@ class SlaveCommunication:
             if self.get_state() != RunState.RUNNING:
                 return
             if self.fifo_out is not None:
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'FIFO_OUT: {text}| last_played_idx: '
-                                    f'{self._player_state.last_played_idx()} '
-                                    f'delta: {self._player_state.remaining_to_play()} '
-                                    'transaction # : '
-                                    f'{self.latest_config_transaction_num}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'FIFO_OUT: {text}| last_played_idx: '
+                                      f'{self._player_state.last_played_idx()} '
+                                      f'delta: {self._player_state.remaining_to_play()} '
+                                      'transaction # : '
+                                      f'{self.latest_config_transaction_num}')
                 self.fifo_out.write(f'{text}\n')
                 self.fifo_out.flush()
                 if pre_pause:
@@ -888,15 +888,16 @@ class SlaveCommunication:
                     line = self.fifo_in.readline()
                     if len(line) > 0:
                         self.fifo_initialized = True
-                        if MY_LOGGER.isEnabledFor(DEBUG):
-                            MY_LOGGER.debug(f'FIFO_IN: {line}')
+                        if MY_LOGGER.isEnabledFor(DEBUG_V):
+                            MY_LOGGER.debug_v(f'FIFO_IN: {line}')
                 except ValueError as e:
                     rc = self.slave.rc
                     if rc is not None:
                         self.rc = rc
                         # Command complete
                         finished = True
-                        MY_LOGGER.debug(f'mpv process ended')
+                        if MY_LOGGER.isEnabledFor(DEBUG):
+                            MY_LOGGER.debug(f'mpv process ended')
                         break
                     else:
                         MY_LOGGER.exception('')
