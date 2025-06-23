@@ -1,31 +1,28 @@
 Welcome to the **Alpha1 **release of Kodi Text To Speech which provides basic TTS functionality to Kodi. It is based upon XBMC TTS which is no longer supported. This version of Kodi TTS is maintained by a different team and is a major release.
 
-The goals of this early release are to provide basic functionality, iron out installation and configuration issues as well as get feedback. Functionality is limited: Two TTS engines: **eSpeak-ng** and **Google TTS** are supported on Linux and Windows. In addition, **Navigator** is supported on Windows. Similarly, **MPV**, **Mplayer** and Kodi's built-in player (**XFS**) are supported on Linux, while on Windows, **MPV**, **XFS** and **Navigator** are supported.
+The goals of this early release are to provide basic functionality, iron out installation and configuration issues as well as get feedback. Functionality is limited: 
+
+For Linux:
+
+   * TTS engines: **eSpeak-ng** and **Google TTS**
+   * Audio players: **MPV**, **Mplayer** and Kodi's built-in player (**XFS**)
+
+
+For Windows:
+
+   * TTS engines: **Navigator**, **eSpeak-ng** and **Google TTS**
+   * Audio players: **MPV**, **Navigator** and **XFS**
 
 #Installation
 
 Since this Alpha release is not available from the Kodi repository, you will have to manually download and install Kodi TTS and dependent addons.
 
-First, install addons which are available from the repository:
-In Kodi, go to **Settings -> Add-ons -> Add-on browser -> Install from repository**
+Download and install two addons which are NOT available from the repository.
 
-Install the following (below minimum versions are listed):
+  * script.module.langcodes from https://github.com/fbacher/script.module.langcodes/archive/refs/tags/v0.0.1-alpha.zip
+  * service.kodi.tts from https://github.com/fbacher/service.kodi.tts/archive/refs/tags/v.0.0.2-alpha.zip
 
-
-  * idna 3.4.0
-  * certifi 20023.5.7
-  * chardet 5.1.0
-  * requests 2.31.0
-  * six 1.160+matrix.1
-  * typing_extensions 4.7.1
-  * urllib3 2.2.3
-
-Next, download and install two addons which are NOT available from the repository.
-
-  * script.module.langcodes
-  * service.kodi.tts
-
-In Kodi, go to **Settings -> Add-ons -> Add-on browser -> Install from zip file**. There will probably be a warning about installing from unofficial sites. Select to allow the installation (only if you want to). Choose the path where you downloaded each zip file above. After installation is complete, exit Kodi.
+In Kodi, go to **Settings -> Add-ons -> Add-on browser -> Install from zip file**. There will probably be a warning about installing from unofficial sites. Select to allow the installation (only if you want to). **Install script.module.langcodes** first. Choose the path where you downloaded each zip file above. After installation is complete, exit Kodi.
 
 ##Install optional TTS engines and Players
 After installing the kodi addons, you may need to install one or more players and TTS engines.
