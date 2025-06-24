@@ -130,7 +130,6 @@ class Constants:
             Path(r'C:\Program Files\eSpeak NG/espeak-ng-data'))
         Constants.ESPEAK_PATH_LINUX = Path('/usr/bin/')
         Constants.ESPEAK_PATH_WINDOWS = Path(r'C:\Program Files\eSpeak NG')
-
         Constants.KEYMAPS_PROTO_PATH = Constants.RESOURCES_PATH / 'keymaps'
         Constants.KEYMAPS_PATH = Constants.USER_DATA_PATH / 'keymaps'
         Constants.KODI_ADDON = addon
@@ -165,9 +164,8 @@ class Constants:
                          xbmc.LOGINFO)
             Constants.ESPEAK_COMMAND = Constants.ESPEAK_COMMAND_WINDOWS
             Constants.ESPEAK_DATA_PATH = Constants.ESPEAK_DATA_PATH_WINDOWS
-
+            xbmc.log(f'espeak path: {espeak_dir} espeak_data_dir: {espeak_data_dir}')
             mpv_dir = os.environ.get('MPV_PATH', '')
-            xbmc.log(f'mpv_dir: {mpv_dir}')
             if mpv_dir:
                 Constants.MPV_PATH = str(Path(mpv_dir) / Constants.MPV_PATH_WINDOWS)
                 if DEBUG_LOGGING:
@@ -175,7 +173,6 @@ class Constants:
                              f'{Constants.MPV_PATH_WINDOWS}', xbmc.LOGDEBUG)
             else:
                 Constants.MPV_PATH = Constants.MPV_PATH_WINDOWS
-                xbmc.log(f'Not so good mpv_dir: {mpv_dir}')
             if DEBUG_LOGGING:
                 xbmc.log(f'mpv_dir: {mpv_dir} MPV_PATH: {Constants.MPV_PATH}',
                          xbmc.LOGDEBUG)

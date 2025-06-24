@@ -128,12 +128,12 @@ Function Config_Kodi_Env {
             Unblock-File -Path "$TTSScriptPath\voice.ps1"
         }
 
-          if ($MPVScriptPath)
-        {
-            Write-Host "$MPVScriptPath\mpv_socket.ps1"
-            Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-            Unblock-File -Path "$MPVScriptPath\mpv_socket.ps1"
-        }
+        #  if ($MPVScriptPath)
+        # {
+        #     Write-Host "$MPVScriptPath\mpv_socket.ps1"
+        #     Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+        #     Unblock-File -Path "$MPVScriptPath\mpv_socket.ps1"
+        # }
 
          if ($eSpeakPath)
         {

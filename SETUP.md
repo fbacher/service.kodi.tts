@@ -49,7 +49,7 @@ eSpeak is available for those who like it.
 
 Install images for [**mpv** are here](https://github.com/shinchiro/mpv-winbuild-cmake/releases) (this link is from [the official mpv installation page](the https://mpv.io/installation)). MPV version 0.37.0 or newer should be fine.
 
-Carefully choose the correct image for your platform. You want something like: https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20250621/**mpv-aarch64-**20250621-git-18defc8.7z. You DON'T want ffmpeg or a 'dev' build.
+Carefully choose the correct image for your platform. You want something that has "mpv-x86_64" in its name, like: https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20250623/**mpv-x86_64**-20250623-git-18defc8.7z. You DON'T want ffmpeg or a 'dev' build. If the build you install doesn't run (if it launches it should be ok), then try another build. Some are built with different compilers, others are for different cpus. Intel/amd should have "mpv-x86_64" in the name.
 
 The following file operations will require Admin privilege.
 
@@ -89,8 +89,8 @@ While still in powershell, run the commands:
 
 Finally, run the script: 
 
-        . config_env       # Loads the script into powershell
-        Config_Kodi_Env    # Runs the function defined in the script
+        . .\config_env.ps1   # Loads the script into powershell
+        Config_Kodi_Env      # Runs the function defined in the script
 
 
 At this point you should be able to run Kodi. A few seconds after starting Kodi you should hear a note, followed by speech. To see the configuration menu, you can press ***F12*** on the keyboard. If there is no voice or no configuration menu, then something went wrong and you should collect a log and send it to me.
