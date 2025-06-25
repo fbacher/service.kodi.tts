@@ -101,10 +101,10 @@ class ITTSBackendBase(IBackend):
     def scale_db_to_percent(self, value, lower_bound=0, upper_bound=100):
         raise Exception('Not Implemented')
 
-    def volumeUp(self) -> None:
-        raise Exception('Not Implemented')
+    def change_speed(self, faster: bool) -> str:
+        raise NotImplemented()
 
-    def volumeDown(self) -> None:
+    def change_volume(self, louder: bool) -> str:
         raise Exception('Not Implemented')
 
     def flagAsDead(self, reason=''):

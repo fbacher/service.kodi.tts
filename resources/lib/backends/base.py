@@ -29,6 +29,7 @@ from common.exceptions import ExpiredException
 from common.garbage_collector import GarbageCollector
 from common.kodi_player_monitor import KodiPlayerMonitor, KodiPlayerState
 from common.logger import *
+from common.message_ids import MessageId
 from common.messages import Messages
 from common.monitor import Monitor
 from common.phrases import Phrase, PhraseList
@@ -465,32 +466,48 @@ class BaseEngineService(BaseServices):
         return SettingsMap.get_validator(setting_id=setting_id,
                                          setting_id=setting_id)
     '''
+    def change_speed(self, faster: bool) -> str:
+        """
+        Increases/decreases speed by one unit. The change is immediate and not
+        persisted.
 
-    def volumeUp(self) -> str:
-        clz = type(self)
-        volume_val: INumericValidator
-        volume_val = SettingsMap.get_validator(
-                clz.service_key.with_prop(SettingProp.VOLUME))
-        volume_val: TTSNumericValidator
-        positive_increment: bool = True
-        new_value: int | float = volume_val.adjust(positive_increment)
-
+        :param faster:
+        :return:
+        """
+        speed_val: INumericValidator | TTSNumericValidator
+        speed_val = SettingsMap.get_validator(ServiceKey.SPEED)
+        if speed_val is None:
+            raise NotImplementedError
+        orig_speed: float = speed_val.get_value()
+        new_speed: float = speed_val.adjust(faster)
         if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'Volume UP: {new_value}')
-        return f'Volume Up now {new_value} {self.volumeSuffix}'
+            MY_LOGGER.debug(f'orig_speed: {orig_speed} NEW_SPEED: {new_speed}')
+        msg_id: MessageId = MessageId.SPEED_UP
+        if not faster:
+            msg_id = MessageId.SLOW_DOWN
+        label: str = msg_id.get_formatted_msg(f'{new_speed:.1f}')
+        return label
 
-    def volumeDown(self) -> str:
-        clz = type(self)
-        volume_val: INumericValidator
-        volume_val = SettingsMap.get_validator(
-                clz.service_key.with_prop(SettingProp.VOLUME))
-        volume_val: TTSNumericValidator
-        positive_increment: bool = False
-        new_value: int | float = volume_val.adjust(positive_increment)
+    def change_volume(self, louder: bool) -> str:
+        """
+          Decreases the TTS volume. Does NOT impact Kodi's volume (not persisted)
 
+          :louder: If True, then increase the volume by one unit, otherwise decrease
+                   the volume
+          :return: Translated message describing what was done
+          """
+        volume_val: INumericValidator | TTSNumericValidator
+        volume_val = SettingsMap.get_validator(ServiceKey.VOLUME)
+        if volume_val is None:
+            raise NotImplementedError
+        new_value: float = volume_val.adjust(louder)
         if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'Volume DOWN: {new_value}')
-        return f'Volume Down now {new_value} {self.volumeSuffix}'
+            MY_LOGGER.debug(f'Volume louder: {louder}: {new_value}')
+        if louder:
+            label: str = MessageId.VOLUME_UP_DB.get_formatted_msg(f'{new_value:.1f}')
+        else:
+            label: str = MessageId.VOLUME_DOWN_DB.get_formatted_msg(f'{new_value:.1f}')
+        return label
 
     def flagAsDead(self, reason=''):
         self.dead = True

@@ -340,9 +340,13 @@ class TTSService:
         elif command == Commands.ITEM_EXTRA:  # What is this?
             cls.sayItemExtra(cls.window_state)
         elif command == Commands.VOL_UP:
-            cls.volumeUp()
+            cls.change_volume(louder=True)
         elif command == Commands.VOL_DOWN:
-            cls.volumeDown()
+            cls.change_volume(louder=False)
+        elif command == Commands.SPEED_UP:
+            cls.change_speed(faster=True)
+        elif command == Commands.SLOW_DOWN:
+            cls.change_speed(faster=False)
         elif command == Commands.STOP:
             cls.stopSpeech()
         elif command == Commands.SHUTDOWN:
@@ -1260,12 +1264,12 @@ class TTSService:
                 MY_LOGGER.debug(f'Before driver.say')
 
     @classmethod
-    def volumeUp(cls) -> None:
+    def change_speed(cls, faster: bool) -> None:
         """
-        Increases the TTS volume. Does NOT impact Kodi's volume
+        Slows down the rate of play (not persisted)
         :return:
         """
-        msg: str | None = cls.get_tts().volumeUp()
+        msg: str | None = cls.get_tts().change_speed(faster=faster)
         if not msg:
             return
         msg: str
@@ -1274,24 +1278,26 @@ class TTSService:
             cls.sayText(phrases)
         except ExpiredException:
             if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'EXPIRED at VolumeUp')
+                MY_LOGGER.debug(f'EXPIRED at change_speed')
 
     @classmethod
-    def volumeDown(cls) -> None:
+    def change_volume(cls, louder: bool) -> None:
         """
-          Decreases the TTS volume. Does NOT impact Kodi's volume
+          Decreases the TTS volume. Does NOT impact Kodi's volume (not persisted)
+
+          :louder: If True, then increase the volume by one unit, otherwise decrease
+                   the volume
           :return:
           """
-        msg: str | None = cls.get_tts().volumeDown()
+        msg: str | None = cls.get_tts().change_volume(louder)
         if not msg:
             return
-        msg: str
         try:
             phrases: PhraseList = PhraseList.create(texts=msg, interrupt=True)
             cls.sayText(phrases)
         except ExpiredException:
             if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'EXPIRED at VolumeDown')
+                MY_LOGGER.debug(f'EXPIRED at change_volume')
 
     @classmethod
     def stopSpeech(cls) -> None:

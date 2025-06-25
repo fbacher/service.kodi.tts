@@ -251,6 +251,17 @@ class TTSNumericValidator(BaseNumericValidator):
     def get_value_from(self, raw_value: int,
                        convert: ConvertType = ConvertType.NONE,
                        is_integer: bool = False) -> int | float:
+        """
+        Returns the scaled value using the given raw value
+
+        :param raw_value: Integral value, same as what is stored in settings.xml
+                          The value returned value is scaled according to the
+                          internal_scale_factor
+        :param convert: If True, then the scaled value is converted to an int or
+                        float, depending upon is_integer
+        :param is_integer:
+        :return:
+        """
         # internal_value: int = self.get_raw_value()
         internal_value = min(raw_value, self.maximum)
         internal_value = max(internal_value, self.minimum)
@@ -353,19 +364,20 @@ class TTSNumericValidator(BaseNumericValidator):
         if self.const:
             return self.get_value()
 
-        value: float | int = self.get_value_from(self.increment,
-                                                 convert=ConvertType.NONE,
-                                                 is_integer=self.is_integer)
-        current = self.get_value_from(self.get_raw_value(),
-                                      convert=ConvertType.NONE,
-                                      is_integer=self.is_integer)
+        increment: int = self.increment
         if not positive_increment:
-            value = -value
-        current += value
-        self.set_value(current)
+            increment = - increment
+        new_raw_value: int = self.get_raw_value() + increment
+        new_value: float | int = self.get_value_from(new_raw_value,
+                                                     convert=ConvertType.NONE,
+                                                     is_integer=self.is_integer)
         if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'adjust value: {value} '
-                            f'current: {current} result: {self.get_value()}')
+            current = self.get_value_from(self.get_raw_value(),
+                                          convert=ConvertType.NONE,
+                                          is_integer=self.is_integer)
+            MY_LOGGER.debug(f'increment: {self.increment} new_raw_value: {new_raw_value} '
+                            f'new_value: {new_value} current: {current}')
+        self.set_value(new_value)
         return self.get_value()   # Handles range checking
 
 

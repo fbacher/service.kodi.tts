@@ -497,6 +497,8 @@ class SubprocessAudioPlayer(AudioPlayer):
             phrase.test_expired()  # Throws ExpiredException
             volume: float = self.get_player_volume(as_decibels=False)
             speed: float = self.get_player_speed()
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'volume: {volume} speed: {speed}')
             self.slave_player_process.set_channels(Channels.STEREO)
             self.slave_player_process.add_phrase(phrase, volume, speed)
             # MY_LOGGER.debug(f'slave state: {self.slave_player_process.get_state()}')

@@ -13,6 +13,14 @@ msgstr ""
 "Language: en_gb\n"
 "Plural-Forms: nplurals=2; plural=(n != 1)\n"
 
+#
+# Missing message ids
+# missing 32057 - 32099
+# missing 32251 - 32296
+# missing 32348 - 32699
+# missing 32721 - 32799
+# missing 32805 - 32805
+
 msgctxt "#32001"
 msgid "Engine"
 msgstr "Engine"
@@ -224,6 +232,25 @@ msgstr ""
 msgctxt "#32052"
 msgid "Voice hints after inactivity"
 msgstr ""
+
+    # Volume Up, now {new_value} {self.volumeSuffix
+msgctxt "#32053"
+msgid "Volume Up. Now {0}db."
+msgstr ""
+
+msgctxt "#32054"
+msgid "Volume Down. Now {0}db."
+msgstr ""
+
+msgctxt "#32055"
+msgid "Speed Up. Now {0}."
+msgstr ""
+
+msgctxt "#32056"
+msgid "Slow Down.Now {0}."
+msgstr ""
+
+#  missing 32057 - 32099
 
 msgctxt "#32100"
 msgid "{0} database scan started."
@@ -892,6 +919,8 @@ msgctxt "#32250"
 msgid "No Engine (limited, pregenerated messages)"
 msgstr ""
 
+# missing 32251 - 32296
+
 # ----------------------------------
 # Audio Players. Translation may not apply to all
 
@@ -1036,7 +1065,7 @@ msgctxt "#32328"
 msgid "Pico-Wave"
 msgstr "Pico-Wave"
 
-msgcdtxt "#32329"
+msgctxt "#32329"
 msgid "SAPI"
 msgstr "SAPI"
 
@@ -1130,6 +1159,8 @@ msgstr ""
 msgctxt "#32347"
 msgid "Windows TTS"
 msgstr ""
+
+# missing 32348 - 32699
 
 # BEGIN MESSAGES USED IN UI (WINDOWS, CONTROLS, etc.)
 
@@ -1228,7 +1259,7 @@ msgctxt "#32720"
 msgid "TTS Settings"
 msgstr ""
 
-
+# missing 32721 - 32799
 
 # Messages for Controls
 
@@ -1252,6 +1283,7 @@ msgctxt "#32804"
 msgid "Select to dismiss dialog"
 msgstr "Select to dismiss dialog"
 
+#  missing 32805 - 32805
 
 msgctxt "#32806"
 msgid "item {0}"

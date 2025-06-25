@@ -17,8 +17,15 @@ class MessageId(Enum):
     ENGINE_LABEL = 32001
     VOLUME_LABEL = 32014
     VOICE_HINT_OFF = 32050
-    VOICE_HINT_ON = 32051
+    VOICE_HINT_ON = 3205
     VOICE_HINT_PAUSE = 32052
+
+    # Temporary volume up from keymap key
+    VOLUME_UP_DB = 32053
+    VOLUME_DOWN_DB = 32054
+    SPEED_UP = 32055
+    SLOW_DOWN = 32056
+
     DATABASE_SCAN_STARTED = 32100
     DATABASE_SCAN_FINISHED = 32101
 
@@ -77,9 +84,7 @@ class MessageId(Enum):
     ENGINE_INTERNAL = 32326
     ENGINE_LOG_ONLY = 32327
     CONVERT_PICO_TO_WAV = 32328
-    # Voice a boolean control value as 'True' or 'False'
-    TRUE = 32820
-    FALSE = 32821
+
     ENGINE_PIPER = 32331
     ENGINE_NO_ENGINE = 32250
 
@@ -124,6 +129,9 @@ class MessageId(Enum):
     AVAIL_VOICES_FOR_LANG = 32716
     TTS_SETTINGS = 32720
 
+    # Voice a boolean control value as 'True' or 'False'
+    TRUE = 32820
+    FALSE = 32821
     # Enabled on new install
     READ_HINT_TEXT_ON_STARTUP = 32812
     EXTENDED_HELP_ON_STARTUP = 32813
