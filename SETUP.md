@@ -93,7 +93,7 @@ Finally, run the script:
         Config_Kodi_Env      # Runs the function defined in the script
 
 
-At this point you should be able to run Kodi. A few seconds after starting Kodi you should hear a note, followed by speech. To see the configuration menu, you can press ***F12*** on the keyboard. If there is no voice or no configuration menu, then something went wrong and you should collect a log and send it to me.
+At this point you should be able to run Kodi. A few seconds after starting Kodi you should hear a note, followed by speech. To see the configuration menu, you can press ***Ctrl, F12*** on the keyboard. If there is no voice or no configuration menu, then something went wrong and you should collect a log and send it to me.
 
 To exit configuration, enter Escape, or select the Cancel button at the bottom of the page.
 
@@ -135,7 +135,7 @@ Function: dumps every python thread to the log
 
 Function: Open Settings
 
-        keyboard shortcut: Ctrl-F12
+        keyboard shortcut: Ctrl, F12
         Launches the Kodi TTS configuration settings dialog
 
 Function: STOP
@@ -150,7 +150,7 @@ Function: VOICE_HINT
 
 Function: REPEAT
 
-        keyboard shortcut: shift-F12
+        keyboard shortcut: shift, F12
 
         Repeat voicing the previous item, including complete context (Window name, heading, etc. on down to the item itself).
 
@@ -163,7 +163,7 @@ Function ITEM_EXTRA
 
 Function TOGGLE_ON_OFF
 
-        keyboard shortcut: f12
+        keyboard shortcut: F12
         Starts/stops Kodi TTS
 
          <!-- At least on Linux, when you press "alt, shift, +"
@@ -206,7 +206,6 @@ Function: Display Help Dialog
 ###Configuration
 
 Kodi TTS does NOT USE Kodi’s addon configuration menus. Instead, it uses custom configuration dialog and code. The reasons for this include:
-
 
 * Instant audio feedback for changes as they are made
 * Ability to revert changes

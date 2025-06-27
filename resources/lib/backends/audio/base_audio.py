@@ -579,7 +579,7 @@ class SubprocessAudioPlayer(AudioPlayer):
     def destroy_slave_process(self):
         clz = type(self)
         if MY_LOGGER.isEnabledFor(DEBUG_V):
-            MY_LOGGER.debug_v(f'DESTROY_player_process')
+            MY_LOGGER.debug_v(f'DESTROY_slave_player_process')
         if self.slave_player_process is not None:
             try:
                 if MY_LOGGER.isEnabledFor(DEBUG_V):

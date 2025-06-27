@@ -301,7 +301,7 @@ class Configure:
             current_engine_key: ServiceID = ServiceKey.CURRENT_ENGINE_KEY
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'engine: {engine_key} current_engine: '
-                                f'{Settings.get_engine_key} '
+                                f'{Settings.get_engine_key()} '
                                 f'repair: {repair} '
                                 f'save_as_current: {save_as_current}')
             # See if we can cfg engine
@@ -1465,7 +1465,7 @@ class Configure:
 
         PhraseList.set_current_expired()  # Changing engines
         if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'setting: {engine_key} type: {type(engine_key)}')
+            MY_LOGGER.debug(f'setting: {engine_key}')
         Settings.set_engine(engine_key)
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'About to start TTS')
@@ -1523,7 +1523,7 @@ class Configure:
                 player_mode = Settings.get_player_mode(engine_key)
             if MY_LOGGER.isEnabledFor(DEBUG):
                 player_mode_str: str = player_mode.translated_name
-                MY_LOGGER.debug(f'Setting {engine_key} mode to {player_mode}')
+                MY_LOGGER.debug(f'Setting {engine_key} player mode to {player_mode}')
             Settings.set_player_mode(player_mode=player_mode, service_key=engine_key)
         except Exception as e:
             MY_LOGGER.exception('')
