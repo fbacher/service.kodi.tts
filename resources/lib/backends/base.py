@@ -32,6 +32,7 @@ from common.logger import *
 from common.message_ids import MessageId
 from common.messages import Messages
 from common.monitor import Monitor
+from common.phrase_manager import PhraseManager
 from common.phrases import Phrase, PhraseList
 from common.setting_constants import AudioType, Genders, PlayerMode, Players
 from common.settings import Settings
@@ -146,7 +147,7 @@ class EngineQueue:
                 except ExpiredException:
                     if MY_LOGGER.isEnabledFor(DEBUG):
                         MY_LOGGER.debug(f'EXPIRED {item.phrase.debug_data} ',
-                                          trace=Trace.TRACE_AUDIO_START_STOP)
+                                        trace=Trace.TRACE_AUDIO_START_STOP)
                 except Exception:
                     MY_LOGGER.exception('')
         except AbortException:
@@ -172,7 +173,6 @@ class EngineQueue:
         @return:
         :param engine:
         """
-        zelf = cls._instance
         # if not engine.is_active_engine():
         #     return
         try:
@@ -208,31 +208,16 @@ class EngineQueue:
         """
         zelf = cls._instance
         try:
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'{phrase.debug_data()}')
             interrupt: bool = phrase.get_interrupt()
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                msg: str = ''
+                if interrupt:
+                    msg = (f'INTERRUPTED, discarding any phrases prior to: '
+                           f'{phrase.short_text()}')
+                MY_LOGGER.debug(f'{phrase.debug_data()} {msg}')
             if interrupt:
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'INTERRUPTED discarding any phrases prior to:'
-                                    f' {phrase.short_text()}')
                 cls.empty_queue()
-            engine.stop_current_phrases()
-
             zelf.tts_queue.put_nowait(EngineQueue.QueueItem(phrase, engine))
-            '''
-            MY_LOGGER.debug(f'phrase: {phrase.get_text()} ' 
-                              f'Engine: {engine.setting_id}')
-            cache_path: Path
-            if phrase.text_exists():
-                #  TODO: Add ability to deal with converter
-                #  Bypass engine and go straight to playing
-                player_id: str = Settings.get_player(engine.setting_id)
-                zelf.say_file(phrase, player_id, engine)
-            else:
-                MY_LOGGER.debug(f'queue.put {phrase.get_text()}')
-                zelf.tts_queue.put_nowait(EngineQueue.QueueItem(phrase, engine))
-            MY_LOGGER.debug(f'Put on queue')
-            '''
         except ExpiredException:
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug('EXPIRED')
@@ -250,13 +235,8 @@ class EngineQueue:
         try:
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'phrase: {phrase.get_text()} '
-                                  f'Engine: {engine.service_id}')
+                                f'Engine: {engine.service_id}')
             cls.say_phrase(phrase, engine)
-            '''
-            player: IPlayer = PlayerIndex.get_player(player_id)
-            player.init(engine.setting_id)
-            player.play(phrase)
-            '''
         except AbortException as e:
             reraise(*sys.exc_info())
         except ExpiredException:
@@ -264,8 +244,8 @@ class EngineQueue:
                 MY_LOGGER.debug('EXPIRED')
         except Exception as e:
             MY_LOGGER.exception(f'Exception {phrase.debug_data}'
-                                  f' engine: {engine.service_id}',
-                                  trace=Trace.TRACE_AUDIO_START_STOP)
+                                f' engine: {engine.service_id}',
+                                trace=Trace.TRACE_AUDIO_START_STOP)
         return
 
     @classmethod
@@ -278,7 +258,7 @@ class EngineQueue:
             speaking: bool
             speaking = (cls._instance.active_queue and
                         (cls._instance._threadedIsSpeaking or not
-                        cls._instance.tts_queue.empty()))
+                         cls._instance.tts_queue.empty()))
         except AttributeError as e:
             MY_LOGGER.exception('')
             speaking = False
@@ -317,14 +297,13 @@ class BaseEngineService(BaseServices):
     volumeStep = 1
     volumeSuffix = 'dB'
     speedInt = True
-    _current_engine: ITTSBackendBase = None
-
-    _class_name: str = None
+    '''
     _supported_input_formats: List[str] = []
     _supported_output_formats: List[str] = []
+    '''
     _provides_services: List[ServiceType] = [ServiceType.ENGINE]
-    service_key: ServiceID
-    _baseEngine: 'BaseEngineService' = None
+    service_key: Final[ServiceID | None] = None  # Override in sub-classes
+    #  _baseEngine: 'BaseEngineService' = None
     tmp_dir: Path | None = None
 
     def __init__(self, *args, **kwargs):
@@ -368,30 +347,69 @@ class BaseEngineService(BaseServices):
 
     def get_player(self, service_key: ServiceID) -> IPlayer:
         """
-         Gets the player instance for the given engine. If settings are changed
-         then the new player will be instantiated.
+        Gets the player instance for the given engine.
+        It is possible to have two players talking at the same time: 1) when the
+        player changes, 2) when the player_mode changes (slave_mode has different
+        latencies and uses a long-running process to play multple files; engine_speak
+        mode doesn't use a player and may speak prior to a current player is done;
+        3) possibly other circumstances. Safest just to expire all prior phrases and to
+        kill any active player.
 
-         :param service_key: key for identifying the engine Settings.get_player
+        Also, if an engine changes, all prior phrases must be expired. Even if
+         using the same player.
+
+        :param service_key: key for identifying the engine Settings.get_player
                              will adjust the engine's service_key appropriately.
         """
-
+        return PhraseManager.prepare_to_say(service_key, None)
+    '''
         clz = type(self)
-        player_key: ServiceID = Settings.get_player(service_key)
-        #  MY_LOGGER.debug(f'player_key: {player_key}')
-        if self.player is not None and player_key != self.player.service_key:
-            # Stop old player
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'Killing player(s) because player_id changed '
-                                f'from {self.player.service_key} to {player_key}')
-            self.player.destroy()
+        new_player_key: ServiceID = Settings.get_player(service_key)
+        new_player_mode: PlayerMode = Settings.get_player_mode(service_key)
+        stop_speech: bool = False
+        destroy: bool = False
 
-        #  MY_LOGGER.debug(f'player_key: {player_key}')
-        if self.player is None or player_key != self.player.service_key:
+        if clz._previous_player is None:
+            # No player to stop or invalidate phrases for
+            pass
+        elif (clz._previous_player != new_player_key or
+              clz._previous_player_mode is None or
+              clz._previous_player_mode != new_player_mode or
+              clz._previous_engine is None or
+              clz._previous_engine != service_key):
+            destroy = True
+            stop_speech = True
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'destroy: {destroy} old player: {clz._previous_player} '
+                            f'prev player_mode: {clz._previous_player_mode} '
+                            f'prev_engine: {clz._previous_engine}')
+            MY_LOGGER.debug(f'New player: {new_player_key} '
+                            f'new player_mode: {new_player_mode} '
+                            f'new engine: {service_key}')
+        if destroy:
+            #
+            # TODO: Need to prevent multiple destroys by the multiple checks
+            # a non-None old_player is no evidence that it has been used.
+            old_player: IPlayer = BaseServices.get_service(clz._previous_player)
+            old_player.destroy()
+        clz._previous_player_mode = new_player_mode
+        clz._previous_player = new_player_key
+        clz._previous_engine = service_key
+
+        old_player: IPlayer = BaseServices.get_service(clz._previous_player)
+
+        if self.player is None or new_player_key != self.player.service_key:
             try:
-                self.player = BaseServices.get_service(player_key)
+                if self.player is None:
+                    MY_LOGGER.debug(f'new_player: {new_player_key} '
+                                    f'old: is None')
+                else:
+                    MY_LOGGER.debug(f'new_player: {new_player_key} no old one')
+                self.player = BaseServices.get_service(new_player_key)
             except ServiceUnavailable:
                 self.player = None
         return self.player
+    '''
 
     def say(self, phrase: PhraseList):
         """Method accepting text to be spoken
@@ -654,47 +672,6 @@ class BaseEngineService(BaseServices):
     def update_voice_path(cls, phrase: Phrase) -> None:
         raise NotImplementedError(f'active_engine: {Settings.get_engine_key()} \n'
                                   f'alt: {Settings.get_alternate_engine_id()}')
-    '''
-    @classmethod
-    def getVolumeDb(cls) -> float | None:
-        # Get the converter from TTS volume scale to the Engine's Scale
-        # Get the Engine validator/converter
-
-        # The engine can also act as player.
-        # if engine is player, then set volume via engine
-        # otherwise, fix volume to 'TTS standard volume' of 0db and let
-        # player adjust it from there.
-
-        volume_validator: ConstraintsValidator | IValidator
-        volume_validator = SettingsMap.get_validator(cls.setting_id,
-                                                     setting_id=SettingProp.VOLUME)
-        volume, _, _, _ = volume_validator.get_tts_values()
-        return volume  # Find out if used
-    '''
-    '''
-    @classmethod
-    def getEngineVolume(cls) -> float:
-        """
-        The Engine's job is to make sure that it's output volume is equal to
-        the TTS standard volume. Get the TTS volume from Settings
-        setting_id=Services.TTS, setting_id='volume'. Then use the validators
-        and converters to adjust the engine's volume to match what TTS has
-        in the settings.
-
-        The same is true for every stage: engine, player, converter, etc.
-        """
-
-        return cls.getVolumeDb()
-    '''
-    '''
-    @classmethod
-    def getEngineVolume_str(cls) -> str:
-        volume_validator: ConstraintsValidator
-        volume_validator = cls.get_validator(cls.service_id,
-                                             property_id=SettingProp.VOLUME)
-        volume: str = volume_validator.getUIValue()
-        return volume
-    '''
 
     @classmethod
     def getSetting(cls, setting_id: str,  default=None):
@@ -714,53 +691,6 @@ class BaseEngineService(BaseServices):
 
         return Settings.getSetting(cls.service_key.with_prop(setting_id),
                                    default)
-
-    '''
-    @classmethod
-    def setSettingConstraints(cls,
-                   setting_id: str,
-                   constraints: Constraints
-                   ) -> bool:
-        """
-        Saves a setting to addon's settings.xml
-
-        A convenience method for Settings.setSetting(key + '.' + cls.setting_id, value)
-
-        :param constraints:
-        :param setting_id:
-        :return:
-        """
-        if not isinstance(constraints, Constraints):
-            MY_LOGGER.error(f'setSettingConstrants with non-constraint: '
-                              f'{type(constraints)}')
-            return False
-        return Settings.setSettingConstraints(setting_id, constraints)
-        
-        if (not cls.isSettingSupported(setting_id)
-                and MY_LOGGER.isEnabledFor(WARNING)):
-            MY_LOGGER.warning(f'Setting: {setting_id}, not supported by voicing '
-                                f'engine: {cls.get_service_key()}')
-        previous_value = Settings.getSetting(setting_id, cls.get_service_key(),  None)
-        changed = False
-        if previous_value != value:
-            changed = True
-        Settings.setSetting(setting_id, value, cls.setting_id)
-        return changed
-        '''
-    '''
-    @classmethod
-    def set_player_setting(cls, value: str) -> bool:
-        setting_id: str = cls.get_current_engine_id()
-        if (not cls.isSettingSupported(SettingProp.PLAYER)
-                and MY_LOGGER.isEnabledFor(WARNING)):
-            MY_LOGGER.warning(
-                f'{SettingProp.PLAYER}, not supported by voicing engine: '
-                f'{setting_id}')
-        previous_value = Settings.get_player(setting_id=setting_id)
-        changed = previous_value != value
-        Settings.set_player(value, setting_id)
-        return changed
-    '''
 
     @classmethod
     @deprecated
@@ -825,9 +755,6 @@ class BaseEngineService(BaseServices):
         Subclasses should override this to respond to requests to stop speech.
         Default implementation does nothing.
         """
-        pass
-
-    def stop_current_phrases(self):
         pass
 
     def close(self):
@@ -1004,35 +931,6 @@ class SimpleTTSBackend(ThreadedTTSBackend):
         pass
         clz = type(self)
 
-    #  def get_player_handler(self) -> PlayerHandlerType:
-    #    """
-    #
-    #    @return:
-    #    """
-    #    clz = type(self)
-    #    return self.player_handler_instance
-
-    '''
-    def set_player_mode(self, player_mode: PlayerMode) -> None:
-        """
-
-        @param player_mode:
-        """
-        clz = type(self)
-        assert isinstance(player_mode, PlayerMode), 'Bad mode'
-        if player_mode == PlayerMode.PIPE:
-            pass
-        if player_mode == PlayerMode.FILE:
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'Mode: {player_mode.value()}')
-        elif player_mode == PlayerMode.ENGINE_SPEAK:
-            audio.load_snd_bm2835()
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'Mode: {player_mode.value()}')
-
-        self.player_mode = player_mode
-    '''
-
     def get_voice_cache(self) -> VoiceCache:
         raise NotImplementedError
 
@@ -1121,16 +1019,14 @@ class SimpleTTSBackend(ThreadedTTSBackend):
             return
 
         try:
+            # TODO
+            # There is some redundancy in this method, get_player and initialize_player
+            # Could cause players to be started/deleted multiple times.
             self.initialize_player()
             #  self.config_mode()
+
             player_mode: PlayerMode = Settings.get_player_mode(self.service_key)
-            if phrase.get_interrupt():
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'stop_player phrase prior to: {phrase}')
-                kill: bool = True
-                if player_mode in (PlayerMode.SLAVE_FILE, PlayerMode.SLAVE_PIPE):
-                    kill = False
-                self.stop_player(purge=True)
+            PhraseManager.handle_interrupt(self.service_key, phrase)
 
             #  MY_LOGGER.debug(f'player_mode: {player_mode} engine: {self.service_id}')
             if player_mode == PlayerMode.FILE:
@@ -1197,6 +1093,11 @@ class SimpleTTSBackend(ThreadedTTSBackend):
         """
         clz = type(self)
         try:
+            # get_player initializes. It also determines if any previous player should
+            # be killed, etc.
+            #  TODO: get_player does not tell us what it did or discovered. This
+            #        causes duplicate kills to occur. Also leaves possibility that
+            #        the incorrect player is killed, etc.
             player: IPlayer = self.get_player(clz.service_key)
             if player:
                 player.init(clz.service_key)

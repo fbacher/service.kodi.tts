@@ -64,14 +64,14 @@ class WindowsAudioConverter(AudioConverter):
         self.audio.play()
         self.event.clear()
         self.event.wait(self.audio.milliseconds() / 1000.0)
-        if self.event.isSet():
+        if self.event:
             self.audio.stop()
         while self.audio.isplaying():
             utils.sleep(10)
         self.audio = None
 
     def isPlaying(self):
-        return not self.event.isSet()
+        return not self.event
 
     def stop(self):
         self.event.set()

@@ -38,6 +38,8 @@ from common.setting_constants import (AudioType, Backends, Genders, Mode, Player
 from common.settings import Settings
 from common.settings_low_level import SettingProp
 from langcodes import LanguageTagError
+
+from common.simple_run_command import SimpleRunCommand
 from windowNavigation.choice import Choice
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
@@ -95,7 +97,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
     service_id: str = Services.ESPEAK_ID
     service_type: ServiceType = ServiceType.ENGINE
     engine_id: str = Backends.ESPEAK_ID
-    service_key: ServiceID = ServiceKey.ESPEAK_KEY
+    service_key: Final[ServiceID] = ServiceKey.ESPEAK_KEY
     OUTPUT_FILE_TYPE: str = '.wav'
     displayName: str = 'eSpeak'
     UTF_8: Final[str] = '1'
@@ -117,6 +119,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         super().__init__(*args, **kwargs)
         clz = type(self)
         self.process: subprocess.Popen | None = None
+        self.simple_process: SimpleRunCommand | None = None
         MY_LOGGER.debug(f'eSpeak service_key: {ESpeakTTSBackend.service_key}')
         self.voice_cache: VoiceCache = VoiceCache(ESpeakTTSBackend.service_key)
 
@@ -127,7 +130,8 @@ class ESpeakTTSBackend(SimpleTTSBackend):
     def init(self):
         super().init()
         clz = type(self)
-        self.process: subprocess.Popen | None = None
+        self.process = None
+        self.simple_process = None
         self.update()
 
     def get_voice_cache(self) -> VoiceCache:
@@ -510,26 +514,26 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             if Constants.PLATFORM_WINDOWS:
                 if MY_LOGGER.isEnabledFor(DEBUG_V):
                     MY_LOGGER.debug_v(f'Running command: WINDOWS args: {args}')
-                subprocess.run(args,
-                               input=f'{phrase.text} ',
-                               text=True,
-                               shell=False,
-                               encoding='utf-8',
-                               close_fds=True,
-                               env=env,
-                               check=True,
-                               creationflags=subprocess.CREATE_NO_WINDOW)
+                self.process = subprocess.run(args,
+                                              input=f'{phrase.text} ',
+                                              text=True,
+                                              shell=False,
+                                              encoding='utf-8',
+                                              close_fds=True,
+                                              env=env,
+                                              check=True,
+                                              creationflags=subprocess.CREATE_NO_WINDOW)
             else:
                 if MY_LOGGER.isEnabledFor(DEBUG_V):
                     MY_LOGGER.debug_v(f'Running command: LINUX: args {args}')
-                subprocess.run(args,
-                               input=f'{phrase.text} ',
-                               text=True,
-                               shell=False,
-                               encoding='utf-8',
-                               close_fds=True,
-                               env=env,
-                               check=True)
+                self.process = subprocess.run(args,
+                                              input=f'{phrase.text} ',
+                                              text=True,
+                                              shell=False,
+                                              encoding='utf-8',
+                                              close_fds=True,
+                                              env=env,
+                                              check=True)
 
             if not result.temp_voice_path.exists():
                 MY_LOGGER.info(f'voice file not created: {result.temp_voice_path}')
@@ -558,6 +562,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                 return None
         except subprocess.CalledProcessError as e:
             MY_LOGGER.exception('')
+            self.process = None
             return None
         return result.final_audio_path  # Wave file
 
@@ -572,28 +577,54 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         try:
             if Constants.PLATFORM_WINDOWS:
                 MY_LOGGER.info(f'Running command: Windows')
-                subprocess.run(args,
-                               input=f'{phrase.text} ',
-                               text=True,
-                               shell=False,
-                               encoding='utf-8',
-                               close_fds=True,
-                               env=env,
-                               check=True,
-                               creationflags=subprocess.CREATE_NO_WINDOW)
+                self.simple_process = SimpleRunCommand(args, phrase.serial_number,
+                                                       name='espk_speak',
+                                                       stop_on_play=True)
             else:
                 MY_LOGGER.info(f'Running command: Linux')
-                subprocess.run(args,
-                               input=f'{phrase.text} ',
-                               text=True,
-                               shell=False,
-                               encoding='utf-8',
-                               close_fds=True,
-                               env=env,
-                               check=True)
+                self.simple_process = SimpleRunCommand(args, phrase.serial_number,
+                                                       name='espk_speak',
+                                                       stop_on_play=True)
         except subprocess.SubprocessError as e:
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug('espeak.runCommandAndSpeak Exception: ' + str(e))
+            self.simple_process = None
+    '''
+    def runCommandAndSpeak(self, phrase: Phrase):
+        clz = type(self)
+        env = os.environ.copy()
+        args = [str(clz.cmd_path), '-b', clz.UTF_8, '--stdin',
+                str(clz.data_path)]
+        self.addCommonArgs(args)
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'args: {args}')
+        try:
+            if Constants.PLATFORM_WINDOWS:
+                MY_LOGGER.info(f'Running command: Windows')
+                self.process = subprocess.run(args,
+                                              input=f'{phrase.text} ',
+                                              text=True,
+                                              shell=False,
+                                              encoding='utf-8',
+                                              close_fds=True,
+                                              env=env,
+                                              check=True,
+                                              creationflags=subprocess.CREATE_NO_WINDOW)
+            else:
+                MY_LOGGER.info(f'Running command: Linux')
+                self.process = subprocess.run(args,
+                                              input=f'{phrase.text} ',
+                                              text=True,
+                                              shell=False,
+                                              encoding='utf-8',
+                                              close_fds=True,
+                                              env=env,
+                                              check=True)
+        except subprocess.SubprocessError as e:
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug('espeak.runCommandAndSpeak Exception: ' + str(e))
+            self.process = None
+    '''
 
     def runCommandAndPipe(self, phrase: Phrase):
         clz = type(self)
@@ -639,18 +670,21 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         except subprocess.SubprocessError as e:
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug('espeak.runCommandAndPipe Exception: ' + str(e))
+            self.process = None
+            return None
         return self.process.stdout
 
     def stop(self):
         clz = type(self)
-        if not self.process:
-            return
-        try:
-            self.process.terminate()
-        except AbortException:
-            reraise(*sys.exc_info())
-        except:
-            MY_LOGGER.exception("")
+        MY_LOGGER.debug(f'In STOP')
+        if self.simple_process is not None:
+            try:
+                self.simple_process.kill()
+                self.simple_process = None
+            except AbortException:
+                reraise(*sys.exc_info())
+            except:
+                MY_LOGGER.exception("")
 
     @classmethod
     def load_languages(cls):

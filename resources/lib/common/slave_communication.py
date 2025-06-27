@@ -73,7 +73,7 @@ class PlayerState:
     voicings are frequently canceled by user activity. The playlist is purged
     when a voicing is canceled.
 
-    The playlist is always played in order. Every item in the playlist is
+    The playlist is played in order. Every item in the playlist is
     identified by a monatomic index. The index is used to determine how many
     played and unplayed entries are in the list. Otherwise, TTS does not care about
     the index of individual voicings.
@@ -467,9 +467,9 @@ class SlaveCommunication:
 
             if MY_LOGGER.isEnabledFor(DEBUG_V):
                 MY_LOGGER.debug_v(f'FIFO-ish {phrase.short_text()} '
-                                f'# {phrase.serial_number} expired #: '
-                                f'{PhraseList.expired_serial_number}'
-                                f' {expired_check_str} {interrupted_str}')
+                                  f'# {phrase.serial_number} expired #: '
+                                  f'{PhraseList.expired_serial_number}'
+                                  f' {expired_check_str} {interrupted_str}')
             if self.tts_player_idle and not phrase.speak_over_kodi:
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'player is IDLE')
@@ -701,17 +701,21 @@ class SlaveCommunication:
         """
         clz = type(self)
         try:
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'STOP PURGE: {purge} future: {keep_silent} '
-                                f'kill: {kill}')
             if kill:
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'STOP KILL')
                 quit_str: str = f'quit'
                 self.run_state = RunState.DIE
                 self.send_line(quit_str)
                 Monitor.wait_for_abort(0.05)
-                self.slave.terminate()
+                # self.slave.terminate()
                 self.slave.destroy()
             elif purge:
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    go_idle: str = ''
+                    if keep_silent:
+                        go_idle = 'GO IDLE'
+                    MY_LOGGER.debug(f'STOP, PURGE {go_idle}')
                 stop_str: str = f'stop'
                 self.send_line(stop_str)
                 self.current_speed = None
@@ -800,7 +804,7 @@ class SlaveCommunication:
         """
         Destroy this player and any dependent player process, etc. Typicaly done
         when either stopping TTS (F12) or shutdown, or switching players,
-        players, etc.
+        engines, etc.
 
         :return:
         """

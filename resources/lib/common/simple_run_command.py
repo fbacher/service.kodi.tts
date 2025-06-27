@@ -126,7 +126,10 @@ class SimpleRunCommand:
         self.cleanup()
 
     def kill(self):
-        pass
+        if self.process is not None and self.process.poll() is None:
+            self.close_files()
+            self.process.kill()
+        self.cleanup()
 
     def get_state(self) -> RunState:
         return self.run_state
@@ -282,7 +285,7 @@ class SimpleRunCommand:
                 # Prevent console for command from opening
                 #
                 # Here, we keep stdout & stderr separate and combine the output in the
-                # log. Need to change to be configureable: separate, combined at
+                # log. Need to change to be configurable: separate, combined at
                 # process level (stderr = subprocess.STDOUT), devnull or pass through
                 # via pipe and don't log
 

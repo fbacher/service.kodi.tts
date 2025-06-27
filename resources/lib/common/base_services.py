@@ -129,6 +129,11 @@ class BaseServices(IServices):
     def get_voice_cache(self) -> VoiceCache:
         raise NotImplementedError
 
+    def stop(self):
+        """Stop all speech, implicitly called when close() is called
+        """
+        raise NotImplementedError
+
     '''
     @classmethod
     def getValidator(cls, service_key: ServiceID,
