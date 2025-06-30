@@ -850,11 +850,33 @@ class LanguageInfo:
         :return: returns [kodi_lang, kodi_locale, kodi_friendly_locale_name,
                          langcodes.Language]
         """
+        # xbmc.getLanguage is a mess, but hopefully fixed in upcoming release
+        # On Linux, you can get the language code ('en' or 'eng') but you can't
+        # get 'en-us'. On windows getLanguage(iso_639_1, True)  returns 'en-us'
+        # ENGLISH_NAME produces a non-standard string "English-USA (12h)' on windows
+        # Even the embedded python windows locale.getlocale() returns an odd string:
+        # English_United States. While Linux getLanguage(iso_639_1, True) returns 'en-'
+        # However on Linux Python locale.getlocale() produces the expected value: 'en-us'
+        #
+        '''
         tmp: str = xbmc.getLanguage(xbmc.ISO_639_2)
-        if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'xbmc.ISO_639_2: {tmp}')
+        if MY_LOGGER.isEnabledFor(DEBUG_XV):
+            MY_LOGGER.debug_xv(f'xbmc.ISO_639_2: {tmp}')
+            MY_LOGGER.debug_xv(f'xbmc.ISO_639_1: {xbmc.getLanguage(xbmc.ISO_639_1)}')
+            MY_LOGGER.debug_xv(f'xbmc.ENGLISH_NAME: {xbmc.getLanguage(xbmc.ENGLISH_NAME)}')
+            t1: str = xbmc.getLanguage(xbmc.ISO_639_2, True)
+            t2: str = xbmc.getLanguage(xbmc.ISO_639_1, True)
+            t3: str = xbmc.getLanguage(xbmc.ENGLISH_NAME, True)
+
+            MY_LOGGER.debug_xv(f'xbmc.ISO_639_2: {t1}')
+            MY_LOGGER.debug_xv(f'xbmc.ISO_639_1: {t2}')
+            MY_LOGGER.debug_xv(f'xbmc.ENGLISH_NAME: {t3}')
+            MY_LOGGER.debug_xv(f'Python locale: {Constants.LOCALE}')
+        '''
         kodi_language: langcodes.Language
-        kodi_language = langcodes.Language.get(tmp)
+        # HACK to work around xbmc.getLanguage() bug.
+        lang_territory: str = Constants.LOCALE
+        kodi_language = langcodes.Language.get(lang_territory)
         kodi_lang: str = kodi_language.language
         kodi_locale: str = kodi_language.to_tag()
         if Constants.USE_LANGCODES_DATA:

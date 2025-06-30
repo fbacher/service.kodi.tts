@@ -307,7 +307,7 @@ class SpeechGenerator(ISpeechGenerator):
                             original_phrase.add_event('expired')
                             self.set_finished()
                         except TTSDownloadError as e:
-                            MY_LOGGER.info(f'{TTSDownloadError:} {e.msg()}')
+                            MY_LOGGER.info(f'{TTSDownloadError:} {e.msg}')
                             MY_LOGGER.exception(f'TTSDownloadError')
                             self.set_rc(ReturnCode.DOWNLOAD)
                             original_phrase.add_event('download error')
@@ -355,7 +355,7 @@ class SpeechGenerator(ISpeechGenerator):
         except Exception as e:
             MY_LOGGER.exception('')
             if MY_LOGGER.isEnabledFor(ERROR):
-                MY_LOGGER.error('Failed to download voice: {}'.format(str(e)))
+                MY_LOGGER.error(f'Failed to download voice: {e}')
             self.set_finished()
             self.set_rc(ReturnCode.DOWNLOAD)
         finally:

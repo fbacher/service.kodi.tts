@@ -435,7 +435,7 @@ class BaseEngineService(BaseServices):
                 return None
 
             player_input_formats: List[AudioType] = [AudioType.MP3]
-            candidate_converters: List[str] = \
+            candidate_converters: List[ServiceID] = \
                 SoundCapabilities.get_capable_services(ServiceType.TRANSCODER,
                                                        engine_output_formats,
                                                        player_input_formats)

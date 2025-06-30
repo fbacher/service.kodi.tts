@@ -20,6 +20,7 @@ from cache.cache_file_state import CacheFileState
 from cache.voicecache import VoiceCache
 from common import *
 from common.base_services import BaseServices
+from common.constants import Constants
 from common.debug import Debug
 from common.exceptions import ExpiredException
 from common.logger import *
@@ -232,7 +233,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
             locale: str = phrase.language  # IETF format
             voice_id: str = Settings.get_voice(cls.service_key)
             #  lang_info.engine_voice_id
-            _, kodi_locale, _, ietf_lang = LanguageInfo.get_kodi_locale_info()
+            kodi_locale: str = Constants.LOCALE
             if voice_id is None or voice_id == '':
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug('Fix Settings.get_voice to use kodi_locale by'
@@ -246,7 +247,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
                 locale = kodi_locale
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'locale: {locale}')
-            ietf_lang: langcodes.Language
+            ietf_lang: langcodes.Language = langcodes.Language.get(locale)
 
             phrase.set_lang_dir(ietf_lang.language)
             phrase.set_voice(voice_id)

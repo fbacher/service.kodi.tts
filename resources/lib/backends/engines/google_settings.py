@@ -229,7 +229,7 @@ class GoogleSettings:
         valid_players: List[str] = []
         for player_key in candidates:
             player_key: ServiceID
-            player_id = player_key.service_key
+            player_id = player_key.service_id
             if player_id in players and SettingsMap.is_available(player_key):
                 valid_players.append(player_id)
 

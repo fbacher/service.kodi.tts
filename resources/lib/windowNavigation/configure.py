@@ -80,7 +80,9 @@ class EngineConfig:
 
     @engine_id.setter
     def engine_id(self, engine_id: str) -> None:
+        MY_LOGGER.debug(f'Setting engine_id to: {engine_id}')
         self._engine_key = ServiceID(ServiceType.ENGINE, engine_id)
+        MY_LOGGER.debug(f'engine_key now: {self._engine_key}')
 
     @property
     def engine_key(self) -> ServiceID:
@@ -298,10 +300,17 @@ class Configure:
         """
         try:
             engine_key: ServiceID = choice.engine_key
-            current_engine_key: ServiceID = ServiceKey.CURRENT_ENGINE_KEY
             if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'engine: {engine_key} current_engine: '
-                                f'{Settings.get_engine_key()} '
+                try:
+                    current_engine_key: ServiceID | None = Settings.get_engine_key()
+                except ServiceUnavailable:
+                    MY_LOGGER.debug(f'Can not configure {engine_key} without repair '
+                                    f'repair = {repair} current_engine_key: '
+                                    f'{current_engine_key}')
+                    if not repair:
+                        return None
+                MY_LOGGER.debug(f'Repairing engine choice: {engine_key} current_engine: '
+                                f'{current_engine_key} '
                                 f'repair: {repair} '
                                 f'save_as_current: {save_as_current}')
             # See if we can cfg engine
@@ -379,6 +388,10 @@ class Configure:
                                                engine_config.engine_audio)
             if save_as_current:
                 self.set_engine_field(engine_key=engine_key)
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'configure_engine successful for {engine_key}'
+                                f' repair: {repair}'
+                                f' save_as_current: {save_as_current}')
             return engine_config
         except Exception:
             MY_LOGGER.exception('')
@@ -998,12 +1011,14 @@ class Configure:
         if audio_type is None:
             raise ValueError
 
+        possible_audio_types: AudioTypes = AudioTypes([audio_type])
         for player in players:
             player: PlayerType
             player_key: ServiceID = ServiceID(ServiceType.PLAYER,
                                               player)
             player_audio_types: List[AudioType]
-            player_audio_types = SoundCapabilities.get_input_formats(player_key)
+            player_audio_types = SoundCapabilities.get_input_formats(player_key,
+                                                                     possible_audio_types)
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'player: {player} audio_type: {audio_type}'
                                 f' type: {type(audio_type)} '
@@ -1403,7 +1418,7 @@ class Configure:
             if current_choice_index < 0:
                 current_choice_index = 0
             if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'# choices: {choices} len: {len(choices)}'
+                MY_LOGGER.debug(f'choices: {str(choices)} len: {len(choices)}'
                                 f' current_choice_idx: '
                                 f'{current_choice_index}')
 
@@ -1414,8 +1429,14 @@ class Configure:
                     if MY_LOGGER.isEnabledFor(DEBUG):
                         MY_LOGGER.debug(f'Can not use previous configuration. '
                                         f'Reconfiguring')
-                    self.configure_engine(choice, repair=True,
-                                          save_as_current=commit_current_engine_on_repair)
+                    result: EngineConfig
+                    result = self.configure_engine(choice, repair=True,
+                                                   save_as_current=
+                                                   commit_current_engine_on_repair)
+                    if (MY_LOGGER.isEnabledFor(DEBUG) and result is not None and
+                            commit_current_engine_on_repair):
+                        MY_LOGGER.debug(f'Just did commit_current_engine_on_repair '
+                                        f'for {result.engine_key}')
                 self.commit_settings()
                 engine_key = choice.engine_key
             else:
@@ -1430,6 +1451,8 @@ class Configure:
             else:
                 standalone = True
                 self.restore_settings(msg='exit validate_repair', initial_frame=False)
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'validate/repair successful for {engine_key}')
         return engine_key
 
     def set_engine_field(self, engine_key: ServiceID | None = None) -> None:
@@ -1854,7 +1877,7 @@ class Configure:
                 choice.hint = f'choice {idx}'
                 idx += 1
             if MY_LOGGER.isEnabledFor(DEBUG_V):
-                MY_LOGGER.debug_v(f'choices: {choices}')
+                Choice.dbg_print(choices)
             self.save_current_choices(choices, current_engine_idx)
             # auto_choice_label: str = Messages.get_msg(Messages.AUTO)
             # current_value = Settings.get_service_key()

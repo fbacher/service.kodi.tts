@@ -231,7 +231,7 @@ class SettingsHelper:
             entries_by_engine: key: engine_key
                         value: Dict[lang_family, List[languageInfo]]
                         lang_family (iso-639-1 or -2 code)
-                        List[languageInfo} list of all languages supported by 
+                        List[languageInfo] list of all languages supported by 
                         that engine and language ('en' or 'en-us' and other variants).
                         The langInfo includes details about the language, the 
                         voice Id used by the engine, etc.
@@ -280,7 +280,7 @@ class SettingsHelper:
                 engine_key: ServiceID
                 choice: Choice
                 if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'engine_key: {engine_key} type: {type(engine_key)}')
+                    MY_LOGGER.debug(f'engine_key: {engine_key}')
                 engine_label: str = LanguageInfo.get_translated_engine_name(engine_key)
                 choice = Choice(label=engine_label, value=engine_key.service_id,
                                 choice_index=0, engine_key=engine_key,
@@ -363,7 +363,8 @@ class SettingsHelper:
                 # processed in sorted order, these entries will be sorted correctly.
 
                 # If we have a saved setting for this engine, then try to use the
-                # previous voice_id and lang_id
+                # previous voice_id and lang_id, otherwise, leave current_choice_index as -1
+				# and leave it to UI to present
                 matching_choice: Choice | None = None
                 if current_matching_choice is not None:
                     for choice_to_check in engines_langs:
@@ -384,9 +385,9 @@ class SettingsHelper:
                 else:
                     choice_to_add = matching_choice
                 choice_to_add.choice_index = idx
-                if current_engine_key is not None:
-                    if current_engine_key == choice_to_add.engine_key:
-                        current_choice_index = idx
+                if (current_engine_key is not None and
+                        current_engine_key == choice_to_add.engine_key):
+                    current_choice_index = idx
                     if MY_LOGGER.isEnabledFor(DEBUG_V):
                         MY_LOGGER.debug_v(f'current_engine_key: {current_engine_key} '
                                           f'idx: {current_choice_index} '

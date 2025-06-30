@@ -788,7 +788,7 @@ class TTSService:
         if engine_key is None:
             try:
                 configure: Configure = Configure.instance()
-                engine_key = configure.validate_repair(engine_key=engine_key,
+                engine_key = configure.validate_repair(engine_key=None,
                                                        commit_current_engine_on_repair=
                                                        True)
                 if engine_key is not None:

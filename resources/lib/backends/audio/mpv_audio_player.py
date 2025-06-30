@@ -7,10 +7,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-import xbmc
-
 from backends.audio.base_audio import SubprocessAudioPlayer
-from backends.audio.sound_capabilities import SoundCapabilities
 from backends.players.mpv_player_settings import MPVPlayerSettings
 from backends.players.player_index import PlayerIndex
 from backends.settings.i_validators import IChannelValidator, INumericValidator

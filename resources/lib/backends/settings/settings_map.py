@@ -100,8 +100,8 @@ class ServiceInfo:
                             INumericValidator | ISimpleValidator |
                             IStrEnumValidator |
                             IStringValidator | IValidator | None):
-        if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'{self.service_id} validator: {self._validator}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'{self.service_id} validator: {self._validator}')
         return self._validator
 
     @property

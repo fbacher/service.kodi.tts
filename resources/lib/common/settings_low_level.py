@@ -11,7 +11,7 @@ import xbmcaddon
 from common import *
 
 from backends.settings.service_types import (ServiceKey, Services, ServiceType,
-                                             ServiceID)
+                                             ServiceID, TTS_Type)
 from backends.settings.setting_properties import SettingProp, SettingType
 from backends.settings.settings_map import SettingsMap
 from common.constants import Constants
@@ -1648,7 +1648,8 @@ class SettingsLowLevel:
                                         ignore_cache=ignore_cache,
                                         default=default)
         #  MY_LOGGER.debug_xv(f'TRACE engine: {engine_id} ignore_cache: {ignore_cache}')
-        return ServiceID(ServiceType.ENGINE, service_id=engine_id)
+        return ServiceID(ServiceType.ENGINE, service_id=engine_id,
+                         setting_id=TTS_Type.SERVICE_ID)
 
     @classmethod
     def set_engine(cls, engine_key: ServiceID) -> None:

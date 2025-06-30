@@ -58,7 +58,7 @@ class MPVPlayerSettings:
     """
     _supported_input_formats: List[AudioType] = [AudioType.WAV, AudioType.MP3]
     _supported_output_formats: List[AudioType] = []
-    _provides_services: List[ServiceType] = [ServiceType.PLAYER, ServiceType.TRANSCODER]
+    _provides_services: List[ServiceType] = [ServiceType.PLAYER]
     _available: bool | None = None
     _availableArgs = [Constants.MPV_PATH, '--version']
     initialized: bool = False

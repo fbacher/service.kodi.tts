@@ -417,7 +417,7 @@
                     <constraints>
                         <allowempty>true</allowempty>
                     </constraints>
-                    <default>un-gb</default>
+                    <default></default>
                     <control type="edit" format="string">
                         <heading>32178</heading>
                     </control>
@@ -535,7 +535,7 @@
                     <constraints>
                         <allowempty>true</allowempty>
                     </constraints>
-                    <default>un-gb</default>
+                    <default></default>
                     <control type="edit" format="string">
                         <heading>32178</heading>
                     </control>

@@ -232,7 +232,8 @@ class SoundCapabilities:
                     if MY_LOGGER.isEnabledFor(DEBUG):
                         MY_LOGGER.debug(f'audio_format: {audio_format} type:'
                                         f' {type(audio_format)}')
-                    if audio_format in input_formats:
+                    if (audio_format in input_formats or
+                            AudioType.BUILT_IN in input_formats):
                         supports_consumer = True
                         break
 

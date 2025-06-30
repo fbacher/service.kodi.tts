@@ -157,7 +157,7 @@ class VoiceCache:
     def audio_type(self) -> AudioType:
         if self.service_key.service_type == ServiceType.PLAYER:
             self._audio_type = Settings.get_current_input_format(self.service_key)
-        elif self.service_key.service_type  == ServiceType.ENGINE:
+        elif self.service_key.service_type == ServiceType.ENGINE:
             self._audio_type = Settings.get_current_output_format(self.service_key)
         return self._audio_type
 

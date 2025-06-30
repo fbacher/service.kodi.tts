@@ -148,9 +148,10 @@ class Constants:
         # more information
         Constants.PREDEFINED_CACHE = (Constants.RESOURCES_PATH / 'predefined'
                                       / 'cache')
-        Constants.LOCALE, _ = locale.getlocale()
-
         if Constants.PLATFORM_WINDOWS:
+            lang_country: str = xbmc.getLanguage(xbmc.ISO_639_1, True)
+            Constants.LOCALE = lang_country.lower().replace('_', '-')
+
             espeak_dir: str = os.environ.get('ESPEAK_PATH', '')
             if espeak_dir:
                 Constants.ESPEAK_PATH = Path(espeak_dir)
@@ -193,6 +194,9 @@ class Constants:
                 xbmc.log(f'mplayer_dir: {mplayer_dir} MPLAYER_PATH: '
                          f'{Constants.MPLAYER_PATH}', xbmc.LOGDEBUG)
         else:
+            lang_country, _ = locale.getlocale()
+            lang_country: str
+            Constants.LOCALE = lang_country.lower().replace('_', '-')
             Constants.MPV_PATH = Constants.MPV_PATH_LINUX
             Constants.MPLAYER_PATH = Constants.MPLAYER_PATH_LINUX
             Constants.ESPEAK_PATH = Constants.ESPEAK_PATH_LINUX

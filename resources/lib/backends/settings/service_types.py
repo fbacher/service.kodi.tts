@@ -306,6 +306,8 @@ DEFAULT_MESSAGE_ID = MessageId.ENGINE_ESPEAK
 
 
 class EngineType(LabeledType):
+    # Engines with an ordinal, with lower values for most desired engine.
+    #
     #  AUTO_ENGINE = Services.AUTO_ENGINE_ID, 0, MessageId.ENGINE_AUTO
     # EXPERIMENTAL_ENGINE = Services.EXPERIMENTAL_ENGINE_ID
     GOOGLE = Services.GOOGLE_ID, 1, MessageId.ENGINE_GOOGLE

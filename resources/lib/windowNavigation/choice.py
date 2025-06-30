@@ -1,6 +1,11 @@
 # coding=utf-8
+from typing import ForwardRef, List
+
 from backends.settings.language_info import LanguageInfo
 from backends.settings.service_types import ServiceID
+from common.logger import *
+
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class Choice:
@@ -47,7 +52,18 @@ class Choice:
         self.enabled: bool = enabled
         self.match_distance: int = match_distance
 
-    def __repr__(self) -> str:
-        result: str = (f'label: {self.label} value: {self.value} idx: {self.choice_index}\n'
+    @classmethod
+    def dbg_print(cls, choices: List[ForwardRef('Choice')]) -> None:
+        for choice in choices:
+            choice: Choice
+            MY_LOGGER.debug(f'Choice {choice}')
+            MY_LOGGER.debug('')
+
+    def __str__(self) -> str:
+        result: str = (f'idx: {self.choice_index} label: {self.label} value:'
+                       f' {self.value}\n'
                        f'service_id: {self.engine_key} lang_info: {self.lang_info}')
         return result
+
+    def __rpr__(self) -> str:
+        return self.__str__()
