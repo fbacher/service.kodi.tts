@@ -301,6 +301,7 @@ class Configure:
         try:
             engine_key: ServiceID = choice.engine_key
             if MY_LOGGER.isEnabledFor(DEBUG):
+                current_engine_key: ServiceID | None = None
                 try:
                     current_engine_key: ServiceID | None = Settings.get_engine_key()
                 except ServiceUnavailable:
