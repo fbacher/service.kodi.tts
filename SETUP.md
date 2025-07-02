@@ -1,4 +1,4 @@
-Welcome to the **Alpha2 **release of Kodi Text To Speech which provides basic TTS functionality to Kodi. It is based upon XBMC TTS which is no longer supported. This version of Kodi TTS is maintained by a different team and is a major release.
+Welcome to the **Alpha **release of Kodi Text To Speech which provides basic TTS functionality to Kodi. It is based upon XBMC TTS which is no longer supported. This version of Kodi TTS is maintained by a different team and is a major release.
 
 The goals of this early release are to provide basic functionality, iron out installation and configuration issues as well as get feedback. Functionality is limited to just several TTS engines and players:
 

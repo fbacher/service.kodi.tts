@@ -18,4 +18,3 @@ If you want to ensure you are using the latest version of the addon you can down
 Installation of the .zip file is be done through Kodi **System::Settings::Add-ons::Install from zip file**
 
 Support is available at: https://forum.kodi.tv/showthread.php?tid=357602
-
