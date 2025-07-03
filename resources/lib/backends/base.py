@@ -654,47 +654,6 @@ class BaseEngineService(BaseServices):
     def update_voice_path(cls, phrase: Phrase) -> None:
         raise NotImplementedError(f'active_engine: {Settings.get_engine_key()} \n'
                                   f'alt: {Settings.get_alternate_engine_id()}')
-    '''
-    @classmethod
-    def getVolumeDb(cls) -> float | None:
-        # Get the converter from TTS volume scale to the Engine's Scale
-        # Get the Engine validator/converter
-
-        # The engine can also act as player.
-        # if engine is player, then set volume via engine
-        # otherwise, fix volume to 'TTS standard volume' of 0db and let
-        # player adjust it from there.
-
-        volume_validator: ConstraintsValidator | IValidator
-        volume_validator = SettingsMap.get_validator(cls.setting_id,
-                                                     setting_id=SettingProp.VOLUME)
-        volume, _, _, _ = volume_validator.get_tts_values()
-        return volume  # Find out if used
-    '''
-    '''
-    @classmethod
-    def getEngineVolume(cls) -> float:
-        """
-        The Engine's job is to make sure that it's output volume is equal to
-        the TTS standard volume. Get the TTS volume from Settings
-        setting_id=Services.TTS, setting_id='volume'. Then use the validators
-        and converters to adjust the engine's volume to match what TTS has
-        in the settings.
-
-        The same is true for every stage: engine, player, converter, etc.
-        """
-
-        return cls.getVolumeDb()
-    '''
-    '''
-    @classmethod
-    def getEngineVolume_str(cls) -> str:
-        volume_validator: ConstraintsValidator
-        volume_validator = cls.get_validator(cls.service_id,
-                                             property_id=SettingProp.VOLUME)
-        volume: str = volume_validator.getUIValue()
-        return volume
-    '''
 
     @classmethod
     def getSetting(cls, setting_id: str,  default=None):
@@ -715,53 +674,6 @@ class BaseEngineService(BaseServices):
         return Settings.getSetting(cls.service_key.with_prop(setting_id),
                                    default)
 
-    '''
-    @classmethod
-    def setSettingConstraints(cls,
-                   setting_id: str,
-                   constraints: Constraints
-                   ) -> bool:
-        """
-        Saves a setting to addon's settings.xml
-
-        A convenience method for Settings.setSetting(key + '.' + cls.setting_id, value)
-
-        :param constraints:
-        :param setting_id:
-        :return:
-        """
-        if not isinstance(constraints, Constraints):
-            MY_LOGGER.error(f'setSettingConstrants with non-constraint: '
-                              f'{type(constraints)}')
-            return False
-        return Settings.setSettingConstraints(setting_id, constraints)
-        
-        if (not cls.isSettingSupported(setting_id)
-                and MY_LOGGER.isEnabledFor(WARNING)):
-            MY_LOGGER.warning(f'Setting: {setting_id}, not supported by voicing '
-                                f'engine: {cls.get_service_key()}')
-        previous_value = Settings.getSetting(setting_id, cls.get_service_key(),  None)
-        changed = False
-        if previous_value != value:
-            changed = True
-        Settings.setSetting(setting_id, value, cls.setting_id)
-        return changed
-        '''
-    '''
-    @classmethod
-    def set_player_setting(cls, value: str) -> bool:
-        setting_id: str = cls.get_current_engine_id()
-        if (not cls.isSettingSupported(SettingProp.PLAYER)
-                and MY_LOGGER.isEnabledFor(WARNING)):
-            MY_LOGGER.warning(
-                f'{SettingProp.PLAYER}, not supported by voicing engine: '
-                f'{setting_id}')
-        previous_value = Settings.get_player(setting_id=setting_id)
-        changed = previous_value != value
-        Settings.set_player(value, setting_id)
-        return changed
-    '''
-
     @classmethod
     @deprecated
     def get_current_engine_id(cls) -> str:
@@ -775,9 +687,12 @@ class BaseEngineService(BaseServices):
     def is_current_engine(cls, engine: ForwardRef('BaseEngineService')) -> bool:
         return engine.engine_id == cls.get_current_engine_id()
 
+    @deprecated
     @classmethod
     def get_alternate_engine_id(cls) -> str:
         """
+        TODO: REMOVE
+
         The alternate engine is used when the current engine cannot voice
         text in a timely fashion. Typicaly  this is when the current engine
         is slower, higher quality, possibly from a remote service.
@@ -786,8 +701,13 @@ class BaseEngineService(BaseServices):
         """
         return Settings.get_alternate_engine_id()
 
+    @deprecated
     @classmethod
     def is_alternate_engine(cls, engine: ForwardRef('BaseEngineService')) -> bool:
+        """
+        TODO: REMOVE
+
+        """
         return engine.engine_id == cls.get_alternate_engine_id()
 
     @classmethod
@@ -797,7 +717,7 @@ class BaseEngineService(BaseServices):
     def isSpeaking(self):
         """Returns True if speech engine is currently speaking, False if not
         and None if unknown
-
+        TODO: Clean up
         Subclasses should override this accordingly
         """
         return None
@@ -814,55 +734,52 @@ class BaseEngineService(BaseServices):
 
     def update(self):
         """Called when the user has changed a setting for this backend
-
+        TODO: Clean up
         Subclasses should override this to react to user changes.
         """
         pass
 
     def stop(self):
         """Stop all speech, implicitly called when close() is called
-
+        TODO: Clean up
         Subclasses should override this to respond to requests to stop speech.
         Default implementation does nothing.
         """
         pass
 
     def stop_current_phrases(self):
+        """
+        TODO: Clean up
+        Abandon voicing the current phrases. This occurs when the phrases
+        are stale, or that some activity requires silence.
+
+        An engine may continue to generate voice files for the cache using
+        multi-threading, but must be prepared to generate voicings for any
+        current in-comming pharases.
+        """
         pass
 
     def close(self):
-        """Close the speech engine
+        """
+        TODO: Clean up
+
+        Close the speech engine
 
         Subclasses should override this to clean up after themselves.
         Default implementation does nothing.
         """
         pass
 
-    '''
-    def _update(self):
-        changed = self._updateSettings()
-        if changed:
-            return self.update()
-    '''
-    '''
-    def _updateSettings(self):
-        if not self.settings:
-            return None
-        # if not hasattr(self, '_loadedSettings'):
-        #    self._loadedSettings = {}
-        changed = False
-        # for s in self.settings:
-        #    old = self._loadedSettings.get(s)
-        #    new = clz.getSetting(s)
-        #    if old is not None and new != old:
-        #        changed = True
-        return changed
-    '''
-
     def _stop(self):
+        """
+        TODO: Clean up
+        """
         self.stop()
 
     def _close(self):
+        """
+        TODO: Clean up
+        """
         self._closed = True
         self._stop()
 
@@ -872,7 +789,8 @@ class BaseEngineService(BaseServices):
 
 
 class ThreadedTTSBackend(BaseEngineService):
-    """A threaded speech engine backend
+    """
+    TODO: Clean up
 
     Handles all the threading mechanics internally.
     Subclasses must at least implement the threadedSay() method, and can use
@@ -893,6 +811,7 @@ class ThreadedTTSBackend(BaseEngineService):
 
     def init(self):
         """
+        TODO: Clean up
 
         @return:
         """
@@ -901,6 +820,8 @@ class ThreadedTTSBackend(BaseEngineService):
 
     def destroy(self):
         """
+        TODO: Clean up
+
         Destroy this engine and any dependent players, etc. Typically done
         when either stopping TTS (F12) or shutdown, or switching engines, etc.
 
@@ -912,6 +833,10 @@ class ThreadedTTSBackend(BaseEngineService):
         # clz.setting_id}_Player_Monitor')
 
     def kodi_player_state_listener(self, kodi_player_state: KodiPlayerState) -> None:
+        """
+        Stops any generation of voice files when Kodi is playing something
+        TODO: Clean up
+        """
         clz = type(self)
         clz.kodi_player_state = kodi_player_state
         if MY_LOGGER.isEnabledFor(DEBUG):

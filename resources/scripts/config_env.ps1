@@ -42,8 +42,10 @@ Function Config_Kodi_Env {
             Mandatory = $false
             )]
 
-        [string]  $TTSScriptPath = ("c:\Users\fbacher" + "\AppData\Roaming\Kodi\addons\service.kodi.tts\resources\scripts"),
-        [string]  $MPVScriptPath = ("c:\Users\fbacher" + "\AppData\Roaming\Kodi\addons\service.kodi.tts\resources\scripts"),
+        [string]  $TTSScriptPath = ("$env:USERPROFILE\" +
+            "\AppData\Roaming\Kodi\addons\service.kodi.tts\resources\scripts"),
+        [string]  $MPVScriptPath = ("$env:USERPROFILE\" +
+            "\AppData\Roaming\Kodi\addons\service.kodi.tts\resources\scripts"),
 
         [Parameter(
             Position = 2,

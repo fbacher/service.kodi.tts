@@ -146,8 +146,19 @@ class PowerShellTTS(SimpleTTSBackend):
     def init(self):
         super().init()
         clz = type(self)
-        self.process: subprocess.Popen | None = None
+        self.init_process()
         self.update()
+
+    def init_process(self) -> None:
+        if self.process is not None:
+            try:
+                if self.process.poll() is None:
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug(f'Killing process')
+                    self.process.kill()
+            except Exception:
+                MY_LOGGER.exception('previous process not None')
+        self.process: subprocess.Popen | None = None
 
     def get_voice_cache(self) -> VoiceCache:
         return self.voice_cache
@@ -331,24 +342,34 @@ class PowerShellTTS(SimpleTTSBackend):
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             MY_LOGGER.debug_v(f'temp_voice_path type: {type(result.temp_voice_path)}')
         try:
+            self.init_process()
             if Constants.PLATFORM_WINDOWS:
                 if MY_LOGGER.isEnabledFor(DEBUG_V):
-                    MY_LOGGER.debug_v(f'Running command: Windows {args}')
-                completed_proc: subprocess.CompletedProcess
-                completed_proc = subprocess.run(args,
-                                                input=None,
-                                                capture_output=False,
+                    MY_LOGGER.debug_v(f'Running command: Windows: {args}')
+                self.process = subprocess.Popen(args, stdin=subprocess.DEVNULL,
+                                                stdout=subprocess.PIPE,
+                                                stderr=subprocess.STDOUT, shell=False,
                                                 text=True,
-                                                shell=False,
-                                                encoding='utf-8',
+                                                encoding='utf-8', env=env,
                                                 close_fds=True,
-                                                env=env,
-                                                check=True,
                                                 creationflags=subprocess.CREATE_NO_WINDOW)
-        except subprocess.CalledProcessError as e:
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.exception('')
-                return None
+                # DO NOT USE subprocess.DETACHED_PROCESS. It won't create voice files
+                try:
+                    self.process.wait(timeout=20.0)
+                except subprocess.TimeoutExpired:
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.info(f'Navigator command could not complete in 20'
+                                       f' seconds')
+                    return None
+                rc: int = self.process.returncode
+                if rc != 0:
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug(f'Failed RC: {self.process.returncode}')
+                self.process = None
+        except (OSError, ValueError, subprocess.CalledProcessError) as e:
+            MY_LOGGER.exception('')
+            self.init_process()
+            return None
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             MY_LOGGER.debug_v(f'COMMAND FINISHED phrase: {phrase.text}')
         if not result.temp_voice_path.exists():
@@ -380,14 +401,6 @@ class PowerShellTTS(SimpleTTSBackend):
             except:
                 MY_LOGGER.exception(f'Can not delete {result.temp_voice_path}')
             return None
-        except subprocess.CalledProcessError as e:
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.exception('')
-                try:
-                    result.temp_voice_path.unlink(missing_ok=True)
-                except:
-                    MY_LOGGER.exception(f'Can not delete {result.temp_voice_path}')
-                return None
         except Exception:
             MY_LOGGER.exception(f'Could not rename {result.temp_voice_path} '
                                 f'to {result.final_audio_path}')
@@ -398,7 +411,7 @@ class PowerShellTTS(SimpleTTSBackend):
             return None
         return result.final_audio_path  # Wave file
 
-    def runCommandAndSpeak(self, phrase: Phrase):
+    def runCommandAndSpeak(self, phrase: Phrase) -> None:
         clz = type(self)
         clz.update_voice_path(phrase)
         env = os.environ.copy()
@@ -406,19 +419,23 @@ class PowerShellTTS(SimpleTTSBackend):
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             MY_LOGGER.debug_v(f'args: {args}')
         try:
+            self.init_process()
             if Constants.PLATFORM_WINDOWS:
-                subprocess.run(args,
-                               input=None,
-                               text=True,
-                               shell=False,
-                               encoding='utf-8',
-                               close_fds=True,
-                               env=env,
-                               check=True,
-                               creationflags=subprocess.CREATE_NO_WINDOW)
-        except subprocess.SubprocessError as e:
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.exception('')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'Running command: Windows: {args}')
+                self.process = subprocess.Popen(args, stdin=subprocess.DEVNULL,
+                                                stdout=subprocess.DEVNULL,
+                                                stderr=subprocess.DEVNULL, shell=False,
+                                                text=True,
+                                                encoding='utf-8', env=env,
+                                                close_fds=True,
+                                                creationflags=subprocess.CREATE_NO_WINDOW)
+                self.process.communicate()
+                self.process = None
+        except (OSError, ValueError, subprocess.CalledProcessError) as e:
+            MY_LOGGER.exception('')
+            self.init_process()
+        return None
 
     def seed_text_cache(self, phrases: PhraseList) -> None:
         """
@@ -448,14 +465,7 @@ class PowerShellTTS(SimpleTTSBackend):
 
     def stop(self):
         clz = type(self)
-        if not self.process:
-            return
-        try:
-            self.process.terminate()
-        except AbortException:
-            reraise(*sys.exc_info())
-        except:
-            MY_LOGGER.exception("")
+        self.init_process()
 
     @classmethod
     def load_languages(cls):
@@ -479,7 +489,6 @@ class PowerShellTTS(SimpleTTSBackend):
 
             # Get current process' language_code i.e. en-us
             default_locale = Constants.LOCALE.lower().replace('_', '-')
-
             longest_match = -1
             default_lang = default_locale[0:2]
             default_lang_country = ''

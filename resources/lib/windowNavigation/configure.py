@@ -569,12 +569,13 @@ class Configure:
             player_mode = pm_default
             if repair:
                 repairs_made = True
-        valid, pm_mode = e_pm_val.validate(player_mode)
-        if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'PlayerMode valid: {valid} pm_mode: {pm_mode} '
-                            f'player_mode {player_mode} '
-                            f'{engine_key}. Using default: {pm_default}')
-        player_mode = pm_default
+            valid, pm_mode = e_pm_val.validate(player_mode)
+            if not valid:
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'PlayerMode valid: {valid} pm_mode: {pm_mode} '
+                                    f'player_mode {player_mode} '
+                                    f'{engine_key}. Using default: {pm_default}')
+                    player_mode = pm_default
 
         # Second, Handle the case where the player is specified. Check validity
         # and possibly a need for a transcoder
