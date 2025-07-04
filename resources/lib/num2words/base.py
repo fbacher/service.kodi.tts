@@ -15,6 +15,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301 USA
 
+from __future__ import unicode_literals
+
 import math
 from collections import OrderedDict
 from decimal import Decimal
@@ -78,7 +80,7 @@ class Num2Word_Base(object):
                 out.append((self.cards[1], 1))
             else:
                 if div == value:  # The system tallies, eg Roman Numerals
-                    return [(div * self.cards[elem], div * elem)]
+                    return [(div * self.cards[elem], div*elem)]
                 out.append(self.splitnum(div))
 
             out.append((self.cards[elem], elem))
@@ -92,7 +94,7 @@ class Num2Word_Base(object):
         """Detach minus and return it as symbol with new num_str."""
         if num_str.startswith('-'):
             # Extra spacing to compensate if there is no minus.
-            return '%s ' % self.negword, num_str[1:]
+            return '%s ' % self.negword.strip(), num_str[1:]
         return '', num_str
 
     def str_to_number(self, value):
@@ -107,7 +109,7 @@ class Num2Word_Base(object):
         out = ""
         if value < 0:
             value = abs(value)
-            out = self.negword
+            out = "%s " % self.negword.strip()
 
         if value >= self.MAXVAL:
             raise OverflowError(self.errmsg_toobig % (value, self.MAXVAL))
@@ -122,7 +124,7 @@ class Num2Word_Base(object):
         # Simple way of finding decimal places to update the precision
         self.precision = abs(Decimal(str(value)).as_tuple().exponent)
 
-        post = abs(value - pre) * 10 ** self.precision
+        post = abs(value - pre) * 10**self.precision
         if abs(round(post) - post) < 0.01:
             # We generally floor all values beyond our precision (rather than
             # rounding), but in cases where we have something like 1.239999999,
@@ -146,6 +148,9 @@ class Num2Word_Base(object):
         post = '0' * (self.precision - len(post)) + post
 
         out = [self.to_cardinal(pre)]
+        if value < 0 and pre == 0:
+            out = [self.negword.strip()] + out
+
         if self.precision:
             out.append(self.title(self.pointword))
 
@@ -251,8 +256,7 @@ class Num2Word_Base(object):
     def pluralize(self, n, forms):
         """
         Should resolve gettext form:
-        http://docs.translatehouse.org/projects/localization-guide/en/latest/l10n
-        /pluralforms.html
+        http://docs.translatehouse.org/projects/localization-guide/en/latest/l10n/pluralforms.html
         """
         raise NotImplementedError
 
@@ -277,6 +281,7 @@ class Num2Word_Base(object):
         Returns:
             str: Formatted string
 
+        Handles whole numbers and decimal numbers differently
         """
         left, right, is_negative = parse_currency_parts(val)
 
@@ -285,25 +290,39 @@ class Num2Word_Base(object):
 
         except KeyError:
             raise NotImplementedError(
-                    'Currency code "%s" not implemented for "%s"' %
-                    (currency, self.__class__.__name__))
+                'Currency code "%s" not implemented for "%s"' %
+                (currency, self.__class__.__name__))
 
         if adjective and currency in self.CURRENCY_ADJECTIVES:
             cr1 = prefix_currency(self.CURRENCY_ADJECTIVES[currency], cr1)
 
-        minus_str = "%s " % self.negword if is_negative else ""
+        minus_str = "%s " % self.negword.strip() if is_negative else ""
         money_str = self._money_verbose(left, currency)
-        cents_str = self._cents_verbose(right, currency) \
-            if cents else self._cents_terse(right, currency)
 
-        return u'%s%s %s%s %s %s' % (
-            minus_str,
-            money_str,
-            self.pluralize(left, cr1),
-            separator,
-            cents_str,
-            self.pluralize(right, cr2)
-        )
+        # Explicitly check if input has decimal point or non-zero cents
+        has_decimal = isinstance(val, float) or str(val).find('.') != -1
+
+        # Only include cents if:
+        # 1. Input has decimal point OR
+        # 2. Cents are non-zero
+        if has_decimal or right > 0:
+            cents_str = self._cents_verbose(right, currency) \
+                if cents else self._cents_terse(right, currency)
+
+            return u'%s%s %s%s %s %s' % (
+                minus_str,
+                money_str,
+                self.pluralize(left, cr1),
+                separator,
+                cents_str,
+                self.pluralize(right, cr2)
+            )
+        else:
+            return u'%s%s %s' % (
+                minus_str,
+                money_str,
+                self.pluralize(left, cr1)
+            )
 
     def setup(self):
         pass

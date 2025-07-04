@@ -15,19 +15,34 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301 USA
 
-from __future__ import unicode_literals
+from __future__ import division, print_function, unicode_literals
 
-from .lang_FR import Num2Word_FR
+from .lang_ZH import Num2Word_ZH
 
 
-class Num2Word_FR_DZ(Num2Word_FR):
-    CURRENCY_FORMS = {
-        'DIN': (('dinard', 'dinards'), ('centime', 'centimes')),
+class Num2Word_ZH_HK(Num2Word_ZH):
+    CURRENCY_FLOATS_CHILD = ["毫", "仙"]
+
+    CURRENCY_FORMS_CHILD = {
+        "EUR": "歐羅",
+        "JPY": "日圓",
+        "CAD": "加元",
+        "AUD": "澳元",
+        "KRW": "韓圜",
     }
 
-    def to_currency(self, val, currency='DIN', cents=True, separator=' et',
-                    adjective=False):
-        result = super(Num2Word_FR, self).to_currency(
-            val, currency=currency, cents=cents, separator=separator,
-            adjective=adjective)
-        return result
+    CAP_map_CHILD = [
+        ("毫", "角"),
+        ("仙", "分"),
+    ]
+
+    def __init__(self):
+        super().__init__()
+        self.CURRENCY_FLOATS = self.CURRENCY_FLOATS_CHILD.copy()
+        self.CURRENCY_FORMS = self.CURRENCY_FORMS.copy()
+        self.CAP_map = self.CAP_map.copy()
+
+        for k, v in self.CURRENCY_FORMS_CHILD.items():
+            self.CURRENCY_FORMS[k] = v
+        for item in self.CAP_map_CHILD:
+            self.CAP_map.append(item)

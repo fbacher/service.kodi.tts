@@ -96,9 +96,9 @@ class Num2Word_PT(Num2Word_EU):
             },
         ]
         self.thousand_separators = {
-            3 : "milésimo",
-            6 : "milionésimo",
-            9 : "milésimo milionésimo",
+            3: "milésimo",
+            6: "milionésimo",
+            9: "milésimo milionésimo",
             12: "bilionésimo",
             15: "milésimo bilionésimo"
         }
@@ -158,7 +158,7 @@ class Num2Word_PT(Num2Word_EU):
                 'bilião', 'biliões', 'mil biliões'):
             if re.match('.*{} e \\w*entos? (?=.*e)'.format(ext), result):
                 result = result.replace(
-                        '{} e'.format(ext), '{}'.format(ext)
+                    '{} e'.format(ext), '{}'.format(ext)
                 )
 
         return result
@@ -170,8 +170,7 @@ class Num2Word_PT(Num2Word_EU):
     # would be used in the cardinal form instead of the ordinal) is better.
     # This was not implemented.
     # source:
-    # https://ciberduvidas.iscte-iul.pt/consultorio/perguntas/a-forma-por-extenso-de
-    # -2000-e-de-outros-ordinais/16428
+    # https://ciberduvidas.iscte-iul.pt/consultorio/perguntas/a-forma-por-extenso-de-2000-e-de-outros-ordinais/16428
     def to_ordinal(self, value):
         # Before changing this function remember this is used by pt-BR
         # so act accordingly
@@ -222,8 +221,8 @@ class Num2Word_PT(Num2Word_EU):
         backup_negword = self.negword
         self.negword = self.negword[:-1]
         result = super(Num2Word_PT, self).to_currency(
-                val, currency=currency, cents=cents, separator=separator,
-                adjective=adjective)
+            val, currency=currency, cents=cents, separator=separator,
+            adjective=adjective)
         # undo the change on negword
         self.negword = backup_negword
 
@@ -235,7 +234,7 @@ class Num2Word_PT(Num2Word_EU):
                 'biliões', 'trilião', 'triliões'):
             if re.match('.*{} (?={})'.format(ext, cr1[1]), result):
                 result = result.replace(
-                        '{}'.format(ext), '{} de'.format(ext), 1
+                    '{}'.format(ext), '{} de'.format(ext), 1
                 )
         # do not print "e zero cêntimos"
         result = result.replace(' e zero cêntimos', '')

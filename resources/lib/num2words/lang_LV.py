@@ -61,15 +61,15 @@ TWENTIES = {
 HUNDRED = ('simts', 'simti', 'simtu')
 
 THOUSANDS = {
-    1 : ('tūkstotis', 'tūkstoši', 'tūkstošu'),
-    2 : ('miljons', 'miljoni', 'miljonu'),
-    3 : ('miljards', 'miljardi', 'miljardu'),
-    4 : ('triljons', 'triljoni', 'triljonu'),
-    5 : ('kvadriljons', 'kvadriljoni', 'kvadriljonu'),
-    6 : ('kvintiljons', 'kvintiljoni', 'kvintiljonu'),
-    7 : ('sikstiljons', 'sikstiljoni', 'sikstiljonu'),
-    8 : ('septiljons', 'septiljoni', 'septiljonu'),
-    9 : ('oktiljons', 'oktiljoni', 'oktiljonu'),
+    1: ('tūkstotis', 'tūkstoši', 'tūkstošu'),
+    2: ('miljons', 'miljoni', 'miljonu'),
+    3: ('miljards', 'miljardi', 'miljardu'),
+    4: ('triljons', 'triljoni', 'triljonu'),
+    5: ('kvadriljons', 'kvadriljoni', 'kvadriljonu'),
+    6: ('kvintiljons', 'kvintiljoni', 'kvintiljonu'),
+    7: ('sikstiljons', 'sikstiljoni', 'sikstiljonu'),
+    8: ('septiljons', 'septiljoni', 'septiljonu'),
+    9: ('oktiljons', 'oktiljoni', 'oktiljonu'),
     10: ('nontiljons', 'nontiljoni', 'nontiljonu'),
 }
 
@@ -90,27 +90,27 @@ class Num2Word_LV(Num2Word_Base):
     Source: http://publications.europa.eu/code/lv/lv-5000500.htm
     """
     CURRENCY_FORMS = {
-        'AUD'      : (GENERIC_DOLLARS, GENERIC_CENTS),
-        'CAD'      : (GENERIC_DOLLARS, GENERIC_CENTS),
+        'AUD': (GENERIC_DOLLARS, GENERIC_CENTS),
+        'CAD': (GENERIC_DOLLARS, GENERIC_CENTS),
         # repalced by EUR
-        'EEK'      : (GENERIC_KRONA, GENERIC_CENTS),
-        'EUR'      : (('eiro', 'eiro', 'eiro'), GENERIC_CENTS),
+        'EEK': (GENERIC_KRONA, GENERIC_CENTS),
+        'EUR': (('eiro', 'eiro', 'eiro'), GENERIC_CENTS),
         'EUR_LEGAL': (('euro', 'euro', 'euro'), GENERIC_CENTS),
-        'GBP'      : (
+        'GBP': (
             ('sterliņu mārciņa', 'sterliņu mārciņas', 'sterliņu mārciņu'),
             ('penss', 'pensi', 'pensu')),
         # replaced by EUR
-        'LTL'      : (('lits', 'liti', 'litu'), GENERIC_CENTS),
+        'LTL': (('lits', 'liti', 'litu'), GENERIC_CENTS),
         # replaced by EUR
-        'LVL'      : (('lats', 'lati', 'latu'),
-                      ('santīms', 'santīmi', 'santīmu')),
-        'USD'      : (GENERIC_DOLLARS, GENERIC_CENTS),
-        'RUB'      : (('rublis', 'rubļi', 'rubļu'),
-                      ('kapeika', 'kapeikas', 'kapeiku')),
-        'SEK'      : (GENERIC_KRONA, GENERIC_ERA),
-        'NOK'      : (GENERIC_KRONA, GENERIC_ERA),
-        'PLN'      : (('zlots', 'zloti', 'zlotu'),
-                      ('grasis', 'graši', 'grašu')),
+        'LVL': (('lats', 'lati', 'latu'),
+                ('santīms', 'santīmi', 'santīmu')),
+        'USD': (GENERIC_DOLLARS, GENERIC_CENTS),
+        'RUB': (('rublis', 'rubļi', 'rubļu'),
+                ('kapeika', 'kapeikas', 'kapeiku')),
+        'SEK': (GENERIC_KRONA, GENERIC_ERA),
+        'NOK': (GENERIC_KRONA, GENERIC_ERA),
+        'PLN': (('zlots', 'zloti', 'zlotu'),
+                ('grasis', 'graši', 'grašu')),
     }
 
     CURRENCY_ADJECTIVES = {

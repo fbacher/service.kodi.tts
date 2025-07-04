@@ -47,29 +47,29 @@ class Num2Word_HU(lang_EU.Num2Word_EU):
                              + [ZERO])
 
         self.partial_ords = {
-            'nulla'    : 'nullad',
-            'egy'      : 'egyed',
-            'kettő'    : 'ketted',
-            'három'    : 'harmad',
-            'négy'     : 'negyed',
-            'öt'       : 'ötöd',
-            'hat'      : 'hatod',
-            'hét'      : 'heted',
-            'nyolc'    : 'nyolcad',
-            'kilenc'   : 'kilenced',
-            'tíz'      : 'tized',
-            'húsz'     : 'huszad',
-            'harminc'  : 'harmincad',
-            'negyven'  : 'negyvened',
-            'ötven'    : 'ötvened',
-            'hatvan'   : 'hatvanad',
-            'hetven'   : 'hetvened',
-            'nyolcvan' : 'nyolcvanad',
+            'nulla': 'nullad',
+            'egy': 'egyed',
+            'kettő': 'ketted',
+            'három': 'harmad',
+            'négy': 'negyed',
+            'öt': 'ötöd',
+            'hat': 'hatod',
+            'hét': 'heted',
+            'nyolc': 'nyolcad',
+            'kilenc': 'kilenced',
+            'tíz': 'tized',
+            'húsz': 'huszad',
+            'harminc': 'harmincad',
+            'negyven': 'negyvened',
+            'ötven': 'ötvened',
+            'hatvan': 'hatvanad',
+            'hetven': 'hetvened',
+            'nyolcvan': 'nyolcvanad',
             'kilencven': 'kilencvened',
-            'száz'     : 'század',
-            'ezer'     : 'ezred',
-            'illió'    : 'milliomod',
-            'illiárd'  : 'milliárdod'
+            'száz': 'század',
+            'ezer': 'ezred',
+            'illió': 'milliomod',
+            'illiárd': 'milliárdod'
         }
 
     def to_cardinal(self, value, zero=ZERO):
@@ -87,7 +87,7 @@ class Num2Word_HU(lang_EU.Num2Word_EU):
             out = self.tens_to_cardinal(value)
         elif value < 1000:
             out = self.hundreds_to_cardinal(value)
-        elif value < 10 ** 6:
+        elif value < 10**6:
             out = self.thousands_to_cardinal(value)
         else:
             out = self.big_number_to_cardinal(value)
@@ -153,7 +153,7 @@ class Num2Word_HU(lang_EU.Num2Word_EU):
     def to_currency(self, val, currency='HUF', cents=True, separator=',',
                     adjective=False):
         return super(Num2Word_HU, self).to_currency(
-                val, currency, cents, separator, adjective)
+            val, currency, cents, separator, adjective)
 
     def to_cardinal_float(self, value):
         if abs(value) != value:

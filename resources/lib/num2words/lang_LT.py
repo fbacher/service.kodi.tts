@@ -73,15 +73,15 @@ TWENTIES = {
 HUNDRED = ('šimtas', 'šimtai')
 
 THOUSANDS = {
-    1 : ('tūkstantis', 'tūkstančiai', 'tūkstančių'),
-    2 : ('milijonas', 'milijonai', 'milijonų'),
-    3 : ('milijardas', 'milijardai', 'milijardų'),
-    4 : ('trilijonas', 'trilijonai', 'trilijonų'),
-    5 : ('kvadrilijonas', 'kvadrilijonai', 'kvadrilijonų'),
-    6 : ('kvintilijonas', 'kvintilijonai', 'kvintilijonų'),
-    7 : ('sikstilijonas', 'sikstilijonai', 'sikstilijonų'),
-    8 : ('septilijonas', 'septilijonai', 'septilijonų'),
-    9 : ('oktilijonas', 'oktilijonai', 'oktilijonų'),
+    1: ('tūkstantis', 'tūkstančiai', 'tūkstančių'),
+    2: ('milijonas', 'milijonai', 'milijonų'),
+    3: ('milijardas', 'milijardai', 'milijardų'),
+    4: ('trilijonas', 'trilijonai', 'trilijonų'),
+    5: ('kvadrilijonas', 'kvadrilijonai', 'kvadrilijonų'),
+    6: ('kvintilijonas', 'kvintilijonai', 'kvintilijonų'),
+    7: ('sikstilijonas', 'sikstilijonai', 'sikstilijonų'),
+    8: ('septilijonas', 'septilijonai', 'septilijonų'),
+    9: ('oktilijonas', 'oktilijonai', 'oktilijonų'),
     10: ('naintilijonas', 'naintilijonai', 'naintilijonų'),
 }
 

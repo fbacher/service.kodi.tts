@@ -60,7 +60,7 @@ class Num2Word_EO(Num2Word_Base):
         self.pointword = "komo"
         self.errmsg_nonnum = u"Sole nombroj povas esti konvertita en vortojn."
         self.errmsg_toobig = (
-            u"Tro granda nombro por esti konvertita en vortojn."
+            u"Tro granda nombro por esti konvertita en vortojn (abs(%s) > %s)."
         )
         self.exclude_title = ["kaj", "komo", "minus"]
         self.mid_numwords = [(1000, "mil"), (100, "cent"), (90, "naŭdek"),
@@ -71,16 +71,16 @@ class Num2Word_EO(Num2Word_Base):
                              "dek du", "dek unu", "dek", "naŭ", "ok", "sep",
                              "ses", "kvin", "kvar", "tri", "du", "unu", "nul"]
         self.ords = {
-            "unu" : "unua",
-            "du"  : "dua",
-            "tri" : "tria",
+            "unu": "unua",
+            "du": "dua",
+            "tri": "tria",
             "kvar": "kvara",
             "kvin": "kvina",
-            "ses" : "sesa",
-            "sep" : "sepa",
-            "ok"  : "oka",
-            "naŭ" : "naŭa",
-            "dek" : "deka"
+            "ses": "sesa",
+            "sep": "sepa",
+            "ok": "oka",
+            "naŭ": "naŭa",
+            "dek": "deka"
         }
 
     def merge(self, curr, next):
@@ -88,7 +88,7 @@ class Num2Word_EO(Num2Word_Base):
         if cnum == 1 and nnum < 1000000:
             return next
 
-        if nnum >= 10 ** 6 and cnum > 1:
+        if nnum >= 10**6 and cnum > 1:
             return ("%s %sj" % (ctext, ntext), cnum + nnum)
 
         if nnum == 100:
@@ -121,8 +121,8 @@ class Num2Word_EO(Num2Word_Base):
     def to_currency(self, val, currency="EUR", cents=True, separator=" kaj",
                     adjective=False):
         result = super(Num2Word_EO, self).to_currency(
-                val, currency=currency, cents=cents, separator=separator,
-                adjective=adjective)
+            val, currency=currency, cents=cents, separator=separator,
+            adjective=adjective)
         return result
 
     def pluralize(self, n, forms):

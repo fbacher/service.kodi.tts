@@ -91,7 +91,7 @@ class Num2Word_TH(Num2Word_Base):
 
     def round_2_decimal(self, number):
         integer, cents, negative = parse_currency_parts(
-                number, is_int_with_cents=False
+            number, is_int_with_cents=False
         )
         integer = '{}'.format(integer)
         cents = '{}'.format(cents)
@@ -163,8 +163,8 @@ class Num2Word_TH(Num2Word_Base):
 
         except KeyError:
             raise NotImplementedError(
-                    'Currency code "%s" not implemented for "%s"' %
-                    (currency, self.__class__.__name__))
+                'Currency code "%s" not implemented for "%s"' %
+                (currency, self.__class__.__name__))
 
         if right_num == '00':
             if currency == 'THB':

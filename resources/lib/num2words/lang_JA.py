@@ -63,14 +63,14 @@ def rendaku_merge_pairs(lpair, rpair):
             rtext = "ぜん"
         elif lpair == ("はち", 8):
             ltext = "はっ"
-    elif rpair == ("ちょう", 10 ** 12):
+    elif rpair == ("ちょう", 10**12):
         if lpair == ("いち", 1):
             ltext = "いっ"
         elif lpair == ("はち", 8):
             ltext = "はっ"
         elif lpair == ("じゅう", 10):
             ltext = "じゅっ"
-    elif rpair == ("けい", 10 ** 16):
+    elif rpair == ("けい", 10**16):
         if lpair == ("いち", 1):
             ltext = "いっ"
         elif lpair == ("ろく", 6):
@@ -355,18 +355,18 @@ class Num2Word_JA(Num2Word_Base):
         self.exclude_title = ["点", "マイナス"]
 
         self.high_numwords = [
-            ("万", "まん"),  # 10**4 man
-            ("億", "おく"),  # 10**8 oku
+            ("万", "まん"),    # 10**4 man
+            ("億", "おく"),    # 10**8 oku
             ("兆", "ちょう"),  # 10**12 chō
-            ("京", "けい"),  # 10**16 kei
-            ("垓", "がい"),  # 10**20 gai
-            ("秭", "し"),  # 10**24 shi
+            ("京", "けい"),    # 10**16 kei
+            ("垓", "がい"),    # 10**20 gai
+            ("秭", "し"),      # 10**24 shi
             ("穣", "じょう"),  # 10**28 jō
-            ("溝", "こう"),  # 10**32 kō
-            ("澗", "かん"),  # 10**36 kan
-            ("正", "せい"),  # 10**40 sei
-            ("載", "さい"),  # 10**44 sai
-            ("極", "ごく"),  # 10**48 goku
+            ("溝", "こう"),    # 10**32 kō
+            ("澗", "かん"),    # 10**36 kan
+            ("正", "せい"),    # 10**40 sei
+            ("載", "さい"),    # 10**44 sai
+            ("極", "ごく"),    # 10**48 goku
         ]
 
         self.high_numwords.reverse()
@@ -377,16 +377,16 @@ class Num2Word_JA(Num2Word_Base):
         ]
 
         self.low_numwords = [
-            ("十", "じゅう"),  # 10 jū
-            ("九", "きゅう"),  # 9 kyū
-            ("八", "はち"),  # 8 hachi
-            ("七", ("なな", "しち")),  # 7 nana, shichi
-            ("六", "ろく"),  # 6 roku
-            ("五", "ご"),  # 5 go
-            ("四", ("よん", "し")),  # 4 yon, shi
-            ("三", "さん"),  # 3 san
-            ("二", "に"),  # 2 ni
-            ("一", "いち"),  # 1 ichi
+            ("十", "じゅう"),                  # 10 jū
+            ("九", "きゅう"),                  # 9 kyū
+            ("八", "はち"),                    # 8 hachi
+            ("七", ("なな", "しち")),          # 7 nana, shichi
+            ("六", "ろく"),                    # 6 roku
+            ("五", "ご"),                      # 5 go
+            ("四", ("よん", "し")),            # 4 yon, shi
+            ("三", "さん"),                    # 3 san
+            ("二", "に"),                      # 2 ni
+            ("一", "いち"),                    # 1 ichi
             # both are alternatives, 零 doesn't map to ゼロ or 〇 to れい
             (("零", "〇"), ("ゼロ", "れい")),  # 0 ZERO, rei
         ]
@@ -412,7 +412,7 @@ class Num2Word_JA(Num2Word_Base):
                 return "ばんめ"
             else:
                 raise NotImplementedError(
-                        "Reading not implemented for %s" % counter)
+                    "Reading not implemented for %s" % counter)
         else:
             return counter + "目"
 
@@ -445,7 +445,7 @@ class Num2Word_JA(Num2Word_Base):
         last_era_idx = len(ERA_START) - 1
         if year < min_year:
             raise ValueError(
-                    "Can't convert years less than %s to era" % min_year)
+                "Can't convert years less than %s to era" % min_year)
 
         first = 0
         last = last_era_idx
@@ -495,7 +495,7 @@ class Num2Word_JA(Num2Word_Base):
     def to_currency(self, val, currency="JPY", cents=False, separator="",
                     adjective=False, reading=False, prefer=None):
         left, right, is_negative = parse_currency_parts(
-                val, is_int_with_cents=cents)
+            val, is_int_with_cents=cents)
 
         try:
             cr1, cr2 = self.CURRENCY_FORMS[currency]
@@ -503,8 +503,8 @@ class Num2Word_JA(Num2Word_Base):
                 raise ValueError('Decimals not supported for "%s"' % currency)
         except KeyError:
             raise NotImplementedError(
-                    'Currency code "%s" not implemented for "%s"' %
-                    (currency, self.__class__.__name__))
+                'Currency code "%s" not implemented for "%s"' %
+                (currency, self.__class__.__name__))
 
         if adjective and currency in self.CURRENCY_ADJECTIVES:
             cr1 = prefix_currency(self.CURRENCY_ADJECTIVES[currency], cr1)
@@ -585,6 +585,6 @@ class Num2Word_JA(Num2Word_Base):
         for i in range(self.precision):
             curr = int(post[i])
             out.append(to_s(
-                    self.to_cardinal(curr, reading=reading, prefer=prefer)))
+                self.to_cardinal(curr, reading=reading, prefer=prefer)))
 
         return "".join(out)

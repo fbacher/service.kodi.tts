@@ -17,17 +17,21 @@
 
 from __future__ import unicode_literals
 
-from .lang_FR import Num2Word_FR
+from . import lang_EN
 
 
-class Num2Word_FR_DZ(Num2Word_FR):
-    CURRENCY_FORMS = {
-        'DIN': (('dinard', 'dinards'), ('centime', 'centimes')),
-    }
+class Num2Word_EN_NG(lang_EN.Num2Word_EN):
 
-    def to_currency(self, val, currency='DIN', cents=True, separator=' et',
-                    adjective=False):
-        result = super(Num2Word_FR, self).to_currency(
-            val, currency=currency, cents=cents, separator=separator,
+    CURRENCY_FORMS = {'NGN': (('naira', 'naira'), ('kobo', 'kobo'))}
+
+    CURRENCY_ADJECTIVES = {'NGN': 'Nigerian'}
+
+    def to_currency(
+        self, val, currency='NGN',
+        kobo=True, separator=',',
+        adjective=False
+    ):
+        result = super(Num2Word_EN_NG, self).to_currency(
+            val, currency=currency, cents=kobo, separator=separator,
             adjective=adjective)
         return result

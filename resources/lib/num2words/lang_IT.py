@@ -44,6 +44,7 @@ EXPONENT_PREFIXES = [
     ZERO, "m", "b", "tr", "quadr", "quint", "sest", "sett", "ott", "nov", "dec"
 ]
 
+
 GENERIC_DOLLARS = ('dollaro', 'dollari')
 GENERIC_CENTS = ('centesimo', 'centesimi')
 CURRENCIES_UNA = ('GBP')
@@ -75,8 +76,8 @@ class Num2Word_IT(Num2Word_EU):
             prefix = self.to_cardinal(int(float_number))
         float_part = str(float_number).split('.')[1]
         postfix = " ".join(
-                # Drops the trailing zero and comma
-                [self.to_cardinal(int(c)) for c in float_part]
+            # Drops the trailing zero and comma
+            [self.to_cardinal(int(c)) for c in float_part]
         )
         return prefix + Num2Word_IT.FLOAT_INFIX_WORD + postfix
 
@@ -142,16 +143,16 @@ class Num2Word_IT(Num2Word_EU):
     def to_cardinal(self, number):
         if number < 0:
             string = Num2Word_IT.MINUS_PREFIX_WORD + self.to_cardinal(-number)
-        elif isinstance(number, float):
+        elif int(number) != number:
             string = self.float_to_words(number)
         elif number < 20:
-            string = CARDINAL_WORDS[number]
+            string = CARDINAL_WORDS[int(number)]
         elif number < 100:
-            string = self.tens_to_cardinal(number)
+            string = self.tens_to_cardinal(int(number))
         elif number < 1000:
-            string = self.hundreds_to_cardinal(number)
+            string = self.hundreds_to_cardinal(int(number))
         elif number < 1000000:
-            string = self.thousands_to_cardinal(number)
+            string = self.thousands_to_cardinal(int(number))
         else:
             string = self.big_number_to_cardinal(number)
         return accentuate(string)
@@ -166,9 +167,9 @@ class Num2Word_IT(Num2Word_EU):
         elif number % 1 != 0:
             return self.float_to_words(number, ordinal=True)
         elif number < 20:
-            return ORDINAL_WORDS[number]
+            return ORDINAL_WORDS[int(number)]
         elif is_outside_teens and tens % 10 == 3:
-            # Gets ride of the accent      ~~~~~~~~~~
+            # Gets rid of the accent
             return self.to_cardinal(number)[:-1] + "eesimo"
         elif is_outside_teens and tens % 10 == 6:
             return self.to_cardinal(number) + "esimo"
@@ -181,8 +182,8 @@ class Num2Word_IT(Num2Word_EU):
     def to_currency(self, val, currency='EUR', cents=True, separator=' e',
                     adjective=False):
         result = super(Num2Word_IT, self).to_currency(
-                val, currency=currency, cents=cents, separator=separator,
-                adjective=adjective)
+            val, currency=currency, cents=cents, separator=separator,
+            adjective=adjective)
         # Handle exception. In italian language is "un euro",
         # "un dollaro" etc. (not "uno euro", "uno dollaro").
         # There is an exception, some currencies need "una":
@@ -194,7 +195,6 @@ class Num2Word_IT(Num2Word_EU):
                 result = " ".join(list_result)
         result = result.replace("uno", "un")
         return result
-
 
 # Utils
 # =====
@@ -225,16 +225,16 @@ def accentuate(string):
     # half-sentence accents. However, it is the easiest method and speed is
     # not crucial (duh), so...
     return " ".join(
-            # Deletes half-sentence accents and accentuates the last "tre"
-            [w.replace("tré", "tre")[:-3] + "tré"
-             # We shouldn't accentuate a single "tre": is has to be a composite
-             # word.                ~~~~~~~~~~
-             if w[-3:] == "tre" and len(w) > 3
-             # Deletes half-sentence accents anyway
-             #     ~~~~~~~~~~~~~~~~~~~~~~
-             else w.replace("tré", "tre")
-             for w in string.split()
-             ])
+        # Deletes half-sentence accents and accentuates the last "tre"
+        [w.replace("tré", "tre")[:-3] + "tré"
+         # We shouldn't accentuate a single "tre": is has to be a composite
+         # word.                ~~~~~~~~~~
+         if w[-3:] == "tre" and len(w) > 3
+         # Deletes half-sentence accents anyway
+         #     ~~~~~~~~~~~~~~~~~~~~~~
+         else w.replace("tré", "tre")
+         for w in string.split()
+         ])
 
 
 def omitt_if_zero(number_to_string):

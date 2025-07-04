@@ -38,29 +38,29 @@ ADE = 17  # adessive: at/on
 ABL = 18  # ablative: from (after being at/on, not in)
 ALL = 19  # allative: to
 # essive
-ESS = 20  # essive: as (in the role of)
+ESS = 20     # essive: as (in the role of)
 TRANSL = 21  # translative: to (the role of; being sth)
 # rare
 INSTRUC = 22  # instructive: with (plural is the same as singular)
-ABE = 23  # abessive: without
-COM = 24  # comitative: together with (plural = singular)
+ABE = 23      # abessive: without
+COM = 24      # comitative: together with (plural = singular)
 
 NAME_TO_CASE = {
-    'nominative' : NOM,
-    'genitive'   : GEN,
-    'accusative' : ACC,
-    'partitive'  : PTV,
-    'inessive'   : INE,
-    'elative'    : ELA,
-    'illative'   : ILL,
-    'adessive'   : ADE,
-    'ablative'   : ABL,
-    'allative'   : ALL,
-    'essive'     : ESS,
+    'nominative': NOM,
+    'genitive': GEN,
+    'accusative': ACC,
+    'partitive': PTV,
+    'inessive': INE,
+    'elative': ELA,
+    'illative': ILL,
+    'adessive': ADE,
+    'ablative': ABL,
+    'allative': ALL,
+    'essive': ESS,
     'translative': TRANSL,
     'instructive': INSTRUC,
-    'abessive'   : ABE,
-    'comitative' : COM,
+    'abessive': ABE,
+    'comitative': COM,
 }
 
 # https://en.wikibooks.org/wiki/Finnish/Grammar-Vowel_harmony
@@ -75,256 +75,256 @@ BACK_TO_FRONT = {
 KOTUS_TYPE = {
 
     # Kotus type 5/risti, no gradation
-    5  : {
+    5: {
         # grammatical
-        NOM    : ('i', 'it'),
-        GEN    : ('in', 'ien'),
-        PTV    : ('ia', 'eja'),
+        NOM: ('i', 'it'),
+        GEN: ('in', 'ien'),
+        PTV: ('ia', 'eja'),
         # locative, internal
-        INE    : ('issa', 'eissa'),
-        ELA    : ('ista', 'eista'),
-        ILL    : ('iin', 'eihin'),
+        INE: ('issa', 'eissa'),
+        ELA: ('ista', 'eista'),
+        ILL: ('iin', 'eihin'),
         # locative, external
-        ADE    : ('illa', 'eilla'),
-        ABL    : ('ilta', 'eilta'),
-        ALL    : ('ille', 'eille'),
+        ADE: ('illa', 'eilla'),
+        ABL: ('ilta', 'eilta'),
+        ALL: ('ille', 'eille'),
         # essive
-        ESS    : ('ina', 'eina'),
-        TRANSL : ('iksi', 'eiksi'),
+        ESS: ('ina', 'eina'),
+        TRANSL: ('iksi', 'eiksi'),
         # rare
         INSTRUC: ('ein', 'ein'),
-        ABE    : ('itta', 'eitta'),
-        COM    : ('eine', 'eine'),  # works better
+        ABE: ('itta', 'eitta'),
+        COM: ('eine', 'eine'),  # works better
     },
 
     # Kotus type 7/ovi, no gradation
-    7  : {
+    7: {
         # grammatical
-        NOM    : ('i', 'et'),
-        GEN    : ('en', 'ien'),
-        PTV    : ('ea', 'ia'),
+        NOM: ('i', 'et'),
+        GEN: ('en', 'ien'),
+        PTV: ('ea', 'ia'),
         # locative, internal
-        INE    : ('essa', 'issa'),
-        ELA    : ('esta', 'ista'),
-        ILL    : ('een', 'iin'),
+        INE: ('essa', 'issa'),
+        ELA: ('esta', 'ista'),
+        ILL: ('een', 'iin'),
         # locative, external
-        ADE    : ('ella', 'illa'),
-        ABL    : ('elta', 'ilta'),
-        ALL    : ('elle', 'ille'),
+        ADE: ('ella', 'illa'),
+        ABL: ('elta', 'ilta'),
+        ALL: ('elle', 'ille'),
         # essive
-        ESS    : ('ena', 'ina'),
-        TRANSL : ('eksi', 'iksi'),
+        ESS: ('ena', 'ina'),
+        TRANSL: ('eksi', 'iksi'),
         # rare
         INSTRUC: ('in', 'in'),
-        ABE    : ('etta', 'itta'),
-        COM    : ('ine', 'ine'),  # works better
+        ABE: ('etta', 'itta'),
+        COM: ('ine', 'ine'),  # works better
     },
 
     # Kotus type 8/nalle, no gradation
-    8  : {
+    8: {
         # grammatical
-        NOM    : ('e', 'et'),
-        GEN    : ('en', ('ejen', 'ein')),
-        PTV    : ('ea', 'eja'),
+        NOM: ('e', 'et'),
+        GEN: ('en', ('ejen', 'ein')),
+        PTV: ('ea', 'eja'),
         # locative, internal
-        INE    : ('essa', 'eissa'),
-        ELA    : ('esta', 'eista'),
-        ILL    : ('een', 'eihin'),
+        INE: ('essa', 'eissa'),
+        ELA: ('esta', 'eista'),
+        ILL: ('een', 'eihin'),
         # locative, external
-        ADE    : ('ella', 'eilla'),
-        ABL    : ('elta', 'eilta'),
-        ALL    : ('elle', 'eille'),
+        ADE: ('ella', 'eilla'),
+        ABL: ('elta', 'eilta'),
+        ALL: ('elle', 'eille'),
         # essive
-        ESS    : ('ena', 'eina'),
-        TRANSL : ('eksi', 'eiksi'),
+        ESS: ('ena', 'eina'),
+        TRANSL: ('eksi', 'eiksi'),
         # rare
         INSTRUC: ('ein', 'ein'),
-        ABE    : ('etta', 'eitta'),
-        COM    : ('eine', 'eine'),  # works better
+        ABE: ('etta', 'eitta'),
+        COM: ('eine', 'eine'),  # works better
     },
 
     # Kotus type 9/kala, t-d gradation (sata)
     109: {
         # grammatical
-        NOM    : ('ta', 'dat'),
-        GEN    : ('dan', ('tojen', 'tain')),
-        PTV    : ('taa', 'toja'),
+        NOM: ('ta', 'dat'),
+        GEN: ('dan', ('tojen', 'tain')),
+        PTV: ('taa', 'toja'),
         # locative, internal
-        INE    : ('dassa', 'doissa'),
-        ELA    : ('dasta', 'doista'),
-        ILL    : ('taan', 'toihin'),
+        INE: ('dassa', 'doissa'),
+        ELA: ('dasta', 'doista'),
+        ILL: ('taan', 'toihin'),
         # locative, external
-        ADE    : ('dalla', 'doilla'),
-        ABL    : ('dalta', 'doilta'),
-        ALL    : ('dalle', 'doille'),
+        ADE: ('dalla', 'doilla'),
+        ABL: ('dalta', 'doilta'),
+        ALL: ('dalle', 'doille'),
         # essive
-        ESS    : ('tana', 'toina'),
-        TRANSL : ('daksi', 'doiksi'),
+        ESS: ('tana', 'toina'),
+        TRANSL: ('daksi', 'doiksi'),
         # rare
         INSTRUC: ('doin', 'doin'),
-        ABE    : ('datta', 'doitta'),
-        COM    : ('toine', 'toine'),  # works better
+        ABE: ('datta', 'doitta'),
+        COM: ('toine', 'toine'),  # works better
     },
 
     # Kotus type 10/koira, no gradation
-    10 : {
+    10: {
         # grammatical
-        NOM    : ('a', 'at'),
-        GEN    : ('an', ('ien', 'ain')),
-        PTV    : ('aa', 'ia'),
+        NOM: ('a', 'at'),
+        GEN: ('an', ('ien', 'ain')),
+        PTV: ('aa', 'ia'),
         # locative, internal
-        INE    : ('assa', 'issa'),
-        ELA    : ('asta', 'ista'),
-        ILL    : ('aan', 'iin'),
+        INE: ('assa', 'issa'),
+        ELA: ('asta', 'ista'),
+        ILL: ('aan', 'iin'),
         # locative, external
-        ADE    : ('alla', 'illa'),
-        ABL    : ('alta', 'ilta'),
-        ALL    : ('alle', 'ille'),
+        ADE: ('alla', 'illa'),
+        ABL: ('alta', 'ilta'),
+        ALL: ('alle', 'ille'),
         # essive
-        ESS    : ('ana', 'ina'),
-        TRANSL : ('aksi', 'iksi'),
+        ESS: ('ana', 'ina'),
+        TRANSL: ('aksi', 'iksi'),
         # rare
         INSTRUC: ('in', 'in'),
-        ABE    : ('atta', 'itta'),
-        COM    : ('ine', 'ine'),  # works better
+        ABE: ('atta', 'itta'),
+        COM: ('ine', 'ine'),  # works better
     },
 
     # Kotus type 27/käsi, t-d gradation
-    27 : {
+    27: {
         # grammatical
-        NOM    : ('si', 'det'),
-        GEN    : ('den', ('sien', 'tten')),
-        PTV    : ('tta', 'sia'),
+        NOM: ('si', 'det'),
+        GEN: ('den', ('sien', 'tten')),
+        PTV: ('tta', 'sia'),
         # locative, internal
-        INE    : ('dessa', 'sissa'),
-        ELA    : ('desta', 'sista'),
-        ILL    : ('teen', 'siin'),
+        INE: ('dessa', 'sissa'),
+        ELA: ('desta', 'sista'),
+        ILL: ('teen', 'siin'),
         # locative, external
-        ADE    : ('della', 'silla'),
-        ABL    : ('delta', 'silta'),
-        ALL    : ('delle', 'sille'),
+        ADE: ('della', 'silla'),
+        ABL: ('delta', 'silta'),
+        ALL: ('delle', 'sille'),
         # essive
-        ESS    : ('tena', 'sina'),
-        TRANSL : ('deksi', 'siksi'),
+        ESS: ('tena', 'sina'),
+        TRANSL: ('deksi', 'siksi'),
         # rare
         INSTRUC: ('sin', 'sin'),
-        ABE    : ('detta', 'sitta'),
-        COM    : ('sine', 'sine'),  # works better
+        ABE: ('detta', 'sitta'),
+        COM: ('sine', 'sine'),  # works better
     },
 
     # Kotus type 31/kaksi, t-d gradation
-    31 : {
+    31: {
         # grammatical
-        NOM    : ('ksi', 'hdet'),
-        GEN    : ('hden', 'ksien'),
-        PTV    : ('hta', 'ksia'),
+        NOM: ('ksi', 'hdet'),
+        GEN: ('hden', 'ksien'),
+        PTV: ('hta', 'ksia'),
         # locative, internal
-        INE    : ('hdessa', 'ksissa'),
-        ELA    : ('hdesta', 'ksista'),
-        ILL    : ('hteen', 'ksiin'),
+        INE: ('hdessa', 'ksissa'),
+        ELA: ('hdesta', 'ksista'),
+        ILL: ('hteen', 'ksiin'),
         # locative, external
-        ADE    : ('hdella', 'ksilla'),
-        ABL    : ('hdelta', 'ksilta'),
-        ALL    : ('hdelle', 'ksille'),
+        ADE: ('hdella', 'ksilla'),
+        ABL: ('hdelta', 'ksilta'),
+        ALL: ('hdelle', 'ksille'),
         # essive
-        ESS    : ('htena', 'ksina'),
-        TRANSL : ('hdeksi', 'ksiksi'),
+        ESS: ('htena', 'ksina'),
+        TRANSL: ('hdeksi', 'ksiksi'),
         # rare
         INSTRUC: ('ksin', 'ksin'),
-        ABE    : ('hdetta', 'ksitta'),
-        COM    : ('ksine', 'ksine'),  # works better
+        ABE: ('hdetta', 'ksitta'),
+        COM: ('ksine', 'ksine'),  # works better
     },
 
     # Kotus type 32/sisar, no gradation
-    32 : {
+    32: {
         # grammatical
-        NOM    : ('', 'et'),
-        GEN    : ('en', ('ien', 'ten')),
-        PTV    : ('ta', 'ia'),
+        NOM: ('', 'et'),
+        GEN: ('en', ('ien', 'ten')),
+        PTV: ('ta', 'ia'),
         # locative, internal
-        INE    : ('essa', 'issa'),
-        ELA    : ('esta', 'ista'),
-        ILL    : ('een', 'iin'),
+        INE: ('essa', 'issa'),
+        ELA: ('esta', 'ista'),
+        ILL: ('een', 'iin'),
         # locative, external
-        ADE    : ('ella', 'illa'),
-        ABL    : ('elta', 'ilta'),
-        ALL    : ('elle', 'ille'),
+        ADE: ('ella', 'illa'),
+        ABL: ('elta', 'ilta'),
+        ALL: ('elle', 'ille'),
         # essive
-        ESS    : ('ena', 'ina'),
-        TRANSL : ('eksi', 'iksi'),
+        ESS: ('ena', 'ina'),
+        TRANSL: ('eksi', 'iksi'),
         # rare
         INSTRUC: ('in', 'in'),
-        ABE    : ('etta', 'itta'),
-        COM    : ('ine', 'ine'),  # works better
+        ABE: ('etta', 'itta'),
+        COM: ('ine', 'ine'),  # works better
     },
 
     # Kotus type 38/nainen, no gradation
-    38 : {
+    38: {
         # grammatical
-        NOM    : ('nen', 'set'),
-        GEN    : ('sen', ('sten', 'sien')),
-        PTV    : ('sta', 'sia'),
+        NOM: ('nen', 'set'),
+        GEN: ('sen', ('sten', 'sien')),
+        PTV: ('sta', 'sia'),
         # locative, internal
-        INE    : ('sessa', 'sissa'),
-        ELA    : ('sesta', 'sista'),
-        ILL    : ('seen', 'siin'),
+        INE: ('sessa', 'sissa'),
+        ELA: ('sesta', 'sista'),
+        ILL: ('seen', 'siin'),
         # locative, external
-        ADE    : ('sella', 'silla'),
-        ABL    : ('selta', 'silta'),
-        ALL    : ('selle', 'sille'),
+        ADE: ('sella', 'silla'),
+        ABL: ('selta', 'silta'),
+        ALL: ('selle', 'sille'),
         # essive
-        ESS    : ('sena', 'sina'),
-        TRANSL : ('seksi', 'siksi'),
+        ESS: ('sena', 'sina'),
+        TRANSL: ('seksi', 'siksi'),
         # rare
         INSTRUC: ('sin', 'sin'),
-        ABE    : ('setta', 'sitta'),
-        COM    : ('sine', 'sine'),  # works better
+        ABE: ('setta', 'sitta'),
+        COM: ('sine', 'sine'),  # works better
     },
 
     # Kotus type 45/kahdeksas, nt-nn gradation
-    45 : {
+    45: {
         # grammatical
-        NOM    : ('s', 'nnet'),
-        GEN    : ('nnen', 'nsien'),
-        PTV    : ('tta', 'nsia'),
+        NOM: ('s', 'nnet'),
+        GEN: ('nnen', 'nsien'),
+        PTV: ('tta', 'nsia'),
         # locative, internal
-        INE    : ('nnessa', 'nsissa'),
-        ELA    : ('nnesta', 'nsista'),
-        ILL    : ('nteen', 'nsiin'),
+        INE: ('nnessa', 'nsissa'),
+        ELA: ('nnesta', 'nsista'),
+        ILL: ('nteen', 'nsiin'),
         # locative, external
-        ADE    : ('nnella', 'nsilla'),
-        ABL    : ('nnelta', 'nsilta'),
-        ALL    : ('nnelle', 'nsille'),
+        ADE: ('nnella', 'nsilla'),
+        ABL: ('nnelta', 'nsilta'),
+        ALL: ('nnelle', 'nsille'),
         # essive
-        ESS    : ('ntena', 'nsina'),
-        TRANSL : ('nneksi', 'nsiksi'),
+        ESS: ('ntena', 'nsina'),
+        TRANSL: ('nneksi', 'nsiksi'),
         # rare
         INSTRUC: ('nsin', 'nsin'),
-        ABE    : ('nnetta', 'nsitta'),
-        COM    : ('nsine', 'nsine'),  # works better
+        ABE: ('nnetta', 'nsitta'),
+        COM: ('nsine', 'nsine'),  # works better
     },
 
     # Kotus type 46/tuhat, nt-nn gradation
-    46 : {
+    46: {
         # grammatical
-        NOM    : ('t', 'nnet'),
-        GEN    : ('nnen', ('nsien', 'nten')),
-        PTV    : ('tta', 'nsia'),
+        NOM: ('t', 'nnet'),
+        GEN: ('nnen', ('nsien', 'nten')),
+        PTV: ('tta', 'nsia'),
         # locative, internal
-        INE    : ('nnessa', 'nsissa'),
-        ELA    : ('nnesta', 'nsista'),
-        ILL    : ('nteen', 'nsiin'),
+        INE: ('nnessa', 'nsissa'),
+        ELA: ('nnesta', 'nsista'),
+        ILL: ('nteen', 'nsiin'),
         # locative, external
-        ADE    : ('nnella', 'nsilla'),
-        ABL    : ('nnelta', 'nsilta'),
-        ALL    : ('nnelle', 'nsille'),
+        ADE: ('nnella', 'nsilla'),
+        ABL: ('nnelta', 'nsilta'),
+        ALL: ('nnelle', 'nsille'),
         # essive
-        ESS    : ('ntena', 'nsina'),
-        TRANSL : ('nneksi', 'nsiksi'),
+        ESS: ('ntena', 'nsina'),
+        TRANSL: ('nneksi', 'nsiksi'),
         # rare
         INSTRUC: ('nsin', 'nsin'),
-        ABE    : ('nnetta', 'nsitta'),
-        COM    : ('nsine', 'nsine'),  # works better
+        ABE: ('nnetta', 'nsitta'),
+        COM: ('nsine', 'nsine'),  # works better
     },
 }
 
@@ -384,7 +384,6 @@ def inflect(parts, options):
 
 
 class Options(object):
-
     def __init__(self, ordinal, case, plural, prefer):
         self.ordinal = ordinal
         self.case = case
@@ -393,10 +392,10 @@ class Options(object):
 
     def variation(self, ordinal=None, case=None, plural=None, prefer=None):
         return Options(
-                ordinal if ordinal is not None else self.ordinal,
-                case if case is not None else self.case,
-                plural if plural is not None else self.plural,
-                prefer if prefer is not None else self.prefer,
+            ordinal if ordinal is not None else self.ordinal,
+            case if case is not None else self.case,
+            plural if plural is not None else self.plural,
+            prefer if prefer is not None else self.prefer,
         )
 
 
@@ -644,8 +643,8 @@ class Num2Word_FI(lang_EU.Num2Word_EU):
         except (ValueError, TypeError, AssertionError):
             if case != NOM:
                 raise NotImplementedError(
-                        "Cases other than nominative are not implemented for "
-                        "cardinal floating point numbers.")
+                    "Cases other than nominative are not implemented for "
+                    "cardinal floating point numbers.")
             return self.to_cardinal_float(value)
 
         out = ""
@@ -686,8 +685,8 @@ class Num2Word_FI(lang_EU.Num2Word_EU):
     def to_currency(self, val, currency="EUR", cents=True, separator=" ja",
                     adjective=False):
         return super(Num2Word_FI, self).to_currency(
-                val, currency=currency, cents=cents, separator=separator,
-                adjective=adjective)
+            val, currency=currency, cents=cents, separator=separator,
+            adjective=adjective)
 
     def splitnum(self, value, options):
         elems = self.ords if options.ordinal else self.cards
@@ -705,7 +704,7 @@ class Num2Word_FI(lang_EU.Num2Word_EU):
                 out.append((elems[1], 1))
             else:
                 if div == value:  # The system tallies, eg Roman Numerals
-                    return [(div * elems[elem], div * elem)]
+                    return [(div * elems[elem], div*elem)]
                 out.append(self.splitnum(div, options))
 
             out.append((elems[elem], elem))

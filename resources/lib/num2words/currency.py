@@ -17,7 +17,7 @@
 
 from __future__ import division
 
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 
 
 def parse_currency_parts(value, is_int_with_cents=True):
@@ -34,8 +34,8 @@ def parse_currency_parts(value, is_int_with_cents=True):
     else:
         value = Decimal(value)
         value = value.quantize(
-                Decimal('.01'),
-                rounding=ROUND_HALF_UP
+            Decimal('.01'),
+            rounding=ROUND_HALF_UP
         )
         negative = value < 0
         value = abs(value)

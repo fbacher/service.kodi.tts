@@ -72,16 +72,16 @@ HUNDREDS = {
 }
 
 SCALE = {
-    0 : ('', '', '', False),
-    1 : ('hiljada', 'hiljade', 'hiljada', True),  # 10^3
-    2 : ('milion', 'miliona', 'miliona', False),  # 10^6
-    3 : ('bilion', 'biliona', 'biliona', False),  # 10^9
-    4 : ('trilion', 'triliona', 'triliona', False),  # 10^12
-    5 : ('kvadrilion', 'kvadriliona', 'kvadriliona', False),  # 10^15
-    6 : ('kvintilion', 'kvintiliona', 'kvintiliona', False),  # 10^18
-    7 : ('sekstilion', 'sekstiliona', 'sekstiliona', False),  # 10^21
-    8 : ('septilion', 'septiliona', 'septiliona', False),  # 10^24
-    9 : ('oktilion', 'oktiliona', 'oktiliona', False),  # 10^27
+    0: ('', '', '', False),
+    1: ('hiljada', 'hiljade', 'hiljada', True),  # 10^3
+    2: ('milion', 'miliona', 'miliona', False),  # 10^6
+    3: ('bilion', 'biliona', 'biliona', False),  # 10^9
+    4: ('trilion', 'triliona', 'triliona', False),  # 10^12
+    5: ('kvadrilion', 'kvadriliona', 'kvadriliona', False),  # 10^15
+    6: ('kvintilion', 'kvintiliona', 'kvintiliona', False),  # 10^18
+    7: ('sekstilion', 'sekstiliona', 'sekstiliona', False),  # 10^21
+    8: ('septilion', 'septiliona', 'septiliona', False),  # 10^24
+    9: ('oktilion', 'oktiliona', 'oktiliona', False),  # 10^27
     10: ('nonilion', 'noniliona', 'noniliona', False),  # 10^30
 }
 
@@ -138,8 +138,8 @@ class Num2Word_SR(Num2Word_Base):
 
     def _cents_verbose(self, number, currency):
         return self._int2word(
-                number,
-                self.CURRENCY_FORMS[currency][1][-1]
+            number,
+            self.CURRENCY_FORMS[currency][1][-1]
         )
 
     def _int2word(self, number, feminine=False):
@@ -168,7 +168,7 @@ class Num2Word_SR(Num2Word_Base):
                 is_feminine = feminine or SCALE[chunk_len][-1]
                 gender_idx = int(is_feminine)
                 words.append(
-                        ONES[digit_right][gender_idx]
+                    ONES[digit_right][gender_idx]
                 )
 
             if chunk_len > 0 and chunk != 0:
@@ -196,13 +196,13 @@ class Num2Word_SR(Num2Word_Base):
 
         except KeyError:
             raise NotImplementedError(
-                    'Currency code "%s" not implemented for "%s"' %
-                    (currency, self.__class__.__name__))
+                'Currency code "%s" not implemented for "%s"' %
+                (currency, self.__class__.__name__))
 
         if adjective and currency in self.CURRENCY_ADJECTIVES:
             cr1 = prefix_currency(
-                    self.CURRENCY_ADJECTIVES[currency],
-                    cr1
+                self.CURRENCY_ADJECTIVES[currency],
+                cr1
             )
 
         minus_str = "%s " % self.negword if is_negative else ""

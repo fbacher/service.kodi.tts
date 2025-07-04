@@ -20,12 +20,12 @@ from __future__ import division, print_function, unicode_literals
 from . import lang_EU
 
 
-class Num2Word_DK(lang_EU.Num2Word_EU):
-    GIGA_SUFFIX = "illarder"
+class Num2Word_DA(lang_EU.Num2Word_EU):
+    GIGA_SUFFIX = "illiarder"
     MEGA_SUFFIX = "illioner"
 
     def setup(self):
-        super(Num2Word_DK, self).setup()
+        super(Num2Word_DA, self).setup()
 
         self.negword = "minus "
         self.pointword = "komma"
@@ -40,27 +40,28 @@ class Num2Word_DK(lang_EU.Num2Word_EU):
                              "tolv", "elleve", "ti", "ni", "otte",
                              "syv", "seks", "fem", "fire", "tre", "to",
                              "et", "nul"]
-        self.ords = {"nul"    : "nul",
-                     "et"     : "f\xf8rste",
-                     "to"     : "anden",
-                     "tre"    : "tredje",
-                     "fire"   : "fjerde",
-                     "fem"    : "femte",
-                     "seks"   : "sjette",
-                     "syv"    : "syvende",
-                     "otte"   : "ottende",
-                     "ni"     : "niende",
-                     "ti"     : "tiende",
-                     "elleve" : "ellevte",
-                     "tolv"   : "tolvte",
+        self.ords = {"nul": "nul",
+                     "et": "f\xf8rste",
+                     "to": "anden",
+                     "tre": "tredje",
+                     "fire": "fjerde",
+                     "fem": "femte",
+                     "seks": "sjette",
+                     "syv": "syvende",
+                     "otte": "ottende",
+                     "ni": "niende",
+                     "ti": "tiende",
+                     "elleve": "ellevte",
+                     "tolv": "tolvte",
                      "tretten": "trett",
                      "fjorten": "fjort",
-                     "femten" : "femt",
+                     "femten": "femt",
                      "seksten": "sekst",
-                     "sytten" : "sytt",
-                     "atten"  : "att",
-                     "nitten" : "nitt",
-                     "tyve"   : "tyv"}
+                     "sytten": "sytt",
+                     "atten": "att",
+                     "nitten": "nitt",
+                     "tyve": "tyv"}
+        self.ordflag = False
 
     def merge(self, curr, next):
         ctext, cnum, ntext, nnum = curr + next

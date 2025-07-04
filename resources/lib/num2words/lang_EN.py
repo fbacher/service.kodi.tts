@@ -21,7 +21,6 @@ from . import lang_EU
 
 
 class Num2Word_EN(lang_EU.Num2Word_EU):
-
     def set_high_numwords(self, high):
         max = 3 + 3 * len(high)
         for word, n in zip(high, range(max, 3, -3)):
@@ -43,16 +42,16 @@ class Num2Word_EN(lang_EU.Num2Word_EU):
                              "twelve", "eleven", "ten", "nine", "eight",
                              "seven", "six", "five", "four", "three", "two",
                              "one", "zero"]
-        self.ords = {"one"   : "first",
-                     "two"   : "second",
-                     "three" : "third",
-                     "four"  : "fourth",
-                     "five"  : "fifth",
-                     "six"   : "sixth",
-                     "seven" : "seventh",
-                     "eight" : "eighth",
-                     "nine"  : "ninth",
-                     "ten"   : "tenth",
+        self.ords = {"one": "first",
+                     "two": "second",
+                     "three": "third",
+                     "four": "fourth",
+                     "five": "fifth",
+                     "six": "sixth",
+                     "seven": "seventh",
+                     "eight": "eighth",
+                     "nine": "ninth",
+                     "ten": "tenth",
                      "eleven": "eleventh",
                      "twelve": "twelfth"}
 

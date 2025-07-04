@@ -50,19 +50,19 @@ class Num2Word_SV(lang_EU.Num2Word_EU):
                              "tolv", "elva", "tio", "nio", "åtta",
                              "sju", "sex", "fem", "fyra", "tre", "två",
                              "ett", "noll"]
-        self.ords = {"noll" : "nollte",
-                     "ett"  : "första",
-                     "två"  : "andra",
-                     "tre"  : "tredje",
-                     "fyra" : "fjärde",
-                     "fem"  : "femte",
-                     "sex"  : "sjätte",
-                     "sju"  : "sjunde",
-                     "åtta" : "åttonde",
-                     "nio"  : "nionde",
-                     "tio"  : "tionde",
-                     "elva" : "elfte",
-                     "tolv" : "tolfte",
+        self.ords = {"noll": "nollte",
+                     "ett": "första",
+                     "två": "andra",
+                     "tre": "tredje",
+                     "fyra": "fjärde",
+                     "fem": "femte",
+                     "sex": "sjätte",
+                     "sju": "sjunde",
+                     "åtta": "åttonde",
+                     "nio": "nionde",
+                     "tio": "tionde",
+                     "elva": "elfte",
+                     "tolv": "tolfte",
                      "tjugo": "tjugonde"}
 
     def merge(self, lpair, rpair):
@@ -106,12 +106,12 @@ class Num2Word_SV(lang_EU.Num2Word_EU):
 
     def to_ordinal_num(self, value):
         raise NotImplementedError(
-                "'ordinal_num' is not implemented for swedish language")
+            "'ordinal_num' is not implemented for swedish language")
 
     def to_year(self, val, longval=True):
         raise NotImplementedError(
-                "'year' is not implemented for swedish language")
+            "'year' is not implemented for swedish language")
 
     def to_currency(self, val, longval=True):
         raise NotImplementedError(
-                "'currency' is not implemented for swedish language")
+            "'currency' is not implemented for swedish language")

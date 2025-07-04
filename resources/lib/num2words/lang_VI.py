@@ -61,7 +61,7 @@ class Num2Word_VI(object):
                 word = word != '' and word + u'lẻ năm' or word + u'năm'
             else:
                 word = word != '' and word + u'lẻ ' \
-                       + self._convert_nn(mod) or word + self._convert_nn(mod)
+                    + self._convert_nn(mod) or word + self._convert_nn(mod)
         if mod >= 10:
             word = word + self._convert_nn(mod)
         return word
