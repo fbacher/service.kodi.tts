@@ -85,10 +85,13 @@ Items of particular interest:
 
 Kodi TTS depends upon other libraries:
 
-    * [gTTS](https://github.com/pndurette/gTTS)  
-      gTTS is a pypl package. The 'resources/lib/gtts' module is from gTTS. The MIT LICENSE,
-      README.md files are also found there.
-    * [num2words](https://github.com/savoirfairelinux/num2words)  
-        Library contained in resources/lib/num2words. Includes a GNU Lesser General Public License
-        Version 2.1, February 1999 license in COPYING  
-        as well as README.md and README.rst
+[gTTS][2] as well as [num2words][1] 
+
+  * gTTS is found in the 'resources/lib/gtts' module. The MIT LICENSE, README.md files  
+    are also found there.
+  * num2words library is contained in resources/lib/num2words, which also includes  
+    the GNU Lesser General Public License Version 2.1 in COPYING as well as 
+    README.md and README.rst
+
+  [1]: https://github.com/savoirfairelinux/num2words
+  [2]: https://github.com/pndurette/gTTs
