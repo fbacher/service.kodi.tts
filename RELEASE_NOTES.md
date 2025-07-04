@@ -73,10 +73,22 @@ discuss anything about this addon.
 
 Items of particular interest:
 
-    * It is possible to cause high CPU usage while configuration TTS. The cause is
+    * It is possible to cause high CPU usage while configuring TTS. The cause is
       yet unknown, but is related to changing player configuration. The solution
       is to restart Kodi, or TTS. 
 
     * Exiting TTS (or Kodi) can cause Kodi to get a Segmentation Violation on 
       Linux (it may also on Windows). I have seen this before. Probably related
       to shut-down code for TTS, or improper file handling. Requires investigation.
+
+### Dependencies
+
+Kodi TTS depends upon other libraries:
+
+    * [gTTS](https://github.com/pndurette/gTTS)  
+      gTTS is a pypl package. The 'resources/lib/gtts' module is from gTTS. The MIT LICENSE,
+      README.md files are also found there.
+    * [num2words](https://github.com/savoirfairelinux/num2words)  
+        Library contained in resources/lib/num2words. Includes a GNU Lesser General Public License
+        Version 2.1, February 1999 license in COPYING  
+        as well as README.md and README.rst
