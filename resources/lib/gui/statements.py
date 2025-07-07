@@ -1,6 +1,8 @@
 # coding=utf-8
 from __future__ import annotations
 
+from common.message_ids import MessageId
+
 """
 Frequently the text that needs to be voiced for a control follows
 pattern. For example, a Window topic may have:
@@ -34,7 +36,7 @@ from logging import DEBUG
 from typing import ForwardRef, List, Tuple, Union
 
 from common.exceptions import ExpiredException
-from common.globals import Globals, VoiceHintToggle
+from common.globals import Globals
 from common.logger import BasicLogger, DEBUG_V, DEBUG_XV, DISABLED
 from common.phrases import PhraseList
 
@@ -102,7 +104,7 @@ class Statement:
     @classmethod
     def create_filter(cls) -> List[StatementType]:
         stmt_filter: List[StatementType] = []
-        if Globals.voice_hint != VoiceHintToggle.OFF:
+        if Globals.get_voice_hint() != MessageId.VOICE_HINT_OFF:
             stmt_filter.append(StatementType.HINT_TEXT)
         return stmt_filter
 

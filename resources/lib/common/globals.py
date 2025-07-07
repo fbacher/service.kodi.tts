@@ -4,35 +4,73 @@ from typing import ForwardRef
 
 import xbmc
 
-from common.message_ids import MessageUtils
+from common.message_ids import MessageId
 
 DEBUG_ENABLED: bool = False
 
 
-class VoiceHintToggle(Enum):
+class GlobalValues:
     """
-    Provides a multi-press toggle that cycles between:
-      Hintting disabled
-      Hinting on all of the time
-      Hinting only when user pauses for some period of time of no activity (a second?)
+    Simply contains global variables that introduce no extra
+    dependencies for users.
     """
-    OFF = 0  # Values MUST be consecutive
-    ON = auto()
-    PAUSE = auto()
-    #  LAST_VALUE = PAUSE
-    #  FIRST_VALUE = OFF
 
-    def get_msg(self) -> str:
-        # Translate to message_id (32050)
-        return MessageUtils.get_msg_by_id(self.value + 32050)
+    instance = None
 
-    def toggle_value(self) -> ForwardRef('VoiceHintToggle'):
-        current_value: ForwardRef('VoiceHintToggle') = Globals.voice_hint
-        current_value = VoiceHintToggle((current_value.value + 1) % len(VoiceHintToggle))
-        Globals.voice_hint = current_value
+    @classmethod
+    def class_init(cls) -> None:
+        if cls.instance is None:
+            cls.instance = GlobalValues()
+
+    def __init__(self) -> None:
+        self._voice_hint: MessageId = MessageId.VOICE_HINT_OFF
+        self._silent: bool = False
+        self._using_new_reader: bool = False
+
+    @property
+    def voice_hint(self) -> MessageId:
+        return self._voice_hint
+
+    @voice_hint.setter
+    def voice_hint(self, value: MessageId) -> None:
+        if not isinstance(value, MessageId):
+            raise ValueError('Not a MessageId')
+
+        self._voice_hint = value
         if DEBUG_ENABLED:
-            xbmc.log(f'HINT_TOGGLE: {current_value}')
-        return current_value
+            xbmc.log(f'HINT_TOGGLE: {self._voice_hint.name}')
+        return
+
+    @property
+    def toggle_voice_hint(self) -> MessageId:
+        """
+        Cycles through the possible values
+        """
+        if self._voice_hint == MessageId.VOICE_HINT_OFF:
+            self._voice_hint = MessageId.VOICE_HINT_ON
+        elif self._voice_hint == MessageId.VOICE_HINT_ON:
+            self._voice_hint = MessageId.VOICE_HINT_PAUSE
+        elif self._voice_hint == MessageId.VOICE_HINT_PAUSE:
+            self._voice_hint = MessageId.VOICE_HINT_OFF
+        if DEBUG_ENABLED:
+            xbmc.log(f'HINT_TOGGLE: {self._voice_hint.name}')
+        return self._voice_hint
+
+    @property
+    def using_new_reader(self) -> bool:
+        return self._using_new_reader
+
+    @using_new_reader.setter
+    def using_new_reader(self, using_new: bool) -> None:
+        self._using_new_reader = using_new
+
+    @property
+    def silent(self) -> bool:
+        return self._silent
+
+    @silent.setter
+    def silent(self, silent: bool) -> None:
+        self._silent = silent
 
 
 class Globals:
@@ -41,7 +79,41 @@ class Globals:
     dependencies for users.
     """
 
-    # Used to control the voicing of hint-text for controls
-    voice_hint: VoiceHintToggle = VoiceHintToggle.OFF
-    voice_silent: bool = False
-    using_new_reader: bool = False
+    GlobalValues.class_init()
+
+    @staticmethod
+    def get_voice_hint() -> MessageId:
+        return GlobalValues.instance.voice_hint
+
+    @staticmethod
+    def set_voice_hint(value: MessageId) -> None:
+        inst: GlobalValues = GlobalValues.instance
+        inst.voice_hint = value
+
+    @staticmethod
+    def toggle_voice_hint() -> MessageId:
+        """
+        Cycles through the possible values
+        """
+        inst: GlobalValues = GlobalValues.instance
+        return inst.toggle_voice_hint
+
+    @staticmethod
+    def is_using_new_reader() -> bool:
+        inst: GlobalValues = GlobalValues.instance
+        return inst.using_new_reader
+
+    @staticmethod
+    def set_using_new_reader(using_new: bool) -> None:
+        inst: GlobalValues = GlobalValues.instance
+        inst.using_new_reader = using_new
+
+    @staticmethod
+    def is_silent() -> bool:
+        inst: GlobalValues = GlobalValues.instance
+        return inst.silent
+
+    @staticmethod
+    def set_silent(silent: bool) -> None:
+        inst: GlobalValues = GlobalValues.instance
+        inst.silent = silent

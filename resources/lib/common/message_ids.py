@@ -17,7 +17,7 @@ class MessageId(Enum):
     ENGINE_LABEL = 32001
     VOLUME_LABEL = 32014
     VOICE_HINT_OFF = 32050
-    VOICE_HINT_ON = 3205
+    VOICE_HINT_ON = 32051
     VOICE_HINT_PAUSE = 32052
 
     # Temporary volume up from keymap key

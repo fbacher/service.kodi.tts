@@ -10,10 +10,11 @@ import xbmcgui
 
 from common import *
 from common.debug import Debug
-from common.globals import Globals, VoiceHintToggle
+from common.globals import Globals
 
 from common.logger import *
 from common.logger import BasicLogger
+from common.message_ids import MessageId
 from common.phrases import Phrase, PhraseList
 from gui.gui_globals import GuiGlobals
 from gui.gui_worker import GuiWorkerQueue
@@ -97,7 +98,7 @@ class CustomTTSReader(WindowReaderBase):
         if str(simple_path.name) not in ('script-tts-settings-dialog.xml',
                                          'selection-dialog.xml',
                                          'tts-help-dialog.xml'):
-            Globals.using_new_reader = False
+            Globals.set_using_new_reader(False)
             cls._logger.debug(f'Returning None')
             return None
 
@@ -114,9 +115,9 @@ class CustomTTSReader(WindowReaderBase):
                 cls.instances[window_id] = current_reader
         if current_reader is not None:
             #  cls._logger.debug(f'running: {cls.current_reader.is_running(window_id)}')
-            Globals.using_new_reader = True
+            Globals.set_using_new_reader(True)
             return current_reader
-        Globals.using_new_reader = False
+        Globals.set_using_new_reader(False)
         cls._logger.debug(f'Returning None')
         return None
 
@@ -328,14 +329,16 @@ class CustomTTSReader(WindowReaderBase):
         if not phrases_to_voice.is_empty():
             interrupt_voicing = True
             phrases_to_voice.set_interrupt(interrupt_voicing)
-            if Globals.voice_hint == VoiceHintToggle.ON and not hints_to_voice.is_empty():
+            if (Globals.get_voice_hint() == MessageId.VOICE_HINT_ON and not
+                    hints_to_voice.is_empty()):
                 phrases_to_voice.extend(hints_to_voice)
             if clz._logger.isEnabledFor(DEBUG):
                 clz._logger.debug(f'Final Aggregate text: {phrases_to_voice}')
             self.service.sayText(phrases_to_voice)
 
-        if Globals.voice_hint == VoiceHintToggle.PAUSE and not hints_to_voice.is_empty():
-            # By disabling interrupt and by setting a delay, then almost all
+        if (Globals.get_voice_hint() == MessageId.VOICE_HINT_PAUSE
+                and not hints_to_voice.is_empty()):
+            # By disabling interrupt and setting a delay, then almost all
             # other voicings will abort the voicing of the hint. Therefore,
             # it will (usually) voice after PAUSE_PRE_HINT_INACTIVITY ms of
             # inactivity.
