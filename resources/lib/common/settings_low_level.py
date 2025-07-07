@@ -1717,8 +1717,8 @@ class SettingsLowLevel:
 
         cls.check_reload()
         load_on_demand = True
-        if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'{service_key} is_in_cache: {cls.is_in_cache(service_key)}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'{service_key} is_in_cache: {cls.is_in_cache(service_key)}')
         if load_on_demand and not cls.is_in_cache(service_key):
             # value is NOT stored in settings cache. Need to manually push it to
             # all stack frames of cache (yuk).
@@ -1726,17 +1726,17 @@ class SettingsLowLevel:
             SettingsManager.load_setting_to_all_frames(service_key.short_key, value)
             value = SettingsManager.get_setting(service_key.short_key,
                                                 default_value)
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'Getting from cache: {service_key.short_key} '
-                                f'value: {value} is_in_cache: '
-                                f'{cls.is_in_cache(service_key)}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'Getting from cache: {service_key.short_key} '
+                                  f'value: {value} setting_in_cache: '
+                                  f'{cls.is_in_cache(service_key)}')
         else:
             value = SettingsManager.get_setting(service_key.short_key,
                                                 default_value)
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'Getting from cache: {service_key.short_key} '
-                                f'value: {value} is_in_cache: '
-                                f'{cls.is_in_cache(service_key)}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'Getting from cache: {service_key.short_key} '
+                                  f'value: {value} setting_in_cache: '
+                                  f'{cls.is_in_cache(service_key)}')
         return value
 
     @classmethod

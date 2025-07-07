@@ -175,6 +175,7 @@ class PowerShellTTS(SimpleTTSBackend):
         cls.voice_map = {}
         david: Tuple[str, str, Genders] = ('David', 'en-us', Genders.MALE)
         zira: Tuple[str, str, Genders] = ('Zira', 'en-us', Genders.FEMALE)
+        hazel: Tuple[str, str, Genders] = ('Hazel', 'en-gb', Genders.FEMALE)
         voices: List[Tuple[str, str, Genders]] = [david, zira]
         for voice in voices:
             v_name: str = voice[0]
@@ -322,13 +323,13 @@ class PowerShellTTS(SimpleTTSBackend):
         clz.update_voice_path(phrase)
         sfx_player: bool = Settings.get_player().setting_id == Players.SFX
         use_cache: bool = Settings.is_use_cache() or sfx_player
-        if MY_LOGGER.isEnabledFor(DEBUG_V):
-            MY_LOGGER.debug_v(f'phrase: {phrase.get_text()} {phrase.get_debug_info()} '
-                              f'cache_path: {phrase.get_cache_path()} ')
         # Get path to audio-temp file, or cache location for audio
         result: CacheEntryInfo | None = None
         result = self.get_voice_cache().get_path_to_voice_file(phrase,
                                                                use_cache=use_cache)
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'phrase: {phrase.get_text()} {phrase.get_debug_info()} '
+                              f'cache_path: {phrase.get_cache_path()} ')
         audio_exists: bool = result.audio_exists  # True ONLY if using cache
         if audio_exists:
             return result.final_audio_path

@@ -94,7 +94,7 @@ class PlayerState:
         # Index of the last item added to playlist.
         self._last_playlist_entry_idx: int = 0
 
-        # All phrases and silent pauses in a PhraseList are added to player's
+        # All phrases and is_silent pauses in a PhraseList are added to player's
         # playlist as a group. The phrases in a PhraseList share the same serial number.
         self._current_phrase_serial_num: int = -1
         self._last_played_idx: int = 0
@@ -185,7 +185,7 @@ class PlayerState:
     def remaining_to_play(self) -> int | None:
         """
            Gets the number of remaining sound files to play
-           Frequently voice files have pre and/or post silent files
+           Frequently voice files have pre and/or post is_silent files
        :return:
        """
         return self._last_playlist_entry_idx - self._last_played_idx

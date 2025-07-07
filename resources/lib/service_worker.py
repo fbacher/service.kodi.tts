@@ -467,8 +467,8 @@ class TTSService:
 
         :return:
         """
-        Globals.voice_hint.toggle_value()
-        phrases: PhraseList = PhraseList.create(texts=Globals.voice_hint.get_msg())
+        msg: str = Globals.toggle_voice_hint().get_msg()
+        phrases: PhraseList = PhraseList.create(texts=msg)
         phrases.set_interrupt(True)
         cls.queueNotice(phrases)
 
@@ -611,13 +611,13 @@ class TTSService:
         :return:
         """
         try:
-            if Globals.using_new_reader:
+            if Globals.is_using_new_reader:
                 cls.sayText(phrases)
                 return
 
-            if MY_LOGGER.isEnabledFor(DEBUG_V):
-                MY_LOGGER.debug_v(f'phrases: {len(phrases)} phrase: '
-                                                 f'{phrases[0]}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'phrases: {len(phrases)} phrase: '
+                                  f'{phrases[0]}')
             if phrases.interrupt:
                 if MY_LOGGER.isEnabledFor(DEBUG_V):
                     MY_LOGGER.debug_v(f'INTERRUPT: clearing NoticeQueue')
