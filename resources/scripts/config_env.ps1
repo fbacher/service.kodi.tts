@@ -66,7 +66,7 @@ Function Config_Kodi_Env {
             Position = 4,
             Mandatory = $false
         )]
-        [string]    $eSpeakPath = 'C:\Program Files\eSpeak NG\espeak-ng.exe',
+        [string]    $eSpeakPath = 'C:\Program Files\eSpeak NG',
 
           [Parameter(
             Position = 5,
