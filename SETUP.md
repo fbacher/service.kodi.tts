@@ -7,10 +7,10 @@ Next, install the Kodi TTS addon as well as its dependents. Since this Alpha rel
 is not available from the Kodi repository, you will have to manually download and 
 install Kodi TTS and a dependent addon.
 
-Download the two addons:
+Download the two addons (you want the .zip file):
 
   * [script.module.langcodes](https://github.com/fbacher/script.module.langcodes/archive/refs/tags/v0.0.1-alpha.zip)
-  * [service.kodi.tts](https://github.com/fbacher/service.kodi.tts/archive/refs/tags/v.0.0.2-alpha.zip)
+  * [service.kodi.tts](https://github.com/fbacher/service.kodi.tts/tags)
 
 To install, in Kodi, go to **Settings -> Add-ons -> Add-on browser -> Install from zip file**. There will probably be a warning about installing from unofficial sites. Select to allow the installation. Install **script.module.langcodes** first. Choose the path where you downloaded each zip file above. After the installation of both is complete, exit Kodi.
 
