@@ -40,7 +40,7 @@ class SimpleRunCommand:
     instance_count: int = 0
 
     def __init__(self, args: List[str], phrase_serial: int = 0, name: str = '',
-                 stop_on_play: bool = False,
+                 stop_on_kodi_play: bool = False,
                  delete_after_run: Path = None) -> None:
         """
 
@@ -48,7 +48,7 @@ class SimpleRunCommand:
         :param phrase_serial: Serial Number of PhraseList containing phrase.
             Used to handle expiration of phrase
         :param name: thread_name
-        :param stop_on_play If True, then exit if video is playing before, or
+        :param stop_on_kodi_play If True, then exit if video is playing before, or
                during TTS audio play
         :param delete_after_run: Delete the given path after running command.
         """
@@ -61,9 +61,10 @@ class SimpleRunCommand:
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             MY_LOGGER.debug_v(f'thread_name: {self.thread_name} delete_after_run:'
                               f' {delete_after_run} args: {args}')
-        self.rc = 0
+        self.lock: threading.RLock = threading.RLock()
+        self.rc: int | None = None
         self.run_state: RunState = RunState.NOT_STARTED
-        self.stop_on_play: bool = stop_on_play
+        self.stop_on_kodi_play: bool = stop_on_kodi_play
         self.play_interrupted: bool = False  # True when video playing and idle_on_play_video
         self.delete_after_run: Path | None = delete_after_run
         self.cmd_finished: bool = False
@@ -76,23 +77,41 @@ class SimpleRunCommand:
 
         Monitor.register_abort_listener(self.abort_listener, name=name)
 
-        if self.stop_on_play:
+        if self.stop_on_kodi_play:
             if KodiPlayerMonitor.player_status == KodiPlayerState.PLAYING_VIDEO:
-                self.cleanup()
+                self.cleanup(RunState.TERMINATED)
                 return
 
             KodiPlayerMonitor.register_player_status_listener(
                     self.kodi_player_status_listener,
                     f'{self.thread_name}_Kodi_Player_Monitor')
 
-    def cleanup(self):
+    def cleanup(self, runstate: RunState | None = None) -> None:
+        """
+        Ensures that the subprocess ends cleanly. Called when the process
+         exits, or is made to exit. Closes files, deletes files marked for
+         deletion, logs outout.
+        """
         clz = type(self)
         try:
+            if runstate is not None and self.run_state == RunState.NOT_STARTED:
+                self.run_state = runstate
             if self.delete_after_run and self.delete_after_run.exists():
                 self.delete_after_run.unlink(missing_ok=True)
 
-            if self.rc is None or self.rc != 0:
+            if self.rc is None:
+                self.rc = RunState.TERMINATED.value
+            if self.rc != 0:
                 self.log_output()
+            self.cmd_finished = True
+            # Give a tiny bit of time for other threads to shut down before we yank
+            # the process object.
+            Monitor.wait_for_abort(0.01)
+            self.process = None
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'FINISHED COMMAND {self.phrase_serial} '
+                                f'{self.args[0]} rc: {self.rc}',
+                                trace=Trace.TRACE_AUDIO_START_STOP)
         except Exception as e:
             MY_LOGGER.exception('')
 
@@ -100,10 +119,10 @@ class SimpleRunCommand:
                     keep_silent: bool = False,
                     kill: bool = False):
         """
-        Stop player_key (most likely because current text is expired)
-        Engines may wish to override this method, particularly when
-        the player_key is built-in. Players/processes may ignore parameters
-        that don't apply.
+        Called externally to stop player_key (most likely because current text
+         is expired).
+
+        Pocesses may ignore parameters that don't apply.
 
         :param purge: if True, then purge any queued vocings
                       if False, then only stop playing current phrase
@@ -116,26 +135,39 @@ class SimpleRunCommand:
                      content, depending upon keep_silent
         :return:
         """
-        # The only response to any request is to kill process.
-        self.terminate()
+        # Choice is to kill or terminate. The only corruption we care about is
+        # any produced cache files, which this process sends to temp files.
+        # Therefore, kill is faster and assuming the code that moves the tmp file
+        # to the cache just deletes it instead, then this should be okay.
+        self.kill()
 
     def terminate(self):
-        if self.process is not None and self.run_state.value <= RunState.RUNNING.value:
+        if self.process is not None and self.poll() is None:
             self.close_files()
             self.process.terminate()
-        self.cleanup()
+            next_state = RunState.TERMINATED
+        self.cleanup(RunState.TERMINATED)
 
     def kill(self):
-        pass
+        next_state: RunState | None = None
+        if self.process is not None and self.poll() is None:
+            self.close_files()
+            Monitor.wait_for_abort(0.01)
+            # Give some time for stdin/stdout threads to shutdown.
+            self.process.kill()
+            next_state = RunState.KILLED
+        self.cleanup(next_state)
 
     def get_state(self) -> RunState:
         return self.run_state
 
     def poll(self) -> int | None:
         try:
-            return self.process.poll()
+            if self.process is not None:
+                return self.process.poll()
+            return RunState.TERMINATED.value
         except Exception:
-            MY_LOGGER.debug(f'Exception in poll')
+            MY_LOGGER.exception(f'Exception in poll')
 
     def abort_listener(self) -> None:
         pass
@@ -145,13 +177,13 @@ class SimpleRunCommand:
         clz.player_state = kodi_player_state
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             MY_LOGGER.debug_v(f'KodiPlayerState: {kodi_player_state} stop_on_play: '
-                              f'{self.stop_on_play} args: {self.args} '
+                              f'{self.stop_on_kodi_play} args: {self.args} '
                               f'serial: {self.phrase_serial}')
-        if kodi_player_state == KodiPlayerState.PLAYING_VIDEO and self.stop_on_play:
+        if kodi_player_state == KodiPlayerState.PLAYING_VIDEO and self.stop_on_kodi_play:
             if MY_LOGGER.isEnabledFor(DEBUG_V):
                 MY_LOGGER.debug_v(f'KODI_PLAYING terminating command: '
                                   f'args: {self.args} ')
-            self.terminate()
+            self.kill()
             return True  # Unregister
         return False
 
@@ -161,6 +193,9 @@ class SimpleRunCommand:
         :return:
         """
         clz = type(self)
+        if self.cmd_finished:
+            return self.rc
+
         self.rc = None
         self.run_thread = threading.Thread(target=self.run_worker, name=self.thread_name)
         try:
@@ -180,8 +215,6 @@ class SimpleRunCommand:
 
             self.process: Popen
             check_serial: bool = True
-            countdown: bool = False
-            kill_countdown: int = 2
 
             # First, wait until process has started. Should be very quick
             attempts: int = 3
@@ -197,7 +230,9 @@ class SimpleRunCommand:
                     self.process.kill()
 
             next_state: RunState = RunState.COMPLETE
-            while not Monitor.wait_for_abort(timeout=0.1):
+            max_iterations: int = int((7.0 / 0.1) + 1)
+            while not Monitor.exception_on_abort(timeout=0.1):
+                max_iterations -= 1
                 try:
                     # Move on if command finished
                     if self.poll() is not None:
@@ -209,57 +244,34 @@ class SimpleRunCommand:
                         break
                     # Are we trying to kill it?
                     if (check_serial and self.phrase_serial <
-                            PhraseList.expired_serial_number):
+                            PhraseList.expired_serial_number or max_iterations < 0):
                         # Yes, initiate terminate/kill of process
                         check_serial = False
-                        countdown = True
                         if MY_LOGGER.isEnabledFor(DEBUG):
                             MY_LOGGER.debug(f'Expired, kill {self.phrase_serial} '
                                             f'{self.args[0]}',
                                             trace=Trace.TRACE_AUDIO_START_STOP)
                         try:
-                            self.process.kill()
+                            self.kill()
                         except Exception:
-                            break
-                        next_state = RunState.KILLED
+                            MY_LOGGER.exception('')
+                        break
+                    if max_iterations <= 0:
+                        self.kill()
                         break
                 except subprocess.TimeoutExpired:
                     #  Only indicates the timeout is expired, not the run state
-                    pass
+                    if max_iterations <= 0:
+                        self.kill()
+                        break
 
             # No matter how process ends, there will be a return code
-            while not Monitor.wait_for_abort(timeout=0.1):
-                try:
-                    rc = self.process.returncode
-                    if rc is not None:
-                        self.rc = rc
-                        self.cmd_finished = True
-                        if MY_LOGGER.isEnabledFor(DEBUG):
-                            MY_LOGGER.debug(f'FINISHED COMMAND {self.phrase_serial} '
-                                            f'{self.args[0]} rc: {rc}',
-                                            trace=Trace.TRACE_AUDIO_START_STOP)
-                        break
-                    else:
-                        if MY_LOGGER.isEnabledFor(DEBUG):
-                            MY_LOGGER.debug(f'Should be finished, but returncode is None')
-                        break  # Complete
-                except subprocess.TimeoutExpired:
-                    # Only indicates the timeout is expired, not the run state
-                    pass
-
-            if not self.cmd_finished:
-                # Shutdown in process
-                try:
-                    self.process.kill()
-                except Exception:
-                    pass
-                next_state = RunState.KILLED
-                self.rc = 99
-
-            self.cleanup()
+            if self.run_state == RunState.COMPLETE:
+                self.cleanup()
         except AbortException:
             try:
-                self.process.kill()  # SIGKILL. Should cause stderr & stdout to exit
+                if self.process is not None:
+                    self.process.kill()  # SIGKILL. Should cause stderr & stdout to exit
             except Exception:
                 pass
             self.rc = 99  # Thread will exit very soon
@@ -270,6 +282,9 @@ class SimpleRunCommand:
         return self.rc
 
     def run_worker(self) -> None:
+        """
+        run thread that runs subprocess
+        """
         clz = type(self)
         self.rc = 0
         GarbageCollector.add_thread(self.run_thread)
@@ -313,10 +328,16 @@ class SimpleRunCommand:
             #                                           name=f'{self.thread_name}_stderr_rdr')
             #     self.stderr_thread.start()
         except AbortException as e:
-            self.rc = 99  # Let thread die
+            self.rc = 99
+            self.run_state = RunState.DIE
+            return
         except Exception as e:
             MY_LOGGER.exception('')
             self.rc = 10
+        if self.rc is None and self.run_state  in (RunState.RUNNING,
+                                                   RunState.NOT_STARTED,
+                                                   RunState.PIPES_CONNECTED):
+            self.run_state = RunState.TERMINATED
         if self.rc == 0:
             self.run_state = RunState.COMPLETE
         return
@@ -325,47 +346,72 @@ class SimpleRunCommand:
         clz = type(self)
         GarbageCollector.add_thread(self.stdout_thread)
         finished = False
-
         try:
             while not Monitor.exception_on_abort():
                 try:
                     if finished or self.cmd_finished:
                         break
-                    line = self.process.stdout.readline()
-                    if len(line) > 0:
-                        self.stdout_lines.append(line)
-                except ValueError as e:
-                    rc = self.poll()
-                    if rc is not None:
-                        self.rc = rc
-                        # Command complete
-                        finished = True
+                    if self.process is None:
                         break
-                    else:
+                    # self.process, etc. can still disappear
+                    if not self.process.stdout.closed:
+                        try:
+                            line = self.process.stdout.readline()
+                            if len(line) > 0:
+                                self.stdout_lines.append(line)
+                        except ValueError as e:
+                            try:
+                                if self.process.stdout.closed:
+                                    finished = True
+                                else:
+                                    MY_LOGGER.exception('')
+                            except:
+                                MY_LOGGER.exception('')
+                    try:
+                        rc = self.poll()
+                        if rc is not None:
+                            self.rc = rc
+                            # Command complete
+                            finished = True
+                            break
+                    except Exception:
                         MY_LOGGER.exception('')
-                        finished = True
+                except Exception:
+                    MY_LOGGER.exception('')
+                    finished = True
         except AbortException as e:
             return
         except Exception as e:
             MY_LOGGER.exception('')
+
+        self.cmd_finished = True
         try:
-            if self.process.stdout is not None:
+            if (self.process is not None and self.process.stdout is not None
+                    and not self.process.stdout.closed):
                 self.process.stdout.close()
         except Exception:
-            pass
+            MY_LOGGER.exception('')
         return
 
     def close_files(self) -> None:
-        try:
-            if self.process.stdout is not None:
-                self.process.stdout.close()
-        except Exception:
-            pass
-        try:
-            if self.process.stdin is not None:
+        """
+        Close files:
+           closing stdin frequently causes process to exit (if there is a read from it)
+           closing stdout allows readers to complete
+        """
+        try:  # Closing stdin will cause command to exit (if it reads from it after
+              #   close).
+            if (self.process is not None and self.process.stdin is not None and
+                    not self.process.stdin.closed):
                 self.process.stdin.close()
         except Exception:
-            pass
+            MY_LOGGER.exception('')
+        try:
+            if (self.process is not None and self.process.stdout is not None and
+                    not self.process.stdout.closed):
+                self.process.stdout.close()
+        except Exception:
+            MY_LOGGER.exception('')
 
     def log_output(self):
         clz = type(self)

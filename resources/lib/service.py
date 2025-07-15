@@ -3,6 +3,8 @@ from __future__ import annotations  # For union operator |
 
 import faulthandler
 import io
+import subprocess
+from pathlib import Path
 from typing import Dict, Final
 #
 import os
@@ -10,6 +12,7 @@ import signal
 import sys
 
 import xbmc
+import xbmcaddon
 import xbmcvfs
 
 from backends.settings.service_types import ServiceKey
@@ -71,7 +74,8 @@ else:
         'tts.backends.audio.base_audio': INFO,
         'tts.backends.audio.mpv_audio_player': INFO,
         'tts.backends.audio.mplayer_audio_player': INFO,
-        'tts.backends.audio.sfx_audio_player': INFO,
+        'tts.backends.audio.sfx_audio_player': DEBUG,
+        'tts.backends.players.sfx_settings': DEBUG,
         'tts.backends.audio.sound_capabilities': INFO,
         'tts.backends.audio.worker_thread': INFO,
         'tts.backends.transcoders.trans': INFO,
@@ -178,7 +182,19 @@ def resetAddon():
 
 
 def preInstalledFirstRun() -> bool:
+    """
+    Performs basic configuration of:
+      On Windows:
+         paths to mpv, etc.
+         permission to use powershell Navigator bridge script
+      keymap
+      initial settings for help, hint, etc.
+      :return: True if something was configured requiring TTS to restart
+               otherwise, False
+    """
     restart: bool = False
+    something_configured: bool = False
+    something_failed: bool = False
     if False:
         if not Settings.is_initial_run():  # Do as little as possible if there is no
             xbmc.log('is NOT initial_run', xbmc.LOGINFO)
@@ -214,24 +230,79 @@ def preInstalledFirstRun() -> bool:
         xbmc.log(f'PRE-INSTALLED FIRST RUN', xbmc.LOGINFO)
         MY_LOGGER.info('PRE-INSTALLED FIRST RUN')
 
-    MY_LOGGER.info('Installing basic keymap')
+    if not Constants.PLATFORM_WINDOWS:
+        dependencies_configured = True
+        Settings.set_configure_dependencies_on_startup(False)
+    dependencies_configured = not Settings.get_configure_dependencies_on_startup()
+    if not dependencies_configured:
+        showNotification(message='Configuring permissions and paths. '
+                                 'Will prompt for Admin privelege',
+                         time_ms=5000)
+        dependencies_configured = config_env()
+        if dependencies_configured:
+            something_configured = True
+            Settings.set_configure_dependencies_on_startup(False)
+            Settings.commit_settings()
+        else:
+            something_failed = True
 
-    # Install keymap with just F12 enabling included
-    from utils import keymapeditor
-    restart = keymapeditor.installBasicKeymap()
+    keymap_configured: bool = not Settings.get_configure_keymap_on_startup()
+    if not keymap_configured:
+        showNotification(message='Installing basic keymap',
+                         time_ms=5000)
 
-    if restart:
+        # Install keymap with just F12 enabling included
+        from utils import keymapeditor
+        keymap_configured = keymapeditor.installBasicKeymap()
+        if keymap_configured:
+            Settings.set_configure_keymap_on_startup(False)
+            someting_configured = True
+        else:
+            something_failed = True
+
+    if something_configured:
+        Settings.commit_settings()
         Settings.set_extended_help_on_startup(True)
         Settings.set_hint_text_on_startup(True)
-        Settings.set_configure_on_startup(True)
+    xbmc.log(f'exiting something_configured: {something_configured}', xbmc.LOGDEBUG)
+    return something_configured
 
-    if False:
-        xbmc.log(f'Pre-installed - DISABLING', xbmc.LOGINFO)
-        MY_LOGGER.info('Pre-installed - DISABLING')
 
-        enabler.disableAddon()
-    return restart
+def showNotification(message, time_ms=3000, icon_path=None,
+                     header=CriticalSettings.ADDON_ID):
+    try:
+        icon_path = icon_path or xbmcvfs.translatePath(
+                xbmcaddon.Addon(CriticalSettings.ADDON_ID).getAddonInfo('icon'))
+        xbmc.executebuiltin(f'Notification({header},{message},{time_ms},{icon_path})')
+        xbmc.sleep(time_ms)
+    except RuntimeError:  # Happens when disabling the addon
+        pass
 
+
+def config_env() -> bool:
+    config_script_path: Path = Path(Constants.ADDON_DIRECTORY) / 'config_script.bat'
+    something_configured: bool = False
+    env = os.environ.copy()
+    if Constants.PLATFORM_WINDOWS:
+        cmdline: str = str(config_script_path)
+        xbmc.log(f'Running command: Windows args: {cmdline}', xbmc.LOGINFO)
+        try:
+            completed: subprocess.CompletedProcess
+            completed = subprocess.run(cmdline, stdin=None, capture_output=True,
+                                       text=True, env=env, close_fds=True,
+                                       encoding='utf-8', shell=False, check=True)
+            if completed.returncode != 0:
+                something_configured = False
+                MY_LOGGER.debug(f'config output: {completed.stdout}')
+            else:
+                something_configured = True
+        except subprocess.CalledProcessError:
+            MY_LOGGER.exception('')
+        except OSError:
+            MY_LOGGER.exception('')
+        except Exception:
+            MY_LOGGER.exception('')
+    return something_configured
 
 def startService():
     """
@@ -246,6 +317,8 @@ def startService():
         BaseServiceSettings.config_predefined_settings()
 
         if preInstalledFirstRun():
+            showNotification('Configuration changed requiring restart of Kodi.tts',
+                             time_ms=10000)
             return
         # Will crash with these lines
         #  Do NOT remove import!!

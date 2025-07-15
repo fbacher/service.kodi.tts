@@ -1553,6 +1553,41 @@ class Configure:
         except Exception as e:
             MY_LOGGER.exception('')
 
+        def set_player_mode_field(self, engine_key: ServiceID | None = None,
+                                  player_mode: PlayerMode | None = None) -> None:
+            """
+            Updates player_mode.engine_id Settings
+
+            :param engine_key: identifies which engine the settings belong to. If
+                              None, then the current engine is used
+            :param player_mode: identifies the player_mode to set. If None, then
+                              the current player_mode for engine_id will be 'updated'
+            :return:
+            """
+            try:
+                if player_mode is None:
+                    player_mode = Settings.get_player_mode(engine_key)
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    player_mode_str: str = player_mode.translated_name
+                    MY_LOGGER.debug(f'Setting {engine_key} player mode to {player_mode}')
+                Settings.set_player_mode(player_mode=player_mode, service_key=engine_key)
+            except Exception as e:
+                MY_LOGGER.exception('')
+
+    def set_engine_audio(self, engine_key: ServiceID = engine_key,
+                         engine_audio: AudioType | None = None) -> None:
+        if engine_audio is None:
+            raise ValueError('Must supply engine_audio')
+            #  Settings.set_transcoder(engine_config.transcoder, engine_key)
+        Settings.set_current_output_format(engine_key, engine_audio)
+
+    def set_transcoder_field(self, engine_key: ServiceID = engine_key,
+                             transcoder: str = '') -> None:
+        if transcoder is None:
+            transcoder = ''
+        Settings.set_transcoder(transcoder, engine_key)
+        MY_LOGGER.debug(f'set transcoder for: {engine_key} to {transcoder}')
+
     def set_lang_fields(self, engine_key: ServiceID,
                         lang_info: LanguageInfo) -> None:
         """
@@ -1739,6 +1774,27 @@ class Configure:
             default = engine.get_setting_default(SettingProp.MODULE)
         value = engine.getSetting(SettingProp.MODULE, default)
         return value
+
+    def refresh_tts(self,
+                    prev_engine_key: ServiceID,
+                    prev_player_key: ServiceID,
+                    prev_player_mode: PlayerMode) -> None:
+        """
+        Accelerate the adoption of changes in TTS, otherwise the changes will
+        be adopted, but more slowly, after several phrases already queued up
+        to speek are voiced using old settings. The user wants to hear the new
+        settings at work. They don't care so much about what is already in progress
+        with the old settings.
+
+        :param prev_engine_key: The engine which needs to be stopped, reset
+        :param prev_player_key: The player which needs to stop playing
+        :param prev_player_mode: The player_mode that was in use the
+                                  engine and player, above.
+        """
+        engine: ITTSBackendBase = self.getEngineInstance(self.engine_key)
+        engine.refresh_tts(prev_engine_key=prev_engine_key,
+                           prev_player_key=prev_player_key,
+                           prev_player_mode=prev_player_mode)
 
     def commit_settings(self) -> None:
         """

@@ -8,7 +8,7 @@ import queue
 import socket
 import sys
 import threading
-from pathlib import Path
+from pathlib import Path, WindowsPath
 
 import xbmc
 
@@ -31,7 +31,7 @@ except ImportError:
     from common.strenum import StrEnum
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
-DEBUG_LOG: bool = MY_LOGGER.isEnabledFor(DEBUG)
+DEBUG_LOG: bool = MY_LOGGER.isEnabledFor(DEBUG_V)
 LINE_BUFFERING: int = 1
 
 MINIMUM_PHRASES_IN_QUEUE: Final[int] = 5
@@ -46,6 +46,10 @@ TARGET_PLAYER_CHAR_LIMIT: int = int(chars_per_interval + 0.5)
 
 
 class PhraseQueueEntry:
+    """
+    Internal queue for phrases about to be voiced. Makes it easier to keep a steady
+    flow of voicing going while also allowing expired phrases to be removed.
+    """
     def __init__(self, phrase: Phrase, volume: float, speed: float):
         self._phrase: Phrase = phrase
         self._volume: float = volume
@@ -146,7 +150,8 @@ class PlayerState:
             if event == 'idle':
                 self._is_idle = True
         if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'last_played: {self._last_played_idx}\n'
+            MY_LOGGER.debug(f'event: {event} reason: {reason}\n'
+                            f'last_played: {self._last_played_idx}\n'
                             f'last_entry: {self._last_playlist_entry_idx}\n'
                             f'idle: {self._is_idle}')
 
@@ -190,6 +195,7 @@ class PlayerState:
        """
         return self._last_playlist_entry_idx - self._last_played_idx
 
+    @property
     def is_idle(self) -> bool:
         return self._is_idle
 
@@ -262,13 +268,13 @@ class SlaveCommunication:
         self.args: List[str] = args
         self.phrase_serial: int = phrase_serial
         self.count = count
+        self.destroy_called: bool = False
         self.thread_name = f'{thread_name}_{count}'
 
-        # Too many state variables
+        # TODO: Too many state variables
 
         self.rc = 0
         self.run_state: RunState = RunState.NOT_STARTED
-        self.fifo_initialized: bool = False
 
         # clz.get.debug(f'run_state now NOT_STARTED')
         self.idle_on_play_video: bool = stop_on_play
@@ -444,7 +450,7 @@ class SlaveCommunication:
             clz._current_phrase_serial_num = phrase.serial_number
             if MY_LOGGER.isEnabledFor(DEBUG_V):
                 MY_LOGGER.debug_v(f'phrase serial: {phrase.serial_number} '
-                                f'{phrase.short_text()}')
+                                  f'{phrase.short_text()}')
             if Monitor.abort_requested():
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(F'ABORT_REQUESTED')
@@ -467,9 +473,9 @@ class SlaveCommunication:
 
             if MY_LOGGER.isEnabledFor(DEBUG_V):
                 MY_LOGGER.debug_v(f'FIFO-ish {phrase.short_text()} '
-                                f'# {phrase.serial_number} expired #: '
-                                f'{PhraseList.expired_serial_number}'
-                                f' {expired_check_str} {interrupted_str}')
+                                  f'# {phrase.serial_number} expired #: '
+                                  f'{PhraseList.expired_serial_number}'
+                                  f' {expired_check_str} {interrupted_str}')
             if self.tts_player_idle and not phrase.speak_over_kodi:
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'player is IDLE')
@@ -508,6 +514,13 @@ class SlaveCommunication:
             if idle_counter == 1000:
                 MY_LOGGER.ERROR('idle counter is crazy')
         return entry
+
+    @property
+    def is_idle(self) -> bool:
+        """
+        Indicates if slave player is idle
+        """
+        return self._player_state.is_idle
 
     def process_phrase_queue(self):
         """
@@ -584,7 +597,7 @@ class SlaveCommunication:
                 return
             suffix: str
             suffix = 'append-play'
-            clz._is_idle = False
+            self._player_state._is_idle = False
             if phrase.get_pre_pause() != 0:
                 pre_silence_path: Path = phrase.pre_pause_path()
                 self.send_line(f'loadfile {str(pre_silence_path)} {suffix}',
@@ -709,7 +722,6 @@ class SlaveCommunication:
                 self.run_state = RunState.DIE
                 self.send_line(quit_str)
                 Monitor.wait_for_abort(0.05)
-                self.slave.terminate()
                 self.slave.destroy()
             elif purge:
                 stop_str: str = f'stop'
@@ -805,52 +817,34 @@ class SlaveCommunication:
         :return:
         """
         clz = type(self)
+        if self.destroy_called:
+            return
+        self.destroy_called = True
+
         if DEBUG_LOG:
-            xbmc.log(f'In {self.thread_name} destroy', xbmc.LOGDEBUG)
+            xbmc.log(f'In slave_communication {self.thread_name} destroy',
+                     xbmc.LOGDEBUG)
 
+
+        # Can't close fifo_in nor fifo_out until the underlying socket is
+        # closed
+        # self.close_slave_output()  # closes fifo_out
         self.stop_player(kill=True)
+        self.socket.close()
+        if DEBUG_LOG:
+            xbmc.log(f'Closed socket', xbmc.LOGDEBUG)
         xbmc.sleep(10)
-
-        self.close_slave_files()
-
-    def close_slave_files(self) -> None:
-        """
-        Shut down files with slave. SlaveRunCommand.stop_player(kill) will cause
-        it to close the process files, which will kill the player.
-
-        :return:
-        """
-        #  NOTE: it is the job of SlaveRunCommand to
-        #  die on abort. Doing so here ends up causing the
-        # thread killer try to kill it twice, which hangs.
-        # Will address that problem later
-        try:
-            self.run_state = RunState.DIE
-            # Close the INPUT to slave first.
-            if self.fifo_out is not None:
-                try:
-                    self.fifo_out.close()
-                except:
-                    pass
-                try:
-                    self.fifo_in.close()
-                except:
-                    pass
-                try:
-                    self.socket.shutdown()
-                except:
-                    pass
-                try:
-                    self.socket.close()
-                except:
-                    pass
-                self.fifo_out = None
-                self.fifo_in = None
-                self.slave.destroy()
-        except Exception as e:
-            MY_LOGGER.exception('')
+        self.run_state = RunState.DIE
+        if not self.fifo_in.closed():
+            self.fifo_in.close()
+        if not self.fifo_out.closed():
+            self.fifo_out.close()
 
     def kodi_player_status_listener(self, video_player_state: KodiPlayerState) -> bool:
+        """
+        Monitors when Kodi is playing a video, etc. Depending upon config, TTS
+        stops voicing while Kodi is doing something.
+        """
         clz = type(self)
         clz.video_player_state = video_player_state
         # clz.get.debug(f'PlayerStatus: {video_player_state} idle_tts_player: '
@@ -877,20 +871,25 @@ class SlaveCommunication:
         return 0
 
     def fifo_reader(self):
+        """
+        Reads slave commands from output from slave player (mpv)
+        """
         clz = type(self)
         finished = False
         try:
-            while not Monitor.exception_on_abort(timeout=0.1):
+            delay: float = 0.01
+            while not Monitor.exception_on_abort(timeout=delay):
                 if finished or self.run_state.value > RunState.RUNNING.value:
                     break
                 line: str = ''
                 try:
                     line = self.fifo_in.readline()
                     if len(line) > 0:
-                        self.fifo_initialized = True
                         if MY_LOGGER.isEnabledFor(DEBUG_V):
                             MY_LOGGER.debug_v(f'FIFO_IN: {line}')
                 except ValueError as e:
+                    if self.fifo_in.closed() or self.slave.rc is not None:
+                        finished = True
                     rc = self.slave.rc
                     if rc is not None:
                         self.rc = rc

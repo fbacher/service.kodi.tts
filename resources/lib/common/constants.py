@@ -40,12 +40,12 @@ class Constants:
     SHELL_SCRIPTS_PATH = None
     ESPEAK_PATH: Path = None
     ESPEAK_PATH_WINDOWS: Path = None
-    ESPEAK_PATH_LINUX: Path = None
-    ESPEAK_COMMAND_WINDOWS: str = 'espeak-ng.exe'
+    ESPEAK_PATH_LINUX: Path = '/usr/bin/espeak-ng'
+    ESPEAK_COMMAND_WINDOWS: str = 'C:/Program Files/espeak NG/espeak-ng.exe'
     ESPEAK_COMMAND_LINUX: str = 'espeak-ng'
     ESPEAK_COMMAND: str = None
     ESPEAK_DATA_PATH: Path = None
-    ESPEAK_DATA_PATH_WINDOWS: Path = None
+    ESPEAK_DATA_PATH_WINDOWS: Path = Path('C:/Program Files/espeak NG/espeak-ng-data')
     ESPEAK_DATA_PATH_LINUX: Path = None
     ADDON_DIRECTORY = None
     #  AUTO: Final[str] = 'auto'  # Not used here
@@ -75,8 +75,8 @@ class Constants:
 
     MPV_PATH_LINUX: Final[str] = '/usr/bin/mpv'
     MPLAYER_PATH_LINUX: Final[str] = '/usr/bin/mplayer'
-    MPV_PATH_WINDOWS: Final[str] = 'mpv.exe'
-    MPLAYER_PATH_WINDOWS: Final[str] = 'mplayer.exe'
+    MPV_PATH_WINDOWS: Final[str] = 'C:/Program Files/mpv/mpv.exe'
+    MPLAYER_PATH_WINDOWS: Final[str] = 'C:/Program Files/mplayer/mplayer.exe'
     MPLAYER_PATH: str = None
     MPV_PATH: str = None
     # TODO: can't distinguish between constants and calculated values (was None)
@@ -122,14 +122,16 @@ class Constants:
         Constants.ADDON_DIRECTORY = Path(xbmcvfs.translatePath(str(addon.PATH)))
         Constants.ADDON_PATH = addon.PATH
         Constants.BACKENDS_DIRECTORY = Constants.PYTHON_ROOT_PATH / 'backends'
+        Constants.CONFIG_SCRIPT_PATH_LINUX = os.path.join(
+                Constants.ADDON_DATA, 'config_script.bat')
         Constants.DISABLE_PATH = addon.DATA_PATH / 'DISABLED'
         Constants.DEFAULT_CACHE_DIRECTORY = Constants.USER_DATA_PATH / 'cache'
         Constants.ESPEAK_DATA_PATH_LINUX = (
             Path('/usr/lib/x86_64-linux-gnu/espeak-ng-data'))
         Constants.ESPEAK_DATA_PATH_WINDOWS = (
-            Path(r'C:\Program Files\eSpeak NG/espeak-ng-data'))
-        Constants.ESPEAK_PATH_LINUX = Path('/usr/bin/')
-        Constants.ESPEAK_PATH_WINDOWS = Path(r'C:\Program Files\eSpeak NG')
+            Path(r'C:/Program Files/eSpeak NG/espeak-ng-data'))
+        # Constants.ESPEAK_PATH_LINUX = Path('/usr/bin/espeak-ng')
+        Constants.ESPEAK_PATH_WINDOWS = Path(r'C:/Program Files/eSpeak NG/espeak-ng.exe')
         Constants.KEYMAPS_PROTO_PATH = Constants.RESOURCES_PATH / 'keymaps'
         Constants.KEYMAPS_PATH = Constants.USER_DATA_PATH / 'keymaps'
         Constants.KODI_ADDON = addon
@@ -152,47 +154,54 @@ class Constants:
             lang_country: str = xbmc.getLanguage(xbmc.ISO_639_1, True)
             Constants.LOCALE = lang_country.lower().replace('_', '-')
 
-            espeak_dir: str = os.environ.get('ESPEAK_PATH', '')
-            if espeak_dir:
-                Constants.ESPEAK_PATH = Path(espeak_dir)
-            else:
-                Constants.ESPEAK_PATH = Constants.ESPEAK_PATH_WINDOWS
-            espeak_data_dir: str = os.environ.get('ESPEAK_DATA_PATH', '')
-            if espeak_data_dir:
-                Constants.ESPEAK_DATA_PATH_WINDOWS = Path(espeak_data_dir)
-            else:
-                xbmc.log(f'No Path found for espeak-ng data_dir {espeak_data_dir}',
-                         xbmc.LOGINFO)
-            Constants.ESPEAK_COMMAND = Constants.ESPEAK_COMMAND_WINDOWS
-            Constants.ESPEAK_DATA_PATH = Constants.ESPEAK_DATA_PATH_WINDOWS
-            xbmc.log(f'espeak path: {espeak_dir} espeak_data_dir: {espeak_data_dir}')
-            mpv_dir = os.environ.get('MPV_PATH', '')
-            if mpv_dir:
-                Constants.MPV_PATH = str(Path(mpv_dir) / Constants.MPV_PATH_WINDOWS)
+            espeak_path: Path = Constants.ESPEAK_PATH_WINDOWS
+            if not espeak_path.exists():
                 if DEBUG_LOGGING:
-                    xbmc.log(f'mpv_dir now: {mpv_dir} mpv_path_windows: '
-                             f'{Constants.MPV_PATH_WINDOWS}', xbmc.LOGDEBUG)
+                    xbmc.log(f'Predefined espeak path not found: {espeak_path}')
+                espeak_path = Path(os.environ.get('ESPEAK_PATH', ''))
+                if not espeak_path.exists():
+                    if DEBUG_LOGGING:
+                        xbmc.log(f'ESPEAK_PATH env variable not found or invalid: '
+                                 f'{espeak_path}')
             else:
-                Constants.MPV_PATH = Constants.MPV_PATH_WINDOWS
-            if DEBUG_LOGGING:
-                xbmc.log(f'mpv_dir: {mpv_dir} MPV_PATH: {Constants.MPV_PATH}',
-                         xbmc.LOGDEBUG)
+                Constants.ESPEAK_PATH = espeak_path
+            espeak_data_path: Path = Constants.ESPEAK_DATA_PATH_WINDOWS
+            if not espeak_data_path.exists():
+                if DEBUG_LOGGING:
+                    xbmc.log(f'Predefined espeak data path not found: {espeak_data_path}')
+                espeak_data_path = Path(os.environ.get('ESPEAK_DATA_PATH', ''))
+                if not espeak_data_path.exists():
+                    if DEBUG_LOGGING:
+                        xbmc.log(f'ESPEAK_DATA_PATH env variable not found or invalid: '
+                                 f'{espeak_data_path}')
+            else:
+                Constants.ESPEAK_DATA_PATH = espeak_data_path
 
-            mplayer_dir: str = os.environ.get('MPLAYER_PATH', None)
-            if DEBUG_LOGGING:
-                xbmc.log(f'mplayer_path1: {mplayer_dir} '
-                         f'PROGRAMFILES: {os.environ.get("PROGRAMFILES", None)}',
-                         xbmc.LOGDEBUG)
-            if not mplayer_dir:
-                mplayer_dir = os.environ.get('PROGRAMFILES', None)
-                if mplayer_dir:
-                    mplayer_dir = str(Path(mplayer_dir) / 'Mplayer')
-            if mplayer_dir:
-                Constants.MPLAYER_PATH = str(Path(mplayer_dir) /
-                                             Constants.MPLAYER_PATH_WINDOWS)
-            if DEBUG_LOGGING:
-                xbmc.log(f'mplayer_dir: {mplayer_dir} MPLAYER_PATH: '
-                         f'{Constants.MPLAYER_PATH}', xbmc.LOGDEBUG)
+            mpv_dir: str = Constants.MPV_PATH_WINDOWS
+            if not Path(mpv_dir).exists():
+                if DEBUG_LOGGING:
+                    xbmc.log(msg=f'Default mpv path of {mpv_dir} is incorrect, '
+                                 f'falling back to MPV_PATH env var')
+                mpv_dir = os.environ.get('MPV_PATH', '')
+                if not Path(mpv_dir).exists():
+                    if DEBUG_LOGGING:
+                        xbmc.log(msg=f'Can not find mpv on MPV_PATH env var: '
+                                 '{mpv_dir}')
+            if Path(mpv_dir).exists():
+                Constants.MPV_PATH = Constants.MPV_PATH_WINDOWS
+
+            mplayer_dir: str = Constants.MPLAYER_PATH_WINDOWS
+            if not Path(mplayer_dir).exists():
+                if DEBUG_LOGGING:
+                    xbmc.log(msg=f'Default mplayer path of {mplayer_dir} is incorrect, '
+                                 f'falling back to MPLAYER_PATH env var')
+            mplayer_dir: str = os.environ.get('MPLAYER_PATH', '')
+            if not Path(mplayer_dir).exists():
+                if DEBUG_LOGGING:
+                    xbmc.log(f'mplayer_path: {mplayer_dir} does NOT exist.',
+                             xbmc.LOGDEBUG)
+            else:
+                Constants.MPLAYER_PATH = str(Path(mplayer_dir))
         else:
             lang_country, _ = locale.getlocale()
             lang_country: str

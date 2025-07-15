@@ -306,7 +306,7 @@ class ESpeakSettings:
         if (cls._service_status.progress == Progress.INSTALLED
                 and cls._service_status.status == Status.OK):
             try:
-                cmd_path: Path = Constants.ESPEAK_PATH / Constants.ESPEAK_COMMAND
+                cmd_path: Path = Constants.ESPEAK_PATH
                 args = [cmd_path, '--version']
                 env = os.environ.copy()
                 completed: subprocess.CompletedProcess | None = None

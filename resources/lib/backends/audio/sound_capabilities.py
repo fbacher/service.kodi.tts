@@ -230,8 +230,7 @@ class SoundCapabilities:
             else:
                 for audio_format in consumer_formats:
                     if MY_LOGGER.isEnabledFor(DEBUG):
-                        MY_LOGGER.debug(f'audio_format: {audio_format} type:'
-                                        f' {type(audio_format)}')
+                        MY_LOGGER.debug(f'audio_format: {audio_format}')
                     if (audio_format in input_formats or
                             AudioType.BUILT_IN in input_formats):
                         supports_consumer = True
@@ -247,10 +246,8 @@ class SoundCapabilities:
                         break
                     for output_format in output_formats:
                         if MY_LOGGER.isEnabledFor(DEBUG):
-                            MY_LOGGER.debug(f'output_format: {output_format} type:'
-                                            f' {type(output_format)}')
-                            MY_LOGGER.debug(f'audio_format: {audio_format} type:'
-                                            f' {type(audio_format)}')
+                            MY_LOGGER.debug(f'output_format: {output_format}')
+                            MY_LOGGER.debug(f'audio_format: {audio_format}')
             if supports_consumer and supports_producer:
                 eligible_services.append(ServiceID(service_type, service_id,
                                                    TTS_Type.SERVICE_ID))

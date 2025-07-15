@@ -7,6 +7,7 @@ import tempfile
 import threading
 from pathlib import Path
 
+from backends.audio.base_audio import SubprocessAudioPlayer
 from backends.ispeech_generator import ISpeechGenerator
 from backends.settings.service_types import ServiceID, ServiceKey, Services, TTS_Type
 from backends.settings.service_unavailable_exception import ServiceUnavailable
@@ -97,12 +98,6 @@ class EngineQueue:
             cls._instance.queue_processor.start()
             GarbageCollector.add_thread(cls._instance.queue_processor)
 
-    '''
-    @classmethod
-    def queue(cls) -> 'EngineQueue':
-        return cls._instance
-    '''
-
     def _handleQueue(self):
         clz = type(self)
         #  if MY_LOGGER.isEnabledFor(DEBUG):
@@ -126,7 +121,7 @@ class EngineQueue:
                         continue
                     if MY_LOGGER.isEnabledFor(DEBUG):
                         MY_LOGGER.debug(f'Start play of {phrase.debug_data()} '
-                                        f'on {item.engine.service_id}')
+                                        f'on {item.engine.service_key}')
                                         #  trace=Trace.TRACE_AUDIO_START_STOP)
                     self._threadedIsSpeaking = True
                     engine: 'SimpleTTSBackend' = item.engine
@@ -146,7 +141,7 @@ class EngineQueue:
                 except ExpiredException:
                     if MY_LOGGER.isEnabledFor(DEBUG):
                         MY_LOGGER.debug(f'EXPIRED {item.phrase.debug_data} ',
-                                          trace=Trace.TRACE_AUDIO_START_STOP)
+                                        trace=Trace.TRACE_AUDIO_START_STOP)
                 except Exception:
                     MY_LOGGER.exception('')
         except AbortException:
@@ -178,7 +173,7 @@ class EngineQueue:
         try:
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'phrase: {phrases[0].get_text()} '
-                                f'Engine: {engine.service_id} '
+                                f'Engine: {engine.service_key} '
                                 f'Interrupt: {phrases.interrupt}'
                                 f' debug: {phrases[0].debug_data()}')
         except ExpiredException:
@@ -250,7 +245,7 @@ class EngineQueue:
         try:
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'phrase: {phrase.get_text()} '
-                                  f'Engine: {engine.service_id}')
+                                  f'Engine: {engine.service_key}')
             cls.say_phrase(phrase, engine)
             '''
             player: IPlayer = PlayerIndex.get_player(player_id)
@@ -264,7 +259,7 @@ class EngineQueue:
                 MY_LOGGER.debug('EXPIRED')
         except Exception as e:
             MY_LOGGER.exception(f'Exception {phrase.debug_data}'
-                                  f' engine: {engine.service_id}',
+                                  f' engine: {engine.service_key}',
                                   trace=Trace.TRACE_AUDIO_START_STOP)
         return
 
@@ -366,29 +361,18 @@ class BaseEngineService(BaseServices):
     def get_output_audio_type(self) -> AudioType:
         raise NotImplementedError('')
 
-    def get_player(self, service_key: ServiceID) -> IPlayer:
+    def get_player(self, engine_key: ServiceID) -> IPlayer:
         """
-         Gets the player instance for the given engine. If settings are changed
-         then the new player will be instantiated.
+        Returns the current player for the given engine
 
-         :param service_key: key for identifying the engine Settings.get_player
-                             will adjust the engine's service_key appropriately.
+        :param engine_key: Identifies the engine to get the player for. If None,
+                            then use the current engine
+        :return: The player identified by the current settings for the given engine
         """
-
-        clz = type(self)
-        player_key: ServiceID = Settings.get_player(service_key)
-        #  MY_LOGGER.debug(f'player_key: {player_key}')
-        if self.player is not None and player_key != self.player.service_key:
-            # Stop old player
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'Killing player(s) because player_id changed '
-                                f'from {self.player.service_key} to {player_key}')
-            self.player.destroy()
-
-        #  MY_LOGGER.debug(f'player_key: {player_key}')
-        if self.player is None or player_key != self.player.service_key:
+        new_player_key: ServiceID = Settings.get_player(engine_key)
+        if self.player is None or new_player_key != self.player.service_key:
             try:
-                self.player = BaseServices.get_service(player_key)
+                self.player = BaseServices.get_service(new_player_key)
             except ServiceUnavailable:
                 self.player = None
         return self.player
@@ -407,7 +391,7 @@ class BaseEngineService(BaseServices):
 
     def get_transcoder(self, service_key: ServiceID, target_audio) -> ServiceID | None:
         """
-        Finds a audio converter (typically a player or specialized tool)
+        Finds an audio converter (typically a player or specialized tool)
         which can convert between the audio formats producable by the engine
         and a player.
 
@@ -453,19 +437,6 @@ class BaseEngineService(BaseServices):
     def has_speech_generator(cls) -> bool:
         return False
 
-    '''
-    @classmethod
-    def get_validator(cls, setting_id: str,
-                      setting_id: str) -> ConstraintsValidator | IValidator:
-        return SettingsMap.get_validator(setting_id=setting_id,
-                                         setting_id=setting_id)
-
-    @classmethod
-    def get_bool_validator(cls, setting_id, str,
-                           setting_id: str) -> BoolValidator | IValidator:
-        return SettingsMap.get_validator(setting_id=setting_id,
-                                         setting_id=setting_id)
-    '''
     def change_speed(self, faster: bool) -> str:
         """
         Increases/decreases speed by one unit. The change is immediate and not
@@ -513,42 +484,6 @@ class BaseEngineService(BaseServices):
         self.dead = True
         self.deadReason = reason or self.deadReason
 
-    '''
-    @classmethod
-    def get_constraints(cls, setting: str) -> Constraints | None:
-        """
-
-        @param setting:
-        @return:
-        """
-        transcoder_key: ServiceID = ServiceID(ServiceType.TRANSCODER,
-                                              service_id=cls.service_key.service_id)
-        converter_key: str | None = Settings.get_setting_str(transcoder_key,
-                                                             ignore_cache=False,
-                                                             default=None)
-        constraints: Constraints | None = cls.TTSConstraints.get(setting)
-        return constraints
-    '''
-    '''
-    @classmethod
-    def isSettingSupported(cls, setting_id: str):
-        return cls.is_valid_property(cls.service_id, setting_id)
-    '''
-    '''
-    @classmethod
-    def getSettingNames(cls) -> List[str]:
-        """
-        Gets a list of setting names/keys that this backend uses
-
-        :return:
-        """
-        settingNames: List[str] = []
-        for settingName in cls.settings.keys():
-            settingNames.append(settingName)
-
-        return settingNames
-    '''
-
     @classmethod
     def get_setting_default(cls, setting) -> \
             int | float | bool | str | float | List[int] | List[str] | List[bool] \
@@ -562,13 +497,6 @@ class BaseEngineService(BaseServices):
             default = constraints.default
         return default
 
-    '''
-    @classmethod
-    def getConstraints(cls, setting_id: str) -> Constraints | None:
-
-        return cls.constraints.get(setting_id)
-    '''
-
     @classmethod
     def negotiate_engine_config(cls, engine_key: ServiceID, player_volume_adjustable: bool,
                                 player_speed_adjustable: bool,
@@ -578,16 +506,6 @@ class BaseEngineService(BaseServices):
         Engine replies what it is allowing player to control
         """
         return True, True, True
-
-    '''
-    @classmethod
-    def settingList(cls, setting, *args):
-        """Returns a list of options for a setting
-
-        May be overridden by subclasses. Default implementation returns None.
-        """
-        return None
-    '''
 
     @classmethod
     @deprecated  # Use validator
@@ -816,7 +734,34 @@ class ThreadedTTSBackend(BaseEngineService):
         @return:
         """
         super().init()
-        clz = type(self)
+
+    def re_init(self):
+        super().re_init()
+
+    def refresh_tts(self,
+                    prev_engine_key: ServiceID,
+                    prev_player_key: ServiceID,
+                    prev_player_mode: PlayerMode) -> None:
+        """
+        Accelerate the adoption of changes in TTS, otherwise the changes will
+        be adopted, but more slowly, after several phrases already queued up
+        to speek are voiced using old settings. The user wants to hear the new
+        settings at work. They don't care so much about what is already in progress
+        with the old settings.
+
+        :param prev_engine_key: The engine which needs to be stopped, reset
+        :param prev_player_key: The player which needs to stop playing
+        :param prev_player_mode: The player_mode that was in use the
+                                  engine and player, above.
+        """
+        EngineQueue.empty_queue()
+        prev_engine = BaseServices.get_service(prev_engine_key)
+        prev_player = BaseServices.get_service(prev_player_key)
+
+        MY_LOGGER.debug(f'prev_engine: {prev_engine_key} \n'
+                        f'prev_player: {prev_player_key} \n'
+                        f'prev_player_mode: {prev_player_mode}')
+        prev_engine.stop_player(kill=True)
 
     def destroy(self):
         """
@@ -828,7 +773,6 @@ class ThreadedTTSBackend(BaseEngineService):
         :return:
         """
         pass
-        clz = type(self)
         # KodiPlayerMonitor.unregister_player_status_listener(f'{
         # clz.setting_id}_Player_Monitor')
 
@@ -861,7 +805,66 @@ class ThreadedTTSBackend(BaseEngineService):
         :param phrase:
         :return:
         """
+        tts_be = ThreadedTTSBackend
+        clz = type(self)
+        # Elsewhere the change of player causes the previous player
+        # to abort all current speech. Here a similar thing is
+        # done when the player mode was ENGINE_SPEAK.
+
         EngineQueue.say_phrase(phrase, self)
+
+    def stop_player(self, purge: bool = True,
+                    keep_silent: bool = False,
+                    kill: bool = False,
+                    engine_key: ServiceID | None = None,
+                    player_key: ServiceID | None = None):
+        """
+        Stop player (most likely because current text is expired)
+        Engines may wish to override this method, particularly when
+        the player is built-in.
+
+        :param purge: if True, then purge any queued vocings
+                      if False, then only stop playing current phrase
+        :param keep_silent: if True, ignore any new phrases until restarted
+                            by resume_player.
+                            If False, then play any new content
+        :param kill: If True, kill any player processes. Implies purge and
+                     keep_silent.
+                     If False, then the player will remain ready to play new
+                     content, depending upon keep_silent
+        :param engine_key: Specifies the engine effected. If None, the use
+                            the current engine
+        :param player_key: Specifies the player effected. If None, then use
+                            the current player
+        :return:
+        """
+        clz = type(self)
+        try:
+            if engine_key is None:
+                engine_key = clz.service_key
+            if player_key is None:
+                MY_LOGGER.debug(f'engine_key: {engine_key}')
+                player_key = Settings.get_player(engine_key)
+            MY_LOGGER.debug(f'player_key: {player_key}')
+            player: IPlayer = BaseServices.get_service(player_key)
+            if player:
+                player.stop_player(purge=purge, keep_silent=keep_silent,
+                                   kill=kill)
+            if ServiceKey.BUILT_IN_KEY == Settings.get_player(self.service_key):
+                MY_LOGGER.debug(f'calling stop_builtin_player')
+                self.stop_builtin_player()
+        except AbortException as e:
+            reraise(*sys.exc_info())
+        except Exception as e:
+            MY_LOGGER.exception('')
+
+    def stop_builtin_player(self):
+        """
+        Stops this engine's builtin player
+
+        NOTE: Engines which support a builtin player should override this
+        """
+        pass
 
     def say_file(self, phrase: Phrase, player_id: str) -> None:
         EngineQueue.say_file(phrase, player_id, self)
@@ -928,35 +931,6 @@ class SimpleTTSBackend(ThreadedTTSBackend):
         """
         pass
         clz = type(self)
-
-    #  def get_player_handler(self) -> PlayerHandlerType:
-    #    """
-    #
-    #    @return:
-    #    """
-    #    clz = type(self)
-    #    return self.player_handler_instance
-
-    '''
-    def set_player_mode(self, player_mode: PlayerMode) -> None:
-        """
-
-        @param player_mode:
-        """
-        clz = type(self)
-        assert isinstance(player_mode, PlayerMode), 'Bad mode'
-        if player_mode == PlayerMode.PIPE:
-            pass
-        if player_mode == PlayerMode.FILE:
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'Mode: {player_mode.value()}')
-        elif player_mode == PlayerMode.ENGINE_SPEAK:
-            audio.load_snd_bm2835()
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'Mode: {player_mode.value()}')
-
-        self.player_mode = player_mode
-    '''
 
     def get_voice_cache(self) -> VoiceCache:
         raise NotImplementedError
@@ -1048,16 +1022,13 @@ class SimpleTTSBackend(ThreadedTTSBackend):
         try:
             self.initialize_player()
             #  self.config_mode()
-            player_mode: PlayerMode = Settings.get_player_mode(self.service_key)
+            player_mode: PlayerMode = Settings.get_player_mode(clz.service_key)
             if phrase.get_interrupt():
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'stop_player phrase prior to: {phrase}')
-                kill: bool = True
-                if player_mode in (PlayerMode.SLAVE_FILE, PlayerMode.SLAVE_PIPE):
-                    kill = False
                 self.stop_player(purge=True)
 
-            #  MY_LOGGER.debug(f'player_mode: {player_mode} engine: {self.service_id}')
+            #  MY_LOGGER.debug(f'player_mode: {player_mode} engine: {clz.service_key}')
             if player_mode == PlayerMode.FILE:
                 # MY_LOGGER.debug('runCommand')
                 # outFile: str
@@ -1125,36 +1096,6 @@ class SimpleTTSBackend(ThreadedTTSBackend):
             player: IPlayer = self.get_player(clz.service_key)
             if player:
                 player.init(clz.service_key)
-        except AbortException as e:
-            reraise(*sys.exc_info())
-        except Exception as e:
-            MY_LOGGER.exception('')
-
-    def stop_player(self, purge: bool = True,
-                    keep_silent: bool = False,
-                    kill: bool = False):
-        """
-        Stop player (most likely because current text is expired)
-        Engines may wish to override this method, particularly when
-        the player is built-in.
-
-        :param purge: if True, then purge any queued vocings
-                      if False, then only stop playing current phrase
-        :param keep_silent: if True, ignore any new phrases until restarted
-                            by resume_player.
-                            If False, then play any new content
-        :param kill: If True, kill any player processes. Implies purge and
-                     keep_silent.
-                     If False, then the player will remain ready to play new
-                     content, depending upon keep_silent
-        :return:
-        """
-        clz = type(self)
-        try:
-            player: IPlayer = self.get_player(clz.service_key)
-            if player:
-                player.stop_player(purge=purge, keep_silent=keep_silent,
-                                   kill=kill)
         except AbortException as e:
             reraise(*sys.exc_info())
         except Exception as e:

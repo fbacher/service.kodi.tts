@@ -7,6 +7,7 @@ from common import *
 from backends.i_backend import IBackend
 from backends.settings.constraints import Constraints
 from common.phrases import PhraseList
+from common.setting_constants import PlayerMode
 from windowNavigation.choice import Choice
 
 
@@ -57,6 +58,24 @@ class ITTSBackendBase(IBackend):
 
     def init(self):
         raise Exception('Not Implemented')
+
+    def refresh_tts(self,
+                    prev_engine_key: ServiceID,
+                    prev_player_key: ServiceID,
+                    prev_player_mode: PlayerMode) -> None:
+        """
+           Accelerate the adoption of changes in TTS, otherwise the changes will
+           be adopted, but more slowly, after several phrases already queued up
+           to speek are voiced using old settings. The user wants to hear the new
+           settings at work. They don't care so much about what is already in progress
+           with the old settings.
+
+           :param prev_engine_key: The engine which needs to be stopped, reset
+           :param prev_player_key: The player which needs to stop playing
+           :param prev_player_mode: The player_mode that was in use the
+                                     engine and player, above.
+        """
+        raise NotImplementedError()
 
     @property
     def engine_id(self) -> str:

@@ -9,6 +9,7 @@ from backends.settings.service_types import ServiceID
 from backends.settings.setting_properties import SettingType
 from common.constants import Constants
 from common.logger import BasicLogger
+from common.service_status import StatusType
 
 try:
     from enum import StrEnum
@@ -153,12 +154,10 @@ class IValidator:
         """
         raise NotImplementedError()
 
-    def get_tts_value(self, default_value: int | float | str = None,
-                      setting_service_id: str = None) -> int | float | str:
+    def get_tts_value(self, default_value: int | float | str = None) -> int | float | str:
         """
 
         :param default_value:
-        :param setting_service_id:
         :return: current_value
         """
         raise NotImplementedError()
@@ -222,8 +221,7 @@ class IIntValidator(IValidator):
     def default(self) -> int | float:
         raise NotImplementedError()
 
-    def get_tts_value(self, default_value: int | float | str = None,
-                      setting_service_id: str = None) -> int | float | str:
+    def get_tts_value(self, default_value: int | float | str = None) -> int | float | str:
         raise NotImplementedError()
 
     def set_tts_value(self, value: int | float) -> None:
@@ -493,8 +491,7 @@ class IStringValidator(IValidator):
     def property_type(self) -> SettingType:
         return super().property_type
 
-    def get_tts_value(self, default: str | None = None,
-                      setting_service_id: str = None) -> str:
+    def get_tts_value(self, default: str | None = None) -> str:
         raise NotImplementedError()
 
     def set_tts_value(self, value: str) -> None:
@@ -632,13 +629,11 @@ class IConstraintsValidator:
     def getUIValue(self) -> str:
         raise NotImplementedError()
 
-    def get_tts_values(self, default_value: int | float | str = None,
-                       setting_service_id: str = None) \
+    def get_tts_values(self, default_value: int | float | str = None) \
             -> Tuple[int | float | str, int | float | str, int | float | str, \
                      int | float | str]:
         """
         :param default_value:
-        :param setting_service_id:
         :return: current_value, min_value, default, max_value
         """
         raise NotImplementedError()
@@ -699,8 +694,11 @@ class IConstraintsValidator:
 
 class IBoolValidator:
 
-    def __init__(self, service_key: ServiceID, settingType: SettingType,
-                 default: bool) -> None:
+    def __init__(self, service_key: ServiceID,
+                 default: bool, const: bool = False,
+                 define_setting: bool = True,
+                 service_status: StatusType | None = StatusType.OK,
+                 persist: bool = True) -> None:
         pass
 
     @property

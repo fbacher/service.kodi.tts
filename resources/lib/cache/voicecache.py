@@ -166,7 +166,8 @@ class VoiceCache:
         return f'.{self.audio_type}'
 
     def get_path_to_voice_file(self, phrase: Phrase,
-                               use_cache: bool = False) -> CacheEntryInfo:
+                               use_cache: bool = False,
+                               delete_tmp: bool = False) -> CacheEntryInfo:
         """
         Determines where audio and related information for the given phrase is, or
         should be stored. If use_cache is True, then audio and a copy of the
@@ -187,6 +188,8 @@ class VoiceCache:
         @param phrase: Contains the text and related information for the conversion
         @param use_cache: True a path in the cache is to be returned, otherwise
                         a path to a temp-file will be created
+        @param delete_tmp: If True, then delete any already existing temporary
+                           (non-cached) audio files.
 
         @return: namedtuple('CacheEntryInfo',
                             'final_audio_path,'
@@ -213,7 +216,7 @@ class VoiceCache:
         """
         try:
             if not use_cache or not self.is_cache_sound_files(self.service_key):
-                return self._get_path_to_tmp_voice_file(phrase)
+                return self._get_path_to_tmp_voice_file(phrase, delete_tmp)
             else:
                 return self._get_path_to_cached_voice_file(phrase)
         except AbortException:
@@ -224,11 +227,13 @@ class VoiceCache:
         except Exception as e:
             MY_LOGGER.exception('')
 
-    def _get_path_to_tmp_voice_file(self, phrase: Phrase) -> CacheEntryInfo:
+    def _get_path_to_tmp_voice_file(self, phrase: Phrase,
+                                    delete_existing: bool) -> CacheEntryInfo:
         """
         See get_path_to_voice_file
 
         :param phrase:
+        :param delete_existing: If True, then delete any pre-exising audio
         :return:
         """
         clz = type(self)
@@ -245,7 +250,8 @@ class VoiceCache:
             final_audio_path = tmp_dir / Path(filename).with_suffix(self.audio_suffix)
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'final_audio_path: {final_audio_path}')
-            if final_audio_path.exists():
+
+            if delete_existing and final_audio_path.exists():
                 try:
                     # Note that Windows won't let you unlink a file in use
                     # by another process
@@ -259,16 +265,19 @@ class VoiceCache:
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'final_audio_path: {final_audio_path} audio_suffix: '
                                 f'{self.audio_suffix} temp_file: {temp_voice_path}')
+            MY_LOGGER.debug(f'final path exists: {final_audio_path.exists()}')
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
             MY_LOGGER.exception('')
         audio_suffixes: List[str] = []
+        final_path_exists: bool
+        final_path_exists = final_audio_path is not None and final_audio_path.exists()
         result: CacheEntryInfo
         result = CacheEntryInfo(final_audio_path=final_audio_path,
                                 use_cache=False,
                                 temp_voice_path=temp_voice_path,
-                                audio_exists=False,
+                                audio_exists=final_path_exists,
                                 text_exists=False,
                                 audio_suffixes=audio_suffixes)
         if final_audio_path is not None:
@@ -318,10 +327,10 @@ class VoiceCache:
                 territory_dir = 'missing_territory'
             if MY_LOGGER.isEnabledFor(DEBUG_V):
                 MY_LOGGER.debug_v(f'cache_top: {cache_top} '
-                                f'lang_dir: {lang_dir} '
-                                f'territory_dir: {territory_dir} '
-                                f'voice_dir: {voice_dir} '
-                                f'subdir: {subdir}')
+                                  f'lang_dir: {lang_dir} '
+                                  f'territory_dir: {territory_dir} '
+                                  f'voice_dir: {voice_dir} '
+                                  f'subdir: {subdir}')
             cache_dir = cache_top / lang_dir / territory_dir / voice_dir / subdir
             cache_path = cache_dir / filename
             final_audio_path = cache_path.with_suffix(self.audio_suffix)

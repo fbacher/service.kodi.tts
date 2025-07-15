@@ -5,9 +5,9 @@ import os
 import subprocess
 import sys
 import tempfile
-from pathlib import Path
+from pathlib import Path, WindowsPath
 
-from backends.audio.base_audio import SubprocessAudioPlayer
+from backends.audio.base_audio import SubprocessSlaveAudioPlayer
 from backends.players.mpv_player_settings import MPVPlayerSettings
 from backends.players.player_index import PlayerIndex
 from backends.settings.i_validators import IChannelValidator, INumericValidator
@@ -28,7 +28,7 @@ from common.utils import TempFileUtils
 MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 
 
-class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
+class MPVAudioPlayer(SubprocessSlaveAudioPlayer, BaseServices):
     """
      name = 'MPV'
      MPV is based on MPLAYER. It offers several improvements, particularly with
@@ -117,6 +117,11 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
     _initialized: bool = False
 
     def __init__(self):
+        """
+        Players are instantiated at startup (BootstrapPlayers) and not
+        restarted. There is nothing to prevent them from being created on
+        demand, as long as they are cleaned up properly.
+        """
         clz = MPVAudioPlayer
         # Set get here size super also sets clz.get. And clz is the same for
         # both. This messes up register
@@ -138,11 +143,6 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
         can_set_volume: bool = self.canSetVolume()
         can_set_speed: bool = self.canSetSpeed()
         can_set_pitch: bool = self.canSetPitch()
-        # vol, speed, pitch = \
-        #     self.engine.negotiate_engine_config(
-        #             service_key, can_set_volume, can_set_speed, can_set_pitch)
-        # self.configVolume = vol
-        # self.configSpeed = speed
         channels: Channels = Channels.MONO
         self.play_channels: Channels = channels
 
@@ -185,7 +185,12 @@ class MPVAudioPlayer(SubprocessAudioPlayer, BaseServices):
         :return:
         """
         clz = MPVAudioPlayer
-        slave_pipe_dir: Path = Path(tempfile.mkdtemp(dir=TempFileUtils.temp_dir()))
+        slave_pipe_dir: Path | None = None
+        if Constants.PLATFORM_WINDOWS:
+            SLAVE_NAMED_PIPE_PATH: WindowsPath = WindowsPath(r'\\.\pipe\mpv')
+            slave_pipe_dir = SLAVE_NAMED_PIPE_PATH
+        else:
+            slave_pipe_dir = Path(tempfile.mkdtemp(dir=TempFileUtils.temp_dir()))
         self.slave_pipe_path = slave_pipe_dir / 'mpv.tts'
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             MY_LOGGER.debug_v(f'slave_pipe_path: {self.slave_pipe_path}')

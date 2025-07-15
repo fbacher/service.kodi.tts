@@ -227,7 +227,7 @@ class BaseServiceSettings:
                                              define_setting=True,
                                              service_status=StatusType.OK,
                                              persist=True)
-        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.CONFIGURE_ON_STARTUP)
+        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.CONFIGURE_DEPENDENCIES_ON_STARTUP)
         SettingsMap.define_setting(service_key, setting_type=SettingType.BOOLEAN_TYPE,
                                    persist=True)
         service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.INTRODUCTION_ON_STARTUP)

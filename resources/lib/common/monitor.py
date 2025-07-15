@@ -446,7 +446,7 @@ class Monitor(MinimalMonitor):
     def register_abort_listener(cls,
                                 listener: Callable[[None], None],
                                 name: str = None,
-                                thread: threading.thread | None = None) -> None:
+                                thread: threading.Thread | None = None) -> None:
         """
         Registers a listener to be informed of an abort/shutdown.
         Before the listener is called, any non-None thread is checked to see
@@ -492,6 +492,8 @@ class Monitor(MinimalMonitor):
         :return:
         """
         listener = cls._inform_abort_listener_worker
+        xbmc.log(f'Adding listener from_inform_abort_listeners '
+                 f'listener: {listener}', xbmc.LOGDEBUG)
         cls._inform_abort_listeners_thread = threading.Thread(
                 target=cls._listener_wrapper, name='infrm_listnrs',
                 args=(), kwargs={'listener': listener})
@@ -513,6 +515,8 @@ class Monitor(MinimalMonitor):
         for listener, listener_name in listeners_copy.items():
             # noinspection PyTypeChecker
             listener_name: str
+            xbmc.log(f'Adding listener from_inform_abort_listener_worker '
+                     f'listener: {listener_name} {listener}', xbmc.LOGDEBUG)
             thread = threading.Thread(
                     target=cls._listener_wrapper, name=listener_name,
                     args=(), kwargs={'listener': listener})
@@ -545,11 +549,16 @@ class Monitor(MinimalMonitor):
     def _listener_wrapper(cls, listener):
         try:
             if listener is not None:
+                xbmc.log(f'_listener_wrapper listener type: {type(listener)} '
+                         f'listener: {listener}',
+                         xbmc.LOGDEBUG)
+                xbmc.log(f'listener: {listener}', xbmc.LOGDEBUG)
                 listener()
         except AbortException:
             pass
         except Exception as e:
-            xbmc.log(f'Exception in _listener_wrapper {e}', xbmc.LOGINFO)
+            xbmc.log(f'Exception in _listener_wrapper listener: {listener} '
+                     f'{e}', xbmc.LOGINFO)
 
     @classmethod
     def _inform_settings_changed_listeners(cls) -> None:

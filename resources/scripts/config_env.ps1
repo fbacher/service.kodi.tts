@@ -52,40 +52,39 @@ Function Config_Kodi_Env {
             Mandatory = $false
         )]
 
-        [string]    $MpvPath = 'C:\Program Files\mpv',
-
+        [string]    $MpvPath = $null,  # 'C:\Program Files\mpv',
 
         [Parameter(
             Position = 3,
             Mandatory = $false
         )]
 
-        [string]    $MplayerPath = 'C:\Program Files\Mplayer',
+        [string]    $MplayerPath = $null,  # 'C:\Program Files\Mplayer',
 
         [Parameter(
             Position = 4,
             Mandatory = $false
         )]
-        [string]    $eSpeakPath = 'C:\Program Files\eSpeak NG',
+        [string]    $eSpeakPath = $null,  # 'C:\Program Files\eSpeak NG',
 
           [Parameter(
             Position = 5,
             Mandatory = $false
         )]
-        [string]    $eSpeakDataPath = 'C:\Program Files\eSpeak NG\espeak-ng-data'
+        [string]    $eSpeakDataPath = $null  # 'C:\Program Files\eSpeak NG\espeak-ng-data'
     )
     BEGIN {
     }
 
     PROCESS {
         try {
-        if (-not (Test-Path $KodiPath))
+        if ( -not $KodiPath -or -not (Test-Path $KodiPath))
             {
                 Write-Host "$KodiPath does not exist"
                 $KodiPath = $null
             }
 
-        if (-not (Test-Path $TTSScriptPath))
+        if ( -not $TTSScriptPath -or -not (Test-Path $TTSScriptPath))
            {
                 WRITE-HOST "$TTSScriptPath"
                 $USER_HOME = "$env:USERPROFILE"
@@ -93,24 +92,24 @@ Function Config_Kodi_Env {
                 $TSScriptPath = "$USER_HOME$SUFFIX"
            }
 
-        if (-not (Test-Path $eSpeakPath))
+        if ( $eSpeakPath -and -not (Test-Path $eSpeakPath))
             {
                 Write-Host "$eSpeakPath does not exist"
-                $KodiPath = $null
+                $eSpeakPath = $null
             }
 
-        if (-not (Test-Path $eSpeakDataPath))
+        if ( $eSpeakDataPath -and -not (Test-Path $eSpeakDataPath))
             {
                 Write-Host "$eSpeakDataPath does not exist"
-                $KodiPath = $null
+                $eSpeakDataPath = $null
             }
 
-        if (-not (Test-Path $MpvPath))
+        if ( $MpvPath -and -not (Test-Path $MpvPath))
             {
                 Write-Host "$MpvPath does not exist: $MpvPath"
                 $MpvPath = $null
             }
-        if (-not (Test-Path $MplayerPath))
+        if ( $MplayerPath -and -not (Test-Path $MplayerPath))
             {
                 Write-Host "$MplayerPath does not exist"
                 $MplayerPath = $null
@@ -130,7 +129,7 @@ Function Config_Kodi_Env {
             Unblock-File -Path "$TTSScriptPath\voice.ps1"
         }
 
-        #  if ($MPVScriptPath)
+        # if ($MPVScriptPath)
         # {
         #     Write-Host "$MPVScriptPath\mpv_socket.ps1"
         #     Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser

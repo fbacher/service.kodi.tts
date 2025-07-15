@@ -215,15 +215,28 @@ class Settings(SettingsLowLevel):
         return SettingsLowLevel.get_setting_bool(service_key)
 
     @classmethod
-    def get_configure_on_startup(cls) -> bool:
+    def get_configure_dependencies_on_startup(cls) -> bool:
         service_key: ServiceID
-        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.CONFIGURE_ON_STARTUP)
+        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.CONFIGURE_DEPENDENCIES_ON_STARTUP)
         return SettingsLowLevel.get_setting_bool(service_key)
 
     @classmethod
-    def set_configure_on_startup(cls, configure_on_startup: bool) -> None:
+    def set_configure_dependencies_on_startup(cls, configure_on_startup: bool) -> None:
         service_key: ServiceID
-        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.CONFIGURE_ON_STARTUP)
+        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.CONFIGURE_DEPENDENCIES_ON_STARTUP)
+        SettingsLowLevel.set_setting_bool(service_key, configure_on_startup)
+
+    @classmethod
+    def get_configure_keymap_on_startup(cls) -> bool:
+        service_key: ServiceID
+        service_key = ServiceKey.TTS_KEY.with_prop(
+            SettingProp.CONFIGURE_DEPENDENCIES_ON_STARTUP)
+        return SettingsLowLevel.get_setting_bool(service_key)
+
+    @classmethod
+    def set_configure_keymap_on_startup(cls, configure_on_startup: bool) -> None:
+        service_key: ServiceID
+        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.CONFIGURE_DEPENDENCIES_ON_STARTUP)
         SettingsLowLevel.set_setting_bool(service_key, configure_on_startup)
 
     @classmethod
@@ -630,15 +643,16 @@ class Settings(SettingsLowLevel):
     def get_player(cls, engine_key: ServiceID | None = None) -> ServiceID:
         if engine_key is None:
             engine_key = cls.get_engine_key()
-        # MY_LOGGER.debug(f'service_key: {engine_key} '
-        #                 f'player_key: {engine_key.with_prop(SettingProp.PLAYER)}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'engine_key: {engine_key}')
         player_val: IValidator
         player_val = SettingsMap.get_validator(
                 engine_key.with_prop(SettingProp.PLAYER))
         player_id: str = player_val.get_tts_value()
         player_key: ServiceID = ServiceID(ServiceType.PLAYER, service_id=player_id,
                                           setting_id=TTS_Type.SERVICE_ID)
-        # MY_LOGGER.debug(f'player_key: {player_key}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'engine: {engine_key} player: {player_key}')
         return player_key
 
     @classmethod
@@ -655,6 +669,8 @@ class Settings(SettingsLowLevel):
         if value is None:
             value = ''
         player_key: ServiceID = engine_key.with_prop(SettingProp.PLAYER)
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'engine: {engine_key} player:{value}')
         return cls.set_setting_str(service_key=player_key, value=value)
 
     @classmethod
@@ -753,7 +769,10 @@ class Settings(SettingsLowLevel):
         :return:
         """
         audio_service: ServiceID = service_key.with_prop(Transient.AUDIO_TYPE_INPUT)
-        return cls._transient_settings[audio_service.service_id]
+        audio_type: AudioType = cls._transient_settings[audio_service.service_id]
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'Getting input AudioType service: {service_key} '
+                              f'{audio_type}')
 
     @classmethod
     def set_current_output_format(cls, service_key: ServiceID,
@@ -768,8 +787,8 @@ class Settings(SettingsLowLevel):
         """
         audio_service: ServiceID = service_key.with_prop(Transient.AUDIO_TYPE_OUTPUT)
         if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'service: {audio_service} type: {audio_type} '
-                            f'{type(audio_type)}')
+            MY_LOGGER.debug(f'Setting output AudioType service: {audio_service} '
+                            f'type: {audio_type}')
         cls._transient_settings[audio_service.service_id] = audio_type
 
     @classmethod
@@ -782,9 +801,9 @@ class Settings(SettingsLowLevel):
         """
         audio_service: ServiceID = service_key.with_prop(Transient.AUDIO_TYPE_OUTPUT)
         audio_type: AudioType = cls._transient_settings[audio_service.service_id]
-        if MY_LOGGER.isEnabledFor(DEBUG_XV):
-            MY_LOGGER.debug_xv(f'service: {audio_service} type: {audio_type} '
-                               f'{type(audio_type)}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'Getting output AudioType service: {audio_service} '
+                              f'type: {audio_type}')
         return audio_type
 
     @classmethod

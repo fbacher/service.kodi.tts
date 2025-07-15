@@ -56,8 +56,6 @@ class SlaveRunCommand:
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'Calling post_start_callback')
         self.post_start_callback: Callable[[], bool] = post_start_callback
-        if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'Returned from post_start_callback')
         Monitor.register_abort_listener(self.abort_listener, name=thread_name)
 
     def terminate(self):

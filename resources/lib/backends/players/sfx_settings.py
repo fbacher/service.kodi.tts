@@ -16,7 +16,7 @@ from backends.settings.validators import (BoolValidator,
                                           StringValidator, Validator)
 from common.config_exception import UnusableServiceException
 from common.constants import Constants
-from common.logger import BasicLogger
+from common.logger import *
 from common.service_status import Progress, ServiceStatus, StatusType
 from common.setting_constants import AudioType, PlayerMode, Players
 from common.settings import Settings
@@ -141,8 +141,6 @@ class SFXSettings:
     def check_is_supported_on_platform(cls) -> None:
         if cls._service_status.progress == Progress.START:
             cls._service_status.progress = Progress.SUPPORTED
-        MY_LOGGER.debug(f'state: {cls._service_status.progress} '
-                        f'status: {cls._service_status.status}')
 
     @classmethod
     def check_is_installed(cls) -> None:
@@ -162,7 +160,8 @@ class SFXSettings:
         success: bool = False
         if (cls._service_status.progress == Progress.INSTALLED
                 and cls._service_status.status == Status.OK):
-            MY_LOGGER.debug(f'{cls.displayName} available: {success}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'{cls.displayName} available: {success}')
             cls._service_status.progress = Progress.AVAILABLE
             if not (xbmc and hasattr(xbmc, 'stopSFX') and PLAYSFX_HAS_USECACHED):
                 cls._service_status.status = Status.FAILED

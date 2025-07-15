@@ -569,12 +569,10 @@ class IntValidator(Validator):
     def service_key(self) -> ServiceID:
         return self._service_key
 
-    def get_tts_value(self, default: int | None = None,
-                      setting_service_id: str = None) -> bool | int | float | str:
+    def get_tts_value(self, default: int | None = None) -> bool | int | float | str:
         if default is None:
             default = self._default
-        if setting_service_id is None:
-            setting_service_id = SettingsLowLevel.get_engine_id_ll(ignore_cache=False)
+
         internal_value: int = SettingsLowLevel.get_setting_int(self.service_key,
                                                                default)
         tts_val: IValidator | IntValidator
@@ -745,8 +743,7 @@ class StringValidator(IStringValidator):
     def property_type(self) -> SettingType:
         return super().property_type
 
-    def get_tts_value(self, default: str | None = None,
-                      setting_service_id: str = None) -> str | None:
+    def get_tts_value(self, default: str | None = None) -> str | None:
         """
         Gets the value of a setting for the service identified by the constructor's
         setting_id argument.
@@ -755,7 +752,6 @@ class StringValidator(IStringValidator):
               not to.
         :param default:  Default value to use if no value is found. If missing,
                          the default parameter from the constructor will be used.
-        :param setting_service_id: setting id
         :return:
         """
         valid: bool = True
@@ -764,8 +760,6 @@ class StringValidator(IStringValidator):
                 default = self._default
         else:
             default = None
-        if setting_service_id is None:
-            setting_service_id = SettingsLowLevel.get_engine_id_ll(ignore_cache=False)
         value: str | None
         value = SettingsLowLevel.get_setting_str(self.service_key,
                                                  ignore_cache=False,

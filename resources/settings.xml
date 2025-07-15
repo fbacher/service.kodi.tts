@@ -59,7 +59,13 @@
                     <default>false</default>
                     <control type="toggle"/>
                 </setting>
-             <setting help="" id="configure_on_startup.tts" label="32047"
+             <setting help="" id="configure_dependencies_on_startup.tts" label="32047"
+                         type="boolean">
+                    <level>4</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                </setting>
+                <setting help="" id="configure_keymap_on_startup.tts" label="32047"
                          type="boolean">
                     <level>4</level>
                     <default>false</default>

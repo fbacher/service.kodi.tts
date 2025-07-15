@@ -4,6 +4,7 @@ from __future__ import annotations  # For union operator |
 import os
 import subprocess
 import sys
+import threading
 
 import langcodes
 
@@ -105,13 +106,14 @@ class ESpeakTTSBackend(SimpleTTSBackend):
     volume_key: ServiceID = service_key.with_prop(SettingProp.VOLUME)
     pitch_key: ServiceID = service_key.with_prop(SettingProp.PITCH)
     speed_key: ServiceID = service_key.with_prop(SettingProp.SPEED)
-    cmd_path: Path = Constants.ESPEAK_PATH / Constants.ESPEAK_COMMAND
+    cmd_path: Path = Constants.ESPEAK_PATH
     data_path: Path = Constants.ESPEAK_DATA_PATH
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         clz = type(self)
         self.process: subprocess.Popen | None = None
+        self._lock: threading.RLock = threading.RLock()
         MY_LOGGER.debug(f'eSpeak service_key: {ESpeakTTSBackend.service_key}')
         self.voice_cache: VoiceCache = VoiceCache(ESpeakTTSBackend.service_key)
 
@@ -135,9 +137,14 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             try:
                 if self.process.poll() is None:
                     self.process.kill()
+                    MY_LOGGER.debug(f'Finished kill')
+                else:
+                    MY_LOGGER.debug(f'poll was not None')
             except Exception:
-                MY_LOGGER.exception('previous process not None')
-        self.process: subprocess.Popen | None = None
+                MY_LOGGER.exception('')
+        else:
+            MY_LOGGER.debug('process was None')
+        self.process = None
 
     def get_voice_cache(self) -> VoiceCache:
         return self.voice_cache
@@ -427,8 +434,10 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                             f'cache_path: {phrase.get_cache_path()} use_cache: '
                             f'{Settings.is_use_cache()}')
         cache_info: CacheEntryInfo
-        cache_info = self.get_voice_cache().get_path_to_voice_file(phrase,
-                                                      use_cache=Settings.is_use_cache())
+        cache_info = (self.get_voice_cache().
+                      get_path_to_voice_file(phrase,
+                                             use_cache=Settings.is_use_cache(),
+                                             delete_tmp=False))
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'cache_info: {cache_info} player_key: {player_key}')
             MY_LOGGER.debug(f'cache_file_state: {phrase.cache_file_state()} '
@@ -444,17 +453,19 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             return True
 
         # If audio in cache is suitable for player, then we are done.
-        result: CacheEntryInfo
-        result = self.voice_cache.get_path_to_voice_file(phrase, use_cache=True)
-        if result.audio_exists:
+        cache_info: CacheEntryInfo
+        cache_info = self.voice_cache.get_path_to_voice_file(phrase, use_cache=True,
+                                                             delete_tmp=False)
+        if cache_info.audio_exists:
             return True
 
         success: bool = False
         wave_file: Path = self.runCommand(phrase)
         if wave_file is not None:
-            result: CacheEntryInfo
-            result = self.voice_cache.get_path_to_voice_file(phrase, use_cache=True)
-            mp3_file = result.final_audio_path
+            cache_info: CacheEntryInfo
+            cache_info = self.voice_cache.get_path_to_voice_file(phrase, use_cache=True,
+                                                                 delete_tmp=True)
+            mp3_file = cache_info.final_audio_path
             trans_id: str = Settings.get_transcoder(clz.service_key)
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'service_id: {self.engine_id} trans_id: {trans_id}')
@@ -504,76 +515,85 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         # The SFX player is used when NO player is available. SFX is Kodi's
         # internal player with limited functionality. Requires Wave.
         audio_exists: bool = False
-        result: CacheEntryInfo | None = None
+        cache_info: CacheEntryInfo | None = None
         # For SFX, save eSpeak .wav directly into the cache
-        result = self.voice_cache.get_path_to_voice_file(phrase, use_cache=use_cache)
-        audio_exists = result.audio_exists
+        cache_info = self.voice_cache.get_path_to_voice_file(phrase, use_cache=use_cache,
+                                                             delete_tmp=False)
+        audio_exists = cache_info.audio_exists
         if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'espeak.runCommand result: {result} '
+            MY_LOGGER.debug(f'espeak.runCommand cache_info: {cache_info} '
                             f'text: {phrase.text}')
         if audio_exists:
-            return result.final_audio_path
+            return cache_info.final_audio_path
         env = os.environ.copy()
         args = [str(clz.cmd_path), '-b', clz.UTF_8, '-w',
-                str(result.temp_voice_path), '--stdin',
+                str(cache_info.temp_voice_path), '--stdin',
                 f'--path={str(clz.data_path)}']
         self.addCommonArgs(args)
         try:
-            self.init_utterance()
-            if Constants.PLATFORM_WINDOWS:
-                if MY_LOGGER.isEnabledFor(DEBUG_V):
-                    MY_LOGGER.debug_v(f'Running command: Windows: {args}')
-                self.process = subprocess.Popen(args, stdin=subprocess.PIPE,
-                                                stdout=subprocess.PIPE,
-                                                stderr=subprocess.STDOUT, shell=False,
-                                                text=True,
-                                                encoding='utf-8', env=env,
-                                                close_fds=True,
-                                                creationflags=subprocess.CREATE_NO_WINDOW)
-            else:
-                if MY_LOGGER.isEnabledFor(DEBUG_V):
-                    MY_LOGGER.debug_v(f'Running command: Linux: {args}')
-                self.process = subprocess.Popen(args, stdin=subprocess.PIPE,
-                                                stdout=subprocess.PIPE,
-                                                stderr=subprocess.STDOUT,
-                                                text=True,
-                                                shell=False,
-                                                encoding='utf-8',
-                                                close_fds=True,
-                                                env=env)
+            with self._lock:
+                self.init_utterance()
+                if Constants.PLATFORM_WINDOWS:
+                    if MY_LOGGER.isEnabledFor(DEBUG_V):
+                        MY_LOGGER.debug_v(f'Running command: Windows: {args}')
+                    self.process = subprocess.Popen(args, stdin=subprocess.PIPE,
+                                                    stdout=subprocess.PIPE,
+                                                    stderr=subprocess.STDOUT, shell=False,
+                                                    text=True,
+                                                    encoding='utf-8', env=env,
+                                                    close_fds=True,
+                                                    creationflags=subprocess.CREATE_NO_WINDOW)
+                else:
+                    if MY_LOGGER.isEnabledFor(DEBUG_V):
+                        MY_LOGGER.debug_v(f'Running command: Linux: {args}')
+                    self.process = subprocess.Popen(args, stdin=subprocess.PIPE,
+                                                    stdout=subprocess.PIPE,
+                                                    stderr=subprocess.STDOUT,
+                                                    text=True,
+                                                    shell=False,
+                                                    encoding='utf-8',
+                                                    close_fds=True,
+                                                    env=env)
+            # end process lock
             output: str  # Must have trailing space (truncates last char)
-            output, _ = self.process.communicate(input=f'{phrase.text} ')
+            try:
+                output, _ = self.process.communicate(input=f'{phrase.text} ')
+                if self.process.returncode != 0:
+                    MY_LOGGER.debug(f'eSpeak failed with RC: {self.process.returncode}')
+            except Exception:
+                MY_LOGGER.exception('')
+
             self.process = None
-            if not result.temp_voice_path.exists():
-                MY_LOGGER.info(f'voice file not created: {result.temp_voice_path}')
+            if not cache_info.temp_voice_path.exists():
+                MY_LOGGER.info(f'voice file not created: {cache_info.temp_voice_path}')
                 return None
-            if result.temp_voice_path.stat().st_size <= 1000:
+            if cache_info.temp_voice_path.stat().st_size <= 1000:
                 MY_LOGGER.info(f'voice file too small. Deleting: '
-                               f'{result.temp_voice_path}')
+                               f'{cache_info.temp_voice_path}')
                 try:
-                    result.temp_voice_path.unlink(missing_ok=True)
+                    cache_info.temp_voice_path.unlink(missing_ok=True)
                 except:
                     MY_LOGGER.exception('')
                 return None
             try:
-                result.temp_voice_path.rename(result.final_audio_path)
-                phrase.set_cache_path(cache_path=result.final_audio_path,
+                cache_info.temp_voice_path.rename(cache_info.final_audio_path)
+                phrase.set_cache_path(cache_path=cache_info.final_audio_path,
                                       text_exists=phrase.text_exists(check_expired=False,
                                                                      active_engine=self),
-                                      temp=not result.use_cache)
+                                      temp=not cache_info.use_cache)
             except Exception:
-                MY_LOGGER.exception(f'Could not rename {result.temp_voice_path} '
-                                    f'to {result.final_audio_path}')
+                MY_LOGGER.exception(f'Could not rename {cache_info.temp_voice_path} '
+                                    f'to {cache_info.final_audio_path}')
                 try:
-                    result.temp_voice_path.unlink(missing_ok=True)
+                    cache_info.temp_voice_path.unlink(missing_ok=True)
                 except:
-                    MY_LOGGER.exception(f'Can not delete {result.temp_voice_path}')
+                    MY_LOGGER.exception(f'Can not delete {cache_info.temp_voice_path}')
                 return None
         except (OSError, ValueError, subprocess.CalledProcessError) as e:
             MY_LOGGER.exception('')
             self.init_utterance()
             return None
-        return result.final_audio_path  # Wave file
+        return cache_info.final_audio_path  # Wave file
 
     def runCommandAndSpeak(self, phrase: Phrase):
         clz = type(self)
@@ -584,41 +604,45 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             MY_LOGGER.debug_v(f'args: {args}')
         try:
-            self.init_utterance()
-            if Constants.PLATFORM_WINDOWS:
-                MY_LOGGER.info(f'Running command: Windows: {args} phrase: {phrase.text}')
-                self.process = subprocess.Popen(args, stdin=subprocess.PIPE,
-                                                stdout=subprocess.PIPE,
-                                                stderr=subprocess.STDOUT, shell=False,
-                                                text=True,
-                                                encoding='utf-8', env=env,
-                                                close_fds=True,
-                                                creationflags=subprocess.CREATE_NO_WINDOW)
-            else:
-                MY_LOGGER.info(f'Running command: Linux: {args} phrase: {phrase.text}')
-                self.process = subprocess.Popen(args, stdin=subprocess.PIPE,
-                                                stdout=subprocess.PIPE,
-                                                stderr=subprocess.STDOUT,
-                                                text=True,
-                                                shell=False,
-                                                encoding='utf-8',
-                                                close_fds=True,
-                                                env=env)
-            cmd_input: str | None = f'{phrase.text} '  # Leave trailing space in
-            while self.process is not None and self.process.poll() is None:
-                try:
-                    output: str
-                    output, _ = self.process.communicate(input=cmd_input,
-                                                         timeout=0.1)
-                except subprocess.TimeoutExpired:
-                    cmd_input = None
-                    Monitor.exception_on_abort()
-                except ValueError:
-                    MY_LOGGER.exception(f'cmd_input: {cmd_input}')
-                    break
-                except Exception:
-                    MY_LOGGER.debug('')
-                    break
+            with self._lock:
+                self.init_utterance()
+                if Constants.PLATFORM_WINDOWS:
+                    MY_LOGGER.info(f'Running command: Windows: {args} phrase: {phrase.text}')
+                    self.process = subprocess.Popen(args, stdin=subprocess.PIPE,
+                                                    stdout=subprocess.PIPE,
+                                                    stderr=subprocess.STDOUT, shell=False,
+                                                    text=True,
+                                                    encoding='utf-8', env=env,
+                                                    close_fds=True,
+                                                    creationflags=subprocess.CREATE_NO_WINDOW)
+                else:
+                    MY_LOGGER.info(f'Running command: Linux: {args} phrase: {phrase.text}')
+                    self.process = subprocess.Popen(args, stdin=subprocess.PIPE,
+                                                    stdout=subprocess.PIPE,
+                                                    stderr=subprocess.STDOUT,
+                                                    text=True,
+                                                    shell=False,
+                                                    encoding='utf-8',
+                                                    close_fds=True,
+                                                    env=env)
+                cmd_input: str | None = f'{phrase.text} '  # Leave trailing space in
+            try:
+                while self.process is not None and self.process.poll() is None:
+                    try:
+                        output: str
+                        output, _ = self.process.communicate(input=cmd_input,
+                                                             timeout=0.1)
+                    except subprocess.TimeoutExpired:
+                        cmd_input = None
+                        Monitor.exception_on_abort()
+                    except ValueError:
+                        MY_LOGGER.exception(f'cmd_input: {cmd_input}')
+                        break
+                    except Exception:
+                        MY_LOGGER.debug('')
+                        break
+            except Exception:
+                MY_LOGGER.exception('')
 
             self.init_utterance()
         except (OSError, ValueError, subprocess.CalledProcessError) as e:
@@ -679,6 +703,14 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         """
         clz = type(self)
         self.init_utterance()
+
+    def stop_builtin_player(self):
+        """
+        Stops this engine's builtin player
+        """
+        with self._lock:
+            MY_LOGGER.debug(f'Calling init_utterance')
+            self.init_utterance()
 
     @classmethod
     def load_languages(cls):

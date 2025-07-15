@@ -115,8 +115,12 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         # self.speed: float | None = None
         # self.volume: int | None = None
         # self.settings_changed: bool = False
-        # self.previous_engine: str | None = None
-        # self.previous_player_mode: PlayerMode | None = None
+
+        # For refresh_tts
+        self.prev_engine_key: ServiceID | None = None
+        self.prev_player_key: ServiceID | None = None
+        self.prev_player_mode: PlayerMode | None = None
+
         initial_backend: ServiceID
         initial_backend = Settings.get_engine_key()
         if MY_LOGGER.isEnabledFor(DEBUG):
@@ -936,6 +940,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             # was entered (should be 2).
             self.cfg.restore_settings('enter select_engine BEFORE do_modal')
             self.cfg.save_settings('select_engine enter BEFORE do_modal')
+            self.refresh_tts(capture_settings=True)
             choices, current_choice_index = self.cfg.get_engine_choices(
                     engine_key=engine_key)
             choices: List[Choice]
@@ -992,6 +997,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                     engine_config.volume = 0.0
                     engine_config.speed = 1.0
                     self.set_all_engine_fields(engine_config=engine_config)
+                    self.refresh_tts()
+
         except Exception as e:
             MY_LOGGER.exception('')
 
@@ -1010,6 +1017,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             return
         try:
             self.cfg.configure_engine(choice, save_as_current=True)
+            self.refresh_tts()
         except Exception as e:
             MY_LOGGER.exception('')
 
@@ -1161,6 +1169,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                     MY_LOGGER.debug(f'No language choices found. No changes made')
                 return
             self.cfg.save_current_choices(choices, current_choice_index)
+            self.refresh_tts(capture_settings=True)
             #  MY_LOGGER.debug(f'In select_language # choices: {len(choices)} '
             #                     f'current_choice_idx {current_choice_index} '
             #                     f'current_choice: {choices[current_choice_index]}')
@@ -1213,6 +1222,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'Set engine_language_value to '
                                 f'{self.engine_language_value.getLabel()}')
+            self.refresh_tts()
         except Exception as e:
             MY_LOGGER.exception('')
 
@@ -1249,6 +1259,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 voice_label: str = lang_info.translated_voice
                 self.set_voice_field(update_ui=False, engine_key=engine_key,
                                      voice_id=voice, voice_label=voice_label)
+                self.refresh_tts()
 
     def select_voice(self):
         """
@@ -1288,6 +1299,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
             self.engine_voice_value.setLabel(choice.label)
             Settings.set_voice(choice.value, engine_key=engine_key)
+            self.refresh_tts()
             # self.update_engine_values()
         except Exception as e:
             MY_LOGGER.exception('')
@@ -1361,6 +1373,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         """
         clz = type(self)
         try:
+            self.refresh_tts(capture_settings=True)
             engine_key: ServiceID = self.engine_key
             choices: List[Choice]
             choices, current_choice_index = self.cfg.get_gender_choices(engine_key)
@@ -1386,7 +1399,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                                   f'setting: {choice.value} idx: {idx:d}')
             self.engine_gender_value.setLabel(choice.label)
             Settings.set_gender(engine_key=engine_key, gender=gender)
-            # self.update_engine_values()
+            self.refresh_tts()
         except Exception as e:
             MY_LOGGER.exception(msg='')
 
@@ -1409,6 +1422,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             sub_title: str = MessageId.SELECT_PLAYER_SUBTITLE.get_msg()
             self.cfg.restore_settings(msg='select_player BEFORE doModal')
             self.cfg.save_settings('select_player BEFORE doModal')
+            self.refresh_tts(capture_settings=True)
             dialog: SelectionDialog
             dialog = self.selection_dialog(title=title,
                                            sub_title=sub_title,
@@ -1461,6 +1475,11 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             self.set_player_field(update_ui=True,
                                   engine_key=engine_key,
                                   player=engine_config.player)
+            self.cfg.set_engine_audio(engine_key=engine_key,
+                                      engine_audio=engine_config.engine_audio)
+            self.cfg.set_transcoder_field(engine_key=engine_key,
+                                          transcoder=engine_config.transcoder)
+            self.refresh_tts()
         except Exception as e:
             MY_LOGGER.exception('')
 
@@ -1648,7 +1667,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         clz = type(self)
         try:
             engine_key = self.engine_key
-            player_id: str = Settings.get_player(engine_key).service_id
+            player_key = Settings.get_player(engine_key)
+            player_id: str = player_key.service_id
             player: PlayerType = PlayerType(player_id)
             choices: List[Choice]
             choices, current_choice_index = self.cfg.get_player_mode_choices(engine_key,
@@ -1658,6 +1678,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             title: str = Messages.get_msg(Messages.SELECT_PLAYER_MODE)
             self.cfg.restore_settings(msg='select_player_mode BEFORE doModal')
             self.cfg.save_settings('select_player_mode BEFORE doModal')
+            self.refresh_tts(capture_settings=True)
             dialog: SelectionDialog
             dialog = self.selection_dialog(title=title,
                                            choices=choices,
@@ -1693,6 +1714,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 self.set_player_mode_field(update_ui=True,
                                            engine_key=self.engine_key,
                                            player_mode=new_player_mode)
+                self.refresh_tts()
         except Exception as e:
             MY_LOGGER.exception('')
 
@@ -1752,6 +1774,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         """
         clz = type(self)
         try:
+            self.refresh_tts(capture_settings=True)
             # Make sure that Settings stack depth is the same as when this module
             # was entered (should be 2).
             self.cfg.restore_settings('enter select_defaults')
@@ -1781,6 +1804,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 engine_config.volume = 0.0
                 engine_config.speed = 1.0
                 self.set_all_engine_fields(engine_config=engine_config)
+                self.refresh_tts()
         except Exception as e:
             MY_LOGGER.exception('')
 
@@ -1810,7 +1834,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                     MY_LOGGER.debug(f'player: {player}')
             else:
                 if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'orig player: {player}')
+                    MY_LOGGER.debug(f'orig player: {self.prev_player_key}')
 
             player_str: str = player.label
             if MY_LOGGER.isEnabledFor(DEBUG):
@@ -2153,6 +2177,30 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 self.engine_api_key_group.setVisible(False)
         except Exception as e:
             MY_LOGGER.exception('')
+
+    def refresh_tts(self, capture_settings: bool = False):
+        """
+        Initiate the rapid adoption of changes so that the user ges fast feedback.
+        Called AFTER changes are applied. More or less add a call to this everywhere
+        a user changes a setting. Fortunately the code is already designed to apply
+        changes in this manner.
+
+        This method is called twice: Once, with capture_settings=True to save
+        the state of settings BEFORE changes are made. Second, without arguments
+        causing the services using the old settings to be stopped/reset.
+        """
+        if capture_settings:
+            self.prev_engine_key = self.engine_key
+            self.prev_player_key = Settings.get_player(self.engine_key)
+            self.prev_player_mode = Settings.get_player_mode(self.engine_key)
+            MY_LOGGER.debug(f'engine_key: {self.engine_key}\n'
+                            f'player_key: {self.prev_player_key}\n'
+                            f'player_mode: {self.prev_player_mode}')
+            return
+
+        self.cfg.refresh_tts(prev_engine_key=self.prev_engine_key,
+                             prev_player_key=self.prev_player_key,
+                             prev_player_mode=self.prev_player_mode)
 
     def selection_dialog(self, title: str,
                          choices: List[Choice], initial_choice: int,

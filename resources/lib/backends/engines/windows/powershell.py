@@ -251,7 +251,8 @@ class PowerShellTTS(SimpleTTSBackend):
                               f'cache_path: {phrase.get_cache_path()} use_cache: '
                               f'{Settings.is_use_cache()}')
         self.get_voice_cache().get_path_to_voice_file(phrase,
-                                                      use_cache=Settings.is_use_cache())
+                                                      use_cache=Settings.is_use_cache(),
+                                                      delete_tmp=False)
         # Wave files only added to cache when SFX is used.
 
         # This Only checks if a .wav file exists. That is good enough, the
@@ -326,7 +327,8 @@ class PowerShellTTS(SimpleTTSBackend):
         # Get path to audio-temp file, or cache location for audio
         result: CacheEntryInfo | None = None
         result = self.get_voice_cache().get_path_to_voice_file(phrase,
-                                                               use_cache=use_cache)
+                                                               use_cache=use_cache,
+                                                               delete_tmp=False)
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             MY_LOGGER.debug_v(f'phrase: {phrase.get_text()} {phrase.get_debug_info()} '
                               f'cache_path: {phrase.get_cache_path()} ')
@@ -463,6 +465,27 @@ class PowerShellTTS(SimpleTTSBackend):
             used. Instead get_cached_voice_file is doing the work.
         """
         return True
+
+    def stop_player(self, purge: bool = True,
+                    keep_silent: bool = False,
+                    kill: bool = False):
+        """
+        Stop player_key (most likely because current text is expired)
+        Players may wish to override this method, particularly when
+        the player_key is built-in.
+
+        :param purge: if True, then purge any queued vocings
+                      if False, then only stop playing current phrase
+        :param keep_silent: if True, ignore any new phrases until restarted
+                            by resume_player.
+                            If False, then play any new content
+        :param kill: If True, kill any player_key processes. Implies purge and
+                     keep_silent.
+                     If False, then the player_key will remain ready to play new
+                     content, depending upon keep_silent
+        :return:
+        """
+        self.stop()
 
     def stop(self):
         clz = type(self)

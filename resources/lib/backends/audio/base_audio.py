@@ -1,10 +1,9 @@
 # coding=utf-8
 from __future__ import annotations  # For union operator |
 
-import os
 import subprocess
 import sys
-import tempfile
+import threading
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -31,6 +30,11 @@ MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 
 
 class AudioPlayer(IPlayer, BaseServices):
+    """
+    Base class for Audio Players.
+
+    Players exist
+    """
     ID = Players.NONE
     # name = ''
     _advanced: bool = False
@@ -42,11 +46,14 @@ class AudioPlayer(IPlayer, BaseServices):
         clz.set_sound_dir()
         self._post_play_pause_ms: int = 0
         self._time_of_previous_play_ended: datetime = datetime.now()
+        self._failed: bool = False
         super().__init__()
 
     @classmethod
     def set_sound_dir(cls) -> None:
         """
+        TODO: Does not appear needed. Always set to the same thing.
+
         Controls the tempfile and tempfile.NamedTemporaryFile 'dir' entry
         used to create temporary audio files. A None value allows tempfile
         to decide.
@@ -54,9 +61,11 @@ class AudioPlayer(IPlayer, BaseServices):
         """
         cls.sound_dir = TempFileUtils.temp_dir()
 
+    '''
     @classmethod
     def get_sound_dir(cls) -> Path:
         return cls.sound_dir
+    '''
 
     @classmethod
     def get_tmp_path(cls, speech_file_name: str, sound_file_type: str) -> Path:
@@ -82,6 +91,18 @@ class AudioPlayer(IPlayer, BaseServices):
         """
 
         @return:
+        """
+        return False
+
+    def is_slave_player(self) -> bool:
+        """
+        A slave player is a long-lived process which accepts commands controlling
+        which speech files are played as well as the volume, speed and other
+        settings. Running as a slave may improve responsiveness.
+
+        :return:  True if this player configured for slave mode. No check
+                  is made for it running.
+                  False, otherwise
         """
         return False
 
@@ -155,9 +176,6 @@ class AudioPlayer(IPlayer, BaseServices):
         finally:
             self._time_of_previous_play_ended = datetime.now()
 
-    def slave_play(self, phrase: Phrase):
-        pass
-
     def isPlaying(self) -> bool:
         return False
 
@@ -189,11 +207,13 @@ class SubprocessAudioPlayer(AudioPlayer):
     std_player_count: int = 0
 
     def __init__(self):
+        """
+          Players are instantiated at startup (BootstrapPlayers) and not
+          restarted. There is nothing to prevent them from being created on
+          demand, as long as they are cleaned up properly.
+        """
         super().__init__()
-        clz = type(self)
-        self._player_busy: bool = False
         self.player_mode: PlayerMode | None = None
-        self._simple_player_busy: bool = False
         self.engine: BaseServices | None = None
         self.engine_key: ServiceID | None = None
         self.speed: float = 0.0
@@ -201,13 +221,7 @@ class SubprocessAudioPlayer(AudioPlayer):
         self.active = True
         self._speedMultiplier: int = 1
         self._player_process: SimpleRunCommand | None = None
-        #  HACK!
-        self.slave_player_process: SlaveCommunication | None = None
-        self.kill: bool = False
-        self.stop_urgent: bool = False
-        self.reason: str = ''
-        self.failed: bool | None = None
-        self.rc: int | None = None
+        self.lock: threading.RLock = threading.RLock()
 
     def init(self, engine_key: ServiceID):
         self.engine_key = engine_key
@@ -217,61 +231,15 @@ class SubprocessAudioPlayer(AudioPlayer):
             MY_LOGGER.warning(f'Can not load {self.engine_key}')
             self.engine = None
 
-    '''
-    def kodi_player_status_listener(self, kodi_player_state: KodiPlayerState) -> bool:
+    def reset_subprocess(self) -> None:
         """
-        Called when Kodi begins to start/stop playing a movie, music, display
-        photos, etc....  Normally you want to cease any TTS chatter. Some
-        possible actions include:
-          * When engine uses a slave player that can idle until next file is to
-            be played, then you just want to abort whatever is playing and have
-            engine not
-            send anything else to slave player until Kodi finishes its thing
-            (or unless something comes in that requires voicing even if Kodi
-            is doing something).
-          * When engine launches a player process for every voiced phrase, then
-            you want to kill the player process to abort the current voicing.
-            The engine can stay alive but, as in the case before, should ignore
-            most voicing requests until Kodi finishes its thing, or until some
-            comes in that requires voicing even if Kodi is doing something.
-
-        :param kodi_player_state:
-        :return:
+        Cleanus up between launched processes. Ensures states reset, files closed,
+        processes killed and blocking until previous process stopped. Does NOT
+        replace the need for explicit killing, etc. but helps guarantee that things
+        don't go off the rails too much.
         """
-        clz = type(self)
-        clz.player_status = kodi_player_state
-        MY_LOGGER.debug(f'Player play status: {kodi_player_state}')
-        if Monitor.is_abort_requested():
-            return True
-
-        if kodi_player_state == KodiPlayerState.PLAYING_VIDEO:
-            self.stop()
-            return False
-
-        return False
-    '''
-
-    def is_slave_player(self) -> bool:
-        """
-        A slave player is a long-lived process which accepts commands controlling
-        which speech files are played as well as the volume, speed and other
-        settings. Running as a slave may improve responsiveness.
-
-        :return:  True if this player configured for slave mode. No check
-                  is made for it running.
-                  False, otherwise
-        """
-        clz = type(self)
-        try:
-            self.player_mode = Settings.get_player_mode(engine_key=self.engine_key)
-            if self.player_mode == PlayerMode.SLAVE_FILE:
-                #  MY_LOGGER.debug(f'SLAVE_PLAYER')
-                return True
-        except NotImplementedError:
-            pass
-        if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'NOT SLAVE')
-        return False
+        self._player_process: SimpleRunCommand | None = None
+        self._failed = None
 
     def speedArg(self, speed: float) -> str:
         #  self._logger.debug(f'speedArg speed: {speed} multiplier: {
@@ -305,7 +273,6 @@ class SubprocessAudioPlayer(AudioPlayer):
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'Running {clz.ID} via pipe')
         try:
-            self._player_busy = True
             stop_on_play: bool = not phrase.speak_over_kodi
             stdout: TextIO
             stderr: TextIO
@@ -323,33 +290,17 @@ class SubprocessAudioPlayer(AudioPlayer):
             self._player_process.run_cmd()
         except subprocess.CalledProcessError as e:
             MY_LOGGER.exception('')
-            self.reason = f'{clz.ID} failed'
-            self.failed = True
+            self._failed = True
         except Exception as e:
             MY_LOGGER.exception('')
         finally:
             self._time_of_previous_play_ended = datetime.now()
-            self._simple_player_busy = False
 
     def getSpeed(self) -> float:
         speed: float | None = \
             Settings.get_speed()
         self.setSpeed(speed)
         return speed
-
-    def getVolumeDb(self) -> float:
-        #  All volumes are relative to the TTS volume -12db .. +12db.
-        # the setting_id is Services.TTS_Service_id.  We therefore
-        # don't care what changes the engine, etc. have made.
-        # We just trust that the volume in the source input matches
-        # the tts 'line-input' or '0' tts volume level.
-        return self.get_player_volume(as_decibels=True)
-
-    def setSpeed(self, speed: float):
-        return self.get_player_speed()
-
-    def setVolume(self, volume: float):
-        self.volume = volume
 
     def get_player_speed(self) -> float:
         pass
@@ -412,7 +363,6 @@ class SubprocessAudioPlayer(AudioPlayer):
             if stop_on_play:
                 if KodiPlayerMonitor.player_status == KodiPlayerState.PLAYING_VIDEO:
                     return
-            self._simple_player_busy = True
             delete_after_run: Path | None = None
             if VoiceCache.is_tmp_file(phrase.get_cache_path()):
                 delete_after_run = phrase.get_cache_path()
@@ -420,102 +370,20 @@ class SubprocessAudioPlayer(AudioPlayer):
                                                     phrase_serial=phrase_serial,
                                                     delete_after_run=delete_after_run,
                                                     name='plyr',
-                                                    stop_on_play=stop_on_play)
+                                                    stop_on_kodi_play=stop_on_play)
             if MY_LOGGER.isEnabledFor(DEBUG_V):
                 MY_LOGGER.debug_v(
                         f'START Running player to voice NOW args: {" ".join(args)}')
             self._player_process.run_cmd()
         except subprocess.CalledProcessError:
             MY_LOGGER.exception('')
-            self.reason = 'failed'
-            self.failed = True
+            self._failed = True
         finally:
             self._time_of_previous_play_ended = datetime.now()
-            self._simple_player_busy = False
-
-    def get_slave_play_args(self) -> List[str]:
-        raise NotImplementedError
-
-    def slave_play(self, phrase: Phrase):
-        """
-        Uses a slave player (such as mpv in slave mode) to play all audio
-        files. This avoids the cost of repeatedly launching the player. Should
-        also improve control.
-
-        :param phrase:
-        :return:
-        """
-        clz = type(self)
-        if not self.is_slave_player():
-            return
-
-        # MY_LOGGER.debug(f'In slave_play phrase: {phrase}'
-        # Do we need to kill a stale player?
-        if self._player_process is not None:
-            # Will stop pending voicings
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug('player process running. switching to slave')
-            self.destroy_player_process()
-
-        try:
-            if self.slave_player_process is None:
-                try:
-                    args: List[str] = self.get_slave_play_args()
-                    self._simple_player_busy = True
-                    p_path = self.get_slave_pipe_path()
-                    volume: float = self.get_player_volume(as_decibels=False)
-                    speed: float = self.get_player_speed()
-                    s_num: int = phrase.serial_number
-                    #  play_channels: Channels = self.get_player_channels()
-                    clz.slave_player_count += 1
-                    slave_count: int = clz.slave_player_count
-                    self.slave_player_process = SlaveCommunication(args,
-                                                                   phrase_serial=s_num,
-                                                                   thread_name='mpv',
-                                                                   count=slave_count,
-                                                                   stop_on_play=True,
-                                                                   fifo_path=p_path,
-                                                                   default_speed=speed,
-                                                                   default_volume=volume)
-                    # MY_LOGGER.debug(
-                    #         f'START Running slave player to voice NOW args: {"
-                    #         ".join(args)}')
-                    self.slave_player_process.start_service()
-                except subprocess.CalledProcessError:
-                    MY_LOGGER.exception('')
-                    self.reason = 'mpv failed'
-                    self.failed = True
-                finally:
-                    self._time_of_previous_play_ended = datetime.now()
-                    self._simple_player_busy = False
-
-        except Exception as e:
-            MY_LOGGER.exception('')
-
-        phrase_serial: int = phrase.serial_number
-        try:
-            phrase.test_expired()  # Throws ExpiredException
-            volume: float = self.get_player_volume(as_decibels=False)
-            speed: float = self.get_player_speed()
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'volume: {volume} speed: {speed}')
-            self.slave_player_process.set_channels(Channels.STEREO)
-            self.slave_player_process.add_phrase(phrase, volume, speed)
-            # MY_LOGGER.debug(f'slave state: {self.slave_player_process.get_state()}')
-        except AbortException:
-            self.stop(now=True)
-            reraise(*sys.exc_info())
-        except ExpiredException:
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug('EXPIRED')
-            return
-        except Exception as e:
-            MY_LOGGER.exception('')
-            return
 
     def isPlaying(self) -> bool:
         self.set_state()
-        return self._player_busy
+        return self._player_process is not None
 
     def stop_player(self, purge: bool = True,
                     keep_silent: bool = False,
@@ -542,15 +410,9 @@ class SubprocessAudioPlayer(AudioPlayer):
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'purge: {purge} keep_silent: {keep_silent} '
                             f'kill: {kill}')
-        if self.slave_player_process is not None:
-            if kill:
-                self.destroy_slave_process()
-            else:
-                self.slave_player_process.stop_player(purge=purge,
-                                                      keep_silent=keep_silent,
-                                                      kill=kill)
+
         if self._player_process is not None:
-            self.destroy_simple_process(kill=True)
+            self.destroy_process()
 
     def destroy(self):
         """
@@ -563,50 +425,26 @@ class SubprocessAudioPlayer(AudioPlayer):
         clz = type(self)
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'destroy')
-        self.destroy_player_process()
+        self.destroy_process()
 
-    def destroy_player_process(self):
+    def destroy_process(self):
         """
-        Destroy the ployer process (ex. mpv, mplayer, etc.). Typicaly done
-        when stopping TTS, or when long-running player (one which text_exists for
-        multiple voicings) needs to shutdown the process.
-
-        :return:
+        Destroy (kill) the player / player manager process.
+        There is no point in terminating the process in an attempt to be
+        kinder to produced files, etc. since we are always in a hurry to
+        stop it. As long as no corrupt files accumulate in the cache we
+        are ok.
         """
-        self.destroy_slave_process()
-        self.destroy_simple_process(kill=True)
-
-    def destroy_slave_process(self):
-        clz = type(self)
-        if MY_LOGGER.isEnabledFor(DEBUG_V):
-            MY_LOGGER.debug_v(f'DESTROY_slave_player_process')
-        if self.slave_player_process is not None:
-            try:
-                if MY_LOGGER.isEnabledFor(DEBUG_V):
-                    MY_LOGGER.debug_v('DESTROY SLAVE')
-                self.player_mode = Settings.get_player_mode(self.engine_key)
-                if self.is_slave_player():
-                    self.player_mode = None
-                self.slave_player_process.destroy()
-            except Exception as e:
-                MY_LOGGER.exception('')
-            self.slave_player_process = None
-            return
-
-    def destroy_simple_process(self, kill: bool = True):
         clz = type(self)
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             MY_LOGGER.debug_v(f'DESTROY {clz.ID}')
-        self._simple_player_busy = False
-        if self._player_process is not None:
-            if self._player_process.poll() is not None:
-                self._player_process = None
-                return
+        with self.lock:
             try:
-                if kill:
+                if self._player_process is not None:
+                    if self._player_process.poll() is not None:
+                        self._player_process = None
+                        return
                     self._player_process.kill()
-                else:
-                    self._player_process.terminate()
             except AbortException:
                 self._player_process.kill()
                 reraise(*sys.exc_info())
@@ -614,7 +452,7 @@ class SubprocessAudioPlayer(AudioPlayer):
                 MY_LOGGER.exception('')
             finally:
                 self.set_state()
-        self._player_process = None
+                self._player_process = None
 
     def close(self):
         if MY_LOGGER.isEnabledFor(DEBUG_V):
@@ -622,26 +460,281 @@ class SubprocessAudioPlayer(AudioPlayer):
         self.destroy()
 
     def set_state(self):
-        clz = type(self)
-        if self._player_process is None:
-            self._player_busy = False
-        elif self._player_process.process.poll() is not None:
-            self.rc = self._player_process.process.returncode
-            self._player_busy = False
-            self._player_process = None
-        else:
-            #  MY_LOGGER.debug(f'Player busy: {self._player_busy}')
+        with self.lock:
             if (self._player_process is not None and
-                    self._player_process.process is not None and
-                    self._player_process.process.returncode is not None):
-                self.rc = self._player_process.process.returncode
-                self._player_busy = False
-                self._simple_player_busy = False
+                    self._player_process.process.poll() is not None):
                 self._player_process = None
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'SimplePlayer busy: {self._simple_player_busy}')
-            else:
-                self._player_busy = True
+
+    @classmethod
+    def available(cls, ext=None) -> bool:
+        #  player_id: str = Settings.get_player()
+        raise NotImplementedError('base class')
+
+
+class SubprocessSlaveAudioPlayer(SubprocessAudioPlayer):
+    _availableArgs = None
+    # Count appended to thread_name to make unique
+    slave_player_count: int = 0
+    std_player_count: int = 0
+
+    def __init__(self):
+        """
+        Players are instantiated at startup (BootstrapPlayers) and not
+        restarted. There is nothing to prevent them from being created on
+        demand, as long as they are cleaned up properly.
+        """
+        super().__init__()
+        clz = type(self)
+        self._slave_commo: SlaveCommunication | None = None
+
+    def ensure_slave_mode(self) -> None:
+        if not self.is_slave_player():
+            raise ValueError('Not in slave_mode')
+        if self._player_process is not None:
+            try:
+                if self._player_process.cmd_finished:
+                    self._player_process = None
+            except:
+                MY_LOGGER.exception('')
+        return
+
+    def reset_subprocess(self) -> None:
+        """
+        Cleanus up between launched processes. Ensures states reset, files closed,
+        processes killed and blocking until previous process stopped. Does NOT
+        replace the need for explicit killing, etc. but helps guarantee that things
+        don't go off the rails too much.
+        """
+        super().__init__()
+        self._slave_commo = None
+
+    def is_slave_player(self) -> bool:
+        """
+        A slave player is a long-lived process which accepts commands controlling
+        which speech files are played as well as the volume, speed and other
+        settings. Running as a slave may improve responsiveness.
+
+        :return:  True if this player configured for slave mode. No check
+                  is made for it running.
+                  False, otherwise
+        """
+        try:
+            self.player_mode = Settings.get_player_mode(engine_key=self.engine_key)
+            return self.player_mode == PlayerMode.SLAVE_FILE
+        except NotImplementedError:
+            pass
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'NOT SLAVE')
+        return False
+
+    def get_slave_play_args(self) -> List[str]:
+        raise NotImplementedError
+
+    def slave_play(self, phrase: Phrase):
+        """
+        Uses a slave player (such as mpv in slave mode) to play all audio
+        files. This avoids the cost of repeatedly launching the player. Should
+        also improve control.
+
+        :param phrase:
+        :return:
+        """
+        clz = type(self)
+        self.ensure_slave_mode()
+        if self._slave_commo is None:
+            self._start_slave_player(phrase)
+        phrase_serial: int = phrase.serial_number
+        try:
+            phrase.test_expired()  # Throws ExpiredException
+            volume: float = self.get_player_volume(as_decibels=False)
+            speed: float = self.get_player_speed()
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'volume: {volume} speed: {speed}')
+            with self.lock:
+                if self._slave_commo is not None:
+                    self._slave_commo.set_channels(Channels.STEREO)
+                    self._slave_commo.add_phrase(phrase, volume, speed)
+        except AbortException:
+            self.stop(now=True)
+            reraise(*sys.exc_info())
+        except ExpiredException:
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug('EXPIRED')
+            return
+        except Exception as e:
+            MY_LOGGER.exception('')
+            return
+
+    def _start_slave_player(self, phrase: Phrase) -> None:
+        clz = type(self)
+        if self._slave_commo is not None:
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'slave_commo is NOT None and not started')
+            return
+        with self.lock:  # Is lock needed, or sufficient?
+            try:
+                args: List[str] = self.get_slave_play_args()
+                p_path = self.get_slave_pipe_path()
+                volume: float = self.get_player_volume(as_decibels=False)
+                speed: float = self.get_player_speed()
+                s_num: int = phrase.serial_number
+                #  play_channels: Channels = self.get_player_channels()
+                clz.slave_player_count += 1
+                slave_count: int = clz.slave_player_count
+                try:
+                    self._slave_commo = SlaveCommunication(args,
+                                                           phrase_serial=s_num,
+                                                           thread_name='mpv',
+                                                           count=slave_count,
+                                                           stop_on_play=True,
+                                                           fifo_path=p_path,
+                                                           default_speed=speed,
+                                                           default_volume=volume)
+                    # MY_LOGGER.debug(
+                    #         f'START Running slave player to voice NOW args: {"
+                    #         ".join(args)}')
+                    self._slave_commo.start_service()
+                    self._failed = False
+                except subprocess.CalledProcessError:
+                    MY_LOGGER.exception('')
+                    self._slave_commo = None
+                    self._failed = True
+                finally:
+                    self._time_of_previous_play_ended = datetime.now()
+            except:
+                MY_LOGGER.exception('')
+                self._slave_commo = None
+                self._failed = True
+
+
+    def isPlaying(self) -> bool:
+        """
+        Determines if player is playing anything
+        """
+        if not self.is_slave_player():
+            return super().isPlaying()
+        return self._is_playing()
+
+    def _is_playing(self) -> bool:
+        if self._slave_commo is None:
+            return False
+        return not self._slave_commo.is_idle
+
+    def stop_player(self, purge: bool = True,
+                    keep_silent: bool = False,
+                    kill: bool = False):
+        """
+        Stop player (most likely because current text is expired)
+        Engines may wish to override this method, particularly when
+        the player is built-in.
+
+        :param purge: if True, then purge any queued vocings
+                      if False, then only stop playing current phrase
+        :param keep_silent: if True, ignore any new phrases until restarted
+                            by resume_player.
+                            If False, then play any new content
+        :param kill: If True, kill any player processes. Implies purge and
+                     keep_silent.
+                     If False, then the player will remain ready to play new
+                     content, depending upon keep_silent
+        :return:
+        """
+        # Only slave players have a queue of pending speech files
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'purge: {purge} keep_silent: {keep_silent} '
+                            f'kill: {kill}')
+        with self.lock:
+            if not self.is_slave_player():
+                return super().stop_player(purge=purge, keep_silent=keep_silent,
+                                           kill=kill)
+            self._stop_slave_player(purge=purge, keep_silent=keep_silent,
+                                    kill=kill)
+
+    def _stop_slave_player(self, purge: bool = True,
+                           keep_silent: bool = False,
+                           kill: bool = False):
+        """
+        Stop player (most likely because current text is expired)
+        Engines may wish to override this method, particularly when
+        the player is built-in.
+
+        :param purge: if True, then purge any queued vocings
+                      if False, then only stop playing current phrase
+        :param keep_silent: if True, ignore any new phrases until restarted
+                            by resume_player.
+                            If False, then play any new content
+        :param kill: If True, kill any player processes. Implies purge and
+                     keep_silent.
+                     If False, then the player will remain ready to play new
+                     content, depending upon keep_silent
+        :return:
+        """
+        # Only slave players have a queue of pending speech files
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'purge: {purge} keep_silent: {keep_silent} '
+                            f'kill: {kill}')
+        with self.lock:
+            if self._slave_commo is not None:
+                if kill:
+                    self._destroy_slave_commo()
+                else:
+                    # Stop playing current audio and cancel all queued audio
+                    # And perhaps ignore all incoming audios to play until
+                    # further notice
+                    self._slave_commo.stop_player(purge=purge,
+                                                  keep_silent=keep_silent,
+                                                  kill=kill)
+
+    def destroy(self) -> None:
+        """
+        Destroy this player and any dependent player process, etc. Typicaly done
+        when either stopping TTS (F12) or shutdown, or switching engines,
+        players, etc.
+
+        :return:
+        """
+        with self.lock:
+            if not self.is_slave_player():
+                return super().destroy()
+
+            self._destroy_slave_commo()
+
+    def _destroy_slave_commo(self) -> None:
+        """
+        Kill the slave player process as wll as the SlaveCommunication thread /
+        'player'.
+        """
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'DESTROY__slave_commo')
+        with self.lock:
+            if self._slave_commo is not None:
+                try:
+                    if MY_LOGGER.isEnabledFor(DEBUG_V):
+                        MY_LOGGER.debug_v('DESTROY SLAVE')
+                    self.player_mode = None
+                    self._slave_commo.destroy()
+                except Exception as e:
+                    MY_LOGGER.exception('')
+                finally:
+                    self._slave_commo = None
+                return
+
+    def close(self):
+        """
+        Completely shutdown the activity of this player
+        """
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'In close calling destroy')
+        self.destroy()
+
+    def set_state(self):
+        with self.lock:
+            if not self.is_slave_player():
+                return super().set_state()
+
+            if (self._slave_commo is not None and
+                    self._slave_commo.slave.poll() is not None):
+                self._slave_commo = None
 
     @classmethod
     def available(cls, ext=None) -> bool:

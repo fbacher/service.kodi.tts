@@ -419,17 +419,17 @@ class SettingsMap:
     @classmethod
     def get_validator(cls,
                       service_id: ServiceID) -> (IBoolValidator |
-                                                  IStringValidator |
-                                                  IIntValidator |
-                                                  IStrEnumValidator |
-                                                  IConstraintsValidator |
-                                                  IGenderValidator |
-                                                  INumericValidator |
-                                                  IChannelValidator |
-                                                  IEngineValidator |
-                                                  ISimpleValidator | None):
+                                                 IStringValidator |
+                                                 IIntValidator |
+                                                 IStrEnumValidator |
+                                                 IConstraintsValidator |
+                                                 IGenderValidator |
+                                                 INumericValidator |
+                                                 IChannelValidator |
+                                                 IEngineValidator |
+                                                 ISimpleValidator | None):
         if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'service_id: {service_id} key: {service_id.key}')
+            MY_LOGGER.debug(f'service_id: {service_id}')
         service_info: ServiceInfo = cls.service_info_map.get(service_id.key)
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'service_info: {service_info}')

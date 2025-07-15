@@ -81,8 +81,8 @@ class PlaySFXAudioPlayer(AudioPlayer, BaseServices):
         PlayerIndex.register(PlaySFXAudioPlayer.ID, what)
         BaseServices.register(what)
 
-    def doPlaySFX(self, path) -> None:
-        xbmc.playSFX(path, False)
+    def play_sfx(self, path: Path) -> None:
+        xbmc.playSFX(str(path), False)
 
     def play(self, phrase: Phrase):
         """
@@ -103,7 +103,7 @@ class PlaySFXAudioPlayer(AudioPlayer, BaseServices):
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'GENERATE_BACKUP_SPEECH: {GENERATE_BACKUP_SPEECH}')
         if GENERATE_BACKUP_SPEECH:
-            # Convert .mp3 files into .wav and save in NO_ENGINE engine's cache
+            # Convert any .mp3 files into .wav and save in NO_ENGINE engine's cache
             no_engine = BaseServices.get_service(EngineType.NO_ENGINE.value)
             wave_phrase, cache_info = no_engine.create_wave_phrase(phrase)
             audio_path: Path = cache_info.final_audio_path
@@ -113,11 +113,21 @@ class PlaySFXAudioPlayer(AudioPlayer, BaseServices):
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'result: {cache_info}')
             audio_path: Path = cache_info.final_audio_path
+            wave_file: Path | None = None
+            wave_file_exists: bool = False
+            mp3_file: Path | None = None
+            mp3_file_exists: bool = False
             wave_file = audio_path.with_suffix(f'.{AudioType.WAV}')
-            if not wave_file.exists():
-                mp3_file: Path = audio_path.with_suffix(f'.{AudioType.MP3}')
+            if AudioType.WAV.value in cache_info.audio_suffixes:
+                wave_file_exists = wave_file.exists()
+            elif AudioType.MP3.value in cache_info.audio_suffixes:
+                mp3_file = audio_path.with_suffix(f'.{AudioType.MP3}')
+                mp3_file_exists = mp3_file.exists()
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'audio_path: {audio_path} exists: {audio_path.exists()} \n'
+                                  f'wave_file: {wave_file} exists: {wave_file_exists}')
+            if not wave_file_exists and mp3_file_exists:
                 try:
-                    #  SoundCapabilities.get_capable_services(setting_id, _provides_services,
                     target_audio: AudioType
                     target_audio = Settings.get_current_input_format(clz.service_key)
 
@@ -177,7 +187,7 @@ class PlaySFXAudioPlayer(AudioPlayer, BaseServices):
                 Monitor.exception_on_abort(timeout=float(additional_wait_needed_s))
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'wave: {wave_file}')
-            self.doPlaySFX(str(wave_file))
+            self.play_sfx(wave_file)
             f = wave.open(str(wave_file), 'rb')
             frames = f.getnframes()
             rate = f.getframerate()
@@ -187,7 +197,7 @@ class PlaySFXAudioPlayer(AudioPlayer, BaseServices):
             self.event.wait(duration)
             Monitor.exception_on_abort()
         except AbortException:
-            self.stop(now=True)
+            self.stop()
             reraise(*sys.exc_info())
         except ExpiredException:
             if MY_LOGGER.isEnabledFor(DEBUG):
@@ -215,24 +225,28 @@ class PlaySFXAudioPlayer(AudioPlayer, BaseServices):
                     keep_silent: bool = False,
                     kill: bool = False):
         """
-        Stop player_key (most likely because current text is expired)
-        Players may wish to override this method, particularly when
-        the player_key is built-in.
+        Stop player (most likely because current text is expired)
+        Engines may wish to override this method, particularly when
+        the player is built-in.
 
         :param purge: if True, then purge any queued vocings
                       if False, then only stop playing current phrase
         :param keep_silent: if True, ignore any new phrases until restarted
                             by resume_player.
                             If False, then play any new content
-        :param kill: If True, kill any player_key processes. Implies purge and
+        :param kill: If True, kill any player processes. Implies purge and
                      keep_silent.
-                     If False, then the player_key will remain ready to play new
+                     If False, then the player will remain ready to play new
                      content, depending upon keep_silent
         :return:
         """
+        # Only slave players have a queue of pending speech files
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'purge: {purge} keep_silent: {keep_silent} '
+                            f'kill: {kill}')
         self.stop()
 
-    def stop(self, now: bool = True) -> None:
+    def stop(self) -> None:
         xbmc.stopSFX()
 
     def close(self) -> None:
