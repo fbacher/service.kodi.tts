@@ -1,9 +1,9 @@
 Release Notes
 =============
-Welcome to the **Alpha** release of Kodi Text To Speech which provides basic TTS 
+Welcome to the **Alpha 5** release of Kodi Text To Speech which provides basic TTS 
 functionality to Kodi. It is based upon XBMC TTS (by Rick Phillips (ruuk) and pvagner),
 which is no longer supported. This version of Kodi TTS is maintained by a 
-different team and is a major release.
+different team and has major changes.
 
 The goals of this early release are to provide basic functionality, iron out
 installation and configuration issues as well as get feedback. Functionality
@@ -76,14 +76,18 @@ discuss anything about this addon.
 
 Items of particular interest:
 
-    * It is possible to cause high CPU usage while configuring TTS. The cause is
-      yet unknown, but is related to changing player configuration. The solution
-      is to restart Kodi, or TTS. 
+    * A recent fix has been put in to address stopping /cancelling playing phrases
+      or switching players, engines or player modes. Symptoms are high cpu usage, 
+      extra player processes running, no audio or long delays in playing audio. If 
+      this reoccurs, please add a note in github issue 16 
+      (https://github.com/fbacher/service.kodi.tts/issues/16) OR on the forum, listed
+      elsewhere.
 
     * Exiting TTS (or Kodi) can cause Kodi to get a Segmentation Violation on 
       Linux (it may also on Windows). A fix has been implemented for the TTS engine
-      code that reduces the occurance of this problem. A similar fix will be made
-      in the player code. 
+      and player code that reduces the occurance of this problem. This fix needs 
+      additional review. If you notice a segmentation violation (or a rash notice 
+      from Kodi) then add a note to the forum, or to issue 17).
 
 ### Dependencies
 

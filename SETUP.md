@@ -1,7 +1,8 @@
 
 ## Install Addons
 
-First, install the latest released version of Kodi.
+First, it is highly recommended to install the latest released version of Kodi,
+(21.2) although there are no known issues with using 21.0.1
 
 Next, install the Kodi TTS addon as well as its dependents. Since this Alpha release 
 is not available from the Kodi repository, you will have to manually download and 
@@ -12,7 +13,25 @@ Download the two addons (you want the .zip file):
   * [script.module.langcodes](https://github.com/fbacher/script.module.langcodes/archive/refs/tags/v0.0.1-alpha.zip)
   * [service.kodi.tts](https://github.com/fbacher/service.kodi.tts/tags)
 
-To install, in Kodi, go to **Settings -> Add-ons -> Add-on browser -> Install from zip file**. There will probably be a warning about installing from unofficial sites. Select to allow the installation. Install **script.module.langcodes** first. Choose the path where you downloaded each zip file above. After the installation of both is complete, exit Kodi.
+**Note:** The first time that Kodi TTS runs on Windows, a Dialog will request Administator
+privelege to set several permissions:
+
+  1. Permission to make a simple powershell script to call the Voicing API. Only the  
+     current user will have the permission.
+  2. Permission to add variables to the User's environment. 
+
+To install, in Kodi, go to **Settings -> Add-ons -> Add-on browser -> Install from zip file**.
+There will probably be a warning about installing from unofficial sites. Select to
+allow the installation. Install **script.module.langcodes** first. Choose the path
+where you downloaded each zip file above. After the installation of both is complete, 
+exit Kodi. 
+
+**Note:** Currently, Kodi TTS assumes that players (mpv) and engines (espeak) will be
+installed at:
+  * Linux: in /usr/bin
+  * Windows: in a directory named by the player or engine. For example espeak-ng.exe would
+    would be installed in c:\Program Filess/espeak-ng/espeak-ng.exe
+This will be made more flexible before release.
 
 ## Install TTS Engines and Players
 After installing the kodi addons, you may need to install one or more players and TTS engines.
@@ -49,21 +68,8 @@ The following file operations will require Admin privilege.
 ### Optionally install eSpeak-NG
 Install eSpeak-NG through the Windows App installer.
 
-### Configure paths and powershell scripts
-The following does several things:
-  * Adds Environment Variables for several players and engines that you may use. Note
-    the paths assume the players and engines are located in C:\Program Files.
-  * Gives permission to run a simple Powershell script which provides access to Navigator
-
-Configure steps:
-  1. Launch 'Command Prompt' with Administrator Privileges
-  2. Enter the command: 
-     "%APPDATA%"\Kodi\addons\service.kodi.tts\resources\scripts\config_script.bat
-
-You should see several messages as the script runs and no obvious errors.
-
 At this point you should be able to run Kodi. A few seconds after starting Kodi you
-should hear a note, followed by speech. To see the configuration menu, you can
+should hear a ping, followed by speech. To see the configuration menu, you can
 press ***Ctrl, F12*** on the keyboard. If there is no voice nor configuration 
 menu, then something went wrong and you should collect a log and send it to me.
 
@@ -225,9 +231,15 @@ The default player depends on the engine. Generally mpv is preferred since it su
 mp3 (smaller than wave) and 'slave mode' which improves performance, especially when
 used with a cache.
 
-The other significant choice, for engines that support it, is built-in player. A
+Another choice, for engines that support it, is built-in player. A
 built-in player is part of the engine, so a separate player does not need to be
 installed. The biggest downside is that it is much slower than using a cache.
+
+Similar to using a built-in player is the SFX player. SFX uses Kodi to play the audio. 
+The advantage being that SFX is always there. However, there are limitations:
+  * You can not change speed or volume (without changing Kodi volume)
+  * It only works with wave files, requiring a transcoder (slowing things down)
+  * Wave files are larger than mpg
 
 #### Caching
 
@@ -285,5 +297,5 @@ support speed change (without a change in pitch).
 #### Volume
 
 Volume is always measured in decibels, with 0.0dB being 'normal' volume. An attempt
-is made to have a volume of 0.0dB about the same across the different engines,
-however, not a great deal of effort has been put into this.
+is made to have a volume of 0.0dB about the same across the different engines and players,
+however, not a great deal of effort has been put into this, so far.

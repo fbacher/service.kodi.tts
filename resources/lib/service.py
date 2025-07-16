@@ -47,7 +47,7 @@ definitions: Dict[str, int]
 from common.logger import *
 
 # Default logging is info, otherwise debug_v
-if True:
+if False:
     definitions = {'tts': INFO}
 else:
     definitions = {
@@ -55,7 +55,7 @@ else:
         'tts.backends': INFO,
         'tts.backends.driver': INFO,
         'tts.backends.google': DEBUG,
-        'tts.backends.espeak': DEBUG_XV,
+        'tts.backends.espeak': INFO,
         'tts.backends.espeak_settings': INFO,
         'tts.backends.no_engine': INFO,
         'tts.backends.no_engine_settings': INFO,
@@ -67,15 +67,15 @@ else:
         'tts.backends.settings.language_info': INFO,
         'tts.backends.settings.langcodes_wrapper': INFO,
         'tts.backends.settings.service_types': INFO,
-        'tts.backends.settings.settings_helper': DEBUG_V,
+        'tts.backends.settings.settings_helper': INFO,
         'tts.backends.settings.settings_map': INFO,
         'tts.backends.settings.validators': INFO,
         'tts.backends.base': INFO,
-        'tts.backends.audio.base_audio': INFO,
+        'tts.backends.audio.base_audio': DEBUG,
         'tts.backends.audio.mpv_audio_player': INFO,
         'tts.backends.audio.mplayer_audio_player': INFO,
-        'tts.backends.audio.sfx_audio_player': DEBUG,
-        'tts.backends.players.sfx_settings': DEBUG,
+        'tts.backends.audio.sfx_audio_player': INFO,
+        'tts.backends.players.sfx_settings': INFO,
         'tts.backends.audio.sound_capabilities': INFO,
         'tts.backends.audio.worker_thread': INFO,
         'tts.backends.transcoders.trans': INFO,
@@ -85,8 +85,8 @@ else:
         'tts.common.logger': INFO,
         'tts.common.monitor': INFO,
         'tts.common.phrases': INFO,
-        'tts.common.phrase_manager': DEBUG,
-        'tts.common.settings_low_level': DEBUG,
+        'tts.common.phrase_manager': INFO,
+        'tts.common.settings_low_level': INFO,
         'tts.common.settings': INFO,
         'tts.common.simple_run_command': INFO,
         'tts.common.simple_pipe_command': INFO,
@@ -101,17 +101,17 @@ else:
         'tts.gui.window_structure': INFO,
         'tts.gui.parser': INFO,
         'tts.service': INFO,
-        'tts.service_worker': DEBUG_V,
-        'tts.startup.bootstrap_engines': DEBUG,
+        'tts.service_worker': DEBUG,
+        'tts.startup.bootstrap_engines': INFO,
         'tts.startup.bootstrap_converters': INFO,
-        'tts.backends.audio.bootstrap_players': DEBUG,
-        'tts.backends.players.mpv_player_settings': DEBUG,
+        'tts.backends.audio.bootstrap_players': INFO,
+        'tts.backends.players.mpv_player_settings': INFO,
         'tts.backends.players.mplayer_settings': INFO,
-        'tts.windowNavigation.choice': DEBUG,
-        'tts.windowNavigation.configure': DEBUG_XV,
+        'tts.windowNavigation.choice': INFO,
+        'tts.windowNavigation.configure': INFO,
         'tts.windowNavigation.help_dialog': INFO,
-        'tts.windowNavigation.selection_dialog': DEBUG,
-        'tts.windowNavigation.settings_dialog': DEBUG
+        'tts.windowNavigation.selection_dialog': INFO,
+        'tts.windowNavigation.settings_dialog': INFO
     }
 # xbmc.log(f'configuring debug_levels INFO: {logging.INFO} DEBUG: {DEBUG} '
 #          f'VERBOSE: {DEBUG_V} EXTRA_VERBOSE: '
@@ -320,7 +320,6 @@ def startService():
             showNotification('Configuration changed requiring restart of Kodi.tts',
                              time_ms=10000)
             return
-        # Will crash with these lines
         #  Do NOT remove import!!
         from startup.bootstrap_engines import BootstrapEngines
         BootstrapEngines.init()

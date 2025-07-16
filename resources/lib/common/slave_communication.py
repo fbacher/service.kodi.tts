@@ -721,7 +721,7 @@ class SlaveCommunication:
                 quit_str: str = f'quit'
                 self.run_state = RunState.DIE
                 self.send_line(quit_str)
-                Monitor.wait_for_abort(0.05)
+                xbmc.sleep(50)
                 self.slave.destroy()
             elif purge:
                 stop_str: str = f'stop'

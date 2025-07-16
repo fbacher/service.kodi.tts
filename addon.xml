@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addon id="service.kodi.tts"
        name="Kodi Screen Reader"
-       version="2.0.4-alpha"
+       version="2.0.5"
        provider-name="Frank Feuerbacher (fbacher), Rick Phillips (ruuk), pvagner">
    <debugging>true</debugging>
    <requires>
@@ -16,19 +16,43 @@
    <extension point="xbmc.service" library="resources/lib/service.py" start="login"/>
 
    <extension point="xbmc.addon.metadata">
-      <news>First alpha for second incarnation 2.0.3-alpha</news>
+      <news>Fifth alpha for second incarnation 2.0.5</news>
       <assets>
          <icon>icon.png</icon>
       </assets>
       <platform>linux windows-x86_64</platform>
-      <license>GNU GENERAL PUBLIC LICENSE. Version 2, June 1991</license>
+      <license>GPL-2.0-or-later</license>
       <summary lang="en_GB">
          Kodi TTS provides voicing of currently focused text, or through a simple API.
       </summary>
+      <description>
+         Kodi TTS provides voicing of currently focused text. It works with multiple TTS
+         engines which is currently limited to GoogleTTS and eSpeak-NG (on Linux and Windows)
+         as well as Windows Narrator (on Windows). Google TTS requires 'mpv' player to
+         be installed.
+
+         Kodi TTS has its own configuration dialogs which support voicing of changes as they
+         are made. The traditional addon configuration dialog is NEARLY USELESS at this time.
+         A limited number of basic items will be added back, but primary configuration is done
+         by pressing Ctrl-F12 (configurable).
+
+         To get started, read SETUP.md as well as README.md and RELEASE_NODES.md.
+      </description>
       <forum>https://forum.kodi.tv/showthread.php?tid=357602</forum>
       <source>https://github.com/fbacher/service.kodi.tts</source>
       <disclaimer lang="en_GB">
-         Feel free to use this service. For information visit https://github.com/fbacher/service.kodi.tts
+         This is ALPHA quality.
+         Limitations:
+            For the foreseable future only Linux and Windows are supported.
+            At this time Google TTS best supports multiple languages, however language testing
+            has been very limited. eSpeak and Narrator are both capable of multiple languages,
+            however a small amount of plumbing needs to be added for Narrator. eSpeak is a bit
+            more complicated to configure so will take more time to implement.
+            Slave-mode, which improves responsiveness, will not be available on Windows until
+            it's Python is upgraded, which appears to be targeted for the next release.
+
+         Feel free to use this service. For information visit the forum, above or
+         https://github.com/fbacher/service.kodi.tts
       </disclaimer>
       <website>https://github.com/fbacher/service.kodi.tts</website>
    </extension>
