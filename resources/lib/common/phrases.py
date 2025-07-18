@@ -123,6 +123,7 @@ class Phrase:
                  voice: str | None = None,
                  lang_dir: str | None = None,
                  territory_dir: str | None = None,
+                 voice_dir: str | None = None,
                  debug_info: str | None = None,
                  debug_context: int = 1,
                  engine_key: ServiceID | None = None,
@@ -163,6 +164,8 @@ class Phrase:
                         code ('en'). Required for engines that use the cache
         :param territory_dir: Part of the cache path is the 2-3 char IETF
                               territory code (ex. 'us').
+        :param voice_dir: Part of the cache path that is unique for each voice
+                          used by the engine.
         :param debug_info:
         :param debug_context: A debug string can be associated with a phrase to
                              aid in tracking down where originally generated
@@ -209,6 +212,7 @@ class Phrase:
         self.voice: str | None = voice
         self.lang_dir: str | None = lang_dir
         self.territory_dir: str | None = territory_dir
+        self.voice_dir: str | None = voice_dir
         if debug_info is None:
             debug_info = ''
         self.debug_info: str | None = debug_info
@@ -322,6 +326,7 @@ class Phrase:
                         voice=self.voice,
                         lang_dir=self.lang_dir,
                         territory_dir=self.territory_dir,
+                        voice_dir=self.voice_dir,
                         events=self._events,
                         engine_key=self._engine_key
                         )
@@ -373,7 +378,8 @@ class Phrase:
                                 gender=params.get('gender'),
                                 voice=params.get('voice'),
                                 lang_dir=params.get('lang_dir'),
-                                territory_dir=params.get('territory_dir'))
+                                territory_dir=params.get('territory_dir'),
+                                voice_dir=params.get('voice_dir'))
         return phrase
 
     def get_text(self) -> str:
@@ -702,6 +708,9 @@ class Phrase:
     def get_territory_dir(self) -> str:
         return self.territory_dir
 
+    def get_voice_dir(self) -> str:
+        return self.voice_dir
+
     def set_audio_type(self, audio_type: AudioType) -> None:
         self.audio_type = audio_type
 
@@ -712,6 +721,9 @@ class Phrase:
     def set_territory_dir(self, territory_dir: str, override: bool = False) -> None:
         if override or self.territory_dir is None:
             self.territory_dir = territory_dir
+
+    def set_voice_dir(self, voice_dir: str) -> None:
+        self.voice_dir = voice_dir
 
     @classmethod
     def clean_phrase_text(cls, text: str) -> str:
@@ -852,7 +864,8 @@ class PhraseList(UserList):
                gender: str | None = None,
                voice: str | None = None,
                lang_dir: str | None = None,
-               territory_dir: str | None = None) -> 'PhraseList':
+               territory_dir: str | None = None,
+               voice_dir: str | None = None) -> 'PhraseList':
         """
 
         :param texts: One or more strings to create Phrases from
@@ -880,6 +893,7 @@ class PhraseList(UserList):
                         code ('en'). Required for engines that use the cache
         :param territory_dir: Part of the cache path is the 2-3 char IETF
                               territory code (ex. 'us').
+        :param voice_dir: Part of the cache path
         :return:
         """
         if not isinstance(texts, list):
@@ -893,7 +907,8 @@ class PhraseList(UserList):
                                   gender=gender,
                                   voice=voice,
                                   lang_dir=lang_dir,
-                                  territory_dir=territory_dir
+                                  territory_dir=territory_dir,
+                                  voice_dir=voice_dir
                                   ))
         else:
             if text_id is None:
@@ -1602,13 +1617,14 @@ class PhraseUtils:
                                                       preload_cache=phrase.is_preload_cache(),
                                                       check_expired=check_expired,
                                                       lang_dir=phrase.lang_dir,
-                                                      territory_dir=phrase.territory_dir)
+                                                      territory_dir=phrase.territory_dir,
+                                                      voice_dir=phrase.voice_dir)
                         first = False
                     else:
                         chunk_phrase: Phrase = Phrase(chunk, check_expired=check_expired,
                                                       lang_dir=phrase.lang_dir,
-                                                      territory_dir=phrase.territory_dir
-                                                      )
+                                                      territory_dir=phrase.territory_dir,
+                                                      voice_dir=phrase.voice_dir)
                     phrases.append(chunk_phrase)
                     chunk_phrase.serial_number = phrase.serial_number
             finally:

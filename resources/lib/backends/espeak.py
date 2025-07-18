@@ -948,6 +948,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                                   f'{ietf_lang.territory}')
             phrase.set_lang_dir(ietf_lang.language)
             phrase.set_voice(voice_id)
+            phrase.set_voice_dir(voice_id)
             # Horrible, crude, hack due to kodi xbmc.getLanguage bug
             if ietf_lang.territory is not None:
                 phrase.set_territory_dir(ietf_lang.territory.lower())

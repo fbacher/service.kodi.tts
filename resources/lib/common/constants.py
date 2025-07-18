@@ -71,6 +71,8 @@ class Constants:
 
     CACHE_SUFFIX: Final[str] = 'cache_suffix'
     LOCALE = ''
+    CONFIG_SCRIPTS_DIR_WINDOWS: Path | None = None
+    CONFIG_SCRIPT_PATH_WINDOWS: str | None = None
     MAX_PHRASE_LENGTH: Final[str] = 'max_phrase_length'
 
     MPV_PATH_LINUX: Final[str] = '/usr/bin/mpv'
@@ -122,8 +124,10 @@ class Constants:
         Constants.ADDON_DIRECTORY = Path(xbmcvfs.translatePath(str(addon.PATH)))
         Constants.ADDON_PATH = addon.PATH
         Constants.BACKENDS_DIRECTORY = Constants.PYTHON_ROOT_PATH / 'backends'
-        Constants.CONFIG_SCRIPT_PATH_LINUX = os.path.join(
-                Constants.ADDON_DATA, 'config_script.bat')
+        Constants.CONFIG_SCRIPTS_DIR_WINDOWS = (Path(Constants.RESOURCES_PATH)
+                                                / 'scripts')
+        Constants.CONFIG_SCRIPT_PATH_WINDOWS = os.path.join(
+                Constants.ADDON_PATH, 'config_script.bat')
         Constants.DISABLE_PATH = addon.DATA_PATH / 'DISABLED'
         Constants.DEFAULT_CACHE_DIRECTORY = Constants.USER_DATA_PATH / 'cache'
         Constants.ESPEAK_DATA_PATH_LINUX = (

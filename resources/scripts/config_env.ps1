@@ -44,8 +44,6 @@ Function Config_Kodi_Env {
 
         [string]  $TTSScriptPath = ("$env:USERPROFILE\" +
             "\AppData\Roaming\Kodi\addons\service.kodi.tts\resources\scripts"),
-        [string]  $MPVScriptPath = ("$env:USERPROFILE\" +
-            "\AppData\Roaming\Kodi\addons\service.kodi.tts\resources\scripts"),
 
         [Parameter(
             Position = 2,
@@ -124,9 +122,13 @@ Function Config_Kodi_Env {
 
         if ($TTSScriptPath)
         {
-            Write-Host "$TTSScriptPath\voice.ps1"
+            Write-Host "$TTSScriptPath\one_core_voices.ps1"
             Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-            Unblock-File -Path "$TTSScriptPath\voice.ps1"
+            Unblock-File -Path "$TTSScriptPath\one_core_voices.ps1"
+            Unblock-File -Path "$TTSScriptPath\sapi_voices.ps1"
+            Unblock-File -Path "$TTSScriptPath\voice_sapi.ps1"
+            Unblock-File -Path "$TTSScriptPath\voice_one_core.ps1"
+
         }
 
         # if ($MPVScriptPath)

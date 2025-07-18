@@ -34,7 +34,6 @@ from utils.util import runInThread
 MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
-
 class VoiceCache:
     """
 
@@ -308,7 +307,7 @@ class VoiceCache:
             cache_top: Path = self.cache_directory
             lang_dir: str = phrase.lang_dir
             territory_dir: str = phrase.territory_dir
-            voice_dir: str = phrase.voice
+            voice_dir: str = phrase.voice_dir
             filename: str = self.get_hash(phrase.text)
             subdir: str = filename[0:2]
             cache_dir: str

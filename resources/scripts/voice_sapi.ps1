@@ -1,4 +1,4 @@
-Function New-TextToSpeechMessage {
+Function Voice-Sapi {
 <#
 .SYNOPSIS
     This will use Powershell to have a message read out loud through your computer speakers.
@@ -11,8 +11,14 @@ Function New-TextToSpeechMessage {
 
     From: https://learn.microsoft.com/en-us/dotnet/api/system.speech.synthesis.speechsynthesizer?view=netframework-4.8
 
-    SetOutputToAudioStream, SetOutputToDefaultAudioDevice, SetOutputToNull, and
-    SetOutputToWaveFile methods.
+    See the following output methods. Note that to close the OutputToaudioStream, you have to set it to
+    something else, like SetOutputToNull, otherwise it won't close (except probably exiting powershell)
+
+    SetOutputToAudioStream(Stream, SpeechAudioFormatInfo)
+    SetOutputToDefaultAudioDevice()
+    SetOutputToNull()
+    SetOutputToWaveStream(Stream)
+
 
     To generate speech, use the Speak, SpeakAsync, SpeakSsml, or SpeakSsmlAsync method.
     The SpeechSynthesizer can produce speech from text, a Prompt or PromptBuilder
@@ -46,8 +52,7 @@ Function New-TextToSpeechMessage {
             Mandatory = $false
         )]
 
-        [ValidateSet('David', 'Zira')]
-        [string]    $Voice = 'Zira',
+        [string]    $Voice = 'Microsoft Zira Desktop',
 
         [Parameter(
             Position = 2,
@@ -65,17 +70,16 @@ Function New-TextToSpeechMessage {
     PROCESS {
         try {
             $NewMessage = New-Object System.Speech.Synthesis.SpeechSynthesizer
+            $NewMessage.SelectVoice($Voice)
 
-            if ($Voice -eq 'Zira') {
-                $NewMessage.SelectVoice("Microsoft Zira Desktop")
-            } else {
-                $NewMessage.SelectVoice("Microsoft David Desktop")
-            }
             if ($AudioPath -ne '') {
                 $NewMessage.SetOutputToWaveFile($AudioPath)
             }
 
             $NewMessage.Speak($Message)
+            if ($AudioPath -ne '') {
+                $NewMessage.SetOutputToNull()
+            }
 
         } catch {
             Write-Error $_.Exception.Message

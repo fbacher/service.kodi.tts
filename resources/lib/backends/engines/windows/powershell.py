@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations  # For union operator |
 
+import json
 import os
 import subprocess
 import sys
 
 import langcodes
 
-from pathlib import Path
+from pathlib import Path, WindowsPath
 
 from backends.ispeech_generator import ISpeechGenerator
 from backends.settings.language_info import LanguageInfo
@@ -21,7 +22,7 @@ from common.typing import *
 from backends.audio.sound_capabilities import ServiceType
 from backends.base import BaseEngineService, SimpleTTSBackend
 from backends.settings.i_validators import AllowedValue, INumericValidator
-from backends.settings.service_types import ServiceID, ServiceKey, Services
+from backends.settings.service_types import LabeledType, ServiceID, ServiceKey, Services
 from backends.settings.settings_map import SettingsMap
 from common.base_services import BaseServices
 from common.constants import Constants, ReturnCode
@@ -124,14 +125,18 @@ class PowerShellTTS(SimpleTTSBackend):
     POWERSHELL_PATH = "powershell.exe"  # POWERSHELL EXE PATH
     #  ps_script_path = "C:\\PowershellScripts\\FTP_UPLOAD.PS1"
     script_dir: Path = Constants.SHELL_SCRIPTS_PATH
-    ps_script = 'voice.ps1'
+    ps_script = 'voice_sapi.ps1'
     script_path: Path = script_dir / ps_script
     voice: str = 'Zira'
     voice_map: Dict[str, List[Tuple[str, str, Genders]]] = None
     _logger: BasicLogger = None
     _class_name: str = None
     _initialized: bool = False
+    _voices_initialized: bool = False
     suffix: int = 0
+
+    # Maps a voice_id to the directory_name for cache entries sharing this voice_id
+    _voice_dir_for_id: Dict[str, str] = {}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -169,42 +174,273 @@ class PowerShellTTS(SimpleTTSBackend):
 
     @classmethod
     def init_voices(cls):
-        if cls.voice_map is not None:
+        if cls._voices_initialized:
             return
+        cls.init_sapi_voices()
+        # cls.init_one_core_voices()
+        cls._voices_initialized = True
 
-        cls.voice_map = {}
-        david: Tuple[str, str, Genders] = ('David', 'en-us', Genders.MALE)
-        zira: Tuple[str, str, Genders] = ('Zira', 'en-us', Genders.FEMALE)
-        hazel: Tuple[str, str, Genders] = ('Hazel', 'en-gb', Genders.FEMALE)
-        voices: List[Tuple[str, str, Genders]] = [david, zira]
-        for voice in voices:
-            v_name: str = voice[0]
-            v_lang: str = voice[1]
-            v_gender: Genders = voice[2]
-            lang: langcodes.Language | None = None
-            try:
-                lang = langcodes.Language.get(v_lang)
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'language: {lang.language} '
-                                    f'display: '
-                                    f'{lang.display_name(lang.language)} '
-                                    f'territory: {lang.territory}')
-            except LanguageTagError:
-                MY_LOGGER.exception('')
+    @classmethod
+    def get_cache_id(cls, voice_id: str) -> str:
+        """
+        Given an official SAPI MS Name of the form: "Microsoft David Desktop"
+        While a OneCore voice is of the form: "Microsoft David"
 
-            LanguageInfo.add_language(engine_key=PowerShellTTS.service_key,
-                                      language_id=lang.language,
-                                      country_id=lang.territory,
-                                      ietf=lang,
-                                      region_id='',
-                                      gender=v_gender,
-                                      voice=v_name,
-                                      engine_lang_id=v_lang,
-                                      engine_voice_id=v_name,
-                                      engine_name_msg_id=MessageId.ENGINE_POWERSHELL,
-                                      engine_quality=3,
-                                      voice_quality=-1)
-        cls.initialized_static = True
+        Strip off the redundant "Microsoft"
+        Reduce 'Desktop" to 'DT'
+        The cache_file directory becomes 'David_DT'
+
+        :param voice_id: Name of voice from application
+        :return: Tuple[
+        """
+        cache_id: str = voice_id
+        segments: List[str] = voice_id.split(' ')
+        if len(segments) == 0:
+            MY_LOGGER.warning('SAPI voice id incorrect format: {voice_id}')
+        else:
+            cache_id = segments[1]
+            if len(segments) == 3:
+                name = f'{cache_id}_DT'
+        MY_LOGGER.info(f'cache_id: {cache_id}')
+        cls._voice_dir_for_id[voice_id] = cache_id
+        return cache_id
+
+    @classmethod
+    def get_sapi_json(cls) -> List[Dict[str, str | List[Dict[str, Any]]]] | None:
+        env = os.environ.copy()
+        win_path: WindowsPath
+        win_path = WindowsPath(Constants.CONFIG_SCRIPTS_DIR_WINDOWS / 'sapi_voices.ps1')
+        MY_LOGGER.debug(f'{win_path} exists: {win_path.exists()}')
+        cmd_args: List[str] = ['powershell.exe', str(win_path)]
+        MY_LOGGER.debug(f'Running command: Windows args: {cmd_args}')
+        rc: int = -1
+        json_str: str | None = None
+        try:
+            completed: subprocess.CompletedProcess
+            completed = subprocess.run(cmd_args, stdin=None, capture_output=True,
+                                       text=True, env=env, close_fds=True,
+                                       encoding='utf-8', shell=False, check=True)
+            rc = completed.returncode
+            if rc != 0:
+                MY_LOGGER.debug(f'config output: {completed.stdout}')
+            else:
+                json_str = completed.stdout
+        except subprocess.CalledProcessError:
+            MY_LOGGER.exception('')
+        except OSError:
+            MY_LOGGER.exception('')
+        except Exception:
+            MY_LOGGER.exception('')
+
+        voice_data: List[Dict[str, str | List[Dict[str, Any]]]] | None = None
+        try:
+            if json_str is None:
+                MY_LOGGER.debug(f'No SAPI voices returned')
+                return None
+            voice_data = json.loads(json_str)
+        except Exception:
+            MY_LOGGER.exception('')
+        return voice_data
+
+    @classmethod
+    def init_sapi_voices(cls):
+        try:
+            voice_data: List[Dict[str, str | List[Dict[str, Any]]]] | None
+            voice_data = cls.get_sapi_json()
+            if voice_data is None:
+                return
+            voice_data: List[Dict[str, str | Dict[str, str]]]
+            for voice_entry in voice_data:
+                voice_entry: Dict[str, str | Dict[str, str]]
+                """
+                   SAPI Voice Json Format:
+                   List[Dict[prop, value]]
+                 {
+        "Gender":  1,
+        "Age":  30,
+        "Name":  "Microsoft David Desktop",
+        "Culture":  {
+                        "Parent":  "en",
+                        "LCID":  1033,
+                        "KeyboardLayoutId":  1033,
+                        "Name":  "en-US",
+                        "IetfLanguageTag":  "en-US",
+                        "DisplayName":  "English (United States)",
+                        "NativeName":  "English (United States)",
+                        "EnglishName":  "English (United States)",
+                        "TwoLetterISOLanguageName":  "en",
+                        "ThreeLetterISOLanguageName":  "eng",
+                        "ThreeLetterWindowsLanguageName":  "ENU",
+                        "CompareInfo":  "CompareInfo - en-US",
+                        "TextInfo":  "TextInfo - en-US",
+                        "IsNeutralCulture":  false,
+                        "CultureTypes":  70,
+                        "NumberFormat":  "System.Globalization.NumberFormatInfo",
+                        "DateTimeFormat":  "System.Globalization.DateTimeFormatInfo",
+                        "Calendar":  "System.Globalization.GregorianCalendar",
+                        "OptionalCalendars":  "System.Globalization.GregorianCalendar System.Globalization.GregorianCalendar",
+                        "UseUserOverride":  false,
+                        "IsReadOnly":  false
+                    },
+        "Id":  "TTS_MS_EN-US_DAVID_11.0",
+        "Description":  "Microsoft David Desktop - English (United States)",
+        "SupportedAudioFormats":  [
+
+                                  ],
+        "AdditionalInfo":  {
+                               "Age":  "Adult",
+                               "Gender":  "Male",
+                               "Language":  "409",
+                               "Name":  "Microsoft David Desktop",
+                               "SharedPronunciation":  "",
+                               "SpLexicon":  "{0655E396-25D0-11D3-9C26-00C04F8EF87C}",
+                               "Vendor":  "Microsoft",
+                               "Version":  "11.0"
+                           }
+    },
+                   """
+                #  v_description: str = voice_entry.get('Description')
+                v_name: str = voice_entry.get('Name')
+                v_id: str = v_name
+                _: str = cls.get_cache_id(v_name)
+                v_culture: Dict[str, str]
+                v_culture = voice_entry.get('Culture')
+                v_additional_info: Dict[str, str]
+                v_additional_info = voice_entry.get('AdditionalInfo')
+                v_ietf: str = v_culture.get('IetfLanguageTag')
+                gend_code: int = int(voice_entry.get('Gender'))
+                v_gender: Genders
+                if gend_code == 1:
+                    v_gender = Genders.MALE
+                else:
+                    v_gender = Genders.FEMALE
+                v_lang: langcodes.Language = None
+                try:
+                    v_lang = langcodes.Language.get(v_ietf)
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug(f'language: {v_lang.language} '
+                                        f'display: '
+                                        f'{v_lang.display_name(v_lang.language)} '
+                                        f'territory: {v_lang.territory}')
+                except LanguageTagError:
+                    MY_LOGGER.exception('')
+
+                LanguageInfo.add_language(engine_key=PowerShellTTS.service_key,
+                                          language_id=v_lang.language,
+                                          country_id=v_lang.territory,
+                                          ietf=v_lang,
+                                          region_id='',
+                                          gender=v_gender,
+                                          voice=v_name,
+                                          engine_lang_id=v_lang.language,
+                                          engine_voice_id=v_name,
+                                          engine_name_msg_id=MessageId.ENGINE_POWERSHELL,
+                                          engine_quality=2,
+                                          voice_quality=-1)
+        except Exception:
+            MY_LOGGER.exception('')
+        return
+
+    @classmethod
+    def get_one_core_json(cls) -> List[Dict[str, str | List[Dict[str, Any]]]] | None:
+        env = os.environ.copy()
+        win_path: WindowsPath
+        win_path = WindowsPath(Constants.CONFIG_SCRIPTS_DIR_WINDOWS /
+                               'one_core_voices.ps1')
+        MY_LOGGER.debug(f'{win_path} exists: {win_path.exists()}')
+
+        cmd_args: List[str] = ['powershell.exe', str(win_path)]
+        MY_LOGGER.debug(f'Running command: Windows args: {cmd_args}')
+        rc: int = -1
+        json_str: str | None = None
+        try:
+            completed: subprocess.CompletedProcess
+            completed = subprocess.run(cmd_args, stdin=None, capture_output=True,
+                                       text=True, env=env, close_fds=True,
+                                       encoding='utf-8', shell=False, check=True)
+            rc = completed.returncode
+            if rc != 0:
+                MY_LOGGER.debug(f'config output: {completed.stdout}')
+            else:
+                json_str = completed.stdout
+        except subprocess.CalledProcessError:
+            MY_LOGGER.exception('')
+        except OSError:
+            MY_LOGGER.exception('')
+        except Exception:
+            MY_LOGGER.exception('')
+
+        voice_data: List[Dict[str, str]] | None = None
+        try:
+            if json_str is None:
+                MY_LOGGER.debug(f'No one_core voices returned')
+                return None
+            voice_data = json.loads(json_str)
+        except Exception:
+            MY_LOGGER.exception('')
+        return voice_data
+
+    @classmethod
+    def init_one_core_voices(cls):
+        try:
+            voice_data: List[Dict[str, str]] | None
+            voice_data = cls.get_one_core_json()
+            if voice_data is None:
+                return
+            '''
+            [
+                {
+                    "Description":  "Microsoft David - English (United States)",
+                    "DisplayName":  "Microsoft David",
+                    "Gender":  0,
+                    "Id":  "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech_OneCore\\Voices\\Tokens\\MSTTS_V110_enUS_DavidM",
+                    "Language":  "en-US"
+                },
+            ]
+            '''
+            for voice_entry in voice_data:
+                voice_entry: Dict[str, str | Dict[str, str]]
+                #  "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech_OneCore\\Voices\\Tokens\\MSTTS_V110_enUS_DavidM",
+                _ = cls.get_cache_id(voice_entry.get('Id'))
+                #  v_description: str = voice_entry.get('Description')
+                v_name: str = voice_entry.get('DisplayName')
+                v_ietf: str = voice_entry.get('Language')
+                gend_code: int = int(voice_entry.get('Gender', 0))
+                v_gender: Genders
+                if gend_code == 0:
+                    v_gender = Genders.MALE
+                else:
+                    v_gender = Genders.FEMALE
+                lang: langcodes.Language = None
+                try:
+                    lang = langcodes.Language.get(v_ietf)
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.debug(f'language: {lang.language} '
+                                        f'display: '
+                                        f'{lang.display_name(lang.language)} '
+                                        f'territory: {lang.territory}')
+                except LanguageTagError:
+                    MY_LOGGER.exception('')
+
+                LanguageInfo.add_language(engine_key=PowerShellTTS.service_key,
+                                          language_id=lang.language,
+                                          country_id=lang.territory,
+                                          ietf=lang,
+                                          region_id='',
+                                          gender=v_gender,
+                                          voice=v_name,
+                                          engine_lang_id=v_ietf,
+                                          engine_voice_id=v_name,  # Probably can use v_id
+                                          engine_name_msg_id=MessageId.ENGINE_POWERSHELL,
+                                          engine_quality=2,
+                                          voice_quality=-1)
+        except Exception:
+            MY_LOGGER.exception('')
+        return
+
+    @classmethod
+    def get_voice_dir(cls, voice_id: str) -> str:
+        return cls._voice_dir_for_id.get(voice_id)
 
     def addCommonArgs(self, args, phrase: Phrase | None = None):
         clz = type(self)
@@ -358,6 +594,9 @@ class PowerShellTTS(SimpleTTSBackend):
                                                 creationflags=subprocess.CREATE_NO_WINDOW)
                 # DO NOT USE subprocess.DETACHED_PROCESS. It won't create voice files
                 try:
+                    if self.process is None:
+                        MY_LOGGER.DEBUG(f'command failed, process is None')
+                        return None
                     self.process.wait(timeout=20.0)
                 except subprocess.TimeoutExpired:
                     if MY_LOGGER.isEnabledFor(DEBUG):
@@ -615,7 +854,7 @@ class PowerShellTTS(SimpleTTSBackend):
         if voice_id is None or voice_id in ('unknown', ''):
             voice_id = ''
         else:
-            voice_id = f'-Voice {voice_id}'
+            voice_id = f'-Voice "{voice_id}"'
 
         clz.suffix += 1
         t_file: str = f'temp_{clz.suffix}'
@@ -626,7 +865,7 @@ class PowerShellTTS(SimpleTTSBackend):
         # speed = self.get_speed()
         # volume = self.getVolume()
         args = [clz.POWERSHELL_PATH,
-                f'& {{. \'{clz.script_path}\';  New-TextToSpeechMessage '
+                f'& {{. \'{clz.script_path}\';  Voice-Sapi '
                 f'\'{text}\' '
                 f'{voice_id} '
                 f'{windows_path}'
@@ -746,6 +985,7 @@ class PowerShellTTS(SimpleTTSBackend):
                                   f'{ietf_lang.territory}')
             phrase.set_lang_dir(ietf_lang.language)
             phrase.set_voice(voice_id)
+            phrase.set_voice_dir(cls._voice_dir_for_id.get(voice_id))
             # Horrible, crude, hack due to kodi xbmc.getLanguage bug
             if ietf_lang.territory is not None:
                 phrase.set_territory_dir(ietf_lang.territory.lower())

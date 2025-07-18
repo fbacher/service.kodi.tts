@@ -251,6 +251,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
 
             phrase.set_lang_dir(ietf_lang.language)
             phrase.set_voice(voice_id)
+            phrase.set_voice_dir(voice_id)
             #  HACK for broken xbmc.getLanguage
             if ietf_lang.territory is None:
                 ietf_lang = langcodes.get(voice_id)
