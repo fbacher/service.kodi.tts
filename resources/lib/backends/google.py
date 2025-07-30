@@ -164,7 +164,7 @@ class LangInfo:
                                           country_id=territory,
                                           ietf=ietf_lang,
                                           region_id='',  # Not used by Google
-                                          gender=Genders.UNKNOWN,
+                                          gender=Genders.ANY,
                                           voice=voice_name,
                                           engine_lang_id=locale_id,
                                           engine_voice_id=voice_id,

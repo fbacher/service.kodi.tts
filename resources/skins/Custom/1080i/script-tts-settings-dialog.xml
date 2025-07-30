@@ -521,8 +521,8 @@
                            <description>Gender</description>
                            <topic name="gender" rank="7">
                               <topic_type>heading</topic_type>
-                              <heading_label>Control.GetLabel(107).index(0)</heading_label>
-                              <labeled_by/>
+                              <!-- <heading_label>Control.GetLabel(107).index(0)</heading_label> -->
+                              <!-- <labeled_by/> -->
                               <flows_to>109</flows_to>
                               <hint_text>Select to choose voice gender</hint_text>
                               <outer_topic>gender_group</outer_topic>

@@ -557,11 +557,11 @@ msgctxt "#32164"
 msgid "PVR Client Specific Settings"
 msgstr "PVR Client Specific Settings"
 
-# Unknown setting value
+# Any Gender (no preference)
 
 msgctxt "#32165"
-msgid "Unknown"
-msgstr "Unknown"
+msgid "any"
+msgstr "any"
 
 msgctxt "#32166"
 msgid "Addons updated"

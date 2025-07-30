@@ -526,7 +526,7 @@ class BaseEngineService(BaseServices):
     @classmethod
     @deprecated  # Use validator
     def getGender(cls):
-        gender = cls.getSetting(SettingProp.GENDER, Genders.UNKNOWN)
+        gender = cls.getSetting(SettingProp.GENDER, Genders.ANY)
 
         return gender
 

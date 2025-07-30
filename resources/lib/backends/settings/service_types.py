@@ -545,7 +545,7 @@ class ServiceID:
             else:
                 self._key = (f'{self.service_type.value}.{self.service_id}.'
                              f'{TTS_Type.SERVICE_ID}')
-            if MY_LOGGER.isEnabledBy(DEBUG_V):
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
                 MY_LOGGER.debug_v(f'key: {self._key}')
         return self._key
 

@@ -143,7 +143,10 @@ class WindowReaderBase(WindowHandlerBase):
     def slideoutHasFocus(self) -> bool:
         visible: bool = xbmc.getCondVisibility(f'ControlGroup({self._slideoutGroupID})'
                                                f'.HasFocus({self._slideoutGroupID})')
-        MY_LOGGER.debug(f'slideoutGroupID: {self._slideoutGroupID} visible: {visible}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug(f'slideoutGroupID: {self._slideoutGroupID} visible: '
+                            f'{visible}')
+        return visible
 
     def getSettingControlText(self, control_id) -> str:
         cls = type(self)
@@ -226,10 +229,18 @@ class DefaultWindowReader(WindowReaderBase):
             # No ListItem label and/or label2, try for a plain label for the
             # control
             text = xbmc.getInfoLabel(f'Control.GetLabel({control_id})')
+            # text2 = xbmc.getInfoLabel(f'Control.getLabel({control_id}).index(1)')
+            query: str = f'Control.GetLabel({control_id}).index(1)'
+            text2: str = xbmc.getInfoLabel(query)
+            if text2 is None and control_id == 6051:
+                text2 = xbmc.getInfoLabel(f'Container({control_id}).ListItem.Label2')
+                MY_LOGGER.debug(f'text2b: {text2}')
+                text2 = xbmc.getInfoLabel('Container.Viewmode')
             if text is not None and MY_LOGGER.isEnabledFor(DEBUG_XV):
-                MY_LOGGER.debug_xv(f'text: {text}')
+                MY_LOGGER.debug_xv(f'text: {text} text2: {text2}')
         if text == '':
             text = xbmc.getInfoLabel('System.CurrentControl')
+
             if MY_LOGGER.isEnabledFor(DEBUG_XV) and text:
                 MY_LOGGER.debug_xv(f'text: {text}')
         if text == '':

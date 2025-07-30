@@ -294,7 +294,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             elif gender == 'F':
                 gender = Genders.FEMALE
             else:
-                gender = Genders.UNKNOWN
+                gender = Genders.ANY
 
             voice_name = fields[3]
             voice_id = fields[4]  # File
@@ -343,7 +343,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                                               country_id=langcodes_lang.territory,
                                               ietf=langcodes_lang,
                                               region_id='',
-                                              gender=Genders.UNKNOWN,
+                                              gender=Genders.ANY,
                                               voice=entry.voice_name,
                                               engine_lang_id=entry.lang_id,
                                               engine_voice_id=entry.voice_id,

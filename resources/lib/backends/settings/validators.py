@@ -1206,7 +1206,7 @@ class GenderValidator(IGenderValidator):
 
     def __init__(self, service_key: ServiceID,
                  min_value: Genders, max_value: Genders,
-                 default: Genders = Genders.UNKNOWN,
+                 default: Genders = Genders.ANY,
                  define_setting: bool = True,
                  service_status: StatusType = StatusType.OK,
                  persist: bool = True) -> None:

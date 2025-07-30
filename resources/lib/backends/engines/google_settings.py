@@ -102,13 +102,13 @@ class GoogleSettings:
 
         gender_validator = GenderValidator(cls.service_key.with_prop(SettingProp.GENDER),
                                            min_value=Genders.FEMALE,
-                                           max_value=Genders.UNKNOWN,
-                                           default=Genders.UNKNOWN,
+                                           max_value=Genders.ANY,
+                                           default=Genders.ANY,
                                            define_setting=True,
                                            service_status=StatusType.OK,
                                            persist=True)
 
-        gender_validator.set_tts_value(Genders.UNKNOWN)
+        gender_validator.set_tts_value(Genders.ANY)
 
         name_validator: SimpleStringValidator
         name_validator = SimpleStringValidator(service_key=cls.NAME_KEY,

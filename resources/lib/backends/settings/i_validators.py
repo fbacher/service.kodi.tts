@@ -734,7 +734,7 @@ class IGenderValidator(IValidator):
 
     def __init__(self, service_key: ServiceID,
                  min_value: Genders, max_value: Genders,
-                 default_value: Genders = Genders.UNKNOWN) -> None:
+                 default_value: Genders = Genders.ANY) -> None:
         super().__init__(service_key, property_type=SettingType.STRING_TYPE)
         pass
 

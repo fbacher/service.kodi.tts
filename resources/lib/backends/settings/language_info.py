@@ -519,9 +519,7 @@ class LanguageInfo:
     @property
     def translated_gender_name(self) -> str:
         if self._translated_gender_name is None:
-            msg_id: MessageId = GenderSettingsMap.settings_map.get(
-                    self.gender)
-            self._translated_gender_name = msg_id.get_msg()
+            self._translated_gender_name = self.gender.label
         return self._translated_gender_name
 
     @property

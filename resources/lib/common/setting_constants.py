@@ -12,7 +12,7 @@ except ImportError:
     from common.strenum import StrEnum
 from common import *
 
-from backends.settings.service_types import Services
+from backends.settings.service_types import LabeledType, Services
 from backends.settings.setting_properties import SettingProp
 from common.messages import Message, Messages
 
@@ -484,22 +484,17 @@ class Converters(BaseSettingsConstants):
     }
 
 
-class Genders(StrEnum):
-    MALE = 'male'
-    FEMALE = 'female'
-    UNKNOWN = 'unknown'
-
-    def get_label(self) -> str:
-        msg_id: Message = GenderSettingsMap[self]
-        label: str = Messages.get_msg(msg_id)
-        return label
+class Genders(LabeledType):
+    MALE = 'male', 1, MessageId.GENDER_MALE,
+    FEMALE = 'female', 2, MessageId.GENDER_FEMALE,
+    ANY = 'any', 3, MessageId.GENDER_ANY
 
 
 class GenderSettingsMap(BaseSettingsConstants):
     settings_map: Dict[Genders, MessageId] = {
         Genders.MALE   : MessageId.GENDER_MALE,
         Genders.FEMALE : MessageId.GENDER_FEMALE,
-        Genders.UNKNOWN: MessageId.GENDER_UNKNOWN
+        Genders.ANY: MessageId.GENDER_ANY
     }
 
 

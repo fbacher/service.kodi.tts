@@ -1259,7 +1259,7 @@ class Configure:
                 choice: Choice
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'choice: {choice.value}')
-                display_value = GenderSettingsMap.get_label(choice.value)
+                display_value = choice.value.label
                 choices.append(Choice(label=display_value, value=choice.value,
                                       choice_index=idx))
                 if MY_LOGGER.isEnabledFor(DEBUG):

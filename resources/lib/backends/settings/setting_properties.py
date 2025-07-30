@@ -94,7 +94,6 @@ class SettingProp:  # (ISettings):
     CACHE_EXPIRATION_DEFAULT: Final[int] = 365
     CACHE_SPEECH_DEFAULT: Final[bool] = False
     ENGINE_SPEEK_DEFAULT = None
-    GENDER_DEFAULT: Final[str] = 'none'
     LANGUAGE_DEFAULT: Final[str] = 'none'
     PIPE_DEFAULT = None
     PITCH_DEFAULT = None

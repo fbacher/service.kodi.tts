@@ -72,6 +72,12 @@ Function Config_Kodi_Env {
         [string]    $eSpeakDataPath = $null  # 'C:\Program Files\eSpeak NG\espeak-ng-data'
     )
     BEGIN {
+        $DefaultPaths = @{ "KODI_PATH" = [System.EnvironmentVariableTarget]::User
+                           "ESPEAK_PATH" = "C:\Program Files\eSpeak NG\espeak-ng-data"
+                           "ESPEAK_DATA_PATH" = "C:\Program Files\eSpeak NG\espeak-ng-data"
+                           "MPV_PATH" = "C:\Program Files\mpv_path"
+                           "MPLAYER_PATH" = "C:\Program Files\mplayer"
+        }
     }
 
     PROCESS {
