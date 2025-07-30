@@ -121,7 +121,7 @@ class MPVPlayerSettings:
                                             is_integer=False,
                                             define_setting=True,
                                             service_status=StatusType.OK,
-                                            persist=True)
+                                            persist=False)
 
         speed_validator: NumericValidator
         speed_validator = NumericValidator(cls.SPEED_KEY,
@@ -130,7 +130,7 @@ class MPVPlayerSettings:
                                            is_integer=False,
                                            define_setting=True,
                                            service_status=StatusType.OK,
-                                           persist=True)
+                                           persist=False)
 
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'About to configure CACHE_SPEECH')
@@ -154,7 +154,7 @@ class MPVPlayerSettings:
                                                 default=default_mode,
                                                 define_setting=True,
                                                 service_status=StatusType.OK,
-                                                persist=True)
+                                                persist=False)
 
         SoundCapabilities.add_service(cls.service_key, cls._provides_services,
                                       cls._supported_input_formats,

@@ -3,6 +3,8 @@ from __future__ import annotations  # For union operator |
 
 import pathlib
 
+from utils.utils_ll import UtilsLowLevel
+
 """
 Created on 2/3/22
 
@@ -341,7 +343,7 @@ class BasicLogger(Logger):
                 logger_name = name
         else:
             logger_name = plugin_name
-            #  xbmc.log(f'Set logger_name to plugin_name')
+        #  xbmc.log(f'Set logger_name for {name} to {logger_name}')
         logger = getLogger(logger_name)
         '''
         xbmc.log(f'logger_name: |{logger_name}| plugin_name: |{plugin_name}|')
@@ -669,17 +671,6 @@ class BasicLogger(Logger):
             del sio
             get_addon_logger().debug(msg=msg, **kwargs)
 
-    @classmethod
-    def showNotification(cls, message, time_ms=3000, icon_path=None,
-                         header=CriticalSettings.ADDON_ID):
-        try:
-            icon_path = icon_path or xbmcvfs.translatePath(
-                    xbmcaddon.Addon(CriticalSettings.ADDON_ID).getAddonInfo('icon'))
-            xbmc.executebuiltin('Notification({0},{1},{2},{3})'.format(
-                    header, message, time_ms, icon_path))
-        except RuntimeError:  # Happens when disabling the addon
-            pass
-
     @staticmethod
     def on_settings_changed() -> None:
         """
@@ -733,20 +724,11 @@ class KodiHandler(logging.Handler):
                 record.exc_text = msg
             msg = self.formatter.format(record)
             if record.__dict__.get('notify', False):
-                self.showNotification(msg)
+                UtilsLowLevel.show_and_say_notification(msg)
             kodi_level = get_kodi_level(record.levelno)
             xbmc.log(msg, kodi_level)
         except Exception as e:
             self.handleError(record)
-
-    def showNotification(self, message, time_ms=3000, icon_path=None,
-                         header=CriticalSettings.ADDON_ID):
-        try:
-            icon_path = icon_path or xbmcvfs.translatePath(
-                    xbmcaddon.Addon(CriticalSettings.ADDON_ID).getAddonInfo('icon'))
-            xbmc.executebuiltin(f'Notification({header},{message},{time_ms},{icon_path})')
-        except RuntimeError:  # Happens when disabling the addon
-            pass
 
     def handleError(self, record):
         """

@@ -108,7 +108,7 @@ class MPlayerSettings:
                                                const=True,
                                                define_setting=True,
                                                service_status=StatusType.OK,
-                                               persist=True)
+                                               persist=False)
 
         _supported_input_formats: List[AudioType] = [AudioType.WAV, AudioType.MP3]
         _supported_output_formats: List[AudioType] = []
@@ -121,10 +121,10 @@ class MPlayerSettings:
         cache_service_key: ServiceID = cls.service_key.with_prop(SettingProp.CACHE_PATH)
         cache_path_val: SimpleStringValidator
         cache_path_val = SimpleStringValidator(cache_service_key,
-                                               value=SettingProp.CACHE_PATH_DEFAULT,
+                                               value=str(Constants.DEFAULT_CACHE_DIRECTORY),
                                                define_setting=True,
                                                service_status=StatusType.OK,
-                                               persist=True)
+                                               persist=False)
 
         cache_suffix_key: ServiceID = cls.service_key.with_prop(SettingProp.CACHE_SUFFIX)
         cache_suffix: str = Backends.ENGINE_CACHE_CODE[Services.MPLAYER_ID]
@@ -134,7 +134,7 @@ class MPlayerSettings:
                                                  value=cache_suffix,
                                                  define_setting=True,
                                                  service_status=StatusType.OK,
-                                                 persist=True)
+                                                 persist=False)
 
         speed_validator: NumericValidator
         speed_validator = NumericValidator(cls.SPEED_KEY,
@@ -144,7 +144,7 @@ class MPlayerSettings:
                                            is_integer=False,
                                            define_setting=True,
                                            service_status=StatusType.OK,
-                                           persist=True)
+                                           persist=False)
         """
          MPlayer uses both percentage and decibel volume scales.
          The decibel scale is used for the (-af) audio filter with range -200db .. +40db.
@@ -161,13 +161,13 @@ class MPlayerSettings:
                                             is_integer=False,
                                             define_setting=True,
                                             service_status=StatusType.OK,
-                                            persist=True)
+                                            persist=False)
         cache_validator: BoolValidator
         cache_validator = BoolValidator(cls.CACHE_SPEECH_KEY,
                                         default=True, const=True,
                                         define_setting=True,
                                         service_status=StatusType.OK,
-                                        persist=False)
+                                        persist=True)
 
         '''
         pipe_validator: BoolValidator
@@ -185,7 +185,7 @@ class MPlayerSettings:
                                                 default=PlayerMode.FILE.value,
                                                 define_setting=True,
                                                 service_status=StatusType.OK,
-                                                persist=True)
+                                                persist=False)
 
     @classmethod
     def check_is_supported_on_platform(cls) -> None:

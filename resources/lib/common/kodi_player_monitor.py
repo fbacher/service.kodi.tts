@@ -106,7 +106,7 @@ class KodiPlayerMonitor(Player):
             try:
                 if listener_id in cls._player_status_listeners:
                     del cls._player_status_listeners[listener_id]
-            except ValueError:
+            except (ValueError, KeyError):
                 pass
 
     @classmethod
@@ -135,7 +135,10 @@ class KodiPlayerMonitor(Player):
                 delete_after_call = listener.listener(status)
                 with cls._player_status_lock:
                     if delete_after_call:
-                        del cls._player_status_listeners[listener_id]
+                        try:
+                            del cls._player_status_listeners[listener_id]
+                        except KeyError:
+                            pass
 
             except AbortException:
                 reraise(*sys.exc_info())

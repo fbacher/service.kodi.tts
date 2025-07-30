@@ -6,6 +6,7 @@ from io import BytesIO
 
 import gtts
 from backends.settings.setting_properties import SettingType
+from common.constants import Constants
 from gtts import gTTS
 
 from backends.settings.i_validators import IStringValidator
@@ -18,7 +19,8 @@ from backends.settings.service_types import (PlayerType, ServiceKey, Services,
                                              TTS_Type)
 from backends.settings.settings_map import Status, SettingsMap
 from backends.settings.validators import (BoolValidator,
-                                          NumericValidator, SimpleIntValidator,
+                                          GenderValidator, NumericValidator,
+                                          SimpleIntValidator,
                                           SimpleStringValidator,
                                           StringValidator)
 from common.config_exception import UnusableServiceException
@@ -96,7 +98,17 @@ class GoogleSettings:
 
         GoogleSettings.initialized = True
         BaseEngineSettings.config_settings(cls.service_key,
-                                           settings=[])
+                                           settings=[SettingProp.GENDER_VISIBLE])
+
+        gender_validator = GenderValidator(cls.service_key.with_prop(SettingProp.GENDER),
+                                           min_value=Genders.FEMALE,
+                                           max_value=Genders.UNKNOWN,
+                                           default=Genders.UNKNOWN,
+                                           define_setting=True,
+                                           service_status=StatusType.OK,
+                                           persist=True)
+
+        gender_validator.set_tts_value(Genders.UNKNOWN)
 
         name_validator: SimpleStringValidator
         name_validator = SimpleStringValidator(service_key=cls.NAME_KEY,
@@ -104,7 +116,7 @@ class GoogleSettings:
                                                const=True,
                                                define_setting=True,
                                                service_status=StatusType.OK,
-                                               persist=True)
+                                               persist=False)
 
         max_phrase_val: SimpleIntValidator
         max_phrase_val = SimpleIntValidator(service_key=cls.MAX_PHRASE_KEY,
@@ -112,7 +124,7 @@ class GoogleSettings:
                                             const=True,
                                             define_setting=True,
                                             service_status=StatusType.OK,
-                                            persist=True)
+                                            persist=False)
         cls._config()
 
     @classmethod
@@ -143,11 +155,13 @@ class GoogleSettings:
 
         t_key = cls.service_key.with_prop(SettingProp.LANGUAGE)
         SettingsMap.define_setting(t_key, SettingType.STRING_TYPE,
-                                   service_status=StatusType.OK)
+                                   service_status=StatusType.OK,
+                                   persist=True)
 
         t_key = cls.service_key.with_prop(SettingProp.VOICE)
         SettingsMap.define_setting(t_key, SettingType.STRING_TYPE,
-                                   service_status=StatusType.OK)
+                                   service_status=StatusType.OK,
+                                   persist=True)
 
         # For consistency (and simplicity) most speed adjustments are actually
         # done by a player that supports it.
@@ -257,10 +271,10 @@ class GoogleSettings:
         cache_service_key: ServiceID = cls.service_key.with_prop(SettingProp.CACHE_PATH)
         cache_path_val: SimpleStringValidator
         cache_path_val = SimpleStringValidator(cache_service_key,
-                                               value=SettingProp.CACHE_PATH_DEFAULT,
+                                               value=str(Constants.DEFAULT_CACHE_DIRECTORY),
                                                define_setting=True,
                                                service_status=StatusType.OK,
-                                               persist=True)
+                                               persist=False)
 
         cache_suffix_key: ServiceID = cls.service_key.with_prop(SettingProp.CACHE_SUFFIX)
         cache_suffix: str = Backends.ENGINE_CACHE_CODE[Backends.GOOGLE_ID]
@@ -273,6 +287,15 @@ class GoogleSettings:
                                                  service_status=StatusType.OK,
                                                  persist=False)
 
+        transcoder_service_key: ServiceID
+        transcoder_service_key = cls.service_key.with_prop(SettingProp.TRANSCODER)
+        transcoder_val: StringValidator
+        transcoder_val = StringValidator(transcoder_service_key,
+                                         allowed_values=[Services.LAME_ID,
+                                                         Services.MPLAYER_ID],
+                                         define_setting=True,
+                                         service_status=StatusType.OK,
+                                         persist=True)
     @classmethod
     def check_is_supported_on_platform(cls) -> None:
         if cls._service_status.progress == Progress.START:
@@ -285,7 +308,8 @@ class GoogleSettings:
                 SettingsMap.define_setting(cls.service_key,
                                            setting_type=SettingType.STRING_TYPE,
                                            service_status=StatusType.NOT_ON_PLATFORM,
-                                           validator=None)
+                                           validator=None,
+                                           persist=False)
 
     @classmethod
     def check_is_installed(cls) -> None:
@@ -298,7 +322,8 @@ class GoogleSettings:
                 SettingsMap.define_setting(cls.service_key,
                                            setting_type=SettingType.STRING_TYPE,
                                            service_status=StatusType.NOT_FOUND,
-                                           validator=None)
+                                           validator=None,
+                                           persist=False)
 
     @classmethod
     def check_is_available(cls) -> None:
@@ -319,7 +344,8 @@ class GoogleSettings:
             SettingsMap.define_setting(cls.service_key,
                                        setting_type=SettingType.STRING_TYPE,
                                        service_status=StatusType.BROKEN,
-                                       validator=None)
+                                       validator=None,
+                                       persist=False)
 
     @classmethod
     def check_is_usable(cls) -> None:
@@ -363,7 +389,8 @@ class GoogleSettings:
                 SettingsMap.define_setting(cls.service_key,
                                            setting_type=SettingType.STRING_TYPE,
                                            service_status=status,
-                                           validator=None)
+                                           validator=None,
+                                           persist=False)
 
     @classmethod
     def is_usable(cls) -> bool:

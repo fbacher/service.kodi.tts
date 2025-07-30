@@ -99,8 +99,6 @@ class Messages:
     CUSTOM_KEYMAP_RESET = Message('Custom keymap reset to defaults.', 32115)
     REMOVED = Message('Removed', 32116)
     KEYMAP_REMOVED = Message('Keymap removed.', 32117)
-    PRESS_KEY_TO_ASSIGN = Message('Press the key you want to assign now.', 32118)
-    TIMEOUT_IN_X_SECONDS = Message('Timeout in {0} seconds', 32119)
     # ITEM = Message('item', 32106)
     # ITEMS = Message('items', 32107)
     PRESS_THE_KEY_TO_ASSIGN = Message('Press the key you want to assign now.', 32124)

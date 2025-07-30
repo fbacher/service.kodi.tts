@@ -182,13 +182,6 @@ class BaseServices(IServices):
             SettingProp.SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA)
         return speak_background_progress_during_media_validator.get_tts_value()
     '''
-    '''
-    @classmethod
-    def uses_tempfs(cls) -> bool:
-        cache_validator: BoolValidator | IValidator
-        cache_validator = cls.getValidator(ServiceKey.USE_TMPFS)
-        return cache_validator.get_tts_value()
-    '''
     """
     @classmethod
     def is_auto_item_extra(cls) -> bool:

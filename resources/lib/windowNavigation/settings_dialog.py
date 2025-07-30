@@ -271,17 +271,17 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                         clz.SELECT_ENGINE_VALUE_LABEL)
                 """
                 This is a MESS. engine_language_group is really for selecting
-                the engine's voice. (see where the language_button is 
+                the engine's voice. (see where the language_button is
                 labeled as VOICE). What makes matters worse, is that
                 the original engine_voice_group is used when 'voice is
                 available' when it likely is not.
-                
+
                 The truth is that language and voice are very closely related.
                 Language is a broad term ('en'). There are different
                 accents in different countries. A person's voice has a language
-                and accent. When there are few 'personal voices' then TTS 
+                and accent. When there are few 'personal voices' then TTS
                 will lump them together with language variations (en-us.nancy).
-                If there are many voices, then use multi-stage selection. Pick the 
+                If there are many voices, then use multi-stage selection. Pick the
                 language/country (en-us) then use another 'voice' button to
                 choose the specific voice. For now, it is ignored.
                 """
@@ -459,7 +459,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             self.engine_engine_button.setLabel(MessageId.ENGINE_LABEL.get_msg())
             """
             This is a MESS. engine_language_group is really for selecting
-            the engine's voice. (see where the language_button is 
+            the engine's voice. (see where the language_button is
             labeled as VOICE). What makes matters worse, is that
             the original engine_voice_group is used when 'voice is
             available' when it likely is not.
@@ -467,9 +467,9 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             The truth is that language and voice are very closely related.
             Language is a broad term ('en'). There are different
             accents in different countries. A person's voice has a language
-            and accent. When there are few 'personal voices' then TTS 
+            and accent. When there are few 'personal voices' then TTS
             will lump them together with language variations (en-us.nancy).
-            If there are many voices, then use multi-stage selection. Pick the 
+            If there are many voices, then use multi-stage selection. Pick the
             language/country (en-us) then use another 'voice' button to
             choose the specific voice. For now, it is ignored.
             """
@@ -688,7 +688,6 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             self.set_api_field(engine_key)
             # self.set_pipe_audio_field()
             self.set_cache_speech_field(update_ui=True, engine_key=engine_key)
-            # TTSService.onSettingsChanged()
         except Exception as e:
             MY_LOGGER.exception('')
 
@@ -855,7 +854,6 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             '''
             if controlId in range(self.FIRST_SELECT_ID, self.LAST_SELECT_ID):
                 self.handle_engine_tab(controlId)
-
             elif controlId == 28:
                 # OK button
                 self.closing = True
@@ -960,12 +958,12 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             # xbmc.executebuiltin(function=f'control.setHidden(101)', wait=False)
             dialog.doModal()
             """
-            At this point the user has either chosen to cancel configuring the 
+            At this point the user has either chosen to cancel configuring the
             engine settings by using the BACK button, or similar to return from
             SelectionDialog.
             OR the user exited the SelectionDialog by selecting a configuration.
             In this case the user wants to keep those changes with the opportunity
-            to cfg other settings. 
+            to cfg other settings.
             """
             # Revert all changes made during SelectionDialog
             self.cfg.restore_settings(msg='select_engine after doModal')  # Pops one
@@ -1028,6 +1026,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         :param engine_config:
         :return:
         """
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'engine_config: {engine_config}')
         try:
             lang_info: LanguageInfo = engine_config.lang_info
             engine_key: ServiceID = engine_config.engine_key
@@ -1479,6 +1479,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                                       engine_audio=engine_config.engine_audio)
             self.cfg.set_transcoder_field(engine_key=engine_key,
                                           transcoder=engine_config.transcoder)
+            self.cfg.set_cache_speech_field(engine_key=engine_key,
+                                            use_cache=engine_config.use_cache)
             self.refresh_tts()
         except Exception as e:
             MY_LOGGER.exception('')
@@ -2067,10 +2069,12 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             if use_cache is None:
                 use_cache = Settings.is_use_cache(engine_key)
             if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'update_ui: {update_ui} player_mode: '
+                MY_LOGGER.debug(f'engine_key: {engine_key} '
+                                f'update_ui: {update_ui} player_mode: '
                                 f'{Settings.get_player_mode(engine_key)} '
                                 f'player_type: '
-                                f'{Settings.get_player(engine_key).service_id}')
+                                f'{Settings.get_player(engine_key).service_id} '
+                                f'use_cache: {use_cache}')
             if update_ui:
                 allow_cache: bool
                 allow_cache = not (

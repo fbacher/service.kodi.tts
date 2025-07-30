@@ -74,11 +74,7 @@ class ESpeakSettings:
     def _config(cls, **kwargs: Dict[str, str]):
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             MY_LOGGER.debug_v(f'Adding eSpeak to engine service')
-        '''
-        service_properties = {Constants.NAME: cls.displayName,
-                              Constants.CACHE_SUFFIX: 'espk'}
-        SettingsMap.define_service_properties(cls.service_key, service_properties)
-        '''
+
         name_validator: SimpleStringValidator
         name_validator = SimpleStringValidator(service_key=cls.NAME_KEY,
                                                value=cls.displayName,
@@ -90,10 +86,10 @@ class ESpeakSettings:
         cache_service_key: ServiceID = cls.service_key.with_prop(SettingProp.CACHE_PATH)
         cache_path_val: SimpleStringValidator
         cache_path_val = SimpleStringValidator(cache_service_key,
-                                               value=SettingProp.CACHE_PATH_DEFAULT,
+                                               value=str(Constants.DEFAULT_CACHE_DIRECTORY),
                                                define_setting=True,
                                                service_status=StatusType.OK,
-                                               persist=True)
+                                               persist=False)
 
         cache_suffix_key: ServiceID = cls.service_key.with_prop(SettingProp.CACHE_SUFFIX)
         cache_suffix: str = Backends.ENGINE_CACHE_CODE[Backends.ESPEAK_ID]
@@ -103,7 +99,7 @@ class ESpeakSettings:
                                                  value=cache_suffix,
                                                  define_setting=True,
                                                  service_status=StatusType.OK,
-                                                 persist=True)
+                                                 persist=False)
         #
         # Need to define Conversion Constraints between the TTS 'standard'
         # constraints/settings to the engine's constraints/settings
@@ -115,7 +111,7 @@ class ESpeakSettings:
                                            increment=1,
                                            define_setting=True,
                                            service_status=StatusType.OK,
-                                           persist=True)
+                                           persist=False)
 
         volume_validator: NumericValidator
         volume_validator = NumericValidator(cls.service_key.with_prop(SettingProp.VOLUME),
@@ -124,7 +120,7 @@ class ESpeakSettings:
                                             is_integer=True,
                                             define_setting=True,
                                             service_status=StatusType.OK,
-                                            persist=True)
+                                            persist=False)
 
         # Can use LAME to convert to mp3. This code is untested
         # TODO: test, expose capability in settings config
@@ -141,11 +137,13 @@ class ESpeakSettings:
 
         t_key = cls.service_key.with_prop(SettingProp.LANGUAGE)
         SettingsMap.define_setting(t_key, SettingType.STRING_TYPE,
-                                   service_status=StatusType.OK)
+                                   service_status=StatusType.OK,
+                                   persist=True)
 
         t_key = cls.service_key.with_prop(SettingProp.VOICE)
         SettingsMap.define_setting(t_key, SettingType.STRING_TYPE,
-                                   service_status=StatusType.OK)
+                                   service_status=StatusType.OK,
+                                   persist=True)
         gender_validator = GenderValidator(cls.service_key.with_prop(SettingProp.GENDER),
                                            min_value=Genders.FEMALE,
                                            max_value=Genders.UNKNOWN,
@@ -154,7 +152,7 @@ class ESpeakSettings:
                                            service_status=StatusType.OK,
                                            persist=True)
 
-        gender_validator.set_tts_value(Genders.FEMALE)
+        gender_validator.set_tts_value(Genders.UNKNOWN)
 
 
         # Player Options:
@@ -183,7 +181,7 @@ class ESpeakSettings:
                                                 default=PlayerMode.ENGINE_SPEAK.value,
                                                 define_setting=True,
                                                 service_status=StatusType.OK,
-                                                persist=True)
+                                                persist=False)
 
         Settings.set_current_output_format(cls.service_key, AudioType.WAV)
         output_audio_types: List[AudioType] = [AudioType.WAV, AudioType.BUILT_IN]
@@ -275,7 +273,7 @@ class ESpeakSettings:
                 SettingsMap.define_setting(cls.service_key,
                                            setting_type=SettingType.STRING_TYPE,
                                            service_status=StatusType.NOT_ON_PLATFORM,
-                                           validator=None)
+                                           validator=None, persist=False)
 
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'state: {cls._service_status.progress} '
@@ -292,7 +290,7 @@ class ESpeakSettings:
                 SettingsMap.define_setting(cls.service_key,
                                            setting_type=SettingType.STRING_TYPE,
                                            service_status=StatusType.NOT_FOUND,
-                                           validator=None)
+                                           validator=None, persist=False)
 
     @classmethod
     def check_is_available(cls) -> None:
@@ -346,7 +344,7 @@ class ESpeakSettings:
                 SettingsMap.define_setting(cls.service_key,
                                            setting_type=SettingType.STRING_TYPE,
                                            service_status=StatusType.BROKEN,
-                                           validator=None)
+                                           validator=None, persist=False)
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'state: {cls._service_status.progress} '
                             f'status: {cls._service_status.status}')
@@ -365,7 +363,7 @@ class ESpeakSettings:
             SettingsMap.define_setting(cls.service_key,
                                        setting_type=SettingType.STRING_TYPE,
                                        service_status=StatusType.OK,
-                                       validator=None)
+                                       validator=None, persist=False)
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'state: {cls._service_status.progress} '
                             f'status: {cls._service_status.status}')

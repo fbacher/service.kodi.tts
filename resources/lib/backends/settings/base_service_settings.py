@@ -10,13 +10,13 @@ from backends.settings.service_types import (ServiceKey, Services, ServiceType, 
                                              TTS_Type)
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import (BoolValidator,
-                                          IntValidator,
+                                          ChannelValidator, IntValidator,
                                           SimpleStringValidator, StringValidator,
                                           TTSNumericValidator)
 from common.logger import BasicLogger
 from common.message_ids import MessageId
 from common.service_status import StatusType
-from common.setting_constants import Backends
+from common.setting_constants import Backends, Channels
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
 
@@ -70,7 +70,7 @@ class BaseServiceSettings:
     # _provides_services: List[ServiceType] = [ServiceType.ENGINE]
 
     @staticmethod
-    def config_predefined_settings(*args, **kwargs) -> None:
+    def define_settings(*args, **kwargs) -> None:
         cls = BaseServiceSettings
         if BaseServiceSettings.initialized:
             return
@@ -134,6 +134,14 @@ class BaseServiceSettings:
                 service_status=StatusType.OK,
                 persist=True)
 
+        channels_validator = ChannelValidator(ServiceKey.CHANNELS_KEY,
+                                              min_value=Channels.NO_PREF,
+                                              max_value=Channels.STEREO,
+                                              default=Channels.STEREO,
+                                              define_setting=True,
+                                              service_status=StatusType.OK,
+                                              persist=True)
+
         '''
         What?
         settings_digest: BoolValidator
@@ -147,6 +155,13 @@ class BaseServiceSettings:
                                       define_setting=True,
                                       service_status=StatusType.OK,
                                       persist=True)
+
+        config_on_restart: BoolValidator
+        config_on_restart = BoolValidator(ServiceKey.CONFIGURE_TTS_ON_STARTUP,
+                                          default=True,
+                                          define_setting=True,
+                                          service_status=StatusType.OK,
+                                          persist=True)
 
         disable_broken_services: BoolValidator
         disable_broken_services = BoolValidator(ServiceKey.DISABLE_BROKEN_SERVICES,
@@ -213,27 +228,25 @@ class BaseServiceSettings:
                                              define_setting=True,
                                              service_status=StatusType.OK,
                                              persist=True)
-        '''
-        use_tempfs_val: BoolValidator
-        use_tempfs_val = BoolValidator(ServiceKey.USE_TMPFS,
-                                       default=True)
-        SettingsMap.define_setting(use_tempfs_val.service_key,
-                                   use_tempfs_val)
 
-        '''
         hint_text_on_startup: BoolValidator
         hint_text_on_startup = BoolValidator(ServiceKey.HINT_TEXT_ON_STARTUP,
                                              default=True,
                                              define_setting=True,
                                              service_status=StatusType.OK,
                                              persist=True)
-        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.CONFIGURE_DEPENDENCIES_ON_STARTUP)
+        service_key = ServiceKey.TTS_KEY.with_prop(
+                SettingProp.CONFIGURE_DEPENDENCIES_ON_STARTUP)
         SettingsMap.define_setting(service_key, setting_type=SettingType.BOOLEAN_TYPE,
                                    persist=True)
         service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.INTRODUCTION_ON_STARTUP)
         SettingsMap.define_setting(service_key, setting_type=SettingType.BOOLEAN_TYPE,
                                    persist=True)
-        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.HELP_CONFIG_ON_STARTUP)
+        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.CONFIG_HELP_ON_STARTUP)
+        SettingsMap.define_setting(service_key, setting_type=SettingType.BOOLEAN_TYPE,
+                                   persist=True)
+        service_key = ServiceKey.TTS_KEY.with_prop(
+                SettingProp.CONFIGURE_KEYMAP_ON_STARTUP)
         SettingsMap.define_setting(service_key, setting_type=SettingType.BOOLEAN_TYPE,
                                    persist=True)
         cache_expiration_days: IntValidator

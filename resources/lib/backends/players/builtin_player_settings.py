@@ -95,7 +95,7 @@ class BuiltinPlayerSettings:
                                             is_integer=False,
                                             define_setting=True,
                                             service_status=StatusType.OK,
-                                            persist=True)
+                                            persist=False)
 
         t_service_key = cls.service_key.with_prop(SettingProp.SPEED)
         speed_validator: NumericValidator
@@ -105,7 +105,7 @@ class BuiltinPlayerSettings:
                                            is_integer=False,
                                            define_setting=True,
                                            service_status=StatusType.OK,
-                                           persist=True)
+                                           persist=False)
 
         t_service_key = cls.service_key.with_prop(SettingProp.CACHE_SPEECH)
         cache_validator: BoolValidator
@@ -113,7 +113,7 @@ class BuiltinPlayerSettings:
                                         default=False,
                                         define_setting=True,
                                         service_status=StatusType.OK,
-                                        persist=True)
+                                        persist=False)
 
         allowed_player_modes: List[str] = [
             PlayerMode.ENGINE_SPEAK.value
@@ -125,7 +125,7 @@ class BuiltinPlayerSettings:
                                                 default=PlayerMode.ENGINE_SPEAK.value,
                                                 define_setting=True,
                                                 service_status=StatusType.OK,
-                                                persist=True)
+                                                persist=False)
 
     @classmethod
     def check_is_supported_on_platform(cls) -> None:
@@ -143,7 +143,8 @@ class BuiltinPlayerSettings:
                 SettingsMap.define_setting(cls.service_key,
                                            setting_type=SettingType.STRING_TYPE,
                                            service_status=StatusType.NOT_FOUND,
-                                           validator=None)
+                                           validator=None,
+                                           persist=False)
 
     @classmethod
     def check_is_available(cls) -> None:
@@ -174,7 +175,8 @@ class BuiltinPlayerSettings:
             SettingsMap.define_setting(cls.service_key,
                                        setting_type=SettingType.STRING_TYPE,
                                        service_status=cls._service_status.status_summary,
-                                       validator=None)
+                                       validator=None,
+                                       persist=False)
 
     @classmethod
     def is_usable(cls) -> bool:

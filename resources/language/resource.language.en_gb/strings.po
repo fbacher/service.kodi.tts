@@ -15,7 +15,8 @@ msgstr ""
 
 #
 # Missing message ids
-# missing 32057 - 32099
+# missing 32057
+# missing 32059 - 32099
 # missing 32251 - 32296
 # missing 32348 - 32699
 # missing 32721 - 32799
@@ -247,10 +248,46 @@ msgid "Speed Up. Now {0}."
 msgstr ""
 
 msgctxt "#32056"
-msgid "Slow Down.Now {0}."
+msgid "Slow Down. Now {0}."
 msgstr ""
 
-#  missing 32057 - 32099
+msgctxt "#32057"
+msgid "Updated Keymaps are now in effect."
+msgstr ""
+
+msgctxt "#32058"
+msgid "Failed to update keymap. No changes made."
+msgstr ""
+
+msgctxt "#32059"
+msgid "No changes made to keymap."
+msgstr ""
+
+msgctxt "#32060"
+msgid "Performing several configuration tasks."
+msgstr ""
+
+msgctxt "#32061"
+msgid "Installing basic keymap"
+msgstr ""
+
+msgctxt "#32062"
+msgid "Enabling Extended-Help."
+msgstr ""
+
+msgctxt "#32063"
+msgid "Enabling Hints."
+msgstr ""
+
+msgctxt "#32064"
+msgid "Opening Configuration Dialog."
+msgstr ""
+
+msgctxt "#32065"
+msgid "Configuration complete."
+msgstr ""
+
+#  missing 32066 - 32099
 
 msgctxt "#32100"
 msgid "{0} database scan started."
@@ -336,8 +373,8 @@ msgid "Press the key you want to assign now."
 msgstr "Press the key you want to assign now."
 
 msgctxt "#32119"
-msgid "Timeout in {0} seconds"
-msgstr "Timeout in {0} seconds"
+msgid "Timeout in {0} seconds..."
+msgstr "Timeout in {0} seconds..."
 
 msgctxt "#32120"
 msgid "Importing P.V.R. E.P.G."

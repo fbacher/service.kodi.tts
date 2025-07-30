@@ -1,7 +1,6 @@
 # coding=utf-8
 from __future__ import annotations  # For union operator |
 
-import os
 import sys
 from pathlib import Path
 from threading import RLock
@@ -14,8 +13,6 @@ from common.constants import Constants
 from common.logger import *
 from common.monitor import Monitor
 
-BASE_COMMAND = ('XBMC.NotifyAll(service.kodi.tts,SAY,"{{\\"text\\":\\"{0}\\",'
-                '\\"interrupt\\":{1}}}")')
 XT = xbmc.getLocalizedString
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
@@ -36,21 +33,19 @@ def sleep(ms):
 
 
 def playSound(name, return_duration=False):
-    wavPath = os.path.join(Constants.ADDON_DIRECTORY, 'resources',
-                           'wavs', '{0}.wav'.format(name))
+    wave_path: Path = Path(Constants.ADDON_DIRECTORY, 'resources',
+                           'wavs', f'{name}.wav')
     # This doesn't work as this may be called when the addon is disabled
     # wavPath = os.path.join(xbmcvfs.translatePath(xbmcaddon.Addon().getAddonInfo(
     # 'path')),'resources','wavs','{0}.wav'.format(name))
-    xbmc.playSFX(wavPath)
+    if not wave_path.exists():
+        return 0
+    xbmc.playSFX(str(wave_path))
     if return_duration:
-        wavPath = wavPath
-        if not os.path.exists(wavPath):
-            return 0
         import wave
-        w = wave.open(wavPath, 'rb')
-        frames = w.getnframes()
-        rate = w.getframerate()
-        w.close()
+        with wave.open(str(wave_path)) as w:
+            frames = w.getnframes()
+            rate = w.getframerate()
         duration = frames / float(rate)
         return duration
 
@@ -58,12 +53,6 @@ def playSound(name, return_duration=False):
 def stopSounds():
     if hasattr(xbmc, 'stopSFX'):
         xbmc.stopSFX()
-
-
-def notifySayText(text, interrupt=False):
-    command = BASE_COMMAND.format(text, repr(interrupt).lower())
-    # print command
-    xbmc.executebuiltin(command)
 
 
 class TempFileUtils:

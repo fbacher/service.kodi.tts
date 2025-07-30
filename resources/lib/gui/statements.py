@@ -170,8 +170,9 @@ class Statements:
     @property
     def interrupt(self) -> bool:
         """
-        Indicates the 'highly-suggested' interrupt marking for any generated PhraseList
-        for voicing.
+        Indicates whether this series of Statements should interrupt any
+        earlier, as yet unvoiced statement. Note that interrupts get handled
+        when Statements are converted into Phrases.
 
         :return:
         """

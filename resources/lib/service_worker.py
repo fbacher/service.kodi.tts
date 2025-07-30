@@ -6,6 +6,7 @@ from __future__ import annotations  # For union operator |
 
 import datetime
 import sys
+import threading
 
 import xbmc
 
@@ -23,7 +24,7 @@ from common.kodi_player_monitor import KodiPlayerMonitor, KodiPlayerState
 from common.logger import *
 from common.message_ids import MessageId
 from common.phrases import Phrase, PhraseList
-from windowNavigation.choice import Choice
+from utils.utils_ll import UtilsLowLevel
 from windowNavigation.configure import Configure, EngineConfig
 
 try:
@@ -83,6 +84,7 @@ addoninfo.initAddonsData()
 BackendInfo.init()
 # BootstrapEngines.init()
 
+
 DO_RESET = False
 
 
@@ -116,6 +118,8 @@ class Commands(StrEnum):
     TOGGLE_ON_OFF = 'TOGGLE_ON_OFF'
     CYCLE_DEBUG = 'CYCLE_DEBUG'
     VOICE_HINT = 'VOICE_HINT'
+    VOICE_HINT_OFF = 'VOICE_HINT_OFF'
+    VOICE_HINT_ON = 'VOICE_HINT_ON'
     HELP_DIALOG = 'HELP_DIALOG'
     INTRODUCTION = 'INTRODUCTION'
     HELP_CONFIG = 'HELP_CONFIG'
@@ -151,7 +155,7 @@ class TTSService:
     readerOn: bool = True
     stop: bool = False
     disable: bool = False
-    notice_queue: queue.Queue[PhraseList] = queue.Queue(Constants.SEED_CACHE_DIR_LIMIT)
+    notice_queue: queue.Queue[PhraseList] = queue.Queue(Constants.NOTICE_QUEUE_LIMIT)
     noticeQueueCount: int = 0
     noticeQueueFullCount: int = 0
     active_backend: ITTSBackendBase | None = None
@@ -171,9 +175,11 @@ class TTSService:
     lastProgressPercentUnixtime = 0
     interval: int = 200
     listIndex = None
+    _ready_to_voice: bool = False
     waitingToReadItemExtra = None
     driver: Driver = None
     background_driver: BackgroundDriver = None
+    notification_lock: threading.Lock = threading.Lock()
 
     def __init__(self):
         """
@@ -198,7 +204,7 @@ class TTSService:
         cls.stop: bool = False
         cls.disable: bool = False
         del cls.notice_queue
-        cls.notice_queue: queue.Queue = queue.Queue(20)
+        cls.notice_queue: queue.Queue = queue.Queue(Constants.NOTICE_QUEUE_LIMIT)
         cls.noticeQueueFullCount: int = 0
         cls.noticeQueueCount: int = 0
         cls.initState()
@@ -281,13 +287,17 @@ class TTSService:
             raise TTSClosedException()
         return cls.active_backend
 
-    '''
-    def tts_getter(self) ->ITTSBackendBase:
-        clz = type(self)
-        if clz.is_tts_closed():
-            raise TTSClosedException()
-        return clz.active_backend
-    '''
+    @classmethod
+    def is_ready_to_voice(cls, timeout: float = 0.0) -> bool:
+        """
+        Returns True if the TTS engine should be ready to voice
+        """
+        max_tries: int = int(timeout / 0.05) + 1
+        while max_tries > 0:
+            if cls._ready_to_voice:
+                return True
+            Monitor.wait_for_abort(timeout=0.05)
+        return False
 
     @classmethod
     def close_tts(cls) -> None:
@@ -355,6 +365,10 @@ class TTSService:
             cls.cycle_debug()
         elif command == Commands.VOICE_HINT:
             cls.toggle_voice_hint()
+        elif command == Commands.VOICE_HINT_ON:
+            cls.set_voice_hint_on()
+        elif command == Commands.VOICE_HINT_OFF:
+            cls.set_voice_hint_off()
         elif command == Commands.HELP_DIALOG:
             cls.help()
         elif command == Commands.INTRODUCTION:
@@ -442,6 +456,24 @@ class TTSService:
             cls.checkBackend()
 
     @classmethod
+    def voice_notification(cls, texts: List[str], interrupt: bool) -> None:
+        """
+        Injects a message for a Notification. The message has high priority to be
+        voiced.
+
+        :param texts: Texts to voice
+        :param interrupt: marks the created Phrases with interrupt or not
+        """
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'texts: {texts} interrupt: {interrupt}')
+        try:
+            phrases: PhraseList = PhraseList.create(texts=texts, interrupt=interrupt,
+                                                    check_expired=False)
+            cls.queueNotice(phrases)
+        except ExpiredException:
+            pass
+
+    @classmethod
     def reload_settings(cls):
         """
 
@@ -469,6 +501,37 @@ class TTSService:
         """
         msg: str = Globals.toggle_voice_hint().get_msg()
         phrases: PhraseList = PhraseList.create(texts=msg)
+        phrases.set_interrupt(True)
+        cls.queueNotice(phrases)
+
+    @classmethod
+    def set_voice_hint_on(cls):
+        """
+
+        :return:
+        """
+        """
+        Turn ON voice hinting
+        :return:
+        """
+        Globals.set_voice_hint(MessageId.VOICE_HINT_ON)
+        phrases: PhraseList = PhraseList.create(texts=MessageId.VOICE_HINT_ON.get_msg())
+        phrases.set_interrupt(True)
+        cls.queueNotice(phrases)
+
+    @classmethod
+    def set_voice_hint_off(cls):
+        """
+
+        :return:
+        """
+        """
+        Turn OFF voice hinting
+
+        :return:
+        """
+        Globals.set_voice_hint(MessageId.VOICE_HINT_OFF)
+        phrases: PhraseList = PhraseList.create(texts=MessageId.VOICE_HINT_OFF.get_msg())
         phrases.set_interrupt(True)
         cls.queueNotice(phrases)
 
@@ -560,7 +623,7 @@ class TTSService:
             msg = MessageId.SCREEN_SAVER_INTERRUPTED.get_msg()
 
         if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'SCREENSAVER {operation}: - Notifying...')
+            MY_LOGGER.debug(f'SCREENSAVER {operation}: - Notifying... msg: {msg}')
         cls.queueNotice(PhraseList.create(texts=msg))
 
     @classmethod
@@ -612,12 +675,13 @@ class TTSService:
         """
         try:
             if Globals.is_using_new_reader:
-                cls.sayText(phrases)
-                return
+                MY_LOGGER.debug(f'Using new reader phrase: {phrases}')
+                # cls.sayText(phrases)
+                # return
 
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'phrases: {len(phrases)} phrase: '
-                                  f'{phrases[0]}')
+                                f'{phrases[0]}')
             if phrases.interrupt:
                 if MY_LOGGER.isEnabledFor(DEBUG_V):
                     MY_LOGGER.debug_v(f'INTERRUPT: clearing NoticeQueue')
@@ -639,6 +703,7 @@ class TTSService:
         Drains the NoticeQueue of entries
 
         """
+        #  MY_LOGGER.debug(f'clearing queue')
         try:
             while not cls.notice_queue.empty():
                 try:
@@ -708,6 +773,7 @@ class TTSService:
         :param engine_id:
         :return:
         """
+        cls._ready_to_voice = False
         new_active_engine: BaseServices | ITTSBackendBase
         if GENERATE_BACKUP_SPEECH:
             new_active_engine = cls.start_engine(engine_id=EngineType.GOOGLE,
@@ -716,16 +782,15 @@ class TTSService:
             new_active_engine = cls.start_engine(engine_id=engine_id,
                                                  player_id=None)
 
-        if (cls.get_active_backend() is not None
-                and cls.get_active_backend().service_id == engine_id):
-            #  MY_LOGGER.debug(f'Returning {engine_id} engine')
-            return cls.get_instance()
-
-        engine_id = cls.set_active_engine(new_active_engine)
-        cls.updateInterval()  # Poll interval
-        MY_LOGGER.info(f'New active backend: {engine_id}')
-        cls.start_background_driver()
-        return cls.get_instance()
+        if (cls.get_active_backend() is None
+                or cls.get_active_backend().service_id != engine_id):
+            engine_id = cls.set_active_engine(new_active_engine)
+            cls.updateInterval()  # Poll interval
+            MY_LOGGER.info(f'New active backend: {engine_id}')
+            cls.start_background_driver()
+        instance: TTSService = cls.get_instance()
+        cls._ready_to_voice = True
+        return instance
 
     @classmethod
     def fallbackTTS(cls, reason=None):
@@ -851,8 +916,9 @@ class TTSService:
                                                           require_focus_change=False)
 
     @classmethod
-    def handle_ui_changes(cls, window_state: WinDialogState) -> bool:
+    def handle_ui_changes(cls, window_state: WinDialogState) -> None:
         """
+        Call back from WindowStateMonitor to report changes
 
         :param window_state: Contains information about the window at the time
                              of the check for state (window_id, control_id, etc.)
@@ -877,8 +943,10 @@ class TTSService:
                 cls.repeatText(window_state)
             else:
                 cls.check_for_text(window_state)
-            return True
+            return
 
+        except ExpiredException:
+            pass
         except RuntimeError:
             MY_LOGGER.exception('start()')
         except SystemExit:
@@ -1045,21 +1113,35 @@ class TTSService:
         :return:
         """
         #  MY_LOGGER.debug(f'In check_for_text')
+        with TTSService.notification_lock:
+            # while there is a notice to process, polling is disabled.
+            new_notice: bool = cls.checkNoticeQueue(window_state)
+            if MY_LOGGER.isEnabledFor(DEBUG_XV):
+                MY_LOGGER.debug_xv(f'blocking new_notice: {new_notice}')
+            # Don't let any other text interrupt the notice
+            if new_notice:
+                xbmc.sleep(5000)
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'unblocking')
+                return
+        #  MY_LOGGER.debug(f'unblocking')
+
         cls.checkAutoRead()  # Readers seem to flag text that they want read after the
                              # the current reading. Perhaps more cpu is_required?
                              # Perhaps to give user a chance to skip? Also seems
                              # to be able to be triggered externally.
-        new_notice = cls.checkNoticeQueue(window_state)  # Any incoming notifications from cmd line or addon?
-        new_window = cls.checkWindow(new_notice, window_state)   # Window changed?
-        new_control = cls.checkControl(new_window, window_state)  # Control Changed?
+        new_window: bool = cls.checkWindow(new_notice, window_state)   # Window changed?
+        new_control: bool = cls.checkControl(new_window, window_state)  # Control Changed?
         #
         # Read Description of the control, or any other context prior to reading
         # the actual text in any changed control.
 
-        new_description = new_control and cls.checkControlDescription(new_window, window_state) or False
+        new_description: bool = new_control and cls.checkControlDescription(new_window, window_state) or False
         #  MY_LOGGER.debug(f'Calling: windowReader')
         phrases: PhraseList = PhraseList()
         success: bool = cls.windowReader.getControlText(cls.current_control_id, phrases)
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'getControlText success: {success} phrase: {phrases}')
         #  TODO: What is the point of 'compare' It does not seem to do much.
         if not success or phrases.is_empty():
             compare = ''
@@ -1077,18 +1159,19 @@ class TTSService:
         secondary_changed: bool = cls.is_secondary_text_changed(secondary)
         if not secondary_changed:
             if not secondary.is_empty():
-                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                if MY_LOGGER.isEnabledFor(DEBUG_XV):
                     MY_LOGGER.debug_xv(f'CHECK: secondaryText {secondary} not changed '
                                        f'reader: {cls.windowReader.__class__.__name__}')
             secondary.clear()
 
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             if not phrases.is_empty() or compare != '' or not secondary.is_empty():
-                MY_LOGGER.debug_v(f'control_id: {cls.current_control_id} '
-                                  f'phrases: {phrases} '
-                                  f'compare: {compare} secondary: {secondary} '
-                                  f'previous_secondaryText: '
-                                  f'{cls._previous_secondary_text}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'control_id: {cls.current_control_id} '
+                                      f'phrases: {phrases} '
+                                      f'compare: {compare} secondary: {secondary} '
+                                      f'previous_secondaryText: '
+                                      f'{cls._previous_secondary_text}')
 
         # Sometimes, secondary contains a label which is already in our
         # primary voice stream
@@ -1121,6 +1204,18 @@ class TTSService:
     @classmethod
     def checkMonitored(cls):
         """
+        (Struggling to give clarity here)
+        'Monitored text' comes from several sources:
+            xbmc.executebuitin('Notification...)
+            BackgroundProgress
+            other
+        Sometimes Monitored text should be voiced over other speech and even
+        when Kodi is playing something, others ignored. In Particular, when a
+        Notification occurs, it should always be voiced.
+
+        Note that here, there is nothing to keep some other voicing to interrupt
+        the voicing of the text here. One solution is to block processing
+        screen scraping until the text has been read.
 
         :return:
         """
@@ -1130,15 +1225,18 @@ class TTSService:
         if cls.playerStatus.visible():
             monitored = cls.playerStatus.getMonitoredText(
                     cls.get_tts().isSpeaking())
-        if cls.bgProgress.visible():
+        if monitored is None and cls.bgProgress.visible():
             monitored = cls.bgProgress.getMonitoredText(cls.get_tts().isSpeaking())
-        if cls.noticeDialog.visible():
+        # Can NOT get text from Notifications due to use of fadelabel. Only known
+        # means is to use a hack only useful within this addon. Leaving code
+        # here just incase it starts working.
+        if monitored is None and cls.noticeDialog.visible():
             monitored = cls.noticeDialog.getMonitoredText(
                     cls.get_tts().isSpeaking())
-        if not monitored:
+        if monitored is None:
             monitored = cls.windowReader.getMonitoredText(
                     cls.get_tts().isSpeaking())
-        if monitored:
+        if monitored is not None:
             try:
                 phrases: PhraseList = PhraseList.create(monitored, interrupt=True)
                 if MY_LOGGER.isEnabledFor(DEBUG_XV):
@@ -1435,7 +1533,11 @@ class TTSService:
             control_id = abs(cls.window(window_state).getFocusId())
             if MY_LOGGER.isEnabledFor(DEBUG_XV):
                 MY_LOGGER.debug_xv(f'CHECK Focus control_id: {control_id}')
-            control = xbmc.getInfoLabel("System.CurrentControl()")
+            current_control_label: str = xbmc.getInfoLabel("System.CurrentControl()")
+            control_id_label: str = xbmc.getInfoLabel(f'Control.GetLabel({control_id})')
+            if MY_LOGGER.isEnabledFor(DEBUG_XV):
+                MY_LOGGER.debug_xv(f'current_control_label: {current_control_label}\n'
+                                   f'control_id_label: {control_id_label}')
         except AbortException:
             reraise(*sys.exc_info())
         except Exception as e:
@@ -1453,8 +1555,11 @@ class TTSService:
     @classmethod
     def checkControlDescription(cls, newW: bool, window_state: WinDialogState) -> bool:
         """
-           See if anything needs to be said before the contents of the
-           control (control name, context).
+           Says anything before the control's value is said.
+           Examples of what to say before include: Description, item # , etc.
+
+           NOTE; The dscription is dispatched to be voiced HERE. A phrase is NOT
+           returned.
 
         :param window_state:
         :param newW: True if anything else has changed requiring reading
@@ -1468,13 +1573,15 @@ class TTSService:
             success = cls.windowReader.getControlDescription(
                     cls.current_control_id, phrases)
             if MY_LOGGER.isEnabledFor(DEBUG_V):
-                MY_LOGGER.debug_v(f'CHECK: checkControlDescription: {phrases} '
+                MY_LOGGER.debug_v(f'CHECK: newW: {newW} window_state: {window_state}\n'
+                                  f'current_control_id: {cls.current_control_id} \n'
+                                  f'checkControlDescription: {phrases} \n'
                                   f'reader:'
                                   f' {cls.windowReader.__class__.__name__}')
             # Checks to see if any item # needs to be voiced, etc.
             success: bool = cls.windowReader.getControlPostfix(cls.current_control_id,
                                                                phrases)
-            if not success:
+            if success:
                 if MY_LOGGER.isEnabledFor(DEBUG_V):
                     MY_LOGGER.debug_v(f'CHECK ControlPostfix: {phrases}   '
                                       f'reader: {cls.windowReader.__class__.__name__}')
@@ -1616,6 +1723,9 @@ class TTSService:
             return cls._cleanText(text)
         else:
             return [cls._cleanText(t) for t in text]
+
+
+UtilsLowLevel.reg_voice_notification_callback(TTSService.voice_notification)
 
 
 WindowStateMonitor.class_init()

@@ -868,6 +868,9 @@ class Configure:
         # If a player matching player_mode was found, then t_players all support
         # that player_mode. Otherwise, t_players supports the most preferred
         # player_mode available for that engine.
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f't_player_mode: {t_player_mode} player_mode: {player_mode} '
+                              f'repair_mode: {repair_mode}')
         if t_player_mode != player_mode:
             if repair_mode:
                 repairs = True
@@ -875,7 +878,9 @@ class Configure:
 
         # supporting_players should be in order of preference.
         player = t_players[0]
-        if repair_mode:
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'player: {player} supports cache: {player.supports_cache}')
+        if repair_mode or use_cache is None:
             if use_cache is None:
                 use_cache = player.supports_cache
                 repairs = True
@@ -985,19 +990,21 @@ class Configure:
 
         # Sort candidate players by desirability
         ordered_players: List[PlayerType] = sorted(players)
-
+        preferred_players: List[PlayerType]
         if cache is None:
-            return ordered_players
-
-        preferred_players: List[PlayerType] = []
-        other_players: List[PlayerType] = []
-        for player in ordered_players:
-            player: PlayerType
-            if player.supports_cache == cache:
-                preferred_players.append(player)
-            else:
-                other_players.append(player)
-        preferred_players.extend(other_players)
+            preferred_players = ordered_players
+        else:
+            preferred_players = []
+            other_players: List[PlayerType] = []
+            for player in ordered_players:
+                player: PlayerType
+                if player.supports_cache == cache:
+                    preferred_players.append(player)
+                else:
+                    other_players.append(player)
+            preferred_players.extend(other_players)
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'cache: {cache} preferred_players: {preferred_players}')
         return preferred_players
 
     def filter_players_on_audio_type(self, players: List[PlayerType],
@@ -1391,7 +1398,9 @@ class Configure:
                 try:
                     BaseServices.get_service(engine_key)
                     if MY_LOGGER.isEnabledFor(DEBUG):
-                        MY_LOGGER.debug(f'got service: {engine_key}')
+                        MY_LOGGER.debug(f'got service: {engine_key} '
+                                        f'commit repair as current: '
+                                        f'{commit_current_engine_on_repair}')
                 except ServiceUnavailable:
                     if MY_LOGGER.isEnabledFor(DEBUG):
                         MY_LOGGER.exception(f'Bad engine choice: {engine_key} choosing '

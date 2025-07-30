@@ -75,16 +75,16 @@ class NoEngineSettings:
                                                const=True,
                                                define_setting=True,
                                                service_status=StatusType.OK,
-                                               persist=True)
+                                               persist=False)
 
-        cache_service_key: ServiceID = cls.service_key.with_prop(SettingProp.CACHE_PATH)
+        cache_path_key: ServiceID = cls.service_key.with_prop(SettingProp.CACHE_PATH)
         cache_path_val: SimpleStringValidator
-        cache_path_val = SimpleStringValidator(cache_service_key,
+        cache_path_val = SimpleStringValidator(cache_path_key,
                                                value=str(Constants.PREDEFINED_CACHE),
                                                const=True,
                                                define_setting=True,
                                                service_status=StatusType.OK,
-                                               persist=True)
+                                               persist=False)
 
         cache_suffix_key: ServiceID = cls.service_key.with_prop(SettingProp.CACHE_SUFFIX)
         cache_suffix: str = Backends.ENGINE_CACHE_CODE[Backends.NO_ENGINE_ID]
@@ -95,7 +95,7 @@ class NoEngineSettings:
                                                  const=True,
                                                  define_setting=True,
                                                  service_status=StatusType.OK,
-                                                 persist=True)
+                                                 persist=False)
         speed_validator: NumericValidator
         speed_validator = NumericValidator(cls.service_key.with_prop(SettingProp.SPEED),
                                            minimum=.50, maximum=2.0,
@@ -104,7 +104,7 @@ class NoEngineSettings:
                                            is_integer=False, increment=45,
                                            define_setting=True,
                                            service_status=StatusType.OK,
-                                           persist=True)
+                                           persist=False)
 
         tmp_key: ServiceID
         tmp_key = cls.service_key.with_prop(SettingProp.VOLUME)
@@ -115,15 +115,17 @@ class NoEngineSettings:
                                             is_integer=True,
                                             define_setting=True,
                                             service_status=StatusType.OK,
-                                            persist=True)
+                                            persist=False)
 
         t_key = cls.service_key.with_prop(SettingProp.LANGUAGE)
         SettingsMap.define_setting(t_key, SettingType.STRING_TYPE,
-                                   service_status=StatusType.OK)
+                                   service_status=StatusType.OK,
+                                   persist=False)
 
         t_key = cls.service_key.with_prop(SettingProp.VOICE)
         SettingsMap.define_setting(t_key, SettingType.STRING_TYPE,
-                                   service_status=StatusType.OK)
+                                   service_status=StatusType.OK,
+                                   persist=False)
 
         allowed_player_modes: List[str] = [
             PlayerMode.FILE.value
@@ -170,21 +172,7 @@ class NoEngineSettings:
                                            define_setting=True,
                                            service_status=StatusType.OK,
                                            persist=True)
-        '''
-        tmp_key = cls.service_key.with_prop(SettingProp.GENDER)
-        gender_validator = GenderValidator(tmp_key,
-                                           min_value=Genders.FEMALE,
-                                           max_value=Genders.UNKNOWN,
-                                           default=Genders.UNKNOWN)
-        SettingsMap.define_setting(gender_validator.service_key,
-                                   gender_validator)
 
-        tmp_key = cls.service_key.with_prop(SettingProp.GENDER_VISIBLE)
-        gender_visible_val: BoolValidator
-        gender_visible_val = BoolValidator(tmp_key, default=True)
-        SettingsMap.define_setting(gender_visible_val.service_key,
-                                   gender_visible_val)
-        '''
     @classmethod
     def check_is_supported_on_platform(cls) -> None:
         if cls._service_status.progress == Progress.START:
@@ -223,7 +211,8 @@ class NoEngineSettings:
             SettingsMap.define_setting(cls.service_key,
                                        setting_type=SettingType.STRING_TYPE,
                                        service_status=StatusType.OK,
-                                       validator=None)
+                                       validator=None,
+                                       persist=False)
 
     @classmethod
     def is_usable(cls) -> bool:

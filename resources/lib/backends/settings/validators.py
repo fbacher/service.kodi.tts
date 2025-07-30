@@ -1253,6 +1253,9 @@ class GenderValidator(IGenderValidator):
     def getUIValue(self) -> str:
         return self.get_tts_value().name
 
+    def get_default_value(self) -> Genders | None:
+        return self._default
+
     def getInternalValue(self) -> Genders:
         return self.get_tts_value()
 
@@ -1307,7 +1310,11 @@ class ChannelValidator(IChannelValidator):
                                                           ignore_cache=False,
                                                           default=self._default.value)
         # Channels(Channels.MALE.value) works as well as Channels[Channels.MALE.name]
-        self.current_value = Channels(str_value.lower())
+        try:
+            self.current_value = Channels(str_value.lower())
+        except ValueError:
+            MY_LOGGER.debug(f'Invalid Channel value of {str_value}. Set to stereo.')
+            self.current_value = Channels.STEREO
         return self.current_value
 
     def set_tts_value(self, value: Channels) -> None:

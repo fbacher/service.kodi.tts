@@ -53,7 +53,8 @@ class EngineQueue:
 
         def __init__(self, phrase: Phrase, engine: 'BaseEngineService'):
             self._phrase: Phrase = phrase
-            self._engine: Union[ForwardRef('BaseEngineService'), ForwardRef('SimpleTTSBackend')]
+            self._engine: Union[ForwardRef('BaseEngineService'),
+                                ForwardRef('SimpleTTSBackend')]
             self._engine = engine
 
         @property
@@ -758,9 +759,10 @@ class ThreadedTTSBackend(BaseEngineService):
         prev_engine = BaseServices.get_service(prev_engine_key)
         prev_player = BaseServices.get_service(prev_player_key)
 
-        MY_LOGGER.debug(f'prev_engine: {prev_engine_key} \n'
-                        f'prev_player: {prev_player_key} \n'
-                        f'prev_player_mode: {prev_player_mode}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug(f'prev_engine: {prev_engine_key} \n'
+                            f'prev_player: {prev_player_key} \n'
+                            f'prev_player_mode: {prev_player_mode}')
         prev_engine.stop_player(kill=True)
 
     def destroy(self):
@@ -843,15 +845,15 @@ class ThreadedTTSBackend(BaseEngineService):
             if engine_key is None:
                 engine_key = clz.service_key
             if player_key is None:
-                MY_LOGGER.debug(f'engine_key: {engine_key}')
+                #  MY_LOGGER.debug(f'engine_key: {engine_key}')
                 player_key = Settings.get_player(engine_key)
-            MY_LOGGER.debug(f'player_key: {player_key}')
+            #  MY_LOGGER.debug(f'player_key: {player_key}')
             player: IPlayer = BaseServices.get_service(player_key)
             if player:
                 player.stop_player(purge=purge, keep_silent=keep_silent,
                                    kill=kill)
             if ServiceKey.BUILT_IN_KEY == Settings.get_player(self.service_key):
-                MY_LOGGER.debug(f'calling stop_builtin_player')
+                #  MY_LOGGER.debug(f'calling stop_builtin_player')
                 self.stop_builtin_player()
         except AbortException as e:
             reraise(*sys.exc_info())
@@ -1023,6 +1025,7 @@ class SimpleTTSBackend(ThreadedTTSBackend):
             self.initialize_player()
             #  self.config_mode()
             player_mode: PlayerMode = Settings.get_player_mode(clz.service_key)
+            #  MY_LOGGER.debug(f'player_mode {player_mode}')
             if phrase.get_interrupt():
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'stop_player phrase prior to: {phrase}')

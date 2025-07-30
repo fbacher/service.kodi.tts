@@ -48,7 +48,7 @@ class SettingProp:  # (ISettings):
     CAPITAL_RECOGNITION: Final[str] = 'capital_recognition'
     COMMAND: Final[str] = 'command'
     COMMAND_PATH: Final[str] = 'command_path'
-    CHANNELS: Final[str] = 'channels'
+    CHANNELS: Final[str] = TTS_Type.CHANNELS.value
     TRANSCODER: Final[str] = 'transcoder'
     DELAY_VOICING: Final[str] = 'delay_voicing'
     # TODO: Change settings like output_via_espeak to be output <string value>
@@ -91,8 +91,6 @@ class SettingProp:  # (ISettings):
 
     API_KEY_DEFAULT: Final[str] = ''
     AUDIO_FORMAT: Final[str] = 'audio_format'
-    CACHE_PATH_DEFAULT: Final[str] = xbmcvfs.translatePath(
-        'special://userdata/addon_data/service.kodi.tts/cache')
     CACHE_EXPIRATION_DEFAULT: Final[int] = 365
     CACHE_SPEECH_DEFAULT: Final[bool] = False
     ENGINE_SPEEK_DEFAULT = None
@@ -113,12 +111,15 @@ class SettingProp:  # (ISettings):
     BACKGROUND_PROGRESS_INTERVAL: Final[str] = TTS_Type.BACKGROUND_PROGRESS_INTERVAL.value
     CACHE_PATH: Final[str] = TTS_Type.CACHE_PATH.value
     CACHE_EXPIRATION_DAYS: Final[str] = TTS_Type.CACHE_EXPIRATION_DAYS.value
+    START_CFG_GUI_ON_STARTUP: Final[str] = (
+        TTS_Type.CONFIGURE_TTS_ON_STARTUP
+    )
     CONFIGURE_DEPENDENCIES_ON_STARTUP: Final[str] = (
         TTS_Type.CONFIGURE_DEPENDENCIES_ON_STARTUP.value)
-    CONFIGURE_KEYMAP_ON_STARTUP: Final[str] = (TTS_Type.CONFIGURE_KEYMAP_ON_STARTUP.value)
+    CONFIGURE_KEYMAP_ON_STARTUP: Final[str] = TTS_Type.CONFIGURE_KEYMAP_ON_STARTUP.value
     CURRENT_ENGINE: Final[str] = TTS_Type.CURRENT_ENGINE.value
     DISABLE_BROKEN_SERVICES: Final[str] = TTS_Type.DISABLE_BROKEN_SERVICES.value
-    HELP_CONFIG_ON_STARTUP: Final[str] = TTS_Type.HELP_CONFIG_ON_STARTUP.value
+    CONFIG_HELP_ON_STARTUP: Final[str] = TTS_Type.HELP_CONFIG_ON_STARTUP.value
     INTRODUCTION_ON_STARTUP: Final[str] = TTS_Type.INTRODUCTION_ON_STARTUP.value
     SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA: Final[str] = (
         TTS_Type.SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA.value)
@@ -142,11 +143,10 @@ class SettingProp:  # (ISettings):
     #  SETTINGS_DIGEST: Final[str] = TTS_Type.SETTINGS_DIGEST.value
     #  SETTINGS_LAST_CHANGED=
     SPEAK_LIST_COUNT: Final[str] = TTS_Type.SPEAK_LIST_COUNT.value
-    SPEAK_VIA_KODI: Final[str] = TTS_Type.SPEAK_VIA_KODI.value
+    #  SPEAK_VIA_KODI: Final[str] = TTS_Type.SPEAK_VIA_KODI.value
     #  SPEED_VISIBLE=
     #  TTSD_HOST=
     #  TTSD_PORT=
-    USE_TEMPFS: Final[str] = TTS_Type.USE_TMPFS.value
     VERSION: Final[str] = TTS_Type.VERSION.value
     SPEED: Final[str] = TTS_Type.SPEED.value
     VOLUME: Final[str] = TTS_Type.VOLUME.value
@@ -162,7 +162,9 @@ class SettingProp:  # (ISettings):
         BACKGROUND_PROGRESS_INTERVAL          : None,
         #  CACHE_PATH: None,
         CACHE_EXPIRATION_DAYS                 : None,
+        CHANNELS                              : None,
         CONFIGURE_DEPENDENCIES_ON_STARTUP     : None,
+        START_CFG_GUI_ON_STARTUP              : None,
         CURRENT_ENGINE                        : None,
         DISABLE_BROKEN_SERVICES               : None,
         SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA: None,
@@ -173,24 +175,23 @@ class SettingProp:  # (ISettings):
         DEBUG_LOG_LEVEL                       : None,  #  Merge into Logging: None, get rid of verbose_logging
         EXTENDED_HELP_ON_STARTUP              : None,
         # GUI: None,
-        HELP_CONFIG_ON_STARTUP: None,
-        HINT_TEXT_ON_STARTUP: None,
-        INITIAL_RUN: None,
-        INTRODUCTION_ON_STARTUP: None,
+        CONFIG_HELP_ON_STARTUP                : None,
+        HINT_TEXT_ON_STARTUP                  : None,
+        INITIAL_RUN                           : None,
+        INTRODUCTION_ON_STARTUP               : None,
         # OUTPUT_VIA: None,
         #  OUTPUT_VISIBLE: None,
-        OVERRIDE_POLL_INTERVAL: None,
-        POLL_INTERVAL: None,
-        READER_ON: None,
+        OVERRIDE_POLL_INTERVAL                : None,
+        POLL_INTERVAL                         : None,
+        READER_ON                             : None,
         #  SETTINGS_BEING_CONFIGURED: None,
         #  SETTINGS_DIGEST: None,
         #  SETTINGS_LAST_CHANGED: None,
         SPEAK_LIST_COUNT: None,
-        SPEAK_VIA_KODI: None,
+        #  SPEAK_VIA_KODI: None,
         #  SPEED_VISIBLE: None,
         #  TTSD_HOST: None,
         #  TTSD_PORT: None,
-        USE_TEMPFS: None,
         VERSION: None,
         SPEED: None,
         VOLUME: None
@@ -230,6 +231,7 @@ class SettingProp:  # (ISettings):
         CHANNELS                         : None,
         COMMAND                          : None,
         COMMAND_PATH                     : None,
+        START_CFG_GUI_ON_STARTUP         : None,
         CONFIGURE_DEPENDENCIES_ON_STARTUP: None,
         TRANSCODER                       : None,
         #  DEBUG_LOGGING: None,
@@ -240,17 +242,17 @@ class SettingProp:  # (ISettings):
         GENDER                           : None,
         #  GENDER_VISIBLE: None,
         # GUI: None,
-        HELP_CONFIG_ON_STARTUP           : None,
-        HINT_TEXT_ON_STARTUP: None,
-        LANGUAGE: None,
-        MODULE: None,
+        CONFIG_HELP_ON_STARTUP           : None,
+        HINT_TEXT_ON_STARTUP             : None,
+        LANGUAGE                         : None,
+        MODULE                           : None,
         # OUTPUT_VIA: None,
         #  OUTPUT_VISIBLE: None,
-        OVERRIDE_POLL_INTERVAL: None,
+        OVERRIDE_POLL_INTERVAL           : None,
         # PIPE: None,
-        PITCH: None,
-        PLAYER: None,
-        PLAYER_VOLUME: None,
+        PITCH                            : None,
+        PLAYER                           : None,
+        PLAYER_VOLUME                    : None,
         PLAYER_PITCH: None,
         PLAYER_MODE: None,
         PLAYER_SPEED: None,
@@ -269,7 +271,7 @@ class SettingProp:  # (ISettings):
         SPEAK_BACKGROUND_PROGRESS: None,
         SPEAK_LIST_COUNT: None,
         SPEAK_ON_SERVER: None,
-        SPEAK_VIA_KODI: None,
+        #  SPEAK_VIA_KODI: None,
         SPEED: None,
         SPEED_ENABLED: None,
         #  SPEED_VISIBLE: None,
@@ -278,7 +280,6 @@ class SettingProp:  # (ISettings):
         #  TTSD_HOST: None,
         #  TTSD_PORT: None,
         USE_AOSS: None,
-        USE_TEMPFS: None,
         VERSION: None,
         VOICE: None,
         VOICE_PATH: None,
@@ -298,7 +299,6 @@ class SettingProp:  # (ISettings):
         CACHE_SPEECH: None,
         #  CACHE_VOICE_FILES: None, Not used
         CAPITAL_RECOGNITION: None,
-        CHANNELS: None,
         TRANSCODER: None,
         #  DEBUG_LOGGING: None,
         #  DEBUG_LOG_LEVEL: None,
@@ -345,7 +345,6 @@ class SettingProp:  # (ISettings):
         #  TTSD_HOST: None,
         #  TTSD_PORT: None,
         USE_AOSS: None,
-        # USE_TMPFS: None,
         # VERSION: None,
         VOICE: None,
         VOICE_PATH: None
@@ -384,7 +383,9 @@ class SettingProp:  # (ISettings):
             cls.CAPITAL_RECOGNITION              : SettingType.BOOLEAN_TYPE,
             cls.CHANNELS                         : SettingType.STRING_TYPE,
             cls.CURRENT_ENGINE                   : SettingType.STRING_TYPE,
+            cls.START_CFG_GUI_ON_STARTUP         : SettingType.BOOLEAN_TYPE,
             cls.CONFIGURE_DEPENDENCIES_ON_STARTUP: SettingType.BOOLEAN_TYPE,
+            cls.CONFIGURE_KEYMAP_ON_STARTUP      : SettingType.BOOLEAN_TYPE,
             cls.TRANSCODER                       : SettingType.STRING_TYPE,
             cls.DEBUG_LOG_LEVEL                  : SettingType.INTEGER_TYPE,
             cls.DELAY_VOICING                    : SettingType.BOOLEAN_TYPE,
@@ -392,17 +393,17 @@ class SettingProp:  # (ISettings):
             cls.GENDER                           : SettingType.STRING_TYPE,
             cls.GENDER_VISIBLE                   : SettingType.BOOLEAN_TYPE,
             #  cls.GUI                         : SettingType.BOOLEAN_TYPE,
-            cls.HELP_CONFIG_ON_STARTUP           : SettingType.BOOLEAN_TYPE,
+            cls.CONFIG_HELP_ON_STARTUP           : SettingType.BOOLEAN_TYPE,
             cls.HINT_TEXT_ON_STARTUP             : SettingType.BOOLEAN_TYPE,
             cls.INITIAL_RUN                      : SettingType.BOOLEAN_TYPE,
-            cls.INTRODUCTION_ON_STARTUP               : SettingType.BOOLEAN_TYPE,
-            cls.LANGUAGE                              : SettingType.STRING_TYPE,
-            cls.MODULE                                : SettingType.STRING_TYPE,
+            cls.INTRODUCTION_ON_STARTUP          : SettingType.BOOLEAN_TYPE,
+            cls.LANGUAGE                         : SettingType.STRING_TYPE,
+            cls.MODULE                           : SettingType.STRING_TYPE,
             #  cls.OUTPUT_VIA                  : SettingType.STRING_TYPE,
             #  cls.OUTPUT_VISIBLE                        : SettingType.BOOLEAN_TYPE,
-            cls.OVERRIDE_POLL_INTERVAL                : SettingType.BOOLEAN_TYPE,
+            cls.OVERRIDE_POLL_INTERVAL           : SettingType.BOOLEAN_TYPE,
             # cls.PIPE                                  : SettingType.BOOLEAN_TYPE,
-            cls.PITCH                                 : SettingType.INTEGER_TYPE,
+            cls.PITCH                            : SettingType.INTEGER_TYPE,
             cls.PLAYER                                : SettingType.STRING_TYPE,
             cls.PLAYER_VOLUME                         : SettingType.INTEGER_TYPE,
             cls.PLAYER_PITCH                          : SettingType.INTEGER_TYPE,
@@ -423,7 +424,7 @@ class SettingProp:  # (ISettings):
             cls.SPEAK_BACKGROUND_PROGRESS             : SettingType.BOOLEAN_TYPE,
             cls.SPEAK_LIST_COUNT                      : SettingType.BOOLEAN_TYPE,
             cls.SPEAK_ON_SERVER                       : SettingType.BOOLEAN_TYPE,
-            cls.SPEAK_VIA_KODI                        : SettingType.BOOLEAN_TYPE,
+            #  cls.SPEAK_VIA_KODI                        : SettingType.BOOLEAN_TYPE,
             cls.SPEECH_DISPATCHER                     : SettingType.STRING_TYPE,
             cls.SPEED                                 : SettingType.INTEGER_TYPE,
             cls.SPEED_ENABLED                         : SettingType.BOOLEAN_TYPE,
@@ -431,7 +432,6 @@ class SettingProp:  # (ISettings):
             #  cls.TTSD_HOST                             : SettingType.STRING_TYPE,
             #  cls.TTSD_PORT                             : SettingType.INTEGER_TYPE,
             cls.USE_AOSS                              : SettingType.BOOLEAN_TYPE,
-            cls.USE_TEMPFS                            : SettingType.BOOLEAN_TYPE,
             cls.VERSION                               : SettingType.STRING_TYPE,
             cls.VOICE                                 : SettingType.STRING_TYPE,
             cls.VOICE_PATH                            : SettingType.STRING_TYPE,

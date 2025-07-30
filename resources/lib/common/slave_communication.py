@@ -675,23 +675,16 @@ class SlaveCommunication:
             self.next_volume = None
 
     def send_opt_channels(self) -> None:
-        return
+        #  return
 
-    '''
         self.latest_config_transaction_num += 1
         if self.channels != Channels.NO_PREF:
-            channel_str: str | None = None
-            if self.channels == Channels.STEREO:
-                channel_str = 'stereo'
-            if self.channels == Channels.MONO:
-                channel_str = 'mono'
-                # --audio-channels=<stereo|mono>
+            channel_str: str = self.channels.value
             if channel_str:
                 channels_str: str = (f'{{ "af-command": ['
                                      f'"format", "channels", "{channel_str}"],'
                                      f' "request_id": "{self.latest_config_transaction_num}" }}')
                 self.send_line(channels_str)
-    '''
 
     def stop_player(self, purge: bool = True,
                     keep_silent: bool = False,
@@ -721,7 +714,7 @@ class SlaveCommunication:
                 quit_str: str = f'quit'
                 self.run_state = RunState.DIE
                 self.send_line(quit_str)
-                xbmc.sleep(50)
+                xbmc.sleep(25)
                 self.slave.destroy()
             elif purge:
                 stop_str: str = f'stop'
@@ -835,9 +828,9 @@ class SlaveCommunication:
             xbmc.log(f'Closed socket', xbmc.LOGDEBUG)
         xbmc.sleep(10)
         self.run_state = RunState.DIE
-        if not self.fifo_in.closed():
+        if not self.fifo_in.closed:
             self.fifo_in.close()
-        if not self.fifo_out.closed():
+        if not self.fifo_out.closed:
             self.fifo_out.close()
 
     def kodi_player_status_listener(self, video_player_state: KodiPlayerState) -> bool:
@@ -888,7 +881,7 @@ class SlaveCommunication:
                         if MY_LOGGER.isEnabledFor(DEBUG_V):
                             MY_LOGGER.debug_v(f'FIFO_IN: {line}')
                 except ValueError as e:
-                    if self.fifo_in.closed() or self.slave.rc is not None:
+                    if self.fifo_in.closed or self.slave.rc is not None:
                         finished = True
                     rc = self.slave.rc
                     if rc is not None:

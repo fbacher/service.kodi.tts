@@ -74,10 +74,10 @@ class PowerShellTTSSettings:
         cache_service_key: ServiceID = cls.service_key.with_prop(SettingProp.CACHE_PATH)
         cache_path_val: SimpleStringValidator
         cache_path_val = SimpleStringValidator(cache_service_key,
-                                               value=SettingProp.CACHE_PATH_DEFAULT,
+                                               value=str(Constants.DEFAULT_CACHE_DIRECTORY),
                                                define_setting=True,
                                                service_status=StatusType.OK,
-                                               persist=True)
+                                               persist=False)
 
         cache_suffix_key: ServiceID = cls.service_key.with_prop(SettingProp.CACHE_SUFFIX)
         cache_suffix: str = Backends.ENGINE_CACHE_CODE[Backends.POWERSHELL_ID]
@@ -87,7 +87,7 @@ class PowerShellTTSSettings:
                                                  value=cache_suffix,
                                                  define_setting=True,
                                                  service_status=StatusType.OK,
-                                                 persist=True)
+                                                 persist=False)
 
         gender_validator = GenderValidator(cls.service_key.with_prop(SettingProp.GENDER),
                                            min_value=Genders.FEMALE,
@@ -96,6 +96,8 @@ class PowerShellTTSSettings:
                                            define_setting=True,
                                            service_status=StatusType.OK,
                                            persist=True)
+        gender_validator.set_tts_value(Genders.UNKNOWN)
+
         #
         # Need to define Conversion Constraints between the TTS 'standard'
         # constraints/settings to the engine's constraints/settings
@@ -117,15 +119,17 @@ class PowerShellTTSSettings:
                                             is_integer=True,
                                             define_setting=True,
                                             service_status=StatusType.OK,
-                                            persist=True)
+                                            persist=False)
 
         t_key = cls.service_key.with_prop(SettingProp.LANGUAGE)
         SettingsMap.define_setting(t_key, SettingType.STRING_TYPE,
-                                   service_status=StatusType.OK)
+                                   service_status=StatusType.OK,
+                                   persist=True)
 
         t_key = cls.service_key.with_prop(SettingProp.VOICE)
         SettingsMap.define_setting(t_key, SettingType.STRING_TYPE,
-                                   service_status=StatusType.OK)
+                                   service_status=StatusType.OK,
+                                   persist=True)
 
         allowed_player_modes: List[str] = [
             PlayerMode.SLAVE_FILE.value,

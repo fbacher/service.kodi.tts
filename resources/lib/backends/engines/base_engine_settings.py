@@ -70,4 +70,4 @@ class BaseEngineSettings:
                                                default=True,
                                                define_setting=True,
                                                service_status=StatusType.OK,
-                                               persist=True)
+                                               persist=False)

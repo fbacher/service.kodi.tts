@@ -136,6 +136,7 @@ class BackgroundProgress(WindowHandlerBase):
     def __init__(self, win_id=None, service: ForwardRef('TTSService') = None,
                  windialog_state: WinDialogState = None) -> None:
         cls = type(self)
+        self._win = None
         super().__init__(win_id, service)
         cls._logger = module_logger
 

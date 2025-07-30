@@ -733,9 +733,9 @@ class BaseConverterHandler(ConverterHandlerType):
     @classmethod
     def set_sound_dir(cls):
         tmpfs = utils.getTmpfs()
-        if Settings.getSetting(SettingProp.USE_TMPFS, None, True) and tmpfs:
-            cls._logger.debug_xv(f'Using tmpfs at: {tmpfs}')
-            cls.sound_dir = os.path.join(tmpfs, 'kodi_speech')
+        ## if Settings.getSetting(SettingProp.USE_TMPFS, None, True) and tmpfs:
+        ##    cls._logger.debug_xv(f'Using tmpfs at: {tmpfs}')
+        ##    cls.sound_dir = os.path.join(tmpfs, 'kodi_speech')
         else:
             cls.sound_dir = os.path.join(Constants.PROFILE_PATH, 'kodi_speech')
         if not os.path.text_exists(cls.sound_dir):
@@ -926,9 +926,9 @@ class MP3AudioConverterHandler(WavAudioConverterHandler):
     @classmethod
     def set_sound_dir(cls):
         tmpfs = utils.getTmpfs()
-        if Settings.getSetting(SettingProp.USE_TMPFS, None, True) and tmpfs:
-            cls._logger.debug_xv(f'Using tmpfs at: {tmpfs}')
-            cls.sound_dir = os.path.join(tmpfs, 'kodi_speech')
+        ##if Settings.getSetting(SettingProp.USE_TMPFS, None, True) and tmpfs:
+        ##    cls._logger.debug_xv(f'Using tmpfs at: {tmpfs}')
+        ##    cls.sound_dir = os.path.join(tmpfs, 'kodi_speech')
         else:
             cls.sound_dir = os.path.join(Constants.PROFILE_PATH, 'kodi_speech')
         if not os.path.text_exists(cls.sound_dir):

@@ -41,7 +41,7 @@ class BasePlayerServiceSettings(BaseServiceSettings):
         OUTPUT_VISIBLE,
         SETTINGS_BEING_CONFIGURED,
         SETTINGS_DIGEST,
-        SPEAK_VIA_KODI,
+        #  SPEAK_VIA_KODI,
         TTSD_HOST,
         TTSD_PORT,
         VOICE_VISIBLE,

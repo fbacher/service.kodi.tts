@@ -1,20 +1,24 @@
 # -*- coding: utf-8 -*-
+
+"""
+Provides basic ability to create, delete and modify keymaps primarily for defining
+keymaps for Kodi TTS functions.
+"""
 from __future__ import annotations  # For union operator |
 
-import os
 from pathlib import Path
 from threading import Timer
 
 import xbmc
-import xbmcaddon
 import xbmcgui
-import xbmcvfs
 
+from backends.settings.service_types import LabeledType
 from common import *
 
 from common import utils
 from common.constants import Constants
 from common.logger import *
+from common.message_ids import MessageId
 from common.messages import Messages
 from common.system_queries import SystemQueries
 
@@ -29,12 +33,20 @@ ACTIONS = (
     ('DISABLE', 'f12'),
     ('VOL_UP', 'numpadplus mod="ctrl"'),
     ('VOL_DOWN', 'numpadminus mod="ctrl"')
-
 )
 
 BASIC_ACTIONS = (
     ('DISABLE', 'f12'),
 )
+
+
+class Status(LabeledType):
+    # Enum with ordinal and MessageId
+    #
+    #  RESTART: Kodi restart required before new keymap is used
+    RESTART = 'RESTART', 0, MessageId.UPDATED_KEYMAPS_IN_EFFECT
+    FAILED = 'FAILED', 1, MessageId.FAILED_TO_UPDATE_KEYMAP
+    NO_CHANGE = 'NO_CHANGE', 2, MessageId.KEYMAP_NO_CHANGE
 
 
 def processCommand(command):
@@ -65,6 +77,14 @@ def _keyMapDefsPath() -> Path:
 
 
 def loadCustomKeymapDefs():
+    """
+    Read existing keymap file into a map indexed by the keyboard shortcut and
+    value of the action to take:
+    <f12 mod="alt,shift">Notification(Keypress, you pressed alt-shift-f12, 5)</f12>
+    key is <f12 mod
+    val = "alt,shift">Notification...</f12>
+
+    """
     path: Path = _keyMapDefsPath()
     if not path.exists():
         return {}
@@ -72,10 +92,11 @@ def loadCustomKeymapDefs():
         lines = f.read().splitlines()
     defs = {}
     try:
-        for l in lines:
-            if not l:
+        for line in lines:
+            if not line:
                 continue
-            key, val = l.split("=", 1)
+            key, val = line.split("=", 1)
+            MY_LOGGER.debug(f'key: {key} value: {val}')
             defs[key] = val
         return defs
     except:
@@ -86,7 +107,7 @@ def loadCustomKeymapDefs():
 def saveCustomKeymapDefs(defs):
     out = ''
     for k, v in list(defs.items()):
-        out += '{0}={1}\n'.format(k, v)
+        out += f'{k}={v}\n'
     path: Path = _keyMapDefsPath()
     with path.open('w', encoding='utf-8') as f:
         f.write(out)
@@ -99,26 +120,32 @@ def installDefaultKeymap(quiet=False):
                             Messages.get_msg(Messages.DEFAULT_KEYMAP_INSTALLED))
 
 
-def installBasicKeymap() -> bool:
-    restart: bool = False
+def installBasicKeymap() -> Status:
+    """
+    Overwrites the existing keymap with a basic one.
+    :returns: True if a new keymap was installed. Kodi must restart to pick up
+              changes.
+              False if a restart is not necessary or if an error occurred creating
+              new keymap.
+    """
+    status: Status = Status.RESTART
     target_path: Path = _keymapTarget()
     if target_path.exists():
         MY_LOGGER.debug(f'keymap {target_path} already exists. Delete before replacing')
-        return restart
+        return Status.RESTART
 
     xml = None
     key_map: Path = _keymapSource('basic')
     if not key_map.exists():
-        MY_LOGGER.debug(f'{key_map} prototype keymap {key_map} does NOT exist.')
-        return restart
+        MY_LOGGER.debug(f'prototype keymap {key_map} does NOT exist.')
+        return Status.FAILED
     with _keymapSource('basic').open('r', encoding='utf-8') as f:
         xml = f.read()
-    if xml:
-        restart = True
+    if xml is None:
+        return Status.FAILED
 
     saveKeymapXML(xml)
-    return restart
-
+    return Status.RESTART
 
 def installCustomKeymap():
     buildKeymap()
@@ -171,7 +198,6 @@ def buildKeymap(defaults=False):  # TODO: Build XML with ElementTree?
                     f'</{default.split(" ", 1)[0]}>'[0]))
 
     xml = xml.format(SPECIAL=SystemQueries.isPreInstalled() and 'kodi' or 'home')
-
     saveKeymapXML(xml)
 
 
@@ -220,9 +246,8 @@ class KeyListener(xbmcgui.WindowXMLDialog):
 
     def __init__(self):
         super().__init__()
-        self.msg1 = Messages.get_msg(Messages.PRESS_KEY_TO_ASSIGN)
-        self.msg2 = '{0}...'.format(Messages.TIMEOUT_IN_X_SECONDS) \
-            .format('%.0f' % self.TIMEOUT)
+        self.msg1 = MessageId.PRESS_KEY_TO_ASSIGN.get_msg()
+        self.msg2 = MessageId.TIMEOUT_IN_X_SECONDS.get_formatted_msg(self.TIMEOUT)
         self.key = None
 
     def onInit(self):

@@ -143,7 +143,7 @@ class IValidator:
 
     @property
     def default(self) -> bool | int | float | str:
-        raise NotImplementedError()
+        raise ValueError('Does not support Default')
 
     def get_tts_values(self) -> UIValues:
         """

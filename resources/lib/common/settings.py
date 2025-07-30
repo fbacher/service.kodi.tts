@@ -82,8 +82,7 @@ class Settings(SettingsLowLevel):
 
     @classmethod
     def get_addons_md5(cls) -> str:
-        service_key: ServiceID = ServiceKey.TTS_KEY
-        service_key = service_key.with_prop(SettingProp.ADDONS_MD5)
+        service_key: ServiceID = ServiceKey.ADDONS_MD5
         addon_md5_val: IValidator = SettingsMap.get_validator(service_key)
         addon_md5: str = addon_md5_val.get_tts_value()
         # MY_LOGGER.debug(f'addons MD5: {SettingProp.ADDONS_MD5}')
@@ -91,8 +90,7 @@ class Settings(SettingsLowLevel):
 
     @classmethod
     def set_addons_md5(cls, addon_md5: str) -> None:
-        service_key: ServiceID = ServiceKey.TTS_KEY
-        service_key = service_key.with_prop(SettingProp.ADDONS_MD5)
+        service_key: ServiceID = ServiceKey.ADDONS_MD5
         addon_md5_val: IValidator = SettingsMap.get_validator(service_key)
         addon_md5_val.set_tts_value(addon_md5)
         # MY_LOGGER.debug(f'setting addons md5: {addon_md5}')
@@ -188,7 +186,7 @@ class Settings(SettingsLowLevel):
         return SettingProp.ESPEAK_ID
 
     @classmethod
-    def get_extended_help_on_startup(cls) -> bool:
+    def is_extended_help_on_startup(cls) -> bool:
         service_key: ServiceID
         service_key = ServiceKey.TTS_KEY.with_prop(
                                             SettingProp.EXTENDED_HELP_ON_STARTUP)
@@ -203,44 +201,77 @@ class Settings(SettingsLowLevel):
                                           extended_help_enabled)
 
     @classmethod
-    def get_hint_text_on_startup(cls) -> bool:
+    def is_start_config_gui_on_startup(cls) -> bool:
+        """
+         Determines if TTS configure GUI should be run on the next startup
+        """
         service_key: ServiceID
-        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.HINT_TEXT_ON_STARTUP)
+        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.START_CFG_GUI_ON_STARTUP)
         return SettingsLowLevel.get_setting_bool(service_key)
 
     @classmethod
-    def set_hint_text_on_startup(cls, startup_hint_text_enabled: bool) -> bool:
+    def set_start_config_gui_on_startup(cls, start_config_gui: bool) -> None:
+        """
+        Configures TTS to enter the GUI configure tool at startup
+        :param start_config_gui: If True, then the config gui will be displayed
+        on the next restart of TTS
+        """
         service_key: ServiceID
-        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.HINT_TEXT_ON_STARTUP)
-        return SettingsLowLevel.get_setting_bool(service_key)
+        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.START_CFG_GUI_ON_STARTUP)
+        SettingsLowLevel.set_setting_bool(service_key, start_config_gui)
 
     @classmethod
-    def get_configure_dependencies_on_startup(cls) -> bool:
+    def is_configure_dependencies_on_startup(cls) -> bool:
+        """
+        Check to see if external dependencies (commands, etc.) need to be configured
+        after TTS installation or update.
+
+        :return: True if external dependencies need configuring.
+        """
         service_key: ServiceID
-        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.CONFIGURE_DEPENDENCIES_ON_STARTUP)
+        service_key = ServiceKey.TTS_KEY.with_prop(
+                SettingProp.CONFIGURE_DEPENDENCIES_ON_STARTUP)
         return SettingsLowLevel.get_setting_bool(service_key)
 
     @classmethod
     def set_configure_dependencies_on_startup(cls, configure_on_startup: bool) -> None:
+        """
+        Remember that permissions, paths etc. for external dependencies require
+        configuration.
+
+        :param configure_on_startup: If True, then configuration is required,
+                                     otherwise, configuration is not required.
+        """
         service_key: ServiceID
-        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.CONFIGURE_DEPENDENCIES_ON_STARTUP)
+        service_key = ServiceKey.TTS_KEY.with_prop(
+                SettingProp.CONFIGURE_DEPENDENCIES_ON_STARTUP)
         SettingsLowLevel.set_setting_bool(service_key, configure_on_startup)
 
     @classmethod
-    def get_configure_keymap_on_startup(cls) -> bool:
+    def is_configure_keymap_on_startup(cls) -> bool:
+        """
+        After installation or update the keymap file may require updating.
+
+        return: True if keymap requires updating or review.
+        """
         service_key: ServiceID
         service_key = ServiceKey.TTS_KEY.with_prop(
-            SettingProp.CONFIGURE_DEPENDENCIES_ON_STARTUP)
+            SettingProp.CONFIGURE_KEYMAP_ON_STARTUP)
         return SettingsLowLevel.get_setting_bool(service_key)
 
     @classmethod
     def set_configure_keymap_on_startup(cls, configure_on_startup: bool) -> None:
+        """
+
+        """
         service_key: ServiceID
-        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.CONFIGURE_DEPENDENCIES_ON_STARTUP)
+        service_key = ServiceKey.TTS_KEY.with_prop(
+                SettingProp.CONFIGURE_KEYMAP_ON_STARTUP)
+        MY_LOGGER.debug(f'{service_key} value: {configure_on_startup}')
         SettingsLowLevel.set_setting_bool(service_key, configure_on_startup)
 
     @classmethod
-    def get_introduction_on_startup(cls) -> bool:
+    def is_introduction_on_startup(cls) -> bool:
         service_key: ServiceID
         service_key = ServiceKey.TTS_KEY.with_prop(
                 SettingProp.INTRODUCTION_ON_STARTUP)
@@ -249,20 +280,21 @@ class Settings(SettingsLowLevel):
     @classmethod
     def set_introduction_on_startup(cls, introduction_on_startup: bool) -> None:
         service_key: ServiceID
-        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.INTRODUCTION_ON_STARTUP)
+        service_key = ServiceKey.TTS_KEY.with_prop(
+                SettingProp.INTRODUCTION_ON_STARTUP)
         SettingsLowLevel.set_setting_bool(service_key, introduction_on_startup)
 
     @classmethod
-    def get_help_config_on_startup(cls) -> bool:
+    def is_config_help_on_startup(cls) -> bool:
         service_key: ServiceID
-        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.HELP_CONFIG_ON_STARTUP)
+        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.CONFIG_HELP_ON_STARTUP)
         return SettingsLowLevel.get_setting_bool(service_key)
 
     @classmethod
-    def set_help_config_on_startup(cls, help_config_on_startup: bool) -> None:
+    def set_config_help_on_startup(cls, config_help_on_startup: bool) -> None:
         service_key: ServiceID
-        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.HELP_CONFIG_ON_STARTUP)
-        SettingsLowLevel.set_setting_bool(service_key, help_config_on_startup)
+        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.CONFIG_HELP_ON_STARTUP)
+        SettingsLowLevel.set_setting_bool(service_key, config_help_on_startup)
 
     @classmethod
     def get_gender(cls, engine_key: ServiceID | None = None) -> Genders:
@@ -309,8 +341,11 @@ class Settings(SettingsLowLevel):
 
     @classmethod
     def set_initial_run(cls, initial_run: bool) -> None:
+        MY_LOGGER.debug(f'setting initial_run: {initial_run} key:'
+                        f' {ServiceKey.INITIAL_RUN.short_key}')
         SettingsLowLevel.set_setting_bool(ServiceKey.INITIAL_RUN,
                                           initial_run)
+        MY_LOGGER.debug(f'is_initial_run: {cls.is_initial_run()}')
 
     @classmethod
     def get_language(cls, engine_key: ServiceID | None = None) -> str:
@@ -398,9 +433,7 @@ class Settings(SettingsLowLevel):
         voice_key: ServiceID = engine_key.with_prop(SettingProp.VOICE)
         voice = SettingsLowLevel.get_setting_str(voice_key, load_on_demand=True)
         if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'voice: {voice} voice_key: {voice_key}')
-            MY_LOGGER.debug(f'{voice_key} in cache: '
-                            f'{SettingsLowLevel.is_in_cache(voice_key)}')
+            MY_LOGGER.debug(f'voice: {voice} voice_key: {voice_key} voice: {voice}')
         return voice
 
     @classmethod
@@ -430,8 +463,8 @@ class Settings(SettingsLowLevel):
             reraise(*sys.exc_info())
         except Exception as e:
             MY_LOGGER.exception('')
-        if MY_LOGGER.isEnabledFor(DEBUG_XV):
-            MY_LOGGER.debug_xv(f'use_cache: {cache_speech_key} {use_cache}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'use_cache: {cache_speech_key} {use_cache}')
         return use_cache
 
     @classmethod
@@ -453,9 +486,9 @@ class Settings(SettingsLowLevel):
             if not SettingsMap.is_valid_setting(cache_speech_key):
                 raise ValueError(f'service: {cache_speech_key} NOT supported')
             SettingsLowLevel.set_setting_bool(cache_speech_key, use_cache)
-            if MY_LOGGER.isEnabledFor(DEBUG_XV):
-                MY_LOGGER.debug_xv(f'Setting {cache_speech_key} cache_speech to:'
-                                   f' {use_cache}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'Setting {cache_speech_key} cache_speech to:'
+                                f' {use_cache}')
         except Exception as e:
             MY_LOGGER.exception('')
         return

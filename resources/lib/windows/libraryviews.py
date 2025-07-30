@@ -26,8 +26,12 @@ class VideoLibraryWindowReader(base.DefaultWindowReader):
         cls = type(self)
         text: str
         compare: str
+        success: bool = False
+        MY_LOGGER.debug(f'control_id: {control_id} incomming phrases: {phrases}')
         if self.slideoutHasFocus():
-            return self.getSlideoutText(control_id, phrases)
+            success = self.getSlideoutText(control_id, phrases)
+            MY_LOGGER.debug(f'slideoutHasFocus success: {success} phrases: {phrases}')
+            return success
         if not control_id:
             return False
         text = xbmc.getInfoLabel('ListItem.Label')
@@ -35,15 +39,12 @@ class VideoLibraryWindowReader(base.DefaultWindowReader):
         if not text:
             return base.DefaultWindowReader.getControlText(self, control_id,
                                                            phrases)
+        MY_LOGGER.debug(f'A ListItem label: {text}')
         status: str = ''
         if xbmc.getCondVisibility('ListItem.IsResumable'):
             status = f': {Messages.get_msg(Messages.RESUMABLE)}'
         elif xbmc.getInfoLabel('ListItem.Overlay') == 'OverlayWatched.png':
             status = f': {Messages.get_msg(Messages.WATCHED)}'
         #  MY_LOGGER.debug(f'text: {text} status: {status} phrases: {phrases}')
-        if status != '':
-            phrases.add_text(texts=f'{text} {status}')
-        else:
-            phrases.add_text(texts=text)
-            return True
-        return False
+        phrases.add_text(texts=f'{text} {status}')
+        return True

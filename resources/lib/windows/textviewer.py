@@ -25,7 +25,7 @@ class TextViewerReader(WindowReaderBase):
         cls = type(self)
         super().__init__(win_id, service, windialog_state)
         self.start = time.time()
-        self._last_md5sum: bytes = None
+        self._last_md5sum: bytes | None = None
         self.doubleChecked: bool = False
 
     def init(self) -> None:
@@ -33,18 +33,18 @@ class TextViewerReader(WindowReaderBase):
         self._last_md5sum: bytes = None
         self.doubleChecked: bool = False
 
-    def last(self, new):
+    def last(self, new: List[str]) -> None:
         new_text_thumbprint: str = ''.join(new)
         if len(new_text_thumbprint) == 0:
             return
 
-        md5sum = new and hashlib.md5(new_text_thumbprint).digest() or None
+        md5sum = new and hashlib.md5(new_text_thumbprint.encode('utf-8')).digest() or None
         if md5sum == self._last_md5sum:
             return True
         self._last_md5sum = md5sum
 
     def getViewerTexts(self) -> List[str]:
-        text = xbmc.getInfoLabel('Control.GetLabel(5)') or xbmc.getInfoLabel(
+        text: str = xbmc.getInfoLabel('Control.GetLabel(5)') or xbmc.getInfoLabel(
                 'Control.GetLabel(2000)')
         if text:
             return self.processLines(text.splitlines())

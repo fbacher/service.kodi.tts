@@ -141,8 +141,9 @@ class WindowReaderBase(WindowHandlerBase):
         return True
 
     def slideoutHasFocus(self) -> bool:
-        return xbmc.getCondVisibility(f'ControlGroup({self._slideoutGroupID})'
-                                      f'.HasFocus({self._slideoutGroupID})')
+        visible: bool = xbmc.getCondVisibility(f'ControlGroup({self._slideoutGroupID})'
+                                               f'.HasFocus({self._slideoutGroupID})')
+        MY_LOGGER.debug(f'slideoutGroupID: {self._slideoutGroupID} visible: {visible}')
 
     def getSettingControlText(self, control_id) -> str:
         cls = type(self)
@@ -196,16 +197,16 @@ class DefaultWindowReader(WindowReaderBase):
         clz = type(self)
         text: str
         success: bool = False
+        MY_LOGGER.debug(f'control_id: {control_id} incomming phrases:{phrases}')
         if self.slideoutHasFocus():
             success = self.getSlideoutText(control_id, phrases)
-            if not success and MY_LOGGER.isEnabledFor(DEBUG_XV):
-                if MY_LOGGER.isEnabledFor(DEBUG_XV):
-                    MY_LOGGER.debug_xv(f'slideoutHasFocus: {success}')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'slideoutHasFocus: {success} phrases: {phrases}')
             return True   # TODO: Change?
         if control_id is None:
             if MY_LOGGER.isEnabledFor(DEBUG_XV):
-                MY_LOGGER.debug_v(f'control_id {control_id} not found')
-            return False
+                MY_LOGGER.debug_xv(f'control_id {control_id} not found')
+            #  return False
         # First, see if there is a ListItem with the title of
         # the currently selected song, movie, game in a container.
         text: str | None = xbmc.getInfoLabel('ListItem.Title')

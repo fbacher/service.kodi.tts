@@ -20,7 +20,7 @@ class RadioButtonTopicModel(TopicModel):
 
         Notes:
             It may be possible to use the function SetProperty with onclick to
-            set the state of the button in a window property and the access that
+            set the state of the button in a window property and then access that
             value using an infolabel.
     """
 

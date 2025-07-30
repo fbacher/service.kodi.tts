@@ -1,7 +1,7 @@
 # coding=utf-8
 from __future__ import annotations  # For union operator |
 
-from common.logger import BasicLogger
+from common.logger import *
 from enum import Enum
 try:
     from enum import StrEnum
@@ -265,9 +265,11 @@ class TTS_Type(StrEnum):
     BACKGROUND_PROGRESS_INTERVAL = 'background_progress_interval'
     CACHE_PATH = 'cache_path'
     CACHE_EXPIRATION_DAYS = 'cache_expiration_days'
+    CHANNELS = 'channels'
     CURRENT_ENGINE = 'current_engine'
     CONFIGURE_DEPENDENCIES_ON_STARTUP = 'configure_dependencies_on_startup'
     CONFIGURE_KEYMAP_ON_STARTUP = 'configure_keymap_on_startup'
+    CONFIGURE_TTS_ON_STARTUP = 'configure_on_startup'
     DISABLE_BROKEN_SERVICES = 'disable_broken_services'
     SERVICE_ID = 'id'
     SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA = 'speak_background_progress_during_media'
@@ -292,12 +294,11 @@ class TTS_Type(StrEnum):
     #  SETTINGS_DIGEST = 'settings_digest'
     #  SETTINGS_LAST_CHANGED=
     SPEAK_LIST_COUNT = 'speak_list_count'
-    SPEAK_VIA_KODI = 'speak_via_kodi'
+    #  SPEAK_VIA_KODI = 'speak_via_kodi'
     SERVICE_NAME = 'name'
     #  SPEED_VISIBLE=
     #  TTSD_HOST=
     #  TTSD_PORT=
-    USE_TMPFS = 'use_tmpfs'
     VERSION = 'version'
     SPEED = 'speed'
     VOLUME = 'volume'
@@ -544,7 +545,8 @@ class ServiceID:
             else:
                 self._key = (f'{self.service_type.value}.{self.service_id}.'
                              f'{TTS_Type.SERVICE_ID}')
-            MY_LOGGER.debug(f'key: {self._key}')
+            if MY_LOGGER.isEnabledBy(DEBUG_V):
+                MY_LOGGER.debug_v(f'key: {self._key}')
         return self._key
 
     @property
@@ -559,7 +561,7 @@ class ServiceID:
                 # raise ValueError('Missing setting_id')
                 return self.service_key
             self._short_key = f'{str(self.setting_id)}.{str(self.service_id)}'
-            MY_LOGGER.debug(f'short_key: {self._short_key}')
+            #  MY_LOGGER.debug(f'short_key: {self._short_key}')
         return self._short_key
 
     @property
@@ -576,8 +578,8 @@ class ServiceID:
         if self._service_key is None:
             self._service_key: str = (f'{self.service_type.value}.{str(self.service_id)}.'
                                       f'{TTS_Type.SERVICE_ID}')
-            MY_LOGGER.debug(f'service_type.service_id.id: {self._service_key}'
-                            f' service_key: {self.key}')
+            #  MY_LOGGER.debug(f'service_type.service_id.id: {self._service_key}'
+            #                  f' service_key: {self.key}')
         return self._service_key
 
     @property
@@ -594,8 +596,6 @@ class ServiceID:
         if self._short_service_key is None:
             self._short_service_key: str = (f'{TTS_Type.SERVICE_ID}.'
                                             f'{str(self.service_id)}')
-            MY_LOGGER.debug(f'id.service_id: {self._short_service_key}'
-                            f' key: {self}')
         return self._short_service_key
 
     def __eq__(self, other: object) -> bool:
@@ -659,6 +659,9 @@ class ServiceKey:
     BACKGROUND_PROGRESS_INTERVAL = TTS_KEY.with_prop(TTS_Type.BACKGROUND_PROGRESS_INTERVAL)
     CACHE_EXPIRATION_DAYS: ServiceID  #
     CACHE_EXPIRATION_DAYS = TTS_KEY.with_prop(TTS_Type.CACHE_EXPIRATION_DAYS)
+    CHANNELS_KEY: ServiceID
+    CHANNELS_KEY = TTS_KEY.with_prop(TTS_Type.CHANNELS)
+    CONFIGURE_TTS_ON_STARTUP = TTS_KEY.with_prop(TTS_Type.CONFIGURE_TTS_ON_STARTUP)
     # CACHE_PATH: ServiceID  #
     # CACHE_PATH = TTS_KEY.with_prop(TTS_Type.CACHE_PATH)
     CURRENT_ENGINE_KEY: ServiceID
@@ -694,12 +697,10 @@ class ServiceKey:
     SPEAK_LIST_COUNT = TTS_KEY.with_prop(TTS_Type.SPEAK_LIST_COUNT)
     SPEAK_ON_SERVER: ServiceID
     SPEAK_ON_SERVER = TTS_KEY.with_prop(TTS_Type.SPEAK_ON_SERVER)
-    SPEAK_VIA_KODI: ServiceID  #
-    SPEAK_VIA_KODI = TTS_KEY.with_prop(TTS_Type.SPEAK_VIA_KODI)
+    #  SPEAK_VIA_KODI: ServiceID  #
+    #  SPEAK_VIA_KODI = TTS_KEY.with_prop(TTS_Type.SPEAK_VIA_KODI)
     SPEED: ServiceID
     SPEED = TTS_KEY.with_prop(TTS_Type.SPEED)
-    USE_TMPFS: ServiceID    #
-    USE_TMPFS = TTS_KEY.with_prop(TTS_Type.USE_TMPFS)
     VERSION: ServiceID    #
     VERSION = TTS_KEY.with_prop(TTS_Type.VERSION)
     VOLUME: ServiceID    #

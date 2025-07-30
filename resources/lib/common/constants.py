@@ -21,7 +21,7 @@ from common.kodiaddon import Addon
 addonName = 'service.kodi.tts'
 addon = Addon(addonName)
 
-DEBUG_LOGGING: bool = False
+DEBUG_LOGGING: bool = True
 
 
 class Constants:
@@ -38,6 +38,12 @@ class Constants:
     ADDON_PATH = None
     PYTHON_ROOT_PATH = None
     SHELL_SCRIPTS_PATH = None
+
+    # The following external commands Paths are defined here.
+    # There is a default location and then there is an environment
+    # variable to fall back on. Should probably use 'where' command on
+    # windows (command.com) or 'whereis' on Linux
+
     ESPEAK_PATH: Path = None
     ESPEAK_PATH_WINDOWS: Path = None
     ESPEAK_PATH_LINUX: Path = '/usr/bin/espeak-ng'
@@ -47,6 +53,20 @@ class Constants:
     ESPEAK_DATA_PATH: Path = None
     ESPEAK_DATA_PATH_WINDOWS: Path = Path('C:/Program Files/espeak NG/espeak-ng-data')
     ESPEAK_DATA_PATH_LINUX: Path = None
+    # Define environment variables to use if not found in default location (ESPEAK_PATH,
+    # above.
+    ESPEAK_ENV_VAR: str = 'ESPEAK_PATH'
+    ESPEAK_DATA_ENV_VAR: str = 'ESPEAK_DATA'
+
+    MPV_PATH_LINUX: Final[str] = '/usr/bin/mpv'
+    MPLAYER_PATH_LINUX: Final[str] = '/usr/bin/mplayer'
+    MPV_PATH_WINDOWS: Final[str] = 'C:/Program Files/mpv/mpv.exe'
+    MPLAYER_PATH_WINDOWS: Final[str] = 'C:/Program Files/mplayer/mplayer.exe'
+    MPLAYER_PATH: str = None
+    MPV_PATH: str = None
+    MPV_PATH_ENV_VAR: Final[str] = 'MPV_PATH'
+    MPLAYER_PATH_ENV_VAR: Final[str] = MPLAYER_PATH
+
     ADDON_DIRECTORY = None
     #  AUTO: Final[str] = 'auto'  # Not used here
     BACKENDS_DIRECTORY = None
@@ -75,12 +95,6 @@ class Constants:
     CONFIG_SCRIPT_PATH_WINDOWS: str | None = None
     MAX_PHRASE_LENGTH: Final[str] = 'max_phrase_length'
 
-    MPV_PATH_LINUX: Final[str] = '/usr/bin/mpv'
-    MPLAYER_PATH_LINUX: Final[str] = '/usr/bin/mplayer'
-    MPV_PATH_WINDOWS: Final[str] = 'C:/Program Files/mpv/mpv.exe'
-    MPLAYER_PATH_WINDOWS: Final[str] = 'C:/Program Files/mplayer/mplayer.exe'
-    MPLAYER_PATH: str = None
-    MPV_PATH: str = None
     # TODO: can't distinguish between constants and calculated values (was None)
     CACHE_TOP: Final[str] = 'cache_top'
 
@@ -96,6 +110,7 @@ class Constants:
     # Don't voice while video is playing
     STOP_ON_PLAY: bool = True
 
+    NOTICE_QUEUE_LIMIT: int = 40
     SEED_CACHE_WITH_EXPIRED_PHRASES: bool = False
     # Maximum number of directories to search for un-voiced text files
     SEED_CACHE_DIR_LIMIT: int = 10
@@ -161,7 +176,7 @@ class Constants:
             espeak_path: Path = Constants.ESPEAK_PATH_WINDOWS
             if not espeak_path.exists():
                 if DEBUG_LOGGING:
-                    xbmc.log(f'Predefined espeak path not found: {espeak_path}')
+                    xbmc.log(f'espeak-ng.exe not found in default path: {espeak_path}.')
                 espeak_path = Path(os.environ.get('ESPEAK_PATH', ''))
                 if not espeak_path.exists():
                     if DEBUG_LOGGING:

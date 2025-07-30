@@ -5,6 +5,7 @@ import json
 import os
 import subprocess
 import sys
+from io import StringIO
 
 import langcodes
 
@@ -142,6 +143,7 @@ class PowerShellTTS(SimpleTTSBackend):
         super().__init__(*args, **kwargs)
         clz = type(self)
         self.process: subprocess.Popen | None = None
+        self.completed_process: subprocess.CompletedProcess | None = None
         self.voice_cache: VoiceCache = VoiceCache(clz.service_key)
 
         if not clz._initialized:
@@ -219,7 +221,8 @@ class PowerShellTTS(SimpleTTSBackend):
             completed: subprocess.CompletedProcess
             completed = subprocess.run(cmd_args, stdin=None, capture_output=True,
                                        text=True, env=env, close_fds=True,
-                                       encoding='utf-8', shell=False, check=True)
+                                       encoding='utf-8', shell=False, check=True,
+                                       creationflags=subprocess.CREATE_NO_WINDOW)
             rc = completed.returncode
             if rc != 0:
                 MY_LOGGER.debug(f'config output: {completed.stdout}')
@@ -357,7 +360,8 @@ class PowerShellTTS(SimpleTTSBackend):
             completed: subprocess.CompletedProcess
             completed = subprocess.run(cmd_args, stdin=None, capture_output=True,
                                        text=True, env=env, close_fds=True,
-                                       encoding='utf-8', shell=False, check=True)
+                                       encoding='utf-8', shell=False, check=True,
+                                       creationflags=subprocess.CREATE_NO_WINDOW)
             rc = completed.returncode
             if rc != 0:
                 MY_LOGGER.debug(f'config output: {completed.stdout}')
@@ -482,8 +486,8 @@ class PowerShellTTS(SimpleTTSBackend):
         """
         clz = type(self)
         clz.update_voice_path(phrase)
-        if MY_LOGGER.isEnabledFor(DEBUG_V):
-            MY_LOGGER.debug_v(f'phrase: {phrase.get_text()} {phrase.get_debug_info()} '
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'phrase: {phrase.get_text()} {phrase.get_debug_info()} '
                               f'cache_path: {phrase.get_cache_path()} use_cache: '
                               f'{Settings.is_use_cache()}')
         self.get_voice_cache().get_path_to_voice_file(phrase,
@@ -561,123 +565,148 @@ class PowerShellTTS(SimpleTTSBackend):
         sfx_player: bool = Settings.get_player().setting_id == Players.SFX
         use_cache: bool = Settings.is_use_cache() or sfx_player
         # Get path to audio-temp file, or cache location for audio
-        result: CacheEntryInfo | None = None
-        result = self.get_voice_cache().get_path_to_voice_file(phrase,
-                                                               use_cache=use_cache,
-                                                               delete_tmp=False)
+        cache_entry_info: CacheEntryInfo | None = None
+        cache_entry_info = self.get_voice_cache().get_path_to_voice_file(phrase,
+                                                                         use_cache=use_cache,
+                                                                         delete_tmp=False)
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             MY_LOGGER.debug_v(f'phrase: {phrase.get_text()} {phrase.get_debug_info()} '
                               f'cache_path: {phrase.get_cache_path()} ')
-        audio_exists: bool = result.audio_exists  # True ONLY if using cache
+        audio_exists: bool = cache_entry_info.audio_exists  # True ONLY if using cache
         if audio_exists:
-            return result.final_audio_path
+            return cache_entry_info.final_audio_path
 
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             MY_LOGGER.debug_v(f'PowerShell.runCommand cache: {use_cache} '
-                              f'PowerShell_out_file: {result.temp_voice_path.name}\n'
+                              f'PowerShell_out_file: {cache_entry_info.temp_voice_path.name}\n'
                               f'text: {phrase.text}')
         env = os.environ.copy()
-        args: List[str] = self.get_args(phrase, result.temp_voice_path)
+        args: List[str] = self.get_args(cache_entry_info.temp_voice_path)
+        text: str = phrase.text
         if MY_LOGGER.isEnabledFor(DEBUG_V):
-            MY_LOGGER.debug_v(f'temp_voice_path type: {type(result.temp_voice_path)}')
+            MY_LOGGER.debug_v(f'temp_voice_path type: {type(cache_entry_info.temp_voice_path)}')
         try:
-            self.init_process()
+            completed: subprocess.CompletedProcess | None = None
             if Constants.PLATFORM_WINDOWS:
-                if MY_LOGGER.isEnabledFor(DEBUG_V):
-                    MY_LOGGER.debug_v(f'Running command: Windows: {args}')
-                self.process = subprocess.Popen(args, stdin=subprocess.DEVNULL,
-                                                stdout=subprocess.PIPE,
-                                                stderr=subprocess.STDOUT, shell=False,
-                                                text=True,
-                                                encoding='utf-8', env=env,
-                                                close_fds=True,
-                                                creationflags=subprocess.CREATE_NO_WINDOW)
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'Phrase: {phrase.text}')
+                    MY_LOGGER.debug(f'Running command: Windows: {args}')
+
+                completed = subprocess.run(args, input=text,
+                                           capture_output=True,
+                                           timeout=10.0,  # 10 seconds is a lot of time
+                                           shell=False,
+                                           text=True,
+                                           encoding='utf-8',
+                                           env=env,
+                                           close_fds=True,
+                                           creationflags=subprocess.CREATE_NO_WINDOW)
                 # DO NOT USE subprocess.DETACHED_PROCESS. It won't create voice files
                 try:
-                    if self.process is None:
-                        MY_LOGGER.DEBUG(f'command failed, process is None')
+                    if completed is None:
+                        MY_LOGGER.DEBUG(f'command failed, completed is None')
                         return None
-                    self.process.wait(timeout=20.0)
+                    completed.check_returncode()
                 except subprocess.TimeoutExpired:
                     if MY_LOGGER.isEnabledFor(DEBUG):
-                        MY_LOGGER.info(f'Navigator command could not complete in 20'
+                        MY_LOGGER.info(f'Command could not complete in 10'
                                        f' seconds')
                     return None
-                rc: int = self.process.returncode
-                if rc != 0:
-                    if MY_LOGGER.isEnabledFor(DEBUG):
-                        MY_LOGGER.debug(f'Failed RC: {self.process.returncode}')
-                self.process = None
+                if completed is not None:
+                    rc: int = completed.returncode
+                    if rc != 0:
+                        if MY_LOGGER.isEnabledFor(DEBUG):
+                            MY_LOGGER.debug(f'Failed RC: {rc}')
         except (OSError, ValueError, subprocess.CalledProcessError) as e:
             MY_LOGGER.exception('')
-            self.init_process()
             return None
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             MY_LOGGER.debug_v(f'COMMAND FINISHED phrase: {phrase.text}')
-        if not result.temp_voice_path.exists():
+        if not cache_entry_info.temp_voice_path.exists():
             if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'voice file not created: {result.temp_voice_path}')
+                MY_LOGGER.debug(f'voice file not created: {cache_entry_info.temp_voice_path}')
             return None
-        if result.temp_voice_path.stat().st_size <= 1000:
+        if cache_entry_info.temp_voice_path.stat().st_size <= 1000:
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debig(f'voice file too small. Deleting: '
-                                f'{result.temp_voice_path}')
+                                f'{cache_entry_info.temp_voice_path}')
             try:
-                result.temp_voice_path.unlink(missing_ok=True)
+                cache_entry_info.temp_voice_path.unlink(missing_ok=True)
                 if MY_LOGGER.isEnabledFor(DEBUG_V):
-                    MY_LOGGER.debug_v(f'unlink {result.temp_voice_path}')
+                    MY_LOGGER.debug_v(f'unlink {cache_entry_info.temp_voice_path}')
             except:
                 MY_LOGGER.exception('')
             return None
         try:
-            result.temp_voice_path.rename(result.final_audio_path)
-            phrase.set_cache_path(cache_path=result.final_audio_path,
+            cache_entry_info.temp_voice_path.rename(cache_entry_info.final_audio_path)
+            phrase.set_cache_path(cache_path=cache_entry_info.final_audio_path,
                                   text_exists=phrase.text_exists(active_engine=self,
                                                                  check_expired=False),
-                                  temp=not result.use_cache)
+                                  temp=not cache_entry_info.use_cache)
         except ExpiredException:
             try:
-                result.temp_voice_path.unlink(missing_ok=True)
+                cache_entry_info.temp_voice_path.unlink(missing_ok=True)
                 if MY_LOGGER.isEnabledFor(DEBUG_V):
-                    MY_LOGGER.debug_v(f'EXPIRED: unlink {result.temp_voice_path}')
+                    MY_LOGGER.debug_v(f'EXPIRED: unlink {cache_entry_info.temp_voice_path}')
             except:
-                MY_LOGGER.exception(f'Can not delete {result.temp_voice_path}')
+                MY_LOGGER.exception(f'Can not delete {cache_entry_info.temp_voice_path}')
             return None
         except Exception:
-            MY_LOGGER.exception(f'Could not rename {result.temp_voice_path} '
-                                f'to {result.final_audio_path}')
+            MY_LOGGER.exception(f'Could not rename {cache_entry_info.temp_voice_path} '
+                                f'to {cache_entry_info.final_audio_path}')
             try:
-                result.temp_voice_path.unlink(missing_ok=True)
+                cache_entry_info.temp_voice_path.unlink(missing_ok=True)
             except:
-                MY_LOGGER.exception(f'Can not delete {result.temp_voice_path}')
+                MY_LOGGER.exception(f'Can not delete {cache_entry_info.temp_voice_path}')
             return None
-        return result.final_audio_path  # Wave file
+        return cache_entry_info.final_audio_path  # Wave file
 
     def runCommandAndSpeak(self, phrase: Phrase) -> None:
         clz = type(self)
         clz.update_voice_path(phrase)
         env = os.environ.copy()
-        args: List[str] = self.get_args(phrase)
+        args: List[str] = self.get_args()
+        text: str = phrase.text
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             MY_LOGGER.debug_v(f'args: {args}')
+
         try:
-            self.init_process()
+            completed: subprocess.CompletedProcess | None = None
             if Constants.PLATFORM_WINDOWS:
-                if MY_LOGGER.isEnabledFor(DEBUG_V):
-                    MY_LOGGER.debug_v(f'Running command: Windows: {args}')
-                self.process = subprocess.Popen(args, stdin=subprocess.DEVNULL,
-                                                stdout=subprocess.DEVNULL,
-                                                stderr=subprocess.DEVNULL, shell=False,
-                                                text=True,
-                                                encoding='utf-8', env=env,
-                                                close_fds=True,
-                                                creationflags=subprocess.CREATE_NO_WINDOW)
-                self.process.communicate()
-                self.process = None
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'Phrase: {phrase.text}')
+                    MY_LOGGER.debug(f'Running command: Windows: {args}')
+
+                completed = subprocess.run(args, input=text,
+                                           capture_output=True,
+                                           timeout=10.0,  # 10 seconds is a lot of time
+                                           shell=False,
+                                           text=True,
+                                           encoding='utf-8',
+                                           env=env,
+                                           close_fds=True,
+                                           creationflags=subprocess.CREATE_NO_WINDOW)
+                # DO NOT USE subprocess.DETACHED_PROCESS. It won't create voice files
+                try:
+                    if completed is None:
+                        MY_LOGGER.DEBUG(f'command failed, completed is None')
+                        return None
+                    completed.check_returncode()
+                except subprocess.TimeoutExpired:
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.info(f'Command could not complete in 10'
+                                       f' seconds')
+                    return None
+                if completed is not None:
+                    rc: int = completed.returncode
+                    if rc != 0:
+                        if MY_LOGGER.isEnabledFor(DEBUG):
+                            MY_LOGGER.debug(f'Failed RC: {rc}')
         except (OSError, ValueError, subprocess.CalledProcessError) as e:
             MY_LOGGER.exception('')
-            self.init_process()
-        return None
+            return None
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'COMMAND FINISHED phrase: {phrase.text}')
 
     def seed_text_cache(self, phrases: PhraseList) -> None:
         """
@@ -846,9 +875,8 @@ class PowerShellTTS(SimpleTTSBackend):
             return choices, default_player
         return choices, ''
 
-    def get_args(self, phrase: Phrase, wave_output: Path | None = None) -> List[str]:
+    def get_args(self, wave_output: Path | None = None) -> List[str]:
         clz = type(self)
-        text: str = f'{phrase.text}'
 
         voice_id = Settings.get_voice(clz.service_key)
         if voice_id is None or voice_id in ('unknown', ''):
@@ -866,7 +894,6 @@ class PowerShellTTS(SimpleTTSBackend):
         # volume = self.getVolume()
         args = [clz.POWERSHELL_PATH,
                 f'& {{. \'{clz.script_path}\';  Voice-Sapi '
-                f'\'{text}\' '
                 f'{voice_id} '
                 f'{windows_path}'
                 f'}}']

@@ -43,9 +43,8 @@ class MPVAudioPlayer(SubprocessSlaveAudioPlayer, BaseServices):
     ID = Players.MPV
     service_id: str = Services.MPV_ID
     service_type: ServiceType = ServiceType.PLAYER
-    MPV_KEY: ServiceID = ServiceID(service_type, service_id)
+    MPV_KEY: ServiceID = ServiceKey.MPV_KEY
     service_key: ServiceID = MPV_KEY
-    CHANNELS_KEY: MPV_KEY.with_prop(SettingProp.CHANNELS)
     CACHE_SPEECH_KEY = MPV_KEY.with_prop(SettingProp.CACHE_SPEECH)
     MPV_VOLUME_KEY: ServiceID = MPV_KEY.with_prop(SettingProp.VOLUME)
     PLAYER_MODE_KEY = MPV_KEY.with_prop(SettingProp.PLAYER_MODE)
@@ -135,7 +134,7 @@ class MPVAudioPlayer(SubprocessSlaveAudioPlayer, BaseServices):
         self.configVolume: bool = True
         self.configSpeed: bool = True
         self.slave_pipe_path: Path | None = None
-        self.play_channels: Channels = Channels.MONO
+        self.play_channels: Channels = self.get_player_channels()
 
     def init(self, engine_key: ServiceID):
         super().init(engine_key)
@@ -143,7 +142,7 @@ class MPVAudioPlayer(SubprocessSlaveAudioPlayer, BaseServices):
         can_set_volume: bool = self.canSetVolume()
         can_set_speed: bool = self.canSetSpeed()
         can_set_pitch: bool = self.canSetPitch()
-        channels: Channels = Channels.MONO
+        channels: Channels = self.get_player_channels()
         self.play_channels: Channels = channels
 
     def playArgs(self, phrase: Phrase) -> List[str]:
@@ -307,7 +306,7 @@ class MPVAudioPlayer(SubprocessSlaveAudioPlayer, BaseServices):
 
         clz = MPVAudioPlayer
         channel_validator: IChannelValidator
-        channel_validator = SettingsMap.get_validator(clz.CHANNELS_KEY)
+        channel_validator = SettingsMap.get_validator(ServiceKey.CHANNELS_KEY)
         channel_validator: ChannelValidator
         channels: Channels = channel_validator.getInternalValue()
         return channels

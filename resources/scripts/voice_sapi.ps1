@@ -62,6 +62,7 @@ Function Voice-Sapi {
     )
 
     BEGIN {
+        [System.console]::InputEncoding = [System.console]::OutputEncoding = [System.Text.Encoding]::UTF8
         if (-not ([appdomain]::currentdomain.GetAssemblies() | Where-Object {$_.Location -eq 'C:\Windows\Microsoft.Net\assembly\GAC_MSIL\System.Speech\v4.0_4.0.0.0__31bf3856ad364e35\System.Speech.dll'})) {
             Add-Type -AssemblyName System.Speech
         }

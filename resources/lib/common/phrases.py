@@ -140,7 +140,7 @@ class Phrase:
         :param post_pause_ms: Amount of time to wait after voicing this phrase
         :param cache_path: Path to the voice cache entry for this phrase (set even
                            when not yet in the cache)
-        :param exists: True if a cache entry for this phrase text_exists
+        :param text_exists: True if a cache entry for this phrase text_exists
         :param temp:
         :param preload_cache:
         :param serial_number: Monotonically increasing number to aid in purging
@@ -383,6 +383,9 @@ class Phrase:
         return phrase
 
     def get_text(self) -> str:
+        """
+        Returns the text in this phrase
+        """
         clz = type(self)
         # MY_LOGGER.debug(f'{self.get_debug_info()}')
         self.test_expired()
@@ -444,6 +447,7 @@ class Phrase:
         for event in reversed(self._events):
             result = f'{result} {event}'
         return result
+
     def history(self) -> str:
         return f'{self.text}  {self.get_recent_events()}'
 
@@ -849,12 +853,24 @@ class PhraseList(UserList):
     expired_serial_number: int = 0
 
     def __init__(self, check_expired: bool = True) -> None:
+        """
+        Creates a PhraseList which contains related Phrases. There are numerous
+        properties for both PhraseList and Phrases.
+
+        Since a PhraseList can expire it is important to group a 'thought' into
+        a PhraseList so that an expiration will tend to occur between
+        PhraseLists and not in the middle of a PhraseList.
+
+        :param check_expired: If True, then like most messages, this message
+                              can become expired and discarded when another
+                              message comes in.
+        """
         super().__init__()
         clz = type(self)
         Monitor.exception_on_abort()
         clz.global_serial_number += 1
         self.serial_number: int = clz.global_serial_number
-        self.check_expired = check_expired
+        self.check_expired: bool = check_expired
 
     @classmethod
     def create(cls, texts: str | List[str], interrupt: bool = False,
@@ -1185,6 +1201,9 @@ class PhraseList(UserList):
             MY_LOGGER.debug_xv('EXPIRE')
 
     def expire_all_prior(self) -> None:
+        """
+        Expires all phrases prior to this one
+        """
         clz = type(self)
         if MY_LOGGER.isEnabledFor(DEBUG_XV):
             MY_LOGGER.debug_xv(f'EXPIRE expired: {self.is_expired()} check_expired: '
@@ -1213,10 +1232,16 @@ class PhraseList(UserList):
         return PhraseList.expired_serial_number >= self.serial_number
 
     def set_speak_over_kodi(self, speak_over_kodi: bool) -> None:
+        """
+        Set this PhraseList's policy on being voiced over other Kodi sounds.
+        """
         if len(self.data) > 0:
             self.data[0]._set_speak_over_kodi(speak_over_kodi)
 
     def set_interrupt(self, interrupt: bool) -> None:
+        """
+        An interrupt will cause all prior normal speech to stop and be discarded.
+        """
         if len(self.data) > 0:
             self.data[0].start_of_phrase_list = True
             self.data[0]._set_interrupt(interrupt)

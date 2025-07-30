@@ -15,8 +15,11 @@ import xbmc
 import xbmcaddon
 import xbmcvfs
 
-from backends.settings.service_types import ServiceKey
 from common.debug import Debug
+from common.message_ids import MessageId
+from common.phrases import PhraseList
+from utils.keymapeditor import Status
+from utils.utils_ll import UtilsLowLevel
 
 '''
 addon = xbmcaddon.Addon('service.kodi.tts')
@@ -53,28 +56,28 @@ else:
     definitions = {
         'tts': INFO,
         'tts.backends': INFO,
-        'tts.backends.driver': INFO,
-        'tts.backends.google': DEBUG,
-        'tts.backends.espeak': INFO,
-        'tts.backends.espeak_settings': INFO,
+        'tts.backends.driver': DEBUG,
+        'tts.backends.google': INFO,
+        'tts.backends.espeak': DEBUG,
+        'tts.backends.espeak_settings': DEBUG,
         'tts.backends.no_engine': INFO,
         'tts.backends.no_engine_settings': INFO,
         'tts.backends.engines.google_downloader': INFO,
         'tts.backends.engines.google_settings': INFO,
         'tts.backends.engines.speech_generator': INFO,
-        'tts.backends.engines.windows.powershell': INFO,
-        'tts.backends.engines.windows.powershell_settings': INFO,
+        'tts.backends.engines.windows.powershell': DEBUG_V,
+        'tts.backends.engines.windows.powershell_settings': DEBUG,
         'tts.backends.settings.language_info': INFO,
         'tts.backends.settings.langcodes_wrapper': INFO,
         'tts.backends.settings.service_types': INFO,
         'tts.backends.settings.settings_helper': INFO,
-        'tts.backends.settings.settings_map': INFO,
+        'tts.backends.settings.settings_map': DEBUG,
         'tts.backends.settings.validators': INFO,
-        'tts.backends.base': INFO,
-        'tts.backends.audio.base_audio': DEBUG,
+        'tts.backends.base': DEBUG,
+        'tts.backends.audio.base_audio': INFO,
         'tts.backends.audio.mpv_audio_player': INFO,
         'tts.backends.audio.mplayer_audio_player': INFO,
-        'tts.backends.audio.sfx_audio_player': INFO,
+        'tts.backends.audio.sfx_audio_player': DEBUG,
         'tts.backends.players.sfx_settings': INFO,
         'tts.backends.audio.sound_capabilities': INFO,
         'tts.backends.audio.worker_thread': INFO,
@@ -86,8 +89,9 @@ else:
         'tts.common.monitor': INFO,
         'tts.common.phrases': INFO,
         'tts.common.phrase_manager': INFO,
-        'tts.common.settings_low_level': INFO,
-        'tts.common.settings': INFO,
+        'tts.common.settings_cache': DEBUG,
+        'tts.common.settings_low_level': DEBUG,
+        'tts.common.settings': DEBUG,
         'tts.common.simple_run_command': INFO,
         'tts.common.simple_pipe_command': INFO,
         'tts.common.slave_communication': INFO,
@@ -95,12 +99,35 @@ else:
         'tts.common.utils': INFO,
         'tts.utils.util': INFO,
         'tts.windows': INFO,
+        'tts.windows.backgroundprogress': INFO,
+        'tts.windows.base': INFO,
+        'tts.windows.busydialog': INFO,
+        'tts.windows.contextmenu': INFO,
         'tts.windows.custom_tts': INFO,
+        'tts.windows.guitables': INFO,
+        'tts.windows.homedialog': INFO,
         'tts.windows.libraryviews': INFO,
+        'tts.windows.notice': DEBUG,
+        'tts.windows.playerstatus': INFO,
+        'tts.windows.progressdialog': INFO,
+        'tts.windows.pvr': INFO,
+        'tts.windows.pvrguideinfo': INFO,
+        'tts.windows.selectdialog': INFO,
+        'tts.windows.settings': INFO,
+        'tts.windows.skintables': INFO,
+        'tts.windows.subtitlesdialog': INFO,
+        'tts.windows.textviewer': INFO,
+        'tts.windows.ui_constants': INFO,
+        'tts.windows.videoinfodialog': INFO,
+        'tts.windows.virtualkeyboard': INFO,
+        'tts.windows.weather': INFO,
+        'tts.windows.window_state_monitor': INFO,
+        'tts.windows.yesnodialog': INFO,
+        'tts.windows.windowparser': INFO,
         'tts.gui': INFO,
         'tts.gui.window_structure': INFO,
         'tts.gui.parser': INFO,
-        'tts.service': INFO,
+        'tts.service': DEBUG,
         'tts.service_worker': DEBUG,
         'tts.startup.bootstrap_engines': INFO,
         'tts.startup.bootstrap_converters': INFO,
@@ -108,14 +135,20 @@ else:
         'tts.backends.players.mpv_player_settings': INFO,
         'tts.backends.players.mplayer_settings': INFO,
         'tts.windowNavigation.choice': INFO,
-        'tts.windowNavigation.configure': INFO,
+        'tts.windowNavigation.configure': DEBUG,
         'tts.windowNavigation.help_dialog': INFO,
         'tts.windowNavigation.selection_dialog': INFO,
-        'tts.windowNavigation.settings_dialog': INFO
+        'tts.windowNavigation.settings_dialog': DEBUG,
+        'utils.keymapeditor': DEBUG
     }
 # xbmc.log(f'configuring debug_levels INFO: {logging.INFO} DEBUG: {DEBUG} '
 #          f'VERBOSE: {DEBUG_V} EXTRA_VERBOSE: '
 #          f'{DEBUG_XV}')
+# Explicitly set logger name to 'service' instead of __name__ since __name__
+# becomes '__main__' since this is the main module.
+logger_name = 'service'
+MY_LOGGER = BasicLogger.get_logger('service')
+
 BasicLogger.config_debug_levels(replace=False, default_log_level=DEBUG,
                                 definitions=definitions)
 
@@ -157,9 +190,6 @@ except Exception as e:
     pass
 
 from common.logger import *
-
-MY_LOGGER = BasicLogger.get_logger(__name__)
-
 from common.settings import Settings
 from backends.settings.setting_properties import SettingProp, SettingType
 
@@ -195,6 +225,8 @@ def preInstalledFirstRun() -> bool:
     restart: bool = False
     something_configured: bool = False
     something_failed: bool = False
+    return False
+    '''
     if False:
         if not Settings.is_initial_run():  # Do as little as possible if there is no
             xbmc.log('is NOT initial_run', xbmc.LOGINFO)
@@ -230,15 +262,17 @@ def preInstalledFirstRun() -> bool:
         xbmc.log(f'PRE-INSTALLED FIRST RUN', xbmc.LOGINFO)
         MY_LOGGER.info('PRE-INSTALLED FIRST RUN')
 
-    if not Constants.PLATFORM_WINDOWS:
-        dependencies_configured = True
-        Settings.set_configure_dependencies_on_startup(False)
-    dependencies_configured = not Settings.get_configure_dependencies_on_startup()
-    if not dependencies_configured:
-        showNotification(message='Configuring permissions and paths. '
-                                 'Will prompt for Admin privelege',
-                         time_ms=5000)
-        dependencies_configured = config_env()
+    #
+    # Detect when a newer (or older) version has been installed
+    # Use two settings:
+    #  * installed_version which forced to version 0.0.0 on every
+    #    install or update. Then this code notices it is 0.0.0, runs config
+    #    and sets the setting to the real version.
+    #  To detect reinstalling the same version, the installed_version setting will
+    #  still be clobbered to 0.0.0, so the same config will occur.
+
+    # MUST be done before bootstrap engines/players
+
         if dependencies_configured:
             something_configured = True
             Settings.set_configure_dependencies_on_startup(False)
@@ -246,42 +280,22 @@ def preInstalledFirstRun() -> bool:
         else:
             something_failed = True
 
-    keymap_configured: bool = not Settings.get_configure_keymap_on_startup()
-    if not keymap_configured:
-        showNotification(message='Installing basic keymap',
-                         time_ms=5000)
-
-        # Install keymap with just F12 enabling included
-        from utils import keymapeditor
-        keymap_configured = keymapeditor.installBasicKeymap()
-        if keymap_configured:
-            Settings.set_configure_keymap_on_startup(False)
-            someting_configured = True
-        else:
-            something_failed = True
-
     if something_configured:
-        Settings.commit_settings()
-        Settings.set_extended_help_on_startup(True)
-        Settings.set_hint_text_on_startup(True)
+        pass
+        #  Settings.commit_settings()
     xbmc.log(f'exiting something_configured: {something_configured}', xbmc.LOGDEBUG)
     return something_configured
+    '''
 
 
-def showNotification(message, time_ms=3000, icon_path=None,
-                     header=CriticalSettings.ADDON_ID):
-    try:
-        icon_path = icon_path or xbmcvfs.translatePath(
-                xbmcaddon.Addon(CriticalSettings.ADDON_ID).getAddonInfo('icon'))
-        xbmc.executebuiltin(f'Notification({header},{message},{time_ms},{icon_path})')
-        xbmc.sleep(time_ms)
-    except RuntimeError:  # Happens when disabling the addon
-        pass
-
-
-def config_env() -> bool:
+def configure_dependencies_windows() -> bool:
     config_script_path: Path = Path(Constants.ADDON_DIRECTORY) / 'config_script.bat'
     something_configured: bool = False
+    # TTS not functioning yet.
+    #
+    # show_and_say_notification(message='Configuring permissions and paths. '
+    #                           'Will prompt for Admin privilege',
+    #                            time_s=5.0)
     env = os.environ.copy()
     if Constants.PLATFORM_WINDOWS:
         cmdline: str = str(config_script_path)
@@ -290,10 +304,12 @@ def config_env() -> bool:
             completed: subprocess.CompletedProcess
             completed = subprocess.run(cmdline, stdin=None, capture_output=True,
                                        text=True, env=env, close_fds=True,
-                                       encoding='utf-8', shell=False, check=True)
+                                       encoding='utf-8', shell=False, check=True,
+                                       creationflags=subprocess.CREATE_NO_WINDOW)
             if completed.returncode != 0:
                 something_configured = False
-                MY_LOGGER.debug(f'config output: {completed.stdout}')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'config output: {completed.stdout}')
             else:
                 something_configured = True
         except subprocess.CalledProcessError:
@@ -310,16 +326,46 @@ def startService():
 
     :return:
     """
+    configure_something: bool = False
     try:
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug('starting service.startservice thread')
         from backends.settings.base_service_settings import BaseServiceSettings
-        BaseServiceSettings.config_predefined_settings()
 
-        if preInstalledFirstRun():
-            showNotification('Configuration changed requiring restart of Kodi.tts',
-                             time_ms=10000)
-            return
+        BaseServiceSettings.define_settings()
+        if Settings.is_initial_run():
+            Settings.set_configure_dependencies_on_startup(True)
+            Settings.set_configure_keymap_on_startup(True)
+            Settings.set_start_config_gui_on_startup(True)
+
+            # Hints are embedded in new screen scraper metadata, which config only
+            # uses at this time.
+            Settings.set_hint_text_on_startup(True)
+
+            # Help is embedded in new screen scraper metadata
+            Settings.set_config_help_on_startup(False)  # How do these
+            Settings.set_extended_help_on_startup(False)  # Does not appear to do anything yet
+            Settings.set_introduction_on_startup(False)
+
+        if (Settings.is_configure_keymap_on_startup() or
+            Settings.is_introduction_on_startup() or
+            Settings.is_start_config_gui_on_startup() or
+            #  Settings.is_configure_dependencies_on_startup() or
+            Settings.is_config_help_on_startup() or
+            Settings.is_introduction_on_startup()):
+            configure_something = True
+
+        something_configured: bool = False
+        something_failed: bool = False
+        if Settings.is_configure_dependencies_on_startup():
+            # Configure dependent packages: Paths, permissions, etc.
+            if Constants.PLATFORM_WINDOWS:
+                something_configured = configure_dependencies_windows()
+
+        # if preInstalledFirstRun():
+        #     show_and_say_notification('Configuration changed requiring restart of Kodi.tts',
+        #                               time_s=10.0)
+        #     return
         #  Do NOT remove import!!
         from startup.bootstrap_engines import BootstrapEngines
         BootstrapEngines.init()
@@ -327,11 +373,97 @@ def startService():
         TTSService().start()
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug('started service.startService thread')
+
+        if not TTSService.is_ready_to_voice(timeout=2.0):
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'Not ready to voice')
+        if configure_something:
+            time_s: float = 5.0
+            # UtilsLowLevel.show_and_say_notification(
+            #         message=MessageId.PERFORM_CONFIG_TASKS.get_msg(),
+            #         time_s=time_s, block=True)
+
+        configure_keymap: bool = Settings.is_configure_keymap_on_startup()
+        if configure_keymap:
+            time_s: float = 5.0
+            UtilsLowLevel.show_and_say_notification(
+                    message=MessageId.INSTALLING_BASIC_KEYMAP.get_msg(),
+                    time_s=time_s, block=True)
+
+            from utils import keymapeditor
+            status: Status = keymapeditor.installBasicKeymap()
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'keymap status: {status}')
+            msg: MessageId | None = None
+            if status == Status.NO_CHANGE:
+                msg = MessageId.KEYMAP_NO_CHANGE
+                someting_configured = True
+            elif status == Status.RESTART:
+                someting_configured = True
+                msg = MessageId.UPDATED_KEYMAPS_IN_EFFECT
+            elif status == Status.FAILED:
+                something_failed = True
+                msg = MessageId.FAILED_TO_UPDATE_KEYMAP
+            time_s: float = 5.0
+            UtilsLowLevel.show_and_say_notification(
+                    message=msg.get_msg(),
+                    time_s=time_s, block=True)
+            Settings.set_configure_keymap_on_startup(False)
+            Settings.commit_settings()
+
+        # Normally enable extended help on the first use after installation
+        # It can be set permanently by user
+        if Settings.is_extended_help_on_startup():
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'extended_help on startup')
+            time_s: float = 5.0
+            UtilsLowLevel.show_and_say_notification(
+                    message=MessageId.ENABLING_EXTENDED_HELP.get_msg(),
+                    time_s=time_s, block=True)
+            TTSService.help()
+
+        if Settings.is_hint_text_on_startup():
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'hint_text on startup')
+            time_s: float = 5.0
+            UtilsLowLevel.show_and_say_notification(
+                    message=MessageId.ENABLING_HINTS.get_msg(),
+                    time_s=time_s, block=True)
+            TTSService.set_voice_hint_on()
+        # Save startup setting changes.
+        # TODO: Consider ability to commit individual settings, such as these
+        #       startup related ones.
+
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'is_start_config_gui_on_startup: '
+                            f'{Settings.is_start_config_gui_on_startup()}')
+        if Settings.is_start_config_gui_on_startup():
+            time_s: float = 5.0
+            UtilsLowLevel.show_and_say_notification(
+                    message=MessageId.OPEN_CONFIG_DIALOG.get_msg(),
+                    time_s=time_s, block=True)
+            TTSService.config_settings()
+
+        Settings.set_configure_dependencies_on_startup(False)
+        Settings.set_start_config_gui_on_startup(False)
+        Settings.set_hint_text_on_startup(False)
+        Settings.set_config_help_on_startup(False)
+        Settings.set_extended_help_on_startup(False)
+        Settings.set_introduction_on_startup(False)
+        Settings.set_initial_run(False)
+        Settings.commit_settings()
+
     except AbortException:
         pass  # About to exit thread
     except Exception as e2:
         MY_LOGGER.exception('')
         MinimalMonitor.set_abort_received()
+
+    if configure_something:
+        time_s: float = 5.0
+        UtilsLowLevel.show_and_say_notification(
+                message=MessageId.CONFIGURATION_COMPLETE.get_msg(),
+                time_s=time_s, block=True)
     # while True:
     #     if xbmc.abortRequested(100):
     #         break
@@ -363,7 +495,8 @@ class MainThreadLoop:
         try:
             if os.path.exists(os.path.join(xbmcvfs.translatePath('special://profile'),
                                            'addon_data', 'service.kodi.tts', 'DISABLED')):
-                xbmc.log('service.kodi.tts: DISABLED - NOT STARTING')
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug('service.kodi.tts: DISABLED - NOT STARTING')
                 return
 
             if MY_LOGGER.isEnabledFor(DEBUG):

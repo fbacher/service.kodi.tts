@@ -317,12 +317,12 @@ class WindowStateMonitor:
     WINDOW_FOCUS_CHANGED: Final[int] = 0x02
 
     '''
-    Can not detect slider value changes without polling
-    # cursor movement detected without changing control focus
-    # probably due to a control like the slider using the cursor movement
-    # to adjust value
+    Can not detect slider value changes without polling.
+    Cursor movement detected without changing control focus
+    probably due to a control like the slider using the cursor movement
+    to adjust value
 
-    #  FOCUS_VALUE_CHANGED: Final[int] = 0x04
+    FOCUS_VALUE_CHANGED: Final[int] = 0x04
     '''
     BAD_WINDOW: Final[int] = 0x08
     # The focused control has had a visibility change since the last

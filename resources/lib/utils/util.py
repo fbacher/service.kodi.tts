@@ -153,16 +153,6 @@ def configuring_settings():
     return Settings.configuring_settings()
 
 
-'''
-def getSetting(key, engine_id: str = None, default=None):
-    return Settings.getSetting(key, engine_id, default)
-
-
-def setSetting(key, value, engine_id: str = None):
-    Settings.setSetting(key, value, engine_id)
-'''
-
-
 def runInThread(func: Callable, args: List[Any] = None, name: str = '?',
                 delay: float = 0.0, **kwargs) -> None:
     """
@@ -200,24 +190,6 @@ def thread_wrapper(*args, **kwargs):
         return  # Let thread die
     except Exception as e:
         MY_LOGGER.exception('')
-
-
-BASE_COMMAND = ('XBMC.NotifyAll(service.kodi.tts,SAY,"{{\\"text\\":\\"{0}\\",'
-                '\\"interrupt\\":{1}}}")')
-
-
-# def safeEncode(text):
-#   return binascii.hexlify(text.encode('utf-8'))
-
-# def safeDecode(enc_text):
-#    return binascii.unhexlify(enc_text)
-
-def notifySayText(text, interrupt=False):
-    command = BASE_COMMAND.format(text, repr(interrupt).lower())
-    command = f'XBMC.NotifyAll(service.kodi.tts,SAY,' \
-              f'"{{\\"text\\":\\"{text}\\",\\"interrupt\\":{interrupt}}}")'.lower()
-    # print command
-    xbmc.executebuiltin(command)
 
 
 def get_non_negative_int(control_expr: str | int) -> int:

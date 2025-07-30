@@ -462,6 +462,7 @@ class SubprocessAudioPlayer(AudioPlayer):
     def set_state(self):
         with self.lock:
             if (self._player_process is not None and
+                    self._player_process.process is not None and
                     self._player_process.process.poll() is not None):
                 self._player_process = None
 

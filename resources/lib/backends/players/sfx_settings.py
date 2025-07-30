@@ -75,7 +75,7 @@ class SFXSettings:
                                                const=True,
                                                define_setting=True,
                                                service_status=StatusType.OK,
-                                               persist=True)
+                                               persist=False)
 
         _supported_input_formats: List[AudioType] = [AudioType.WAV]
         _supported_output_formats: List[AudioType] = []
@@ -90,7 +90,7 @@ class SFXSettings:
                                             is_integer=False,
                                             define_setting=True,
                                             service_status=StatusType.OK,
-                                            persist=True)
+                                            persist=False)
         speed_validator: NumericValidator
         speed_validator = NumericValidator(cls.SPEED_KEY,
                                            minimum=0.25, maximum=3,
@@ -98,13 +98,13 @@ class SFXSettings:
                                            is_integer=False,
                                            define_setting=True,
                                            service_status=StatusType.OK,
-                                           persist=True)
+                                           persist=False)
         cache_validator: BoolValidator
         cache_validator = BoolValidator(cls.CACHE_SPEECH_KEY,
                                         default=True,
                                         define_setting=True,
                                         service_status=StatusType.OK,
-                                        persist=False)
+                                        persist=True)
 
         allowed_player_modes: List[str] = [
             PlayerMode.FILE.value
@@ -117,7 +117,7 @@ class SFXSettings:
                                                 default=default_mode,
                                                 define_setting=True,
                                                 service_status=StatusType.OK,
-                                                persist=True)
+                                                persist=False)
 
         # Can use LAME to convert to wave. This code is untested
         # TODO: test, expose capability in settings config
@@ -168,7 +168,8 @@ class SFXSettings:
                 SettingsMap.define_setting(cls.service_key,
                                            setting_type=SettingType.STRING_TYPE,
                                            service_status=StatusType.BROKEN,
-                                           validator=None)
+                                           validator=None,
+                                           persist=False)
 
     @classmethod
     def check_is_usable(cls) -> None:
@@ -186,7 +187,8 @@ class SFXSettings:
             SettingsMap.define_setting(cls.service_key,
                                        setting_type=SettingType.STRING_TYPE,
                                        service_status=cls._service_status.status_summary,
-                                       validator=None)
+                                       validator=None,
+                                       persist=False)
     @classmethod
     def is_usable(cls) -> bool:
         """
