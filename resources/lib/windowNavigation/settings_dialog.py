@@ -502,7 +502,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 try:
                     gender: Genders = Settings.get_gender(engine_key)
                     self.engine_gender_value.setLabel(gender.name)
-                    self.engine_gender_group.setVisible(True)
+                    self.engine_gender_group.setVisible(False)
                 except AbortException:
                     reraise(*sys.exc_info())
                 except Exception as e:
@@ -2155,7 +2155,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 else:
                     self.engine_gender_value.setEnabled(True)
                     self.engine_gender_button.setEnabled(True)
-                self.engine_gender_group.setVisible(True)
+                self.engine_gender_group.setVisible(False)
         except Exception as e:
             MY_LOGGER.exception('')
 
