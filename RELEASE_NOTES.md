@@ -3,7 +3,7 @@ Release Notes
 Welcome to the **Alpha 5** release of Kodi Text To Speech which provides basic TTS 
 functionality to Kodi. It is based upon XBMC TTS (by Rick Phillips (ruuk) and pvagner),
 which is no longer supported. This version of Kodi TTS is maintained by a 
-different team and has major changes.
+different team and has major changes. Kodi TTS is installable on Kodi 20 and 21.
 
 The goals of this early release are to provide basic functionality, iron out
 installation and configuration issues as well as get feedback. Functionality
@@ -23,15 +23,15 @@ For Windows:
 
     * Windows and Linux only. Just several TTS engines and players supported.
 
-    * English only. The main limitations are testing, message translation and  
-      getting the list of languages and voices for Windows TTS.
+    * English only. The main limitations are testing and message translation.
 
-    * Windows TTS, only the voices David and Zira are available at this time. 
-      The ability to choose from any installed Narrator voice will be soon.
+    * Windows TTS, only the SAPI voices (names end in 'Desktop') are are available  
+      at this time. The One-Core voices (higher quality, names do not end in 'Desktop')
+      voices will come before release.
 
     * To reduce latency in voicing, use of a cache is strongly encouraged.  
       Currently Windows TTS voice files are stored as wave files, which are much  
-      larger than mp3 files.
+      larger than mp3 files. Before release a mp3 transcoder will be available.
 
     * Also to reduce latency in voicing, the mpv player with slave_mode is used,  
       however, this is not yet enabled on Windows. (Caching is still worth using,  
@@ -41,11 +41,13 @@ For Windows:
       The content for the help system is preliminary.
 
     * A keymap editor to edit TTS keyboard/remote shortcut has not been tested and 
-      not yet made available.
+      not yet made directly available. Also, the keymappings have been changed to 
+      my preference (a mistake). The key mappings will change to be in line with the earler 
+      mappings.
 
 ### Kodi Voicing Limitations
 
-Kodi itself has a number of limitations that make impact TTS:
+Kodi itself has a number of limitations that impact TTS:
 
     * Throughout the UI, Buttons are used where a different control should be. 
       Buttons have an enabled/disabled state, which is always announced, even  
@@ -53,10 +55,12 @@ Kodi itself has a number of limitations that make impact TTS:
       is used, or to add some additional information to the button so that TTS can
       can determine when the enabled state applies.
 
-    * Sliders are not voiced. The label for a slider is not included as part of the 
-      slider and there is no association between the slider and its label. Further,
-      there is no notification when the slider value changes, requiring polling 
-      to determine any value change.
+    * Except for the custom config dialogs, sliders are not voiced. The label for
+      a slider is not included as part of the slider and there is no association 
+      between the slider and its label. Further, there is no notification when 
+      the slider value changes, requiring polling to determine any value change.
+      The custom config dialogs have had metadata added to give extra information 
+      to enable better screen-scraping.
 
     * There is no information from Kodi about the relationship between controls,
       other than the static structure from the .xml files. There are hard-coded
@@ -65,7 +69,10 @@ Kodi itself has a number of limitations that make impact TTS:
       to the windows and dialogs. This covers a tiny portion of the UI and is  
       experimental.
 
-    * This list is incomplete, more to be added here as they are discovered.
+    * Fader labels can not be voiced, kodi does not provide a means to get the 
+      text value of such a label. If, however, the label's contents can be found
+      by some other means, then it can be voiced using custom code for each 
+      occurance.
 
 ### Issues
 
@@ -84,10 +91,9 @@ Items of particular interest:
       elsewhere.
 
     * Exiting TTS (or Kodi) can cause Kodi to get a Segmentation Violation on 
-      Linux (it may also on Windows). A fix has been implemented for the TTS engine
-      and player code that reduces the occurance of this problem. This fix needs 
-      additional review. If you notice a segmentation violation (or a rash notice 
-      from Kodi) then add a note to the forum, or to issue 17).
+      Linux (it may also on Windows). A fix has been implemented. If you notice
+      a segmentation violation (or a crash notice from Kodi) then add a note 
+      to the forum, or to issue 17).
 
 ### Dependencies
 

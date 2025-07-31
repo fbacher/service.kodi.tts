@@ -1,63 +1,26 @@
 
-## Install Addons
+## Install
 
-First, it is highly recommended to install the latest released version of Kodi,
-(21.2) although there are no known issues with using 21.0.1
+Kodi TTS may be installed on Kodi 20 (Nexus) as well as 21 (Omega) it is highly
+recommended to install the latest released version of Kodi, (21.2) although there are
+no known issues with using earlier versions.
 
-Next, install the Kodi TTS addon as well as its dependents. Since this Alpha release 
-is not available from the Kodi repository, you will have to manually download and 
-install Kodi TTS and a dependent addon.
+### Windows Quick Start
 
-Download the two addons (you want the .zip file):
+#### Optionally install mpv
 
-  * [script.module.langcodes](https://github.com/fbacher/script.module.langcodes/archive/refs/tags/v0.0.1-alpha.zip)
-  * [service.kodi.tts](https://github.com/fbacher/service.kodi.tts/tags)
+**Recommended, but optional**: install mpv player prior to Kodi TTS addon so that GooglTTS and
+Navigator voices will be available on first use of Kodi.
 
-**Note:** The first time that Kodi TTS runs on Windows, a Dialog will request Administator
-privelege to set several permissions:
+Install images are from a build server which cranks out new builds every day or so. The link
+here will soon be invalid. 
+Install images for [**mpv** are here](https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20250730/mpv-x86_64-v3-20250730-git-a6f3236.7z) (this link is from [the official mpv installation page](the https://mpv.io/installation)). MPV version 0.37.0 or newer should be fine.
 
-  1. Permission to make a simple powershell script to call the Voicing API. Only the  
-     current user will have the permission.
-  2. Permission to add variables to the User's environment. 
+If the previous link is invalid then try:
+https://github.com/shinchiro/mpv-winbuild-cmake/releases
 
-To install, in Kodi, go to **Settings -> Add-ons -> Add-on browser -> Install from zip file**.
-There will probably be a warning about installing from unofficial sites. Select to
-allow the installation. Install **script.module.langcodes** first. Choose the path
-where you downloaded each zip file above. After the installation of both is complete, 
-exit Kodi. 
-
-**Note:** Currently, Kodi TTS assumes that players (mpv) and engines (espeak) will be
-installed at:
-  * Linux: in /usr/bin
-  * Windows: in a directory named by the player or engine. For example espeak-ng.exe would
-    would be installed in c:\Program Filess/espeak-ng/espeak-ng.exe
-This will be made more flexible before release.
-
-## Install TTS Engines and Players
-After installing the kodi addons, you may need to install one or more players and TTS engines.
-
-### Linux
-I suggest that you install **mpv** to play audio. It is frugal with resources, is of very good quality, is very responsive when used with caching and slave mode. **mplayer** is the predessor to mpv and is supported for those who want it.
-
-Optionally install eSpeak-NG, which is typically available from your distribution.
-
-Almost certainly mpv, eSpeak and mplayer are available from your normal Linux distribution channels. They should be easy to find and install.
-
-### Windows
-
-Windows TTS (Navigator) is fairly high quality, runs locally and is builtin. It does require a Powershell script to use, which must be configured.
-
-Google TTS comes with Kodi TTS and requires no configuration. It does require mpv, however.
-
-I suggest that you install **mpv** to play audio on Windows, it can play the audio produced by either Google TTS or Navigator. It supports cached audio as well as both mp3 and wave files. **mpv** is NOT required if you use Windows TTS (Navigator), but I prefer using the cache and mpv.
-
-eSpeak is available for those who like it.
-
-#### mpv
-
-Install images for [**mpv** are here](https://github.com/shinchiro/mpv-winbuild-cmake/releases) (this link is from [the official mpv installation page](the https://mpv.io/installation)). MPV version 0.37.0 or newer should be fine.
-
-Carefully choose the correct image for your platform. You want something that has "mpv-x86_64" in its name, like: https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20250623/**mpv-x86_64**-20250623-git-18defc8.7z. You DON'T want ffmpeg or a 'dev' build. If the build you install doesn't run (if it launches it should be ok), then try another build. Some are built with different compilers, others are for different cpus. Intel/amd should have "mpv-x86_64" in the name.
+Carefully choose the correct image for your windows. You want something that has
+"mpv-x86_64" in its name, like: https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20250623/**mpv-x86_64**-20250623-git-18defc8.7z. You DON'T want ffmpeg or a 'dev' build. If the build you install doesn't run (if it launches it should be ok), then try another build. Some are built with different compilers, others are for different cpus. Intel/amd should have "mpv-x86_64" in the name.
 
 The following file operations will require Admin privilege.
 
@@ -68,45 +31,136 @@ The following file operations will require Admin privilege.
 ### Optionally install eSpeak-NG
 Install eSpeak-NG through the Windows App installer.
 
-At this point you should be able to run Kodi. A few seconds after starting Kodi you
-should hear a ping, followed by speech. To see the configuration menu, you can
-press ***Ctrl, F12*** on the keyboard. If there is no voice nor configuration 
-menu, then something went wrong and you should collect a log and send it to me.
+### Download and install Kodi addons
 
-If you made any configuration changes that you want to keep, then select the **OK**
-button at the bottom of the dialog, otherwise, to exit configuration, enter Escape, 
-or select the Cancel button at the bottom of the dialog.
+**Note:** The first time that Kodi TTS runs on Windows, a Dialog will request Administator
+privilege to set several permissions:
 
-### Third-party software:
+  1. Permission to enable two simple powershell scripts to call the Voicing API.  
+     Only the current user will have the permission.
+  2. Permission to add variables to the User's environment. 
 
-#### Players
+Install the Kodi TTS addon as well as its dependents. Since this Alpha release 
+is not available from the Kodi repository, you will have to manually download 
+Kodi TTS and a dependent addon.
 
-MPV is a followon to MPlayer. MPV has added numerous improvements which make it well suited for Kodi-TTS. In particular it has a 'slave-mode' that is superior to Mplayer's. Slave-mode allows Kodi-TTS to dynamically control what is played, canceled, paused, volume or speed changed, etc.. This is much better than killing and relaunching mpv on every utterance.
+Download the two addons (you will need the .zip files) from the links below:
 
-#### TTS Engines
+  * [script.module.langcodes](https://github.com/fbacher/script.module.langcodes/archive/refs/tags/v0.0.1-alpha.zip)
+  * [service.kodi.tts](https://github.com/fbacher/service.kodi.tts/tags)
 
-googleTTS My current favorite. It supports many languages and dialects. The naming is logical which should make it easy for users.
+To install, in Kodi, go to **Settings -> Add-ons -> Add-on browser -> Install from zip file**.
+There will probably be a warning about installing from unofficial sites. Select to
+allow the installation. Install **script.module.langcodes** first. Choose the path
+where you downloaded each zip file above. After the installation of both is complete, 
+Kodi TTS will start and basic configuration will begin:
 
-eSpeak-NG is an old standby that is fast, small and supports many languages. The voices sound distinctly computer generated. The universe of voices and the files required for them can be difficult to find and to get working. Finally, the metadata used to identify the voice (language, country, gender, etc.) is difficult to use programatically (or perhaps I haven't studied enough).
+### Kodi TTS First Run
 
-Espeak-NG Linux is in multiple distributions
-Windows Version 1.52.0 can be downloaded from https://github.com/espeak-ng/espeak-ng/releases
+When Kodi TTS runs for the first time it performs several setup tasks:
 
-#### Adding More Voices to Windows Narrator
-Currently, Kodi TTS only supports David and Zira english voices. The ability to choose
-between all installed voices will be ready soon.
+  * On Windows, several scripts are run to give permission for scripts to run and to update
+    environment variables. A (non-voiced) dialog will prompt the user to allow Admin
+    privilege for a powershell script.
+  * Next, several windows will quickly flash by an dissapear
+  * Kodi should begin voicing its progress. A notification will be read before each step, each
+    taking about five seconds to read. The installation/modification of a basic keymap named
+    service.kodi.tts.keyboard.xml will be announced.
+  * Next, it will be announced that Hint Text is enabled.
+  * Finally, TTS announces that the Configuration Dialog will be displayed.
 
-## Keyboard mappings
+### Configuration Dialog
+
+The Configuration Dialog is a custom Dialog where you can change TTS settings and hear the
+changes as they are made. You don't have to change anything. You can press Escape and it
+will exit. However there is one setting in particular that you probably want to change is 
+the speed of the voice. 
+
+You will probably notice that the configuration Dialog is very chatty and helpful. This is
+because the first time you run it extra verbosity is enabled. Normally this is enabled/disabled
+by pressing a particular key on the keyboard, as determined by the keymap.
+
+### To Change Speed
+
+Move the down cursor until you are on the 5th Line. The label will be "Speed 1.2" (or similar).
+Use the right cursor (arrow) to increase the speed, or left to reduce the speed.
+
+### Save Settings
+
+In order to save the settings you have chosen, move the cursor down until it reaches the 
+OK button. Selecting OK will save the settings and dismiss the dialog, returning you to
+where you were in Kodi.
+
+### To Make Other Changes
+
+Move the cursor to the line of your choice, such as **Engine** If you click on or press Enter
+a Selection Dialog will appear and you will be able to navigate up and down to learn and 
+hear about the various options. If you press Escape, then no changes will be made to your 
+Settings. If you select (click on or press Enter) something, then that choice will be 
+remembered in the Settings Dialog. You can undo your action by going back to the Selection
+Dialog and making another choice. Or you can discard all of your changes by pressing Escape 
+or the Cancel button to the right of the OK button.
+
+
+### Linux Quick Start
+
+Linux, requires either espeak-NG or mpv player to be installed before
+anything is voiced. Since most people agree that the Google TTS (which requires mpv) is
+superior to eSpeak, installing mpv is a very good idea. By installing it before Kodi TTS is
+installed voicing will begin immediately on first-use.
+
+Mpv, espeak and mplayer are likely available from the 'normal' place for your Linux
+distribution. Kodi expects them to be installed in /usr/bin.
+
+After installing any players or engines, install the Kodi TTS addon as well as its 
+dependents. Since this Alpha release is not available from the Kodi repository,
+you will have to manually download and install Kodi TTS and a dependent addon.
+
+Download the two addons (you will need the .zip file):
+
+  * [script.module.langcodes](https://github.com/fbacher/script.module.langcodes/archive/refs/tags/v0.0.1-alpha.zip)
+  * [service.kodi.tts](https://github.com/fbacher/service.kodi.tts/tags)
+
+
+To install, in Kodi, go to **Settings -> Add-ons -> Add-on browser -> Install from zip file**.
+There will probably be a warning about installing from unofficial sites. Select to
+allow the installation. Install **script.module.langcodes** first. Choose the path
+where you downloaded each zip file above. After the installation of both is complete, 
+Kodi TTS will start and basic configuration will begin. 
+
+### Kodi TTS First Run
+
+When Kodi TTS runs for the first time it performs several setup tasks:
+
+  * On Windows, several scripts are run to give permission for scripts to run and to update
+    environment variables. A (non-voiced) dialog will prompt the user to allow Admin
+    privilege for a powershell script. 
+  * Next, on Windows, several windows will quickly flash by an dissapear
+  * On Linux, no special scripts or permissions are needed.
+  * Kodi should begin voicing its progress. A notification will be read before each step, each
+    taking about five seconds to read. The installation/modification of a basic keymap named
+    service.kodi.tts.keyboard.xml will be announced.
+  * Next, it will be announced that Hint Text is enabled.
+  * Finally, TTS announces that the Configuration Dialog will be displayed.
+
+### [Link to Configuration Dialog](configuration-dialog 'Configuration Dialog')
+
+## What follows is additional information and not part of the Quick-Start
+
+### Keyboard mappings
 Kodi provides a means to define and modify numerous shortcuts for keyboards, 
 ir-remotes and other devices. Kodi TTS comes with a small set of shortcuts to 
-help you get started. Suggestions for improving these assignments are welcome.
+help you get started.
+
+I made the mistake of ignoring the previous keymap assignments. This will be corrected
+before Beta is released. Suggestions for improving these assignments are welcome.
 
 Keyboard (and other input device) mappings are configured in .xml files in Kodi’s
 user_data/keymaps directory. The pre-configured one installed with Kodi is named 
 “kodi.tts.keyboard.xml” It can be directly edited to change the key assignments. 
-Currently, a keymap editor for this file is not available.
+Currently, a keymap editor for this file is not available. (but will be before beta).
 
-What follows are the default keyboard mapping definitions for all platforms:
+What follows are the **current** default keyboard mapping definitions for all platforms:
 
 Function: Advance to next logging mode
 
@@ -187,7 +241,7 @@ Function: Display Help Dialog
         about how to use Kodi TTS.
 
 
-## Configuration
+### Configuration
 
 Kodi TTS does NOT USE Kodi’s addon configuration menus. Instead, it uses custom configuration dialog and code. The reasons for this include:
 
@@ -285,14 +339,6 @@ The choice of player modes depends upon the engine and player.
       may be useful in the future.
 
     * ENGINE_SPEAK mode uses the engine's built-in player (if supported).
-
-#### Speed
-
-Speed is always measured as a scale factor. 1 is 'normal' speed. 2 is twice 'normal' 
-and 0.5 is 1/2 normal speed. Whenever the engine changes the speed reverts to 1.
-Whenever a player is used, the player implements the speed change (if supported),
-otherwise the engine does it. Note that any player that supports caching must also
-support speed change (without a change in pitch).
 
 #### Volume
 

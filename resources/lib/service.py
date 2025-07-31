@@ -302,7 +302,7 @@ def configure_dependencies_windows() -> bool:
         xbmc.log(f'Running command: Windows args: {cmdline}', xbmc.LOGINFO)
         try:
             completed: subprocess.CompletedProcess
-            completed = subprocess.run(cmdline, stdin=None, capture_output=True,
+            completed = subprocess.run(cmdline, input=' \n', capture_output=True,
                                        text=True, env=env, close_fds=True,
                                        encoding='utf-8', shell=False, check=True,
                                        creationflags=subprocess.CREATE_NO_WINDOW)

@@ -25,13 +25,10 @@ Config_Kodi_Env"
 
 IF '%ERRORLEVEL%' EQU '0' (
     ECHO Successfully Configured KODI TTS.
-    PAUSE
     exit /b 0
 ) ELSE (
     ECHO FAILED to Configure Kodi TTS.
-    PAUSE
     exit /b 1
 )
 
-PAUSE
 GOTO :EOF
