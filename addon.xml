@@ -9,14 +9,14 @@
       <import addon="xbmc.addon" version="20.0.0"/>
       <import addon="script.module.pydevd" version="4.4.0" optional="true"/>
       <import addon="script.module.six" version="1.16.0+matrix.1"/>
-      <import addon="script.module.langcodes" version="3.4.0"/>
+      <import addon="script.module.langcodes" version="3.4.0~alpha"/>
       <import addon="script.module.requests" version="2.31.0"/>
       <import addon="script.module.typing_extensions" version="4.7.1"/>
    </requires>
    <extension point="xbmc.service" library="resources/lib/service.py" start="login"/>
 
    <extension point="xbmc.addon.metadata">
-      <news>Fifth alpha for second incarnation 2.0.5</news>
+      <news>Seventh alpha with repo-site 2.0.7~alpha</news>
       <assets>
          <icon>icon.png</icon>
       </assets>
@@ -25,7 +25,7 @@
       <summary lang="en_GB">
          Kodi TTS provides voicing of currently focused text, or through a simple API.
       </summary>
-      <description>
+      <description lang="en">
          Kodi TTS provides voicing of currently focused text. It works with multiple TTS
          engines which is currently limited to GoogleTTS and eSpeak-NG (on Linux and Windows)
          as well as Windows Narrator (on Windows). Google TTS requires 'mpv' player to
@@ -44,9 +44,9 @@
          This is ALPHA quality.
          Limitations:
             For the foreseable future only Linux and Windows are supported.
-            At this time Google TTS best supports multiple languages, however language testing
-            has been very limited. eSpeak and Narrator are both capable of multiple languages,
-            however a small amount of plumbing needs to be added for Narrator. eSpeak is a bit
+            At this time Google TTS and Windows TTS (Narrator) best support multiple languages,
+            however language testing
+            has been very limited. eSpeak is capable of multiple languages. ESpeak is a bit
             more complicated to configure so will take more time to implement.
             Slave-mode, which improves responsiveness, will not be available on Windows until
             it's Python is upgraded, which appears to be targeted for the next release.
