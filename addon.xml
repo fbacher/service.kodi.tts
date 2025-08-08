@@ -16,7 +16,7 @@
    <extension point="xbmc.service" library="resources/lib/service.py" start="login"/>
 
    <extension point="xbmc.addon.metadata">
-      <news>First alpha for second incarnation 2.0.3-alpha</news>
+      <news>Sevent alpha for 2.0.3-alpha</news>
       <assets>
          <icon>icon.png</icon>
       </assets>
