@@ -85,14 +85,14 @@ class Constants:
 
     DISABLE_PATH = None
     ENABLE_PATH = None
-    DEFAULT_CACHE_DIRECTORY = None
+    DEFAULT_CACHE_DIRECTORY: Path | None = None
     PREDEFINED_CACHE: Path | None = None
     IGNORE_CACHE_EXPIRATION_DATE: bool = True
 
     CACHE_SUFFIX: Final[str] = 'cache_suffix'
     LOCALE = ''
     CONFIG_SCRIPTS_DIR_WINDOWS: Path | None = None
-    CONFIG_SCRIPT_PATH_WINDOWS: str | None = None
+    CONFIG_SCRIPT_PATH_WINDOWS: Path | None = None
     MAX_PHRASE_LENGTH: Final[str] = 'max_phrase_length'
 
     # TODO: can't distinguish between constants and calculated values (was None)
@@ -141,10 +141,10 @@ class Constants:
         Constants.BACKENDS_DIRECTORY = Constants.PYTHON_ROOT_PATH / 'backends'
         Constants.CONFIG_SCRIPTS_DIR_WINDOWS = (Path(Constants.RESOURCES_PATH)
                                                 / 'scripts')
-        Constants.CONFIG_SCRIPT_PATH_WINDOWS = os.path.join(
-                Constants.ADDON_PATH, 'config_script.bat')
+        Constants.CONFIG_SCRIPT_PATH_WINDOWS = Path(Constants.ADDON_PATH,
+                                                    'config_script.bat')
         Constants.DISABLE_PATH = addon.DATA_PATH / 'DISABLED'
-        Constants.DEFAULT_CACHE_DIRECTORY = Constants.USER_DATA_PATH / 'cache'
+        Constants.DEFAULT_CACHE_DIRECTORY = Path(Constants.ADDON_DATA, 'cache')
         Constants.ESPEAK_DATA_PATH_LINUX = (
             Path('/usr/lib/x86_64-linux-gnu/espeak-ng-data'))
         Constants.ESPEAK_DATA_PATH_WINDOWS = (

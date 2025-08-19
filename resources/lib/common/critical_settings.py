@@ -8,6 +8,7 @@ from pathlib import Path
 
 import xbmc
 import xbmcaddon
+import xbmcvfs
 
 from common import *
 
@@ -56,7 +57,27 @@ class CriticalSettings:
     ADDON_PATH: Final[Path] = Path(ADDON.getAddonInfo('path'))
     RESOURCES_PATH: Final[Path] = ADDON_PATH.joinpath('resources')
     TOP_PACKAGE_PATH: Final[str] = RESOURCES_PATH.joinpath('lib')
+
+    #  self.addon = xbmcaddon.Addon(*args)  # *args is addon_id, default current id
+    # ID = ADDON.getAddonInfo('id')
+    ICON = ADDON.getAddonInfo('icon')
+    ADDON_NAME = ADDON.getAddonInfo('name')
+    ADDON_FANART = ADDON.getAddonInfo('fanart')
+    ADDON_AUTHOR = ADDON.getAddonInfo('author')
+    ADDON_CHANGELOG = ADDON.getAddonInfo('changelog')
+    ADDON_DESCRIPTION = ADDON.getAddonInfo('description')
+    ADDON_DISCLAIMER = ADDON.getAddonInfo('disclaimer')
+    ADDON_VERSION = ADDON.getAddonInfo('version')
+    ADDON_PROFILE = ADDON.getAddonInfo('profile')
+    ADDON_SUMMARY = ADDON.getAddonInfo('summary')
+    ADDON_TYPE = ADDON.getAddonInfo('type')
+
+    ADDON_MEDIA_PATH: Path = Path(ADDON_PATH, "resources", "skins", "Default",
+                                  "media")
+    ADDON_DATA_PATH: Path = \
+        Path(xbmcvfs.translatePath(f'special://profile/addon_data/{ADDON_ID}'))
     KODI_SETTINGS = ADDON.getSettings()
+
     addon = None
     _plugin_name: str = ""
     try:
