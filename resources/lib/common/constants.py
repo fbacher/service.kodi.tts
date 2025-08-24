@@ -111,6 +111,8 @@ class Constants:
     STOP_ON_PLAY: bool = True
 
     NOTICE_QUEUE_LIMIT: int = 40
+    # Write phrase text to cache
+    SAVE_TEXT_FILES: Final[bool] = True
     SEED_CACHE_WITH_EXPIRED_PHRASES: bool = False
     # Maximum number of directories to search for un-voiced text files
     SEED_CACHE_DIR_LIMIT: int = 10

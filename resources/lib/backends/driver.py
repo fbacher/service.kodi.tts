@@ -237,7 +237,9 @@ class Driver(BaseServices):
         try:
             if phrase.get_cache_path is None:
                 result: CacheEntryInfo
-                result = VoiceCache.get_path_to_voice_file(phrase=phrase, use_cache=True)
+                voice_cache: VoiceCache = active_engine.get_voice_cache()
+                # Sets cache info in phrase
+                result = voice_cache.get_path_to_voice_file(phrase=phrase, use_cache=True)
             if phrase.text_exists(active_engine):
                 return self.say_file(active_engine, player_key, phrase)
             return False

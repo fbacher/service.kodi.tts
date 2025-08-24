@@ -13,3 +13,7 @@ This addon is **Alpha** quality. Installation instructions can be found in the f
 Installation of the .zip file is be done through Kodi **System::Settings::Add-ons::Install from zip file**
 
 Support is available at: https://forum.kodi.tv/showthread.php?tid=357602
+
+
+### Note: SETUP_proto.md is used to generate this file with different URLs, depending upon
+the site where hosted. See build.sh in project repository.fbacher.

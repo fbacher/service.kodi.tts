@@ -57,41 +57,41 @@ else:
         'tts': INFO,
         'tts.backends': INFO,
         'tts.backends.driver': DEBUG,
-        'tts.backends.google': INFO,
-        'tts.backends.espeak': DEBUG,
-        'tts.backends.espeak_settings': DEBUG,
+        'tts.backends.google': DEBUG,
+        'tts.backends.espeak': INFO,
+        'tts.backends.espeak_settings': INFO,
         'tts.backends.no_engine': INFO,
         'tts.backends.no_engine_settings': INFO,
-        'tts.backends.engines.google_downloader': INFO,
+        'tts.backends.engines.google_downloader': DEBUG,
         'tts.backends.engines.google_settings': INFO,
         'tts.backends.engines.speech_generator': INFO,
-        'tts.backends.engines.windows.powershell': DEBUG_V,
-        'tts.backends.engines.windows.powershell_settings': DEBUG,
+        'tts.backends.engines.windows.powershell': INFO,
+        'tts.backends.engines.windows.powershell_settings': INFO,
         'tts.backends.settings.language_info': INFO,
         'tts.backends.settings.langcodes_wrapper': INFO,
         'tts.backends.settings.service_types': INFO,
         'tts.backends.settings.settings_helper': INFO,
-        'tts.backends.settings.settings_map': DEBUG,
+        'tts.backends.settings.settings_map': INFO,
         'tts.backends.settings.validators': INFO,
-        'tts.backends.base': DEBUG,
+        'tts.backends.base': INFO,
         'tts.backends.audio.base_audio': INFO,
         'tts.backends.audio.mpv_audio_player': INFO,
         'tts.backends.audio.mplayer_audio_player': INFO,
-        'tts.backends.audio.sfx_audio_player': DEBUG,
+        'tts.backends.audio.sfx_audio_player': INFO,
         'tts.backends.players.sfx_settings': INFO,
         'tts.backends.audio.sound_capabilities': INFO,
         'tts.backends.audio.worker_thread': INFO,
         'tts.backends.transcoders.trans': INFO,
-        'tts.cache.voicecache': INFO,
+        'tts.cache.voicecache': DEBUG,
         'tts.common.base_services': INFO,
         'tts.common.garbage_collector': INFO,
         'tts.common.logger': INFO,
         'tts.common.monitor': INFO,
         'tts.common.phrases': INFO,
         'tts.common.phrase_manager': INFO,
-        'tts.common.settings_cache': DEBUG,
-        'tts.common.settings_low_level': DEBUG,
-        'tts.common.settings': DEBUG,
+        'tts.common.settings_cache': INFO,
+        'tts.common.settings_low_level': INFO,
+        'tts.common.settings': INFO,
         'tts.common.simple_run_command': INFO,
         'tts.common.simple_pipe_command': INFO,
         'tts.common.slave_communication': INFO,
@@ -107,7 +107,7 @@ else:
         'tts.windows.guitables': INFO,
         'tts.windows.homedialog': INFO,
         'tts.windows.libraryviews': INFO,
-        'tts.windows.notice': DEBUG,
+        'tts.windows.notice': INFO,
         'tts.windows.playerstatus': INFO,
         'tts.windows.progressdialog': INFO,
         'tts.windows.pvr': INFO,
@@ -127,19 +127,19 @@ else:
         'tts.gui': INFO,
         'tts.gui.window_structure': INFO,
         'tts.gui.parser': INFO,
-        'tts.service': DEBUG,
-        'tts.service_worker': DEBUG,
+        'tts.service': INFO,
+        'tts.service_worker': INFO,
         'tts.startup.bootstrap_engines': INFO,
         'tts.startup.bootstrap_converters': INFO,
         'tts.backends.audio.bootstrap_players': INFO,
         'tts.backends.players.mpv_player_settings': INFO,
         'tts.backends.players.mplayer_settings': INFO,
         'tts.windowNavigation.choice': INFO,
-        'tts.windowNavigation.configure': DEBUG,
+        'tts.windowNavigation.configure': INFO,
         'tts.windowNavigation.help_dialog': INFO,
         'tts.windowNavigation.selection_dialog': INFO,
-        'tts.windowNavigation.settings_dialog': DEBUG,
-        'utils.keymapeditor': DEBUG
+        'tts.windowNavigation.settings_dialog': INFO,
+        'utils.keymapeditor': INFO
     }
 # xbmc.log(f'configuring debug_levels INFO: {logging.INFO} DEBUG: {DEBUG} '
 #          f'VERBOSE: {DEBUG_V} EXTRA_VERBOSE: '
@@ -348,11 +348,11 @@ def startService():
             Settings.set_introduction_on_startup(False)
 
         if (Settings.is_configure_keymap_on_startup() or
-            Settings.is_introduction_on_startup() or
-            Settings.is_start_config_gui_on_startup() or
-            #  Settings.is_configure_dependencies_on_startup() or
-            Settings.is_config_help_on_startup() or
-            Settings.is_introduction_on_startup()):
+                Settings.is_introduction_on_startup() or
+                Settings.is_start_config_gui_on_startup() or
+                #  Settings.is_configure_dependencies_on_startup() or
+                Settings.is_config_help_on_startup() or
+                Settings.is_introduction_on_startup()):
             configure_something = True
 
         something_configured: bool = False
