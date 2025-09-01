@@ -1,6 +1,11 @@
+---
+layout: page
+---
+<meta http-equiv='Content-Type' content='text/html; charset=utf-8' />
+
 Release Notes
 =============
-Welcome to the **Alpha 5** release of Kodi Text To Speech which provides basic TTS 
+Welcome to the **Alpha 8** release of Kodi Text To Speech which provides basic TTS 
 functionality to Kodi. It is based upon XBMC TTS (by Rick Phillips (ruuk) and pvagner),
 which is no longer supported. This version of Kodi TTS is maintained by a 
 different team and has major changes. Kodi TTS is installable on Kodi 20 and 21.

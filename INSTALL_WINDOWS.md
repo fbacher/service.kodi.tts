@@ -1,4 +1,8 @@
-
+---
+layout: home
+---
+<meta http-equiv='Content-Type' content='text/html; charset=utf-8' />
+# How to use Kodi TTS Addon Repository
 ## Install
 
 Kodi TTS may be installed on Kodi 20 (Nexus) as well as 21 (Omega) it is highly
@@ -13,7 +17,7 @@ no known issues with using earlier versions.
 Navigator voices will be available on first use of Kodi.
 
 Install images are from a build server which cranks out new builds every day or so. The link
-here will soon be invalid. 
+here will soon be invalid.
 Install images for [**mpv** are here](https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20250730/mpv-x86_64-v3-20250730-git-a6f3236.7z) (this link is from [the official mpv installation page](the https://mpv.io/installation)). MPV version 0.37.0 or newer should be fine.
 
 If the previous link is invalid then try:
@@ -36,12 +40,12 @@ Install eSpeak-NG through the Windows App installer.
 **Note:** The first time that Kodi TTS runs on Windows, a Dialog will request Administator
 privilege to set several permissions:
 
-  1. Permission to enable two simple powershell scripts to call the Voicing API.  
+  1. Permission to enable two simple powershell scripts to call the Voicing API.
      Only the current user will have the permission.
-  2. Permission to add variables to the User's environment. 
+  2. Permission to add variables to the User's environment.
 
-Install the Kodi TTS addon as well as its dependents. Since this Alpha release 
-is not available from the Kodi repository, you will have to manually download 
+Install the Kodi TTS addon as well as its dependents. Since this Alpha release
+is not available from the Kodi repository, you will have to manually download
 Kodi TTS and a dependent addon.
 
 Download the two addons (you will need the .zip files) from the links below:
@@ -52,7 +56,7 @@ Download the two addons (you will need the .zip files) from the links below:
 To install, in Kodi, go to **Settings -> Add-ons -> Add-on browser -> Install from zip file**.
 There will probably be a warning about installing from unofficial sites. Select to
 allow the installation. Install **script.module.langcodes** first. Choose the path
-where you downloaded each zip file above. After the installation of both is complete, 
+where you downloaded each zip file above. After the installation of both is complete,
 Kodi TTS will start and basic configuration will begin:
 
 ### Kodi TTS First Run
@@ -73,8 +77,8 @@ When Kodi TTS runs for the first time it performs several setup tasks:
 
 The Configuration Dialog is a custom Dialog where you can change TTS settings and hear the
 changes as they are made. You don't have to change anything. You can press Escape and it
-will exit. However there is one setting in particular that you probably want to change is 
-the speed of the voice. 
+will exit. However there is one setting in particular that you probably want to change is
+the speed of the voice.
 
 You will probably notice that the configuration Dialog is very chatty and helpful. This is
 because the first time you run it extra verbosity is enabled. Normally this is enabled/disabled
@@ -87,18 +91,18 @@ Use the right cursor (arrow) to increase the speed, or left to reduce the speed.
 
 ### Save Settings
 
-In order to save the settings you have chosen, move the cursor down until it reaches the 
+In order to save the settings you have chosen, move the cursor down until it reaches the
 OK button. Selecting OK will save the settings and dismiss the dialog, returning you to
 where you were in Kodi.
 
 ### To Make Other Changes
 
 Move the cursor to the line of your choice, such as **Engine** If you click on or press Enter
-a Selection Dialog will appear and you will be able to navigate up and down to learn and 
-hear about the various options. If you press Escape, then no changes will be made to your 
-Settings. If you select (click on or press Enter) something, then that choice will be 
+a Selection Dialog will appear and you will be able to navigate up and down to learn and
+hear about the various options. If you press Escape, then no changes will be made to your
+Settings. If you select (click on or press Enter) something, then that choice will be
 remembered in the Settings Dialog. You can undo your action by going back to the Selection
-Dialog and making another choice. Or you can discard all of your changes by pressing Escape 
+Dialog and making another choice. Or you can discard all of your changes by pressing Escape
 or the Cancel button to the right of the OK button.
 
 
@@ -112,21 +116,21 @@ installed voicing will begin immediately on first-use.
 Mpv, espeak and mplayer are likely available from the 'normal' place for your Linux
 distribution. Kodi expects them to be installed in /usr/bin.
 
-After installing any players or engines, install the Kodi TTS addon as well as its 
+After installing any players or engines, install the Kodi TTS addon as well as its
 dependents. Since this Alpha release is not available from the Kodi repository,
 you will have to manually download and install Kodi TTS and a dependent addon.
 
 Download the two addons (you will need the .zip file):
 
-  * [script.module.langcodes](https://github.com/fbacher/script.module.langcodes/archive/refs/tags/v0.0.1-alpha.zip)
-  * [service.kodi.tts](https://github.com/fbacher/service.kodi.tts/tags)
+  * [script.module.langcodes](URL_LANGCODES_ZIP_REPLACE)
+  * [service.kodi.tts](URL_TTS_ZIP_REPLACE)
 
 
 To install, in Kodi, go to **Settings -> Add-ons -> Add-on browser -> Install from zip file**.
 There will probably be a warning about installing from unofficial sites. Select to
 allow the installation. Install **script.module.langcodes** first. Choose the path
-where you downloaded each zip file above. After the installation of both is complete, 
-Kodi TTS will start and basic configuration will begin. 
+where you downloaded each zip file above. After the installation of both is complete,
+Kodi TTS will start and basic configuration will begin.
 
 ### Kodi TTS First Run
 
@@ -134,7 +138,7 @@ When Kodi TTS runs for the first time it performs several setup tasks:
 
   * On Windows, several scripts are run to give permission for scripts to run and to update
     environment variables. A (non-voiced) dialog will prompt the user to allow Admin
-    privilege for a powershell script. 
+    privilege for a powershell script.
   * Next, on Windows, several windows will quickly flash by an dissapear
   * On Linux, no special scripts or permissions are needed.
   * Kodi should begin voicing its progress. A notification will be read before each step, each
@@ -148,16 +152,16 @@ When Kodi TTS runs for the first time it performs several setup tasks:
 ## What follows is additional information and not part of the Quick-Start
 
 ### Keyboard mappings
-Kodi provides a means to define and modify numerous shortcuts for keyboards, 
-ir-remotes and other devices. Kodi TTS comes with a small set of shortcuts to 
+Kodi provides a means to define and modify numerous shortcuts for keyboards,
+ir-remotes and other devices. Kodi TTS comes with a small set of shortcuts to
 help you get started.
 
 I made the mistake of ignoring the previous keymap assignments. This will be corrected
 before Beta is released. Suggestions for improving these assignments are welcome.
 
 Keyboard (and other input device) mappings are configured in .xml files in Kodi’s
-user_data/keymaps directory. The pre-configured one installed with Kodi is named 
-“kodi.tts.keyboard.xml” It can be directly edited to change the key assignments. 
+user_data/keymaps directory. The pre-configured one installed with Kodi is named
+“kodi.tts.keyboard.xml” It can be directly edited to change the key assignments.
 Currently, a keymap editor for this file is not available. (but will be before beta).
 
 What follows are the **current** default keyboard mapping definitions for all platforms:
@@ -184,20 +188,20 @@ Function: STOP
 
 Function: VOICE_HINT
 
-        keyboard shortcut: Alt-h  
-        Voice hint toggles voicing hint text which is currently only embedded in  
+        keyboard shortcut: Alt-h
+        Voice hint toggles voicing hint text which is currently only embedded in
         the kodi.tts configuration and help dialogs.
 
 Function: REPEAT
 
         keyboard shortcut: shift, F12
 
-        Repeat voicing the previous item, including complete context (Window name, 
+        Repeat voicing the previous item, including complete context (Window name,
         heading, etc. on down to the item itself).
 
 Function EXTRA
 
-        Increase verbosity (more context)  
+        Increase verbosity (more context)
 
         Shortcut not defined
 
@@ -222,11 +226,11 @@ Function VOL_DOWN
 
 Function: SPEED_UP
 
-        keyboard shortcut: alt, shift + 
+        keyboard shortcut: alt, shift +
         Increases how fast the text is spoken
-        Note: At least on the Linux distribution and keyboard that I am 
-        using, pressing (in order) "alt, shift, +" gets interpreted as 
-        "meta +", however, pressing "shift, alt, +" is interpreted as 
+        Note: At least on the Linux distribution and keyboard that I am
+        using, pressing (in order) "alt, shift, +" gets interpreted as
+        "meta +", however, pressing "shift, alt, +" is interpreted as
         "shift, meta, 160". More study is required to find better shortcut.
 
 Function: SLOW_DOWN
@@ -237,7 +241,7 @@ Function: SLOW_DOWN
 Function: Display Help Dialog
 
         keyboard shortcut: ctrl F1
-        This will launch Kodi’s document reader where you can get more information   
+        This will launch Kodi’s document reader where you can get more information
         about how to use Kodi TTS.
 
 
@@ -253,8 +257,8 @@ Kodi TTS does NOT USE Kodi’s addon configuration menus. Instead, it uses custo
 
 ### Configuration Dialog
 
-The Configuration Dialog is accessed by pressing **Ctrl F12**. The Dialog is roughly 
-organized in the logical order that changes are made. By pressing **Alt-h** 
+The Configuration Dialog is accessed by pressing **Ctrl F12**. The Dialog is roughly
+organized in the logical order that changes are made. By pressing **Alt-h**
 Kodi TTS will voice some terse hint information as you navigate through your choices.
 To disable the hints, press **Alt-h** again.
 
@@ -271,12 +275,12 @@ permanent until you save it when leaving the Configuration Dialog.
 By now you may have noticed that the voicing speed has slowed down after you changed
 the engine. This is done to make sure the new engine is understandable. To fix the speed,
 navigate to the **speed** item. Here you use the left or right cursor to change the
-speed. It is recomended that the speed is changed after choosing the engine and 
+speed. It is recomended that the speed is changed after choosing the engine and
 language variant.
 
 #### Language Variant (voice)
 
-After engine selection, the next thing to choose is the 'Language Variant' or voice. 
+After engine selection, the next thing to choose is the 'Language Variant' or voice.
 Again, press enter to bring up the Selection Dialog where you can hear each choice.
 
 #### Player
@@ -289,7 +293,7 @@ Another choice, for engines that support it, is built-in player. A
 built-in player is part of the engine, so a separate player does not need to be
 installed. The biggest downside is that it is much slower than using a cache.
 
-Similar to using a built-in player is the SFX player. SFX uses Kodi to play the audio. 
+Similar to using a built-in player is the SFX player. SFX uses Kodi to play the audio.
 The advantage being that SFX is always there. However, there are limitations:
   * You can not change speed or volume (without changing Kodi volume)
   * It only works with wave files, requiring a transcoder (slowing things down)
@@ -300,10 +304,10 @@ The advantage being that SFX is always there. However, there are limitations:
 Note that you can't configure to use a cache if the current engine or player does
 not support it.
 
-Since the process of voice generation is expensive, Caching can greatly speed up 
+Since the process of voice generation is expensive, Caching can greatly speed up
 voicing. Currently, there are no limits on cache size, nor is there garbage collection.
 For an engine that produces mp3 a cache for a typical library can grow to 1G or more.
-Wave files are larger. If you have the space, then a cache is recommended. 
+Wave files are larger. If you have the space, then a cache is recommended.
 
 A different cache is used for each engine and voice (language variant). Therefore if
 you have been using a cache for a few weeks and switched to a new voice, it may be
@@ -333,9 +337,9 @@ The choice of player modes depends upon the engine and player.
 
     * FILE mode tells the player to get the audio from a file
 
-    * PIPE mode is meant to improve performance by transmitting the audio via  
-      in-memory 'pipes' instead of through a file. However, it is currently  
-      implemented by going through a file anyway. The option remains because it   
+    * PIPE mode is meant to improve performance by transmitting the audio via
+      in-memory 'pipes' instead of through a file. However, it is currently
+      implemented by going through a file anyway. The option remains because it
       may be useful in the future.
 
     * ENGINE_SPEAK mode uses the engine's built-in player (if supported).

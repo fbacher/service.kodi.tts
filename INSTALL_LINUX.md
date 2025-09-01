@@ -1,30 +1,29 @@
 ---
-layout: page
+layout: home
 ---
 <meta http-equiv='Content-Type' content='text/html; charset=utf-8' />
-# How to use Kodi TTS Addon Repository
-## Install
+# How to install on Windows running Kodi
 
-Kodi TTS may be installed on Kodi 20 (Nexus) as well as 21 (Omega) it is highly
-recommended to install the latest released version of Kodi, (21.2) although there are
-no known issues with using earlier versions.
+## Requirements
 
-### Windows Quick Start
+    * Kodi 20 (Nexus) or Kodi 21 (Omega) 
+    * Windows-11. Not tested on other versions of Windows
+    * For installing on Linux systems see: [INSTALL_LINUX](.INSTALL_LINUX.md)
 
-#### Optionally install mpv
+## Windows Quick Start
+
+### Optionally install mpv
 
 **Recommended, but optional**: install mpv player prior to Kodi TTS addon so that GooglTTS and
 Navigator voices will be available on first use of Kodi.
 
-Install images are from a build server which cranks out new builds every day or so. The link
-here will soon be invalid.
-Install images for [**mpv** are here](https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20250730/mpv-x86_64-v3-20250730-git-a6f3236.7z) (this link is from [the official mpv installation page](the https://mpv.io/installation)). MPV version 0.37.0 or newer should be fine.
-
-If the previous link is invalid then try:
-https://github.com/shinchiro/mpv-winbuild-cmake/releases
+The [official mpv development site](https://mpv.io/installation) does not provide any install
+images, but rather refers to some other sites that provide regular builds. One such site is
+[nightly.link](https://nightly.link/mpv-player/mpv/workflows/build/master). No login required.
+MPV version 0.37.0 or newer should be fine.
 
 Carefully choose the correct image for your windows. You want something that has
-"mpv-x86_64" in its name, like: https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20250623/**mpv-x86_64**-20250623-git-18defc8.7z. You DON'T want ffmpeg or a 'dev' build. If the build you install doesn't run (if it launches it should be ok), then try another build. Some are built with different compilers, others are for different cpus. Intel/amd should have "mpv-x86_64" in the name.
+"mpv-x86_64" in its name, such as: **mpv-x86_64-pc-windows-msvc. **
 
 The following file operations will require Admin privilege.
 
@@ -44,14 +43,12 @@ privilege to set several permissions:
      Only the current user will have the permission.
   2. Permission to add variables to the User's environment.
 
-Install the Kodi TTS addon as well as its dependents. Since this Alpha release
-is not available from the Kodi repository, you will have to manually download
-Kodi TTS and a dependent addon.
+Since this Alpha release is not available from the Kodi repository, you will get it from
+my private repository.
 
-Download the two addons (you will need the .zip files) from the links below:
+Download the repository .zip file.
+[private repository](https://feuerbacher.us/kodi_repo).
 
-  * [script.module.langcodes](URL_LANGCODES_ZIP)
-  * [service.kodi.tts](URL_TTS_ZIP)
 
 To install, in Kodi, go to **Settings -> Add-ons -> Add-on browser -> Install from zip file**.
 There will probably be a warning about installing from unofficial sites. Select to
