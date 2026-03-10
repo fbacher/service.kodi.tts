@@ -17,15 +17,15 @@ DISABLE_PATH = xbmcvfs.translatePath(f"special://profile/addon_data/{ADDON_ID}/D
 ENABLE_PATH = xbmcvfs.translatePath(f"special://profile/addon_data/{ADDON_ID}/ENABLED")
 USER_DATA_PATH = xbmcvfs.translatePath("special://userdata")
 
-
-# TODO: Is this even needed?
+# Allow user to enable/disable TTS via keymap (default F12). Disables by shutting down
+# TTS
 # It violates Kodi's rules by being run as an addon, but it is not registered as
 # one.
 # I suspect that it's capabilities can be performed within plugin.
 # It looks like the file ENABLED/DISABLED and this tool can be replaced with
 # a simple setting, 'ENABLED'
 #
-# Able to shutdown and restart serivce.kodi.tts
+# Able to shutdown and restart service.kodi.tts
 
 def getXBMCVersion():
     import json
@@ -109,7 +109,6 @@ def toggleEnabled():
     try:
         if not addonIsEnabled():
             raise Exception('Addon Disabled')
-        # xbmcaddon.Addon(ADDON_ID)
         xbmc.log(f'{ADDON_ID}: DISABLING', xbmc.LOGDEBUG)
         xbmc.executebuiltin('RunScript(service.kodi.tts,key.SHUTDOWN)')
     except:

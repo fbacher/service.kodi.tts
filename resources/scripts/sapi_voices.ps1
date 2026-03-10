@@ -13,7 +13,7 @@ $speak = New-Object System.Speech.Synthesis.SpeechSynthesizer
 # $echo "SAPI Voices"
 # $speak.GetInstalledVoices()
 $sapi_voices = $speak.GetInstalledVoices().VoiceInfo | ConvertTo-Json
-$sapi_voices 
+$sapi_voices
 $speak.Dispose()
 }
 
