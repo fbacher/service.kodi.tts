@@ -46,7 +46,7 @@ Function Get_Queue_Request
             # "Sending message: $json_body_text" | Out-File -FilePath "$env:homepath/logs.txt" -Append
 
             [ArraySegment[byte]]$msg = [System.Text.Encoding]::UTF8.GetBytes($json_body_text)
-            Write-Log "Calling SendAsync"
+            # Write-Log "Calling SendAsync"
             $Async_Sender = $ws.SendAsync(
                     $msg,
                     [System.Net.WebSockets.WebSocketMessageType]::Binary,
@@ -331,7 +331,7 @@ Function Get_Addon_Details
             }
         }
         Write-Log "Exiting Get_Addon_Details"
-        Format-Table -InputObject $addon_dict | Out-String | Write-Host
+        #  Format-Table -InputObject $addon_dict | Out-String | Write-Host
         return $addon_dict
     }
 }
@@ -383,8 +383,8 @@ Function Enable_Addon
         $addon_dict = @{ }
         foreach ($addon_dict in $addon_list)
         {
-            Write-Debug "addon_dict: $addon_dict"
-            Format-Table -InputObject $addon_dict | Out-String | Write-Host
+            # $formatted = Format-Table -InputObject $addon_dict | Out-String | Write-Host
+            #  Write-Debug "addon_dict: $formatted"
             $key = $( $addon_dict.addonid )
             $addon_dict[$key] = $addon_dict
         }
