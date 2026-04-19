@@ -210,6 +210,34 @@ class ISimpleValidator(IValidator):
         raise NotImplementedError()
 
 
+class ISimpleStringListValidator(IValidator):
+
+    def __init__(self, service_key: ServiceID,
+                 property_type: SettingType,
+                 const: bool = False) -> None:
+        super().__init__(service_key=service_key, property_type=property_type,
+                         const=const)
+        self._service_key: ServiceID = service_key
+        self._property_type: SettingType = property_type
+        self._const: bool = const
+
+    @property
+    def property_type(self) -> SettingType:
+        return self._property_type
+
+    def is_const(self) -> bool | None:
+        raise NotImplementedError()
+
+    def get_value(self) -> List[str] | str:
+        raise NotImplementedError()
+
+    def validate(self, value: int | None) -> bool:
+        raise NotImplementedError()
+
+    def preValidate(self, value: Any) -> Tuple[bool, Any]:
+        raise NotImplementedError()
+
+
 class IIntValidator(IValidator):
 
     def __init__(self, service_key: ServiceID,

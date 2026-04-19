@@ -101,7 +101,7 @@ class Backends(BaseSettingsConstants):
         SPEECH_DISPATCHER_ID  : 'speechDisp',
         EXPERIMENTAL_ENGINE_ID: 'ex',
         GOOGLE_ID             : 'goo',
-        PIPER_ID              : 'piper',
+        PIPER_ID              : 'pip',
         POWERSHELL_ID         : 'pwrsh',
         Services.MPLAYER_ID   : 'mplr'
     }
@@ -110,7 +110,7 @@ class Backends(BaseSettingsConstants):
 class Languages(BaseSettingsConstants):
     _logger: BasicLogger = None
 
-    # Msg for generic locale display
+    # Msg for generic locale_id display
     # Msg 32425 in strings.po is: "{0} ({1})"
     # {0} is for Language
     # {1} is for Country/region
@@ -349,7 +349,7 @@ class PlayerMode(StrEnum):
     # SLAVE_FILE is most desirable because when used with cache the overhead is
     # lowest
     SLAVE_FILE = 'slave_file'
-    # SLAVE_PIPE has not yet encountered. Probably used when external service
+    # SLAVE_PIPE has not yet been encountered. Probably used when external service
     # only provides pipes. Less desirable than SLAVE_FILE because SLAVE_PIPE requires
     # Python to handle piping, whereas SLAVE_FILE just passes the path on to
     # a usually external binary

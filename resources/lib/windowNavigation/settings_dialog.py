@@ -9,10 +9,13 @@ from xbmcgui import (ControlButton, ControlEdit, ControlGroup, ControlLabel,
 
 import langcodes
 from backends.base import *
+from backends.settings.engine_lang import EngineLang
+from backends.settings.engine_voice import EngineVoice
+from backends.settings.engine_voice_manager import EngineVoiceManager
 from backends.settings.i_validators import (INumericValidator, UIValues)
-from backends.settings.language_info import LanguageInfo
-from backends.settings.service_types import PlayerType, ServiceID
-from backends.settings.settings_helper import FormatType, SettingsHelper
+from backends.settings.lang_utils import LangUtils
+from backends.settings.service_types import EngineType, PlayerType, ServiceID
+from backends.settings.settings_helper import SettingsHelper
 from backends.settings.settings_map import SettingsMap
 from common.constants import Constants
 from common.exceptions import ConfigurationError
@@ -23,7 +26,9 @@ from common.setting_constants import (Backends, Genders)
 from common.settings import Settings
 from utils.util import get_language_code
 from windowNavigation.action_map import Action
-from windowNavigation.choice import Choice
+from windowNavigation.choice import (Choice, Choices, EngineChoice, EngineChoices,
+                                     VGChoice, VoiceChoice,
+                                     VoiceChoices, VGChoices)
 from windowNavigation.configure import Configure, EngineConfig
 from windowNavigation.selection_dialog import SelectionDialog
 
@@ -37,19 +42,19 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
     # OPTIONS_TAB: Final[int] = 200
     # KEYMAP_TAB: Final[int] = 300
     # ADVANCED_TAB: Final[int] = 400
-    OK_BUTTON: Final[int] = 28
-    CANCEL_BUTTON: Final[int] = 29
-    DEFAULTS_BUTTON: Final[int] = 30
+    OK_BUTTON_ID: Final[int] = 28
+    CANCEL_BUTTON_ID: Final[int] = 29
+    DEFAULTS_BUTTON_ID: Final[int] = 30
     ENGINE_GROUP_LIST: Final[int] = 101
     SELECT_ENGINE_BUTTON: Final[int] = 102
     FIRST_SELECT_ID: Final[int] = SELECT_ENGINE_BUTTON
     SELECT_ENGINE_VALUE_LABEL: Final[int] = 103
-    SELECT_LANGUAGE_GROUP: Final[int] = 1104
-    SELECT_LANGUAGE_BUTTON: Final[int] = 104
-    SELECT_LANGUAGE_VALUE_LABEL: Final[int] = 105
-    SELECT_VOICE_GROUP: Final[int] = 1106
-    SELECT_VOICE_BUTTON: Final[int] = 106
-    SELECT_VOICE_VALUE_LABEL: Final[int] = 107
+    SELECT_VOICE_GROUP: Final[int] = 1104
+    SELECT_VOICE_BUTTON: Final[int] = 104
+    SELECT_VOICE_VALUE_LABEL: Final[int] = 105
+    X_SELECT_VOICE_GROUP: Final[int] = 1106
+    X_SELECT_VOICE_BUTTON: Final[int] = 106
+    X_SELECT_VOICE_VALUE_LABEL: Final[int] = 107
     SELECT_GENDER_GROUP: Final[int] = 1108
     SELECT_GENDER_BUTTON: Final[int] = 108
     SELECT_GENDER_VALUE_LABEL: Final[int] = 109
@@ -90,7 +95,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         """
         # xbmc.executebuiltin('Skin.ToggleDebug')
 
-        Monitor.register_abort_listener(self.on_abort_requested)
+        Monitor.register_abort_listener(listener=self.on_abort_requested)
 
         self.closing = False
         self._initialized: bool = False
@@ -150,12 +155,12 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         self.engine_api_key_label: ControlLabel | None = None
         self.engine_engine_button: ControlButton | None = None
         self.engine_engine_value: ControlLabel | None = None
-        self.engine_language_group: ControlGroup | None = None
-        self.engine_language_button: ControlButton | None = None
-        self.engine_language_value: ControlLabel | None = None
         self.engine_voice_group: ControlGroup | None = None
         self.engine_voice_button: ControlButton | None = None
         self.engine_voice_value: ControlLabel | None = None
+        self.engine_voice_x_group: ControlGroup | None = None
+        self.engine_voice_x_button: ControlButton | None = None
+        self.engine_voice_x_value: ControlLabel | None = None
         self.engine_gender_group: ControlGroup | None = None
         self.engine_gender_button: ControlButton | None = None
         self.engine_gender_value: ControlLabel | None = None
@@ -245,17 +250,17 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 # self.advanced_tab.setVisible(True)
 
                 self.ok_button: ControlButton = self.get_control_button(
-                        clz.OK_BUTTON)
+                        clz.OK_BUTTON_ID)
                 self.ok_button.setLabel(MessageId.OK_BUTTON.get_msg())
                 self.ok_button.setVisible(True)
 
                 self.cancel_button = self.get_control_button(
-                        clz.CANCEL_BUTTON)
+                        clz.CANCEL_BUTTON_ID)
                 self.cancel_button.setLabel(MessageId.CANCEL_BUTTON.get_msg())
                 self.cancel_button.setVisible(True)
 
                 self.defaults_button: ControlButton = self.get_control_button(
-                        clz.DEFAULTS_BUTTON)
+                        clz.DEFAULTS_BUTTON_ID)
                 self.defaults_button.setLabel(MessageId.DEFAULTS_BUTTON.get_msg())
                 self.defaults_button.setVisible(True)
 
@@ -269,36 +274,21 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
                 self.engine_engine_value = self.get_control_label(
                         clz.SELECT_ENGINE_VALUE_LABEL)
-                """
-                This is a MESS. engine_language_group is really for selecting
-                the engine's voice. (see where the language_button is
-                labeled as VOICE). What makes matters worse, is that
-                the original engine_voice_group is used when 'voice is
-                available' when it likely is not.
-
-                The truth is that language and voice are very closely related.
-                Language is a broad term ('en'). There are different
-                accents in different countries. A person's voice has a language
-                and accent. When there are few 'personal voices' then TTS
-                will lump them together with language variations (en-us.nancy).
-                If there are many voices, then use multi-stage selection. Pick the
-                language/country (en-us) then use another 'voice' button to
-                choose the specific voice. For now, it is ignored.
-                """
-                self.engine_language_group = self.get_control_group(
-                        clz.SELECT_LANGUAGE_GROUP)
-                self.engine_language_button: ControlButton = self.get_control_button(
-                        clz.SELECT_LANGUAGE_BUTTON)
-
-                self.engine_language_value = self.get_control_label(
-                        clz.SELECT_LANGUAGE_VALUE_LABEL)
 
                 self.engine_voice_group = self.get_control_group(
                         clz.SELECT_VOICE_GROUP)
                 self.engine_voice_button: ControlButton = self.get_control_button(
                         clz.SELECT_VOICE_BUTTON)
+
                 self.engine_voice_value = self.get_control_label(
                         clz.SELECT_VOICE_VALUE_LABEL)
+
+                self.engine_voice_x_group = self.get_control_group(
+                        clz.X_SELECT_VOICE_GROUP)
+                self.engine_voice_x_button: ControlButton = self.get_control_button(
+                        clz.X_SELECT_VOICE_BUTTON)
+                self.engine_voice_x_value = self.get_control_label(
+                        clz.X_SELECT_VOICE_VALUE_LABEL)
 
                 self.engine_gender_group = self.get_control_group(
                         clz.SELECT_GENDER_GROUP)
@@ -439,43 +429,15 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             engine_label: str = Backends.get_label(engine_key.service_id)
             self.engine_engine_value.setLabel(engine_label)
 
-            engine_voice_id: str = Settings.get_voice(engine_key)
+            e_voice_id: str = Settings.get_voice_id(engine_key)
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'setting_id: {engine_key.service_id} '
-                                f'engine_voice_id: {engine_voice_id}')
-            lang_info = LanguageInfo.get_entry(engine_key,
-                                               engine_voice_id=engine_voice_id,
-                                               lang_id=None)
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'lang_info: {lang_info}')
-            lang_info: LanguageInfo
-            kodi_language: langcodes.Language
-            _, _, _, kodi_language = LanguageInfo.get_kodi_locale_info()
-            voice_str: str
-            voice_str = SettingsHelper.get_formatted_label(
-                    lang_info,
-                    kodi_language=kodi_language,
-                    format_type=FormatType.DISPLAY)
+                                f'engine_voice: {e_voice_id}')
             self.engine_engine_button.setLabel(MessageId.ENGINE_LABEL.get_msg())
-            """
-            This is a MESS. engine_language_group is really for selecting
-            the engine's voice. (see where the language_button is
-            labeled as VOICE). What makes matters worse, is that
-            the original engine_voice_group is used when 'voice is
-            available' when it likely is not.
 
-            The truth is that language and voice are very closely related.
-            Language is a broad term ('en'). There are different
-            accents in different countries. A person's voice has a language
-            and accent. When there are few 'personal voices' then TTS
-            will lump them together with language variations (en-us.nancy).
-            If there are many voices, then use multi-stage selection. Pick the
-            language/country (en-us) then use another 'voice' button to
-            choose the specific voice. For now, it is ignored.
-            """
-            self.engine_language_button.setLabel(
-                    MessageId.LANG_VARIANT_BUTTON.get_msg())
-            self.refresh_engine_language_value()
+            self.engine_voice_button.setLabel(
+                    MessageId.SELECT_VOICE_BUTTON.get_msg())
+            #  self.get_voice_label()
             voice_key: ServiceID = engine_key.with_prop(SettingProp.VOICE)
             avail: bool = SettingsMap.is_setting_available(voice_key,
                                                            SettingProp.VOICE)
@@ -484,15 +446,15 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 MY_LOGGER.debug(f'is voice available engine: {engine_key} {avail}')
                 MY_LOGGER.debug(f'is voice valid: {valid}')
             if not valid:
-                self.engine_voice_group.setVisible(False)
+                self.engine_voice_x_group.setVisible(False)
             else:
-                self.engine_voice_button.setLabel(
+                self.engine_voice_x_button.setLabel(
                         MessageId.SELECT_VOICE_BUTTON.get_msg())
-                self.engine_voice_group.setVisible(True)
-                self.engine_voice_value.setLabel(self.get_language(label=True))
+                self.engine_voice_x_group.setVisible(True)
+                self.engine_voice_x_value.setLabel(self.get_language(label=True))
                 if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'engine_voice_value: '
-                                    f'{self.engine_voice_value.getLabel()}')
+                    MY_LOGGER.debug(f'engine_voice_x_value: '
+                                    f'{self.engine_voice_x_value.getLabel()}')
 
             if not SettingsMap.is_valid_setting(engine_key.with_prop(SettingProp.GENDER)):
                 self.engine_gender_group.setVisible(False)
@@ -671,8 +633,10 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             # self.set_engine()
             #  self.get_global_allowed_player_modes()
             engine_key: ServiceID = self.engine_key
-            self.validate_and_set_lang_field()
-            self.set_voice_field(update_ui=True)
+            # self.validate_and_set_voice_field()
+            self.set_voice_field(update_ui=True,
+                                 e_voice=None)
+            # self.set_voice_field(update_ui=True)
             # self.set_gender_field() # Not that useful at this time.
             # Player and player_mode are inter-dependent
             # Speed, volume and pitch are also closely related to player, but not as
@@ -818,6 +782,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             return
 
         try:
+            clz = type(self)
             '''
             focus_id = self.getFocusId()
             if controlId == 100:
@@ -854,20 +819,20 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             '''
             if controlId in range(self.FIRST_SELECT_ID, self.LAST_SELECT_ID):
                 self.handle_engine_tab(controlId)
-            elif controlId == 28:
+            elif controlId == clz.OK_BUTTON_ID:
                 # OK button
                 self.closing = True
                 self.cfg.commit_settings()
                 # MY_LOGGER.info(f'ok button closing')
                 self.close()
 
-            elif controlId == 29:
+            elif controlId == clz.CANCEL_BUTTON_ID:
                 # Cancel button
                 # MY_LOGGER.debug(f'cancel button')
                 self.closing = True
                 self.close()
 
-            elif controlId == self.DEFAULTS_BUTTON:
+            elif controlId == clz.DEFAULTS_BUTTON_ID:
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'defaults button')
                 self.select_defaults()
@@ -875,7 +840,41 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         except Exception as e:
             MY_LOGGER.exception('')
 
-    def on_abort_requested(self):
+    def onDoubleClick(self, controlId: int) -> None:
+        """
+
+        :param controlId:
+        :return:
+        """
+        try:
+            clz = type(self)
+            if controlId in range(clz.FIRST_SELECT_ID, clz.LAST_SELECT_ID):
+                pass
+                #  self.handle_engine_tab(controlId)
+            elif controlId == clz.OK_BUTTON_ID:
+                self.closing = True
+                self.cfg.commit_settings()
+                # MY_LOGGER.info(f'ok button closing')
+                self.close()
+
+            elif controlId == clz.CANCEL_BUTTON_ID:
+                # MY_LOGGER.debug(f'cancel button')
+                self.closing = True
+                self.close()
+
+            elif controlId == clz.DEFAULTS_BUTTON_ID:
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'defaults button')
+                self.select_defaults()
+                self.closing = True
+                self.cfg.commit_settings()
+                # MY_LOGGER.info(f'ok button closing')
+                self.close()
+
+        except Exception as e:
+            MY_LOGGER.exception('')
+
+    def on_abort_requested(self) -> None:
         try:
             self.closing = True
             #  xbmc.log('Received AbortRequested', xbmc.LOGINFO)
@@ -893,10 +892,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         try:
             if controlId == clz.SELECT_ENGINE_BUTTON:
                 self.select_engine()
-            elif controlId == clz.SELECT_LANGUAGE_BUTTON:
-                self.select_language()
             elif controlId == clz.SELECT_VOICE_BUTTON:
-                self.select_voice()
+                self.select_voice_from_groups()
             elif controlId == clz.SELECT_GENDER_BUTTON:
                 self.select_gender()
             elif controlId == clz.SELECT_PITCH_SLIDER:
@@ -941,7 +938,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             self.refresh_tts(capture_settings=True)
             choices, current_choice_index = self.cfg.get_engine_choices(
                     engine_key=engine_key)
-            choices: List[Choice]
+            choices: EngineChoices
             if current_choice_index < 0:
                 current_choice_index = 0
             if MY_LOGGER.isEnabledFor(DEBUG):
@@ -951,9 +948,10 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             dialog: SelectionDialog
             dialog = self.selection_dialog(
                     title=MessageId.CHOOSE_TTS_ENGINE.get_msg(),
+                    dialog_subject='Engine',
                     sub_title=MessageId.SELECT_TTS_ENGINE.get_msg(),
                     choices=choices,
-                    initial_choice=current_choice_index,
+                    selection_index=current_choice_index,
                     call_on_focus=self.voice_engine)
             # xbmc.executebuiltin(function=f'control.setHidden(101)', wait=False)
             dialog.doModal()
@@ -968,7 +966,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             # Revert all changes made during SelectionDialog
             self.cfg.restore_settings(msg='select_engine after doModal')  # Pops one
             # Get selected index
-            idx = dialog.close_selected_idx
+            idx = dialog.sel_data.chosen_idx
             if MY_LOGGER.isEnabledFor(DEBUG_V):
                 MY_LOGGER.debug_v(f'SelectionDialog value: '
                                   f'{MessageId.TTS_ENGINE.get_msg()} '
@@ -986,12 +984,11 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             # First, change: voice, player, player_mode, use of cache, any transcoder.
             # Secondary settings that are less critical to set: speed, volume,
 
-            choice: Choice = choices[idx]
+            choice: EngineChoice = choices[idx]
             if choice is not None:
                 engine_config: EngineConfig
                 engine_config = self.cfg.configure_engine(choice, save_as_current=True)
                 if engine_config is not None:
-                    engine_config.lang_info = choice.lang_info
                     engine_config.volume = 0.0
                     engine_config.speed = 1.0
                     self.set_all_engine_fields(engine_config=engine_config)
@@ -1000,12 +997,12 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         except Exception as e:
             MY_LOGGER.exception('')
 
-    def voice_engine(self, choice: Choice,
+    def voice_engine(self, choice: EngineChoice,
                      selection_idx: int) -> None:
         """
         Used during engine selection to voice which engine is in focus.
 
-        Uses the voice/dialect closet to the currently configured Kodi locale
+        Uses the voice/dialect closet to the currently configured Kodi locale_id
 
         :param choice: Choice for instance of engine to be voiced
         :param selection_idx: index of Choice from Choices list. Redundant
@@ -1029,11 +1026,14 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'engine_config: {engine_config}')
         try:
-            lang_info: LanguageInfo = engine_config.lang_info
+            lang: EngineLang = engine_config.lang
+            e_voice_id: EngineVoice = engine_config.voice
             engine_key: ServiceID = engine_config.engine_key
-            self.set_lang_fields(update_ui=True,
-                                 lang_info=lang_info,
-                                 engine_key=engine_key)
+
+            engine_voice: EngineVoice
+            engine_voice = EngineVoiceManager.get_eng_voice_by_uid(e_voice_id.uid)
+            self.set_voice_field(update_ui=True,
+                                 e_voice=engine_voice)
             # self.set_gender_field(update_ui=True,
             #                       engine_key=engine_key)
             self.set_player_mode_field(update_ui=True,
@@ -1056,12 +1056,11 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         except Exception:
             MY_LOGGER.exception('')
 
-    def validate_and_set_lang_field(self, lang_id: str | None = None,
-                                    engine_key: ServiceID | None = None) -> None:
+    '''
+    def validate_and_set_voice_field(self, lang_id: str | None = None,
+                                     engine_key: ServiceID | None = None) -> None:
         """
-        TODO: Get rid of this!
-
-        Configures the Language Variant UI field, processing the related settings
+        Configures the Voice UI field, processing the related settings
         and resolving any incompatibility issues with other settings.
 
         :param lang_id:
@@ -1073,240 +1072,290 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 engine_key = self.engine_key
             if lang_id is None:
                 lang_id = Settings.get_language(engine_key)
-            lang_voice_id: str = Settings.get_voice(engine_key)
-            choices: List[Choice]
-            # The language setting will always have the same language ('en')
-            # as Kodi since Kodi is the source of all messages to be voiced.
-            # The territory and voice can be different, as long as the variants
-            # are not too far different.
-            ietf_lang: langcodes.Language
-            _, _, _, ietf_lang = LanguageInfo.get_kodi_locale_info()
-
-            # lang_id = None causes the language code ('en') to come from
-            # LanguageInfo.get_kodi_locale_info()
-            lang_variant: LanguageInfo
-            lang_variant = LanguageInfo.get_entry(engine_key=engine_key,
-                                                  engine_voice_id=lang_voice_id,
-                                                  lang_id=None)
-            choices, current_choice_index = SettingsHelper.get_language_choices(
-                    engine_key=engine_key, get_best_match=False,
-                    format_type=FormatType.LONG)
-            self.cfg.save_current_choices(choices, current_choice_index)
+            vg_choices: VGChoices
+            current_vg_idx: int
+            result: VGSelectionTuple
+            result = SettingsHelper.get_vg_choices(engine_key=engine_key)
+            vg_choices = result.vg_choices
+            current_vg_idx = result.selected_vg_idx
+            current_voice_idx: int = result.selected_voice_idx
+            default_vg_idx: int = result.default_vg_idx
+            self.cfg.save_current_choices(vg_choices, current_vg_idx)
             if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'# choices: {len(choices)} current_choice_index: '
-                                f'{current_choice_index}')
-            if current_choice_index < 0:
-                current_choice_index = 0
-            idx: int = 0
-            for choice in choices:
-                if choice.lang_info == lang_variant:
-                    current_choice_index = idx
-                    break
-                idx += 1
-            if idx >= len(choices):
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'Could not find current lang_variant in choices\n'
-                                    f'service_key: {engine_key}  lang_id: '
-                                    f'{lang_id} lang_voice_id: '
-                                    f'{lang_voice_id}\n'
-                                    f'current: {lang_variant} \n choices: {choices}')
+                MY_LOGGER.debug(f'# choices: {len(vg_choices)} '
+                                f'current_vg_idx: {current_vg_idx} '
+                                f'default_vg_idx: {default_vg_idx}')
+            if len(vg_choices) == 0:
+                self.engine_voice_group.setVisible(True)
+                self.engine_voice_value.setEnabled(False)
 
-            if current_choice_index < 0 or current_choice_index > len(choices) - 1:
-                Settings.set_language(SettingProp.UNKNOWN_VALUE)
-                self.engine_language_group.setVisible(False)
-                self.engine_language_value.setEnabled(False)
-                self.engine_language_value.setLabel(
-                        Messages.get_msg(Messages.UNKNOWN))
-                return
-            choice: Choice = choices[current_choice_index]
-            voice = choice.lang_info.translated_voice
-            lang_id: str = choice.lang_info.engine_lang_id
-            voice_id: str = choice.lang_info.engine_voice_id
-            self.engine_language_value.setLabel(voice)
-            self.engine_language_group.setVisible(True)
-            if len(choices) < 2:
-                self.engine_language_value.setEnabled(False)
-            else:
-                self.engine_language_value.setEnabled(True)
-            Settings.set_language(lang_id)
-            Settings.set_voice(voice_id, engine_key=engine_key)
+            selected_voice_idx: int = current_voice_idx
+            if selected_voice_idx < 0:
+                selected_voice_idx = default_vg_idx
+                if selected_voice_idx < 0:
+                    selected_voice_idx = 0
+
+                vg_choice: VGChoice = vg_choices[current_vg_idx]
+                selected_voice: VoiceChoice = vg_choice.voice_choices[selected_voice_idx]
+                voice_name: str = selected_voice.label
+                lang_id: str = selected_voice.voice.engine_lang_id
+                voice_id: VoiceID = selected_voice.voice.engine_voice
+                self.engine_voice_value.setLabel(f'voice_id: {voice_id} '
+                                                 f'voice_name: {voice_name}')
+                self.engine_voice_group.setVisible(True)
+                if len(vg_choices) < 2:  # No point choosing between one choice
+                    self.engine_voice_value.setEnabled(False)
+                else:
+                    self.engine_voice_value.setEnabled(True)
+                Settings.set_language(lang_id)
+                voice_id.set_current_voice(voice_id)
+        except IndexError:
+            return None
         except Exception as e:
             MY_LOGGER.exception('')
+            return None
+    '''
 
-    def select_language(self):
+    def select_voice_from_groups(self):
         """
-        Presents the user with a list of the language variants for the given
-        language and TTS engine. As an entry gets focus it is voiced in that
-        language variant (via voice_language).
+        Presents the user with a list of the engine-specific voice-groups to choose
+        a voice from. MOST Voice-Groups have only a single voice in the group,
+        so it is fairly simple to treat the group and the voice as the same.
 
-        All settings changes are applied to the current frame of the Settings
+        For those Voice-Groups which contain multiple voices, the process is more
+        complicated. When the Selection Dialog focuses on a Voice-Group, then either
+        the only voice in the group is voiced, or, the default voice in the group
+        is voiced. If the user selects the Voice-Group and confirms their choice,
+        a second selection dialog will appear where the user can choose from all
+        the voices in that group. If the user selects and commits their choice,
+        then both dialogs are exited with the confirmed choice saved as the voice
+        to use for the engine.
+
+        All setting changes are applied to the current frame of the Settings
         stack. Only when the SettingsDialog is exited via the OK button are
         they committed to settings.xml and available to the rest of kodi TTS.
 
-        Once the user has configured the TTS engine, the next logical thing
-        to do is to choose which language variant to use. When the TTS engine
-        is configured, the only choice you have is the closest match to Kodi's
-        locale. Here you get to fine tune it.
+        When the TTS engine is chosen (by select engine), you only get the
+        calculated 'good-enough' voice. Here you get to fine tune it.
 
-        First, all variants of Kodi's language (ex: en, or de) are discovered
-        and ordered in rank of match and then by sorted name.
         :return:
         """
         clz = type(self)
         try:
-            choices: List[Choice]
+            choices: VGChoices
             engine_key: ServiceID = self.engine_key
-            # Gets every language variant for the current engine and language
-            # Sorted first by closeness of match to native language variant
-            # and second by variant name.
-            choices, current_choice_index = SettingsHelper.get_language_choices(
-                    engine_key=engine_key,
-                    get_best_match=False,
-                    format_type=FormatType.LONG)
-            if len(choices) == 0:
+            # Gets every VoiceGroup for every lang-territory for the current engine
+            # Sorted first by closeness of match to native lang-territory
+            # and second by lang-territory name.
+            vg_choices: VGChoices
+            vg_choices = SettingsHelper.get_vg_choices(engine_key=engine_key)
+            current_vg_idx = vg_choices.selected_vg_idx
+            MY_LOGGER.debug(f'current_vg_idx: {current_vg_idx} len(vg_choices): '
+                            f'{len(vg_choices)}')
+            current_vg: VGChoice = vg_choices[current_vg_idx]
+            default_vg_idx: int = vg_choices.default_vg_idx
+
+            current_voice_idx: int = current_vg.selected_v_idx
+
+            MY_LOGGER.debug(
+                    f'current_vg_idx: {current_vg_idx} current_vg: '
+                    f'{current_vg.label} current_voice_idx: '
+                    f'{current_voice_idx} default_vg_idx: {default_vg_idx}')
+            MY_LOGGER.debug(f'current_voice: '
+                            f'{current_vg.v_choices[current_voice_idx].label}')
+
+            if len(vg_choices) == 0:
                 # Do NOT change UI. These values will not be committed
                 if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'No language choices found. No changes made')
+                    MY_LOGGER.debug(
+                            f'No VoiceGroup choices found. No changes made')
                 return
-            self.cfg.save_current_choices(choices, current_choice_index)
+            self.cfg.save_current_choices(vg_choices, current_vg_idx)
             self.refresh_tts(capture_settings=True)
-            #  MY_LOGGER.debug(f'In select_language # choices: {len(choices)} '
-            #                     f'current_choice_idx {current_choice_index} '
-            #                     f'current_choice: {choices[current_choice_index]}')
-            current_locale: str
-            kodi_lang, kodi_locale, kodi_friendly_locale, kodi_language = \
-                LanguageInfo.get_kodi_locale_info()
-            kodi_lang: str
-            kodi_locale: str
-            locale_name: str
+            #  MY_LOGGER.debug(f'In select_voice_from_groups # choices: {len(choices)} '
+            #                  f'current_choice_idx {current_choice_idx} '
+            #                  f'current_choice: {choices[current_choice_idx]}')
             kodi_language: langcodes.Language
-            lang_name: str = LanguageInfo.get_translated_language_name(kodi_language)
+            lang_name: str
+            lang_name = LangUtils.get_translated_language_name(
+                    LangUtils.kodi_language)
             engine_name: str
-            engine_name = LanguageInfo.get_translated_engine_name(engine_key)
+            engine_name = EngineType(engine_key.service_id).label
             title: str
             title = MessageId.AVAIL_VOICES_FOR_LANG.get_formatted_msg(
                     lang_name, engine_name)
             sub_title: str
-            sub_title = (MessageId.DIALOG_LANG_SUB_HEADING.get_msg())
-            self.cfg.restore_settings(msg='select_language BEFORE do_modal')
-            self.cfg.save_settings('select_language BEFORE do_modal')
+            sub_title = (MessageId.SELECT_VOICE_FROM_GROUP.get_msg())
+            self.cfg.restore_settings(
+                    msg='select_voice_from_groups BEFORE do_modal')
+            self.cfg.save_settings('select_voice_from_groups BEFORE do_modal')
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'sub_title: {sub_title}')
+
+            # If a voiceGroup is selected, then the SelectionDialog will call
+            # select_voice_from_group to decide which voice in the group to select
+            # MY_LOGGER.debug(f'Calling selection_dialog for choosing voice')
+            # MY_LOGGER.debug(f'call_on_select: {self.select_voice_from_group}')
             dialog: SelectionDialog
             dialog = self.selection_dialog(title=title,
+                                           dialog_subject='VGroups',
                                            sub_title=sub_title,
-                                           choices=choices,
-                                           initial_choice=current_choice_index,
-                                           call_on_focus=self.voice_language,
-                                           disable_tts=True)
+                                           choices=vg_choices,
+                                           selection_index=current_vg_idx,
+                                           call_on_focus=self.voice_the_voice,
+                                           call_on_select=self.get_voices_from_group)
             dialog.doModal()
             # Restore to state prior to SelectionDialog
-            self.cfg.restore_settings(msg='select_language AFTER doModal')
+            self.cfg.restore_settings(
+                    msg='select_voice_from_groups AFTER doModal')
 
             # Now, apply any desired changes
-            idx = dialog.close_selected_idx
-            if idx < 0:  # No selection made or CANCELED
+            MY_LOGGER.debug(f'Voice idx: {dialog.sel_data.chosen_idx} '
+                            f'value: {dialog.sel_data.chosen_object}')
+            vg_idx: int = dialog.sel_data.chosen_idx
+            if vg_idx < 0:  # No selection made or CANCELED
                 return
 
-            choice: Choice = choices[idx]
-            if choice is not None:
-                lang_info: LanguageInfo = choice.lang_info
-                if lang_info is not None:
-                    self.set_lang_fields(update_ui=True,
-                                         lang_info=choice.lang_info,
-                                         engine_key=engine_key)
-                    if MY_LOGGER.isEnabledFor(DEBUG):
-                        MY_LOGGER.debug(f'engine: {engine_key} '
-                                        f'language: {choice.lang_info.engine_lang_id}'
-                                        f' voice: {choice.lang_info.engine_voice_id}')
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'Set engine_language_value to '
-                                f'{self.engine_language_value.getLabel()}')
+            vg_choice: VGChoice = dialog.sel_data.chosen_object
+            e_voice: EngineVoice
+            v_choice: VoiceChoice | None = None
+            if isinstance(vg_choice, VoiceChoice):
+                v_choice = vg_choice
+                MY_LOGGER.debug(f'VoiceChoice: {v_choice}')
+            else:
+                voice_idx = vg_choice.selected_v_idx
+                MY_LOGGER.debug(f'voices: {len(vg_choice.v_choices)}')
+                v_choice = vg_choice.v_choices[voice_idx]
+            e_voice = v_choice.e_voice
+            MY_LOGGER.debug(f'Choice is Voice e_voice: {e_voice}')
+            self.set_voice_field(update_ui=True,
+                                 e_voice=e_voice)
             self.refresh_tts()
         except Exception as e:
             MY_LOGGER.exception('')
 
-    def voice_language(self, choice: Choice,
-                       selection_idx: int) -> None:
+    def get_voices_from_group(self, vg_choice: VGChoice, _: int) -> bool:
         """
-        Used during language selection to voice which language is in focus.
+        Very similar to select_voice_from_groups. This is only called when
+        a user selects a VoiceGroup containing multiple voices from
+        select_voice_from_groups. When that occurs, this method is called
+        causing the SelectionDialog to be updated to contain the Voices of
+        the Group. This method returns to select_voice_from_groups, which
+        resumes allowing the user to select a voice from the VoiceGroups.
 
-        :param choice: Choice for instance of language to be voiced
-        :param selection_idx: index of Choice from Choices list. Redundant
-        :return:
-        """
-        if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'idx: {selection_idx}')
-        engine_key: ServiceID = self.engine_key
-        # gets the language_id, a unique id for the focused language
-        # and the matching engine.
-        if choice is not None:
-            lang_info: LanguageInfo = choice.lang_info
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'CHOICE idx: {choice.value} lang: '
-                                f'{lang_info.ietf.to_tag()}')
-            if lang_info is not None:
-                current_lang: LanguageInfo
-                #   TODO: this is pretty crude.
-                choices, current_selection_idx = self.cfg.retrieve_current_choices()
-                choices: List[Choice]
-                current_selection_idx: int
-                current_choice: Choice = choices[selection_idx]
-                self.set_lang_fields(update_ui=False,
-                                     lang_info=current_choice.lang_info,
-                                     engine_key=engine_key)
-                voice: str = lang_info.engine_voice_id
-                voice_label: str = lang_info.translated_voice
-                self.set_voice_field(update_ui=False, engine_key=engine_key,
-                                     voice_id=voice, voice_label=voice_label)
-                self.refresh_tts()
+        All setting changes are applied to the current frame of the Settings
+        stack. Only when the SettingsDialog is exited via the OK button are
+        they committed to settings.xml and available to the rest of kodi TTS.
 
-    def select_voice(self):
-        """
+        When the TTS engine is chosen (by select_engine), you only get the
+        calculated 'good-enough' voice. Here you can select a specific voice.
 
-        :return:
+        :return: True if successful, False otherwise
         """
         clz = type(self)
         try:
+            v_choices: VoiceChoices = vg_choice.v_choices
             engine_key: ServiceID = self.engine_key
-            choices: List[Choice]
-            choices, current_choice_index = self.cfg.get_voice_choices(
-                    engine_key=engine_key)
-            title: str = MessageId.SELECT_VOICE_BUTTON.get_msg()
-            sub_title = 'Is this a sub_title for select_voice?'
+            current_voice_idx: int = vg_choice.selected_v_idx
+            default_voice_idx: int = 0
+            MY_LOGGER.debug(f'current_voice_idx: {current_voice_idx} '
+                            f'default_voice_idx: {default_voice_idx}')
 
-            self.cfg.restore_settings(msg='select_voice enter BEFORE doModal')
-            self.cfg.save_settings('select_voice BEFORE doModal')
-            dialog: SelectionDialog
-            dialog = self.selection_dialog(title=title,
-                                           sub_title=sub_title,
-                                           choices=choices,
-                                           initial_choice=current_choice_index,
-                                           call_on_focus=None)
-            dialog.doModal()
-            self.cfg.restore_settings(msg='select_voice AFTER doModal')
+            if len(v_choices) == 0:
+                # Do NOT change UI. These values will not be committed
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'No Voice choices found. No changes made')
+                return False
+            self.cfg.save_current_choices(v_choices, current_voice_idx)
+            self.refresh_tts(capture_settings=True)
+            kodi_language: langcodes.Language
+            vg_name: str
+            vg_name = vg_choice.label
 
-            idx = dialog.close_selected_idx
-            #  MY_LOGGER.debug_v(
-            #         'SelectionDialog voice idx: {}'.format(str(idx)))
-            if idx < 0:
-                return
+            title: str
+            title = MessageId.AVAILABLE_VOICES_FOR_GROUP.get_formatted_msg(
+                    vg_name)
+            sub_title: str
+            sub_title = (MessageId.SELECT_VOICE_FROM_GROUP.get_msg())
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'sub_title: {sub_title}')
 
-            choice: Choice = choices[idx]
-            if MY_LOGGER.isEnabledFor(DEBUG_V):
-                MY_LOGGER.debug_v(f'select_voice value: {choice.label} '
-                                  f'setting: {choice.value} idx: {idx:d}')
+            clz._selection_dialog.update_data(title=title,
+                                              dialog_subject='VoiceChoices',
+                                              choices=v_choices,
+                                              selection_index=current_voice_idx,
+                                              sub_title=sub_title,
+                                              call_on_focus=self.voice_the_voice,
+                                              call_on_select=None,
+                                              disable_tts=False)
+            return True
+            '''
+            # Now, apply any desired changes
+            chosen_idx: int = dialog.sel_data.chosen_idx
+            #  self.sel_data.chosen_idx = sel_idx
+            choice: EngineChoice | VoiceChoice | VGChoice | int
+            choice = dialog.sel_data.selected_object
+            vg_choice.selected_v_idx = chosen_idx
+            MY_LOGGER.debug(f'chosen_idx: {chosen_idx} choice: {choice} '
+                            f'selected_v_idx: {vg_choice.selected_v_idx}')
+            if chosen_idx < 0:  # No selection made or CANCELED
+                return -1
 
-            self.engine_voice_value.setLabel(choice.label)
-            Settings.set_voice(choice.value, engine_key=engine_key)
+            v_choice: VoiceChoice = v_choices[chosen_idx]
+            e_voice: EngineVoice = v_choice.e_voice
+            MY_LOGGER.debug(f'Choice v_choice: {v_choice.choice_index}'
+                            f' e_voice: {e_voice}')
+            self.set_voice_field(update_ui=True,
+                                 e_voice=e_voice)
             self.refresh_tts()
-            # self.update_engine_values()
+            return chosen_idx
+            '''
+
         except Exception as e:
             MY_LOGGER.exception('')
+        return False
 
+    def voice_the_voice(self, choice: VGChoice | VoiceChoice,
+                        selection_idx: int) -> None:
+        """
+           Used during voice selection to voice the currently focused voice or
+           voice-group.
+
+           :param choice: can be either the chosen VGChoice or VoiceChoice
+           :param selection_idx: index selected item (redundant)
+
+           :return:
+           """
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'idx: {selection_idx}')
+        engine_key: ServiceID = self.engine_key
+        if choice is None:
+            raise ValueError(f'Choice is None')
+
+        e_voice: EngineVoice | None = None
+        if isinstance(choice, VGChoice):
+            # When a group is selected (and not a voice within it),
+            # then select and voice the default voice from the group.
+
+            vg_choice: VGChoice = choice
+            e_voice = vg_choice.e_vg.default_e_voice  # Default Voice of group
+            vg_choice.set_selected_ev_idx(e_voice.e_voice_id)
+            selected_voice: VoiceChoice
+            selection_idx: int = vg_choice.selected_v_idx
+            selected_voice = vg_choice.v_choices[selection_idx]
+            e_voice = selected_voice.e_voice
+            MY_LOGGER.debug(f'VGChoice: {vg_choice.label} voice: {e_voice}')
+        else:  # choice is a voice
+            e_voice = choice.e_voice
+            MY_LOGGER.debug(f'VoiceChoice e_voice: {e_voice}')
+        self.set_voice_field(update_ui=False,
+                             e_voice=e_voice)
+        self.refresh_tts()
+
+    '''
     def get_pitch_range(self) -> UIValues:
         return
-        '''
+        
 
         result: UIValues | None = None
         try:
@@ -1375,7 +1424,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         try:
             self.refresh_tts(capture_settings=True)
             engine_key: ServiceID = self.engine_key
-            choices: List[Choice]
+            choices: Choices
             choices, current_choice_index = self.cfg.get_gender_choices(engine_key)
             # xbmc.executebuiltin('Skin.ToggleDebug')
             title: str = MessageId.VOICE_GENDER_BUTTON.get_msg()
@@ -1383,12 +1432,13 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             self.cfg.save_settings('select_gender BEFORE doModal')
             dialog: SelectionDialog
             dialog = self.selection_dialog(title=title,
+                                           dialog_subject='Gender',
                                            choices=choices,
-                                           initial_choice=current_choice_index,
+                                           selection_index=current_choice_index,
                                            call_on_focus=None)
             dialog.doModal()
             self.cfg.restore_settings(msg='select_gender AFTER doModal')
-            idx = dialog.close_selected_idx
+            idx = dialog.sel_data.chosen_idx
             if idx < 0:
                 return
 
@@ -1416,7 +1466,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         """
         try:
             engine_key: ServiceID = self.engine_key
-            choices: List[Choice]
+            choices: EngineChoices
             (choices, current_choice_index) = self.cfg.get_player_choices(engine_key)
             title: str = MessageId.SELECT_PLAYER.get_msg()
             sub_title: str = MessageId.SELECT_PLAYER_SUBTITLE.get_msg()
@@ -1425,13 +1475,14 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             self.refresh_tts(capture_settings=True)
             dialog: SelectionDialog
             dialog = self.selection_dialog(title=title,
+                                           dialog_subject='Player',
                                            sub_title=sub_title,
                                            choices=choices,
-                                           initial_choice=current_choice_index,
+                                           selection_index=current_choice_index,
                                            call_on_focus=None)
             dialog.doModal()
             self.cfg.restore_settings(msg='select_player AFTER doModal')
-            idx = dialog.close_selected_idx
+            idx = dialog.sel_data.chosen_idx
             if idx < 0:
                 return
 
@@ -1450,7 +1501,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             engine_config: EngineConfig | None = None
             try:
                 engine_config = self.cfg.configure_player(engine_key=engine_key,
-                                                          lang_info=None,
+                                                          lang=None,
                                                           use_cache=None,
                                                           player=player,
                                                           engine_audio=None,
@@ -1492,7 +1543,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         """
         clz = type(self)
         try:
-            choices: List[Choice]
+            choices: Choices
             engine_key: ServiceID = self.engine_key
             (choices, current_choice_index) = self.cfg.get_module_choices(engine_key)
             title: str = Messages.get_msg(Messages.SELECT_MODULE)
@@ -1500,12 +1551,13 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             self.cfg.save_settings('select_module BEFORE doModal')
             dialog: SelectionDialog
             dialog = self.selection_dialog(title=title,
+                                           dialog_subject='Module',
                                            choices=choices,
-                                           initial_choice=current_choice_index,
+                                           selection_index=current_choice_index,
                                            call_on_focus=None)
             dialog.doModal()
             self.cfg.restore_settings(msg='select_module AFTER doModal')
-            idx = dialog.close_selected_idx
+            idx = dialog.sel_data.chosen_idx
             if idx < 0:
                 return
 
@@ -1672,7 +1724,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             player_key = Settings.get_player(engine_key)
             player_id: str = player_key.service_id
             player: PlayerType = PlayerType(player_id)
-            choices: List[Choice]
+            choices: Choices
             choices, current_choice_index = self.cfg.get_player_mode_choices(engine_key,
                                                                              player)
             if current_choice_index < 0:
@@ -1683,13 +1735,14 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             self.refresh_tts(capture_settings=True)
             dialog: SelectionDialog
             dialog = self.selection_dialog(title=title,
+                                           dialog_subject='PlayerMode',
                                            choices=choices,
-                                           initial_choice=current_choice_index,
+                                           selection_index=current_choice_index,
                                            call_on_focus=None)
             dialog.doModal()
             self.cfg.restore_settings(msg='select_player AFTER doModal')
 
-            idx = dialog.close_selected_idx
+            idx = dialog.sel_data.chosen_idx
             if MY_LOGGER.isEnabledFor(DEBUG_V):
                 MY_LOGGER.debug_v(f'SelectionDialog value: '
                                   f'{PlayerMode.translated_name} '
@@ -1739,20 +1792,16 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             engine_key = Settings.get_engine_key()
         if update_ui:
             kodi_lang, kodi_locale, kodi_friendly_locale, kodi_language = \
-                LanguageInfo.get_kodi_locale_info()
+                LangUtils.get_kodi_locale_info()
             kodi_lang: str
             kodi_locale: str
             locale_name: str
             kodi_language: langcodes.Language
             engine_name: str
-            engine_name = LanguageInfo.get_translated_engine_name(engine_key)
-            lang_name: str = LanguageInfo.get_translated_language_name(kodi_language)
+            engine_name = engine_key.service_id
+            lang_name: str = LangUtils.get_translated_language_name(kodi_language)
             self.engine_engine_value.setLabel(engine_name)
-            self.engine_language_value.setLabel(lang_name)
 
-        if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'engine_language_value: '
-                            f'{self.engine_language_value.getLabel()}')
         # Start engine LAST, after everything is configured
         self.cfg.set_engine_field(engine_key)
 
@@ -1782,7 +1831,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             self.cfg.restore_settings('enter select_defaults')
             choices, current_choice_index = self.cfg.get_engine_choices(
                     engine_key=self.engine_key)
-            choices: List[Choice]
+            choices: EngineChoices
             if current_choice_index < 0:
                 current_choice_index = 0
             if MY_LOGGER.isEnabledFor(DEBUG):
@@ -1798,11 +1847,10 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             if idx < 0:  # No selection made or CANCELED
                 return
 
-            choice: Choice = choices[idx]
+            choice: EngineChoice = choices[idx]
             if choice is not None:
                 engine_config: EngineConfig
                 engine_config= self.cfg.configure_engine(choice, save_as_current=True)
-                engine_config.lang_info = choice.lang_info
                 engine_config.volume = 0.0
                 engine_config.speed = 1.0
                 self.set_all_engine_fields(engine_config=engine_config)
@@ -1930,118 +1978,61 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         except Exception as e:
             MY_LOGGER.exception('')
 
-    def refresh_engine_language_value(self):
+    '''
+    def get_voice_label(self, engine_key: ServiceID | None = None,
+                        voice_id: str | None = None) -> str:
         """
-        TODO: Merge with set_lang_field
-        Updates the GUI language value.
-        :return:
-        """
-        lang_info: LanguageInfo = LanguageInfo.get_entry()
-        voice: str = ''
-        if lang_info is None:
-            voice = 'unknown'
-        else:
-            voice = lang_info.translated_voice
-        self.engine_language_value.setLabel(voice)
+        Gets the label of the VoiceGroup object identified by the given parameters
 
-    def set_lang_fields(self, update_ui: bool = False,
-                        engine_key: ServiceID | None = None,
-                        lang_info: LanguageInfo | None = None) -> None:
+        TODO: Merge with set_lang_field
+        :param engine_key: Engine to get the voice for. If None, then the
+                           current engine is used.
+        :param locale: Locale to get the voice for. If None, then the engine's
+                       language setting is used
+        :param voice_id: Identifies the voice. If None, then the current voice
+                         for the given engine is used.
         """
-        Configures the Language Variant UI field and update settings. No
+        if engine_key is None:
+            engine_key = Settings.get_engine_key()
+        if voice_id is None:
+            voice_id = Settings.get_e_voice(engine_key=engine_key)
+        voice_uid: str = EngineVoice.get_uid(engine_key=engine_key,
+                                             engine_voice=voice_id)
+        voice: EngineVoice = EngineVoiceManager.get_eng_voice_by_uid(voice_uid)
+        voice_name: str = voice.voice_label
+        return voice_name
+    '''
+
+    def set_voice_field(self, update_ui: bool = False,
+                        e_voice: EngineVoice | None = None) -> None:
+        """
+        Configures the voice UI field and update settings. No
         validation is performed
 
         :param update_ui: When True, update UI and Settings, otherwise just
                           update Settings
-        :param engine_key:
-        :param lang_info:
+        :param e_voice: Value to set voice field to. If None, then
+                             use value from settings.
         :return:
         """
         try:
+            if e_voice is None:
+                MY_LOGGER.debug(f'engine_voice is None')
+                e_voice = EngineVoiceManager.get_e_voice()
+
+            MY_LOGGER.debug(f'engine_voice: {e_voice}')
             lang_id: str | None = None
-            voice_id: str | None = None
-            if engine_key is None:
-                raise ValueError('service_key value required')
-            if lang_info is None:
-                raise ValueError('lang_info value required')
-            lang_id = lang_info.engine_lang_id
-            self.cfg.set_lang_fields(engine_key=engine_key, lang_info=lang_info)
+            if e_voice is None:
+                e_voice = EngineVoiceManager.get_e_voice()
+            self.cfg.set_voice_field(engine_voice=e_voice)
             if update_ui:
-                voice_name: str = lang_info.translated_voice
+                voice_name: str = e_voice.full_voice_label(with_group=True)
                 visible: bool = lang_id != SettingProp.UNKNOWN_VALUE
-                self.engine_language_group.setVisible(visible)
-                self.engine_language_value.setEnabled(visible)
-                self.engine_language_value.setLabel(voice_name)
+                self.engine_voice_group.setVisible(visible)
+                self.engine_voice_value.setEnabled(visible)
+                self.engine_voice_value.setLabel(voice_name)
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'voice_name: {voice_name} visible: {visible}')
-        except Exception as e:
-            MY_LOGGER.exception('')
-
-    def set_voice_field(self, update_ui: bool,
-                        engine_key: ServiceID | None = None,
-                        voice_id: str | None = None,
-                        voice_label: str | None = None) -> None:
-        """
-        Updates the voice field with the value that the current engine is
-        using. The voice can be changed by the user selecting the asociated
-        button.
-        :param update_ui: If True, the UI is updated to reflect the changes
-        :param engine_key: Identifies the engine that will have its voice modified
-        :param voice_id: New value to assign to the engine's voice
-        :param voice_label: translated label for voice_id
-        :return:
-        """
-        clz = type(self)
-        try:
-            if engine_key is None:
-                engine_key = self.engine_key
-            has_voice: bool
-            has_voice = SettingsMap.is_valid_setting(engine_key.with_prop(
-                                                     SettingProp.VOICE))
-            if has_voice:
-                has_voice = SettingsMap.is_setting_available(engine_key,
-                                                             SettingProp.VOICE)
-            if not has_voice:
-                if update_ui:
-                    self.engine_voice_group.setVisible(False)
-                    return
-
-            choices: List[Choice] = []
-            if voice_id is None:
-                choices, current_choice_index = self.cfg.get_voice_choices(engine_key)
-                if current_choice_index < 0:
-                    if MY_LOGGER.isEnabledFor(DEBUG):
-                        MY_LOGGER.debug(f'choice out of range: {current_choice_index} '
-                                        f'# choices: {len(choices)}')
-                    current_choice_index = 0
-
-                if current_choice_index < 0 or current_choice_index > len(choices) - 1:
-                    if update_ui:
-                        if MY_LOGGER.isEnabledFor(DEBUG):
-                            MY_LOGGER.debug(f'setting voice disabled:'
-                                            f' {self.engine_voice_value}')
-                        self.engine_voice_value.setEnabled(False)
-                        self.engine_voice_value.setLabel(
-                                Messages.get_msg(Messages.UNKNOWN))
-                    return
-
-                choice: Choice = choices[current_choice_index]
-                voice_id = choice.lang_info.engine_voice_id
-                voice_label = choice.label
-            self.cfg.set_voice_field(engine_key=engine_key, voice_id=voice_id)
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'Setting voice to: {voice_id}')
-
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'voice label: {voice_label}')
-            if update_ui:
-                self.engine_voice_value.setLabel(voice_label)
-                if len(choices) < 2:
-                    self.engine_voice_value.setEnabled(False)
-                else:
-                    self.engine_voice_value.setEnabled(True)
-
-                self.engine_voice_group.setVisible(True)
         except Exception as e:
             MY_LOGGER.exception('')
 
@@ -2184,7 +2175,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
 
     def refresh_tts(self, capture_settings: bool = False):
         """
-        Initiate the rapid adoption of changes so that the user ges fast feedback.
+        Initiate the rapid adoption of changes so that the user gets fast feedback.
         Called AFTER changes are applied. More or less add a call to this everywhere
         a user changes a setting. Fortunately the code is already designed to apply
         changes in this manner.
@@ -2201,40 +2192,47 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                             f'player_key: {self.prev_player_key}\n'
                             f'player_mode: {self.prev_player_mode}')
             return
-
         self.cfg.refresh_tts(prev_engine_key=self.prev_engine_key,
                              prev_player_key=self.prev_player_key,
                              prev_player_mode=self.prev_player_mode)
+        return
 
-    def selection_dialog(self, title: str,
-                         choices: List[Choice], initial_choice: int,
+    def selection_dialog(self,
+                         title: str,
+                         dialog_subject: str,
+                         choices: Choices,
+                         selection_index: int | str,  # Index or key
                          sub_title: str | None = None,
-                         call_on_focus: Callable[Choice, None] | None = None,
-                         call_on_select: Callable[Choice, None] | None = None,
-                         disable_tts: bool = False
-                         ) -> SelectionDialog:
+                         call_on_focus:
+                         Callable[[Choice | EngineChoice | VoiceChoice |
+                                   VGChoice, int],
+                                  None] | None = None,
+                         call_on_select:
+                         Callable[[Choice | EngineChoice | VoiceChoice |
+                                   VGChoice, int],
+                                  int] | None = None,
+                         disable_tts: bool = False) -> SelectionDialog:
         """
         Wraps the SelectionDialog so that the single instance can be shared.
 
         :param title:  Heading for the dialog
+        :param dialog_subject: Tags the data to help the code determine what
+                               it is working on at the moment (ex: VGroups or VoiceGroups)
         :param choices:  List of available choices to present
-        :param initial_choice:  Index of the current choice in choices
+        :param selection_index:  Index of the current choice in choices, OR it
+                                is a key to identify a voice and the group it belongs.
         :param sub_title:  Optional Sub-Heading for the dialog
         :param call_on_focus:  Optional call-back function for on-focus events
                                useful for hearing the difference immediately
         :param call_on_select: Optional call-back function for on-click events
                                useful for voicing the selected item immediately
-        :param disable_tts: When True TTS screen-scraping is disabled until this
-                            dialog text_exists. See Notes
+        :param disable_tts:
         :return: Returns the underlying SelectionDialog so that methods can be
                  called such as doModal
 
         Note: Any changes made in SettingsDialog are either committed or undone
         on exit. OK commits the changes in Settings to settings.xml.
         Cancel reverts all changes in Settings from a backup-copy.
-
-        Note: disable_tts is used when the language and engine need to be switched
-        while voicing the dialog.
 
         Reverting live changes without Cancelling SettingsDialog requires care.
         """
@@ -2248,23 +2246,28 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                                                     str(script_path), 'Custom',
                                                     defaultRes='1080i',
                                                     title=title,
+                                                    dialog_subject=dialog_subject,
                                                     choices=choices,
-                                                    initial_choice=initial_choice,
+                                                    selection_index=selection_index,
                                                     sub_title=sub_title,
                                                     call_on_focus=call_on_focus,
-                                                    call_on_select=call_on_select)
-        else:
-            clz._selection_dialog.update_choices(title=title,
-                                                 choices=choices,
-                                                 initial_choice=initial_choice,
-                                                 sub_title=sub_title,
-                                                 call_on_focus=call_on_focus,
-                                                 call_on_select=call_on_select)
+                                                    call_on_select=call_on_select,
+                                                    voice_the_voice=self.voice_the_voice,
+                                                    disable_tts=disable_tts)
+
+        clz._selection_dialog.update_data(title=title,
+                                          dialog_subject=dialog_subject,
+                                          choices=choices,
+                                          selection_index=selection_index,
+                                          sub_title=sub_title,
+                                          call_on_focus=call_on_focus,
+                                          call_on_select=call_on_select,
+                                          disable_tts=disable_tts)
         return clz._selection_dialog
 
     def get_language(self, label=False) -> str:
         """
-        Gets the human readable, currently configured language variant for the
+        Gets the translated, currently configured language variant for the
         current engine
 
         :return:

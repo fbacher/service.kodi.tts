@@ -3,11 +3,11 @@ from __future__ import annotations  # For union operator |
 
 import socket
 from io import BytesIO
+from pathlib import Path
 
-import gtts
+from backends.engines.piper_api import PiperApi
 from backends.settings.setting_properties import SettingType
 from common.constants import Constants
-from gtts import gTTS
 
 from backends.settings.i_validators import IStringValidator
 from common import *
@@ -22,7 +22,7 @@ from backends.settings.validators import (BoolValidator,
                                           GenderValidator, NumericValidator,
                                           SimpleIntValidator,
                                           SimpleStringValidator,
-                                          StringValidator)
+                                          StringListValidator, StringValidator)
 from common.config_exception import UnusableServiceException
 from common.logger import *
 from common.message_ids import MessageId
@@ -36,21 +36,23 @@ from common.system_queries import SystemQueries
 MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
-class GoogleSettings:
+class PiperSettings:
     # Only returns .mp3 files
-    ID: str = Backends.GOOGLE_ID
-    engine_id = Backends.GOOGLE_ID
-    service_id: str = Services.GOOGLE_ID
+    ID: str = Backends.PIPER_ID
+    engine_id = Backends.PIPER_ID
+    service_id: str = Services.PIPER_ID
     service_type: ServiceType = ServiceType.ENGINE
-    service_key: ServiceID = ServiceKey.GOOGLE_KEY
-    GOOGLE_KEY: ServiceID = service_key
+    service_key: ServiceID = ServiceKey.PIPER_KEY
+    PIPER_KEY: ServiceID = service_key
     NAME_KEY: ServiceID = service_key.with_prop(SettingProp.SERVICE_NAME)
     MAX_PHRASE_KEY: ServiceID = service_key.with_prop(SettingProp.MAX_PHRASE_LENGTH)
-    displayName: str = MessageId.ENGINE_GOOGLE.get_msg()
+    displayName: str = MessageId.ENGINE_PIPER.get_msg()
+
+
 
     # Maximum phrase length that a remote engine can convert to speech at a time
     # None indicates that the engine does not download from a remote server
-    MAXIMUM_PHRASE_LENGTH: int | None = 100
+    MAXIMUM_PHRASE_LENGTH: int | None = 10000
 
     """
     In an attempt to bring some consistency between the various players, engines and 
@@ -81,7 +83,7 @@ class GoogleSettings:
     def config_settings(cls, *args, **kwargs):
         # Define each engine's default settings here, afterward, they can be
         # overridden by this class.
-        if GoogleSettings.initialized:
+        if PiperSettings.initialized:
             return
 
         # Basic checks that don't depend on download
@@ -96,7 +98,7 @@ class GoogleSettings:
         if not cls.is_usable():
             return
 
-        GoogleSettings.initialized = True
+        PiperSettings.initialized = True
         BaseEngineSettings.config_settings(cls.service_key,
                                            settings=[SettingProp.GENDER_VISIBLE])
 
@@ -129,40 +131,81 @@ class GoogleSettings:
 
     @classmethod
     def _config(cls):
-        # Maximum phrase length that a remote engine can convert to speech at a time
-        # None indicates that the engine does not download from a remote server
-        #  service_properties: Dict[str, Any]
-        #  service_properties = {Constants.NAME             : GoogleSettings.displayName,
-        #                        Constants.MAX_PHRASE_LENGTH: 100}
-        #  SettingsMap.define_service_properties(GoogleSettings.service_key,
-        #                                        service_properties)
+        """
+           Maximum phrase length that a remote engine can convert to speech at a time
+           None indicates that the engine does not download from a remote server
+            service_properties: Dict[str, Any]
+            service_properties = {Constants.NAME             : PiperSettings.displayName,
+                                  Constants.MAX_PHRASE_LENGTH: 100}
+            SettingsMap.define_service_properties(PiperSettings.service_key,
+                                                  service_properties)
 
-        # Can't adjust Pitch except via a player that supports it. Not bothering
-        # with at this time.
+           Can't adjust Pitch except via a player that supports it. Not bothering
+           with at this time.
 
-        # Uses default volume_validator defined in base_engine_settings
+           Uses default volume_validator defined in base_engine_settings
 
-        # The free GoogleTTS only supplies basic voices which are determined
-        # by language and country code. In short, the voice choices are
-        # essentially the locale_id (en-us, en-gb, etc.).Not all combinations are
-        # supported.
-        #
-        # For the most part, google_tts uses the 'top level domain' of the url
-        # for the google tts service to imply any dialect on a language. The
-        # default is "com". Since each country tends to have its own tld the
-        # system works fairly well. Google doesn't document this nor does it
-        # work in all situations.
+           PiperTTS supplies voices for a good number of languages. They are organized
+           in a manner similar to GoogleTTS. A group of closely related voices are
+           defined by a pair of files. The file name prefix identifies the language_id,
+           the Territory id,
+           the name and quality of the group. An example being: en_US-lessac-medium.
+           Most voice files describe a single voice, while some have a dozen or more.
+           The advantage to a group of similar voices is that the voices share
+           the same basic parameters, allowing the voices to be changed without
+           any performance penalty of reconfiguring the engine. This is useful
+           if using different voices in the same "conversation" is helpful. Perhaps
+           female for voicing the type of control and male for the text.
+
+           A .json file basically gives a table of contents giving the name of every
+           voice variant belonging to the voice group. A .onnx file contains the
+           TTS engine parameters describing the voices.
+
+           Currently, the Piper engine can be run as a Python script, an executable
+           command, or as an http server.
+        """
 
         t_key = cls.service_key.with_prop(SettingProp.LANGUAGE)
         SettingsMap.define_setting(t_key, SettingType.STRING_TYPE,
                                    service_status=StatusType.OK,
                                    persist=True)
 
+        """
+        Specification of voice to use for TTS varies a lot between engines as well
+        as the syntax. Piper divides voices first by language/country (en_us)
+        Next, you have a voice 'group' (which usually is a group of one). Ex: 
+        en_US-lessac-medium, which means 'lessac' is a voice (or a group of voices)
+        for US english with medium quality. A separate query must be performed to 
+        see if there are multiple variants of this voice. All voices in the group 
+        are based on one voice. The variants are simple tweaks to the original. 
+        The incentive to using a group family is that you avoid the expense of
+        loading voice data every time you switch a voice.
+        
+        Anyway, we are confronted with how to model the voice names. 
+          One approach is to create enough 'voice' related settings to store them
+          separately.
+         
+          The better approach, I think, is to encode them so that they can held in
+          a single setting.
+        
+        A validator will be used to encode/decode. The encoding may need to vary
+        with different Engine's needs. For Piper, it looks like the hyphen is the 
+        separater.
+        """
+        '''
+        t_key = cls.service_key.with_prop(SettingProp.VOICE)
+        voice_validator: StringListValidator
+        voice_validator = StringListValidator(service_key=t_key,
+                                              delimiter='-',
+                                              default='--',
+                                              define_setting=True,
+                                              service_status=StatusType.OK,
+                                              persist=True)
+        '''
         voice_service_key: ServiceID = cls.service_key.with_prop(SettingProp.VOICE)
         SettingsMap.define_setting(voice_service_key, SettingType.STRING_TYPE,
                                    service_status=StatusType.OK,
                                    persist=True)
-
         # For consistency (and simplicity) most speed adjustments are actually
         # done by a player that supports it.
         #
@@ -185,6 +228,7 @@ class GoogleSettings:
         # Each engine has its own speed value since desired speed depends much on
         # the voice used.
         #
+        MY_LOGGER.debug(f'Configuring speed')
         speed_validator: NumericValidator
         speed_validator = NumericValidator(cls.service_key.with_prop(SettingProp.SPEED),
                                            minimum=.50, maximum=2.0,
@@ -195,7 +239,8 @@ class GoogleSettings:
                                            service_status=StatusType.OK,
                                            persist=True)
 
-        # Can't support PlayerMode.PIPE: 1) Google does download mp3, but the
+        MY_LOGGER.debug(f'Configured speed')
+        # Can't support PlayerMode.PIPE: 1) Piper does download mp3, but the
         # response time would be awful. 2) You could simulate pipe mode for the
         # cached files, but it would add extra cpu. 3) Not worth it
 
@@ -216,11 +261,11 @@ class GoogleSettings:
                                                 service_status=StatusType.OK,
                                                 persist=True)
 
-        Settings.set_current_output_format(GoogleSettings.service_key, AudioType.MP3)
-        SoundCapabilities.add_service(GoogleSettings.service_key,
+        Settings.set_current_output_format(PiperSettings.service_key, AudioType.WAV)
+        SoundCapabilities.add_service(PiperSettings.service_key,
                                       service_types=[ServiceType.ENGINE],
                                       supported_input_formats=[],
-                                      supported_output_formats=[AudioType.MP3])
+                                      supported_output_formats=[AudioType.WAV])
 
         consumer_formats: List[AudioType] = [AudioType.MP3]
         candidates: List[ServiceID]
@@ -277,7 +322,7 @@ class GoogleSettings:
                                                persist=False)
 
         cache_suffix_key: ServiceID = cls.service_key.with_prop(SettingProp.CACHE_SUFFIX)
-        cache_suffix: str = Backends.ENGINE_CACHE_CODE[Backends.GOOGLE_ID]
+        cache_suffix: str = Backends.ENGINE_CACHE_CODE[Backends.PIPER_ID]
 
         cache_suffix_val: SimpleStringValidator
         cache_suffix_val = SimpleStringValidator(cache_suffix_key,
@@ -296,6 +341,7 @@ class GoogleSettings:
                                          define_setting=True,
                                          service_status=StatusType.OK,
                                          persist=True)
+
     @classmethod
     def check_is_supported_on_platform(cls) -> None:
         if cls._service_status.progress == Progress.START:
@@ -335,12 +381,13 @@ class GoogleSettings:
         """
         if (cls._service_status.progress == Progress.INSTALLED
                 and cls._service_status.status == Status.OK):
-            # Test requires actually using Google TTS. Delay until on first
+            # Test requires actually using Piper TTS. Delay until on first
             # use. Add code to mark as BROKEN in engine.
             cls._service_status.progress = Progress.AVAILABLE
         else:
             cls._service_status.status = Status.FAILED
             cls._service_status.status_summary = StatusType.BROKEN
+            MY_LOGGER.debug(f'BROKEN')
             SettingsMap.define_setting(cls.service_key,
                                        setting_type=SettingType.STRING_TYPE,
                                        service_status=StatusType.BROKEN,
@@ -354,7 +401,7 @@ class GoogleSettings:
         no player that can work with this engine available.
         :return None:
         """
-        # Google TTS only produces .mpg files. If no player is available, we
+        # Piper TTS only produces .mpg files. If no player is available, we
         # are dead.
         if cls._service_status.progress == Progress.AVAILABLE:
             success: Status = cls._service_status.status
@@ -362,30 +409,23 @@ class GoogleSettings:
                 byte_stream: BinaryIO | None = None
                 byte_buffer: BytesIO = BytesIO()
                 status: StatusType = StatusType.BROKEN
+                resut: Tuple[int, List[str]]
                 try:
-                    my_gTTS = gTTS('test',
-                                   lang='en',
-                                   slow=False,
-                                   lang_check=False,
-                                   tld='com',
-                                   timeout=5.0
-                                   )
-                    my_gTTS.write_to_fp(byte_buffer)
-                    x = byte_buffer.getvalue()
-                    MY_LOGGER.debug(f'Size of test: {len(x)} bytes')
-                    if len(x) > 4000:
-                        status = StatusType.OK
-                except socket.gaierror as e:
-                    MY_LOGGER.info(f'Can not communicate with gtts server {e}')
-                    status = StatusType.BROKEN
-                    MY_LOGGER.exception('')
-                except gtts.tts.gTTSError as e:
-                    MY_LOGGER.info(f'Can not communicate with gtts server: {e.msg}')
-                    status = StatusType.BROKEN
-                    MY_LOGGER.exception('')
+                    result = PiperApi.get_vg_names()
+                    MY_LOGGER.debug(f'rc: {result[0]} #names: {len(result[1])}')
+                    if result[0] == 0:
+                        rc, vg_names = result
+                        rc: int
+                        vg_names: List[str]
+                        if vg_names is not None and len(vg_names) >= 2:
+                            MY_LOGGER.debug(f'Piper is usable')
+                            status = StatusType.OK
+                        else:
+                            MY_LOGGER.debug(f'Piper is not usable len: {len(vg_names)}')
                 except Exception:
-                    MY_LOGGER.exception('Blew up in gtts')
+                    MY_LOGGER.exception('Blew up')
                     status = StatusType.BROKEN
+                MY_LOGGER.debug(f'Status: {status}')
                 SettingsMap.define_setting(cls.service_key,
                                            setting_type=SettingType.STRING_TYPE,
                                            service_status=status,

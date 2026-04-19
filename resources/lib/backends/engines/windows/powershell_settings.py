@@ -40,7 +40,7 @@ class PowerShellTTSSettings:
     def config_settings(cls, *args, **kwargs):
         if cls.initialized:
             return
-            # Basic checks that don't depend on config
+            # Basic checks that don't depend on download
         cls.check_is_supported_on_platform()
         cls.check_is_installed()
         if cls._service_status.status != Status.OK:
@@ -159,7 +159,7 @@ class PowerShellTTSSettings:
                 producer_formats=[])
 
         # Can use LAME to convert to mp3. This code is untested
-        # TODO: test, expose capability in settings config
+        # TODO: test, expose capability in settings download
 
         transcoder_service_key: ServiceID
         transcoder_service_key = cls.service_key.with_prop(SettingProp.TRANSCODER)

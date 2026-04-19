@@ -54,24 +54,24 @@ class MPVAudioPlayer(SubprocessSlaveAudioPlayer, BaseServices):
     There are many, many features. But what we are most interested in are:
      - Adjusting volume, pitch and speed (without changing pitch)
      - Using mpv in slave mode, as a daemon
-    
+
     For consistency use same options for slave and non-slave modes.
        non-slave mode use command-line arguments:
        --volume=<float>, (in percent change 100 == no change)
        --speed=<float>  (accepts a <float> multiplier 1.0 == no change)
 
-       slave mode commands are sent as json over pipe 
+       slave mode commands are sent as json over pipe
         # For volume, send:
            f'{{ "command": ["set_property", "volume", "{self.volume}"],'
                 f' "request_id": "{self.latest_config_transaction_num}" }}'
           The volume is again in percent change.
-          
+
           For speed use:
            f'{{ "command": ["set_property", '
                               f'"speed", "{self.speed}"], "request_id": '
                               f'"{self.latest_config_transaction_num}" }}
-            The speed is also a multiplier as with the command line. 
-        
+            The speed is also a multiplier as with the command line.
+
         Note that there are other ways to pass speed and volume where they may be
         in different units. In particular, volume is sometimes in decibels.
     """
@@ -83,12 +83,12 @@ class MPVAudioPlayer(SubprocessSlaveAudioPlayer, BaseServices):
     '''
      Send commands via named pipe (or stdin) to play files:
        mkpipe ./slave.input
-    
+
      Note that speed, volume, etc. RESET between each file played. Example below
      resets speed/tempo before each play.
-    
+
      mpv  -af "scaletempo" -slave  -idle -input file=./slave.input
-    
+
      From another shell:
      (echo "loadfile <audio_file> 0"; echo "speed_mult 1.5") >> ./slave.input
      To play another AFTER the previous completes
@@ -105,12 +105,12 @@ class MPVAudioPlayer(SubprocessSlaveAudioPlayer, BaseServices):
      Then the volume is in decibels, otherwise it is a percentage as in:
       mpv --really-quiet --idle --volume=200.0 525d04b81883fcc53188d624bb389e79.mp3
      Or even
-     mpv --really-quiet --af=scaletempo=scale=1.50:speed=none --volume=200 
+     mpv --really-quiet --af=scaletempo=scale=1.50:speed=none --volume=200
      525d04b81883fcc53188d624bb389e79.mp3
-    
-    mpv plays mono on only one channel by default. To force playing on stereo 
+
+    mpv plays mono on only one channel by default. To force playing on stereo
     speakers use:
-    
+
         --af=format=channels=stereo
     '''
     _initialized: bool = False
@@ -197,6 +197,7 @@ class MPVAudioPlayer(SubprocessSlaveAudioPlayer, BaseServices):
         args.extend(clz.SLAVE_ARGS)
         args.append(f'--input-ipc-server={self.slave_pipe_path}')
         channels: Channels = self.play_channels
+        MY_LOGGER.debug(f'channels: {channels} no_pref: {Channels.NO_PREF}')
         if channels != Channels.NO_PREF:
             args.append(f'--audio-channels={channels.name.lower()}')
 
@@ -206,8 +207,10 @@ class MPVAudioPlayer(SubprocessSlaveAudioPlayer, BaseServices):
         # By default, mpv has --audio-pitch-correction=yes and
         #                     --scaletempo2 selected
         # therefore, a change in speed will automatically preserve pitch
-        # and volume
+        # and volume.
+        # 'rubberband' is better than 'scaletempo2'
         #
+        args.append('--af=rubberband')
         if int(abs(round(default_volume * 10))) != 0:
             args.append(f'--volume={default_volume}')
         if int(abs(round(default_speed * 10))) != 0:

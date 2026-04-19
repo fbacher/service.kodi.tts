@@ -8,7 +8,7 @@ from backends.i_backend import IBackend
 from backends.settings.constraints import Constraints
 from common.phrases import PhraseList
 from common.setting_constants import PlayerMode
-from windowNavigation.choice import Choice
+from windowNavigation.choice import Choice, Choices
 
 
 class ITTSBackendBase(IBackend):
@@ -181,7 +181,7 @@ class ITTSBackendBase(IBackend):
         raise Exception('Not Implemented')
 
     @classmethod
-    def settingList(cls, setting, *args) -> List[Choice]:
+    def settingList(cls, setting, *args) -> Choices:
         raise Exception('Not Implemented')
 
     @classmethod

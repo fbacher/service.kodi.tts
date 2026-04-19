@@ -12,6 +12,7 @@ import sys
 from collections import UserList
 from pathlib import Path
 
+from backends.settings.engine_voice import EngineVoice
 from backends.settings.service_types import ServiceID
 from cache.common_types import CacheEntryInfo
 from cache.cache_file_state import CacheFileState
@@ -120,10 +121,10 @@ class Phrase:
                  text_id: str | None = None,
                  language: str | None = None,
                  gender: str | None = None,
-                 voice: str | None = None,
+                 e_voice: EngineVoice | None = None,
                  lang_dir: str | None = None,
                  territory_dir: str | None = None,
-                 voice_dir: str | None = None,
+                 voice_dir: Path | None = None,
                  debug_info: str | None = None,
                  debug_context: int = 1,
                  engine_key: ServiceID | None = None,
@@ -209,10 +210,10 @@ class Phrase:
         self.audio_type: AudioType | None = None
         self.language: str | None = language
         self.gender: str | None = gender
-        self.voice: str | None = voice
+        self.e_voice: EngineVoice | None = e_voice
         self.lang_dir: str | None = lang_dir
         self.territory_dir: str | None = territory_dir
-        self.voice_dir: str | None = voice_dir
+        self.voice_dir: Path | None = voice_dir
         if debug_info is None:
             debug_info = ''
         self.debug_info: str | None = debug_info
@@ -323,7 +324,7 @@ class Phrase:
                         # text_id=self.text_id,
                         language=self.language,
                         gender=self.gender,
-                        voice=self.voice,
+                        e_voice=self.e_voice,
                         lang_dir=self.lang_dir,
                         territory_dir=self.territory_dir,
                         voice_dir=self.voice_dir,
@@ -371,12 +372,13 @@ class Phrase:
                                 preload_cache=params.get('preload_cache'),
                                 speak_over_kodi=params.get('speak_over_kodi',
                                                                False),
-                                check_expired=params.get('check_expired', True),
+                                check_expired=params.get('check_expired',
+                                                         True),
                                 text_id=params.get('text_id'),
                                 debug_info=params.get('debug_info'),
                                 language=params.get('language'),
                                 gender=params.get('gender'),
-                                voice=params.get('voice'),
+                                e_voice=params.get('e_voice'),
                                 lang_dir=params.get('lang_dir'),
                                 territory_dir=params.get('territory_dir'),
                                 voice_dir=params.get('voice_dir'))
@@ -563,6 +565,7 @@ class Phrase:
             else:
                 self._cache_file_state = CacheFileState.BAD
                 try:
+                    MY_LOGGER.debug(f'unlink bad cache file: {self.cache_path}')
                     self.cache_path.unlink()
                     self._cache_file_state = CacheFileState.DOES_NOT_EXIST
                 except exception:
@@ -690,15 +693,15 @@ class Phrase:
         return self.text == ''
 
     def is_voice_set(self) -> bool:
-        if self.voice is None or self.voice == '':
+        if self.e_voice is None:
             return False
         return True
 
-    def set_voice(self, voice: str) -> None:
-        self.voice = voice
+    def set_e_voice(self, voice: EngineVoice) -> None:
+        self.e_voice = voice
 
-    def get_voice(self) -> str:
-        return self.voice
+    def get_e_voice(self) -> EngineVoice:
+        return self.e_voice
 
     def is_lang_territory_set(self) -> bool:
         if ((self.territory_dir is None or self.territory_dir == '')
@@ -713,7 +716,10 @@ class Phrase:
         return self.territory_dir
 
     def get_voice_dir(self) -> str:
-        return self.voice_dir
+        """
+        Gets the directory name for the cached phrase. See set_voice_dir.
+        """
+        return str(self.voice_dir)
 
     def set_audio_type(self, audio_type: AudioType) -> None:
         self.audio_type = audio_type
@@ -723,10 +729,21 @@ class Phrase:
             self.lang_dir = lang_dir
 
     def set_territory_dir(self, territory_dir: str, override: bool = False) -> None:
+
         if override or self.territory_dir is None:
             self.territory_dir = territory_dir
 
-    def set_voice_dir(self, voice_dir: str) -> None:
+    def set_voice_dir(self, voice_dir: Path) -> None:
+        """
+        Sets the directory name for the cached phrases that were produced
+        by the same engine, language, territory, voice, default_voice, etc....
+        In other words, the phrase share a common, specific voice.
+
+        The cache directory structure is:
+         .kodi/userdata/addon_data/service.kodi.tts/cache/pip/en/us/libritts_r-medium-60
+          <Kodi-tts userdata>/cache/<engine_id>/<lang>/<country>/<voice_dir>/
+              <two_digit_hex>/<voice files>
+        """
         self.voice_dir = voice_dir
 
     @classmethod
@@ -1155,7 +1172,7 @@ class PhraseList(UserList):
         """
         Changes a PhraseList created to not check expiration to be one that
         does check.
-        Typically, when xml is being scrapped to generate the text to voice you
+        Typically, when xml is being scraped to generate the text to voice you
         don't want to enable expiration checking since it is possible that
         during the voicing (after the scraping) that new phrases will be
         created to address certain situations (deal with a contraction or
@@ -1483,7 +1500,7 @@ class PhraseList(UserList):
             raise ExpiredException()
         return super().clear()
 
-    def copy(self) -> 'PhraseList' | UserList:
+    def copy(self) -> 'PhraseList | UserList':
         if self.is_expired() and self.check_expired:
             raise ExpiredException()
         return super().copy()
@@ -1538,7 +1555,7 @@ class PhraseList(UserList):
 class PhraseUtils:
 
     SAVE_CHUNK_FILES: Final[bool] = False
-    PUNCTUATION_PATTERN = regex.compile(r'([.,:])', regex.DOTALL)
+    PUNCTUATION_PATTERN = regex.compile(r'([.,\w:])', regex.DOTALL)
     _initialized: bool = False
 
     def __init__(self):
@@ -1546,25 +1563,26 @@ class PhraseUtils:
         clz._initialized = True
 
     @classmethod
-    def split_into_chunks(cls, phrase: Phrase, chunk_size: int = 100) -> PhraseList[
-        Phrase]:
+    def split_into_chunks(cls, phrase: Phrase,
+                          chunk_size: int = 100,
+                          check_expired: bool = False) -> PhraseList:
         """
         Splits a single phrase into string chunks, small enough for the TTS generator
         can handle.
 
         TODO: There are several challenges here:
               If a chunk is split then the lang and territory data must be copied
-              to both chunks.
+              to all chunks.
         :param phrase:
         :param chunk_size:
+        :param check_expired: Sets the returned chunks' check_expired state to this
         :return:
         """
         # Controls whether produced chunks have check_expired = True or not.
         # Useful for debugging.
         # TODO: Use when running in background.
 
-        check_expired: bool = True
-        phrases: PhraseList[Phrase] = PhraseList(check_expired=False)
+        phrase_chunks: PhraseList = PhraseList(check_expired=check_expired)
         out_chunks: List[str] = []
         chunk_num: int = 0
         try:
@@ -1597,6 +1615,7 @@ class PhraseUtils:
                                 except Exception as e:
                                     MY_LOGGER.exception(f'Failed to save text cache file')
                                     try:
+                                        MY_LOGGER.debug(f'unlink chunk: {chunk_file_path}')
                                         chunk_file_path.unlink(True)
                                     except Exception as e2:
                                         pass
@@ -1626,7 +1645,7 @@ class PhraseUtils:
                         if MY_LOGGER.isEnabledFor(DEBUG_V):
                             MY_LOGGER.debug_v(f'Last chunk: {chunk}'
                                               f' length: {len(chunk)}')
-                phrases: PhraseList[Phrase] = PhraseList()
+                phrases: PhraseList = PhraseList()
                 # Force these phrases have the same serial # as the original
                 phrases.serial_number = phrase.serial_number
 
@@ -1650,11 +1669,11 @@ class PhraseUtils:
                                                       lang_dir=phrase.lang_dir,
                                                       territory_dir=phrase.territory_dir,
                                                       voice_dir=phrase.voice_dir)
-                    phrases.append(chunk_phrase)
+                    phrase_chunks.append(chunk_phrase)
                     chunk_phrase.serial_number = phrase.serial_number
+                phrases.set_interrupt(interrupt)
             finally:
                 pass
-            phrases.set_interrupt(interrupt)
         except AbortException:
             reraise(*sys.exc_info())
         except ExpiredException:
@@ -1663,7 +1682,7 @@ class PhraseUtils:
             reraise(*sys.exc_info())
         except Exception as e:
             MY_LOGGER.exception('')
-        return phrases
+        return phrase_chunks
 
 
 if not PhraseUtils._initialized:

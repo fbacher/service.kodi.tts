@@ -1,33 +1,35 @@
 # coding=utf-8
 from __future__ import annotations
 
-from backends.settings.service_types import (ALL_ENGINES, ALL_PLAYERS, EngineType,
-                                             PlayerType, ServiceID)
+from collections import namedtuple
 
+from backends.settings.engine_lang import EngineLang
+from backends.settings.engine_voice import EngineVoice
+from backends.settings.engine_voice_group import EngineVoiceGroup
+from backends.settings.engine_voice_manager import EngineVoiceManager
+from langcodes import Language
+from backends.settings.lang_utils import LangUtils
+from backends.settings.service_types import (ALL_ENGINES, ALL_PLAYERS, EngineType,
+                                             PlayerType, QualityType, ServiceID,
+                                             ServiceKey)
 try:
     from enum import StrEnum
 except ImportError:
     from common.strenum import StrEnum
-from typing import Dict, ForwardRef, List, Tuple
+from typing import Dict, ForwardRef, List, Tuple, Union
 
-import xbmc
-import langcodes
-
-from backends.backend_info import BackendInfo
 from backends.i_tts_backend_base import ITTSBackendBase
 from backends.settings.i_validators import AllowedValue, IStringValidator
-from backends.settings.language_info import LanguageInfo
 from backends.settings.service_types import ServiceType
 from backends.settings.setting_properties import SettingProp
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import StringValidator
-from common.debug import Debug
-from common.exceptions import LogicError
 from common.logger import *
-from common.message_ids import MessageId
-from common.setting_constants import GenderSettingsMap, PlayerMode
+from common.setting_constants import PlayerMode
 from common.settings import Settings
-from windowNavigation.choice import Choice
+from windowNavigation.choice import (Choice, ChoiceDict, Choices, EngineChoice,
+                                     EngineChoices,
+                                     VGChoice, VGChoices, VoiceChoice, VoiceChoices)
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
 
@@ -46,16 +48,11 @@ class FormatType(StrEnum):
 
 
 class SettingsHelper:
-    initialized: bool = False
     engine_id: str = None
     engine_instance: ITTSBackendBase | None = None
     allowed_player_modes: Dict[str, List[AllowedValue]] = {}
-
-    @classmethod
-    def init_class(cls) -> None:
-        if not cls.initialized:
-            #  cls.get_engines_supporting_lang()
-            cls.initialized = True
+    _, _, _, kodi_language = LangUtils.get_kodi_locale_info()
+    kodi_language: Language
 
     @classmethod
     def build_allowed_player_modes(cls) -> None:
@@ -183,460 +180,216 @@ class SettingsHelper:
         return intersection, idx
 
     @classmethod
-    def get_engines_supporting_lang(cls,
-                                    current_engine_key: ServiceID) -> (
-            Tuple[List[Choice], int] | None):
+    def get_engine_choices(cls,
+                           current_engine_key: ServiceID) -> (
+            Tuple[EngineChoices, int] | None):
         """
-        Gets a list of available engine Choices that support the current kodi language
-        Any unavailable engines (broken, uninstalled, etc.) are ommitted.
+        Constructs a list of TTS engines that are functional on the current
+        machine and language.  If a current engine has been previously been chosen,
+        then that engine will have focus.
 
-        :param current_engine_key: id of the currently running engine
-        :return:
+        If the engine is changed a default vg will be configured. The default
+        vg is either a previously used one, or one of the 'best' voice_groups that
+        engine.
 
-            TODO: Rework all of the language related methods. There is a ton of
-            redundancy in these methods. This is due to the conception of how
-            the menus would work. Originally the idea is that you would first
-            choose your language from the universe of languages and then drill
-            down to the engine that supported your language and finly pick the
-            language variant and voice.   Well, it don't work that way...
+        :param current_engine_key: id of the currently running engine, or None
 
-            Instead, you always choose your Kodi language and territory, etc.
-            first. So for TTS, you are presented with the variations of your
-            major language ('en') supported by the current engine. The model is
-            that you can choose language variant (territory) and voice. You can
-            also filter on gender. Of course engines vary widely on how the variants
-            and voices are represented and organized. It is a work in progress.
-
-            Anyway, The code here can probably be reduced to two methods:
-            1) Discover the language capabilities of each engine, building a
-            master table
-            2) A method for getting the language info for a specific engine and
-            language, based on what was discovered in 1).
-
-            This won't be trivial, but it shouldn't be that big of a job either.
-            It will make the code much better.
+        :return: A list of Choices for each engine supporting the current language,
+                 sorted by engine's display name. The index to the current engine
+                 will also be returned.
         """
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'current_engine_key: {current_engine_key}')
-        final_choices: List[Choice] = []
-        idx: int = 0
-        current_choice_index: int = -1
+        engine_keys: List[ServiceID] | None
+        engine_keys = cls.get_active_engines()
+        # For each engine, the vg which is 'best'
+        closest_overall_locale_match: int = 1000  # 0 is best
+        # best_overall_vg records the best VoiceGroup for ALL engines,
+        # consequently, the best_overall_vg's locale may not be found in
+        # all engines.
+        best_overall_vg: EngineVoiceGroup | None = None
+        e_choices: EngineChoices = EngineChoices()
+        for engine_key in engine_keys:
+            engine_key: ServiceID
+            engine_type: EngineType = EngineType(engine_key.service_id)
+            engine_label: str = engine_type.label
+            engines_closest_locale_match: int = 1000  # 0 is best
+            MY_LOGGER.debug(f'# keys in vgs_by_engine_locale: '
+                            f' {len(EngineVoiceManager.vgs_by_engine_locale.keys())}')
 
-        # Get all language entries (engine=None does that)
-        """
-            Returns a Dict indexed by setting_id. The values are
-            Dict's indexed by language (en, fr, but not en-us).
-            Values of this language dict are lists that contain
-            all supported variations of a single language (en-us, en-gb...).
-            entries_by_engine: key: engine_key
-                        value: Dict[lang_family, List[languageInfo]]
-                        lang_family (iso-639-1 or -2 code)
-                        List[languageInfo] list of all languages supported by 
-                        that engine and language ('en' or 'en-us' and other variants).
-                        The langInfo includes details about the language, the 
-                        voice Id used by the engine, etc.
-        """
+            e_vg_by_locale: Dict[str, List[EngineVoiceGroup]]
+            e_vg_by_locale = EngineVoiceManager.get_vgs_by_locale(engine_key)
+            MY_LOGGER.debug(f'engine_key: {engine_key} e_vg_by_locale: {e_vg_by_locale}')
+            if e_vg_by_locale is None:
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'engine: {engine_key} supports no locales')
+                continue
+            previously_used_voice_key: str
+            previously_used_voice_key = Settings.get_voice_id(engine_key)
+
+            # For this iteration's engine, find out how different the current locale
+            # (lang & country) is from
+            # all the other supported locales. Remember the best match. This 'best-match'
+            # is based on simplistic comparison of the print differences between two
+            # locales. It does not take voice/accent differences into account, although
+            # they tend to go together.
+            for locale, voice_groups in e_vg_by_locale.items():
+                voice_groups: List[EngineVoiceGroup]
+                locale: str
+                MY_LOGGER.debug(f'locale: {locale} '
+                                f'voice_groups: {voice_groups}')
+                for e_vg in voice_groups:
+                    e_vg: EngineVoiceGroup
+                    MY_LOGGER.debug(f'vg: {e_vg.engine_vg_id} locale_match: '
+                                    f'{e_vg.locale_match}'
+                                    f'{engines_closest_locale_match}')
+                    locale_match: int = e_vg.locale_match
+                    if locale_match < engines_closest_locale_match:
+                        engines_closest_locale_match = locale_match
+                        if locale_match < closest_overall_locale_match:
+                            closest_overall_locale_match = locale_match
+                    MY_LOGGER.debug(f'locale_id: {e_vg.lang_tag} '
+                                    f'closest: {engines_closest_locale_match}')
+
+            # Go back through with only the voices with the closest_locale_match
+            # and find the one of best quality. Here best quality is the "Voice Quality"
+            # which can be supplied by the vendor, or by personal opinion, or otherwise.
+
+            best_engines_vg: EngineVoiceGroup | None = None
+            for locale, voice_groups in e_vg_by_locale.items():
+                voice_groups: List[EngineVoiceGroup]
+                locale: str
+                MY_LOGGER.debug(f'engine: {engine_key} locale: {locale}')
+                for e_vg in voice_groups:
+                    e_vg: EngineVoiceGroup
+                    MY_LOGGER.debug(f'e_vg: {e_vg.default_voice_id} '
+                                    f'prev_voice_key: {previously_used_voice_key}')
+                    # TODO: is this desired behavior?
+                    # if best_vg_for_engine is None:
+                    #     best_vg_for_engine = e_vg
+                    # if best_overall_vg is None:
+                    #     best_overall_vg = e_vg
+                    #
+                    # if e_vg.default_voice_id == previously_used_voice_key:
+                    #     best_overall_vg = e_vg
+                    #     best_vg_for_engine = e_vg
+                    #     MY_LOGGER.debug(f'Breaking best_vg: {best_overall_vg}')
+                    #     break
+                    locale_match: int = e_vg.locale_match
+                    MY_LOGGER.debug(f'locale_match: {locale_match} closest: '
+                                    f'{engines_closest_locale_match}')
+                    if locale_match == engines_closest_locale_match:
+                        MY_LOGGER.debug(f'e_vg: {e_vg} has closest_match\n'
+                                        f'best_overall_vg: {best_overall_vg}\n'
+                                        f'vg.voice_quality: {e_vg.voice_quality}')
+                        if best_engines_vg is None:
+                            best_engines_vg = e_vg
+                            best_overall_vg = e_vg
+                        elif best_engines_vg.voice_quality > e_vg.voice_quality:
+                            best_engines_vg = e_vg
+                        if best_overall_vg.voice_quality > best_engines_vg.voice_quality:
+                            best_overall_vg = best_engines_vg
+
+                            MY_LOGGER.debug(f'highest_voice_quality: '
+                                            f'{best_engines_vg} \n'
+                                            f'best_vg: '
+                                            f'{e_vg.default_voice_id}')
+
+            MY_LOGGER.debug(f'best_overall_vg: {best_overall_vg} '
+                            f'best_voice_quality: {best_engines_vg}')
+
+            # Add all of this engine's voice groups
+            engines_e_choices: EngineChoices = EngineChoices()
+            for locale, voice_groups in e_vg_by_locale.items():
+                voice_groups: List[EngineVoiceGroup]
+                locale: str
+                MY_LOGGER.debug(f'engine: {engine_key} locale: {locale}')
+                for e_vg in voice_groups:
+                    e_vg: EngineVoiceGroup
+
+                    initial_voice: EngineVoice
+                    initial_voice = best_overall_vg.default_e_voice
+                    e_lang: EngineLang
+                    lang_uid: str = EngineLang.get_uid(engine_key,
+                                                       ietf_tag=e_vg.lang_tag)
+                    e_lang = EngineVoiceManager.engine_lang_by_uid.get(lang_uid)
+                    if e_lang is None:
+                        MY_LOGGER.error(f'e_lang should exist {lang_uid}')
+                    MY_LOGGER.debug(f'lang_by_uid.keys: '
+                                    f'{EngineVoiceManager.engine_lang_by_uid.keys()}')
+                    e_choice: EngineChoice
+                    e_choice = EngineChoice(label=engine_label,
+                                            value=engine_key.service_id,
+                                            engine_key=engine_key,
+                                            lang=e_lang,
+                                            voice=initial_voice)
+                    engines_e_choices.append(e_choice)
+
+                MY_LOGGER.debug(f'engine choices: {engine_label} '
+                                f'choices: {len(engines_e_choices)}')
+                e_choices.extend(engines_e_choices)
         try:
-            entries = LanguageInfo.get_entries(translate=True,
-                                               ordered=True,
-                                               engine_key=None)
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'entries: {entries.keys()}')
-        except Exception as e:
-            MY_LOGGER.exception('')
-            entries = {}
-
-        try:
-            """
-                We display two views. In both cases they are arranged in 
-                the display order of the language family, then language, then
-                engine display order. So, if we display only language entries
-                in the 'en' language family for every engine we have something like:
-
-                    en English, United States eSpeak
-                    en English, United States GoogleTTS 
-
-            """
-            kodi_lang, kodi_locale, kodi_friendly_locale, kodi_language = \
-                LanguageInfo.get_kodi_locale_info()
-            kodi_language: langcodes.Language
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'kodi_lang: {kodi_lang} kodi_locale: {kodi_locale} '
-                                f'kodi_language: {kodi_language}')
-
-            #  Dict[str, Dict[str, List[LanguageInfo]]]
-            # sorted_keys: List[Tuple[str, str]] = []
-            #
-            # Top level dict is indexed by engine-id
-            # The value is a Dict, indexed by language_id ('en') with value
-            # being a List of every LanguageInfo who's language is within the
-            # same family as it's key.
-            # So to sort, we need to sort both the second level dict's keys
-            # and the List of LangInfos
-
-            # First, create sorted list of engines by sorting on their label
-            engine_choices: List[Choice] = []
-            for engine_key in entries.keys():
+            MY_LOGGER.debug(f'# engine_choices: {len(e_choices)}')
+            e_choices.sort_by_engine_label()
+            MY_LOGGER.debug(f'post sort # engine_choices: {len(e_choices)}')
+            best_overall_quality_engine_key: ServiceID | None = None
+            best_overall_engine_quality: int = 101
+            current_choice_index: int = -1
+            for engine_key in engine_keys:
                 engine_key: ServiceID
-                choice: Choice
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'engine_key: {engine_key}')
-                engine_label: str = LanguageInfo.get_translated_engine_name(engine_key)
-                choice = Choice(label=engine_label, value=engine_key.service_id,
-                                choice_index=0, engine_key=engine_key,
-                                lang_info=None)
-                engine_choices.append(choice)
-            engine_choices = sorted(engine_choices, key=lambda entry: entry.label)
+                engine_type: EngineType = EngineType(engine_key.service_id)
+                engine_quality: int = engine_type.ordinal
+                MY_LOGGER.debug(f'engine: {engine_key} engine_quality: '
+                                f'{engine_quality} '
+                                f'best_quality: {best_overall_engine_quality}')
+                # Lower is better
+                if engine_quality < best_overall_engine_quality:
+                    best_overall_engine_quality = engine_quality
+                    best_overall_quality_engine_key = engine_key
+                MY_LOGGER.debug(f'# keys in vgs_by_engine_locale: '
+                                f' {len(EngineVoiceManager.vgs_by_engine_locale.keys())}')
 
-            # Now find the closet match of the languages for each engine
-
-            idx: int = 0
-            for choice in engine_choices:
-                choice: Choice
-                engines_langs: List[Choice] = []
-                engine_key: ServiceID = choice.engine_key
-                current_matching_choice: Choice | None = None
-                current_engine_voice_id: str = Settings.get_voice(engine_key)
-                current_engine_lang_id: str = Settings.get_language(engine_key)
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'engine_key: {engine_key} '
-                                    f'current_voice: {current_engine_voice_id} '
-                                    f'current_lang_id: {current_engine_lang_id}')
-                language_entry:  Dict[str, List[LanguageInfo]]
-                language_entry = entries[engine_key]
-
-                # We only care about Kodi's language
-                languages: List[LanguageInfo] = language_entry.get(kodi_lang)
-                if languages is None or len(languages) == 0:
-                    if MY_LOGGER.isEnabledFor(DEBUG):
-                        MY_LOGGER.debug(f'Language {kodi_lang} not supported for'
-                                        f' this engine: {engine_key}')
-                    continue
-
-                # Now find nearest match to current locale kodi_locale
-
-                engine_supported_voices: int = 0
-                engine_label: str = ''
-                for lang_info in languages:
-                    lang_info: LanguageInfo
-                    engine_label = lang_info.translated_engine_name
-                    engine_supported_voices += 1
-                    # Get (text) language differences between the current locale
-                    # and the proposed language
-                    match_distance: int
-                    match_distance = langcodes.tag_distance(desired=kodi_language,
-                                                            supported=lang_info.ietf)
-                    label = lang_info.label
-                    key: str = f'{match_distance:3d}{label} engine: {engine_key}'
-                    # Must fix the choice_index later
-                    if (MY_LOGGER.isEnabledFor(DEBUG) and
-                            engine_key != lang_info.engine_key):
-                        MY_LOGGER.debug(f'ERROR: lang_info.service_key: '
-                                        f'{lang_info.engine_key} != '
-                                        f'current service_key: {engine_key}')
-                    choice: Choice
-                    choice = Choice(label=label, value=engine_key.service_id,
-                                    choice_index=-1,
-                                    sort_key=key,
-                                    lang_info=lang_info,
-                                    engine_key=lang_info.engine_key,
-                                    match_distance=match_distance)
-                    engines_langs.append(choice)
-                    if (current_engine_voice_id == lang_info.engine_voice_id and
-                            current_engine_lang_id == lang_info.engine_lang_id):
-                        current_matching_choice = choice
-                        if MY_LOGGER.isEnabledFor(DEBUG):
-                            MY_LOGGER.debug(f'current_engine_lang_id: '
-                                            f'{current_engine_lang_id}')
-
-                # Done with creating a list of language variants for an engine
-                # which to sort and further manipulate
-
-                # Sort the choices by language match
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'engine: {engine_key} # lang choices: '
-                                    f'{len(engines_langs)}')
-
-                engines_langs = sorted(engines_langs, key=lambda chc: chc.sort_key)
-                # Finished processing all langs for an engine
-                # Now, simply pick the best match. Since each engine is being
-                # processed in sorted order, these entries will be sorted correctly.
-
-                # If we have a saved setting for this engine, then try to use the
-                # previous voice_id and lang_id, otherwise, leave current_choice_index as -1
-				# and leave it to UI to present
-                matching_choice: Choice | None = None
-                if current_matching_choice is not None:
-                    for choice_to_check in engines_langs:
-                        choice_to_check: Choice
-                        if MY_LOGGER.isEnabledFor(DEBUG_V):
-                            MY_LOGGER.debug_v(f'current voice: {current_engine_voice_id} '
-                                              f'lang_id: {current_engine_lang_id} '
-                                              f'distance: {choice.match_distance} '
-                                              f'matching_sort_key: '
-                                              f'{current_matching_choice.sort_key}')
-                            MY_LOGGER.debug_v(f'choice_to_check: {choice_to_check}')
-                        if current_matching_choice.sort_key == choice_to_check.sort_key:
-                            matching_choice = choice_to_check
-                            break
-
-                if matching_choice is None:
-                    choice_to_add: Choice = engines_langs[0]
-                else:
-                    choice_to_add = matching_choice
-                choice_to_add.choice_index = idx
-                if (current_engine_key is not None and
-                        current_engine_key == choice_to_add.engine_key):
-                    current_choice_index = idx
-                    if MY_LOGGER.isEnabledFor(DEBUG_V):
-                        MY_LOGGER.debug_v(f'current_engine_key: {current_engine_key} '
-                                          f'idx: {current_choice_index} '
-                                          f'choice_key: {choice_to_add.engine_key} '
-                                          f'voice: {choice.lang_info.engine_voice_id} '
-                                          f'distance: {choice.match_distance}')
-                final_choices.append(choice_to_add)
-                idx += 1
-            # Finished processing all engines
+            MY_LOGGER.debug(f'best_engine: {best_overall_quality_engine_key} '
+                            f'best_overall_engine_quality:'
+                            f' {best_overall_engine_quality}')
+            if current_engine_key is None:
+                current_engine_key = best_overall_quality_engine_key
+            e_choices.set_default_engine(current_engine_key,
+                                         best_overall_quality_engine_key)
 
             if MY_LOGGER.isEnabledFor(DEBUG_V):
-                for choice in final_choices:
-                    MY_LOGGER.debug_v(f'final_choices: {choice}')
-            return final_choices, current_choice_index
+                e_choices.dbg_print()
+            MY_LOGGER.debug(f'engine_choices: {e_choices} '
+                            f'current_choice_index: {current_choice_index} ')
+            if current_choice_index < 0:
+                current_choice_index = 0
+            return e_choices, current_choice_index
         except Exception as e:
             MY_LOGGER.exception('')
         return None
 
     @classmethod
-    def get_languages_supporting_engine(cls, engine_key: ServiceID,
-                                        best_match_only: bool = False
-                                        ) -> Tuple[List[Choice] | None, int | None]:
-        """
-        Gets a list of language Choices that support the current kodi language
+    def get_active_engines(cls) -> List[ServiceID]:
+        DUMMY_ENGINES = ServiceKey.NO_ENGINE_KEY,
+        tmp_engines: List[ServiceID]
+        tmp_engines = SettingsMap.get_available_services(ServiceType.ENGINE)
+        available_engines: List[ServiceID] = []
+        for engine in tmp_engines:
+            if engine not in DUMMY_ENGINES:
+                available_engines.append(engine)
 
-        :param engine_key:  The engine to get language information for
-        :param best_match_only: If True then only return the languge information
-            for the language that best matches the current Kodi locale for this engine
-        :return: A Tuple of a list of language choices and a index for the best
-            language choicematch for this engine and locale
-        """
-        choices: List[Choice] = []
-        current_choice_index: int = -1
-        try:
-            # Get language entries for just this engine
-            """
-               Returns a  Dict indexed by setting_id. The values are
-               Dict's indexed by language. Values are lists
-                 of languages supported by that engine. The list will contain
-                 all supported variations of a single language.
-                 entries_by_engine: key: setting_id
-                            value: Dict[lang_family, List[languageInfo]]
-                            lang_family (iso-639-1 or -2 code)
-                            List[languageInfo} list of all languages supported by 
-                            that engine and language ('en' or 'en-us' and other variants).
-                            The langInfo includes details about the language, the 
-                            voice Id used by the engine, etc.
-            """
-            entries = LanguageInfo.get_entries(translate=True,
-                                               ordered=True,
-                                               lang_family=None,
-                                               engine_key=engine_key)
-            count: int = 0
-            for key, value in entries.items():
-                for lang, lang_values in value.items():
-                    count += len(lang_values)
-        except Exception as e:
-            MY_LOGGER.exception('')
-            entries = {}
-        try:
-            """
-                We display two views. In both cases they are arranged in 
-                the display order of the language family, then language, then
-                engine display order. So, if we display only language entries
-                in the 'en' language family for every engine we have something like:
-
-                    en English, United States eSpeak
-                    en English, United States GoogleTTS 
-            """
-            kodi_lang, kodi_locale, kodi_friendly_locale, kodi_language = \
-                LanguageInfo.get_kodi_locale_info()
-            kodi_language: langcodes.Language
-            #  Dict[str, Dict[str, List[ForwardRef('LanguageInfo')]]]
-            # sorted_keys: List[Tuple[str, str]] = []
-            #
-            # Top level dict is indexed by engine-id
-            # The value is a Dict, indexed by language_id ('en') with value
-            # being a List of every LanguageInfo who's language is within the
-            # same family as it's key.
-            # So to sort, we need to sort both the second level dict's keys
-            # and the List of LangInfos
-
-            idx: int = 0
-            sort_choices: List[Choice] = []
-            for engine_key, langs_for_an_engine in entries.items():
-                engine_key: ServiceID
-                langs_for_an_engine: Dict[str, List[ForwardRef('LanguageInfo')]]
-                for lang_family_id, engine_langs_in_family in langs_for_an_engine.items():
-                    lang_family_id: str
-                    engine_langs_in_family: List[ForwardRef('LanguageInfo')]
-                    if lang_family_id != kodi_lang:
-                        continue
-
-                    engine_supported_voices: int = 0
-                    engine_label: str = ''
-                    choices: List[Choice] = []
-                    for lang_info in engine_langs_in_family:
-                        lang_info: LanguageInfo
-                        engine_label = lang_info.translated_engine_name
-                        engine_supported_voices += 1
-                    choice: Choice
-                    choice = Choice(label=engine_label, value=engine_key.service_id,
-                                    engine_key=engine_key, choice_index=0)
-                    if MY_LOGGER.isEnabledFor(DEBUG):
-                        MY_LOGGER.debug(f'choice: {choice}')
-                    more_choices: List[Choice]
-                    more_choices = cls.sort_engine_langs(engine_langs_in_family,
-                                                         kodi_language,
-                                                         choices)
-                    sort_choices.extend(more_choices)
-            choices: List[Choice]
-            best_idx: int
-            choices, best_idx = cls.identify_closet_match(sort_choices, kodi_locale)
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                for choice in choices:
-                    MY_LOGGER.debug(f'choices: {choice.label} {choice.value}')
-            return choices, best_idx
-        except Exception as e:
-            MY_LOGGER.exception('')
-        return None, None
-
-    @classmethod
-    def get_formatted_label(cls, lang_info: LanguageInfo,
-                            kodi_language: langcodes,
-                            format_type: FormatType) -> str:
-        label: str = ''
-        antonym: str = lang_info.autonym
-        engine_name: str = lang_info.translated_engine_name
-        country_name: str = lang_info.translated_country_name
-        if format_type == FormatType.LONG:
-            voice_name: str = lang_info.translated_voice
-            voice_label: str = MessageId.VOICE.get_msg()
-            if antonym != country_name:
-                if voice_name in (country_name, antonym):
-                    label = (f'{engine_name:10} '
-                             f'{country_name:20} '
-                             f'{antonym:10}')
-                else:
-                    label = (f'{engine_name:10} '
-                             f'{country_name:20} '
-                             f'{antonym:10} '
-                             f'{voice_label}  {voice_name:20}')
-            else:
-                if voice_name in (country_name, antonym):
-                    label = (f' {engine_name:10} '
-                             f'{country_name:32}')
-                else:
-                    label = (f' {engine_name:10} '
-                             f'{country_name:32}  '
-                             f'{voice_label}  {voice_name:20}')
-        elif format_type == FormatType.SHORT:
-            label = f'{engine_name:10}  {country_name:32}'
-        elif format_type == FormatType.DISPLAY:
-            label = f'{engine_name:10} {lang_info.get_display_name(kodi_language):32}'
-        else:
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'ERROR invalid format_type: {format_type}')
-        return label
+        return available_engines
 
     @classmethod
     def get_formatted_lang(cls, lang: str) -> str:
-        return LanguageInfo.get_formatted_lang(lang)
+        return EngineLang.get_formatted_lang(lang)
 
     @classmethod
-    def sort_engine_langs(cls,
-                          engine_langs_in_family: List[ForwardRef('LanguageInfo')],
-                          kodi_language: langcodes.Language,
-                          sort_choices: List[Choice]) -> List[Choice]:
+    def identify_closest_match(cls, sorted_choices: VoiceChoices,
+                               kodi_locale: str) -> Tuple[VoiceChoices, int]:
         """
-        Sorts language entries for a single engine, returning a list of
-        Choices.
-        Sorts by match_distance then label.
-        Also adds the match distance between Kodi's current language and the
-        languages being sorted.
-
-        :param engine_langs_in_family:
-        :param kodi_language:
-        :param sort_choices:
-        :return:
-        """
-        idx: int = 0
-        for lang_info in engine_langs_in_family:
-            lang_info: LanguageInfo
-            # Get the name of the language in the current language
-            # display_current_lang: str = lang_info.ietf.display_name(
-            #         language=kodi_language)
-            #  display_current_territory: str = lang_info.ietf.territory_name()
-            # Get name of the language in its native language
-            # display_lang_choice: str = lang_info.ietf.autonym()
-            # get how close of a match this language is to
-            # Kodi's setting
-
-            match_distance: int
-            match_distance = langcodes.tag_distance(desired=kodi_language,
-                                                    supported=lang_info.ietf)
-            # display_engine_name: str = lang_info.translated_engine_name
-            # voice_name: str = lang_info.translated_voice
-            label = lang_info.label
-            key: str = f'{match_distance:3d}{label}'
-            # Must fix the choice_index later
-            choice: Choice
-            choice = Choice(label=label, value='', choice_index=-1,
-                            sort_key=key, lang_info=lang_info,
-                            engine_key=lang_info.engine_key,
-                            match_distance=match_distance)
-            sort_choices.append(choice)
-
-        # Sort the choices by language match
-        sorted_choices: List[Choice]
-        sorted_choices = sorted(sort_choices, key=lambda chc: chc.sort_key)
-        return sorted_choices
-
-    @classmethod
-    def pick_closet_match(cls, choices: List[Choice],
-                          kodi_locale: str) -> List[Choice]:
-        """
-        Returns a list of the best language matches from each of the engines
-        represented in the choices presented here. Assumes that match information
-        is already present. sort_engine_langs can add this information prior to
-        call.
-
-        :param choices:
-        :param kodi_locale:
-        :return:
-        """
-        best_choice_for_engine: Dict[ServiceID, Choice] = {}
-        choice: Choice
-        result_choices: List[Choice] = []
-        if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'choices: {choices}')
-        for choice in choices:
-            lang_info: LanguageInfo = choice.lang_info
-            choice.engine_key = lang_info.engine_key
-            best_choice: Choice | None = best_choice_for_engine.get(choice.engine_key)
-            if best_choice is None:
-                best_choice_for_engine[choice.engine_key] = choice
-            else:
-                if choice.match_distance < best_choice.match_distance:
-                    best_choice_for_engine[choice.engine_key] = choice
-
-        result_choices.extend(best_choice_for_engine.values())
-        return result_choices
-
-    @classmethod
-    def identify_closet_match(cls, sorted_choices: List[Choice],
-                              kodi_locale: str) -> Tuple[List[Choice], int]:
-        """
-        Given a sorted list of languages and variants for a single engine,
-        identify the closet language and varient (voice) match and returns
+        Given a sorted list of Voices of various language-territories and a single engine,
+        identify the closest language and voice match and return
         an index to it. Also adds information from lang_info to the Choices.
 
         Requires that match information already be set prior to call. See
@@ -651,162 +404,222 @@ class SettingsHelper:
             return sorted_choices, -1
         engine_key: ServiceID = sorted_choices[0].engine_key
         # Mark any entry with the same voice and lang_id as the currently selected one.
-        current_engine_voice_id: str = Settings.get_voice(engine_key)
+        current_e_voice_id: str = Settings.get_voice_id(engine_key)
         current_engine_lang_id: str = Settings.get_language(engine_key)
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'engine_key: {engine_key} '
-                            f'current_voice: {current_engine_voice_id} '
+                            f'current_voice: {current_e_voice_id} '
                             f'current_lang_id: {current_engine_lang_id}')
 
         current_choice_index: int = -1
         closest_match_index: int = -1
         closest_match: int = 10000
-        choice: Choice
-        choices: List[Choice] = []
-        for choice in sorted_choices:
-            lang_info: LanguageInfo = choice.lang_info
-            locale: str = lang_info.ietf.to_tag()
-            lang_id: str = lang_info.language_id
-            choice.engine_key = lang_info.engine_key
-            choice.choice_index = idx
-            if choice.match_distance < closest_match:
-                closest_match = choice.match_distance
+        v_choices: VoiceChoices = VoiceChoices()
+        for v_choice in sorted_choices:
+            v_choice: VoiceChoice
+            e_voice: EngineVoice = v_choice.e_voice
+            engine_key: ServiceID = v_choice.engine_key
+            v_choice.choice_idx = idx
+            if v_choice.match_distance < closest_match:
+                closest_match = v_choice.match_distance
                 closest_match_index = idx
-            if current_choice_index == -1 and locale == kodi_locale:
-                current_choice_index = idx
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'engine_key: {engine_key} '
-                                f'engine_voice_id: {lang_info.engine_voice_id} '
-                                f'lang_id: {lang_info.engine_lang_id}')
-            if (current_engine_voice_id == lang_info.engine_voice_id and
-                    current_engine_lang_id == lang_info.engine_lang_id):
+
+            if current_e_voice_id == e_voice.e_voice_id:
                 current_choice_index = idx
 
-            choices.append(choice)
+            v_choices.append(v_choice)
             if MY_LOGGER.isEnabledFor(DEBUG_XV):
-                MY_LOGGER.debug_xv(f'{choice}')
+                MY_LOGGER.debug_xv(f'{v_choice}')
             idx += 1
 
         if current_choice_index == -1:
             current_choice_index = closest_match_index
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'choice_idx: {current_choice_index} choice: '
-                            f'{choices[current_choice_index].lang_info.engine_lang_id} '
-                            f'{choices[current_choice_index].lang_info.engine_voice_id}')
-        return choices, current_choice_index
+                            f'{v_choices[current_choice_index].lang_info.engine_lang_id} '
+                            f'{v_choices[current_choice_index].lang_info.e_voice_id}')
+        return v_choices, current_choice_index
 
     @classmethod
-    def get_language_choices(cls,
-                             engine_key: ServiceID | None = None,
-                             get_best_match: bool = False,
-                             format_type: FormatType = FormatType.DISPLAY) -> (
-            Tuple)[List[Choice] | None, int | None]:
-
+    def get_vg_choices(cls,
+                       engine_key: ServiceID | None = None) -> VGChoices:
         """
-        Gets language capabilities of all or a single TTS engine. The
-        returned languages/voices will belong to the same family (English,
-        Spanish, etc.) as Kodi is configured. Further, the entries will be
-        sorted by how well they match Kodi's locale (language and territory).
+        An engine supports one or more voice_groups.
 
-        Note that the sort is based upon the written language and does
-        not take into account the quality of the voicing made by the entine.
+        Here we make an EngineVoiceGroup be the container of one or more related
+        voices. To the user a "Voice" is either a 'normal' independent voice, or
+        one from a group of voices. To choose a voice, the user is presented a
+        SelectionDialog with the possible voices AND Voice Groups. To choose a
+        simple voice, the user just selects it. To choose a voice that is a member
+        of an EngineVoiceGroup, the user first selects the Voice Group, then another
+        Selection Dialog will appear with just the Voices in that group.
 
-        :param format_type:
-        :param engine_key: If None, then return information for all engines
-                         If not None, then return information for the engine
-                         identified by 'engine'
-        :param get_best_match; If True, then return index to best match,
-                                 If False, return index to current match,
-                                 if available, otherwise, best match.
-        :return: List of supported voicings by the engine(s) supporting
-            the current language and territory, sorted by how good of a match
-            it is to Kodi's current settings. Also, an index to the current
-            or best matching entry (see get_best_match).
+        :param engine_key: Specifies the TTS engine to configure the language/voice
+                         for. A ValueError is thrown if None is passed.
+        :return:  supported voice_groups, current_vg_idx, current_voice_idx and
+                  voice_idx for the given engine
         """
+        if engine_key is None:
+            raise ValueError('engine_key is None')
+
         if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'In get_language_choices service_key: {engine_key}')
-        choices: List[Choice] = []
-        current_choice_index: int = -1
-        entries: Dict[ServiceID, Dict[str, List[ForwardRef('LanguageInfo')]]] | None
-        entries = None
+            MY_LOGGER.debug(f'In get_vg_choices service_key: {engine_key}')
+
+        all_e_vgs_for_engine: List[EngineVoiceGroup] = []
+        best_match: int = 10000
+        default_vg_idx: int = -1
+
+        # Get the current voice setting for engine identified by engine_key
+        current_e_voice: EngineVoice
+        current_e_voice = EngineVoiceManager.get_e_voice(engine_key)
+        if current_e_voice is None:
+            vg_choice_list: List[VGChoice] = list()
+            vg_choices: VGChoices
+            vg_choices = VGChoices.add(engine_key,
+                                       selected_vg_idx=-1,
+                                       default_vg_idx=-1,
+                                       new_list=[])
+            return vg_choices
+
+        ev_uid: str = current_e_voice.uid
+        MY_LOGGER.debug(f'v_uid: {ev_uid}')
+        engines_current_voice: EngineVoice
+        engines_current_voice = EngineVoiceManager.get_eng_voice_by_uid(ev_uid)
+        MY_LOGGER.debug(f'vuid: {ev_uid} engines_current_voice: {engines_current_voice} '
+                        f'\n current_e_voice: {current_e_voice}')
+
+        current_vg_id: str = engines_current_voice.engine_vg_id
+        MY_LOGGER.debug(f'current_vg_id: {current_vg_id}')
         try:
-            # Get all language entries (engine=None does that)
-            entries = LanguageInfo.get_entries(translate=True,
-                                               ordered=True,
-                                               engine_key=engine_key)
-            count: int = 0
-            for service_key, value in entries.items():
-                service_key: ServiceID  # Identifies the engine which the value belongs
-                for lang, lang_values in value.items():
-                    lang: str  # Engine can support Multiple langs
-                    lang_values: List[LanguageInfo]  # langs can have multiple variants
-                    count += len(lang_values)
+            v_gs_for_a_locale: List[EngineVoiceGroup]
+            v_gs_items = EngineVoiceManager.get_vgs_by_locale(engine_key).items()
+            for locale, v_gs_for_a_locale in v_gs_items:
+                all_e_vgs_for_engine.extend(v_gs_for_a_locale)
+                for e_vg in all_e_vgs_for_engine:
+                    e_vg: EngineVoiceGroup
+                    MY_LOGGER.debug(f'e_vg lang_tag: {e_vg.lang_tag} match: '
+                                    f'{e_vg.locale_match} quality: {e_vg.voice_quality}')
+                    locale_match: int = e_vg.locale_match
+                    # Less is a closer match to our locale
+                    if locale_match < best_match:
+                        best_match = locale_match
+                        MY_LOGGER.debug(f'locale: {e_vg.lang_tag} closest: '
+                                        f'{best_match}')
         except Exception as e:
             MY_LOGGER.exception('')
-            entries = {}
         try:
-            """
-                We display two views. In both cases they are arranged in 
-                the display order of the language family, then language, then
-                engine display order. So, if we display only language entries
-                in the 'en' language family for every engine we have something like:
+            vg_choice_list: List[VGChoice] = list()
 
-                    en English, United States eSpeak
-                    en English, United States GoogleTTS 
-            """
-            kodi_lang, kodi_locale, kodi_friendly_locale, kodi_language = \
-                LanguageInfo.get_kodi_locale_info()
-            kodi_language: langcodes.Language
-            #  Dict[str, Dict[str, List[ForwardRef('LanguageInfo')]]]
-            # sorted_keys: List[Tuple[str, str]] = []
-            #
-            # Top level dict is indexed by engine-id
-            # The value is a Dict, indexed by language_id ('en') with value
-            # being a List of every LanguageInfo that is within the
-            # same language family as it's key.
-            # So to sort, we need to sort both the second level dict's keys
-            # and the List of LangInfo
-            for engine_key, langs_for_an_engine in entries.items():
-                engine_key: ServiceID
-                sort_choices: List[Choice] = []
-                langs_for_an_engine: Dict[str, List[ForwardRef('LanguageInfo')]]
-                for lang_family_id, langs_in_family in langs_for_an_engine.items():
-                    lang_family_id: str
-                    langs_in_family: List[ForwardRef('LanguageInfo')]
-                    if lang_family_id != kodi_lang:
-                        continue
-                    more_chc: List[Choice]
-                    cur_idx: int
-                    more_chc = cls.sort_engine_langs(langs_in_family,
-                                                     kodi_language,
-                                                     sort_choices=sort_choices)
-                    choices.extend(more_chc)
-            match_locale: str = kodi_locale
-            current_locale: str = ''
-            if not get_best_match:
-                current_locale: str = Settings.get_language(engine_key)
-                # Convert to ietf format (from en-au to en-AU)
-                match_locale = langcodes.Language.get(current_locale).to_tag()
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'get_best_match: {get_best_match} '
-                                f'kodi_locale: {kodi_locale} '
-                                f'current_locale: {current_locale} '
-                                f'match_locale: {match_locale}')
-            current_index: int
-            sort_choices, current_index = cls.identify_closet_match(choices,
-                                                                    match_locale)
-            if current_index < 0:
-                sort_choices, current_index = cls.identify_closet_match(choices,
-                                                                        kodi_locale)
-            for choice in sort_choices:
-                choice: Choice
-                choice.label = cls.get_formatted_label(choice.lang_info,
-                                                       format_type=format_type,
-                                                       kodi_language=kodi_language)
-            return sort_choices, current_index
-        except Exception as e:
+            for e_vg in all_e_vgs_for_engine:
+                e_vg: EngineVoiceGroup
+                MY_LOGGER.debug(f'VGroup: {e_vg.vg_name} #voices: {len(e_vg.e_voices)}')
+                v_choices: VoiceChoices
+                v_choices = cls.create_voice_choices_from_vg(e_vg)
+                qual: QualityType = e_vg.voice_quality
+
+                count: int = len(v_choices)
+                MY_LOGGER.debug(f'Adding VGChoice {e_vg.vg_name}')
+                MY_LOGGER.debug(f'e_vg lang_tag: {e_vg.lang_tag} match: '
+                                f'{e_vg.locale_match} quality: '
+                                f'{e_vg.voice_quality_label}')
+                vg_choice: VGChoice
+                vg_choice = VGChoice.add(label=f'Group: {e_vg.vg_name}  Quality: {qual} '
+                                               f' Voice Locale: {e_vg.lang_tag}  '
+                                               f'voices: {count}',
+                                         choice_idx=len(vg_choice_list),
+                                         enabled=True,
+                                         hint=None,
+                                         e_vg=e_vg,
+                                         v_choices=v_choices)
+                vg_choice_list.append(vg_choice)
+                #  MY_LOGGER.debug(f'vgChoice: {vg_choice}')
+            vg_choices: VGChoices
+            vg_choices = VGChoices.add(engine_key=engine_key,
+                                       selected_vg_idx=-1,
+                                       default_vg_idx=default_vg_idx,
+                                       new_list=vg_choice_list)
+            MY_LOGGER.debug(f'vg_choices: {vg_choices}')
+            vg_choices.sort_by_sort_key()
+            idx: int = -1
+            for vg_choice in vg_choices:
+                vg_choice: VGChoice
+                idx += 1
+                vg_choice.choice_idx = idx
+                vg_choice.default_idx = 0
+                MY_LOGGER.debug(f'vg: {vg_choice.label} uid: {vg_choice.e_vg.vg_uid}')
+                for v_choice in vg_choice.v_choices:
+                    v_choice: VoiceChoice
+                    MY_LOGGER.debug(f'v_choice: {v_choice.label} e_voice_id: '
+                                    f'{v_choice.e_voice.e_voice_id}')
+            # After sorting, fix up any indexes
+            # The default voice in a VG should be the first one in the VG
+
+            engines_current_vg_idx = -1
+            try:
+                vg_idx: int = -1
+                for vg_choice in vg_choices:
+                    vg_choice: VGChoice
+                    if type(vg_choice) is not VGChoice:
+                        raise TypeError(f'Expected VGChoice, got {type(vg_choice)}')
+                    MY_LOGGER.debug(f'choice-type: {type(vg_choice)}')
+                    if vg_choice.has_single_voice:
+                        MY_LOGGER.debug(f'simple voice: {vg_choice}')
+                    vg_idx += 1
+                    locale_match: int = vg_choice.e_vg.locale_match
+                    if default_vg_idx < 0 and locale_match == best_match:
+                        default_vg_idx = vg_idx
+                        vg_choice.default_idx = default_vg_idx
+
+                    MY_LOGGER.debug(f'vg_choice.engine_vg_id: {vg_choice.engine_vg_id} '
+                                    f'current_vg_id: {current_vg_id}')
+                    if vg_choice.engine_vg_id == current_vg_id:
+                        vg_choices.select_vg(vg_choice)
+                        e_voice_id: str = Settings.get_voice_id(engine_key)
+                        MY_LOGGER.debug(f'Setting selected voice: {vg_choice} '
+                                        f'e_voice_id: {e_voice_id}')
+
+                        vg_choice.set_selected_ev_idx(e_voice_id)
+
+            except Exception as e:
+                MY_LOGGER.exception('')
+            #  cls.dump_vg_info(result.vg_choices)
+            return vg_choices
+        except Exception:
             MY_LOGGER.exception('')
-        return None, None
+        vg_choices: VGChoices
+        vg_choices = VGChoices.add(engine_key=engine_key,
+                                   selected_vg_idx=-1,
+                                   default_vg_idx=-1,
+                                   new_list=[])
+        return vg_choices
 
+    @classmethod
+    def dump_vg_info(cls, values: VGChoices) -> None:
+        #
+        # vg_choices, selected & default indices
+        MY_LOGGER.debug(f'Dumping VGChoices')
+        values.dbg_print2()
 
-SettingsHelper.init_class()
+    @classmethod
+    def create_voice_choices_from_vg(cls,
+                                     e_vg: EngineVoiceGroup) -> VoiceChoices:
+        voice_choices: VoiceChoices = VoiceChoices()
+        idx: int = 0
+        for e_voice in e_vg.e_voices.values():
+            e_voice: EngineVoice
+            voice_choice: VoiceChoice | None = None
+            voice_choice = ChoiceDict.voice_by_uid.get(e_voice.uid, None)
+            if voice_choice is not None:
+                MY_LOGGER.debug(f'v_choice already exists: {voice_choice.label}')
+            else:
+                voice_choice = VoiceChoice.add(e_voice=e_voice,
+                                               e_vg=e_vg,
+                                               label=e_voice.voice_label,
+                                               choice_idx=idx,
+                                               enabled=True,
+                                               hint=None)
+                MY_LOGGER.debug(f'voice_choice: {voice_choice.label} e_voice:'
+                                f'{voice_choice.e_voice} ')
+            idx += 1
+            voice_choices.append(voice_choice)
+        return voice_choices

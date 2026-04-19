@@ -19,7 +19,8 @@ from backends.settings.i_validators import (AllowedValue, IBoolValidator,
                                             IConstraintsValidator,
                                             IEngineValidator, IGenderValidator,
                                             IIntValidator,
-                                            INumericValidator, ISimpleValidator,
+                                            INumericValidator, ISimpleStringListValidator,
+                                            ISimpleValidator,
                                             IStrEnumValidator,
                                             IStringValidator, IValidator)
 from backends.settings.service_types import ServiceType
@@ -46,7 +47,8 @@ class ServiceInfo:
                              IIntValidator |
                              INumericValidator | ISimpleValidator |
                              IStrEnumValidator |
-                             IStringValidator | IValidator | None) = None,
+                             IStringValidator | IValidator |
+                             ISimpleStringListValidator | None) = None,
                  persist: bool = True):
         """
         :param service_id: Fully qualified id for the service, or service's property
@@ -257,8 +259,8 @@ class SettingsMap:
         :param status:
         :return:
         """
-        if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'key: {service_id.key} status: {status}')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'key: {service_id.key} status: {status}')
         if status is None:
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'{service_id.key} is NOT available -'
@@ -300,13 +302,14 @@ class SettingsMap:
                               f'service_info: {service_info} {registered}')
         service_status: StatusType = StatusType.UNCHECKED
         if service_info is None:
+            # MY_LOGGER.debug(f'{service_id.key} service_info NOT found')
             return False
         else:
             service_status = service_info.service_status
         if service_status != StatusType.OK:
-            if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'{service_id.key} is NOT available '
-                                f'status: {service_status}')
+            if MY_LOGGER.isEnabledFor(DEBUG_V):
+                MY_LOGGER.debug_v(f'{service_id.key} is NOT available '
+                                  f'status: {service_status}')
             return False
         return True
 
@@ -325,7 +328,7 @@ class SettingsMap:
                        persist: bool = True) -> None:
         """
         Defines a property of a service
-        :param service_id: Identifies the service_type and service id. For
+        :param service_id: Identifies the service_type and service id. If for
         a service property, then also includes the property_id
         :param setting_type: Identifies the type of service property
         :param service_status: Indicates whether the service is available, not
@@ -336,6 +339,8 @@ class SettingsMap:
         """
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'define_settings: {service_id}')
+        if not service_id.fully_qualified:
+            raise ValueError(f'Fully Qualified service_id required: {service_id}')
 
         settings_for_service: Dict[str, ServiceInfo]
         settings_for_service = (
@@ -344,8 +349,6 @@ class SettingsMap:
         #                  f'{service_key.key} \n service_to_settings_map: '
         #                  f'{cls.service_to_settings_map}')
 
-        # Don't add stupid None entry for the ServiceID id without any service_id
-        # in it, that is, the entry that acts like the root node for that service.
         service_info = cls.service_info_map.get(service_id.key)
         if service_info is not None:
             if MY_LOGGER.isEnabledFor(WARNING):
@@ -367,7 +370,7 @@ class SettingsMap:
         return
 
     @classmethod
-    def load_setting(cls, service_id: ServiceID) -> [int | float | str | bool | None]:
+    def load_setting(cls, service_id: ServiceID) -> int | float | str | bool | None:
         '''
         Load the given setting into the settings cache. Settings marked 'persist'
         are loaded from settings.xml, the others are defined and an entry is added
@@ -382,8 +385,8 @@ class SettingsMap:
                 MY_LOGGER.debug(f'Missing ServiceInfo for {service_id}')
             return None
         persist: bool = service_info.persist
-        const_value: [int | float | str | bool | None] = cls.get_const_value(service_id)
-        default_value: [int | float | str | bool | None]
+        const_value: int | float | str | bool | None = cls.get_const_value(service_id)
+        default_value: int | float | str | bool | None
         default_value = SettingsMap.get_default_value(service_id)
         return SettingsIO.load_setting(service_id, persist, const_value, default_value)
 
@@ -444,6 +447,7 @@ class SettingsMap:
     def get_validator(cls,
                       service_id: ServiceID) -> (IBoolValidator |
                                                  IStringValidator |
+                                                 ISimpleStringListValidator |
                                                  IIntValidator |
                                                  IStrEnumValidator |
                                                  IConstraintsValidator |

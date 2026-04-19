@@ -290,7 +290,7 @@ class SlaveCommunication:
         self.playlist_plafying_pos: int = 0
         self.slave: SlaveRunCommand | None = None
         self.default_speed: float = float(default_speed)
-        self.current_speed: float = self.default_speed
+        self.current_speed: float | None = self.default_speed
         self.next_speed: float | None = None
         self.fifo_path: Path = fifo_path
         self.default_volume: float = float(default_volume)
@@ -441,7 +441,7 @@ class SlaveCommunication:
         """
            Discard any incoming phrases which are expired.
            The remaining are put into the queue. Let receiver of queue entries
-           decide what to do with them.            
+           decide what to do with them.
         """
         clz = type(self)
         try:
@@ -678,12 +678,12 @@ class SlaveCommunication:
         #  return
 
         self.latest_config_transaction_num += 1
-        if self.channels != Channels.NO_PREF:
-            channel_str: str = self.channels.value
+        if False and self.channels != Channels.NO_PREF:
+            channel_str: str = self.channels
             if channel_str:
-                channels_str: str = (f'{{ "af-command": ['
+                channels_str: str = (f'{{ "command": ["af-command", '
                                      f'"format", "channels", "{channel_str}"],'
-                                     f' "request_id": "{self.latest_config_transaction_num}" }}')
+                                     f' "request_id": {self.latest_config_transaction_num} }}')
                 self.send_line(channels_str)
 
     def stop_player(self, purge: bool = True,
@@ -865,7 +865,7 @@ class SlaveCommunication:
 
     def fifo_reader(self):
         """
-        Reads slave commands from output from slave player (mpv)
+        Reads slave commands from output of slave player (mpv)
         """
         clz = type(self)
         finished = False

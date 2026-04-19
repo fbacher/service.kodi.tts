@@ -119,7 +119,7 @@ class Monitor(MinimalMonitor):
     _screen_saver_listener_lock: threading.RLock = None
     _settings_changed_listeners: Dict[Callable[[None], None], str] = None
     _settings_changed_listener_lock: threading.RLock = None
-    _abort_listeners: Dict[Callable[[None], None], str] = None
+    _abort_listeners: Dict[Callable[[], None], str] = None
     _abort_listener_lock: threading.RLock = None
     _abort_listeners_informed: bool = False
     #  _wait_return_count_map: Dict[str, int] = {}  # thread_id, returns from wait
@@ -146,7 +146,7 @@ class Monitor(MinimalMonitor):
             cls._screen_saver_listener_lock = threading.RLock()
             cls._settings_changed_listeners = {}
             cls._settings_changed_listener_lock = threading.RLock()
-            cls._abort_listeners: Dict[Callable[[None], None], str] = {}
+            cls._abort_listeners = {}
             cls._abort_listener_lock = threading.RLock()
             cls._abort_listeners_informed: bool = False
             cls._notification_listeners = {}
@@ -228,7 +228,7 @@ class Monitor(MinimalMonitor):
 
             if changed:
                 try:
-                    change_record[SettingProp.SETTINGS_DIGEST] = 
+                    change_record[SettingProp.SETTINGS_DIGEST] =
                     new_settings_digest
                     with io.open(change_file, mode='wb') as change_file_fd:
                         pickle.dump(change_record, change_file_fd)
@@ -348,7 +348,7 @@ class Monitor(MinimalMonitor):
 
     @classmethod
     def get_listener_name(cls,
-                          listener: Callable[[Dict[str, Any] | None], None],
+                          listener: Callable[[Optional[Dict[str, Any] | None]], None],
                           name: str = None) -> str:
         listener_name: str | None = None
         if name is not None:
@@ -444,7 +444,7 @@ class Monitor(MinimalMonitor):
 
     @classmethod
     def register_abort_listener(cls,
-                                listener: Callable[[None], None],
+                                listener: Callable[[], None],
                                 name: str = None,
                                 thread: threading.Thread | None = None) -> None:
         """

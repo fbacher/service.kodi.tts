@@ -52,7 +52,7 @@ class BuiltinPlayerSettings:
     def config_settings(cls, *args, **kwargs) -> None:
         if cls.initialized:
             return
-        # Basic checks that don't depend on config
+        # Basic checks that don't depend on download
         cls.check_is_supported_on_platform()
         cls.check_is_installed()
         if cls._service_status.status != Status.OK:

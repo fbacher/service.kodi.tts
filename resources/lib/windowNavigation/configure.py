@@ -18,30 +18,32 @@
 from __future__ import annotations
 
 
-import xbmc
-
 import langcodes
 from backends.audio.sound_capabilities import AudioTypes
 from backends.backend_info import BackendInfo
 from backends.base import *
-from backends.settings.i_validators import (IBoolValidator, INumericValidator,
+from backends.settings.engine_lang import EngineLang
+from backends.settings.engine_voice import EngineVoice
+from backends.settings.engine_voice_manager import EngineVoiceManager
+from backends.settings.i_validators import (INumericValidator,
                                             IStringValidator)
-from backends.settings.language_info import LanguageInfo
+from backends.settings.lang_utils import LangUtils
 from backends.settings.service_types import (GENERATE_BACKUP_SPEECH, PlayerType,
-                                             ServiceKey, ServiceID)
+                                             ServiceKey)
 from backends.settings.service_unavailable_exception import ServiceUnavailable
-from backends.settings.settings_helper import FormatType, SettingsHelper
+from backends.settings.settings_helper import SettingsHelper
 from backends.settings.settings_map import SettingsMap
-from backends.settings.validators import (AllowedValue, BoolValidator, NumericValidator,
+from backends.settings.validators import (AllowedValue, NumericValidator,
                                           StringValidator)
 from common.exceptions import ConfigurationError
 from common.logger import *
-from common.setting_constants import (AudioType, Genders, GenderSettingsMap,
+from common.setting_constants import (AudioType, Genders,
                                       Players)
 from common.settings import Settings
 from common.settings_low_level import SettingsLowLevel, SettingsManager
 from backends.settings.service_types import ServiceID
-from windowNavigation.choice import Choice
+from windowNavigation.choice import (Choices, EngineChoice, EngineChoices, VGChoices,
+                                     VoiceChoice, VoiceChoices)
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
 
@@ -50,7 +52,8 @@ class EngineConfig:
     """
     Contains engine configuration
     """
-    def __init__(self, engine_key: ServiceID, lang_info: LanguageInfo,
+    def __init__(self, engine_key: ServiceID, lang: EngineLang,
+                 voice: EngineVoice | None,
                  use_cache: bool | None = None,
                  player: PlayerType | None = None, engine_audio: AudioType | None = None,
                  player_mode: PlayerMode | None = None, transcoder: str | None = None,
@@ -61,7 +64,8 @@ class EngineConfig:
                  repair_mode: bool = False,
                  repairs_made: bool = False) -> None:
         self._engine_key: ServiceID = engine_key
-        self._lang_info: LanguageInfo = lang_info
+        self._lang: EngineLang = lang
+        self._voice: EngineVoice = voice
         self._use_cache: bool | None = use_cache
         self._player: PlayerType | None = player
         self._engine_audio: AudioType | None = engine_audio
@@ -74,6 +78,7 @@ class EngineConfig:
         self._repair_mode: bool = repair_mode
         self._repairs_made: bool = repairs_made
 
+    '''
     @property
     def engine_id(self) -> str:
         return self._engine_key.service_id
@@ -83,18 +88,23 @@ class EngineConfig:
         MY_LOGGER.debug(f'Setting engine_id to: {engine_id}')
         self._engine_key = ServiceID(ServiceType.ENGINE, engine_id)
         MY_LOGGER.debug(f'engine_key now: {self._engine_key}')
+    '''
 
     @property
     def engine_key(self) -> ServiceID:
         return self._engine_key
 
-    @property
-    def lang_info(self) -> LanguageInfo:
-        return self._lang_info
+    @engine_key.setter
+    def engine_key(self, new_key: ServiceID) -> None:
+        self._engine_key = new_key
 
-    @lang_info.setter
-    def lang_info(self, lang_info: LanguageInfo) -> None:
-        self._lang_info = lang_info
+    @property
+    def lang(self) -> EngineLang:
+        return self._lang
+
+    @lang.setter
+    def lang(self, lang: EngineLang) -> None:
+        self._lang = lang
 
     @property
     def use_cache(self) -> bool | None:
@@ -153,6 +163,14 @@ class EngineConfig:
         self._trans_audio_out = trans_audio_out
 
     @property
+    def voice(self) -> EngineVoice | None:
+        return self._voice
+
+    @voice.setter
+    def voice(self, voice: EngineVoice) -> None:
+        self._voice = voice
+
+    @property
     def volume(self) -> float | None:
         return self._volume
 
@@ -184,6 +202,25 @@ class EngineConfig:
     def repairs_made(self, repairs_made: bool) -> None:
         self._repairs_made = repairs_made
 
+    def __str__(self) -> str:
+        engine_key_str: str = f'engine_key: {self.engine_key}\n'
+        lang_str: str = f'lang: {self.lang}\n'
+        use_cache_str: str = f'use_cache: {self.use_cache}\n'
+        player_str: str = f'player: {self.player}\n'
+        engine_audio_str: str = f'engine_audio: {self.engine_audio}\n'
+        player_mode_str: str = f'player_mode: {self.player_mode}\n'
+        transcoder_str: str = f'transcoder: {self.transcoder}\n'
+        trans_audio_in_str: str = f'trans_audio_in: {self.trans_audio_in}\n'
+        trans_audio_out_str: str = f'trans_audio_out: {self.trans_audio_out}\n'
+        voice: str = f'ENGINE_VOICE: {self.voice}\n'
+        volume_str: str = f'volume: {self.volume}\n'
+        speed_str: str = f'speed: {self.speed}\n'
+        repairs_made_str: str = f'repairs_made: {self.repairs_made}\n'
+        return (f'{engine_key_str} {lang_str}'
+                f'{use_cache_str} {player_str} {engine_audio_str} \n'
+                f'{player_mode_str} {transcoder_str} {trans_audio_in_str} \n'
+                f'{trans_audio_out_str} \nvoice: {voice} \nvolume: {volume_str}\n'
+                f'speed: {speed_str} {repairs_made_str}\n')
 
 class Configure:
     """
@@ -194,11 +231,8 @@ class Configure:
 
     def __init__(self) -> None:
         self.engine_instance = None
-        self.saved_choices = None
-        self.saved_selection_index = None
+        self.saved_choices: List[Tuple[Choices, int]] = []
         self._original_stack_depth: int = -1
-        self._saved_choices: List[Choice] | None = None
-        self._saved_selection_index: int | None = None
         self._speed_val: INumericValidator | NumericValidator | None = None
         self._volume_val: INumericValidator | NumericValidator | None = None
         self.busy: bool = False
@@ -286,7 +320,7 @@ class Configure:
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'Could not load: {engine_key}')
 
-    def configure_engine(self, choice: Choice,
+    def configure_engine(self, choice: EngineChoice,
                          repair: bool = False,
                          save_as_current: bool = False) -> EngineConfig | None:
         """
@@ -345,13 +379,18 @@ class Configure:
                 engine_audio = AudioType.WAV
                 use_cache = True
 
-            lang_info: LanguageInfo = choice.lang_info
-            engine_config: EngineConfig | None = None
+            lang: EngineLang = choice.lang
+            e_voice: EngineVoice = choice.voice
+            raw_voice_id: str = Settings.get_voice_id(engine_key)
+            MY_LOGGER.debug(f'raw_voice_id: {raw_voice_id}')
+            if raw_voice_id is None and e_voice is not None:
+                MY_LOGGER.debug(f'e_voice: {e_voice}')
+                EngineVoiceManager.set_voice(e_voice)
             try:
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'configuring player with player_mode: {player_mode}')
                 engine_config = self.configure_player(engine_key=engine_key,
-                                                      lang_info=lang_info,
+                                                      lang=lang,
                                                       use_cache=use_cache,
                                                       player=player,
                                                       engine_audio=engine_audio,
@@ -361,19 +400,13 @@ class Configure:
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug('Can not configure engine')
                 return None
+            engine_config.lang = lang
+            engine_config.voice = e_voice
             if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'engine_config: engine_id: {engine_config.engine_id} '
-                                f'use_cache: {engine_config.use_cache} '
-                                f'player: {engine_config.player} '
-                                f'engine_audio: {engine_config.engine_audio} '
-                                f'player_mode: {engine_config.player_mode} '
-                                f'transcoder: {engine_config.transcoder} '
-                                f'trans_audio_in: {engine_config.trans_audio_in} '
-                                f'trans_audio_out: {engine_config.trans_audio_out} '
-                                f'lang_info: {lang_info}')
-            engine_config.lang_info = lang_info
-            self.set_lang_fields(engine_key=engine_key,
-                                 lang_info=lang_info)
+                MY_LOGGER.debug(f'engine_config: {engine_config}')
+            self.set_lang_field(engine_key=engine_key,
+                                lang=lang,
+                                e_voice=e_voice)
             #  self.set_gender_field(engine_key=engine_key)
             self.set_cache_speech_field(engine_key=engine_key,
                                         use_cache=engine_config.use_cache)
@@ -398,7 +431,7 @@ class Configure:
             MY_LOGGER.exception('')
 
     def get_player_mode_choices(self, engine_key: ServiceID,
-                                player: PlayerType) -> Tuple[List[Choice], int]:
+                                player: PlayerType) -> Tuple[EngineChoices, int]:
         """
         Determines which player modes are valid for the combination of engine
         and player.
@@ -406,11 +439,11 @@ class Configure:
         :param engine_key: engine to examine
         :param player: player to examine
 
-        :return: Tuple[List[Choice], int] A list of valid choices and an index
+        :return: Tuple[EngineChoices, int] A list of valid choices and an index
                  to any choice matching the current player_mode.engine value,
                  or -1 if not match found
         """
-        choices: List[Choice] = []
+        choices: EngineChoices = EngineChoices()
         found_idx: int = -1
         try:
             if not SettingsMap.is_valid_setting(engine_key.with_prop(
@@ -439,16 +472,16 @@ class Configure:
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'supported_mode: {supported_mode.value} '
                                     f'enabled: True')
-                choices.append(Choice(label=supported_mode.translated_name,
-                                      value=supported_mode.value,
-                                      choice_index=idx, enabled=True))
+                choices.append(EngineChoice(label=supported_mode.translated_name,
+                                            value=supported_mode.value,
+                                            choice_index=idx, enabled=True))
 
         except Exception as e:
             MY_LOGGER.exception('')
         return choices, found_idx
 
     def configure_player(self, engine_key: ServiceID,
-                         lang_info: LanguageInfo | None,
+                         lang: EngineLang | None,
                          use_cache: bool | None = None,
                          player: PlayerType | None = None,
                          engine_audio: AudioType | None = None,
@@ -459,7 +492,7 @@ class Configure:
         The proposed configuration is returned.
 
         :param engine_key: REQUIRED. Specifies the engine being configured
-        :param lang_info: Language information
+        :param lang: Language information
         :param use_cache: If non-None, forces use or disuse of cache
         :param player: If non-None, forces to use a specific player
         :param engine_audio: If non-None, will cause audio to be produced in
@@ -532,7 +565,8 @@ class Configure:
                 engine_audio = AudioType.BUILT_IN
                 use_cache = False
                 engine_config = EngineConfig(engine_key=engine_key,
-                                             lang_info=lang_info,
+                                             lang=lang,
+                                             voice=None,
                                              use_cache=use_cache,
                                              player=player,
                                              engine_audio=engine_audio,
@@ -602,7 +636,7 @@ class Configure:
                     if MY_LOGGER.isEnabledFor(DEBUG):
                         MY_LOGGER.debug(f'engine_audio not specified. trying '
                                         f'{engine_audio}')
-                engine_config = self.find_best_config(engine_key, engine_audio, lang_info,
+                engine_config = self.find_best_config(engine_key, engine_audio, lang,
                                                       players=player,
                                                       player_mode=player_mode,
                                                       use_cache=use_cache)
@@ -620,7 +654,7 @@ class Configure:
                         t_ecfg: EngineConfig | None
                         t_ecfg = self.find_best_config(engine_key=engine_key,
                                                        engine_audio=engine_audio,
-                                                       lang_info=lang_info,
+                                                       lang=lang,
                                                        players=player,
                                                        player_mode=player_mode,
                                                        use_cache=use_cache,
@@ -628,7 +662,8 @@ class Configure:
                         if t_ecfg is not None:
                             # Add info about transcoder
                             engine_config = EngineConfig(engine_key=t_ecfg.engine_key,
-                                                         lang_info=lang_info,
+                                                         lang=lang,
+                                                         voice=None,
                                                          use_cache=t_ecfg.use_cache,
                                                          player=t_ecfg.player,
                                                          engine_audio=engine_audio,
@@ -659,7 +694,7 @@ class Configure:
                     MY_LOGGER.debug(f't_use_cache: {t_use_cache} audio_type: '
                                     f'{engine_audio_type} {engine_key}')
                 try:
-                    engine_config = self.find_player(engine_key, lang_info,
+                    engine_config = self.find_player(engine_key, lang,
                                                      engine_audio_type,
                                                      player_mode, t_use_cache)
                     if engine_config is not None:
@@ -686,7 +721,7 @@ class Configure:
                         raise ConfigurationError('Can not find transcoder for'
                                                  f' {engine_key}')
                     try:
-                        t_ecfg = self.find_player(engine_key, lang_info, trans_audio_out,
+                        t_ecfg = self.find_player(engine_key, lang, trans_audio_out,
                                                   player_mode, use_cache)
                         if t_ecfg is not None:
                             # Add info about transcoder
@@ -710,7 +745,7 @@ class Configure:
                 raise ConfigurationError(f'Can not find player for: {engine_key}')
         return engine_config
 
-    def find_player(self, engine_key: ServiceID, lang_info: LanguageInfo,
+    def find_player(self, engine_key: ServiceID, lang: EngineLang,
                     engine_audio: AudioType,
                     player_mode: PlayerMode | None,
                     use_cache: bool | None,
@@ -732,13 +767,13 @@ class Configure:
         the criteria.
 
         :param engine_key:
-        :param lang_info: Can not be None
+        :param lang: Can not be None
         :param engine_audio:
         :param player_mode: If not None, then the player_mode of player must match
         :param use_cache:
         :param repair_mode:
         :return:
-        :raises ConfigurationError: for invalid config
+        :raises ConfigurationError: for invalid download
 
         Assumption: At this point there is no interest in using ENGINE_SPEAK.
         """
@@ -795,7 +830,7 @@ class Configure:
             MY_LOGGER.debug(f'filtered_players_on_audio_type: {supported_players}')
         engine_config = self.find_best_config(engine_key=engine_key,
                                               engine_audio=engine_audio,
-                                              lang_info=lang_info,
+                                              lang=lang,
                                               players=supported_players,
                                               player_mode=player_mode,
                                               use_cache=use_cache,
@@ -803,7 +838,7 @@ class Configure:
         return engine_config
 
     def find_best_config(self, engine_key: ServiceID, engine_audio: AudioType,
-                         lang_info: LanguageInfo,
+                         lang: EngineLang,
                          players: List[PlayerType] | PlayerType,
                          player_mode: PlayerMode | None = None,
                          use_cache: bool | None = None,
@@ -814,7 +849,7 @@ class Configure:
 
         :param engine_key: Can not be None
         :param engine_audio: Can not be None
-        :param lang_info: Can not be none
+        :param lang: Can not be none
         :param players: List of players that support the audio output of the engine
                         Can also be a single player
         :param player_mode: If None, then any player_mode is acceptable, otherwise,
@@ -893,7 +928,8 @@ class Configure:
             if use_cache and use_cache != player.supports_cache:
                 use_cache = player.supports_cache
         engine_config = EngineConfig(engine_key=engine_key,
-                                     lang_info=lang_info,
+                                     lang=lang,
+                                     voice=None,
                                      use_cache=use_cache,
                                      player=player,
                                      engine_audio=engine_audio,
@@ -1067,7 +1103,7 @@ class Configure:
 
     def get_player_choices(self,
                            engine_key: ServiceID,
-                           ignore_player_mode: bool = True) -> Tuple[List[Choice], int]:
+                           ignore_player_mode: bool = True) -> Tuple[EngineChoices, int]:
         """
             Get players which are compatible with the engine as well as player_mode.
             The 'ranking' of players may influence the suggested player.
@@ -1080,7 +1116,7 @@ class Configure:
         :return: List of compatible players and an index referencing the current
                  or suggested player.
         """
-        choices: List[Choice] = []
+        choices: EngineChoices
         current_choice_index = -1
         '''
             # We want the players which can handle what our engine produces
@@ -1089,7 +1125,7 @@ class Configure:
 
     def get_compatible_players(self, engine_key: ServiceID,
                                ignore_player_mode: bool = False) \
-            -> Tuple[List[Choice], int]:
+            -> Tuple[EngineChoices, int]:
         """
             TODO: verify that this is needed or can't utilize other player
                 methods (find_player, etc)
@@ -1106,7 +1142,7 @@ class Configure:
                  or suggested player.
         """
         allow_transcoder: bool = False
-        choices: List[Choice] = []
+        choices: EngineChoices = EngineChoices()
         current_choice_index: int = -1
         try:
             if not SettingsMap.is_valid_setting(engine_key.with_prop(
@@ -1182,39 +1218,39 @@ class Configure:
                 player: ServiceID = allowed_value.service_key
                 player_id: PlayerType = PlayerType(allowed_value.value)
                 label: str = Players.get_msg(player_id)
-                choices.append(Choice(label=label, value=player_id,
-                                      choice_index=idx, enabled=True))
+                choices.append(EngineChoice(label=label, value=player_id,
+                                            choice_index=idx, enabled=True))
         except Exception as e:
             MY_LOGGER.exception('')
         return choices, current_choice_index
 
     def get_module_choices(self,
-                           engine_key: ServiceID) -> Tuple[List[Choice], int]:
+                           engine_key: ServiceID) -> Tuple[Choices, int]:
         """
 
         :return:
         """
-        choices: List[Choice] = []
+        choices: Choices = Choices()
         current_choice_index: int = -1
         try:
             current_value = self.get_module()
             if not SettingsMap.is_valid_setting(engine_key.with_prop(
                     SettingProp.MODULE)):
-                return [], -1
+                return Choices(), -1
 
-            supported_modules: List[Choice]
+            supported_modules: Choices
             default_module: str
             supported_modules, default_module = BackendInfo.getSettingsList(
                     engine_key, SettingProp.MODULE)
             if supported_modules is None:
-                supported_modules = []
+                supported_modules = Choices()
 
             default_choice_index = -1
             idx: int = 0
             for module_name, module_id in supported_modules:
                 module_label = module_name  # TODO: Fix
-                choices.append(Choice(label=module_label, value=module_id,
-                                      choice_index=idx))
+                choices.append(EngineChoice(label=module_label, value=module_id,
+                                            choice_index=idx))
                 if module_id == current_value:
                     current_choice_index = len(choices) - 1
                 if module_id == default_module:
@@ -1228,7 +1264,7 @@ class Configure:
         return choices, current_choice_index
 
     def get_gender_choices(self,
-                           engine_key: ServiceID) -> Tuple[List[Choice], int]:
+                           engine_key: ServiceID) -> Tuple[EngineChoices, int]:
         """
         Gets gender choices for the given engine_id, if any
 
@@ -1239,7 +1275,7 @@ class Configure:
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'gender: {current_value}')
         current_choice_index = -1
-        choices: List[Choice] = []
+        choices: EngineChoices = EngineChoices()
         try:
             if not SettingsMap.is_valid_setting(engine_key.with_prop(
                     SettingProp.GENDER)):
@@ -1247,62 +1283,25 @@ class Configure:
 
             engine: ITTSBackendBase = self.getEngineInstance(engine_key)
             gender_choices, _ = engine.settingList(SettingProp.GENDER)
-            gender_choices: List[Choice]
+            gender_choices: Choices
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'genders: {gender_choices}')
-            genders: List[Choice] = []
 
             if gender_choices is None:
                 supported_genders = []
             idx: int = 0
             for choice in gender_choices:
-                choice: Choice
+                choice: EngineChoice
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'choice: {choice.value}')
-                display_value = choice.value.label
-                choices.append(Choice(label=display_value, value=choice.value,
-                                      choice_index=idx))
+                display_value = choice.value
+                choices.append(EngineChoice(label=display_value, value=choice.value,
+                                            choice_index=idx))
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'Gender choice: {choices[-1]}')
                 if choice.value == current_value:
                     current_choice_index = len(choices) - 1
                 idx += 1
-        except Exception as e:
-            MY_LOGGER.exception('')
-
-        return choices, current_choice_index
-
-    def get_voice_choices(self,
-                          engine_key: ServiceID) -> Tuple[List[Choice], int]:
-        """
-            Creates a list of voices for the current language and engine
-            in a format suitable for the SelectionDialog
-        :param engine_key: engine_id to get voice choices for
-        :return:
-        """
-        choices: List[Choice] = []
-        current_choice_index: int = -1
-
-        try:
-            # current_value: str = self.getSetting(SettingProp.VOICE)
-            # MY_LOGGER.debug(f'engine: {self.setting_id} voice: {current_value}')
-            voices: List[Choice]
-            # Request match closet to current lang settings, not kodi_locale
-            voices, current_choice_index = SettingsHelper.get_language_choices(
-                    engine_key,
-                    get_best_match=False,
-                    format_type=FormatType.LONG)
-            # voices = BackendInfo.getSettingsList(
-            #         self.setting_id, SettingProp.VOICE)
-            #  MY_LOGGER.debug(f'voices: {voices}')
-            if voices is None:
-                voices = []
-
-            # voices = sorted(voices, key=lambda entry: entry.label)
-            voices: List[Choice]
-            for choice in voices:
-                choice: Choice
-                choices.append(choice)
         except Exception as e:
             MY_LOGGER.exception('')
 
@@ -1333,7 +1332,7 @@ class Configure:
                 MY_LOGGER.debug(f'got service: {engine_key}')
             choices, current_choice_index = self.get_engine_choices(
                     engine_key=engine_key)
-            choices: List[Choice]
+            choices: EngineChoices
             if current_choice_index < 0:
                 current_choice_index = 0
             if MY_LOGGER.isEnabledFor(DEBUG):
@@ -1341,7 +1340,7 @@ class Configure:
                                 f' current_choice_idx: '
                                 f'{current_choice_index}')
 
-            choice: Choice = choices[current_choice_index]
+            choice: EngineChoice = choices[current_choice_index]
             if choice is not None:
                 self.configure_engine(choice, save_as_current=True)
                 self.commit_settings()
@@ -1369,12 +1368,12 @@ class Configure:
         Note that commit_current_engine_on_repair is to be used outside normal
         configuration, when a repair must be made to an existing configuration
         in order to get TTS running (such as startup). You COULD just let it
-        do the repair on ever restart, but the logs may get cluttered and the
+        do the repair on every restart, but the logs may get cluttered and the
         users could be confused.
 
         :param engine_key: Engine to examine, if None, then the best available
             engine is used
-        :param commit_current_engine_on_repair: If True, then IFF the engine config
+        :param commit_current_engine_on_repair: If True, then IFF the engine download
                is invalid, then commit the repaired configuration's engine as the
                current_engine
         :return: Returns the engine_key of the rapaired, or replaced engine
@@ -1393,39 +1392,47 @@ class Configure:
                 self.save_settings(msg='enter validate_repair', initial_frame=True)
             else:
                 self.restore_settings('enter validate_repair')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'got service: {engine_key} '
+                                f'commit repair as current: '
+                                f'{commit_current_engine_on_repair}')
+
             # Ensure settings for engine are loaded
-            if engine_key is not None:
-                try:
-                    BaseServices.get_service(engine_key)
-                    if MY_LOGGER.isEnabledFor(DEBUG):
-                        MY_LOGGER.debug(f'got service: {engine_key} '
-                                        f'commit repair as current: '
-                                        f'{commit_current_engine_on_repair}')
-                except ServiceUnavailable:
-                    if MY_LOGGER.isEnabledFor(DEBUG):
-                        MY_LOGGER.exception(f'Bad engine choice: {engine_key} choosing '
-                                            f'another engine.')
-                    engine_key = None
-                except Exception:
-                    if MY_LOGGER.isEnabledFor(DEBUG):
-                        MY_LOGGER.exception(f'Bad engine choice: {engine_key} choosing '
-                                            f'another engine.')
-                    engine_key = None
-                    '''
-                    active: bool = False
-                    if engine_key.service_id == SettingsLowLevel.get_engine_id_ll(
-                            ignore_cache=True).service_id:
-                        active = True
-                    if MY_LOGGER.isEnabledFor(DEBUG):
-                        MY_LOGGER.debug(f'Service Unavailable: {e}')
-                        MY_LOGGER.exception('')
-                    raise ServiceUnavailable(service_key=engine_key,
-                                             reason=e.reason,
-                                             active=active)
+            engine_service: SimpleTTSBackend | None = None
+            try:
+                MY_LOGGER.debug(f'engine_key: {engine_key}')
+                engine_service = BaseServices.get_service(engine_key)
+
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'got service: {engine_key} '
+                                    f'commit repair as current: '
+                                    f'{commit_current_engine_on_repair}')
+            except ServiceUnavailable:
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.exception(f'Bad engine choice: {engine_key} choosing '
+                                        f'another engine.')
+                engine_key = None
+            except Exception:
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.exception(f'Bad engine choice: {engine_key} choosing '
+                                        f'another engine.')
+                engine_key = None
                 '''
+                active: bool = False
+                if engine_key.service_id == SettingsLowLevel.get_engine_id_ll(
+                        ignore_cache=True).service_id:
+                    active = True
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    MY_LOGGER.debug(f'Service Unavailable: {e}')
+                    MY_LOGGER.exception('')
+                raise ServiceUnavailable(service_key=engine_key,
+                                         reason=e.reason,
+                                         active=active)
+            '''
+            EngineVoiceManager.discover()
             choices, current_choice_index = self.get_engine_choices(
                     engine_key=engine_key)
-            choices: List[Choice]
+            choices: EngineChoices
             if current_choice_index < 0:
                 current_choice_index = 0
             if MY_LOGGER.isEnabledFor(DEBUG):
@@ -1433,7 +1440,7 @@ class Configure:
                                 f' current_choice_idx: '
                                 f'{current_choice_index}')
 
-            choice: Choice = choices[current_choice_index]
+            choice: EngineChoice = choices[current_choice_index]
             if choice is not None:
                 if (self.configure_engine(choice, repair=False, save_as_current=False)
                         is None):
@@ -1597,49 +1604,54 @@ class Configure:
         Settings.set_transcoder(transcoder, engine_key)
         MY_LOGGER.debug(f'set transcoder for: {engine_key} to {transcoder}')
 
-    def set_lang_fields(self, engine_key: ServiceID,
-                        lang_info: LanguageInfo) -> None:
+    def set_lang_field(self, engine_key: ServiceID,
+                       lang: EngineLang,
+                       e_voice: EngineVoice) -> None:
         """
         Configures the Language and voice settings.  No validation is performed
 
         :param engine_key:
-        :param lang_info:
-        :return:
+        :param lang:
+        :param e_voice Voice to set
+        :return: None
         """
         try:
             if engine_key is None:
                 raise ValueError('engine_id value required')
-            if lang_info is None:
-                raise ValueError('lang_info value required')
-            lang_id: str = lang_info.engine_lang_id
-            voice_id: str = lang_info.engine_voice_id
+            if lang is None:
+                raise ValueError('lang value required')
+            lang_id: str = lang.engine_lang_id
             if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'language: {lang_id} voice: {voice_id}')
+                MY_LOGGER.debug(f'language: {lang_id} voice: {e_voice}')
             Settings.set_language(lang_id, engine_key)
-            Settings.set_voice(voice_id, engine_key)
+            EngineVoiceManager.set_voice(e_voice)
         except Exception as e:
             MY_LOGGER.exception('')
 
     def set_voice_field(self,
-                        engine_key: ServiceID,
-                        voice_id: str) -> None:
+                        engine_voice: EngineVoice) -> None:
         """
-        Updates the voice field with the value that the current engine is
-        using. The voice can be changed by the user selecting the asociated
-        button.
-        :param engine_key: Identifies the engine that will have its voice modified
-        :param voice_id: New value to assign to the engine's voice
+        Updates the voice field to the given voice.
+        :param engine_voice: Identifies the engine and voice that will have its
+                             voice modified
         :return:
         """
         clz = type(self)
         try:
+            e_voice_id: str = engine_voice.e_voice_id
+            engine_key = engine_voice.engine_key
+            MY_LOGGER.debug(f'engine_voice: {engine_voice} e_voice_id: {e_voice_id}')
             has_voice: bool
             has_voice = SettingsMap.is_valid_setting(engine_key.with_prop(
                     SettingProp.VOICE))
+            MY_LOGGER.debug(f'has_voice: {has_voice}')
             if has_voice:
                 has_voice = SettingsMap.is_setting_available(engine_key,
                                                              SettingProp.VOICE)
-            choices: List[Choice] = []
+            '''
+            choices: EngineChoices
+              #  Move to get_default_voice, or some such. Why does this occur here?
+              
             if voice_id is None:
                 choices, current_choice_index = self.get_voice_choices(engine_key)
                 if current_choice_index < 0:
@@ -1647,11 +1659,13 @@ class Configure:
                         MY_LOGGER.debug(f'choice out of range: {current_choice_index} '
                                         f'# choices: {len(choices)}')
                     current_choice_index = 0
-                choice: Choice = choices[current_choice_index]
-                voice_id = choice.lang_info.engine_voice_id
-            Settings.set_voice(voice_id, engine_key)
+                choice: EngineChoice = choices[current_choice_index]
+                voice: EngineVoice = choice.voice
+                voice_id = voice.engine_voice
+            '''
+            EngineVoiceManager.set_voice(engine_voice)
             if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'Setting voice to: {voice_id}')
+                MY_LOGGER.debug(f'Setting voice to: {engine_voice}')
         except Exception as e:
             MY_LOGGER.exception('')
 
@@ -1667,6 +1681,7 @@ class Configure:
                           be used
         """
         try:
+            MY_LOGGER.debug(f'use_cache: {use_cache} engine_key: {engine_key}')
             Settings.set_use_cache(use_cache, engine_key)
 
         except NotImplementedError:
@@ -1720,7 +1735,7 @@ class Configure:
         :return:
         """
         try:
-            choices: List[Choice]
+            choices: EngineChoices
             valid: bool = SettingsMap.is_valid_setting(engine_key.with_prop(
                     SettingProp.GENDER))
             if MY_LOGGER.isEnabledFor(DEBUG):
@@ -1733,7 +1748,7 @@ class Configure:
                 current_choice_index = 0
             if current_choice_index < 0 or current_choice_index > len(choices) - 1:
                 return
-            choice: Choice = choices[current_choice_index]
+            choice: EngineChoice = choices[current_choice_index]
         except Exception as e:
             MY_LOGGER.exception('')
 
@@ -1905,54 +1920,67 @@ class Configure:
             type(self)._instance.busy = False
 
     def get_engine_choices(self,
-                           engine_key: ServiceID | None) -> Tuple[List[Choice], int]:
+                           engine_key: ServiceID | None) -> Tuple[EngineChoices, int]:
         """
             Generates a list of choices for TTS engine that
             can be used by select_engine.
 
             The choices will be based on the engines which are
-            capable of voicing the current Kodi locale and sorted by
-            the best langauge match score for each engine.
+            capable of voicing the current Kodi locale_id. The list will be sorted
+            by engine name. The default selection being the current engine. If the
+            there is no current engine, then default to the 'highest quality' engine.
+            Each engine will use either: 1) it's currently configured voice or 2)
+            the highest rated voice that is the same locale (or closest locale) to
+            the current Kodi locale.
 
         :param engine_key: Optional. If supplied, the index to that engine in
-               the list of choices is returned, otherwise the returned index is -1.
+               the list of choices is returned, otherwise the returned index is
+               'the best engine found' that will work with Kodi's language
+               setting.
         :return: A list of all the choices as well as an index to the
-                 current engine
+                 current, or best available engine
+        """
+        """
+        Only need to produce sorted list of engine names with selection index
         """
         try:
             if MY_LOGGER.isEnabledFor(DEBUG_V):
                 MY_LOGGER.debug_v(f'target engine: {engine_key}')
-            _, _, _, kodi_language = LanguageInfo.get_kodi_locale_info()
+            _, _, _, kodi_language = LangUtils.get_kodi_locale_info()
             kodi_language: langcodes.Language
             current_engine_idx: int
-            choices: List[Choice]
-            choices, current_engine_idx = SettingsHelper.get_engines_supporting_lang(
+            choices: EngineChoices
+            choices, current_engine_idx = SettingsHelper.get_engine_choices(
                     engine_key)
-            # if engine_id is None, or not found, then current_engine_idx == -1
+            # if engine_key is None, or not found, then current_engine_idx == -1
             idx: int = 0
             for choice in choices:
-                choice: Choice
+                choice: EngineChoice
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'engine: {choice.engine_key} '
-                                    f'lang_info: {choice.lang_info} idx: {idx}')
-                choice.label = SettingsHelper.get_formatted_label(
-                        choice.lang_info,
-                        kodi_language=kodi_language,
-                        format_type=FormatType.DISPLAY)
+                                    f'lang: {choice.lang} idx: {idx}')
+                # choice.label = SettingsHelper.get_lang_formatted_label(
+                #         choice.lang,
+                #         voice_group=
+                #         kodi_language=kodi_language,
+                #         format_type=FormatType.DISPLAY)
                 if MY_LOGGER.isEnabledFor(DEBUG_V):
-                    MY_LOGGER.debug_v(f'lang_info: {choice.lang_info}')
+                    MY_LOGGER.debug_v(f'lang: {choice.lang}')
                 choice.hint = f'choice {idx}'
                 idx += 1
             if MY_LOGGER.isEnabledFor(DEBUG_V):
-                Choice.dbg_print(choices)
+                EngineChoice.dbg_print(choices)
             self.save_current_choices(choices, current_engine_idx)
             # auto_choice_label: str = Messages.get_msg(Messages.AUTO)
             # current_value = Settings.get_service_key()
             return choices, current_engine_idx
         except Exception as e:
             MY_LOGGER.exception('')
+            return EngineChoices(), -1
 
-    def save_current_choices(self, choices: List[Choice], selection_index: int) -> None:
+    def save_current_choices(self,
+                             choices: EngineChoices | VoiceChoices | VGChoices | Choices,
+                             selection_index: int) -> None:
         """
         Simple mechanism to save SelectionDialog's list of choices as well
         as selected index. Used to save results beteween calls. Should change
@@ -1960,14 +1988,15 @@ class Configure:
 
         Use retrieve_current_choices to, um, retrieve the values
 
-        :param choices: List[Choice] choices presented to user
+        :param choices: EngineChoices choices presented to user
         :param selection_index: Index into choices indicating what user chose
         :return:
         """
-        self.saved_choices = choices
-        self.saved_selection_index = selection_index
+        saved_choices: Tuple[Choices, int] = (choices, selection_index)
+        self.saved_choices.append(saved_choices)
 
-    def retrieve_current_choices(self) -> Tuple[List[Choice], int]:
+    def retrieve_current_choices(self) \
+            -> Tuple[EngineChoices | VoiceChoices | VGChoices | Choices, int]:
         """
            Simple mechanism to retrieve SelectionDialog's list of choices as well
            as selected index. Used to save results beteween calls. Should change
@@ -1976,4 +2005,4 @@ class Configure:
            Use save_current_choices to, um, retrieve the values
            :return:
            """
-        return self.saved_choices, self.saved_selection_index
+        return self.saved_choices.pop(-1)

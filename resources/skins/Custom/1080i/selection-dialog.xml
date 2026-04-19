@@ -19,90 +19,90 @@
 
    <controls>
       <control type="group" id="50">
-      <description>Entire window</description>
-      <left>0</left>
-      <top>0</top>
-      <width>1920</width>
-      <height>1080</height>
-      <visible>true</visible>
-      <control type="group">
-         <description>Group for window inset</description>
+         <description>Entire window</description>
          <left>0</left>
          <top>0</top>
          <width>1920</width>
          <height>1080</height>
-         <control type="image">
-            <description>background image</description>
+         <visible>true</visible>
+         <control type="group">
+            <description>Group for window inset</description>
             <left>0</left>
             <top>0</top>
             <width>1920</width>
             <height>1080</height>
-            <texture border="40">solid-black.png</texture>
-            <visible>true</visible>
-         </control>
-         <control type="group" id="1001">
-            <description>Group for Header</description>
-            <topic name="header_group" rank="2">
-               <hint_text></hint_text>
-               <outer_topic>window_header</outer_topic>
-               <topic_down>sub-header_group</topic_down>
-            </topic>
-            <left>40</left>
-            <top>60</top>
-            <width>1700</width>
-            <height>100</height>
             <control type="image">
-               <description>Dialog Header image</description>
+               <description>background image</description>
                <left>0</left>
                <top>0</top>
-               <width>1700</width>
-               <height>100</height>
-               <texture>dialogheader.png</texture>
+               <width>1920</width>
+               <height>1080</height>
+               <texture border="5">solid-black.png</texture>
+               <visible>true</visible>
             </control>
-            <control type="label" id="1">
-               <description>header label</description>
-               <topic name="Header_Label" rank="3">
-                  <label>1</label>
-                  <heading_label>Control.GetLabel(1).index(0)</heading_label>
+            <control type="group" id="1001">
+               <description>Group for Header</description>
+               <topic name="header_group" rank="2">
                   <hint_text></hint_text>
                   <outer_topic>window_header</outer_topic>
-                  <topic_right>sub_header</topic_right>
-                  <topic_down>choices</topic_down>
-                  <label_for>window_header</label_for>
-                  <heading_next>sub_header</heading_next>
+                  <topic_down>sub-header_group</topic_down>
                </topic>
                <left>0</left>
                <top>0</top>
-               <width>1650</width>
-               <height>100</height>
-               <font>font13_title</font>
-               <label/>
-               <visible>true</visible>
-               <aligny>center</aligny>
-               <align>center</align>
-               <textcolor>blue</textcolor>
-               <shadowcolor>black</shadowcolor>
+               <width>1920</width>
+               <height>1080</height>
+               <control type="image">
+                  <description>Dialog Header image</description>
+                  <left>40</left>
+                  <top>60</top>
+                  <width>1700</width>
+                  <height>100</height>
+                  <texture>dialogheader.png</texture>
+               </control>
+               <control type="label" id="1">
+                  <description>header label</description>
+                  <topic name="Header_Label" rank="3">
+                     <label>1</label>
+                     <heading_label>Control.GetLabel(1).index(0)</heading_label>
+                     <hint_text></hint_text>
+                     <outer_topic>window_header</outer_topic>
+                     <topic_right>sub_header</topic_right>
+                     <topic_down>choices</topic_down>
+                     <label_for>window_header</label_for>
+                     <heading_next>sub_header</heading_next>
+                  </topic>
+                  <left>40</left>
+                  <top>60</top>
+                  <width>1650</width>
+                  <height>100</height>
+                  <font>font13_title</font>
+                  <label/>
+                  <visible>true</visible>
+                  <aligny>center</aligny>
+                  <align>center</align>
+                  <textcolor>blue</textcolor>
+                  <shadowcolor>black</shadowcolor>
+               </control>
             </control>
-         </control>
-         <control type="group" id="1002">
-            <description>Group for sub-Header</description>
-            <topic name="sub-header_group" rank="2">
-               <hint_text></hint_text>
-               <outer_topic>header_group</outer_topic>
-               <topic_down>choices</topic_down>
-            </topic>
-            <left>40</left>
-            <top>160</top>
-            <width>1650</width>
-            <height>100</height>
-            <!-- <control type="image">
-               <description>Dialog Header image</description>
-               <left>0</left>
-               <top>0</top>
+            <control type="group" id="1002">
+               <description>Group for sub-Header</description>
+               <topic name="sub-header_group" rank="2">
+                  <hint_text></hint_text>
+                  <outer_topic>header_group</outer_topic>
+                  <topic_down>choices</topic_down>
+               </topic>
+               <left>40</left>
+               <top>160</top>
                <width>1650</width>
                <height>100</height>
-               <texture>dialogheader.png</texture>
-            </control> -->
+               <!-- <control type="image">
+                  <description>Dialog Header image</description>
+                  <left>0</left>
+                  <top>0</top>
+                  <width>1650</width>
+                  <height>100</height>
+                  <texture>dialogheader.png</texture>
+               </control> -->
                <control type="label" id="4">
                   <description>Sub Heading Label</description>
                   <topic name="sub_header" rank="3">
@@ -115,7 +115,7 @@
                   <top>0</top>
                   <left>0</left>
                   <width>1650</width>
-                  <height>100</height>
+                  <height>60</height>
                   <aligny>center</aligny>
                   <align>center</align>
                   <label/>
@@ -154,20 +154,20 @@
                <left>50</left>
                <top>260</top>
                <width>1800</width>
-               <height>660</height>
+               <height>620</height>
                <visible>true</visible>
                <!-- List Control -->
                <control type="group" id="1003">
                   <left>20</left>
                   <top>0</top>
                   <width>1800</width>
-                  <height>660</height>
+                  <height>620</height>
                   <visible>true</visible>
                   <control type="list" id="1103">
                      <description>My first list container</description>
                      <topic name="choices" rank="3">
                         <topic_type>heading</topic_type>
-                        <heading_label> </heading_label>
+                        <heading_label></heading_label>
                         <label/>
                         <alt_type/>
                         <hint_text></hint_text>
@@ -177,21 +177,22 @@
                      <left>0</left>
                      <top>0</top>
                      <width>1780</width>
-                     <height>660</height>
+                     <height>620</height>
                      <visible>true</visible>
-                     <onup>3</onup>  <!-- help button -->
-                     <ondown>3</ondown>
-                     <onleft>3></onleft>
-                     <onright>3</onright>
+                     <onup>9001</onup>  <!-- OK-Exit buttons -->
+                     <ondown>9001</ondown>
+                     <onleft>9001></onleft>
+                     <onright>200</onright>
                      <viewtype>list</viewtype>
                      <orientation>vertical</orientation>
-                     <!-- <pagecontrol>200</pagecontrol> -->
+                     <pagecontrol>200</pagecontrol>
+                     <scrolltime>0</scrolltime>
                      <autoscroll>false</autoscroll>
                      <!-- <scrolltime tween="sine" easing="out">200</scrolltime> -->
-                     <itemlayout width="1780" height="90">
+                     <itemlayout width="1780" height="80">
                         <control type="image">
                            <width>1750</width>
-                           <height>80</height>
+                           <height>70</height>
                            <top>0</top>>
                            <left>0</left>
                            <aligny>center</aligny>
@@ -203,7 +204,7 @@
                            <left>50</left>
                            <top>0</top>
                            <width>1680</width>
-                           <height>80</height>
+                           <height>70</height>
                            <font>font24</font>
                            <aligny>center</aligny>
                            <label>$INFO[ListItem.Label]</label>
@@ -215,21 +216,22 @@
                         </control>
 
                      </itemlayout>
-                     <focusedlayout height="90" width="1780">
+                     <focusedlayout height="80" width="1780">
                         <control type="image">
                            <width>1750</width>
-                           <height>80</height>
+                           <height>70</height>
                            <left>0</left>
                            <top>0</top>
                            <!-- <visible>Control.HasFocus(3)</visible> -->
                            <visible>true</visible>
-                           <texture>button-focus.png</texture>
+                           <!-- <texture>button-focus.png</texture> -->
+                           <texture border="5">button-focus2.png</texture>
                         </control>
                         <control type="label">
                            <left>50</left>
                            <top>0</top>
                            <width>1680</width>
-                           <height>80</height>
+                           <height>70</height>
                            <font>font30_title</font>
                            <aligny>center</aligny>
                            <label>$INFO[ListItem.Label]</label>
@@ -241,9 +243,111 @@
                            <visible>true</visible>
                         </control>
                      </focusedlayout>
-                  </control>  <!-- List Control 3 -->
+                  </control>  <!-- List Control 1103 -->
+                  <control type="scrollbar" id="200">
+                     <left>35r</left>
+                     <width>35</width>
+                     <texturesliderbackground border="0,14,0,14">ScrollBarV.png</texturesliderbackground>
+                     <texturesliderbar border="0,14,0,14">ScrollBarV_bar.png</texturesliderbar>
+                     <texturesliderbarfocus border="0,14,0,14">ScrollBarV_bar_focus.png</texturesliderbarfocus>
+                     <textureslidernib>ScrollBarNib.png</textureslidernib>
+                     <textureslidernibfocus>ScrollBarNib.png</textureslidernibfocus>
+                     <onleft condition="Control.IsVisible(1103)">1103</onleft>
+                     <!-- <onleft condition="Control.IsVisible(201)">201</onleft>
+                     <onleft condition="Control.IsVisible(301)">301</onleft>
+                     <onleft condition="Control.IsVisible(401)">401</onleft> -->
+
+                     <onright>9001</onright>
+                     <ondown>9001</ondown>
+                     <onup>200</onup>
+                     <showonepage>true</showonepage>
+                     <orientation>vertical</orientation>
+                     <visible>true</visible>
+                  </control>
                </control> <!-- End group 1003  Selection List-->
             </control>
+            <control type="grouplist" id="9001">
+            <topic name="ok_cancel_group" rank="3">
+               <outer_topic>header_group</outer_topic>
+            </topic>
+            <top>950</top>
+            <left>120</left>
+            <width>1600</width>
+            <height>85</height>
+            <align>center</align>
+            <itemgap>85</itemgap>
+            <orientation>horizontal</orientation>
+            <defaultcontrol>28</defaultcontrol>
+            <control type="button" id="28">
+               <description>OK Button</description>
+               <topic name="ok_button" rank="4">
+                  <outer_topic>ok_cancel_group</outer_topic>
+                  <container_topic>ok_cancel_group</container_topic>
+                  <hint_text>Select to save changes and exit dialog</hint_text>
+                  <topic_left/>
+                  <topic_right/>
+                  <topic_up>api_key_value</topic_up>
+                  <topic_down/>
+               </topic>
+               <top>0</top>
+               <width>200</width>
+               <height>75</height>
+               <hitrect x="0" y="0" w="150" h="50"/>
+               <align>center</align>
+               <aligny>center</aligny>
+               <font>font12_title</font>
+               <onleft>30</onleft>
+               <onright>29</onright>
+               <onup>1003</onup>
+               <ondown>1003</ondown>
+            </control>
+            <control type="button" id="29">
+               <description>Cancel Button</description>
+               <topic name="cancel_button" rank="4">
+                  <topic_type>heading</topic_type>
+                  <outer_topic>ok_cancel_group</outer_topic>
+                  <container_topic>ok_cancel_group</container_topic>
+                  <hint_text>Select to exit dialog without saving changes</hint_text>
+                  <topic_left>okay_button</topic_left>
+                  <topic_right>default_button</topic_right>
+                  <topic_up/>
+                  <topic_down/>
+               </topic>
+               <top>0</top>
+               <width>200</width>
+               <height>75</height>
+               <align>center</align>
+               <aligny>center</aligny>
+               <font>font12_title</font>
+               <label/>
+               <onleft>28</onleft>
+               <onright>30</onright>
+               <onup>1003</onup>
+               <ondown>1003</ondown>
+            </control>
+            <control type="button" id="30">
+               <description>Default Settings Button</description>
+               <topic name="default_button" rank="4">
+                  <outer_topic>ok_cancel_group</outer_topic>
+                  <container_topic>ok_cancel_group</container_topic>
+                  <hint_text>Select to set current engine settings to default values</hint_text>
+                  <topic_left>cancel_button</topic_left>
+                  <topic_right>ok_button</topic_right>
+                  <topic_up/>
+                  <topic_down>engine_settings</topic_down>
+               </topic>
+               <top>0</top>
+               <width>200</width>
+               <height>75</height>
+               <align>center</align>
+               <aligny>center</aligny>
+               <font>font12_title</font>
+               <onleft>29</onleft>
+               <onright>28</onright>
+               <onup>1003</onup>
+               <ondown>1003</ondown>
+            </control>
+         </control>
          </control>
       </control>
    </controls>

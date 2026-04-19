@@ -1,11 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations  # For union operator |
 
-import copy
-import threading
-import time
-from contextlib import AbstractContextManager
-
 import xbmcaddon
 
 from common import *
@@ -15,15 +10,11 @@ from backends.settings.service_types import (ServiceKey, Services, ServiceType,
 from backends.settings.setting_properties import SettingProp, SettingType
 from backends.settings.settings_map import SettingsMap
 from common.constants import Constants
-from common.critical_settings import CriticalSettings
 from common.logger import *
-from common.monitor import Monitor
-from common.setting_constants import Backends, Players
 from common.kodiaddon import Addon
 from common.settings_cache import SettingsIO, SettingsManager, SettingsWrapper
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
-
 
 
 '''

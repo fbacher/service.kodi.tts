@@ -6,7 +6,7 @@ from backends.settings.service_types import ServiceID
 
 
 class ServiceUnavailable(Exception):
-    def __init__(self, service_key: ServiceID, reason: str, active: bool | None,
+    def __init__(self, service_key: ServiceID | None, reason: str, active: bool | None,
                  msg: str = ''):
         """
         Indicates that a service is not functional for some reason

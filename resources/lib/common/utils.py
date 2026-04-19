@@ -112,7 +112,7 @@ class TempFileUtils:
                     MY_LOGGER.debug_v(f'tmp_dir: {tmp_dir}')
                 if tmp_dir.exists and not tmp_dir.is_dir():
                     try:
-                        MY_LOGGER.debug(f'exists, but not a dir. Delete: {tmp_dir}')
+                        MY_LOGGER.debug(f'exists, but not a dir. unlink: {tmp_dir}')
                         tmp_dir.unlink(missing_ok=True)
                     except:
                         MY_LOGGER.exception('')
@@ -142,7 +142,7 @@ class TempFileUtils:
                     MY_LOGGER.exception('')
             else:
                 try:
-                    MY_LOGGER.debug(f'is_file: {item.is_file()}')
+                    MY_LOGGER.debug(f'is_file: {item.is_file()} unlink: {item}')
                     item.unlink(missing_ok=True)
                 except Exception:
                     MY_LOGGER.exception('')

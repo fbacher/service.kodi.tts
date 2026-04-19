@@ -42,7 +42,7 @@ class GttsTestDriver:
                 cls._logger.debug(f'Initializing LangInfo')
                 lang_map = gtts.lang.tts_langs()
 
-                #                <locale>   <lang_id> <country_id>, <google_domain>
+                #                <locale_id>   <lang_id> <country_id>, <google_domain>
                 locale_map: Dict[str, Tuple[str, str, str]]
                 tmp_lang_ids = lang_map.keys() # en, zh-TW, etc
                 extra_locales = sorted(GoogleData.get_locales())
@@ -76,9 +76,9 @@ class GttsTestDriver:
             # GoogleData.country_code_country_tld # Dict[str, Tuple[str, str]]
             #                          ISO3166-1, <google tld>, <country name>
             """
-            The lang_variants table returns the different country codes that support 
+            The lang_variants table returns the different country codes that support
             a given language. The country codes are 3166-1 two letter codes and the
-            language codes are ISO 639-1 
+            language codes are ISO 639-1
             """
 
             # GoogleData.lang_variants # Dict[str, List[str]]
@@ -88,7 +88,7 @@ class GttsTestDriver:
             idx = 0
             languages = []
             locale_ids: List[str] = LanguageInfo.get_locales()
-            # Sort by locale so that we have shortest locales listed first
+            # Sort by locale_id so that we have shortest locales listed first
             # i.e. 'en" before 'en-us'
             for locale_id in sorted(locale_ids):
                 lower_lang = locale_id.lower()

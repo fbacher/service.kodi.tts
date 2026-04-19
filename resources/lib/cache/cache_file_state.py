@@ -1,5 +1,6 @@
 # coding=utf-8
 from common.logger import *
+import xbmc
 
 try:
     from enum import StrEnum
@@ -7,6 +8,9 @@ except ImportError:
     from common.strenum import StrEnum
 
 MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
+
+MY_LOGGER.error("In cache_file_state")
+xbmc.log("In cache_file_state",  xbmc.LOGDEBUG)
 
 
 class StrEnumWithPriority(StrEnum):
@@ -18,32 +22,52 @@ class StrEnumWithPriority(StrEnum):
         member = str.__new__(cls, value)
         member._value_ = value
         member.ordinal = ord_value
-        #  MY_LOGGER.debug(f'ord_value: {ord_value}')
+        # MY_LOGGER.error(f'ord_value: {ord_value}')
         return member
 
     # def __init__(self, ordinal: int) -> None:
-    #     MY_LOGGER.debug(f'ordinal: {ordinal}')
+    #     MY_LOGGER.(f'ordinal: {ordinal}')
     #     self.ordinal = ordinal
 
+    def __eq__(self, other):
+        # raise NotImplementedError
+        if self.__class__ is other.__class__:
+            return self.ordinal == other.ordinal
+        raise NotImplementedError
+
+    def __ne__(self, other):
+        # raise NotImplementedError
+        if self.__class__ is other.__class__:
+            return self.ordinal != other.ordinal
+        raise NotImplementedError
+
     def __ge__(self, other):
+        # raise NotImplementedError
         if self.__class__ is other.__class__:
             return self.ordinal >= other.ordinal
-        return NotImplemented
+        raise NotImplementedError
 
     def __gt__(self, other):
+        # MY_LOGGER.error('In __gt__')
+        # raise NotImplementedError
         if self.__class__ is other.__class__:
             return self.ordinal > other.ordinal
-        return NotImplemented
+        raise NotImplementedError
 
     def __le__(self, other):
+        # raise NotImplementedError
         if self.__class__ is other.__class__:
             return self.ordinal <= other.ordinal
-        return NotImplemented
+        raise NotImplementedError
 
-    def __lt__(self, other):
+    def __lt__(self, other) -> bool:
         if self.__class__ is other.__class__:
+            # raise NotImplementedError
+            # MY_LOGGER.error(f'val: {self._value_} ordinal: {self.ordinal}')
+            # MY_LOGGER.error(f'OTHER val: {other._value_} ordinal: {other.ordinal}')
+            # MY_LOGGER.error(f'val < other: {self.ordinal < other.ordinal}')
             return self.ordinal < other.ordinal
-        return NotImplemented
+        raise NotImplementedError
 
 
 class CacheFileState(StrEnumWithPriority):
@@ -55,7 +79,7 @@ class CacheFileState(StrEnumWithPriority):
          and in progress
       OK Indicates that a cache file by this name exists and appears valid
       BAD Indicates that a cache file by this name exists, but appears bad.
-         This state does not last long since it a bad file is discarded soon
+         This state does not last long since a bad file is discarded soon
          after discovery.
     """
     UNKNOWN = 'unknown', -1

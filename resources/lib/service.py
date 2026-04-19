@@ -17,7 +17,6 @@ import xbmcvfs
 
 from common.debug import Debug
 from common.message_ids import MessageId
-from common.phrases import PhraseList
 from utils.keymapeditor import Status
 from utils.utils_ll import UtilsLowLevel
 
@@ -56,21 +55,34 @@ else:
     definitions = {
         'tts': INFO,
         'tts.backends': INFO,
-        'tts.backends.driver': DEBUG,
-        'tts.backends.google': DEBUG,
+        'tts.backends.driver': INFO,
+        'tts.backends.google': INFO,
+        'tts.backends.engines.google_voice_id': INFO,
+        'tts.backends.engines.piper': INFO,
+        'tts.backends.engines.piper_settings': INFO,
+        'tts.backends.engines.piper_data': INFO,
+        'tts.backends.engines.piper_api': INFO,
+        'tts.backends.engines.piper_downloader': INFO,
+        'tts.backends.engines.piper_voice_id': INFO,
         'tts.backends.espeak': INFO,
         'tts.backends.espeak_settings': INFO,
         'tts.backends.no_engine': INFO,
         'tts.backends.no_engine_settings': INFO,
-        'tts.backends.engines.google_downloader': DEBUG,
+        'tts.backends.engines.google_downloader': INFO,
         'tts.backends.engines.google_settings': INFO,
         'tts.backends.engines.speech_generator': INFO,
         'tts.backends.engines.windows.powershell': INFO,
         'tts.backends.engines.windows.powershell_settings': INFO,
+        'tts.backends.settings.engine_voice_manager': DEBUG,
+        'tts.backends.settings.engine_voice_group': DEBUG,
         'tts.backends.settings.language_info': INFO,
+        'tts.backends.settings.lang_utils': INFO,
+        'tts.backends.settings.engine_voice': DEBUG,
+        'tts.backends.settings.voice_group': DEBUG,
+        'tts.backends.settings.engine_lang': INFO,
         'tts.backends.settings.langcodes_wrapper': INFO,
         'tts.backends.settings.service_types': INFO,
-        'tts.backends.settings.settings_helper': INFO,
+        'tts.backends.settings.settings_helper': DEBUG,
         'tts.backends.settings.settings_map': INFO,
         'tts.backends.settings.validators': INFO,
         'tts.backends.base': INFO,
@@ -82,7 +94,8 @@ else:
         'tts.backends.audio.sound_capabilities': INFO,
         'tts.backends.audio.worker_thread': INFO,
         'tts.backends.transcoders.trans': INFO,
-        'tts.cache.voicecache': DEBUG,
+        'tts.cache.voicecache': INFO,
+        'tts.cache.cache_file_state': INFO,
         'tts.common.base_services': INFO,
         'tts.common.garbage_collector': INFO,
         'tts.common.logger': INFO,
@@ -97,6 +110,7 @@ else:
         'tts.common.slave_communication': INFO,
         'tts.common.slave_run_command': INFO,
         'tts.common.utils': INFO,
+        'tts.common.voice_id': INFO,
         'tts.utils.util': INFO,
         'tts.windows': INFO,
         'tts.windows.backgroundprogress': INFO,
@@ -113,7 +127,7 @@ else:
         'tts.windows.pvr': INFO,
         'tts.windows.pvrguideinfo': INFO,
         'tts.windows.selectdialog': INFO,
-        'tts.windows.settings': INFO,
+        'tts.windows.settings': DEBUG,
         'tts.windows.skintables': INFO,
         'tts.windows.subtitlesdialog': INFO,
         'tts.windows.textviewer': INFO,
@@ -134,12 +148,12 @@ else:
         'tts.backends.audio.bootstrap_players': INFO,
         'tts.backends.players.mpv_player_settings': INFO,
         'tts.backends.players.mplayer_settings': INFO,
-        'tts.windowNavigation.choice': INFO,
-        'tts.windowNavigation.configure': INFO,
+        'tts.windowNavigation.choice': DEBUG,
+        'tts.windowNavigation.configure': DEBUG,
         'tts.windowNavigation.help_dialog': INFO,
-        'tts.windowNavigation.selection_dialog': INFO,
-        'tts.windowNavigation.settings_dialog': INFO,
-        'utils.keymapeditor': INFO
+        'tts.windowNavigation.selection_dialog': DEBUG_XV,
+        'tts.windowNavigation.settings_dialog': DEBUG_XV,
+        'tts.utils.keymapeditor': INFO
     }
 # xbmc.log(f'configuring debug_levels INFO: {logging.INFO} DEBUG: {DEBUG} '
 #          f'VERBOSE: {DEBUG_V} EXTRA_VERBOSE: '
@@ -169,6 +183,19 @@ if DEVELOPMENT_BUILD:
                              newline=None,
                              encoding='ASCII')
         faulthandler.register(signal.SIGUSR1, file=debug_file, all_threads=True)
+
+"""
+    A W F U L   H A C K
+
+    To better serve the needs of the Visually Impaired, this addon is made to install
+    by an external script. The assumption is that the user has already configured their
+    system for Speech, so they can use their browser to download an installer and
+    launch it.
+
+    Understandably, Kodi wants users to go through its user interface and Addon
+    Manager to install and manage addons. This is understandable, since allowing
+
+"""
 
 if REMOTE_DEBUG:
     xbmc.log(f'About to PythonDebugger.enable from tts service', xbmc.LOGINFO)
@@ -266,10 +293,10 @@ def preInstalledFirstRun() -> bool:
     # Detect when a newer (or older) version has been installed
     # Use two settings:
     #  * installed_version which forced to version 0.0.0 on every
-    #    install or update. Then this code notices it is 0.0.0, runs config
+    #    install or update. Then this code notices it is 0.0.0, runs download
     #    and sets the setting to the real version.
     #  To detect reinstalling the same version, the installed_version setting will
-    #  still be clobbered to 0.0.0, so the same config will occur.
+    #  still be clobbered to 0.0.0, so the same download will occur.
 
     # MUST be done before bootstrap engines/players
 
@@ -309,7 +336,7 @@ def configure_dependencies_windows() -> bool:
             if completed.returncode != 0:
                 something_configured = False
                 if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'config output: {completed.stdout}')
+                    MY_LOGGER.debug(f'download output: {completed.stdout}')
             else:
                 something_configured = True
         except subprocess.CalledProcessError:
@@ -338,7 +365,7 @@ def startService():
             Settings.set_configure_keymap_on_startup(True)
             Settings.set_start_config_gui_on_startup(True)
 
-            # Hints are embedded in new screen scraper metadata, which config only
+            # Hints are embedded in new screen scraper metadata, which download only
             # uses at this time.
             Settings.set_hint_text_on_startup(True)
 

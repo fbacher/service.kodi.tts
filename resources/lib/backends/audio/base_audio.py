@@ -648,8 +648,8 @@ class SubprocessSlaveAudioPlayer(SubprocessAudioPlayer):
             if not self.is_slave_player():
                 return super().stop_player(purge=purge, keep_silent=keep_silent,
                                            kill=kill)
-            self._stop_slave_player(purge=purge, keep_silent=keep_silent,
-                                    kill=kill)
+            return self._stop_slave_player(purge=purge, keep_silent=keep_silent,
+                                           kill=kill)
 
     def _stop_slave_player(self, purge: bool = True,
                            keep_silent: bool = False,

@@ -1,8 +1,10 @@
 # coding=utf-8
 from __future__ import annotations  # For union operator |
 
+from common.constants import Constants
 from common.logger import *
-from enum import Enum
+from enum import Enum, IntEnum
+
 try:
     from enum import StrEnum
 except ImportError:
@@ -106,45 +108,6 @@ class Mpg3ToWaveTranscoder(StrEnum):
     # MPLAYER = TranscoderType.MPLAYER.value
     # FFMPEG = TranscoderType.FFMPEG.value
 
-
-'''
-class MyStrEnum(StrEnum):
-
-    def __new__(cls, *args) -> object:
-        str_value: str = args[0]
-        MY_LOGGER.debug(f'ServiceType value: {str_value} args: {args}')
-        obj = str.__new__(cls)
-        obj._value_ = str_value
-        return obj
-
-
-class OrdStrEnum(MyStrEnum):
-    def __init__(self, ordinal: int) -> None:
-        MY_LOGGER.debug(f'ordinal: {ordinal}')
-        self.ordinal = ordinal
-
-    def __ge__(self, other):
-        if self.__class__ is other.__class__:
-            return self.ordinal >= other.ordinal
-        return NotImplemented
-
-    def __gt__(self, other):
-        if self.__class__ is other.__class__:
-            return self.ordinal > other.ordinal
-        return NotImplemented
-
-    def __le__(self, other):
-        if self.__class__ is other.__class__:
-            return self.ordinal <= other.ordinal
-        return NotImplemented
-
-    def __lt__(self, other):
-        if self.__class__ is other.__class__:
-            return self.ordinal < other.ordinal
-        return NotImplemented
-'''
-
-
 class LabeledType(StrEnum):
     """
         A StrEnum that also includes an ordinal value (for preference
@@ -152,6 +115,7 @@ class LabeledType(StrEnum):
         translated label for the value.
     """
     def __new__(cls, value: str, ord_value: int, label_id: MessageId):
+        MY_LOGGER.debug(f'LabeledType class: {type(cls)}')
         member = str.__new__(cls, value)
         member._value_ = value
         member.ordinal = ord_value
@@ -187,8 +151,39 @@ class LabeledType(StrEnum):
     def label(self) -> str:
         clz = LabeledType
         message_id: MessageId = self.label_id
-        msg: str = message_id[self].get_msg()
+        msg: str = message_id.get_msg()
         return msg
+
+
+class LabeledInt(IntEnum):
+    """
+        A StrEnum that also includes an ordinal value (for preference
+        comparision) as well as messageId and a method to get the
+        translated label for the value.
+    """
+    def __new__(cls, value: int, label_id: MessageId):
+        MY_LOGGER.debug(f'LabeledType class: {type(cls)}')
+        member = int.__new__(cls, value)
+        member._value_ = value
+        member.label_id = label_id
+        #  MY_LOGGER.debug(f'ord_value: {ord_value}')
+        return member
+
+    @property
+    def label(self) -> str:
+        clz = LabeledType
+        message_id: MessageId = self.label_id
+        msg: str = message_id.get_msg()
+        return msg
+
+
+class QualityType(LabeledType):
+    UNKNOWN = 'unknown', -1, MessageId.UNKNOWN_QUALITY
+    HIGH = 'high', 1, MessageId.HIGH_QUALITY
+    MEDIUM = 'medium', 2, MessageId.MEDIUM_QUALITY
+    LOW = 'low', 3, MessageId.LOW_QUALITY
+    X_LOW = 'xlow', 4, MessageId.X_LOW_QUALITY
+
 
 
 class MyType(StrEnum):
@@ -307,16 +302,22 @@ class TTS_Type(StrEnum):
 DEFAULT_MESSAGE_ID = MessageId.ENGINE_ESPEAK
 
 
-class EngineType(LabeledType):
+class Service(LabeledType):
+    pass
+
+
+class EngineType(Service):
     # Engines with an ordinal, with lower values for most desired engine.
     #
     #  AUTO_ENGINE = Services.AUTO_ENGINE_ID, 0, MessageId.ENGINE_AUTO
     # EXPERIMENTAL_ENGINE = Services.EXPERIMENTAL_ENGINE_ID
     GOOGLE = Services.GOOGLE_ID, 1, MessageId.ENGINE_GOOGLE
-    POWERSHELL = Services.POWERSHELL_ID, 2, MessageId.ENGINE_POWERSHELL
+    PIPER = Services.PIPER_ID, 2, MessageId.ENGINE_PIPER
+    if Constants.PLATFORM_WINDOWS:
+        POWERSHELL = Services.POWERSHELL_ID, 3, MessageId.ENGINE_POWERSHELL
     # FESTIVAL = Services.FESTIVAL_ID = -1, MessageId.ENGINE_FESTIVAL
     # FLITE = Services.FLITE_ID = -1, MessageId.FLITE
-    ESPEAK = Services.ESPEAK_ID, 3, MessageId.ENGINE_ESPEAK
+    ESPEAK = Services.ESPEAK_ID, 4, MessageId.ENGINE_ESPEAK
     # LOG_ONLY = Services.LOG_ONLY_ID, 100, MessageId.ENGINE_LOG_ONLY
     # SPEECH_DISPATCHER = Services.SPEECH_DISPATCHER_ID
     NO_ENGINE = Services.NO_ENGINE_ID, 99, MessageId.ENGINE_NO_ENGINE
@@ -331,21 +332,20 @@ ALL_ENGINES: List[EngineType] = list(EngineType)
 #  ALL_ENGINES.remove(EngineType.AUTO_ENGINE)
 
 
-class BasePlayerType(StrEnum):
+class BasePlayerType(Service):
     """
         Indicates which services are provided
     """
-    def __new__(cls, value: str, supports_cache: bool, ord_value: int):
+    def __new__(cls, value: str, supports_cache: bool,  ord_value: int,
+                label_id: MessageId):
+        MY_LOGGER.debug(f'LabeledType class: {type(cls)}')
         member = str.__new__(cls, value)
         member._value_ = value
-        member.supports_cache = supports_cache
         member.ordinal = ord_value
+        member.label_id = label_id
+        member.supports_cache = supports_cache
         #  MY_LOGGER.debug(f'ord_value: {ord_value}')
         return member
-
-    # def __init__(self, ordinal: int) -> None:
-    #     MY_LOGGER.debug(f'ordinal: {ordinal}')
-    #     self.ordinal = ordinal
 
     def __ge__(self, other):
         if self.__class__ is other.__class__:
@@ -367,6 +367,12 @@ class BasePlayerType(StrEnum):
             return self.ordinal < other.ordinal
         return NotImplemented
 
+    @property
+    def label(self) -> str:
+        message_id: MessageId = self.label_id
+        msg: str = message_id.get_msg()
+        return msg
+
     def supports_cache(self) -> bool:
         # Indicates whether this player supports a cache
         return self.supports_cache
@@ -381,43 +387,26 @@ class PlayerType(BasePlayerType):
             as PLAYER_MODEs. (get rid of some stupid validators)
       """
     # MPV is big, but very capable. Great for caching.
-    MPV = Services.MPV_ID.value, True, 0
+    # value: str, supports_cache: bool, ord_value: int,
+    # label_id: MessageId
+
+    MPV = Services.MPV_ID.value, True, 0, MessageId.PLAYER_MPV
     # Windows is WAVE, but built-in
-    WINDOWS = Services.WINDOWS_ID.value, True, 10
-    PAPLAY = Services.PAPLAY_ID.value, True, 13
-    AFPLAY = Services.AFPLAY_ID.value, True, 14
+    WINDOWS = Services.WINDOWS_ID.value, True, 10, MessageId.PLAYER_WINDOWS
+    PAPLAY = Services.PAPLAY_ID.value, True, 13, MessageId.PLAYER_PAPLAY
+    AFPLAY = Services.AFPLAY_ID.value, True, 14, MessageId.PLAYER_AFPLAY
     # MPLAYER is not the best at using cache. Slave mode
     # not so great.
-    MPLAYER = Services.MPLAYER_ID.value, True, 15
-    SOX = Services.SOX_ID.value, True, 20
-    MPG321 = Services.MPG321_ID.value, True, 40
-    MPG123 = Services.MPG123_ID.value, True, 41
-    MPG321_OE_PI = Services.MPG321_OE_PI_ID.value, True, 42
-    APLAY = Services.APLAY_ID.value, True, 70
+    MPLAYER = Services.MPLAYER_ID.value, True, 15, MessageId.PLAYER_MPLAYER
+    SOX = Services.SOX_ID.value, True, 20, MessageId.PLAYER_SOX
+    MPG321 = Services.MPG321_ID.value, True, 40, MessageId.PLAYER_MPG321
+    MPG123 = Services.MPG123_ID.value, True, 41, MessageId.PLAYER_MPG123
+    MPG321_OE_PI = Services.MPG321_OE_PI_ID.value, True, 42, MessageId.PLAYER_MPG321_OE_PI
+    APLAY = Services.APLAY_ID.value, True, 70, MessageId.PLAYER_APLAY
     # Engine's built-in player
-    SFX = Services.SFX_ID.value, True, 90  # Kodi built-in, WAVE
-    BUILT_IN_PLAYER = Services.BUILT_IN_PLAYER_ID.value, False, 100
-
-
-    @property
-    def label(self) -> str:
-        clz = PlayerType
-        msg_id_lookup: Dict[str, MessageId] = {
-            PlayerType.SFX            : MessageId.PLAYER_SFX,
-            PlayerType.WINDOWS        : MessageId.PLAYER_WINDOWS,
-            PlayerType.APLAY          : MessageId.PLAYER_APLAY,
-            PlayerType.PAPLAY         : MessageId.PLAYER_PAPLAY,
-            PlayerType.AFPLAY         : MessageId.PLAYER_AFPLAY,
-            PlayerType.SOX            : MessageId.PLAYER_SOX,
-            PlayerType.MPLAYER        : MessageId.PLAYER_MPLAYER,
-            PlayerType.MPV            : MessageId.PLAYER_MPV,
-            PlayerType.MPG321         : MessageId.PLAYER_MPG321,
-            PlayerType.MPG123         : MessageId.PLAYER_MPG123,
-            PlayerType.MPG321_OE_PI: MessageId.PLAYER_MPG321_OE_PI,
-            PlayerType.BUILT_IN_PLAYER: MessageId.PLAYER_BUILT_IN
-        }
-        msg: str = msg_id_lookup[self].get_msg()
-        return msg
+    SFX = Services.SFX_ID.value, True, 90, MessageId.PLAYER_SFX  # Kodi built-in, WAVE
+    BUILT_IN_PLAYER = Services.BUILT_IN_PLAYER_ID.value, False, 100, MessageId.PLAYER_BUILT_IN
+    # NONE_PLAYER = x, x, x, MessageId.PLAYER_NONE
 
 
 ALL_PLAYERS: List[PlayerType] = list(PlayerType)
@@ -453,7 +442,7 @@ class ServiceID:
     """
 
     def __init__(self, service_type: ServiceType,
-                 service_id: str | StrEnum | None = None,
+                 service_id: EngineType | StrEnum | None = None,
                  setting_id: str | StrEnum | None = None) -> None:
         """
         Defines the 'path' to a setting. A path can have the nodes:
@@ -511,6 +500,17 @@ class ServiceID:
         return ServiceID(service_type=ServiceType.UNKNOWN, service_id=service_id,
                          setting_id=setting_id)
 
+    @classmethod
+    def get_uid(cls, engine_key: ServiceID, key: str) -> str:
+        """
+        Creates a unique id by concatenating an engine-specific key onto
+        the engine's key,
+
+        :param engine_key: ServiceID id for an engine
+        :param key: id for a voice, voice_group or language
+        """
+        return f'{engine_key}|{key}'
+
     def __str__(self) -> str:
         #  MY_LOGGER.debug(f'key: {self._key}')
         return self.key
@@ -529,6 +529,18 @@ class ServiceID:
     @property
     def setting_id(self) -> Any:
         return self._setting_id
+
+    @property
+    def fully_qualified(self) -> bool:
+        """
+        Determines if ServiceID is fully qualified, that is, has non None
+        service_type, service_id and setting_id.
+        """
+        if ((self._setting_id is None or self._setting_id == '') or
+                (self._service_id is None or self._service_id == '') or
+                (self._service_type is None or self._service_type == '')):
+            return False
+        return True
 
     @property
     def key(self) -> str:
@@ -629,10 +641,12 @@ class ServiceKey:
     #  SPEECH_DISPATCHER = Services.SPEECH_DISPATCHER_ID
     NO_ENGINE_KEY: ServiceID = ServiceID(ServiceType.ENGINE,
                                          Services.NO_ENGINE_ID, TTS_Type.SERVICE_ID)
+    PIPER_KEY: ServiceID = ServiceID(ServiceType.ENGINE,
+                                     Services.PIPER_ID, TTS_Type.SERVICE_ID)
     POWERSHELL_KEY: ServiceID = ServiceID(ServiceType.ENGINE,
                                           Services.POWERSHELL_ID, TTS_Type.SERVICE_ID)
     # TODO: REWORK to be dynamic. Need shared safe place to update in
-    # bootstrap or config and use here
+    # bootstrap or download and use here
     DEFAULT_KEY: ServiceID = ServiceID(ServiceType.ENGINE, EngineType.DEFAULT,
                                        TTS_Type.SERVICE_ID)
 

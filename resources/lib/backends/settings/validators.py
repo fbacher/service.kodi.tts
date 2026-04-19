@@ -11,7 +11,8 @@ from backends.settings.constraints import Constraints
 from backends.settings.i_constraints import IConstraints
 from backends.settings.i_validators import (AllowedValue, IChannelValidator,
                                             IGenderValidator,
-                                            ISimpleValidator, IStringValidator,
+                                            ISimpleStringListValidator, ISimpleValidator,
+                                            IStringValidator,
                                             IValidator, UIValues)
 from backends.settings.service_types import ServiceKey, Services, ServiceType
 from backends.settings.settings_map import Status, SettingsMap
@@ -1644,6 +1645,104 @@ class SimpleStringValidator(ISimpleValidator):
     def get_const_value(self) -> str:
         if self._const:
             return self._const_value
+
+    def is_const(self) -> bool:
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'{self._service_key} value: {self._value} const: '
+                            f'{self._const}')
+        return self._const
+
+    @property
+    def service_key(self) -> ServiceID:
+        return self._service_key
+
+
+class StringListValidator(ISimpleStringListValidator):
+    def __init__(self, service_key: ServiceID,
+                 value: List[str] | None = None,
+                 delimiter: str = '-',
+                 default: str = '',
+                 const: bool = False,
+                 define_setting: bool = True,
+                 service_status: StatusType | None = StatusType.OK,
+                 persist: bool = True) -> None:
+        super().__init__(service_key=service_key,
+                         property_type=SettingType.STRING_TYPE,
+                         const=const)
+        self._service_key: ServiceID = service_key
+        self._value: List[str] = value
+        self._delimiter = delimiter
+        self._default: str = default
+        if value is not None:
+            self._encoded_value: str = self._encode(value)
+        self._const: bool = const
+        self._const_value: List[str] | None = None
+        if const:
+            self._const_value = value
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'{self._service_key} value: {value} const: {const}')
+        self._define_setting: bool = define_setting
+        self._service_status: StatusType = service_status
+        self._persist: bool = persist
+        if self._define_setting:
+            self.define_setting()
+
+    @property
+    def property_type(self) -> SettingType:
+        return super().property_type
+
+    def define_setting(self) -> None:
+        SettingsMap.define_setting(service_id=self._service_key,
+                                   setting_type=self._property_type,
+                                   service_status=self._service_status,
+                                   validator=self,
+                                   persist=self._persist)
+
+    def _encode(self, values: List[str]) -> str:
+        # Concatenate all list values with hyphens in between
+        for value in values:
+            if '-' in value:
+                raise ValueError('Unexepected hypen in voice value')
+
+        encoding: str = '-'.join(values)
+        self._encoded_value = encoding
+        return encoding
+
+    def _decode(self, value: str | None) -> List[str]:
+        if value is None:
+            value = ''
+        decoded: List[str]
+        decoded = value.split('-')
+        return decoded
+
+    def get_value(self) -> List[str]:
+        if self.is_const():
+            return self.get_const_value()
+
+        raw_value: str | None= SettingsLowLevel.get_setting_str(self._service_key)
+        if (raw_value is None or raw_value == '') and self._default is not None:
+            raw_value = self._default
+        self._value = self._decode(raw_value)
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'{self._service_key} raw_value: {raw_value} '
+                            f'value: {self._value}')
+        return self._value
+
+    def set_value(self, value: List[str]) -> None:
+        if self.is_const():
+            raise ValueError('Can not set value for constant value setting')
+
+        raw_value: str = self._encode(value)
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'{self._service_key} raw_value: {raw_value} '
+                            f'value: {self._value}')
+        SettingsLowLevel.set_setting_str(self._service_key, raw_value)
+        return
+
+    def get_const_value(self) -> List[str] | None:
+        if self._const:
+            return self._const_value
+        return None
 
     def is_const(self) -> bool:
         if MY_LOGGER.isEnabledFor(DEBUG):

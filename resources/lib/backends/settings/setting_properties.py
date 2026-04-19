@@ -86,6 +86,7 @@ class SettingProp:  # (ISettings):
     VOICE: Final[str] = 'voice'
     VOICE_PATH: Final[str] = 'voice_path'
     VOICE_TTSD: Final[str] = 'voice_ttsd'
+    VOICE_VARIANT: Final[str] = 'voice_variant'
     VOICE_VISIBLE: Final[str] = 'voice_visible'
     VOLUME_VISIBLE: Final[str] = 'volume_visible'
 
@@ -282,6 +283,7 @@ class SettingProp:  # (ISettings):
         VERSION: None,
         VOICE: None,
         VOICE_PATH: None,
+        VOICE_VARIANT: None,
         #  VOICE_VISIBLE: None,
         VOLUME: None
     }
@@ -346,7 +348,8 @@ class SettingProp:  # (ISettings):
         USE_AOSS: None,
         # VERSION: None,
         VOICE: None,
-        VOICE_PATH: None
+        VOICE_PATH: None,
+        VOICE_VARIANT: None
         # VOICE_VISIBLE: None,
         # VOLUME: None
     }
@@ -434,6 +437,7 @@ class SettingProp:  # (ISettings):
             cls.VERSION                               : SettingType.STRING_TYPE,
             cls.VOICE                                 : SettingType.STRING_TYPE,
             cls.VOICE_PATH                            : SettingType.STRING_TYPE,
+            cls.VOICE_VARIANT                         : SettingType.STRING_TYPE,
             cls.VOICE_VISIBLE                         : SettingType.BOOLEAN_TYPE,
             cls.VOLUME                                : SettingType.INTEGER_TYPE,
             cls.VOLUME_VISIBLE                        : SettingType.STRING_TYPE

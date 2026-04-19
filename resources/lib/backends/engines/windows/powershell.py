@@ -12,7 +12,7 @@ import langcodes
 from pathlib import Path, WindowsPath
 
 from backends.ispeech_generator import ISpeechGenerator
-from backends.settings.language_info import LanguageInfo
+from backends.settings.lang_utils import LangUtils
 from backends.settings.validators import NumericValidator
 from backends.transcoders.trans import TransCode
 from cache.voicecache import VoiceCache
@@ -136,7 +136,7 @@ class PowerShellTTS(SimpleTTSBackend):
     _voices_initialized: bool = False
     suffix: int = 0
 
-    # Maps a voice_id to the directory_name for cache entries sharing this voice_id
+    # Maps a vg_id to the directory_name for cache entries sharing this vg_id
     _voice_dir_for_id: Dict[str, str] = {}
 
     def __init__(self, *args, **kwargs):
@@ -198,7 +198,7 @@ class PowerShellTTS(SimpleTTSBackend):
         cache_id: str = voice_id
         segments: List[str] = voice_id.split(' ')
         if len(segments) == 0:
-            MY_LOGGER.warning('SAPI voice id incorrect format: {voice_id}')
+            MY_LOGGER.warning('SAPI voice id incorrect format: {vg_id}')
         else:
             cache_id = segments[1]
             if len(segments) == 3:
@@ -225,7 +225,7 @@ class PowerShellTTS(SimpleTTSBackend):
                                        creationflags=subprocess.CREATE_NO_WINDOW)
             rc = completed.returncode
             if rc != 0:
-                MY_LOGGER.debug(f'config output: {completed.stdout}')
+                MY_LOGGER.debug(f'download output: {completed.stdout}')
             else:
                 json_str = completed.stdout
         except subprocess.CalledProcessError:
@@ -328,18 +328,18 @@ class PowerShellTTS(SimpleTTSBackend):
                 except LanguageTagError:
                     MY_LOGGER.exception('')
 
-                LanguageInfo.add_language(engine_key=PowerShellTTS.service_key,
-                                          language_id=v_lang.language,
-                                          country_id=v_lang.territory,
-                                          ietf=v_lang,
-                                          region_id='',
-                                          gender=v_gender,
-                                          voice=v_name,
-                                          engine_lang_id=v_lang.language,
-                                          engine_voice_id=v_name,
-                                          engine_name_msg_id=MessageId.ENGINE_POWERSHELL,
-                                          engine_quality=2,
-                                          voice_quality=-1)
+                LanguageInfo.add_variant(engine_key=PowerShellTTS.service_key,
+                                         language_id=v_lang.language,
+                                         country_id=v_lang.territory,
+                                         ietf=v_lang,
+                                         region_id='',
+                                         gender=v_gender,
+                                         voice=v_name,
+                                         engine_lang_id=v_lang.language,
+                                         e_voice_id=v_name,
+                                         engine_name_msg_id=MessageId.ENGINE_POWERSHELL,
+                                         engine_quality=2,
+                                         voice_quality=-1)
         except Exception:
             MY_LOGGER.exception('')
         return
@@ -364,7 +364,7 @@ class PowerShellTTS(SimpleTTSBackend):
                                        creationflags=subprocess.CREATE_NO_WINDOW)
             rc = completed.returncode
             if rc != 0:
-                MY_LOGGER.debug(f'config output: {completed.stdout}')
+                MY_LOGGER.debug(f'download output: {completed.stdout}')
             else:
                 json_str = completed.stdout
         except subprocess.CalledProcessError:
@@ -426,18 +426,18 @@ class PowerShellTTS(SimpleTTSBackend):
                 except LanguageTagError:
                     MY_LOGGER.exception('')
 
-                LanguageInfo.add_language(engine_key=PowerShellTTS.service_key,
-                                          language_id=lang.language,
-                                          country_id=lang.territory,
-                                          ietf=lang,
-                                          region_id='',
-                                          gender=v_gender,
-                                          voice=v_name,
-                                          engine_lang_id=v_ietf,
-                                          engine_voice_id=v_name,  # Probably can use v_id
-                                          engine_name_msg_id=MessageId.ENGINE_POWERSHELL,
-                                          engine_quality=2,
-                                          voice_quality=-1)
+                LanguageInfo.add_variant(engine_key=PowerShellTTS.service_key,
+                                         language_id=lang.language,
+                                         country_id=lang.territory,
+                                         ietf=lang,
+                                         region_id='',
+                                         gender=v_gender,
+                                         voice=v_name,
+                                         engine_lang_id=v_ietf,
+                                         e_voice_id=v_name,  # Probably can use v_id
+                                         engine_name_msg_id=MessageId.ENGINE_POWERSHELL,
+                                         engine_quality=2,
+                                         voice_quality=-1)
         except Exception:
             MY_LOGGER.exception('')
         return
@@ -448,7 +448,7 @@ class PowerShellTTS(SimpleTTSBackend):
 
     def addCommonArgs(self, args, phrase: Phrase | None = None):
         clz = type(self)
-        voice_id = Settings.get_voice(clz.service_key)
+        voice_id = Settings.get_voice_id(clz.service_key)
         if voice_id is None or voice_id in ('unknown', ''):
             voice_id = ''
 
@@ -488,8 +488,8 @@ class PowerShellTTS(SimpleTTSBackend):
         clz.update_voice_path(phrase)
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'phrase: {phrase.get_text()} {phrase.get_debug_info()} '
-                              f'cache_path: {phrase.get_cache_path()} use_cache: '
-                              f'{Settings.is_use_cache()}')
+                            f'cache_path: {phrase.get_cache_path()} use_cache: '
+                            f'{Settings.is_use_cache()}')
         self.get_voice_cache().get_path_to_voice_file(phrase,
                                                       use_cache=Settings.is_use_cache(),
                                                       delete_tmp=False)
@@ -604,7 +604,7 @@ class PowerShellTTS(SimpleTTSBackend):
                 # DO NOT USE subprocess.DETACHED_PROCESS. It won't create voice files
                 try:
                     if completed is None:
-                        MY_LOGGER.DEBUG(f'command failed, completed is None')
+                        MY_LOGGER.debug(f'command failed, completed is None')
                         return None
                     completed.check_returncode()
                 except subprocess.TimeoutExpired:
@@ -689,7 +689,7 @@ class PowerShellTTS(SimpleTTSBackend):
                 # DO NOT USE subprocess.DETACHED_PROCESS. It won't create voice files
                 try:
                     if completed is None:
-                        MY_LOGGER.DEBUG(f'command failed, completed is None')
+                        MY_LOGGER.debug(f'command failed, completed is None')
                         return None
                     completed.check_returncode()
                 except subprocess.TimeoutExpired:
@@ -730,7 +730,7 @@ class PowerShellTTS(SimpleTTSBackend):
     def has_speech_generator(cls) -> bool:
         """
         TODO: This is needed, but also a lie. SpeechGenerator exists, but is not
-            used. Instead get_cached_voice_file is doing the work.
+            used. Instead get_voiced_file is doing the work.
         """
         return True
 
@@ -773,7 +773,7 @@ class PowerShellTTS(SimpleTTSBackend):
         choices: List[Choice] = []
         if setting == SettingProp.LANGUAGE:
             # Returns list of languages and index to the closest match to current
-            # locale
+            # locale_id
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'In LANGUAGE')
             cls.init_voices()
@@ -800,7 +800,7 @@ class PowerShellTTS(SimpleTTSBackend):
                 elif lower_lang.startswith(default_locale):
                     longest_match = idx
 
-                choice: Choice = Choice(lang, lang, choice_index=idx)
+                choice: Choice = Choice(lang, lang, choice_idx=idx)
                 languages.append(choice)
                 idx += 1
 
@@ -827,7 +827,7 @@ class PowerShellTTS(SimpleTTSBackend):
                         # Voice_name is from command and not translatable?
 
                         # display_value, setting_value
-                        voices.append(Choice(voice_name, voice_id, choice_index=idx))
+                        voices.append(Choice(voice_name, voice_id, choice_idx=idx))
                         idx += 1
             return voices, ''
 
@@ -836,7 +836,7 @@ class PowerShellTTS(SimpleTTSBackend):
             # probably not that useful at this stage.
             # The main issue, is that this returns language as either
             # the 2-3 char IETF lang code, or as the traditional
-            # locale (2-3 char lang and 2-3 char territory + extra).
+            # locale_id (2-3 char lang and 2-3 char territory + extra).
             # This can be fixed, but not until it proves useful and then
             # figure out what format is preferred.
             cls.init_voices()
@@ -860,12 +860,12 @@ class PowerShellTTS(SimpleTTSBackend):
                 player: AllowedValue
                 player_label = Players.get_msg(player.value)
                 choices.append(Choice(label=player_label, value=player.value,
-                                      choice_index=-1, enabled=player.enabled))
+                                      choice_idx=-1, enabled=player.enabled))
 
             choices = sorted(choices, key=lambda entry: entry.label)
             idx: int = 0
             for choice in choices:
-                choice.choice_index = idx
+                choice.choice_idx = idx
                 idx += 1
 
             t_key: ServiceID
@@ -878,7 +878,7 @@ class PowerShellTTS(SimpleTTSBackend):
     def get_args(self, wave_output: Path | None = None) -> List[str]:
         clz = type(self)
 
-        voice_id = Settings.get_voice(clz.service_key)
+        voice_id = Settings.get_voice_id(clz.service_key)
         if voice_id is None or voice_id in ('unknown', ''):
             voice_id = ''
         else:
@@ -901,12 +901,14 @@ class PowerShellTTS(SimpleTTSBackend):
             MY_LOGGER.debug_v(f'args: {args}')
         return args
 
+    '''
     @classmethod
     def get_default_language(cls) -> str:
         languages: List[str]
         default_lang: str
         languages, default_lang = cls.settingList(SettingProp.LANGUAGE)
         return default_lang
+    '''
 
     @classmethod
     def get_voice_id_for_name(cls, name):
@@ -993,25 +995,25 @@ class PowerShellTTS(SimpleTTSBackend):
                                   f'voice: {phrase.voice}\n'
                                   f'lang_dir: {phrase.lang_dir}')
             locale: str = phrase.language  # IETF format
-            voice_id: str = Settings.get_voice(cls.service_key)
-            kodi_lang, kodi_locale, _, ietf_lang = LanguageInfo.get_kodi_locale_info()
+            voice_id: str = Settings.get_voice_id(cls.service_key)
+            kodi_lang, kodi_locale, _, ietf_lang = LangUtils.get_kodi_locale_info()
             if voice_id is None or voice_id == '':
                 if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug('Fix Settings.get_voice to use kodi_locale by '
+                    MY_LOGGER.debug('Fix Settings.get_vg to use kodi_locale by '
                                     'default')
             if MY_LOGGER.isEnabledFor(DEBUG_V):
-                MY_LOGGER.debug_v(f'locale: {locale} kodi_lang: {kodi_lang} '
+                MY_LOGGER.debug_v(f'locale_id: {locale} kodi_lang: {kodi_lang} '
                                   f'kodi_locale: {kodi_locale} '
                                   f'ietf_lang: {ietf_lang}')
-            # MY_LOGGER.debug(f'orig Phrase locale: {locale}')
+            # MY_LOGGER.debug(f'orig Phrase locale_id: {locale_id}')
             if locale is None:
                 locale = kodi_locale
             ietf_lang: langcodes.Language = langcodes.get(locale)
             if MY_LOGGER.isEnabledFor(DEBUG_V):
-                MY_LOGGER.debug_v(f'locale: {locale} ietf_lang: {ietf_lang.language} '
+                MY_LOGGER.debug_v(f'locale_id: {locale} ietf_lang: {ietf_lang.language} '
                                   f'{ietf_lang.territory}')
             phrase.set_lang_dir(ietf_lang.language)
-            phrase.set_voice(voice_id)
+            phrase.set_e_voice(voice_id)
             phrase.set_voice_dir(cls._voice_dir_for_id.get(voice_id))
             # Horrible, crude, hack due to kodi xbmc.getLanguage bug
             if ietf_lang.territory is not None:

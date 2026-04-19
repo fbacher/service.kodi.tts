@@ -249,9 +249,9 @@ class MPlayerSettings:
                 if completed.returncode != 1:
                     success = False
             except (subprocess.CalledProcessError, FileNotFoundError):
-                MY_LOGGER.exception('')
+                MY_LOGGER.info('/usr/bin/mplayer not found')
             except OSError:
-                MY_LOGGER.exception('')
+                MY_LOGGER.exception('mplayer not available')
             except Exception:
                 MY_LOGGER.exception('')
 

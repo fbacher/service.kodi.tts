@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+
+import xbmc
 import base64
 import json
 import logging
@@ -15,7 +17,7 @@ __all__ = ["gTTS", "gTTSError"]
 
 # Logger
 log = logging.getLogger(__name__)
-log.addHandler(logging.NullHandler())
+# log.addHandler(logging.NullHandler())
 
 
 class Speed:
@@ -88,7 +90,7 @@ class gTTS:
             the languages dictionary.
 
     """
-
+    count: int = 0
     GOOGLE_TTS_MAX_CHARS = 100  # Max characters the Google TTS API takes at a time
     GOOGLE_TTS_HEADERS = {
         "Referer": "http://translate.google.com/",
@@ -106,7 +108,7 @@ class gTTS:
         lang="en",
         slow=False,
         lang_check=True,
-        pre_processor_funcs=[],
+        pre_processor_funcs=None,
         tokenizer_func=Tokenizer(
             [
                 tokenizer_cases.tone_marks,
@@ -117,7 +119,8 @@ class gTTS:
         ).run,
         timeout=None,
     ):
-
+        if pre_processor_funcs is None:
+            pre_processor_funcs = []
         if len(pre_processor_funcs) == 0:
             pre_processor_funcs.extend([
             pre_processors.tone_marks,
@@ -134,6 +137,7 @@ class gTTS:
         # Text
         assert text, "No text to speak"
         self.text = text
+        xbmc.log(f'text: {text}', xbmc.LOGDEBUG)
 
         # Translate URL top-level domain
         self.tld = tld
@@ -278,14 +282,20 @@ class gTTS:
                 log.debug("url-%i: %s", idx, r.request.url)
                 log.debug("status-%i: %s", idx, r.status_code)
 
+                xbmc.log(f"headers-{idx}: {r.request.headers}", xbmc.LOGDEBUG)
+                xbmc.log(f"url-{idx}: {r.request.url}", xbmc.LOGDEBUG)
+                xbmc.log(f"status-{idx}: {r.status_code}", xbmc.LOGDEBUG)
+
                 r.raise_for_status()
             except requests.exceptions.HTTPError as e:  # pragma: no cover
                 # Request successful, bad response
                 log.debug(str(e))
+                xbmc.log(str(e), xbmc.LOGDEBUG)
                 raise gTTSError(tts=self, response=r)
             except requests.exceptions.RequestException as e:  # pragma: no cover
                 # Request failed
                 log.debug(str(e))
+                xbmc.log(str(e), xbmc.LOGDEBUG)
                 raise gTTSError(tts=self)
 
             # Write
@@ -301,6 +311,8 @@ class gTTS:
                         # no audio stream in response
                         raise gTTSError(tts=self, response=r)
             log.debug("part-%i created", idx)
+            xbmc.log(f'part-{idx} created', xbmc.LOGDEBUG)
+
 
     def write_to_fp(self, fp):
         """Do the TTS API request(s) and write bytes to a file-like object.
@@ -313,12 +325,20 @@ class gTTS:
             TypeError: When ``fp`` is not a file-like object that takes bytes.
 
         """
-
+        xbmc.log(f'In gTTS.write_to_fp text: {self.text}', xbmc.LOGDEBUG)
         try:
             for idx, decoded in enumerate(self.stream()):
+                xbmc.log(f'gTTS.write_to_fp #{gTTS.count} bytes: {len(decoded)}',
+                         xbmc.LOGDEBUG)
+                gTTS.count += 1
                 fp.write(decoded)
                 log.debug("part-%i written to %s", idx, fp)
+                xbmc.log(f'part-{idx} written to {fp} bytes: {len(decoded)}',
+                         xbmc.LOGDEBUG)
+            xbmc.log('gTTS.write_to_fp Finished?', xbmc.LOGDEBUG)
         except (AttributeError, TypeError) as e:
+            xbmc.log(f'fp is not a file-like object or it does not take bytes {e}',
+                     xbmc.LOGERROR)
             raise TypeError(
                 "'fp' is not a file-like object or it does not take bytes: %s" % str(e)
             )
@@ -333,10 +353,11 @@ class gTTS:
             :class:`gTTSError`: When there's an error with the API request.
 
         """
+        xbmc.log(f'In gtts.save {savefile}', xbmc.LOGDEBUG)
         with open(str(savefile), "wb") as f:
             self.write_to_fp(f)
-            f.flush()
             log.debug("Saved to %s", savefile)
+            xbmc.log(f'txt: {self.text} saved to {savefile}', xbmc.LOGDEBUG)
 
 
 class gTTSError(Exception):

@@ -152,7 +152,7 @@ class BasicLogger(Logger):
 
     #
     #  Allows for pre-defining the logging levels for different loggers.
-    #  At some point I'll do this the right way with Python logging config.
+    #  At some point I'll do this the right way with Python logging download.
     #  See config_debug_levels
     debug_level_config: Dict[str, int] = {}
     change_cnt: int = 0  # incremented on each set of changes to the loggers
@@ -318,9 +318,9 @@ class BasicLogger(Logger):
             #  xbmc.log(f'Updated get: {name} with handlers and get level: '
             #           f'{log_level}, propagate= False')
             '''
-            logger.debug_v(f'Test logger {name} finish config')
-            logger.info(f'Test logger {name} finish config INFO')
-            logger.debug(f'Test logger {name} finish config')
+            logger.debug_v(f'Test logger {name} finish download')
+            logger.info(f'Test logger {name} finish download INFO')
+            logger.debug(f'Test logger {name} finish download')
             '''
             cls.debug_level_config[name] = log_level
         cls.change_cnt += 1

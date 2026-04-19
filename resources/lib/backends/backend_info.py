@@ -16,7 +16,7 @@ from common.logger import *
 from common.setting_constants import Backends
 from common.settings_bridge import SettingsBridge
 from common.system_queries import SystemQueries
-from windowNavigation.choice import Choice
+from windowNavigation.choice import Choices
 
 MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 
@@ -103,7 +103,7 @@ class BackendInfo(IBackendInfo):
         bClass: Callable | ITTSBackendBase = cls.getBackendByProvider(engine_id)
         if bClass:
             with bClass as b:
-                voices = b.voices()
+                voices = b.e_voices()
         return voices
 
     @classmethod
@@ -117,8 +117,8 @@ class BackendInfo(IBackendInfo):
 
     @classmethod
     def getSettingsList(cls, engine_id, setting,
-                        *args) -> List[Choice]:
-        settings: List[Choice] | None
+                        *args) -> Choices:
+        settings: Choices | None
         settings = None
         bClass: Callable | ITTSBackendBase = cls.getBackendByProvider(engine_id)
         if bClass:

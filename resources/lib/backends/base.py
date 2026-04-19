@@ -7,9 +7,8 @@ import tempfile
 import threading
 from pathlib import Path
 
-from backends.audio.base_audio import SubprocessAudioPlayer
-from backends.ispeech_generator import ISpeechGenerator
-from backends.settings.service_types import ServiceID, ServiceKey, Services, TTS_Type
+from backends.engines.utils.igenerator_deps import ITTSData
+from backends.settings.service_types import ServiceID, ServiceKey
 from backends.settings.service_unavailable_exception import ServiceUnavailable
 from cache.cache_file_state import CacheFileState
 from common import *
@@ -18,7 +17,7 @@ from backends.audio.sound_capabilities import ServiceType, SoundCapabilities
 from backends.i_tts_backend_base import ITTSBackendBase
 from backends.players.iplayer import IPlayer
 from backends.settings.constraints import Constraints
-from backends.settings.i_validators import INumericValidator, IValidator, UIValues
+from backends.settings.i_validators import INumericValidator
 from backends.settings.settings_map import SettingsMap
 from backends.settings.validators import TTSNumericValidator
 from backends.tts_backend_bridge import TTSBackendBridge
@@ -34,7 +33,7 @@ from common.message_ids import MessageId
 from common.messages import Messages
 from common.monitor import Monitor
 from common.phrases import Phrase, PhraseList
-from common.setting_constants import AudioType, Genders, PlayerMode, Players
+from common.setting_constants import AudioType, Genders, PlayerMode
 from common.settings import Settings
 from common.settings_low_level import SettingProp
 from common.utils import TempFileUtils
@@ -359,6 +358,15 @@ class BaseEngineService(BaseServices):
         """
         pass
 
+    def create_speech_generator(self,
+                                tts_data: ITTSData | None = None) -> "ISpeechGenerator | None":
+        """
+        Provides a means to pass generator-specific data
+
+        :param tts_data: Optional data
+        """
+        return None
+
     def get_output_audio_type(self) -> AudioType:
         raise NotImplementedError('')
 
@@ -429,10 +437,6 @@ class BaseEngineService(BaseServices):
                 converter_id = candidate_converters[0]
 
         return transcoder_key
-
-    @classmethod
-    def create_speech_generator(self) -> ISpeechGenerator | None:
-        return None
 
     @classmethod
     def has_speech_generator(cls) -> bool:
@@ -570,7 +574,7 @@ class BaseEngineService(BaseServices):
         raise NotImplementedError()
 
     @classmethod
-    def update_voice_path(cls, phrase: Phrase) -> None:
+    def update_voice_path(cls, phrase: Phrase) -> ITTSData:
         raise NotImplementedError(f'active_engine: {Settings.get_engine_key()} \n'
                                   f'alt: {Settings.get_alternate_engine_id()}')
 
@@ -924,6 +928,21 @@ class SimpleTTSBackend(ThreadedTTSBackend):
         clz = type(self)
         super().init()
 
+    @classmethod
+    def load_languages(cls) -> None:
+        pass
+
+    @classmethod
+    def load_voices(cls):
+        """
+        Get all supported languages from GTTS. Using 'langcodes', convert
+        them into standard IETF format, get translated names, etc.... Finally,
+        hand off the entries to Kodi TTS.
+
+        :return:
+        """
+        pass
+
     def destroy(self):
         """
         Destroy this engine and any dependent players, etc. Typicaly done
@@ -936,11 +955,6 @@ class SimpleTTSBackend(ThreadedTTSBackend):
 
     def get_voice_cache(self) -> VoiceCache:
         raise NotImplementedError
-
-    @classmethod
-    def get_voice(cls) -> str:
-        voice: str = Settings.get_voice(cls.service_key)
-        return voice
 
     def getVolumeDb(self) -> float:
         """
@@ -976,23 +990,6 @@ class SimpleTTSBackend(ThreadedTTSBackend):
 
     def say_phrase(self, phrase: Phrase) -> None:
         return super().say_phrase(phrase)
-
-    def get_cached_voice_file(self, phrase: Phrase,
-                              generate_voice: bool = True) -> CacheFileState:
-        """
-        Assumes that cache is used. Normally missing voiced files are placed in
-        the cache by an earlier step, but can be initiated here as well.
-
-        Very similar to runCommand, except that the cached files are expected
-        to be sent to a slave player, or some other player than can play a sound
-        file.
-        :param phrase: Contains the text to be voiced as wll as the path that it
-                       is or will be located.
-        :param generate_voice: If true, then wait a bit to generate the speech
-                               file.
-        :return: True if the voice file was handed to a player, otherwise False
-        """
-        raise NotImplementedError()
 
     def runCommandAndSpeak(self, phrase: Phrase):
         """Convert text to speech and output directly
@@ -1033,17 +1030,6 @@ class SimpleTTSBackend(ThreadedTTSBackend):
 
             #  MY_LOGGER.debug(f'player_mode: {player_mode} engine: {clz.service_key}')
             if player_mode == PlayerMode.FILE:
-                # MY_LOGGER.debug('runCommand')
-                # outFile: str
-                # text_exists: bool
-                # use_cache: bool = Settings.is_use_cache(clz.setting_id)
-                # VoiceCache.get_path_to_voice_file(phrase, use_cache=use_cache)
-                # out_file: Path = phrase.get_cache_path()
-
-                # phrase contains the text to voice as well as the path to
-                # write the voiced file to and whether the file already text_exists
-                # in a cache, etc.
-
                 if not self.runCommand(phrase):
                     return
 
@@ -1052,18 +1038,8 @@ class SimpleTTSBackend(ThreadedTTSBackend):
                     phrase.add_event('About to play')
                     player.play(phrase)
             elif player_mode == PlayerMode.SLAVE_FILE:
-                # Typically used with caching. If the voiced file does not
-                # yet exist, then it is created using the path and other info
-                # in the Phrase. Then the Slave Player is given the phrase via
-                # pipe or other file so that it can play the file. Slaves avoid
-                # the cost of Python I/O on the voiced file as well as the cost
-                # of exec'ing the player.
-                if Settings.is_use_cache():  # or not Settings.is_use_cache():
-                    if not self.get_cached_voice_file(phrase, generate_voice=True):
-                        return
-                else:
-                    if not self.runCommand(phrase):
-                        return
+                if not self.runCommand(phrase):
+                    return
                 player: IPlayer = self.get_player(clz.service_key)
                 player.slave_play(phrase)
 

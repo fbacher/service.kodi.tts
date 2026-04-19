@@ -1,15 +1,20 @@
+# coding=utf-8
 from __future__ import annotations
 
 import threading
-from typing import Tuple
+from pathlib import Path
+from typing import BinaryIO, Tuple
 
+import langcodes
+from backends.engines.utils.igenerator_deps import ITTSData
 from backends.google_data import GoogleData
+from backends.settings.engine_voice import EngineVoice
+from backends.settings.engine_voice_manager import EngineVoiceManager
 from common.constants import ReturnCode
-from common.exceptions import DownloaderBusyException
 from common.logger import *
 from gtts import gTTS, gTTSError
 
-from backends.engines.idownloader import IDownloader, TTSDownloadError
+from backends.engines.idownloader import IDownloader, OutputType, TTSDownloadError
 from common.phrases import Phrase
 
 MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
@@ -25,8 +30,7 @@ class Results:
     """
 
     def __init__(self):
-        self.rc: ReturnCode = ReturnCode.NOT_SET
-        # self.download: io.BytesIO = io.BytesIO(initial_bytes=b'')
+        self.rc: ReturnCode = ReturnCode.OK
         self.finished: bool = False
         self.phrase: Phrase | None = None
 
@@ -61,39 +65,34 @@ class Results:
 class MyGTTS(IDownloader):
 
     # Prevent two simultaneous downloads from occurring: both to reduce cpu and
-    # to prevent the same phrases being downloaded at the same time (which causes
-    # trouble.
+    # to prevent timing related side effects of downloading a phrase twice.
+    #  TODO: Verify HOW this is accomplished
 
-    def __init__(self) -> None:
+    def __init__(self,
+                 output_type: OutputType = OutputType.USE_FILE_PTR, **kwargs):
         """
-
+        :param output_type:  How the downloader should handle output
+        :param kwargs: Any engine specific arguments
+        :return:
         """
-        super().__init__()
+        super().__init__(output_type, **kwargs)
+        MY_LOGGER.debug(f'In google_downloader.init')
         self.phrase: Phrase | None = None
+        self._output_type: OutputType = output_type
+        self._tts_data: ITTSData | None = kwargs.pop('tts_data', None)
         self.gtts: gTTS | None = None
-        self.lang_code: str | None = None
-        self.country_code: str | None = None
-        self.country_code: str | None = None
-        self.lang_check: bool | None = False
-        self.tld: str | None = None
+        self.lang_check: bool = kwargs.get('lang_check', False)
+        self.tld: str = kwargs.pop('tld', '')
+        MY_LOGGER.debug(f'tts_data: {self._tts_data}')
+        MY_LOGGER.debug(f'tld: {self.tld}')
 
-    def config(self, phrase: Phrase, lang_code: str = 'en',
-               country_code: str = 'us', tld: str = 'com',
-               lang_check: bool = False) -> None:
-
+    def download(self, phrase: Phrase, **kwargs) -> None:
         """
         Configure and initiate the next download.
         Note that write_to_fp is used to write the downloaded data to a file
 
         :param phrase:
-        :param lang_code:  2-char language code
-        :param country_code:  country code
-        :param tld: Top Level Domain Google has different voice varients depending upon
-               the country. For example, you get a US accent if you use the '.com'
-               Internet domain when you get your english translation. If you want
-               British English, then you use Britian's TLD 'gb'. Not every domain has
-               its own accent, but the major ones tend to.
-        :param lang_check: True more error detection, but a bit slower to check
+        :param kwargs: Any engine specific arguments
         :return:
 
         Raises:
@@ -106,25 +105,31 @@ class MyGTTS(IDownloader):
         country_code_country_tld: Dict[str, Tuple[str, str]] = {
                                 ISO3166-1, <google tld>, <country name>
         """
-        clz = type(self)
-
+        MY_LOGGER.debug(f'In download phrase: {phrase}')
         self.phrase = phrase
-        self.lang_code = lang_code
-        self.country_code: str = country_code
-        self.tld = tld
-        self.lang_check = lang_check
+        fp = kwargs.get('pipe', None)
+        file_path: Path = kwargs.get('tmp_path', None)
+
+        e_voice: EngineVoice = phrase.get_e_voice()
+        if e_voice is None:
+            e_voice = EngineVoiceManager.get_e_voice()
+        e_voice_lang: langcodes.Language = langcodes.Language.get(e_voice.lang)
+        lang_code: str = e_voice_lang.language
+        country_code: str = e_voice_lang.territory.lower()
         data: Tuple[str, str]  # [tld, _]
         data = GoogleData.country_code_country_tld[country_code]
+
         if data is not None and len(data) == 2:
-            tld = data[0]
-        if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'lang: {lang_code} country: {country_code} '
-                            f'data: {data} tld: {tld}')
+            self.tld = data[0]
+
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'lang: {lang_code} country: {country_code} '
+                                f'data: {data} tld: {self.tld}')
         self.gtts: gTTS = gTTS(phrase.get_text(),
                                lang=lang_code,
                                slow=False,
-                               lang_check=lang_check,
-                               tld=tld
+                               lang_check=self.lang_check,
+                               tld=self.tld
                                #  pre_processor_funcs=[
                                #     pre_processors.tone_marks,
                                #     pre_processors.end_of_line,
@@ -140,15 +145,35 @@ class MyGTTS(IDownloader):
                                #         ]
                                # ).run,
                                )
+        MY_LOGGER.debug(f'writing phrase: {phrase.text}')
+        if fp is not None:
+            MY_LOGGER.debug(f'write_to_fp phrase: {phrase.text}')
+            self.write_to_fp(fp)
+        elif file_path is not None:
+            self.save(file_path)
+        return
 
-    def write_to_fp(self, fp):
+    def save(self, save_file: Path) -> None:
+        try:
+            MY_LOGGER.debug(f'text: {self.phrase.text} save_file {save_file}')
+            self.gtts.save(str(save_file))
+        except Exception as e:
+            MY_LOGGER.exception(str(e))
+        MY_LOGGER.debug(f'cache_path exists: {save_file.exists()}')
+
+    def write_to_fp(self, fp: BinaryIO):
         """
-        Causes gtts to write downloaded data to the given file
+        Causes gtts to write downloaded data to the given stream
         :param fp:
         :return:
         """
         try:
+            if not self._output_type == OutputType.USE_FILE_PTR:
+                raise TTSDownloadError('USE_FILE_PTR not enabled')
+
+            MY_LOGGER.debug(f'text: {self.phrase.get_text()}')
             self.gtts.write_to_fp(fp)
         except gTTSError as e:
+            MY_LOGGER.debug(f'Error: {e}')
             raise TTSDownloadError() from e
-        self.gtts = None
+        #  self.gtts = None

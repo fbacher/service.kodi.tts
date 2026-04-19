@@ -15,11 +15,11 @@ msgstr ""
 
 #
 # Missing message ids
-# missing 32057
-# missing 32059 - 32099
+# missing 32071 - 32099
+# missing 32227
 # missing 32251 - 32296
-# missing 32348 - 32699
-# missing 32721 - 32799
+# missing 32353 - 32699
+# missing 32723 - 32799
 # missing 32805 - 32805
 
 msgctxt "#32001"
@@ -287,7 +287,27 @@ msgctxt "#32065"
 msgid "Configuration complete."
 msgstr ""
 
-#  missing 32066 - 32099
+# ANY_PIPER_API
+msgctxt "#32067"
+msgid "Best api not yet determined"
+msgstr ""
+
+# COMPILED_PIPER_API
+msgctxt "#32068"
+msgid "Using compiled api"
+msgstr ""
+
+# PYTHON_PIPER_API
+msgctxt "#32069"
+msgid "Using Python api"
+msgstr ""
+
+# HTTP_PIPER_API
+msgctxt "#32070"
+msgid "Using Http api"
+msgstr ""
+
+#  missing 32071 - 32099
 
 msgctxt "#32100"
 msgid "{0} database scan started."
@@ -813,11 +833,7 @@ msgctxt "#32226"
 msgid "OK"
 msgstr "OK"
 
-# Language Variant is used as a button label for selecting a spoken
-# language in a country/region. (English, US) or (English, US, New York)
-msgctxt "#32227"
-msgid "Language Variant"
-msgstr "Language Variant"
+#missing 32227
 
 msgctxt "#32228"
 msgid "Voice Gender"
@@ -1009,8 +1025,8 @@ msgstr "mpg321 OE Pi"
 # configure a language-variant (see 32227). The lang-variant is chosen first
 # and if there are more options, you Select a specific Voice.
 msgctxt "#32308"
-msgid "Select Voice"
-msgstr "Select Voice"
+msgid "Voice"
+msgstr "Voice"
 
 msgctxt "#32309"
 msgid "Voice 1"
@@ -1112,7 +1128,7 @@ msgstr "mpv"
 
 msgctxt "#32331"
 msgid "Piper"
-msgstr "Piper"
+msgstr ""
 
 msgctxt "#32332"
 msgid "Default"
@@ -1197,7 +1213,37 @@ msgctxt "#32347"
 msgid "Windows TTS"
 msgstr ""
 
-# missing 32348 - 32699
+# High, as in High quality
+
+msgctxt "#32348"
+msgid "High"
+msgstr ""
+
+# Medium, as in Medium Quality
+
+msgctxt "#32349"
+msgid "Medium"
+msgstr ""
+
+# Low, as in Low Quality
+
+msgctxt "#32350"
+msgid "Low"
+msgstr ""
+
+# x-Low, as in Extra-low quality
+
+msgctxt "#32351"
+msgid "X-Low"
+msgstr ""
+
+# Unknown Quality
+
+msgctxt "#32352"
+msgid "UNKNOWN"
+msgstr ""
+
+# missing 32353 - 32699
 
 # BEGIN MESSAGES USED IN UI (WINDOWS, CONTROLS, etc.)
 
@@ -1269,7 +1315,7 @@ msgstr "{0} of {1} items"
 
 # Sub-heading for menu to select engine/voice
 msgctxt "#32715"
-msgid "Choose the desired voice using Select/Enter"
+msgid "Choose the desired voice or voice-group using Select/Enter"
 msgstr ""
 
 # Used as a Menu Heading to select a TTS engine and voice
@@ -1296,7 +1342,20 @@ msgctxt "#32720"
 msgid "TTS Settings"
 msgstr ""
 
-# missing 32721 - 32799
+# Similar to 32716
+# When a user chooses a VoiceGroup, selection_dialog then displays a
+# dialog for the user to choose a voice from the Voice Group.
+msgctxt "#32721"
+msgid "Available Voices for Voice Group {0}"
+msgstr ""
+
+# Sub-heading for menu to select a voice out of a voice group
+msgctxt "#32722"
+msgid "Choose the desired voice using Select/Enter"
+msgstr ""
+
+
+# missing 32723 - 32799
 
 # Messages for Controls
 

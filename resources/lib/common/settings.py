@@ -4,6 +4,7 @@ from __future__ import annotations  # For union operator |
 import sys
 from enum import auto
 
+from backends.settings.validators import StringListValidator
 from common import *
 
 from backends.settings.i_validators import (AllowedValue, IBoolValidator,
@@ -427,22 +428,53 @@ class Settings(SettingsLowLevel):
         return
 
     @classmethod
-    def get_voice(cls, engine_key: ServiceID | None) -> str:
+    def get_voice_id(cls, engine_key: ServiceID | None = None) -> str | None:
+        """
+            Gets the "raw" voice used by the TTS engine to identify the current voice
+            The format of the voice is purely engine defined.
+        """
         if engine_key is None:
             engine_key = Settings.get_engine_key()
         voice_key: ServiceID = engine_key.with_prop(SettingProp.VOICE)
-        voice = SettingsLowLevel.get_setting_str(voice_key, load_on_demand=True)
+        # voice_validator: StringListValidator | None
+        # voice_validator = SettingsMap.get_validator(voice_key)
+        # MY_LOGGER.debug(f'validator_type: {type(voice_validator)} key: {voice_key}')
+        raw_voice: str | None = SettingsLowLevel.get_setting_str(voice_key,
+                                                                 load_on_demand=True)
         if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'voice: {voice} voice_key: {voice_key} voice: {voice}')
-        return voice
+            MY_LOGGER.debug(f'raw_voice: {raw_voice} voice_key: {voice_key} '
+                            f'short_key: {voice_key.short_key}')
+            if raw_voice is None:
+                return None
+
+            if not isinstance(raw_voice, str):
+                MY_LOGGER.debug(f'voice is not str: {type(raw_voice)}\n '
+                                f'raw_voice: {raw_voice}')
+                raise ValueError(
+                        f'voice is not str type: {type(raw_voice)}: {raw_voice}')
+        return raw_voice
 
     @classmethod
-    def set_voice(cls, voice: str, engine_key: ServiceID | None) -> None:
+    def set_voice(cls, voice: str | List[str], engine_key: ServiceID | None) -> None:
+        """
+               sets the vg_id used by the TTS engine to identify the current voice
+               The format of the voice is purely engine defined.
+        """
         if engine_key is None:
             engine_key = Settings.get_engine_key()
         voice_key: ServiceID = engine_key.with_prop(SettingProp.VOICE)
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'{voice_key} value: {voice}')
+            if not isinstance(voice, str):
+                MY_LOGGER.debug(f'voice is not str: {type(voice)}\n '
+                                f'voice: {voice}')
+                raise ValueError(f'voice is not str type: {type(voice)}: {voice}')
+        # voice_validator: StringListValidator | None
+        # voice_validator = SettingsMap.get_validator(voice_key)
+        # if voice_validator is not None:
+        #     voice_validator.set_value(voice)
+        #     return
+
         SettingsLowLevel.set_setting_str(voice_key, voice)
         return None
 
@@ -771,7 +803,7 @@ class Settings(SettingsLowLevel):
 
     """
         NON-PERSISTED SETTINGS
-        
+
         These settings are determined dynamically at run time. They are placed in
         this class because 1) Familiar location and mechanism
                            2) Reduces possibility of circular dependencies
@@ -849,7 +881,7 @@ class Settings(SettingsLowLevel):
     def getIntList(self, id: str) -> List[int]:
     def getNumberList(self, id: str) -> List[float]:
     def getStringList(self, id: str) -> List[str]:
-    
+
     def setBoolList(self, id: str, values: List[bool]) -> None:
     def setIntList(self, id: str, values: List[int]) -> None:
     def setNumberList(self, id: str, values: List[float]) -> None:

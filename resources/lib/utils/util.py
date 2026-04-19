@@ -144,7 +144,7 @@ def get_language_code() -> str:
 
         language = xbmc.getInfoLabel('System.Language')
         if MY_LOGGER.isEnabledFor(DEBUG_V):
-            MY_LOGGER.debug_v('locale: ' + language_code)
+            MY_LOGGER.debug_v('locale_id: ' + language_code)
             MY_LOGGER.debug_v('System.Language:' + language)
     return language_code
 
@@ -154,7 +154,7 @@ def configuring_settings():
 
 
 def runInThread(func: Callable, args: List[Any] = None, name: str = '?',
-                delay: float = 0.0, **kwargs) -> None:
+                delay: float = 0.0, **kwargs) -> Any: # Returns Threading.thread
     """
     Runs a function in a thread. The thread catches and reports exceptions,
     handles thread garbage collection as well as unhandled AbortException
@@ -176,6 +176,7 @@ def runInThread(func: Callable, args: List[Any] = None, name: str = '?',
         MY_LOGGER.debug(f'util.runInThread starting thread {name}')
     thread.start()
     GarbageCollector.add_thread(thread)
+    return thread
 
 
 def thread_wrapper(*args, **kwargs):

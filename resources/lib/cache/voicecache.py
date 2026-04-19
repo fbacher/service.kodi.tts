@@ -36,7 +36,41 @@ MY_LOGGER = BasicLogger.get_logger(__name__)
 
 class VoiceCache:
     """
+    The VoiceCache is primarily to provide long-term caching of TTS (voiced) files.
+    Generation of TTS can be expensive, expecially for high quality speech. Caching
+    reduces the cost and, perhaps more importantly, reduces the latency of the speech.
 
+    A secondary purpose of the VoiceCache is to generate paths for temporary voice files.
+    A number of these files will still be used even if caching is disabled, but they are
+    short-lived.
+
+    The cache is located in user-defined location and by default is:
+    <app_data>/cache directory. For simplicty, this referred to as <top_of_cache>.
+    The full path to a phrase is:
+      <top_of_cache>/<engine_id>/<kodi_lang>/<kodi_country>/<voice_id>. Almost always,
+      the voice_id contains the locale (accent) of the voice. The voice frequently
+      has a speaker's id and perhaps some other, engine specific identification. In the
+      case of Piper, a voice belongs to a group of voices (sometimes with only one
+      voice in the group). For Piper, the group is a collection of voices which are
+      very similar, sharing core data that allows the TTS engine to produce any voice
+      in a group without reloading the engine and speech data whenever the voice is
+      changed. This is highly advantagous for supporting different voices for
+      different purposes.
+
+    voice_id is a simple string. Each engine has a lot of freedom to encode a voice
+    into this string. For examples, See PiperVoiceId and GoogleVoiceId.
+
+    Note that a voice's accent is frequently described in locale-like ways. This
+    makes sense, since an accent depends on location as well as written text. Therefore,
+    you will notice that a cache path will frequently have something like:
+    ...en/us/en-US/... in its path. The /en/us/ prefix is for Kodi's locale, which
+    controls the text messages that need to be voiced. 'en-US' is the google voice-id
+    that has a United States English accent. You could just as easily have a British
+    or Indian voice, which would produce a cache file of something like ...en/us/en-GB/...
+    This can be confusing at first, but it allows the cache to support multiple voices
+    and Kodi locales at a time. This simplifies a user experimenting with different
+    voices, engines and locales. It also simplifies compacting the cache by deleting
+    unused voices, etc.
     """
     ignore_cache_count: int = 0
     # Key is full path to directory containing .txt files to generate .voice files
@@ -166,7 +200,7 @@ class VoiceCache:
 
     def get_path_to_voice_file(self, phrase: Phrase,
                                use_cache: bool = False,
-                               delete_tmp: bool = False) -> CacheEntryInfo:
+                               delete_tmp: bool = False) -> CacheEntryInfo | None:
         """
         Determines where audio and related information for the given phrase is, or
         should be stored. If use_cache is True, then audio and a copy of the
@@ -185,7 +219,7 @@ class VoiceCache:
         sets the audio file type which is created or consumed by that service.
 
         @param phrase: Contains the text and related information for the conversion
-        @param use_cache: True a path in the cache is to be returned, otherwise
+        @param use_cache: When True a path in the cache is to be returned, otherwise
                         a path to a temp-file will be created
         @param delete_tmp: If True, then delete any already existing temporary
                            (non-cached) audio files.
@@ -196,7 +230,7 @@ class VoiceCache:
                             'use_cache,'
                             'audio_exists',
                             'text_exists, audio_suffixes')
-        final_audio_path is the final path for the voiced phrase. Depending
+        final_audio_path is the final path for the voiced phrase. Depending on
            use_cache, the path will either be in the cache or in a temp
            directory.
         temp_voice_path is a temporay path used just during generation of the audio.
@@ -307,7 +341,7 @@ class VoiceCache:
             cache_top: Path = self.cache_directory
             lang_dir: str = phrase.lang_dir
             territory_dir: str = phrase.territory_dir
-            voice_dir: str = phrase.voice_dir
+            voice_dir: str = str(phrase.voice_dir)
             filename: str = self.get_hash(phrase.text)
             subdir: str = filename[0:2]
             cache_dir: str
@@ -318,7 +352,7 @@ class VoiceCache:
                                   f'voice_dir: {voice_dir} '
                                   f'subdir: {subdir}')
             # TODO: Fix HACK
-            # HACK for when a phrase comes in when locale fields are not set up.
+            # HACK for when a phrase comes in when locale_id fields are not set up.
             # Seems to occur when caching has just been turned on.
             if lang_dir is None or lang_dir == '':
                 lang_dir = 'missing_lang'
@@ -340,6 +374,7 @@ class VoiceCache:
                 if final_audio_path.stat().st_size < 1000:
                     audio_exists = False
                     try:
+                        MY_LOGGER.debug(f'unlink: {final_audio_path}')
                         final_audio_path.unlink(missing_ok=True)
                     except Exception:
                         MY_LOGGER.exception('')
@@ -385,8 +420,12 @@ class VoiceCache:
                         audio_good: bool
                         if audio_exists:
                             audio_good = file.stat().st_size > 1000
-                            if not audio_good:
+                            if audio_good:
+                                MY_LOGGER.debug(
+                                    f'Audio file exists, no need to regenerate: {file}')
+                            else:
                                 try:
+                                    MY_LOGGER.debug(f'unlink bad audio: {file}')
                                     file.unlink(missing_ok=True)
                                     audio_exists = False
                                 except PermissionError:
@@ -454,6 +493,7 @@ class VoiceCache:
 
             if delete_if_exists and tmp_path.exists():
                 try:
+                    MY_LOGGER.debug(f'unlink tmp_path:{tmp_path}')
                     tmp_path.unlink(missing_ok=True)
                 except:
                     MY_LOGGER.exception(f'Can not delete tmp_path: {tmp_path}')
@@ -603,7 +643,8 @@ class VoiceCache:
                     with text_file.open('wt', encoding='utf-8') as f:
                         f.write(text)
                 else:
-                    if text_file.stat().st_size < len(phrase.text):
+                    if text_file.stat().st_size != len(phrase.text):
+                        MY_LOGGER.debug(f'unlink text: {text_file}')
                         text_file.unlink(missing_ok=True)
                 if not text_file.is_file():
                     with text_file.open('wt', encoding='utf-8') as f:

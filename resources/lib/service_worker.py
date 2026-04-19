@@ -819,7 +819,7 @@ class TTSService:
                 MY_LOGGER.debug(f'EXPIRED just before SayText in FallbackTTS')
 
     @classmethod
-    def start_engine(cls, engine_id: str,
+    def start_engine(cls, engine_id: EngineType,
                      player_id: str | PlayerType | None) -> BaseServices:
         """
         Handles starting an engine, including failures
@@ -829,7 +829,7 @@ class TTSService:
         :returns: engine_id of successfully started engine
         :raises ServiceUnavailable: If unable to start engine
         """
-        #  MY_LOGGER.debug(f'engine_id: {engine_id} player_id: {player_id}')
+        MY_LOGGER.debug(f'engine_id: {engine_id} player_id: {player_id}')
         new_active_backend: BaseServices | None = None
         engine_key: ServiceID | None = None
         try:

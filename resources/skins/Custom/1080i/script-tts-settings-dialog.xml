@@ -1146,7 +1146,7 @@
                <topic name="default_button" rank="4">
                   <outer_topic>ok_cancel_group</outer_topic>
                   <container_topic>ok_cancel_group</container_topic>
-=                  <hint_text>Select to set current engine settings to default values</hint_text>
+                  <hint_text>Select to set current engine settings to default values</hint_text>
                   <topic_left>cancel_button</topic_left>
                   <topic_right>ok_button</topic_right>
                   <topic_up/>

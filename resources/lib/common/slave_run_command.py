@@ -102,6 +102,7 @@ class SlaveRunCommand:
             try:
                 self.process.poll()
                 if self.process.returncode is not None:
+                    Monitor.unregister_abort_listener(listener=self.abort_listener)
                     if MY_LOGGER.isEnabledFor(DEBUG):
                         MY_LOGGER.debug(f'RC: {self.process.returncode}')
                     return
@@ -112,6 +113,7 @@ class SlaveRunCommand:
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'slave process.kill')
                 self.process.kill()
+                Monitor.unregister_abort_listener(listener=self.abort_listener)
                 killed = True
             except:
                 MY_LOGGER.exception('')

@@ -7,7 +7,9 @@ import langcodes
 from backends.audio.sound_capabilities import ServiceType
 from backends.base import SimpleTTSBackend
 from backends.no_engine_settings import NoEngineSettings
-from backends.settings.language_info import LanguageInfo
+from backends.settings.engine_voice import EngineVoice
+from backends.settings.engine_voice_manager import EngineVoiceManager
+from backends.settings.lang_utils import LangUtils
 from backends.settings.service_types import ServiceID, Services
 from backends.settings.settings_map import Status
 from backends.transcoders.trans import TransCode
@@ -47,6 +49,7 @@ class NoEngine(SimpleTTSBackend):
         super().__init__(*args, **kwargs)
         clz = type(self)
         clz.voice_cache = VoiceCache(clz.service_key, reset_engine_each_call=False)
+        clz.load_voices()
         if not clz._initialized:
             clz._initialized = True
             BaseServices.register(self)
@@ -174,21 +177,32 @@ class NoEngine(SimpleTTSBackend):
         return
 
     @classmethod
-    def load_languages(cls):
+    def load_voices(cls):
         """
-        Discover eSpeak's supported languages and report results to
-        LanguageInfo.
+        Discover engine's supported languages
         :return:
         """
+        _, kodi_locale, _, ietf_lang = LangUtils.get_kodi_locale_info()
+
+        EngineVoiceManager.add_language(engine_key=NoEngine.service_key,
+                                        ietf_tag=ietf_lang.to_tag(),
+                                        engine_lang_id=ietf_lang.to_tag())
         return
+
+    @classmethod
+    def get_voice(cls) -> EngineVoice:
+        e_voice: EngineVoice = EngineVoiceManager.get_e_voice(cls.service_key)
+        return e_voice
 
     @classmethod
     def settingList(cls, setting, *args) -> Tuple[List[Choice], str]:
         return [], ''
 
+    '''
     @classmethod
     def get_default_language(cls) -> str:
         return ''
+    '''
 
     @classmethod
     def get_voice_id_for_name(cls, name):
@@ -235,12 +249,12 @@ class NoEngine(SimpleTTSBackend):
                                    f'voice: {phrase.voice}\n'
                                    f'lang_dir: {phrase.lang_dir}\n')
             locale: str = phrase.language  # IETF format
-            _, kodi_locale, _, ietf_lang = LanguageInfo.get_kodi_locale_info()
-            # MY_LOGGER.debug(f'orig Phrase locale: {locale}')
+            _, kodi_locale, _, ietf_lang = LangUtils.get_kodi_locale_info()
+            # MY_LOGGER.debug(f'orig Phrase locale_id: {locale_id}')
             if locale is None:
                 locale = kodi_locale
             ietf_lang: langcodes.Language = langcodes.get(locale)
-            # MY_LOGGER.debug(f'locale: {locale}')
+            # MY_LOGGER.debug(f'locale_id: {locale_id}')
             phrase.set_lang_dir(ietf_lang.language)
             phrase.set_territory_dir('')
         return

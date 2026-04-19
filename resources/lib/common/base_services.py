@@ -107,8 +107,12 @@ class BaseServices(IServices):
     @classmethod
     def get_service(cls, service_key: ServiceID) -> ForwardRef('BaseServices'):
         # MY_LOGGER.debug(f'service_key: {service_key} type: {type(service_key)}')
+
+        service: BaseServices | None = None
+        if service_key is None:
+            raise ServiceUnavailable(service_key=None, reason=Status.UNKNOWN,
+                                     active=False)
         key: str = service_key.service_key
-        service: BaseServices | None
         service = BaseServices.service_index.get(key, None)
 
         if service is None:

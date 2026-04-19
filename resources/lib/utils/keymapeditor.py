@@ -24,20 +24,44 @@ from common.system_queries import SystemQueries
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
 
-ACTIONS = (
-    ('REPEAT', 'f1'),
-    ('EXTRA', 'f2'),
-    ('ITEM_EXTRA', 'f3'),
-    ('STOP', 'f4'),
-    ('SETTINGS', 'f6'),
-    ('DISABLE', 'f12'),
-    ('VOL_UP', 'numpadplus mod="ctrl"'),
-    ('VOL_DOWN', 'numpadminus mod="ctrl"')
+# Default and keys. Strongly suggest not modifying these definitions but
+# modify ACTIONS_OVERRIDE below instead.
+
+ACTIONS_DEFAULT = (
+    ('REPEAT', 'f1'),  # Repeat previous voicing
+    ('EXTRA', 'f2'),  # Voice extra information about the current window
+    ('ITEM_EXTRA', 'f3'),  # Voice extra information related to focused item
+    ('STOP', 'f4'),  # Stop voicing current text
+    ('CONFIGURE', 'f6'),  # Open Kodi TTS Configure Dialog
+    ('TOGGLE_VOICING', 'f4 mod="ctrl"'),  # Toggle Voicing (TTS addon still running)
+    ('TOGGLE_ENABLED', 'f4 mod="alt"'),  # Toggle Enable/Disable TTS addon
+    ('VOL_UP', 'numpadplus mod="ctrl"'),  # Increase TTS Volume
+    ('VOL_DOWN', 'numpadminus mod="ctrl"'),  # Decrease TTS Volume
+    ('SPEED_UP', 'numpadplus mod="alt"'),  # Speed Up Voicing
+    ('SLOW_DOWN', 'numpadminus mod="alt"'),  # Slow Down Voicing
+    ('DUMP_THREADS', 'f11'),  # Dump the stack trace of all threads into debug log
+    ('TOGGLE_DEBUG', 'f11 mod="ctrl"')  # Toggle Debug Logging
 )
 
-BASIC_ACTIONS = (
-    ('DISABLE', 'f12'),
-)
+# To leave at default, omit entry for action
+# To override, specify a different key combination
+# To remove the action, specify an empty key
+ACTIONS_OVERRIDE = {
+}
+
+ACTIONS = {}
+
+BASIC_ACTIONS = {
+    'TOGGLE_ENABLED': 'f4'
+}
+
+for key, value in ACTIONS_DEFAULT:
+    if key not in BASIC_ACTIONS:
+        BASIC_ACTIONS[key] = ''
+
+for key, value in ACTIONS_DEFAULT:
+    if key not in ACTIONS:
+        ACTIONS[key] = value
 
 
 class Status(LabeledType):
@@ -202,15 +226,26 @@ def buildKeymap(defaults=False):  # TODO: Build XML with ElementTree?
 
 
 def editKeymap():
+    """
+         <!-- Dump the stack trace of all threads into the debug log -->
+         <DUMP_THREADS>NotifyAll(service.kodi.tts,DUMP_THREADS)</DUMP_THREADS>
+         <!-- Toggle Debug logging -->
+         <TOGGLE_DEBUG>NotifyAll(service.kodi.tts,TOGGLE_DEBUG)</TOGGLE_DEBUG>
+    """
     options = (
         ('Repeat Control ({0})', 'key.REPEAT'),
         ('Window Extra Info ({0})', 'key.EXTRA'),
         ('Item Extra Info ({0})', 'key.ITEM_EXTRA'),
         ('Stop Speech ({0})', 'key.STOP'),
-        ('Addon Settings ({0})', 'key.SETTINGS'),
-        ('Disable/Enable TTS Addon ({0})', 'key.DISABLE'),
+        ('Configure Settings ({0})', 'key.CONFIGURE'),
+        ('Toggle Voicing ({0})', 'key.TOGGLE_VOICING'),
+        ('Disable/Enable TTS Addon ({0})', 'key.TOGGLE_ENABLED'),
         ('Volume Up ({0})', 'key.VOL_UP'),
-        ('Volume Down ({0})', 'key.VOL_DOWN')
+        ('Volume Down ({0})', 'key.VOL_DOWN'),
+        ('Speed Up ({0})', 'key.SPEED_UP'),
+        ('Slow Down ({0})', 'key.SLOW_DOWN'),
+        ('Dump Threads ({0})', 'key.DUMP_THREADS'),
+        ('Toggle Debugging ({0})', 'key.TOGGLE_DEBUG')
     )
 
     while True:
