@@ -170,7 +170,7 @@ class Phrase:
         :param debug_info:
         :param debug_context: A debug string can be associated with a phrase to
                              aid in tracking down where originally generated
-        :param engine_key: ServiceID of the engine that this phrase is to voiced
+        :param engine_key: ServiceID of the engine voicing this phrase
         """
         clz = type(self)
         Monitor.exception_on_abort()
@@ -210,7 +210,7 @@ class Phrase:
         self.audio_type: AudioType | None = None
         self.language: str | None = language
         self.gender: str | None = gender
-        self.e_voice: EngineVoice | None = e_voice
+        self._e_voice: EngineVoice | None = e_voice
         self.lang_dir: str | None = lang_dir
         self.territory_dir: str | None = territory_dir
         self.voice_dir: Path | None = voice_dir
@@ -411,7 +411,7 @@ class Phrase:
         if text_id is None:
             self.text_id = None
         else:
-            self.text_id = hashlib.md5(text_id.encode('utf-8')).digest()
+            self.text_id = str(hashlib.md5(text_id.encode('utf-8')).digest())
 
     def compare_text_id(self, other_text_id: str | None) -> bool:
         if other_text_id is None:
@@ -425,7 +425,7 @@ class Phrase:
         clz = type(self)
         # self.debug_info = debug_info
         try:
-            stack_trace: List[Tuple[inspect.FrameInfo]] = inspect.stack()
+            stack_trace: List[inspect.FrameInfo] = inspect.stack()
             caller_frame: inspect.FrameInfo = stack_trace[context]
             filename = Path(caller_frame.filename).name
             lineno = caller_frame.lineno
@@ -693,15 +693,17 @@ class Phrase:
         return self.text == ''
 
     def is_voice_set(self) -> bool:
-        if self.e_voice is None:
+        if self._e_voice is None:
             return False
         return True
 
-    def set_e_voice(self, voice: EngineVoice) -> None:
-        self.e_voice = voice
+    @property
+    def e_voice(self) -> EngineVoice:
+        return self._e_voice
 
-    def get_e_voice(self) -> EngineVoice:
-        return self.e_voice
+    @e_voice.setter
+    def e_voice(self, voice: EngineVoice) -> None:
+        self._e_voice = voice
 
     def is_lang_territory_set(self) -> bool:
         if ((self.territory_dir is None or self.territory_dir == '')
@@ -895,7 +897,7 @@ class PhraseList(UserList):
                text_id: str | None = None,
                language: str | None = None,
                gender: str | None = None,
-               voice: str | None = None,
+               e_voice: EngineVoice | None = None,
                lang_dir: str | None = None,
                territory_dir: str | None = None,
                voice_dir: str | None = None) -> 'PhraseList':
@@ -918,8 +920,8 @@ class PhraseList(UserList):
                          applies to current engine
         :param gender: When None, then use current gender, otherwise voice phrase in
                        specified gender. One use is during language configuration.
-        :param voice:  When None, then use current voice. Otherwse, voice phrase
-                       using specified voice. One us is during language configuration.
+        :param e_voice:  When None, then use current voice. Otherwse, voice phrase
+                       using specified voice. One use is during language configuration.
                        Voice values are engine specific, so only applies to current
                        engine
         :param lang_dir: Part of the cache path is the 2-3 char IETF language
@@ -938,7 +940,7 @@ class PhraseList(UserList):
                                   pre_pause_ms=0,
                                   language=language,
                                   gender=gender,
-                                  voice=voice,
+                                  e_voice=e_voice,
                                   lang_dir=lang_dir,
                                   territory_dir=territory_dir,
                                   voice_dir=voice_dir

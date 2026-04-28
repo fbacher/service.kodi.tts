@@ -76,9 +76,9 @@ class GttsTestDriver:
             # GoogleData.country_code_country_tld # Dict[str, Tuple[str, str]]
             #                          ISO3166-1, <google tld>, <country name>
             """
-            The lang_variants table returns the different country codes that support
+            The lang_variants table returns the different country codes that support 
             a given language. The country codes are 3166-1 two letter codes and the
-            language codes are ISO 639-1
+            language codes are ISO 639-1 
             """
 
             # GoogleData.lang_variants # Dict[str, List[str]]

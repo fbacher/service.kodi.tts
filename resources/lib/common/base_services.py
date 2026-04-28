@@ -106,7 +106,8 @@ class BaseServices(IServices):
 
     @classmethod
     def get_service(cls, service_key: ServiceID) -> ForwardRef('BaseServices'):
-        # MY_LOGGER.debug(f'service_key: {service_key} type: {type(service_key)}')
+        MY_LOGGER.debug(f'service_key: {service_key} type: {type(service_key)}')
+        MY_LOGGER.debug(f'key: {service_key.service_key}')
 
         service: BaseServices | None = None
         if service_key is None:
@@ -124,6 +125,7 @@ class BaseServices(IServices):
         if not SettingsMap.is_available(service_key):
             raise ServiceUnavailable(service_key,
                                      reason=Status.FAILED, active=None)
+        MY_LOGGER.debug(f'service: type: {type(service)}')
         return service
 
     @classmethod

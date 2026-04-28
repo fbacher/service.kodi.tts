@@ -46,11 +46,11 @@ class Backends(BaseSettingsConstants):
     PICO_TO_WAVE_ID: Final[str] = Services.PICO_TO_WAVE_ID
     PIPER_ID: Final[str] = Services.PIPER_ID
     POWERSHELL_ID: Final[str] = Services.POWERSHELL_ID
-    RECITE_ID: Final[str] = Services.RECITE_ID
-    RESPONSIVE_VOICE_ID: Final[str] = Services.RESPONSIVE_VOICE_ID
+    # RECITE_ID: Final[str] = Services.RECITE_ID
+    # RESPONSIVE_VOICE_ID: Final[str] = Services.RESPONSIVE_VOICE_ID
     GOOGLE_ID: Final[str] = Services.GOOGLE_ID
     SPEECH_DISPATCHER_ID: Final[str] = Services.SPEECH_DISPATCHER_ID
-    EXPERIMENTAL_ENGINE_ID: Final[str] = Services.EXPERIMENTAL_ENGINE_ID
+    # EXPERIMENTAL_ENGINE_ID: Final[str] = Services.EXPERIMENTAL_ENGINE_ID
     SAPI_ID: Final[str] = Services.SAPI_ID
 
     ALL_ENGINE_IDS: List[str] = [
@@ -83,8 +83,8 @@ class Backends(BaseSettingsConstants):
         PICO_TO_WAVE_ID     : MessageId.CONVERT_PICO_TO_WAV,
         PIPER_ID            : MessageId.ENGINE_PIPER,
         POWERSHELL_ID       : MessageId.ENGINE_POWERSHELL,
-        RECITE_ID           : MessageId.ENGINE_RECITE,
-        RESPONSIVE_VOICE_ID : MessageId.ENGINE_RESPONSIVE_VOICE,
+        # RECITE_ID           : MessageId.ENGINE_RECITE,
+        # RESPONSIVE_VOICE_ID : MessageId.ENGINE_RESPONSIVE_VOICE,
         SAPI_ID             : MessageId.ENGINE_SAPI,
         SPEECH_DISPATCHER_ID: MessageId.ENGINE_SPEECH_DISPATCHER
     }
@@ -97,9 +97,9 @@ class Backends(BaseSettingsConstants):
         FESTIVAL_ID           : 'fest',
         FLITE_ID              : 'flite',
         NO_ENGINE_ID          : 'no_eng',
-        RESPONSIVE_VOICE_ID   : 'rv',
+        # RESPONSIVE_VOICE_ID   : 'rv',
         SPEECH_DISPATCHER_ID  : 'speechDisp',
-        EXPERIMENTAL_ENGINE_ID: 'ex',
+        # EXPERIMENTAL_ENGINE_ID: 'ex',
         GOOGLE_ID             : 'goo',
         PIPER_ID              : 'pip',
         POWERSHELL_ID         : 'pwrsh',
@@ -367,7 +367,7 @@ class PlayerMode(StrEnum):
     @property
     def translated_name(self) -> str:
         clz = type(self)
-        msg_look_up: Dict[ForwardRef('PlayerMode'), str] = {
+        msg_look_up: Dict['PlayerMode', str] = {
             clz.SLAVE_FILE: MessageId.PLAYER_MODE_SLAVE_FILE.get_msg(),
             clz.SLAVE_PIPE: MessageId.PLAYER_MODE_SLAVE_PIPE.get_msg(),
             clz.FILE: MessageId.PLAYER_MODE_FILE.get_msg(),
@@ -389,7 +389,7 @@ class PlayerMode(StrEnum):
         :param player_mode:
         :return:
         """
-        ranking: Dict[ForwardRef('PlayerMode'), int] = {
+        ranking: Dict['PlayerMode', int] = {
             cls.SLAVE_FILE  : 0,
             cls.SLAVE_PIPE  : 1,
             cls.FILE        : 2,
@@ -401,7 +401,7 @@ class PlayerMode(StrEnum):
 
     @classmethod
     def normalize(cls,
-                  modes: List[ForwardRef('PlayerMode')]
+                  modes: List['PlayerMode']
                   ) -> List[List[Any]]:
         """
         Build a ranked list of every possible PlayerModes, but with a bool indicating
@@ -429,9 +429,9 @@ class PlayerMode(StrEnum):
 
     @classmethod
     def intersection(cls,
-                     modes_1: List[ForwardRef('PlayerMode')],
-                     modes_2: List[ForwardRef('PlayerMode')]
-                     ) -> List[ForwardRef('PlayerMode')]:
+                     modes_1: List['PlayerMode'],
+                     modes_2: List['PlayerMode']
+                     ) -> List['PlayerMode']:
         normalized_1: List[List[Any]]
         normalized_1 = cls.normalize(modes_1)
         normalized_2: List[List[Any]]
@@ -442,7 +442,7 @@ class PlayerMode(StrEnum):
         # both lists are marked as having that PlayerMode from the
         # input lists.
 
-        intersection: List[ForwardRef('PlayerMode')] = []
+        intersection: List['PlayerMode'] = []
         for norm_1, norm_2 in zip(normalized_1, normalized_2):
             if norm_1[2] and norm_2[2]:
                 intersection.append(norm_1[0])
@@ -525,3 +525,18 @@ class Mode(Enum):
     FILEOUT = 0
     ENGINESPEAK = 1
     PIPE = 2
+
+
+class DialogSubj(StrEnum):
+    """
+    Informs DialogSettings what it is working on
+    """
+    ENGINE = 'engine'
+    GENDER = 'gender'
+    MODULE = 'module'
+    PLAYER = 'player'
+    PLAYER_MODE = 'player_mode'
+    V_OR_VG = 'v_or_vg'
+    VG = 'voice_group'
+    VOICE = 'voice'
+    VOLUME = 'volume'

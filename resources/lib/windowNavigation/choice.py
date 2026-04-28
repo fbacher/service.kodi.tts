@@ -1,4 +1,5 @@
 # coding=utf-8
+import logging
 from collections import UserList
 from typing import Any, Dict, ForwardRef, List
 
@@ -7,7 +8,7 @@ from backends.settings.engine_voice import EngineVoice
 from backends.settings.engine_voice_group import EngineVoiceGroup
 from backends.settings.engine_voice_manager import EngineVoiceManager
 from backends.settings.lang_utils import LangUtils
-from backends.settings.service_types import QualityType, ServiceID
+from backends.settings.service_types import EngineType, QualityType, ServiceID
 from common.logger import *
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
@@ -53,49 +54,73 @@ class Choices(UserList):
         if new_list is None:
             new_list = []
         super().__init__(new_list)
+        # Index to the default choice. Used when all else fails. Typically
+        # zero.
         self._default_idx: int = -1
+        # Index of the currently selected choice. Initially set to the value
+        # in settings.xml
         self._selected_idx: int = -1
+        # Index of the 'best' choice available, typically based on a trivial
+        # heuristic or personal bias. Ex: for a voice, a lot of weight is given
+        # to how close the locale of the voice matches Kodi's locale.
+        self._best_idx: int = -1
 
     @property
     def default_idx(self) -> int:
+        """
+           Index to the default choice. Used when all else fails. Typically
+           zero.
+        """
         return self._default_idx
 
     @default_idx.setter
     def default_idx(self, idx: int) -> None:
+        """
+           Index to the default choice. Used when all else fails. Typically
+           zero.
+        """
         if idx >= len(self):
-            raise ValueError(f'default_idx: {idx} must be less than length:'
-                             f' {len(self)}')
+            if len(self) == 0:
+                idx = -1
+            else:
+                raise ValueError(f'default_idx: {idx} must be less than length:'
+                                 f' {len(self)}')
         self._default_idx = idx
 
     @property
     def selected_idx(self) -> int:
+        """
+            Index of the currently selected choice. Initially set to the value
+            in settings.xml
+        """
         return self._selected_idx
+
+    @property
+    def best_idx(self) -> int:
+        """
+          Index of the 'best' choice available, typically based on a trivial
+          heuristic or personal bias. Ex: for a voice, a lot of weight is given
+          to how close the locale of the voice matches Kodi's locale.
+        """
+        return self._best_idx
+
+    @best_idx.setter
+    def best_idx(self, idx: int) -> None:
+        """
+          Index of the 'best' choice available, typically based on a trivial
+          heuristic or personal bias. Ex: for a voice, a lot of weight is given
+          to how close the locale of the voice matches Kodi's locale.
+        """
+        self._best_idx = idx
 
     def sort_by_engine_label(self) -> None:
         self.sort(key=lambda entry: entry.label)
 
     def sort_by_sort_key(self) -> None:
+        if MY_LOGGER.isEnabledFor(DEBUG_XV):
+            for choice in self:
+                MY_LOGGER.debug_xv(f'sort_key: {choice.sort_key}')
         self.sort(key=lambda entry: entry.sort_key)
-
-    def set_default_engine(self, previously_used_key: ServiceID | None = None,
-                           best_rated_key: ServiceID | None = None) -> None:
-        idx: int = 0
-        self.default_idx = -1
-        previously_used_idx: int = -1
-        best_rated_idx: int = -1
-        for choice in self:
-            if choice.engine_key == previously_used_key:
-                previously_used_idx = idx
-            if choice.engine_key == best_rated_key:
-                best_rated_idx = idx
-            idx += 1
-
-        if previously_used_idx != -1:
-            self.default_idx = previously_used_idx
-        elif best_rated_idx != -1:
-            self.default_idx = best_rated_idx
-        else:  # Should not occur, take first in list
-            self.default_idx = 0
 
     def dbg_print(self) -> str:
         result: str = ''
@@ -117,16 +142,43 @@ class EngineChoices(Choices):
     """
     TODO: Change to make Choices Generic
     """
-    def __init__(self, new_list: UserList['EngineChoice'] | List | None = None) -> None:
+
+    def __init__(self,
+                 new_list: UserList['EngineChoice'] | List['EngineChoice'] | None = None) -> None:
         if new_list is None:
-            new_list = []
+            new_list: List['EngineChoice'] = []
+
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            for choice in new_list:
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    if not isinstance(choice, EngineChoice):
+                        MY_LOGGER.debug(f'Expected EngineChoice not: {type(choice)}')
         super().__init__(new_list)
+
+    @property
+    def best_engine(self) -> 'EngineChoice':
+        best_idx = self.best_idx
+        engine_choice: EngineChoice = self[best_idx]
+        return engine_choice
+
+    @property
+    def default_engine(self) -> 'EngineChoice':
+        default_idx = self.default_idx
+        engine_choice: EngineChoice = self[default_idx]
+        return engine_choice
+
+    @property
+    def selected_engine(self) -> 'EngineChoice':
+        idx = self.selected_idx
+        engine_choice: EngineChoice = self[idx]
+        return engine_choice
 
 
 class VGChoices(Choices):
     """
     TODO: Change to make Choices Generic
     """
+
     @classmethod
     def get_vg_choices(cls, engine_key: ServiceID) -> 'VGChoices':
         """
@@ -145,11 +197,13 @@ class VGChoices(Choices):
     def add(cls, engine_key: ServiceID,
             selected_vg_idx: int = -1,
             default_vg_idx: int = -1,
-            new_list: UserList['VGChoice'] | List['VGChoice'] | None = None) -> 'VGChoices':
+            new_list: UserList['VGChoice'] | List[
+                'VGChoice'] | None = None) -> 'VGChoices':
         vg_choices: VGChoices | None
         vg_choices = ChoiceDict.vg_choices_for_engine_id.get(engine_key)
         if vg_choices is None:
             vg_choices = VGChoices(engine_key, selected_vg_idx, default_vg_idx, new_list)
+            vg_choices: VGChoices
         return vg_choices
 
     def __init__(self, engine_key: ServiceID,
@@ -158,13 +212,19 @@ class VGChoices(Choices):
                  new_list: UserList['VGChoice'] | List['VGChoice'] | None = None) -> None:
         if new_list is None or len(new_list) == 0:
             raise ValueError('Empty list of voices')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            for item in new_list:
+                if not isinstance(item, VGChoice):
+                    MY_LOGGER.debug(f'Expected VGChoice not: {type(item)}')
         super().__init__(new_list)
+        self._best_vg_idx: int = -1
         self._selected_vg_idx: int = -1
         self._engine_key: ServiceID = engine_key
         self.selected_vg_idx = selected_vg_idx
         self.default_vg_idx: int = default_vg_idx
         ChoiceDict.vg_choices_for_engine_id[engine_key] = self
-        MY_LOGGER.debug(f'type should be VGChoices: {type(self)}')
+        if not isinstance(self, VGChoices):
+            MY_LOGGER.debug(f'type should be VGChoices: {type(self)}')
 
     @property
     def choices(self) -> 'VGChoices':
@@ -173,6 +233,14 @@ class VGChoices(Choices):
     @property
     def engine_key(self) -> ServiceID:
         return self._engine_key
+
+    @property
+    def best_vg_idx(self) -> int:
+        return self._best_vg_idx
+
+    @best_vg_idx.setter
+    def best_vg_idx(self, value: int) -> None:
+        self._best_vg_idx = value
 
     @property
     def selected_vg_idx(self) -> int:
@@ -190,6 +258,14 @@ class VGChoices(Choices):
         self._selected_vg_idx = value
 
     @property
+    def selected_vg_obj(self) -> 'VGChoice':
+        return self.choices[self.selected_vg_idx]
+
+    @property
+    def selected_v_obj(self) -> 'VoiceChoice':
+        return self.selected_vg_obj.selected_v_obj
+
+    @property
     def default_vg_idx(self) -> int:
         return self._default_vg_idx
 
@@ -203,42 +279,6 @@ class VGChoices(Choices):
             raise ValueError(f'trying to set default_vg_idx out of range '
                              f'{value} limit: {limit - 1}')
         self._default_vg_idx = value
-
-    '''
-    def deselect(self) -> None:
-        """
-        Deselects every VGroup belonging to this group of VGChoices.
-
-        Use deselect_vgs to deselect every VGroup for a specific engine, or all
-        engines.
-        """
-        for vg_choice in self:
-            vg_choice: VGChoice
-            vg_choice._deselect_voice()
-    '''
-
-    @classmethod
-    def deselect_vgs(cls, engine_key: ServiceID | None = None) -> None:
-        """
-        Deselects every VGroup belonging to a specifc engine
-        Does NOT alter selection of voices within a group.
-
-        :param engine_key: specifies which engine to deselect its VGroups,
-                           if None, the deselect for every engine.
-
-        """
-        engine_keys: List[ServiceID]
-        if engine_key is None:
-            engine_keys = list(ChoiceDict.vg_choices_for_engine_id.keys())
-        else:
-            engine_keys = [engine_key]
-
-        for eng_key in engine_keys:
-            eng_key: ServiceID
-            for vg_choice in ChoiceDict.vg_choices_for_engine_id[eng_key]:
-                vg_choice: VGChoice
-                MY_LOGGER.debug(f'Type should still be VGChoice: {type(vg_choice)}')
-                vg_choice._deselect_vg()
 
     def select_vg(self, voice_group: 'VGChoice') -> None:
         """
@@ -263,9 +303,6 @@ class VGChoices(Choices):
 
         self.selected_vg_idx = voice_group.choice_idx
 
-    def deselect_vg(self) -> None:
-        MY_LOGGER.debug(f'In VGChoices.deselect_vg')
-
     def dbg_print2(self) -> None:
         for choice in self:
             choice: VGChoice
@@ -276,9 +313,14 @@ class VoiceChoices(Choices):
     """
     TODO: Change to make Choices Generic
     """
+
     def __init__(self, new_list: UserList['VoiceChoice'] | List | None = None) -> None:
         if new_list is None:
             new_list = []
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            for item in new_list:
+                if not isinstance(item, VoiceChoice):
+                    MY_LOGGER.debug(f'Expected VoiceChoice not: {type(item)}')
         super().__init__(new_list)
 
 
@@ -286,7 +328,7 @@ class Choice:
     """
     Encapsulates information for making a settings choice.
 
-    Typicaly contains display_value, id and choice_index. May contain more
+    Typically, contains display_value, id and choice_index. May contain more
     items, as needed. By containing the choice variants here, the users of this
     class don't have to change whenever a new variant is is_required.
     """
@@ -313,7 +355,7 @@ class Choice:
     @property
     def label(self) -> str:
         MY_LOGGER.debug(f'Choice label: {self._label}')
-        return f'Choice label: |{self._label}|'
+        return f'{self._label}'
 
     @property
     def hint(self) -> str:
@@ -351,6 +393,7 @@ class Choice:
 
     def _set_sort_key(self, sort_key: str) -> None:
         self._sort_key = sort_key
+        MY_LOGGER.debug(f'sort_key: {sort_key}')
 
     @property
     def enabled(self) -> bool:
@@ -387,7 +430,7 @@ class EngineChoice(Choice):
     Encapsulates information for making an Engine choice.
     """
 
-    def __init__(self, label: str, value: str, choice_index: int = -1,
+    def __init__(self, label: str, value: EngineType, choice_index: int = -1,
                  sort_key: str = None, enabled: bool = True,
                  engine_key: ServiceID = None,
                  match_distance: int = 1000, hint: str = None,
@@ -400,7 +443,7 @@ class EngineChoice(Choice):
         :param value: value used in settings, etc.
         :param choice_index: When from a list of choices, this is its place in list.
         :param sort_key:  Key to use when sorting list
-        :param enabled:   Some settings may not be useable depending on other settings
+        :param enabled:   Some settings may not be usable depending on other settings
                           We want to include disabled choices to show a consistent list,
                           but marked in UI as disabled
         :param engine_key: Identifies which engine this setting is associated with
@@ -421,12 +464,32 @@ class EngineChoice(Choice):
                          engine_key=engine_key,
                          hint=hint,
                          match_distance=match_distance)
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            if lang is not None:
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    if not isinstance(lang, EngineLang):
+                        MY_LOGGER.debug(f'Expected EngineLang not {type(lang)}')
+            if voice is not None:
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    if not isinstance(voice, EngineVoice):
+                        MY_LOGGER.debug(f'Expected EngineVoice not {type(voice)}')
+
+            if new_voice is not None:
+                if MY_LOGGER.isEnabledFor(DEBUG):
+                    if not isinstance(new_voice, EngineVoice):
+                        MY_LOGGER.debug(f'Expected EngineVoice not {type(new_voice)}')
+        lang: EngineLang
+        voice: EngineVoice
         self.lang: EngineLang = lang
         self.voice: EngineVoice = voice
         if new_voice is not None:
             self.new_voice: EngineVoice = new_voice
         else:
             self.new_voice: EngineVoice = voice
+
+    @property
+    def label(self) -> str:
+        return f'{self._label}'
 
     @classmethod
     def dbg_print(cls, choices: EngineChoices) -> None:
@@ -508,6 +571,11 @@ class VGChoice(Choice):
         """
         vg_choice: VGChoice
         vg_choice = ChoiceDict.vg_by_uid.get(e_vg.uid)
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            if not isinstance(e_vg, EngineVoiceGroup):
+                MY_LOGGER.debug(f'Expected e_vg EngineVoiceGroup not {type(e_vg)}')
+            if not isinstance(v_choices, VoiceChoices):
+                MY_LOGGER.debug(f'Expected v_choices VoiceChoices not {type(v_choices)}')
         if vg_choice is None:
             vg_choice = VGChoice(e_vg, label,
                                  default_idx,
@@ -539,16 +607,8 @@ class VGChoice(Choice):
         :param v_choices: VoiceChoices to add to this VGChoice
         """
         engine_key = e_vg.engine_key
-        # super()._set_engine_key(engine_key)
-
         value = e_vg.engine_vg_id
-        MY_LOGGER.debug(f'Setting value to {value}')
-        # super()._set_value(value)
-
         match_distance = e_vg.locale_match
-        MY_LOGGER.debug(f'Setting match distance: {match_distance}')
-        # super()._set_match_distance(match_distance)
-
         kodi_ietf_tag = LangUtils.kodi_locale
         e_lang_uid: str = EngineLang.get_uid(e_vg.engine_key, kodi_ietf_tag)
         e_lang = EngineVoiceManager.get_eng_lang_by_uid(e_lang_uid)
@@ -559,6 +619,7 @@ class VGChoice(Choice):
         qual: str = f'{e_vg.voice_quality.ordinal:0d}'
         match: str = f'{match_distance:04d}'
         sort_key = f'{qual}:{match}:{label}'
+        #  MY_LOGGER.debug(f'sort_key: {sort_key}')
 
         super().__init__(label=label,
                          value=value,
@@ -572,26 +633,38 @@ class VGChoice(Choice):
         self.e_lang: EngineLang = e_lang
         self._selected: bool = False
         # Track which voice is selected, default is
+        self._best_v_idx: int = -1
         self._selected_v_idx: int = -1
-        self._default_voice_idx: int = -1
+        self._selected_v_obj: 'VoiceChoice | None' = None
+        self._default_v_idx: int = -1
         self._e_vg: EngineVoiceGroup = e_vg
         self.v_choices: VoiceChoices = v_choices
+        self._v_for_uid: Dict[str, VoiceChoice] = {}
         for v_choice in self.v_choices:
             v_choice: VoiceChoice
             v_choice.vg_choice = self
+            self._v_for_uid[v_choice.e_voice.uid] = v_choice
 
         self._uid: str = e_vg.uid
 
     @property
-    def default_voice_idx(self) -> int:
-        return self._default_voice_idx
+    def best_v_idx(self) -> int:
+        return self._best_v_idx
 
-    @default_voice_idx.setter
-    def default_voice_idx(self, idx: int = 0) -> None:
+    @best_v_idx.setter
+    def best_v_idx(self, idx: int) -> None:
+        self._best_v_idx = idx
+
+    @property
+    def default_v_idx(self) -> int:
+        return self._default_v_idx
+
+    @default_v_idx.setter
+    def default_v_idx(self, idx: int = 0) -> None:
         if idx >= len(self.v_choices):
             raise ValueError(f'default_voice_idx is out of range: {idx} max: '
                              f'{len(self.v_choices) - 1}')
-        self._default_voice_idx = idx
+        self._default_v_idx = idx
 
     def select_vg(self) -> None:
         """
@@ -599,66 +672,51 @@ class VGChoice(Choice):
         engine.
         """
         if not self._selected:
-            VGChoices.deselect_vgs()  # Deselect every VGChoice in this VGChoiceGroup
             self._selected = True
 
         # Do whatever is needed after a selection
         # Mark containing VoiceGroup so that when voiceGroup is displayed,
         # correct voice is displayed.
 
-    def select_voice(self, voice_id: int = -1) -> int:
+    def select_voice(self, v_idx: int = -1) -> int:
         """
         Select a Voice from this group. If voice_id is specified, then that
-        voice is selected, otherwsie if self.selected_v_idx is not -1, then
+        voice is selected, otherwise, if self.selected_v_idx is not -1, then
         that voice is selected, otherwise, the default voice is selected.
 
-        :param voice_id: index of VoiceChoices to select.
+        :param v_idx: index of VoiceChoices to select.
         :return: Voice index that was actually selected
         """
         if not self._selected:
             self._selected = True
 
         voice_to_select_idx: int = 0
-        MY_LOGGER.debug(f'vg: {self._label} voice_id: {voice_id} selected_v_idx:'
-                        f' {self._selected_v_idx}'
-                        f'default_voice_idx: {self._default_voice_idx}\n'
-                        f'')
-        if voice_id != -1:
-            voice_to_select_idx = voice_id
+        if MY_LOGGER.isEnabledFor(DEBUG_XV):
+            MY_LOGGER.debug_xv(f'vg: {self._label} voice_id: {v_idx} selected_v_idx:'
+                               f' {self._selected_v_idx} '
+                               f'default_voice_idx: {self._default_v_idx}\n')
+        if v_idx != -1:
+            voice_to_select_idx = v_idx
         elif self._selected_v_idx != -1:
             voice_to_select_idx = self._selected_v_idx
-        elif self.default_voice_idx != -1:
-            voice_to_select_idx = self.default_voice_idx
+        elif self.default_v_idx != -1:
+            voice_to_select_idx = self.default_v_idx
+        MY_LOGGER.debug(f'selected_v_idx: {voice_to_select_idx}')
         self.selected_v_idx = voice_to_select_idx
         default_voice_choice: VoiceChoice = self.v_choices[voice_to_select_idx]
         default_voice_choice.select()
         return voice_to_select_idx
 
-    def deselect_vg(self) -> None:
-        """
-        Deselects every VoiceGroup for this engine
-        """
-        VGChoices.deselect_vgs(self.engine_key)
+    @property
+    def selected_v_obj(self) -> 'VoiceChoice':
+        return self.v_choices[self._selected_v_idx]
 
-    def deselect_voice(self) -> None:
-        """
-        Deselects every voice in this Voice Group.
-        May select default_voice in its place
-        """
-        pass
-        # self._deselect_voice()
+    # @selected_v_obj.setter
+    # def selected_v_obj(self, v_obj: 'VoiceChoice') -> None:
+    #     self._selected_v_obj = v_obj
 
-    # def _deselect_voice(self) -> None:
-    #     for v_choice in self.v_choices:
-    #        v_choice._deselect()
-
-    def _deselect_vg(self) -> None:
-        """
-        Deselects this VoiceGroup.
-        """
-        if self._selected:
-            MY_LOGGER.debug(f'Deselecting {self.label}')
-            self._selected = False
+    def v_for_uid(self, uid: str) -> 'VoiceChoice | None':
+        return self._v_for_uid.get(uid)
 
     def dbg_print2(self) -> None:
         e_vg: EngineVoiceGroup = self.e_vg
@@ -685,57 +743,62 @@ class VGChoice(Choice):
 
     @property
     def selected_v_idx(self) -> int:
-        #  MY_LOGGER.debug(f'previous_v_idx: {self._previous_v_idx}'
+        #  MY_LOGGER.debug(f'selected_v_idx: {self._selected_v_idx}'
         #                  f' group: {self._label}')
         if self._selected_v_idx < 0:
-            self._selected_v_idx: int = self.select_voice(voice_id=self._selected_v_idx)
+            self._selected_v_idx: int = self.select_voice(v_idx=self._selected_v_idx)
         return self._selected_v_idx
 
     @selected_v_idx.setter
     def selected_v_idx(self, value: int) -> None:
-        MY_LOGGER.debug(f'Setting previous_v_idx to {value} group {self._label}')
+        """
+        Sets the selected voice index. Also sets the selected_v_obj
+        Note the initial selected voice is the currently configured voice
+
+        """
+        MY_LOGGER.debug(f'VGChoice.Setting selected_v_idx to {value} VGroup:'
+                        f' {self._label}')
         if value >= len(self.v_choices):
-            raise ValueError(f'Setting previous_v_idx out of RANGE. \n'
+            raise ValueError(f'Setting selected_v_idx out of RANGE. \n'
                              f'Value given: {value} # voices: {len(self.v_choices)}')
         self._selected_v_idx = value
+        MY_LOGGER.debug(f'Just set _selected_v_idx')
 
-    def set_selected_ev_idx(self, e_voice_id: str) -> int:
+    def set_selected_ev_id(self, e_voice_id: str) -> int:
         """
         Selects a particular voice within this group of voices.
 
-        Used to mark which is the default voice
         :param e_voice_id: Identifies the voice to select
         :return: VGChoice index of voice identified by e_voice_id
         """
-        idx: int = 0
-        for voice in self.v_choices:
-            voice: VoiceChoice
-            MY_LOGGER.debug(f'idx: {id} e_voice_id: {voice.e_voice.uid}'
-                            f' voice: {voice}')
-            if voice.e_voice.uid == e_voice_id:
-                self.selected_v_idx = idx
-                MY_LOGGER.debug(f'Selected ev_idx: {idx} group: {self.label}'
-                                f' voice_id:{e_voice_id} ev_uid: {voice.e_voice.uid}')
-                break
-            idx += 1
-        return idx
-
-    def set_label(self, label: str) -> None:
-        """
-        Changes the label of the choice. Used when VGChoice's
-        """
-        MY_LOGGER.debug(f'Setting label to {label}')
-        self._label = label
+        v_choice: VoiceChoice | None = self.v_for_uid(e_voice_id)
+        if v_choice is None:
+            raise ValueError(f'No VoiceChoice for e_voice_id: {e_voice_id} '
+                             f'vg: {self.label}')
+        MY_LOGGER.debug(f'set_selected_ev_id: {v_choice.choice_idx}')
+        self.selected_v_idx = v_choice.choice_idx
+        MY_LOGGER.debug(f'Selected voice: {self.selected_v_idx} group: {self.label}'
+                        f' voice_id:{e_voice_id} ev_uid: {v_choice.e_voice.uid}')
+        return v_choice.choice_idx
 
     @property
     def label(self) -> str:
-        MY_LOGGER.debug(f'selected_v_idx: {self._selected_v_idx}' 
-                        f' choice_idx {self.choice_idx}')
+        if MY_LOGGER.isEnabledFor(DEBUG_XV):
+            MY_LOGGER.debug_xv(f'selected_v_idx: {self._selected_v_idx}'
+                               f' choice_idx {self.choice_idx}')
         self.select_voice()
         selected_voice: VoiceChoice = self.v_choices[self.selected_v_idx]
         #  return selected_voice._label
         new_label: str = self._e_vg.full_vg_label(selected_voice.e_voice.e_voice_id)
         return new_label
+
+    @label.setter
+    def label(self, label: str) -> None:
+        """
+        Changes the label of the choice. Used when VGChoice's
+        """
+        MY_LOGGER.debug(f'Setting label to {label}')
+        self._label = label
 
     @classmethod
     def dbg_print(cls, choices: VGChoices) -> None:
@@ -764,9 +827,8 @@ class VGChoice(Choice):
             result = f'VGChoice: {super().__str__()}'
         result = (f'{result}\n'
                   f'e_lang: {self.e_lang}\n'
-                  f'previous_v_idx: {self.selected_v_idx}\n'
-                  f'e_vg: {self.e_vg}\n'
-                  f'voice_choices: {self.v_choices}')
+                  f'selected_v_idx: {self.selected_v_idx}\n'
+                  f'e_vg: {self.e_vg}\n')
         return result
 
     def __rpr__(self) -> str:
@@ -791,23 +853,24 @@ class VoiceChoice(Choice):
         :param e_voice: EngineVoice
         :param e_vg: Voice Group that this voice is a member of
         :param label: User-friendly, translated label
+        :param choice_idx: Index into parent VGroup's for this voice
         :param hint: User-friendly, translated hint
-        :param choice_idx: When from a list of choices, this is its place in list.
-        :param enabled:   Some settings may not be useable depending on other settings
+        :param enabled:   Some settings may not be usable depending on other settings
                           We want to include disabled choices to show a consistent list,
                           but marked in UI as disabled
-        # :param engine_key: Identifies which engine this setting is associated with
-        # :param match_distance: for language related settings. Represents how close
-        #                        this choice is to the desired language. For example,
-        #                        a voice for en-GB is not as close to en-US as a
-        #                        en-US one, but close enough to use. Comes from
-        #                        langcodes.
         """
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            if not isinstance(e_voice, EngineVoice):
+                MY_LOGGER.debug(f'Expected e_voice EngineVoice not {type(e_voice)}')
+            if not isinstance(e_vg, EngineVoiceGroup):
+                MY_LOGGER.debug(f'Expected v_choices EngineVoiceGroup not {type(e_vg)}')
+
         voice_choice = ChoiceDict.voice_by_uid.get(e_voice.uid, None)
         if voice_choice is not None:
             MY_LOGGER.debug(f'v_choice already exists: {voice_choice.label}')
         else:
-            voice_choice = VoiceChoice(e_voice, e_vg, label, choice_idx, enabled, hint)
+            voice_choice = VoiceChoice(e_voice, e_vg, label, choice_idx=choice_idx,
+                                       enabled=enabled, hint=hint)
             ChoiceDict.voice_by_uid[e_voice.uid] = voice_choice
         return voice_choice
 
@@ -821,9 +884,9 @@ class VoiceChoice(Choice):
         :param e_voice: EngineVoice
         :param e_vg: Voice Group that this voice is a member of
         :param label: User-friendly, translated label
+        :param choice_idx: Index into parent VGroup's for this voice
         :param hint: User-friendly, translated hint
-        :param choice_idx: When from a list of choices, this is its place in list.
-        :param enabled:   Some settings may not be useable depending on other settings
+        :param enabled:   Some settings may not be usable depending on other settings
                           We want to include disabled choices to show a consistent list,
                           but marked in UI as disabled
         # :param engine_key: Identifies which engine this setting is associated with
@@ -851,20 +914,20 @@ class VoiceChoice(Choice):
         # Less is better
         qual: str = f'{v_quality.ordinal:0d}'
         match: str = f'{match_distance:04d}'
-        sort_key = f'{qual}:{match}{label}'
+        sort_key = f'{qual}:{match}:{label}'
+        #  MY_LOGGER.debug(f'sort_key: {sort_key}')
 
         super().__init__(label=label,
                          value=value,
-                         choice_idx=choice_idx,
                          sort_key=sort_key,
                          enabled=enabled,
+                         choice_idx=choice_idx,
                          engine_key=engine_key,
                          hint=hint,
                          match_distance=match_distance)
 
-        self._vg_choice: VGChoice | None = None
+        self._vg_choice: VGChoice = None
         self._e_lang: EngineLang = e_lang
-        #  self._selected: bool = False
         self._e_vg: EngineVoiceGroup = e_vg
         self._e_voice: EngineVoice = e_voice
         self._enabled: bool = enabled
@@ -876,7 +939,8 @@ class VoiceChoice(Choice):
     @property
     def label(self) -> str:
         new_label: str = self._e_voice.full_voice_label()
-        MY_LOGGER.debug(f'VoiceChoice label: {new_label}')
+        if MY_LOGGER.isEnabledFor(DEBUG_XV):
+            MY_LOGGER.debug_xv(f'VoiceChoice label: {new_label}')
         return new_label
 
     @label.setter
@@ -890,40 +954,26 @@ class VoiceChoice(Choice):
 
     def select(self) -> None:
         """
-        Selects this voice, as well as any containing Voice Group. Deselects
-        every other voice in this VoiceGroup.
-
-        Only one voice in a voiceGroup can be selected
-        Only one VoiceGroup can be selected
-        When a voice is selected, it's voiceGroup is also selected.
-        Deselecting a VoiceGroup does not deselect any voices.
-        When a VoiceGroup is selected, any selected Voice within will then appear
-        as selected.
+        Selection of voices is tracked by the parent VoiceGroup.
         """
+        MY_LOGGER.debug(f'VoiceChoice.select: {self.choice_idx}')
         self.vg_choice.selected_v_idx = self.choice_idx
-
-        # if not self._selected:
-        #     self.vg_choice.deselect_voice()  # Deselects all voices
-        #     self._selected = True      # Select this voice
-        #     self.vg_choice.selected_v_idx = self.choice_idx
-        # Do any action after a selection
-
-    def deselect(self) -> None:
-        """
-        Deselects this voice, reselects the default VoiceChoice in this VoiceGroup.
-        """
-        self.vg_choice.deselect_voice()
-
-    # def _deselect(self) -> None:
-    #     self._selected = False
-    #     self._selected = False
 
     @property
     def vg_choice(self) -> VGChoice:
+        """
+        References parent VoiceGroup
+        """
         return self._vg_choice
 
     @vg_choice.setter
     def vg_choice(self, new_vg_choice: VGChoice) -> None:
+        if self._vg_choice is not None:
+            raise ValueError(f'vg_choice already exists: {self._vg_choice.label}')
+
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            if not isinstance(new_vg_choice, VGChoice):
+                MY_LOGGER.debug(f'Expected e_voice VGChoice not {type(new_vg_choice)}')
         self._vg_choice = new_vg_choice
 
     @property
@@ -994,6 +1044,8 @@ class VoiceChoice(Choice):
 
 class ChoiceDict:
     # Engine's ServiceID gives Dict[vg_id] of all of its VoiceGroups
+
+    e_choices_for_engine_id: EngineChoices = []
 
     vg_choices_for_engine_id: Dict[ServiceID, VGChoices] = {}
 

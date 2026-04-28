@@ -45,7 +45,7 @@ class EngineVoice(IEngineVoice):
     all_voices_loaded: bool = False
     _number_of_voices: int = 0
     # Map to all voices. First index is engine_id, second is voice.get_uid()
-    _voice_by_engine: Dict[str, Dict[str, ForwardRef('EngineVoice')]] = {}
+    _voice_by_engine: Dict[str, Dict[str, 'EngineVoice']] = {}
 
     """
      The VoiceGroup/voice model was adopted from Piper. A VoiceGroup is a collection 
@@ -67,7 +67,6 @@ class EngineVoice(IEngineVoice):
                  e_voice_id: str,
                  engine_vg_id: str | None = None,
                  voice_quality: QualityType = QualityType.UNKNOWN,
-                 voice_quality_label: str = '',
                  voice_label: str = None,
                  cache_path_segment: Path | None = None) -> None:
 
@@ -98,20 +97,20 @@ class EngineVoice(IEngineVoice):
         self._e_voice_id: str = e_voice_id
         self._engine_vg_id: str | None = engine_vg_id
         self._voice_quality: QualityType = voice_quality
-        self._voice_quality_label: str = voice_quality_label
         self._gender_label: str | None = None
         self._voice_label: str = voice_label
         self._voice_uid: str | None = None
         if cache_path_segment is None:
             cache_path_segment = f'{engine_vg_id}-{e_voice_id}'
         self._cache_path_segment: Path = Path(cache_path_segment)
-        MY_LOGGER.debug(f'cache_path_segment: {self._cache_path_segment} '
-                        f'engine_key: {engine_key}'
-                        f'engine_vg_id: {engine_vg_id} e_voice_id: '
-                        f'{e_voice_id} voice_label: {self.voice_label}')
+        if MY_LOGGER.isEnabledFor(DEBUG_XV):
+            MY_LOGGER.debug_xv(f'cache_path_segment: {self._cache_path_segment} '
+                               f'engine_key: {engine_key} '
+                               f'engine_vg_id: {engine_vg_id} e_voice_id: '
+                               f'{e_voice_id} voice_label: {self.voice_label}')
 
-        if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'{self}')
+        # if MY_LOGGER.isEnabledFor(DEBUG):
+        #     MY_LOGGER.debug(f'{self}')
 
     @property
     def engine_key(self) -> ServiceID:
@@ -143,7 +142,7 @@ class EngineVoice(IEngineVoice):
 
     @property
     def voice_quality_label(self) -> str:
-        return self._voice_quality_label
+        return self._voice_quality.label
 
     @property
     def voice_label(self) -> str:
@@ -154,31 +153,34 @@ class EngineVoice(IEngineVoice):
         """
         return self._voice_label
 
-    def full_voice_label(self, with_group: bool = False) -> str:
+    def full_voice_label(self, e_vg: IEngineVoiceGroup | None = None,
+                         with_group: bool = False) -> str:
         """
         Gets user-friendly label for the voice
 
+        :param e_vg: EngineVoiceGroup reference for given voice. If None, will
+                     look it up
         :param with_group: If True, then return label including the group info,
                            Otherwise, just give voice information.
 
         :return: desired label
         """
-        if with_group:
+        if e_vg is None:
             e_vg: IEngineVoiceGroup = IEngineVoiceManager.get_vg(self._engine_vg_id,
                                                                  self.engine_key)
+        if with_group:
             if e_vg.has_single_voice:
-                label = (f'Voice: {self.voice_label}  '
-                         f'{self.voice_quality.label} Quality   '
-                         f' {e_vg.lang_tag}')
+                label = (f'{self.voice_label},  {e_vg.lang_tag}, '
+                         f'{self.voice_quality_label} Quality')
             else:
-                label = (f'Voice {self.voice_label} Group:  {e_vg.vg_name}   '
-                         f'{self.voice_quality.label} Quality   '
-                         f' {e_vg.lang_tag}   '
-                         f'{len(e_vg.voices)} voices')
+                label = (f'{e_vg.vg_name} / {self.voice_label},  '
+                         f'({len(e_vg.voices)} Voices {e_vg.lang_tag}), '
+                         f'{self.voice_quality_label} Quality')
         else:
             label = f'Voice: {self.voice_label}'
 
-        MY_LOGGER.debug(f'label: {label}')
+        if MY_LOGGER.isEnabledFor(DEBUG_XV):
+            MY_LOGGER.debug_xv(f'{label}')
         return label
 
     @property
@@ -209,13 +211,12 @@ class EngineVoice(IEngineVoice):
         makes no difference in identifying the voice, then it can be ommitted or
         ignored.
         """
-
-        MY_LOGGER.debug(f'voice_uid: {self._voice_uid}')
+        # MY_LOGGER.debug(f'voice_uid: {self._voice_uid}')
         if self._voice_uid is None:
-            MY_LOGGER.debug(f'voice_uid is None')
             self._voice_uid = (f'{self.engine_key}|{self.engine_vg_id}|'
                                f'{self.e_voice_id}')
-            MY_LOGGER.debug(f'voice_uid is now {self._voice_uid}')
+            if MY_LOGGER.isEnabledFor(DEBUG_XV):
+                MY_LOGGER.debug_xv(f'voice_uid is now {self._voice_uid}')
         return self._voice_uid
 
     @classmethod

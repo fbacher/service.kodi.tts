@@ -1,6 +1,7 @@
 # coding=utf-8
 from __future__ import annotations  # For union operator |
 
+from backends.engines.speech_generator import SpeechGenerator
 from common.constants import Constants
 
 """
@@ -86,7 +87,7 @@ class Driver(BaseServices):
             result: Result | None = None
             mode: Mode
             engine_servc_id: ServiceID = Settings.get_engine_key()
-            #  MY_LOGGER.debug(f'engine_servc_id: {engine_servc_id}')
+            MY_LOGGER.debug(f'engine_servc_id: {engine_servc_id}')
             if engine_servc_id is None:
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'engine_servc_id is not set')
@@ -128,7 +129,7 @@ class Driver(BaseServices):
                     through queues. Otherwise things will get scrambled.
                     '''
                     if Settings.is_use_cache():
-                        active_engine.update_voice_path(phrase)
+                        SpeechGenerator.update_voice_path(active_engine, phrase)
                         voice_path: Path
                         suffixes: List[str]
                         phrase.update_cache_path(active_engine)

@@ -309,8 +309,6 @@ class Service(LabeledType):
 class EngineType(Service):
     # Engines with an ordinal, with lower values for most desired engine.
     #
-    #  AUTO_ENGINE = Services.AUTO_ENGINE_ID, 0, MessageId.ENGINE_AUTO
-    # EXPERIMENTAL_ENGINE = Services.EXPERIMENTAL_ENGINE_ID
     GOOGLE = Services.GOOGLE_ID, 1, MessageId.ENGINE_GOOGLE
     PIPER = Services.PIPER_ID, 2, MessageId.ENGINE_PIPER
     if Constants.PLATFORM_WINDOWS:
@@ -321,7 +319,6 @@ class EngineType(Service):
     # LOG_ONLY = Services.LOG_ONLY_ID, 100, MessageId.ENGINE_LOG_ONLY
     # SPEECH_DISPATCHER = Services.SPEECH_DISPATCHER_ID
     NO_ENGINE = Services.NO_ENGINE_ID, 99, MessageId.ENGINE_NO_ENGINE
-    # RECITE = Services.RECITE_ID
     # SAPI_ID = 'sapi'
     DEFAULT = Services.DEFAULT_ENGINE_ID, 0, DEFAULT_MESSAGE_ID
 

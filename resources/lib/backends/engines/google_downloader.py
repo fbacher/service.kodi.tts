@@ -110,7 +110,7 @@ class MyGTTS(IDownloader):
         fp = kwargs.get('pipe', None)
         file_path: Path = kwargs.get('tmp_path', None)
 
-        e_voice: EngineVoice = phrase.get_e_voice()
+        e_voice: EngineVoice = phrase.e_voice
         if e_voice is None:
             e_voice = EngineVoiceManager.get_e_voice()
         e_voice_lang: langcodes.Language = langcodes.Language.get(e_voice.lang)

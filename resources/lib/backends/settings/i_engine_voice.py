@@ -43,7 +43,6 @@ class IEngineVoice:
                  e_voice_id: str,
                  engine_vg_id: str | None = None,
                  voice_quality: QualityType = QualityType.UNKNOWN,
-                 voice_quality_label: str = '',
                  voice_label: str = None,
                  cache_path_segment: Path | None = None) -> None:
 

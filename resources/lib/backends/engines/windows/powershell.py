@@ -11,7 +11,10 @@ import langcodes
 
 from pathlib import Path, WindowsPath
 
+from backends.engines.speech_generator import SpeechGenerator
 from backends.ispeech_generator import ISpeechGenerator
+from backends.settings.engine_voice import EngineVoice
+from backends.settings.engine_voice_manager import EngineVoiceManager
 from backends.settings.lang_utils import LangUtils
 from backends.settings.validators import NumericValidator
 from backends.transcoders.trans import TransCode
@@ -23,7 +26,8 @@ from common.typing import *
 from backends.audio.sound_capabilities import ServiceType
 from backends.base import BaseEngineService, SimpleTTSBackend
 from backends.settings.i_validators import AllowedValue, INumericValidator
-from backends.settings.service_types import LabeledType, ServiceID, ServiceKey, Services
+from backends.settings.service_types import (LabeledType, QualityType, ServiceID,
+                                             ServiceKey, Services)
 from backends.settings.settings_map import SettingsMap
 from common.base_services import BaseServices
 from common.constants import Constants, ReturnCode
@@ -36,6 +40,7 @@ from common.setting_constants import (Backends, Genders, PlayerMode,
 from common.settings import Settings
 from common.settings_low_level import SettingProp
 from langcodes import LanguageTagError
+from test.google import LanguageInfo
 from windowNavigation.choice import Choice
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
@@ -84,7 +89,8 @@ class Results:
         self.phrase = phrase
 
 
-class SpeechGenerator(ISpeechGenerator):
+'''
+class SpeechGenerator_x(ISpeechGenerator):
 
     def __init__(self, generator: ISpeechGenerator, engine: SimpleTTSBackend) -> None:
         self.download_results: Results = Results()
@@ -108,7 +114,7 @@ class SpeechGenerator(ISpeechGenerator):
 
     def is_finished(self) -> bool:
         return self.download_results.is_finished()
-
+'''
 
 class PowerShellTTS(SimpleTTSBackend):
     """
@@ -259,10 +265,10 @@ class PowerShellTTS(SimpleTTSBackend):
                    SAPI Voice Json Format:
                    List[Dict[prop, value]]
                  {
-        "Gender":  1,
-        "Age":  30,
-        "Name":  "Microsoft David Desktop",
-        "Culture":  {
+                    "Gender":  1,
+                    "Age":  30,
+                    "Name":  "Microsoft David Desktop",
+                    "Culture":  {
                         "Parent":  "en",
                         "LCID":  1033,
                         "KeyboardLayoutId":  1033,
@@ -285,22 +291,22 @@ class PowerShellTTS(SimpleTTSBackend):
                         "UseUserOverride":  false,
                         "IsReadOnly":  false
                     },
-        "Id":  "TTS_MS_EN-US_DAVID_11.0",
-        "Description":  "Microsoft David Desktop - English (United States)",
-        "SupportedAudioFormats":  [
-
-                                  ],
-        "AdditionalInfo":  {
-                               "Age":  "Adult",
-                               "Gender":  "Male",
-                               "Language":  "409",
-                               "Name":  "Microsoft David Desktop",
-                               "SharedPronunciation":  "",
-                               "SpLexicon":  "{0655E396-25D0-11D3-9C26-00C04F8EF87C}",
-                               "Vendor":  "Microsoft",
-                               "Version":  "11.0"
-                           }
-    },
+                        "Id":  "TTS_MS_EN-US_DAVID_11.0",
+                        "Description":  "Microsoft David Desktop - English (United States)",
+                        "SupportedAudioFormats":  [
+                
+                                                  ],
+                        "AdditionalInfo":  {
+                                               "Age":  "Adult",
+                                               "Gender":  "Male",
+                                               "Language":  "409",
+                                               "Name":  "Microsoft David Desktop",
+                                               "SharedPronunciation":  "",
+                                               "SpLexicon":  "{0655E396-25D0-11D3-9C26-00C04F8EF87C}",
+                                               "Vendor":  "Microsoft",
+                                               "Version":  "11.0"
+                                           }
+                    },
                    """
                 #  v_description: str = voice_entry.get('Description')
                 v_name: str = voice_entry.get('Name')
@@ -327,6 +333,18 @@ class PowerShellTTS(SimpleTTSBackend):
                                         f'territory: {v_lang.territory}')
                 except LanguageTagError:
                     MY_LOGGER.exception('')
+                l_locale_id: str = v_lang.to_tag().lower()
+                cache_path_segment: Path = Path(l_locale_id)
+                # Will create (dummy) Voice Group for each voice
+                EngineVoiceManager.add_voice(engine_key=PowerShellTTS.service_key,
+                                             ietf_tag=v_lang.to_tag(),
+                                             gender=v_gender,
+                                             engine_lang_id=l_locale_id,
+                                             e_voice_id=l_locale_id,
+                                             engine_vg_id=l_locale_id,
+                                             voice_quality=QualityType.HIGH,
+                                             voice_label=v_name,
+                                             cache_path_segment=cache_path_segment)
 
                 LanguageInfo.add_variant(engine_key=PowerShellTTS.service_key,
                                          language_id=v_lang.language,
@@ -485,7 +503,7 @@ class PowerShellTTS(SimpleTTSBackend):
         :return: True if the voice file was handed to a player, otherwise False
         """
         clz = type(self)
-        clz.update_voice_path(phrase)
+        SpeechGenerator.update_voice_path(self, phrase)
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'phrase: {phrase.get_text()} {phrase.get_debug_info()} '
                             f'cache_path: {phrase.get_cache_path()} use_cache: '
@@ -561,7 +579,7 @@ class PowerShellTTS(SimpleTTSBackend):
         Assumptions:
             any cache has been checked to see if already voiced
         """
-        clz.update_voice_path(phrase)
+        SpeechGenerator.update_voice_path(self, phrase)
         sfx_player: bool = Settings.get_player().setting_id == Players.SFX
         use_cache: bool = Settings.is_use_cache() or sfx_player
         # Get path to audio-temp file, or cache location for audio
@@ -663,7 +681,7 @@ class PowerShellTTS(SimpleTTSBackend):
 
     def runCommandAndSpeak(self, phrase: Phrase) -> None:
         clz = type(self)
-        clz.update_voice_path(phrase)
+        SpeechGenerator.update_voice_path(self, phrase)
         env = os.environ.copy()
         args: List[str] = self.get_args()
         text: str = phrase.text
@@ -981,6 +999,7 @@ class PowerShellTTS(SimpleTTSBackend):
             speed: int = speed_val.get_value()
         return speed
 
+    '''
     @classmethod
     def update_voice_path(cls, phrase: Phrase) -> None:
         """
@@ -995,12 +1014,8 @@ class PowerShellTTS(SimpleTTSBackend):
                                   f'voice: {phrase.voice}\n'
                                   f'lang_dir: {phrase.lang_dir}')
             locale: str = phrase.language  # IETF format
-            voice_id: str = Settings.get_voice_id(cls.service_key)
+            e_voice: EngineVoice = EngineVoiceManager.get_e_voice(cls.service_key)
             kodi_lang, kodi_locale, _, ietf_lang = LangUtils.get_kodi_locale_info()
-            if voice_id is None or voice_id == '':
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug('Fix Settings.get_vg to use kodi_locale by '
-                                    'default')
             if MY_LOGGER.isEnabledFor(DEBUG_V):
                 MY_LOGGER.debug_v(f'locale_id: {locale} kodi_lang: {kodi_lang} '
                                   f'kodi_locale: {kodi_locale} '
@@ -1013,11 +1028,12 @@ class PowerShellTTS(SimpleTTSBackend):
                 MY_LOGGER.debug_v(f'locale_id: {locale} ietf_lang: {ietf_lang.language} '
                                   f'{ietf_lang.territory}')
             phrase.set_lang_dir(ietf_lang.language)
-            phrase.set_e_voice(voice_id)
-            phrase.set_voice_dir(cls._voice_dir_for_id.get(voice_id))
+            phrase.e_voice = e_voice
+            phrase.set_voice_dir(e_voice.cache_path_segment)
             # Horrible, crude, hack due to kodi xbmc.getLanguage bug
             if ietf_lang.territory is not None:
                 phrase.set_territory_dir(ietf_lang.territory.lower())
             else:
                 phrase.set_territory_dir('us')
         return
+    '''

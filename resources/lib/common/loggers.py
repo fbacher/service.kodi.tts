@@ -23,7 +23,7 @@ class Logger(StrEnum):
     TTS_PLAYER = 'tts.player_key'
     TTS_PROCESS = 'tts.process'  # commands, daemons
     TTS_SETTINGS = 'tts.settings'
-    TTS_CONFIG = 'tts.config'
+    TTS_CONFIG = 'tts.download'
     TTS_BOOTSTRAP = 'tts.ignore_cache'
 
     _root_logger: BasicLogger = None
@@ -48,5 +48,5 @@ class Logger(StrEnum):
         TTS_PLAYER = 'tts.player_key'
         TTS_PROCESS = 'tts.process'  # commands, daemons
         TTS_SETTINGS = 'tts.settings'
-        TTS_CONFIG = 'tts.config'
+        TTS_CONFIG = 'tts.download'
         TTS_BOOTSTRAP = 'tts.ignore_cache'

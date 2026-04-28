@@ -71,7 +71,6 @@ class EngineVoiceGroup(IEngineVoiceGroup):
                  engine_lang_id: str,
                  engine_vg_id: str,
                  voice_quality: QualityType,
-                 voice_quality_label: str,
                  vg_name: str = None,
                  locale_match: int = -1
                  ):
@@ -88,7 +87,6 @@ class EngineVoiceGroup(IEngineVoiceGroup):
         :param engine_lang_id: Code that engine may use for the language
         :param engine_vg_id: Code that engine may use for the voice-group
         :param voice_quality: 0-5
-        :param voice_quality_label: Label of voice quality
         :param vg_name: Names the collection that a voice
                                    belongs.
         :param locale_match: Measure of how much THIS lang's locale differs from the
@@ -105,9 +103,7 @@ class EngineVoiceGroup(IEngineVoiceGroup):
         self._engine_lang_id: str = engine_lang_id
         self._engine_vg_id: str = engine_vg_id
         self._voice_quality: QualityType = voice_quality
-        self._voice_quality_label: str = voice_quality_label
         self._vg_name: str = vg_name
-        MY_LOGGER.debug(f'vg_name: {vg_name}')
         self._vg_label: str | None = None
         if locale_match < 0:
             locale_match = clz.kodi_language.distance(supported=lang)
@@ -123,8 +119,8 @@ class EngineVoiceGroup(IEngineVoiceGroup):
         self._gender_label: str | None = None
         self._vg_uid: str | None = None
 
-        if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'{self}')
+        if MY_LOGGER.isEnabledFor(DEBUG_XV):
+            MY_LOGGER.debug_xv(f'{self}')
         vg_by_locale: Dict[str, List[ForwardRef('EngineVoiceGroup')]]
         vg_by_locale = clz.vg_by_engine.setdefault(engine_key, {})
         vgs_in_locale: List[ForwardRef('EngineVoiceGroup')]
@@ -179,7 +175,7 @@ class EngineVoiceGroup(IEngineVoiceGroup):
 
     @property
     def voice_quality_label(self) -> str:
-        return self._voice_quality_label
+        return self._voice_quality.label
 
     @property
     def vg_name(self) -> str:
@@ -188,7 +184,7 @@ class EngineVoiceGroup(IEngineVoiceGroup):
     @property
     def e_voices(self) -> Dict[str, ForwardRef('EngineVoice')]:
         """
-        :returns: a ditionary[engine_voice, EngineVoice]
+        :returns: a dictionary[engine_voice, EngineVoice]
         """
         return self._voices
 
@@ -208,8 +204,9 @@ class EngineVoiceGroup(IEngineVoiceGroup):
         return self._locale_match
 
     def add_voice(self, voice: ForwardRef('EngineVoice')) -> None:
-        MY_LOGGER.debug(f'Adding voice at idx: {voice.e_voice_id} type: '
-                        f'type: {type(voice.e_voice_id)}')
+        if MY_LOGGER.isEnabledFor(DEBUG_XV):
+            MY_LOGGER.debug_xv(f'Adding voice at idx: {voice.e_voice_id} type: '
+                               f'type: {type(voice.e_voice_id)}')
         self._voices[voice.e_voice_id] = voice
 
     @property
@@ -289,21 +286,17 @@ class EngineVoiceGroup(IEngineVoiceGroup):
         :param voice_id: Index into self.voices for the selected/default voice
         :return: The Voice_Group's label along with the Voice label
         """
+        # KEEP IN SYNC WITH EngineVoice.full_voice_label
 
-        if True:  # self._full_vg_label is None:
-            if self.has_single_voice:
-                e_voice: IEngineVoice = self.voices[self.default_voice_id]
-                self._full_vg_label = e_voice.full_voice_label(with_group=True)
-            else:
-                self._full_vg_label = (f'Voice Group:  {self.vg_name}   '
-                                       f'{self.voice_quality.label} Quality   '
-                                       f' {self.lang_tag}   '
-                                       f'{len(self.voices)} voices')
-                self._full_vg_label = (f'Voice {self.voices[voice_id].voice_label} Group:  {self.vg_name}   '
-                         f'{self.voice_quality.label} Quality   '
-                         f' {self.lang_tag}   '
-                         f'{len(self.voices)} voices')
-        return f'{self._full_vg_label}'
+        e_voice: IEngineVoice = self.voices[voice_id]
+        if self.has_single_voice:
+            label = (f'{e_voice.voice_label},  {self.lang_tag}, '
+                     f'{self.voice_quality.label} Quality')
+        else:
+            label = (f'{self.vg_name} / {e_voice.voice_label}  '
+                     f'({len(self.voices)} Voices), {self.lang_tag}, '
+                     f'{self.voice_quality.label} Quality')
+        return f'{label}'
 
     @property
     def vg_uid(self) -> str:

@@ -11,6 +11,7 @@ import langcodes
 from pathlib import Path
 
 from backends.players.iplayer import IPlayer
+from backends.settings.engine_voice import EngineVoice
 from backends.settings.engine_voice_manager import EngineVoiceManager
 from backends.settings.lang_utils import LangUtils
 from backends.settings.validators import NumericValidator
@@ -23,7 +24,7 @@ from common import *
 from backends.audio.sound_capabilities import ServiceType
 from backends.base import SimpleTTSBackend
 from backends.settings.i_validators import INumericValidator
-from backends.settings.service_types import ServiceKey, Services, ServiceID
+from backends.settings.service_types import QualityType, ServiceKey, Services, ServiceID
 from backends.settings.settings_map import SettingsMap
 from common.base_services import BaseServices
 from common.constants import Constants
@@ -43,14 +44,14 @@ class VoiceData:
 
     def __init__(self, lang_id: str,  langcodes_lang: langcodes.Language,
                  voice_name: str, voice_id: str, gender: Genders,
-                 available: bool = False, priority: int = 0) -> None:
+                 available: bool = False, quality: QualityType | None = None) -> None:
         self._lang_id: str = lang_id
         self._langcodes_lang: langcodes.Language = langcodes_lang
         self._voice_name: str = voice_name
         self._voice_id: str = voice_id
         self._gender: Genders = gender
         self._available: bool = available
-        self._priority: int = priority
+        self._quality: QualityType = quality
 
     @property
     def lang_id(self) -> str:
@@ -81,8 +82,8 @@ class VoiceData:
         self._available = available
 
     @property
-    def priority(self) -> int:
-        return self._priority
+    def quality(self) -> QualityType:
+        return self._quality
 
     def __str__(self) -> str:
         return (f'lang: {self.lang_id} vg_label: {self.voice_name} '
@@ -167,7 +168,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         return Backends.ESPEAK_ID
 
     @classmethod
-    def init_voices(cls):
+    def load_voices(cls):
         """
         Discover the available voices
         """
@@ -268,8 +269,18 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             fields = voice.split(maxsplit=5)
             if MY_LOGGER.isEnabledFor(DEBUG_V):
                 MY_LOGGER.debug_v(f'fields: {fields}')
+            # Priority a quality measurement. Seems to be a scale 0-5, higher is better.
+            # In the version installed on my system, almost all are 5, with a couple at
+            # 2.
             priority_str: str = fields[0]  # Higher is better
             priority: int = int(priority_str)
+            quality: QualityType = QualityType.UNKNOWN
+            if priority >= 5:
+                quality = QualityType.HIGH
+            elif priority >= 3:
+                quality = QualityType.MEDIUM
+            elif priority >= 0:
+                quality = QualityType.LOW
 
             lang_id: str = fields[1]
             if lang_id == 'chr-US-Qaaa-x-west':  # IETF will not parse
@@ -277,20 +288,20 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             if lang_id == 'en-us-nyc':
                 lang_id = 'en-us'
             # locale_id: str = langcodes.standardize_tag(lang_id)
-            langcodes_lang: langcodes.Language | None = None
+            ietf_lang: langcodes.Language | None = None
             try:
-                langcodes_lang = langcodes.Language.get(lang_id)
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'orig: {lang_id} '
-                                    f'language: {langcodes_lang.language} '
-                                    f'script: {langcodes_lang.script} '
-                                    f'territory: {langcodes_lang.territory} '
-                                    f'extlangs: {langcodes_lang.extlangs} '
-                                    f'variants: {langcodes_lang.variants} '
-                                    f'extensions: {langcodes_lang.extensions} '
-                                    f'private: {langcodes_lang.private} '
-                                    f'display: '
-                                    f'{langcodes_lang.display_name(langcodes_lang.language)}')
+                ietf_lang = langcodes.Language.get(lang_id)
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'orig: {lang_id} '
+                                      f'language: {ietf_lang.language} '
+                                      f'script: {ietf_lang.script} '
+                                      f'territory: {ietf_lang.territory} '
+                                      f'extlangs: {ietf_lang.extlangs} '
+                                      f'variants: {ietf_lang.variants} '
+                                      f'extensions: {ietf_lang.extensions} '
+                                      f'private: {ietf_lang.private} '
+                                      f'display: '
+                                      f'{ietf_lang.display_name(ietf_lang.language)}')
             except LanguageTagError:
                 MY_LOGGER.exception('')
 
@@ -308,9 +319,9 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             if len(fields) > 5:
                 other_langs = fields[5]  # Fields 5 -> eol
             entries: List[VoiceData] | None
-            entries = cls.voice_map.setdefault(langcodes_lang.language, [])
-            entries.append(VoiceData(lang_id, langcodes_lang, voice_name, voice_id,
-                                     gender, available=True, priority=priority))
+            entries = cls.voice_map.setdefault(ietf_lang.language, [])
+            entries.append(VoiceData(lang_id, ietf_lang, voice_name, voice_id,
+                                     gender, available=True, quality=quality))
 
         # Discover the directories of voice files referenced by the list of voices
         voice_files_by_directory: Dict[str, Dict[str, None]] = {}
@@ -353,7 +364,8 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                                                  engine_lang_id=entry.lang_id,
                                                  e_voice_id=entry.voice_id,
                                                  engine_vg_id=entry.voice_id,
-                                                 voice_quality=entry.priority,
+                                                 cache_path_segment=Path(entry.voice_id),
+                                                 voice_quality=entry.quality,
                                                  voice_label=entry.voice_name)
 
         cls.initialized_static = True
@@ -389,8 +401,10 @@ class ESpeakTTSBackend(SimpleTTSBackend):
 
     def addCommonArgs(self, args, phrase: Phrase | None = None):
         clz = type(self)
-        voice_id = Settings.get_voice_id(clz.service_key)
+        e_voice: EngineVoice = EngineVoiceManager.get_e_voice(clz.service_key)
         #  vg_id = 'gmw/en-US'
+        # ESpeak does not use VoiceGroup (both engine_vg_id and e_voice_id are the same)
+        voice_id = e_voice.e_voice_id
         if voice_id is None or voice_id in ('unknown', ''):
             voice_id = None
 
@@ -609,6 +623,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             MY_LOGGER.debug_v(f'args: {args}')
         try:
+            Monitor.exception_on_abort()
             with self._lock:
                 self.init_utterance()
                 if Constants.PLATFORM_WINDOWS:
@@ -634,18 +649,22 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             try:
                 while self.process is not None and self.process.poll() is None:
                     try:
+                        Monitor.exception_on_abort()
                         output: str
                         output, _ = self.process.communicate(input=cmd_input,
                                                              timeout=0.1)
+                    except AbortException:
+                        reraise(*sys.exc_info())
                     except subprocess.TimeoutExpired:
                         cmd_input = None
-                        Monitor.exception_on_abort()
                     except ValueError:
                         MY_LOGGER.exception(f'cmd_input: {cmd_input}')
                         break
                     except Exception:
                         MY_LOGGER.debug('')
                         break
+            except AbortException:
+                reraise(*sys.exc_info())
             except Exception:
                 MY_LOGGER.exception('')
 
@@ -663,6 +682,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         MY_LOGGER.debug(f'args: {args}')
         output: str | None = None
         try:
+            Monitor.exception_on_abort()
             # Process will block until reader for PIPE opens
             # Be sure to close self.process.stdout AFTER second process starts
             # ex:
@@ -716,145 +736,6 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         with self._lock:
             MY_LOGGER.debug(f'Calling init_utterance')
             self.init_utterance()
-
-    @classmethod
-    def load_voices(cls):
-        """
-        Discover eSpeak's supported languages and report results to
-        LanguageInfo.
-        :return:
-        """
-        MY_LOGGER.debug(f'In load_voices')
-        cls.init_voices()
-
-    '''
-    @classmethod
-    def settingList(cls, setting, *args) -> Tuple[List[Choice], str]:
-        if setting == SettingProp.LANGUAGE:
-            # Returns list of languages and index to the closest match to current
-            # locale_id
-            MY_LOGGER.debug(f'In LANGUAGE')
-            cls.init_voices()
-            langs = cls.voice_map.keys()  # Not locales
-
-            # Get current process' language_code i.e. en-us
-            default_locale = Constants.LOCALE.lower().replace('_', '-')
-
-            longest_match = -1
-            default_lang = default_locale[0:2]
-            default_lang_country = ''
-            if len(default_locale) >= 5:
-                default_lang_country = default_locale[0:5]
-
-            idx: int = 0
-            languages: List[Choice]
-            languages = []
-            for lang in sorted(langs):
-                lower_lang = lang.lower()
-                if longest_match == -1:
-                    if lower_lang.startswith(default_lang):
-                        longest_match = idx
-                elif lower_lang.startswith(default_lang_country):
-                    longest_match = idx
-                elif lower_lang.startswith(default_locale):
-                    longest_match = idx
-
-                choice: Choice = Choice(lang, lang, choice_index=idx)
-                languages.append(choice)
-                idx += 1
-
-            # Now, convert index to default_setting
-
-            default_setting = ''
-            if longest_match > 0:
-                default_setting = languages[longest_match].value
-
-            return languages, default_setting
-
-        if setting == SettingProp.VOICE:
-            cls.init_voices()
-            current_lang = BaseEngineService.getLanguage()
-            current_lang = current_lang[0:2]
-            langs = cls.voice_map.keys()  # Not locales
-            voices: List[Choice] = []
-            idx: int = 0
-            for lang in langs:
-                if lang.startswith(current_lang):
-                    voice_list = cls.voice_map.get(lang, [])
-                    for vg_label, vg_id, gender_id in voice_list:
-                        # TODO: verify
-                        # Voice_name is from command and not translatable?
-
-                        # display_value, setting_value
-                        voices.append(Choice(vg_label, vg_id, choice_index=idx))
-                        idx += 1
-            return voices, ''
-
-        elif setting == SettingProp.GENDER:
-            # Currently does not meet the needs of the GUI and is
-            # probably not that useful at this stage.
-            # The main issue, is that this returns language as either
-            # the 2-3 char IETF lang code, or as the traditional
-            # locale_id (2-3 char lang and 2-3 char territory + extra).
-            # This can be fixed, but not until it proves useful and then
-            # figure out what format is preferred.
-            cls.init_voices()
-            current_lang = Settings.get_language(cls.service_key)
-            voice_list = cls.voice_map.get(current_lang, [])
-            genders: List[Choice] = []
-            idx: int = 0
-            for vg_label, vg_id, gender_id in voice_list:
-                # TODO: verify
-                # Voice_name is from command and not translatable?
-
-                # Unlike voices and languages, we just return gender ids.
-                # Translation is handled by SettingsDialog. Label and
-                # choice_index are ignored
-                genders.append(Choice(label='', value=gender_id, choice_index=idx))
-                idx += 1
-            return genders, ''
-
-        
-        elif setting == SettingProp.PLAYER:
-            # Get list of player ids. Id is same as is stored in settings.xml
-            supported_players: List[AllowedValue]
-            supported_players = SettingsMap.get_allowed_values(cls.player_key)
-            choices: List[Choice] = []
-            for player in supported_players:
-                player: AllowedValue
-                player_label = Players.get_msg(player.value)
-                choices.append(Choice(label=player_label, value=player.value,
-                                      choice_index=-1, enabled=player.enabled))
-
-            choices = sorted(choices, key=lambda entry: entry.label)
-            idx: int = 0
-            for choice in choices:
-                choice.choice_index = idx
-                idx += 1
-
-            default_player: str
-            default_player = SettingsMap.get_default_value(cls.runCommand)
-            return choices, default_player
-        
-        return None
-    '''
-
-    '''
-    @classmethod
-    def get_default_language(cls) -> str:
-        languages: List[str]
-        default_lang: str
-        languages, default_lang = cls.settingList(SettingProp.LANGUAGE)
-        return default_lang
-    '''
-
-    '''
-    @classmethod
-    def get_voice_id_for_name(cls, name):
-        if len(cls.voice_map) == 0:
-            cls.settingList(SettingProp.VOICE)
-        return cls.voice_map[name]
-    '''
 
     def getVolume(self) -> int:
         # All volumes in settings use a common TTS db scale.
@@ -919,6 +800,7 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             speed: int = speed_val.get_value()
         return speed
 
+'''
     @classmethod
     def update_voice_path(cls, phrase: Phrase) -> None:
         """
@@ -931,12 +813,12 @@ class ESpeakTTSBackend(SimpleTTSBackend):
         if Settings.is_use_cache() and not phrase.is_lang_territory_set():
             if MY_LOGGER.isEnabledFor(DEBUG_XV):
                 MY_LOGGER.debug_xv(f'lang: {phrase.language} \n'
-                                   f'voice: {phrase.voice}\n'
+                                   f'e_voice: {phrase.e_voice}\n'
                                    f'lang_dir: {phrase.lang_dir}\n')
             locale: str = phrase.language  # IETF format
-            voice_id: str = Settings.get_voice_id(cls.service_key)
+            e_voice: EngineVoice = EngineVoiceManager.get_e_voice(cls.service_key)
             kodi_lang, kodi_locale, _, ietf_lang = LangUtils.get_kodi_locale_info()
-            if voice_id is None or voice_id == '':
+            if e_voice is None:
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug('Fix Settings.get_vg to use kodi_locale by '
                                     'default')
@@ -952,11 +834,12 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                 MY_LOGGER.debug_v(f'locale_id: {locale} ietf_lang: {ietf_lang.language} '
                                   f'{ietf_lang.territory}')
             phrase.set_lang_dir(ietf_lang.language)
-            phrase.set_e_voice(voice_id)
-            phrase.set_voice_dir(voice_id)
+            phrase.e_voice = e_voice
+            phrase.set_voice_dir(e_voice.cache_path_segment)
             # Horrible, crude, hack due to kodi xbmc.getLanguage bug
             if ietf_lang.territory is not None:
                 phrase.set_territory_dir(ietf_lang.territory.lower())
             else:
                 phrase.set_territory_dir('us')
         return
+'''

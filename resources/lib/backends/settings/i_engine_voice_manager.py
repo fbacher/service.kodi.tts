@@ -102,7 +102,6 @@ class IEngineVoiceManager:
                         engine_lang_id: str,
                         engine_vg_id: str,
                         voice_quality: QualityType,
-                        voice_quality_label: str = '',
                         vg_label: str = None) -> ForwardRef('IEngineVoiceGroup'):
         """
         Defines a Voice Group.
@@ -122,7 +121,6 @@ class IEngineVoiceManager:
                          this voicegroup or one of the voices contained in it
         :param engine_vg_id: engine-specific code for the voice-group id.
         :param voice_quality: defines the voice quality of the voice. Zero is best.
-        :param voice_quality_label: User-friendly label for the voice quality
         :param vg_label: defines the label of this voice-group.
         """
         return cls.e_v_m.add_voice_group(engine_key, ietf_tag, gender,
@@ -130,7 +128,6 @@ class IEngineVoiceManager:
                                          engine_lang_id,
                                          engine_vg_id,
                                          voice_quality,
-                                         voice_quality_label,
                                          vg_label)
 
     @classmethod
@@ -142,7 +139,6 @@ class IEngineVoiceManager:
                   e_voice_id: str,
                   engine_vg_id: str | None,
                   voice_quality: QualityType,
-                  voice_quality_label: str = '',
                   voice_label: str = None,
                   cache_path_segment: Path | None = None) -> IEngineVoice:
         """
@@ -166,7 +162,6 @@ class IEngineVoiceManager:
                is unique for the particular voice being used. Typicaly a concise
                representation of <vg_id>-<voice_id>. Default value is
                vg_id-voice_id
-        :param voice_quality_label: User-friendly label for the voice quality
         :param voice_label: defines the label of this voice. Combined with Voice Group
                             label, as needed.
 
@@ -185,7 +180,6 @@ class IEngineVoiceManager:
                                    e_voice_id,
                                    engine_vg_id,
                                    voice_quality,
-                                   voice_quality_label,
                                    voice_label,
                                    cache_path_segment)
 

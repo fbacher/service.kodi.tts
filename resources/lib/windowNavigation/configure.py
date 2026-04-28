@@ -222,6 +222,7 @@ class EngineConfig:
                 f'{trans_audio_out_str} \nvoice: {voice} \nvolume: {volume_str}\n'
                 f'speed: {speed_str} {repairs_made_str}\n')
 
+
 class Configure:
     """
     Configure Kodi TTS
@@ -351,7 +352,7 @@ class Configure:
             # See if we can cfg engine
             engine_config: EngineConfig | None = None
 
-            # This HACK provides a means to provide a limited set of
+            # This HACK provides a means for a limited set of
             # audio messages that is shipped with the addon. These
             # messages are used when either no engine or no player can
             # be configured. These messages are voiced using Kodi SFX
@@ -382,7 +383,8 @@ class Configure:
             lang: EngineLang = choice.lang
             e_voice: EngineVoice = choice.voice
             raw_voice_id: str = Settings.get_voice_id(engine_key)
-            MY_LOGGER.debug(f'raw_voice_id: {raw_voice_id}')
+            MY_LOGGER.debug(f'raw_voice_id: {raw_voice_id} '
+                            f'e_voice: {e_voice} ')
             if raw_voice_id is None and e_voice is not None:
                 MY_LOGGER.debug(f'e_voice: {e_voice}')
                 EngineVoiceManager.set_voice(e_voice)
@@ -1330,7 +1332,7 @@ class Configure:
             BaseServices.get_service(engine_key)
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'got service: {engine_key}')
-            choices, current_choice_index = self.get_engine_choices(
+            choices, current_choice_index, best_engine_idx = self.get_engine_choices(
                     engine_key=engine_key)
             choices: EngineChoices
             if current_choice_index < 0:
@@ -1338,7 +1340,8 @@ class Configure:
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'# choices: {choices} len: {len(choices)}'
                                 f' current_choice_idx: '
-                                f'{current_choice_index}')
+                                f'{current_choice_index} '
+                                f'best_engine_idx: {best_engine_idx}')
 
             choice: EngineChoice = choices[current_choice_index]
             if choice is not None:
@@ -1430,7 +1433,7 @@ class Configure:
                                          active=active)
             '''
             EngineVoiceManager.discover()
-            choices, current_choice_index = self.get_engine_choices(
+            choices, current_choice_index, best_choice_idx = self.get_engine_choices(
                     engine_key=engine_key)
             choices: EngineChoices
             if current_choice_index < 0:
@@ -1920,7 +1923,8 @@ class Configure:
             type(self)._instance.busy = False
 
     def get_engine_choices(self,
-                           engine_key: ServiceID | None) -> Tuple[EngineChoices, int]:
+                           engine_key: ServiceID | None) -> (
+            Tuple[EngineChoices, int, int]):
         """
             Generates a list of choices for TTS engine that
             can be used by select_engine.
@@ -1949,23 +1953,17 @@ class Configure:
             _, _, _, kodi_language = LangUtils.get_kodi_locale_info()
             kodi_language: langcodes.Language
             current_engine_idx: int
+            best_engine_idx: int
             choices: EngineChoices
-            choices, current_engine_idx = SettingsHelper.get_engine_choices(
-                    engine_key)
+            choices, current_engine_idx, best_engine_idx = \
+                SettingsHelper.get_engine_choices(engine_key)
             # if engine_key is None, or not found, then current_engine_idx == -1
             idx: int = 0
             for choice in choices:
                 choice: EngineChoice
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'engine: {choice.engine_key} '
-                                    f'lang: {choice.lang} idx: {idx}')
-                # choice.label = SettingsHelper.get_lang_formatted_label(
-                #         choice.lang,
-                #         voice_group=
-                #         kodi_language=kodi_language,
-                #         format_type=FormatType.DISPLAY)
-                if MY_LOGGER.isEnabledFor(DEBUG_V):
-                    MY_LOGGER.debug_v(f'lang: {choice.lang}')
+                                    f'voice: {choice.voice} idx: {idx}')
                 choice.hint = f'choice {idx}'
                 idx += 1
             if MY_LOGGER.isEnabledFor(DEBUG_V):
@@ -1973,7 +1971,9 @@ class Configure:
             self.save_current_choices(choices, current_engine_idx)
             # auto_choice_label: str = Messages.get_msg(Messages.AUTO)
             # current_value = Settings.get_service_key()
-            return choices, current_engine_idx
+            return choices, current_engine_idx, best_engine_idx
+        except AbortException:
+            reraise(*sys.exc_info())
         except Exception as e:
             MY_LOGGER.exception('')
             return EngineChoices(), -1

@@ -62,7 +62,7 @@ else:
         'tts.backends.engines.piper_settings': INFO,
         'tts.backends.engines.piper_data': INFO,
         'tts.backends.engines.piper_api': INFO,
-        'tts.backends.engines.piper_downloader': INFO,
+        'tts.backends.engines.piper_downloader': DEBUG,
         'tts.backends.engines.piper_voice_id': INFO,
         'tts.backends.espeak': INFO,
         'tts.backends.espeak_settings': INFO,
@@ -127,7 +127,7 @@ else:
         'tts.windows.pvr': INFO,
         'tts.windows.pvrguideinfo': INFO,
         'tts.windows.selectdialog': INFO,
-        'tts.windows.settings': DEBUG,
+        'tts.windows.settings': INFO,
         'tts.windows.skintables': INFO,
         'tts.windows.subtitlesdialog': INFO,
         'tts.windows.textviewer': INFO,
@@ -151,8 +151,8 @@ else:
         'tts.windowNavigation.choice': DEBUG,
         'tts.windowNavigation.configure': DEBUG,
         'tts.windowNavigation.help_dialog': INFO,
-        'tts.windowNavigation.selection_dialog': DEBUG_XV,
-        'tts.windowNavigation.settings_dialog': DEBUG_XV,
+        'tts.windowNavigation.selection_dialog': DEBUG,
+        'tts.windowNavigation.settings_dialog': DEBUG,
         'tts.utils.keymapeditor': INFO
     }
 # xbmc.log(f'configuring debug_levels INFO: {logging.INFO} DEBUG: {DEBUG} '

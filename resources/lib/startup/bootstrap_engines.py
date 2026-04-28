@@ -22,9 +22,35 @@ MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class BootstrapEngines:
+    # Instances of ITTSBackendBase
+    engine_ids_by_priority: List[str] = [
+        # SAPITTSBackend(),
+        Services.NO_ENGINE_ID,
+        # OSXSayTTSBackend(),
+        Services.ESPEAK_ID,
+        # JAWSTTSBackend(),
+        # NVDATTSBackend(),
+        # Backends.FLITE_ID,
+        # Backends.PICO_TO_WAVE_ID,
+        Services.PIPER_ID,
+        # Backends.FESTIVAL_ID,
+        # CepstralTTSBackend(),
+        # Backends.SPEECH_DISPATCHER_ID,
+        #            VoiceOverBackend(),
+        # SpeechServerBackend(),
+        # ReciteTTSBackend(),
+        # GoogleTTSBackend(),
+        Services.GOOGLE_ID,
+        # Backends.RESPONSIVE_VOICE_ID,
+        # Backends.EXPERIMENTAL_ENGINE_ID,
+        #   SpeechUtilComTTSBackend(),
+        # ESpeakCtypesTTSBackend(),
+        # Backends.SAPI_ID,
+        # Backends.LOG_ONLY_ID
+    ]
 
     if Constants.PLATFORM_WINDOWS:
-        engine_ids_by_priority.append(Backends.POWERSHELL_ID)
+        engine_ids_by_priority.append(Services.POWERSHELL_ID)
     _initialized: bool = False
 
     @classmethod
@@ -57,7 +83,6 @@ class BootstrapEngines:
     @classmethod
     def configure_engine_settings(cls):
         service_status: ServiceStatus = ServiceStatus(status=Status.FAILED)
-        """
         if Services.ESPEAK_ID in EngineType:
             try:
                 from backends.espeak_settings import ESpeakSettings
@@ -68,7 +93,6 @@ class BootstrapEngines:
                 MY_LOGGER.exception('')
                 SettingsMap.set_available(ServiceKey.ESPEAK_KEY,
                                           status=StatusType.BROKEN)
-        """
         '''
         try:
             from backends.engines.festival_settings import FestivalSettings

@@ -537,7 +537,6 @@ class PiperApi:
 
         """
         # Already started?
-        MY_LOGGER.debug(f'In Starting builtin http_server')
         with (cls.http_server_lock):
             if cls.http_server_run_state == cls.HTTP_SERVER_READY:
                 return
@@ -547,13 +546,14 @@ class PiperApi:
                 raise RuntimeError('Should not get here')
             retries: int = 0
             try:
+                MY_LOGGER.debug(f'Starting http_server')
                 cls._start_builtin_http_server()
                 cls.http_server_run_state = cls.HTTP_SERVER_RUNNING
                 while retries <= cls.HTTP_RETRY_LIMIT:
                     Monitor.wait_for_abort(0.2)
                     result = cls._get_voice_data_by_http()
                     if result[0] == 0:
-                        MY_LOGGER.debug(f'Retries to start http_server: {retries}')
+                        MY_LOGGER.debug(f'Started http_server after: {retries} retries')
                         cls.http_server_run_state = cls.HTTP_SERVER_READY
                         return
                     retries += 1
@@ -731,11 +731,11 @@ class PiperData(ITTSData):
 
     @property
     def onnx_model_file(self) -> str:
-        return f'{self.piper_voice_id}.onnx'
+        return f'{self.piper_vg_id}.onnx'
 
     @property
     def onnx_model_config_file(self) -> str:
-        return f'{self.piper_voice_id}.onnx.json'
+        return f'{self.piper_vg_id}.onnx.json'
 
     @property
     def voice_quality(self) -> str | None:
@@ -746,20 +746,20 @@ class PiperData(ITTSData):
         return str(self._speaker_id)
 
     @property
-    def piper_voice_id(self) -> str:
+    def piper_vg_id(self) -> str:
         """
         Gives the file prefix (without the .onnx or .onnx.json suffix) of
         the piper data files describing this voice & speakers
         """
-        piper_voice_id: str = (f'{self._ietf_language_code}_{self._ietf_territory_code}-'
+        piper_vg_id: str = (f'{self._ietf_language_code}_{self._ietf_territory_code}-'
                                f'{self._voice_group_name}-{self._voice_quality}')
-        # piper_voice_id: str = self._voice_group_name
-        MY_LOGGER.debug(f'piper_voice_id: {piper_voice_id}')
+        # piper_vg_id: str = self._voice_group_name
+        MY_LOGGER.debug(f'piper_vg_id: {piper_vg_id}')
         MY_LOGGER.debug(f'ietf_language_code: {self._ietf_language_code} \n'
                         f'ietf_territory_code: {self._ietf_territory_code} \n'
                         f'voice_group_name: {self._voice_group_name} \n'
                         f'voice_quality: {self._voice_quality}')
-        return piper_voice_id
+        return piper_vg_id
 
     def __repr__(self) -> str:
         result: str = ''
@@ -876,14 +876,14 @@ class PiperDownloader(IDownloader):
         speaker_id: str = self.piper_data.speaker_id
         MY_LOGGER.debug(f'speaker_id: {speaker_id} type: {type(speaker_id)}')
         volume: float = 1.0
-        voice_file_name: str = self.piper_data.piper_voice_id
+        voice_file_name: str = self.piper_data.piper_vg_id
         MY_LOGGER.debug(f'voiced_path: {voiced_path}')
         onnx_model_path: Path = (PiperApi.PIPER_VOICE_DATA_PATH /
                                  self.piper_data.onnx_model_file)
         if not onnx_model_path.exists():
             MY_LOGGER.debug(f'onnx_model_path: {onnx_model_path} does NOT exist')
             path: Path
-            path = PiperApi.get_onnx_model(self.piper_data.piper_voice_id)
+            path = PiperApi.get_onnx_model(self.piper_data.piper_vg_id)
             MY_LOGGER.debug(f'path: {path}')
             if path is None:
                 MY_LOGGER.debug(f'Could not download {self.piper_data.onnx_model_file}')
@@ -927,8 +927,10 @@ class PiperDownloader(IDownloader):
             noise_scale (optional) - speaking variability
             noise_w_scale (optional) - phoneme width variability
         """
-        MY_LOGGER.debug(f'tts_by_http')
-        PiperApi.start_builtin_http_server()
+        if PiperApi.http_server_run_state == PiperApi.HTTP_SERVER_READY:
+            MY_LOGGER.debug(f'tts_by_http already running')
+        else:
+            PiperApi.start_builtin_http_server()
         json_str: str = ('{ '
                          f'"text": "{phrase.text}", '  # No expired check
                          f'"voice": "{voice_file_name}", '
@@ -954,12 +956,13 @@ class PiperDownloader(IDownloader):
                 f'{PiperApi.PIPER_HTTP_SERVER_HOST}:'
                 f'{PiperApi.PIPER_HTTP_SERVER_PORT}'
                 ]
-        MY_LOGGER.debug(f'Generating voice for {phrase.text}')
+        MY_LOGGER.debug(f'Generating voice for {phrase.text} voice_path: {voiced_path}')
         self.delete_path_if_exists(voiced_path, "before generating from http")
         rc, _ = PiperApi.run_command(args, env)
         if rc != 0:
             self.delete_path_if_exists(voiced_path, "after http generation failed")
-        MY_LOGGER.debug(f'tts_by_http: {rc}')
+        else:
+            MY_LOGGER.debug(f'Voice generation by http success')
         return rc
 
     def delete_path_if_exists(self, path: Path, msg: str) -> None:

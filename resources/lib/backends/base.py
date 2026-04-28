@@ -7,7 +7,11 @@ import tempfile
 import threading
 from pathlib import Path
 
+import langcodes
 from backends.engines.utils.igenerator_deps import ITTSData
+from backends.settings.engine_voice import EngineVoice
+from backends.settings.engine_voice_manager import EngineVoiceManager
+from backends.settings.lang_utils import LangUtils
 from backends.settings.service_types import ServiceID, ServiceKey
 from backends.settings.service_unavailable_exception import ServiceUnavailable
 from cache.cache_file_state import CacheFileState
@@ -572,11 +576,6 @@ class BaseEngineService(BaseServices):
 
     def get_voice_cache(self) -> VoiceCache:
         raise NotImplementedError()
-
-    @classmethod
-    def update_voice_path(cls, phrase: Phrase) -> ITTSData:
-        raise NotImplementedError(f'active_engine: {Settings.get_engine_key()} \n'
-                                  f'alt: {Settings.get_alternate_engine_id()}')
 
     @classmethod
     def getSetting(cls, setting_id: str,  default=None):

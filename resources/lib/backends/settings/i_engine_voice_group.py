@@ -68,7 +68,6 @@ class IEngineVoiceGroup:
                  engine_lang_id: str,
                  engine_vg_id: str,
                  voice_quality: QualityType,
-                 voice_quality_label: str,
                  vg_label: str = None,
                  locale_match: int = -1
                  ):
@@ -85,7 +84,6 @@ class IEngineVoiceGroup:
         :param engine_lang_id: Code that engine may use for the language
         :param engine_vg_id: Code that engine may use for the voice-group
         :param voice_quality: 0-5
-        :param voice_quality_label: Label of voice quality
         :param vg_label: Names the collection that a voice
                                    belongs.
         :param locale_match: Measure of how much THIS lang's locale differs from the

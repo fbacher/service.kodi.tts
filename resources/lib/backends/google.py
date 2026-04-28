@@ -173,12 +173,8 @@ class LangInfo:
                 pass
 
             locale_id: str = locale_id.lower()
-            # Will create (dummy) Voice Groups for each voice
             cache_path_segment: Path = Path(ietf_lang.to_tag().lower())
-            label: str = f'{locale_id} {voice_name}'
-            voice_label: str = (f'{voice_name}  Quality: {QualityType} '
-                                f' Voice Locale: {locale_id}')
-
+            # Will create (dummy) Voice Group for each voice
             EngineVoiceManager.add_voice(engine_key=GoogleTTSEngine.service_key,
                                          ietf_tag=ietf_lang.to_tag(),
                                          gender=Genders.ANY,
@@ -186,7 +182,7 @@ class LangInfo:
                                          e_voice_id=locale_id,
                                          engine_vg_id=locale_id,
                                          voice_quality=voice_quality,
-                                         voice_label=voice_label,
+                                         voice_label=voice_name,
                                          cache_path_segment=cache_path_segment)
 
 
@@ -239,6 +235,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         player_mode: PlayerMode = Settings.get_player_mode(clz.service_key)
         return player_mode
 
+    '''
     @classmethod
     def update_voice_path(cls, phrase: Phrase) -> None:
         """
@@ -261,12 +258,13 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
             phrase.set_territory_dir(ietf_lang.territory.lower())
             MY_LOGGER.debug(f'language/territory being set text: {phrase.text} '
                             f'lang: {ietf_lang}')
-            phrase.set_e_voice(e_voice)
+            phrase.e_voice = e_voice
             phrase.set_voice_dir(e_voice.cache_path_segment)
         else:
-            phrase.set_e_voice(e_voice)
+            phrase.e_voice = e_voice
             phrase.set_voice_dir(e_voice.cache_path_segment)
         return
+    '''
 
     def create_speech_generator(self,
                                 tts_data: ITTSData | None = None) -> ISpeechGenerator | None:
@@ -427,10 +425,6 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         languages: List[Tuple[str, str]]  # lang_id, locale_id
         languages, default_lang = cls.settingList(SettingProp.LANGUAGE)
         language = default_lang
-        # language_validator: StringValidator
-        # language_validator = cls.get_validator(cls.setting_id,
-        #                                        setting_id=SettingProp.LANGUAGE)
-        # language = language_validator.get_tts_value()
         return language
 
     @classmethod

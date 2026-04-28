@@ -105,7 +105,7 @@ class SpeechGenerator(ISpeechGenerator):
         :return: True if the voice file was handed to a player, otherwise False
         """
         try:
-            self.update_voice_path(phrase)
+            self.update_voice_path(self.engine_instance, phrase)
             result: CacheEntryInfo
             result = self.v_cache.get_path_to_voice_file(phrase,
                                                          self.use_cache)
@@ -176,7 +176,7 @@ class SpeechGenerator(ISpeechGenerator):
         if self.downloader.supports_chunks and self.downloader.creates_tmp:
             raise NotImplementedError('SpeechGenerator currently doesn\'t support '
                                       'chunking with downloader creating tmp file')
-        self.update_voice_path(self.original_phrase)
+        self.update_voice_path(self.engine_instance, self.original_phrase)
         self.original_phrase.set_download_pending(True)
         self.set_phrase()
         if self.original_phrase.is_empty():
@@ -408,7 +408,7 @@ class SpeechGenerator(ISpeechGenerator):
         """
         result: CacheEntryInfo | None = None
         try:
-            self.update_voice_path(phrase)
+            self.update_voice_path(self.engine_instance, phrase)
             use_cache = self.use_cache
             result = v_cache.get_path_to_voice_file(phrase, use_cache=use_cache)
             if MY_LOGGER.isEnabledFor(DEBUG):
@@ -419,11 +419,14 @@ class SpeechGenerator(ISpeechGenerator):
             MY_LOGGER.debug(f'{phrase.short_text()}: {phrase.cache_file_state()}')
         return result
 
-    def update_voice_path(self, phrase: Phrase) -> None:
+    @classmethod
+    def update_voice_path(cls, engine_instance: SimpleTTSBackend,
+                          phrase: Phrase) -> None:
         """
         TODO: Move to ISpeechGenerator, or perhaps VoiceCache
 
         Modify any cache path to reflect the given language and territory.
+        :param engine_instance: engine that owns the phrase
         :param phrase:
         :return:
         """
@@ -434,19 +437,19 @@ class SpeechGenerator(ISpeechGenerator):
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'orig Phrase locale_id: {locale_id}')
         ietf_lang: langcodes.Language = langcodes.get(locale_id)
-        service_key: ServiceID = self.engine_instance.service_key
+        service_key: ServiceID = engine_instance.service_key
         e_voice: EngineVoice = EngineVoiceManager.get_e_voice(service_key)
 
-        if self.use_cache and not phrase.is_lang_territory_set():
+        if Settings.is_use_cache and not phrase.is_lang_territory_set():
             phrase.set_lang_dir(ietf_lang.language)
             phrase.set_territory_dir(ietf_lang.territory.lower())
             MY_LOGGER.debug(
                 f'Setting voice_dir: voice_group_id: {e_voice.engine_vg_id} \n'
                 f'quality_id: {e_voice.voice_quality} \n')
             MY_LOGGER.debug(f'voice_id.voice_id: {e_voice.e_voice_id}')
-            phrase.set_e_voice(e_voice)
+            phrase.e_voice = e_voice
             phrase.set_voice_dir(e_voice.cache_path_segment)
         else:
-            phrase.set_e_voice(e_voice)
+            phrase.e_voice = e_voice
             phrase.set_voice_dir(e_voice.cache_path_segment)
         return

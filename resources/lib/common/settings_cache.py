@@ -907,6 +907,7 @@ class SettingsIO:
         'speed.eSpeak'                                 : '',
         'speed.google'                                 : '',
         'speed.powershell'                             : '',
+        'speed.piper'                                  : '',
         'speed_visible.eSpeak'                         : '',
         'speed_visible.google'                         : '',
         'speed_visible.powershell'                     : '',

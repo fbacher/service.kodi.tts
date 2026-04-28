@@ -147,7 +147,8 @@ class LangInfo:
 
         :return:
         """
-        MY_LOGGER.debug(f'In load_speakers')
+        if MY_LOGGER.isEnabledFor(DEBUG_V):
+            MY_LOGGER.debug_v(f'In load_speakers')
         if not cls.voices_initialized_initialized:
             cls.voices_initialized_initialized = True
 
@@ -169,7 +170,8 @@ class LangInfo:
             # Convert to langcodes
             ietf_langs: List[langcodes.Language] = []
             for speaker_data in speakers_data:
-                MY_LOGGER.debug(f'speaker_data: {speaker_data}')
+                if MY_LOGGER.isEnabledFor(DEBUG_V):
+                    MY_LOGGER.debug_v(f'speaker_data: {speaker_data}')
                 speaker_data: PiperSpeakerTuple
                 lang_territory_code: str = speaker_data.lang_territory_code
                 # The voice_group always refers to the filename prefix describing the
@@ -197,7 +199,8 @@ class LangInfo:
                     if ietf_lang.language != current_language:
                         continue
                     ietf_langs.append(ietf_lang)
-                    MY_LOGGER.debug(f'ietf_langs added {ietf_lang}')
+                    if MY_LOGGER.isEnabledFor(DEBUG_V):
+                        MY_LOGGER.debug_v(f'ietf_langs added {ietf_lang}')
                     voice_name: str = speaker_name
                     locale_id: str = ietf_lang.to_tag()  # Mixed case
                     lower_locale_id: str = locale_id.lower()
@@ -214,9 +217,12 @@ class LangInfo:
                                         f'voice_name: {voice_name}\n'
                                         f'voice_id: {speaker_id}'
                                         f'vg_id: {vg_id}')
-                    MY_LOGGER.debug(f'speaker_id: {speaker_id} type: {type(speaker_id)}')
+                    if MY_LOGGER.isEnabledFor(DEBUG_V):
+                        MY_LOGGER.debug_v(f'speaker_id: {speaker_id} type: '
+                                          f'{type(speaker_id)}')
                     if speaker_id == '0':
-                        MY_LOGGER.debug(f'VOICE GROUP\n'
+                        if MY_LOGGER.isEnabledFor(DEBUG_V):
+                            MY_LOGGER.debug_v(f'VOICE GROUP\n'
                                         f'engine_key: {PiperTTSEngine.service_key}\n'
                                         f'ietf_tag: {locale_id}\n'
                                         f'gender: {Genders.ANY}\n'
@@ -225,7 +231,7 @@ class LangInfo:
                                         f'engine_vg_id: {vg_id}\n'
                                         f'voice_quality: {voice_quality.label}\n'
                                         f'vg_name: {vg_name}')
-                        MY_LOGGER.debug(f'vg_name: {vg_name}')
+                            MY_LOGGER.debug_v(f'vg_name: {vg_name}')
                         current_vg = EngineVoiceManager.add_voice_group(
                                 engine_key=PiperTTSEngine.service_key,
                                 ietf_tag=locale_id,
@@ -234,9 +240,9 @@ class LangInfo:
                                 engine_lang_id=locale_id,
                                 engine_vg_id=vg_id,
                                 voice_quality=voice_quality,
-                                voice_quality_label=voice_quality.label,
                                 vg_label=vg_name)
-                    MY_LOGGER.debug(f'VOICE\n'
+                    if MY_LOGGER.isEnabledFor(DEBUG_V):
+                        MY_LOGGER.debug_v(f'VOICE\n'
                                     f'engine_key: {PiperTTSEngine.service_key}\n'
                                     f'ietf_tag: {locale_id}\n'
                                     f'gender: {Genders.ANY}\n'
@@ -254,9 +260,9 @@ class LangInfo:
                             e_voice_id=speaker_id,
                             engine_vg_id=vg_id,
                             voice_quality=voice_quality,
-                            voice_quality_label=voice_quality.label,
                             voice_label=voice_name)
-                    MY_LOGGER.debug(f'VOICE\n new_voice: {current_voice}')
+                    if MY_LOGGER.isEnabledFor(DEBUG_V):
+                        MY_LOGGER.debug_v(f'VOICE\n new_voice: {current_voice}')
                 except AbortException as e:
                     reraise(*sys.exc_info())
                 except LanguageTagError:
@@ -378,72 +384,6 @@ class PiperTTSEngine(base.SimpleTTSBackend):
     def supports_voice_groups(cls) -> bool:
         return True
 
-    '''
-    @classmethod
-    def get_decoded_voice_id(cls) -> Tuple[str, str, str, str]:
-        voice_id: str = Settings.get_e_voice(cls.service_key)
-        return cls.decode_voice_id(voice_id)
-    
-    @classmethod
-    def decode_voice_id(cls, voice_id: str) -> Tuple[str, str, str, str]:
-        """
-        Some TTS engines (like Piper) don't use just simple voice_ids. Piper
-        has the concept of voice_group_id as well as encoding the locale and quality
-        into the voice_id.
-    
-        For Piper, get_vg returns a string containing each part of the voice:
-    
-        vg_id[0] == <language_code>_<territory_code>
-        vg_id[1] = <voice_group_name>
-        vg_id[2] = <quality>
-        vg_id[3] = <vg_id> (only present when there is more than one voice
-                            for the voice_group, a string containing an integer)
-        :returns: Tuple[voice_id: str, voice_group_id: str, quality_id: str,
-                        locale_id: str]
-        """
-        voice_parts: List[str] = voice_id.split('-')
-        MY_LOGGER.debug(f'voice_id: {voice_id} voice_parts: {voice_parts}')
-        kodi_locale: str = Constants.LOCALE
-        locale_id: str = voice_parts[0]  # en_GB
-        voice_group_id: str = voice_parts[1]
-        quality_id: str = voice_parts[2]
-        voice_id: str = ''
-        if len(voice_parts) > 2:
-            voice_id = voice_parts[3]
-        if len(voice_parts) > 4:
-            raise ValueError('Too many elements in voice_parts: {voice_parts}')
-        return voice_id, voice_group_id, quality_id, locale_id
-    '''
-
-    @classmethod
-    def update_voice_path(cls, phrase: Phrase) -> None:
-        """
-        Modify any cache path to reflect the given language and territory.
-        :param phrase:
-        :return:
-        """
-        MY_LOGGER.debug(f'update_voice_path phrase: {phrase}')
-        locale_id: str = phrase.language  # IETF format
-        if phrase.language is None:
-            locale_id = LangUtils.kodi_locale
-        if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'orig Phrase locale_id: {locale_id}')
-        ietf_lang: langcodes.Language = langcodes.get(locale_id)
-        e_voice: EngineVoice = EngineVoiceManager.get_e_voice(cls.service_key)
-
-        if Settings.is_use_cache() and not phrase.is_lang_territory_set():
-            phrase.set_lang_dir(ietf_lang.language)
-            phrase.set_territory_dir(ietf_lang.territory.lower())
-            MY_LOGGER.debug(f'Setting voice_dir: voice_group_id: {e_voice.engine_vg_id} \n'
-                            f'quality_id: {e_voice.voice_quality} \n')
-            MY_LOGGER.debug(f'voice_id.voice_id: {e_voice.e_voice_id}')
-            phrase.set_e_voice(e_voice)
-            phrase.set_voice_dir(e_voice.cache_path_segment)
-        else:
-            phrase.set_e_voice(e_voice)
-            phrase.set_voice_dir(e_voice.cache_path_segment)
-        return
-
     def create_speech_generator(self,
                                 tts_data: PiperData | None = None) \
             -> ISpeechGenerator | None:
@@ -552,26 +492,12 @@ class PiperTTSEngine(base.SimpleTTSBackend):
         """
         raise NotImplementedError()
 
-    '''
-    @classmethod
-    def get_default_language(cls) -> str:
-        value: Tuple[Choices, int]
-        value = SettingsHelper.get_vg_choices(cls.service_key,
-                                              get_best_match=True)
-        choices: Choices = Choices(value[0])
-        best: int = value[1]
-        if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'choices: {choices} best: {best}'
-                            f' best_choice: {choices[best]}')
-        default_lang: str = choices[best].lang_info.locale_id.lower()
-        return default_lang
-    '''
-
     @classmethod
     def get_voice(cls) -> EngineVoice:
         e_voice: EngineVoice = EngineVoiceManager.get_e_voice(cls.service_key)
         return e_voice
 
+    '''
     @classmethod
     def getLanguage(cls) -> str:
         """
@@ -589,6 +515,7 @@ class PiperTTSEngine(base.SimpleTTSBackend):
         #                                        setting_id=SettingProp.LANGUAGE)
         # language = language_validator.get_tts_value()
         return language
+    '''
 
     @classmethod
     def getPitch(cls) -> float:

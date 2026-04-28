@@ -271,4 +271,3 @@ class ReturnCode(IntEnum):
     EXPIRED = 10
     ABORT = 11
     NO_PHRASES = 12
-    NOT_SET = 99

@@ -249,7 +249,8 @@
                      <width>35</width>
                      <texturesliderbackground border="0,14,0,14">ScrollBarV.png</texturesliderbackground>
                      <texturesliderbar border="0,14,0,14">ScrollBarV_bar.png</texturesliderbar>
-                     <texturesliderbarfocus border="0,14,0,14">ScrollBarV_bar_focus.png</texturesliderbarfocus>
+                     <texturesliderbarfocus border="0,14,0,14">ScrollBarV_bar_focus.png
+                     </texturesliderbarfocus>
                      <textureslidernib>ScrollBarNib.png</textureslidernib>
                      <textureslidernibfocus>ScrollBarNib.png</textureslidernibfocus>
                      <onleft condition="Control.IsVisible(1103)">1103</onleft>
@@ -267,87 +268,87 @@
                </control> <!-- End group 1003  Selection List-->
             </control>
             <control type="grouplist" id="9001">
-            <topic name="ok_cancel_group" rank="3">
-               <outer_topic>header_group</outer_topic>
-            </topic>
-            <top>950</top>
-            <left>120</left>
-            <width>1600</width>
-            <height>85</height>
-            <align>center</align>
-            <itemgap>85</itemgap>
-            <orientation>horizontal</orientation>
-            <defaultcontrol>28</defaultcontrol>
-            <control type="button" id="28">
-               <description>OK Button</description>
-               <topic name="ok_button" rank="4">
-                  <outer_topic>ok_cancel_group</outer_topic>
-                  <container_topic>ok_cancel_group</container_topic>
-                  <hint_text>Select to save changes and exit dialog</hint_text>
-                  <topic_left/>
-                  <topic_right/>
-                  <topic_up>api_key_value</topic_up>
-                  <topic_down/>
+               <topic name="ok_cancel_group" rank="3">
+                  <outer_topic>header_group</outer_topic>
                </topic>
-               <top>0</top>
-               <width>200</width>
-               <height>75</height>
-               <hitrect x="0" y="0" w="150" h="50"/>
+               <top>950</top>
+               <left>120</left>
+               <width>1600</width>
+               <height>85</height>
                <align>center</align>
-               <aligny>center</aligny>
-               <font>font12_title</font>
-               <onleft>30</onleft>
-               <onright>29</onright>
-               <onup>1003</onup>
-               <ondown>1003</ondown>
+               <itemgap>85</itemgap>
+               <orientation>horizontal</orientation>
+               <defaultcontrol>28</defaultcontrol>
+               <control type="button" id="28">
+                  <description>OK Button</description>
+                  <topic name="ok_button" rank="4">
+                     <outer_topic>ok_cancel_group</outer_topic>
+                     <container_topic>ok_cancel_group</container_topic>
+                     <hint_text>Select to save changes and exit dialog</hint_text>
+                     <topic_left/>
+                     <topic_right/>
+                     <topic_up>api_key_value</topic_up>
+                     <topic_down/>
+                  </topic>
+                  <top>0</top>
+                  <width>200</width>
+                  <height>75</height>
+                  <hitrect x="0" y="0" w="150" h="50"/>
+                  <align>center</align>
+                  <aligny>center</aligny>
+                  <font>font12_title</font>
+                  <onleft>30</onleft>
+                  <onright>29</onright>
+                  <onup>1003</onup>
+                  <ondown>1003</ondown>
+               </control>
+               <control type="button" id="29">
+                  <description>Cancel Button</description>
+                  <topic name="cancel_button" rank="4">
+                     <topic_type>heading</topic_type>
+                     <outer_topic>ok_cancel_group</outer_topic>
+                     <container_topic>ok_cancel_group</container_topic>
+                     <hint_text>Select to exit dialog without saving changes</hint_text>
+                     <topic_left>okay_button</topic_left>
+                     <topic_right>default_button</topic_right>
+                     <topic_up/>
+                     <topic_down/>
+                  </topic>
+                  <top>0</top>
+                  <width>200</width>
+                  <height>75</height>
+                  <align>center</align>
+                  <aligny>center</aligny>
+                  <font>font12_title</font>
+                  <label/>
+                  <onleft>28</onleft>
+                  <onright>30</onright>
+                  <onup>1003</onup>
+                  <ondown>1003</ondown>
+               </control>
+               <control type="button" id="30">
+                  <description>Default Settings Button</description>
+                  <topic name="default_button" rank="4">
+                     <outer_topic>ok_cancel_group</outer_topic>
+                     <container_topic>ok_cancel_group</container_topic>
+                     <hint_text>Select to set current engine settings to default values</hint_text>
+                     <topic_left>cancel_button</topic_left>
+                     <topic_right>ok_button</topic_right>
+                     <topic_up/>
+                     <topic_down>engine_settings</topic_down>
+                  </topic>
+                  <top>0</top>
+                  <width>200</width>
+                  <height>75</height>
+                  <align>center</align>
+                  <aligny>center</aligny>
+                  <font>font12_title</font>
+                  <onleft>29</onleft>
+                  <onright>28</onright>
+                  <onup>1003</onup>
+                  <ondown>1003</ondown>
+               </control>
             </control>
-            <control type="button" id="29">
-               <description>Cancel Button</description>
-               <topic name="cancel_button" rank="4">
-                  <topic_type>heading</topic_type>
-                  <outer_topic>ok_cancel_group</outer_topic>
-                  <container_topic>ok_cancel_group</container_topic>
-                  <hint_text>Select to exit dialog without saving changes</hint_text>
-                  <topic_left>okay_button</topic_left>
-                  <topic_right>default_button</topic_right>
-                  <topic_up/>
-                  <topic_down/>
-               </topic>
-               <top>0</top>
-               <width>200</width>
-               <height>75</height>
-               <align>center</align>
-               <aligny>center</aligny>
-               <font>font12_title</font>
-               <label/>
-               <onleft>28</onleft>
-               <onright>30</onright>
-               <onup>1003</onup>
-               <ondown>1003</ondown>
-            </control>
-            <control type="button" id="30">
-               <description>Default Settings Button</description>
-               <topic name="default_button" rank="4">
-                  <outer_topic>ok_cancel_group</outer_topic>
-                  <container_topic>ok_cancel_group</container_topic>
-                  <hint_text>Select to set current engine settings to default values</hint_text>
-                  <topic_left>cancel_button</topic_left>
-                  <topic_right>ok_button</topic_right>
-                  <topic_up/>
-                  <topic_down>engine_settings</topic_down>
-               </topic>
-               <top>0</top>
-               <width>200</width>
-               <height>75</height>
-               <align>center</align>
-               <aligny>center</aligny>
-               <font>font12_title</font>
-               <onleft>29</onleft>
-               <onright>28</onright>
-               <onup>1003</onup>
-               <ondown>1003</ondown>
-            </control>
-         </control>
          </control>
       </control>
    </controls>

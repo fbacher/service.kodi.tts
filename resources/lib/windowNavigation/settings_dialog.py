@@ -6,8 +6,11 @@ import xbmcaddon
 import xbmcgui
 from xbmcgui import (ControlButton, ControlEdit, ControlGroup, ControlLabel,
                      ControlRadioButton, ControlSlider)
+try:
+    from enum import StrEnum
+except ImportError:
+    from common.strenum import StrEnum
 
-import langcodes
 from backends.base import *
 from backends.settings.engine_lang import EngineLang
 from backends.settings.engine_voice import EngineVoice
@@ -22,7 +25,7 @@ from common.exceptions import ConfigurationError
 from common.logger import *
 from common.message_ids import MessageId
 from common.messages import Messages
-from common.setting_constants import (Backends, Genders)
+from common.setting_constants import (Backends, DialogSubj, Genders)
 from common.settings import Settings
 from utils.util import get_language_code
 from windowNavigation.action_map import Action
@@ -936,23 +939,23 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             self.cfg.restore_settings('enter select_engine BEFORE do_modal')
             self.cfg.save_settings('select_engine enter BEFORE do_modal')
             self.refresh_tts(capture_settings=True)
-            choices, current_choice_index = self.cfg.get_engine_choices(
+            choices, current_choice_idx, best_idx = self.cfg.get_engine_choices(
                     engine_key=engine_key)
             choices: EngineChoices
-            if current_choice_index < 0:
-                current_choice_index = 0
+            if current_choice_idx < 0:
+                current_choice_idx = 0
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'# choices: {len(choices)} current_choice_idx: '
-                                f'{current_choice_index}')
+                                f'{current_choice_idx}')
                 MY_LOGGER.debug(f'sub_title: {MessageId.SELECT_TTS_ENGINE.get_msg()}')
             dialog: SelectionDialog
             dialog = self.selection_dialog(
-                    title=MessageId.CHOOSE_TTS_ENGINE.get_msg(),
-                    dialog_subject='Engine',
-                    sub_title=MessageId.SELECT_TTS_ENGINE.get_msg(),
-                    choices=choices,
-                    selection_index=current_choice_index,
-                    call_on_focus=self.voice_engine)
+                            dialog_subject=DialogSubj.ENGINE,
+                            title=MessageId.CHOOSE_TTS_ENGINE.get_msg(),
+                            sub_title=MessageId.SELECT_TTS_ENGINE.get_msg(),
+                            choices=choices,
+                            selection_idx=current_choice_idx,
+                            call_on_focus=self.voice_engine)
             # xbmc.executebuiltin(function=f'control.setHidden(101)', wait=False)
             dialog.doModal()
             """
@@ -966,7 +969,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             # Revert all changes made during SelectionDialog
             self.cfg.restore_settings(msg='select_engine after doModal')  # Pops one
             # Get selected index
-            idx = dialog.sel_data.chosen_idx
+            idx = dialog.sel_data.selected_idx
             if MY_LOGGER.isEnabledFor(DEBUG_V):
                 MY_LOGGER.debug_v(f'SelectionDialog value: '
                                   f'{MessageId.TTS_ENGINE.get_msg()} '
@@ -1152,17 +1155,18 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             current_vg_idx = vg_choices.selected_vg_idx
             MY_LOGGER.debug(f'current_vg_idx: {current_vg_idx} len(vg_choices): '
                             f'{len(vg_choices)}')
-            current_vg: VGChoice = vg_choices[current_vg_idx]
+            current_vg: VGChoice = vg_choices.selected_vg_obj
             default_vg_idx: int = vg_choices.default_vg_idx
-
+            current_voice: VoiceChoice = current_vg.selected_v_obj
             current_voice_idx: int = current_vg.selected_v_idx
-
             MY_LOGGER.debug(
                     f'current_vg_idx: {current_vg_idx} current_vg: '
                     f'{current_vg.label} current_voice_idx: '
                     f'{current_voice_idx} default_vg_idx: {default_vg_idx}')
             MY_LOGGER.debug(f'current_voice: '
-                            f'{current_vg.v_choices[current_voice_idx].label}')
+                            f'{current_vg.v_choices[current_voice_idx].label} '
+                            f'{current_voice.label} \n'
+                            f'from vg_choices: {vg_choices.selected_v_obj.label}')
 
             if len(vg_choices) == 0:
                 # Do NOT change UI. These values will not be committed
@@ -1197,11 +1201,11 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             # MY_LOGGER.debug(f'Calling selection_dialog for choosing voice')
             # MY_LOGGER.debug(f'call_on_select: {self.select_voice_from_group}')
             dialog: SelectionDialog
-            dialog = self.selection_dialog(title=title,
-                                           dialog_subject='VGroups',
+            dialog = self.selection_dialog(dialog_subject=DialogSubj.V_OR_VG,
+                                           title=title,
                                            sub_title=sub_title,
                                            choices=vg_choices,
-                                           selection_index=current_vg_idx,
+                                           selection_idx=current_vg_idx,
                                            call_on_focus=self.voice_the_voice,
                                            call_on_select=self.get_voices_from_group)
             dialog.doModal()
@@ -1209,16 +1213,17 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             self.cfg.restore_settings(
                     msg='select_voice_from_groups AFTER doModal')
 
+            MY_LOGGER.debug(f'Voice idx: {dialog.sel_data.selected_idx} '
+                            f'value: {dialog.sel_data.selected_obj}')
+
             # Now, apply any desired changes
-            MY_LOGGER.debug(f'Voice idx: {dialog.sel_data.chosen_idx} '
-                            f'value: {dialog.sel_data.chosen_object}')
-            vg_idx: int = dialog.sel_data.chosen_idx
+            vg_idx: int = dialog.sel_data.selected_idx
             if vg_idx < 0:  # No selection made or CANCELED
                 return
 
-            vg_choice: VGChoice = dialog.sel_data.chosen_object
+            vg_choice: VGChoice = dialog.sel_data.selected_obj
             e_voice: EngineVoice
-            v_choice: VoiceChoice | None = None
+            v_choice: VoiceChoice
             if isinstance(vg_choice, VoiceChoice):
                 v_choice = vg_choice
                 MY_LOGGER.debug(f'VoiceChoice: {v_choice}')
@@ -1281,9 +1286,9 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 MY_LOGGER.debug(f'sub_title: {sub_title}')
 
             clz._selection_dialog.update_data(title=title,
-                                              dialog_subject='VoiceChoices',
+                                              dialog_subject=DialogSubj.V_OR_VG,
                                               choices=v_choices,
-                                              selection_index=current_voice_idx,
+                                              selection_idx=current_voice_idx,
                                               sub_title=sub_title,
                                               call_on_focus=self.voice_the_voice,
                                               call_on_select=None,
@@ -1294,7 +1299,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             chosen_idx: int = dialog.sel_data.chosen_idx
             #  self.sel_data.chosen_idx = sel_idx
             choice: EngineChoice | VoiceChoice | VGChoice | int
-            choice = dialog.sel_data.selected_object
+            choice = dialog.sel_data.chosen_object
             vg_choice.selected_v_idx = chosen_idx
             MY_LOGGER.debug(f'chosen_idx: {chosen_idx} choice: {choice} '
                             f'selected_v_idx: {vg_choice.selected_v_idx}')
@@ -1338,13 +1343,9 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             # then select and voice the default voice from the group.
 
             vg_choice: VGChoice = choice
-            e_voice = vg_choice.e_vg.default_e_voice  # Default Voice of group
-            vg_choice.set_selected_ev_idx(e_voice.e_voice_id)
-            selected_voice: VoiceChoice
-            selection_idx: int = vg_choice.selected_v_idx
-            selected_voice = vg_choice.v_choices[selection_idx]
+            selected_voice: VoiceChoice = vg_choice.selected_v_obj
             e_voice = selected_voice.e_voice
-            MY_LOGGER.debug(f'VGChoice: {vg_choice.label} voice: {e_voice}')
+            MY_LOGGER.debug(f'VGChoice: {vg_choice.label} e_voice: {e_voice}')
         else:  # choice is a voice
             e_voice = choice.e_voice
             MY_LOGGER.debug(f'VoiceChoice e_voice: {e_voice}')
@@ -1425,20 +1426,20 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             self.refresh_tts(capture_settings=True)
             engine_key: ServiceID = self.engine_key
             choices: Choices
-            choices, current_choice_index = self.cfg.get_gender_choices(engine_key)
+            choices, current_choice_idx = self.cfg.get_gender_choices(engine_key)
             # xbmc.executebuiltin('Skin.ToggleDebug')
             title: str = MessageId.VOICE_GENDER_BUTTON.get_msg()
             self.cfg.restore_settings(msg='select_gender BEFORE doModal')
             self.cfg.save_settings('select_gender BEFORE doModal')
             dialog: SelectionDialog
             dialog = self.selection_dialog(title=title,
-                                           dialog_subject='Gender',
+                                           dialog_subject=DialogSubj.GENDER,
                                            choices=choices,
-                                           selection_index=current_choice_index,
+                                           selection_idx=current_choice_idx,
                                            call_on_focus=None)
             dialog.doModal()
             self.cfg.restore_settings(msg='select_gender AFTER doModal')
-            idx = dialog.sel_data.chosen_idx
+            idx = dialog.sel_data.selected_idx
             if idx < 0:
                 return
 
@@ -1467,7 +1468,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         try:
             engine_key: ServiceID = self.engine_key
             choices: EngineChoices
-            (choices, current_choice_index) = self.cfg.get_player_choices(engine_key)
+            (choices, current_choice_idx) = self.cfg.get_player_choices(engine_key)
             title: str = MessageId.SELECT_PLAYER.get_msg()
             sub_title: str = MessageId.SELECT_PLAYER_SUBTITLE.get_msg()
             self.cfg.restore_settings(msg='select_player BEFORE doModal')
@@ -1475,14 +1476,14 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             self.refresh_tts(capture_settings=True)
             dialog: SelectionDialog
             dialog = self.selection_dialog(title=title,
-                                           dialog_subject='Player',
+                                           dialog_subject=DialogSubj.PLAYER,
                                            sub_title=sub_title,
                                            choices=choices,
-                                           selection_index=current_choice_index,
+                                           selection_idx=current_choice_idx,
                                            call_on_focus=None)
             dialog.doModal()
             self.cfg.restore_settings(msg='select_player AFTER doModal')
-            idx = dialog.sel_data.chosen_idx
+            idx = dialog.sel_data.selected_idx
             if idx < 0:
                 return
 
@@ -1545,19 +1546,19 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         try:
             choices: Choices
             engine_key: ServiceID = self.engine_key
-            (choices, current_choice_index) = self.cfg.get_module_choices(engine_key)
+            (choices, current_choice_idx) = self.cfg.get_module_choices(engine_key)
             title: str = Messages.get_msg(Messages.SELECT_MODULE)
             self.cfg.restore_settings(msg='select_module BEFORE doModal')
             self.cfg.save_settings('select_module BEFORE doModal')
             dialog: SelectionDialog
             dialog = self.selection_dialog(title=title,
-                                           dialog_subject='Module',
+                                           dialog_subject=DialogSubj.MODULE,
                                            choices=choices,
-                                           selection_index=current_choice_index,
+                                           selection_idx=current_choice_idx,
                                            call_on_focus=None)
             dialog.doModal()
             self.cfg.restore_settings(msg='select_module AFTER doModal')
-            idx = dialog.sel_data.chosen_idx
+            idx = dialog.sel_data.selected_idx
             if idx < 0:
                 return
 
@@ -1725,33 +1726,33 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             player_id: str = player_key.service_id
             player: PlayerType = PlayerType(player_id)
             choices: Choices
-            choices, current_choice_index = self.cfg.get_player_mode_choices(engine_key,
+            choices, current_choice_idx = self.cfg.get_player_mode_choices(engine_key,
                                                                              player)
-            if current_choice_index < 0:
-                current_choice_index = 0
+            if current_choice_idx < 0:
+                current_choice_idx = 0
             title: str = Messages.get_msg(Messages.SELECT_PLAYER_MODE)
             self.cfg.restore_settings(msg='select_player_mode BEFORE doModal')
             self.cfg.save_settings('select_player_mode BEFORE doModal')
             self.refresh_tts(capture_settings=True)
             dialog: SelectionDialog
             dialog = self.selection_dialog(title=title,
-                                           dialog_subject='PlayerMode',
+                                           dialog_subject=DialogSubj.PLAYER_MODE,
                                            choices=choices,
-                                           selection_index=current_choice_index,
+                                           selection_idx=current_choice_idx,
                                            call_on_focus=None)
             dialog.doModal()
             self.cfg.restore_settings(msg='select_player AFTER doModal')
 
-            idx = dialog.sel_data.chosen_idx
+            sel_idx = dialog.sel_data.selected_idx
             if MY_LOGGER.isEnabledFor(DEBUG_V):
                 MY_LOGGER.debug_v(f'SelectionDialog value: '
                                   f'{PlayerMode.translated_name} '
-                                  f'idx: {str(idx)}')
-            if idx < 0:
+                                  f'idx: {str(sel_idx)}')
+            if sel_idx < 0:
                 return None
 
-            choice: Choice = choices[idx]
-            prev_choice: Choice = choices[current_choice_index]
+            choice: Choice = choices[sel_idx]
+            prev_choice: Choice = choices[current_choice_idx]
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'engine: {self.engine_key} new player mode:'
                                 f' {choice.label}'
@@ -1829,14 +1830,14 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
             # Make sure that Settings stack depth is the same as when this module
             # was entered (should be 2).
             self.cfg.restore_settings('enter select_defaults')
-            choices, current_choice_index = self.cfg.get_engine_choices(
+            choices, current_choice_idx, best_idx = self.cfg.get_engine_choices(
                     engine_key=self.engine_key)
             choices: EngineChoices
-            if current_choice_index < 0:
-                current_choice_index = 0
+            if current_choice_idx < 0:
+                current_choice_idx = 0
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'# choices: {len(choices)} current_choice_idx: '
-                                f'{current_choice_index}')
+                                f'{current_choice_idx}')
             # The first engine listed should be the best available and universal
             # (GoogleTTS)
             idx = 0
@@ -1916,16 +1917,16 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         """
         try:
             choices: List[Choice]
-            choices, current_choice_index = self.cfg.get_module_choices(self.engine_key)
-            if current_choice_index < 0:
-                current_choice_index = 0
-            if current_choice_index < 0 or current_choice_index > len(choices) - 1:
+            choices, current_choice_idx = self.cfg.get_module_choices(self.engine_key)
+            if current_choice_idx < 0:
+                current_choice_idx = 0
+            if current_choice_idx < 0 or current_choice_idx > len(choices) - 1:
                 self.engine_module_value.setEnabled(False)
                 self.engine_module_value.setLabel(
                         Messages.get_msg(Messages.UNKNOWN))
                 return
 
-            choice: Choice = choices[current_choice_index]
+            choice: Choice = choices[current_choice_idx]
             self.engine_module_value.setLabel(choice.label)
             if len(choices) < 2:
                 self.engine_module_value.setEnabled(False)
@@ -2129,16 +2130,16 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                                         f'{engine_key}')
                     self.engine_gender_group.setVisible(False)
             else:
-                choices, current_choice_index = self.cfg.get_gender_choices(
+                choices, current_choice_idx = self.cfg.get_gender_choices(
                         engine_key)
-                if current_choice_index < 0:
-                    current_choice_index = 0
-                if current_choice_index < 0 or current_choice_index > len(choices) - 1:
+                if current_choice_idx < 0:
+                    current_choice_idx = 0
+                if current_choice_idx < 0 or current_choice_idx > len(choices) - 1:
                     self.engine_gender_value.setEnabled(False)
                     self.engine_gender_value.setLabel(
                             Messages.get_msg(Messages.UNKNOWN))
                     return
-                choice: Choice = choices[current_choice_index]
+                choice: Choice = choices[current_choice_idx]
                 self.engine_gender_value.setLabel(choice.label)
                 if len(choices) < 2:
                     self.engine_gender_value.setEnabled(False)
@@ -2198,10 +2199,10 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         return
 
     def selection_dialog(self,
+                         dialog_subject: DialogSubj,
                          title: str,
-                         dialog_subject: str,
                          choices: Choices,
-                         selection_index: int | str,  # Index or key
+                         selection_idx: int | str,  # Index or key
                          sub_title: str | None = None,
                          call_on_focus:
                          Callable[[Choice | EngineChoice | VoiceChoice |
@@ -2219,7 +2220,7 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         :param dialog_subject: Tags the data to help the code determine what
                                it is working on at the moment (ex: VGroups or VoiceGroups)
         :param choices:  List of available choices to present
-        :param selection_index:  Index of the current choice in choices, OR it
+        :param selection_idx:  Index of the current choice in choices, OR it
                                 is a key to identify a voice and the group it belongs.
         :param sub_title:  Optional Sub-Heading for the dialog
         :param call_on_focus:  Optional call-back function for on-focus events
@@ -2248,17 +2249,17 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                                                     title=title,
                                                     dialog_subject=dialog_subject,
                                                     choices=choices,
-                                                    selection_index=selection_index,
+                                                    selection_idx=selection_idx,
                                                     sub_title=sub_title,
                                                     call_on_focus=call_on_focus,
                                                     call_on_select=call_on_select,
                                                     voice_the_voice=self.voice_the_voice,
                                                     disable_tts=disable_tts)
 
-        clz._selection_dialog.update_data(title=title,
-                                          dialog_subject=dialog_subject,
+        clz._selection_dialog.update_data(dialog_subject=dialog_subject,
+                                          title=title,
                                           choices=choices,
-                                          selection_index=selection_index,
+                                          selection_idx=selection_idx,
                                           sub_title=sub_title,
                                           call_on_focus=call_on_focus,
                                           call_on_select=call_on_select,
