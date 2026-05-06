@@ -214,7 +214,7 @@ class SettingsManager:
     @classmethod
     def get_settings(cls, depth: int = -1) -> Dict[str, Any]:
         if MY_LOGGER.isEnabledFor(DEBUG_XV):
-            MY_LOGGER.debug_xv(f'get_settings')
+            MY_LOGGER.debug_xv(f'get_settings stack_depth: {cls.get_stack_depth()}')
         with cls._settings_lock:
             return copy.deepcopy(cls._settings_stack[-1].settings)
 
@@ -247,11 +247,11 @@ class SettingsManager:
                     MY_LOGGER.debug_xv(f'setting_id: {setting_id} cls._settings_stack[-1]'
                                        f' {cls._settings_stack[-1]} ')
         if value is None or (isinstance(value, str) and value == ''):
-            # MY_LOGGER.debug(f'Using default value {setting_id} {default}')
+            MY_LOGGER.debug(f'Using default value {setting_id} {default_value}')
             value = default_value
             if setting_id == 'converter':
                 MY_LOGGER.dump_stack('Converter problem')
-        # MY_LOGGER.debug(f'setting_id: {setting_id} value: {value}')
+        MY_LOGGER.debug(f'setting_id: {setting_id} value: {value}')
 
         return value
 
@@ -306,6 +306,9 @@ class SettingsWrapper:
         clz = type(self)
         try:
             value = clz.old_api.getSettingBool(setting_path)
+            s_value = clz.old_api.getSetting(setting_path)
+            MY_LOGGER.debug(f'value: {value} s_value: {s_value} setting_path: '
+                            f'{setting_path}')
         except TypeError:
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'Error getting {setting_path}')
@@ -315,7 +318,7 @@ class SettingsWrapper:
             value = None
 
         if isinstance(value, str):
-            value = value.lower() == 'true'
+            value: bool = value.lower() == 'true'
 
         return value
 
@@ -481,6 +484,7 @@ class SettingsWrapper:
             ..
         """
         clz = type(self)
+        MY_LOGGER.debug(f'Setting {setting_path} to {value}')
         value = clz.old_api.setSettingBool(setting_path, value)
 
     def setInt(self, setting_path: str, value: int) -> None:
@@ -965,15 +969,25 @@ class SettingsIO:
     settings_wrapper = SettingsWrapper()
 
     @classmethod
+    def is_persisted_setting(cls, service_key: ServiceID) -> bool:
+        setting_path: str = service_key.short_key
+        if setting_path in cls.ignore:
+            MY_LOGGER.error(f'Setting not in settings.xml. Mark as not persisted: '
+                            f'{service_key}')
+            # raise ValueError(f'Setting not in settings.xml: short_key: '
+            #                  f'{setting_path} long: {service_key}')
+        return setting_path not in cls.ignore
+
+    @classmethod
     def load_setting(cls, service_key: ServiceID, persist: bool,
-                     default_value: [int | float | str | bool | None],
-                     const_value:  [int | float | str | bool]) -> Any | None:
+                     default_value: int | float | str | bool | None,
+                     const_value:  int | float | str | bool | None) -> Any | None:
         """
         loads setting into the current settings cache frame from settings.xml
 
         :param service_key: Identifies the setting to load
         :param persist: if True, then this setting is persisted in settings.xml
-        :param default_value: A non-null value acts as a  default value for the setting
+        :param default_value: A non-null value acts as a default value for the setting
         :param const_value: A non-null value indicates that the setting is a constant
                             value of const_value.
         :return: Any value found for the setting
@@ -987,13 +1001,17 @@ class SettingsIO:
             found = False
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             MY_LOGGER.debug_v(f'Setting {service_key.setting_id} supported: {found} for '
-                              f'{service_key.service_id} persist: {persist}')
+                              f'{service_key.service_id} persist: {persist}\n'
+                              f'const: {const_value} default: {default_value}\n'
+                              f'service_key: {service_key} short_key: '
+                              f'{service_key.short_key}')
         if not persist:
             return None
         setting_path: str = service_key.short_key
         if setting_path in cls.ignore:
             if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'IGNORE {setting_path}')
+                MY_LOGGER.error(f'Setting marked as ignored short_key: {setting_path}')
+                #  raise ValueError(f'Setting marked as ignored: {service_key}')
             return None
         # A few values are constant (such as some engines can't play audio,
         # or adjust volume)
@@ -1082,6 +1100,7 @@ class SettingsIO:
         #     MY_LOGGER.debug(f'Loaded {service_key.short_key}')
         if value is None:
             try:
+                MY_LOGGER.debug(f'Value is None, setting to default: {default_value}')
                 value = default_value
             except Exception as e:
                 MY_LOGGER.exception(f'Can not set default for '

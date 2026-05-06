@@ -64,7 +64,7 @@ class ILanguageInfo(LangUtils):
         """
         raise NotImplementedError()
 
-    def get_voice_groups(self) -> Dict[str, List[ForwardRef('VoiceGroup')]]:
+    def get_voice_groups(self) -> 'Dict[str, List[VoiceGroup]]':
         """
         Gets the voice-group information for this instance. There can be multiple
         voices (male, female, Bob, etc.)
@@ -103,7 +103,7 @@ class ILanguageInfo(LangUtils):
     def get_locale_variants(cls,
                             engine_key: ServiceID | None = None,
                             ietf: Language | None = None
-                            ) -> Dict[ServiceID, Dict[str, ForwardRef('LanguageInfo')]]:
+                            ) -> Dict[ServiceID, Dict[str, LanguageInfo]]:
         """
         Gets language capabilities of all or a single TTS engine.
 

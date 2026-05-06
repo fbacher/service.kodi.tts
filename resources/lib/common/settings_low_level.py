@@ -162,11 +162,14 @@ class SettingsLowLevel:
         type_error: bool = False
         expected_type: str = ''
         service_key: ServiceID | None = None
-        if isinstance(full_setting_id, str):
+        if not isinstance(full_setting_id, ServiceID):
+            MY_LOGGER.debug(f'TRACE: full_setting_id is NOT str but: '
+                            f'{type(full_setting_id)}')
             # Will have ServiceType.UNKNOWN
             service_key = ServiceID.from_full_setting_id(full_setting_id)
         else:
             service_key = full_setting_id
+        service_key: ServiceID
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'service_key: {service_key} value: {value}')
         if not SettingsMap.is_valid_setting(service_key):
@@ -287,6 +290,7 @@ class SettingsLowLevel:
             SettingsLowLevel._loading.set()
         '''
 
+    '''
     @classmethod
     def _load_settings(cls, new_settings: Dict[ServiceID, Any],
                        service_key: ServiceID,
@@ -363,7 +367,7 @@ class SettingsLowLevel:
             else:
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'FAILED to add {service_key} value: {value}')
-
+    '''
 
     @classmethod
     def configuring_settings(cls):
@@ -416,6 +420,8 @@ class SettingsLowLevel:
     @classmethod
     def getRealSetting(cls, setting_id: str, engine_id: str | None,
                        default_value: Any | None) -> Any | None:
+        if not isinstance(setting_id, str):
+            raise ValueError('setting_id not type str but {type(setting_id)}')
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'TRACE getRealSetting NOT from cache id: {setting_id}'
                             f' backend: {engine_id}')
@@ -495,6 +501,8 @@ class SettingsLowLevel:
             # Persist the new-frame to settings.xml
             for full_setting_id, value in top_frame.items():
                 full_setting_id: str
+                if not isinstance(full_setting_id, str):
+                    raise ValueError('Invalid setting_id type: {type(full_setting_id)}')
                 value: Any
                 value_type: SettingType | None = None
                 str_value: str = ''
@@ -506,7 +514,7 @@ class SettingsLowLevel:
 
                     if MY_LOGGER.isEnabledFor(DEBUG_V):
                         MY_LOGGER.debug_v(f'id: {full_setting_id} '
-                                         f'value: {str_value} type: {type(value)}')
+                                          f'value: {str_value} type: {type(value)}')
                     prefix: str = cls.getSettingIdPrefix(full_setting_id)
                     value_type = SettingProp.SettingTypes.get(prefix, None)
                     if value is None:
@@ -666,7 +674,8 @@ class SettingsLowLevel:
         cls.check_reload()
         load_on_demand = True
         if MY_LOGGER.isEnabledFor(DEBUG_V):
-            MY_LOGGER.debug_v(f'{service_key} is_in_cache: {cls.is_in_cache(service_key)}')
+            MY_LOGGER.debug_v(f'{service_key} is_in_cache: {cls.is_in_cache(service_key)} '
+                              f'load_on_demand: {load_on_demand}')
         if load_on_demand and not cls.is_in_cache(service_key):
             # value is NOT stored in settings cache. Need to manually push it to
             # all stack frames of cache (yuk).
@@ -747,10 +756,12 @@ class SettingsLowLevel:
         if ignore_cache:
             try:
                 value = cls.settings_wrapper.getBool(service_key.short_key)
+                MY_LOGGER.debug(f'{service_key.short_key} value: {value}')
                 return value
             except Exception as e:
                 MY_LOGGER.exception('')
         value = cls._getSetting(service_key, default, load_on_demand=True)
+        MY_LOGGER.debug(f'{service_key} value2: {value}')
         return value
 
     @classmethod

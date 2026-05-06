@@ -227,6 +227,7 @@ class VoiceCache:
         @return: namedtuple('CacheEntryInfo',
                             'final_audio_path,'
                             'temp_voice_path,'
+                            'text_path',
                             'use_cache,'
                             'audio_exists',
                             'text_exists, audio_suffixes')
@@ -249,9 +250,11 @@ class VoiceCache:
         """
         try:
             if not use_cache or not self.is_cache_sound_files(self.service_key):
-                return self._get_path_to_tmp_voice_file(phrase, delete_tmp)
+                return self._get_path_to_tmp_voice_file(phrase, save_text=True,
+                                                        delete_existing=delete_tmp)
             else:
-                return self._get_path_to_cached_voice_file(phrase)
+                return self._get_path_to_cached_voice_file(phrase, save_text=True,
+                                                           use_cache=use_cache)
         except AbortException:
             reraise(*sys.exc_info())
         except ExpiredException:
@@ -259,19 +262,24 @@ class VoiceCache:
 
         except Exception as e:
             MY_LOGGER.exception('')
+        return None
 
     def _get_path_to_tmp_voice_file(self, phrase: Phrase,
+                                    save_text: bool,
                                     delete_existing: bool) -> CacheEntryInfo:
         """
         See get_path_to_voice_file
 
         :param phrase:
+        :param save_text: If true, also write the phrase text to a .txt file in the
+                          same tmp directory
         :param delete_existing: If True, then delete any pre-exising audio
         :return:
         """
         clz = type(self)
         final_audio_path: Path | None = None
         temp_voice_path: Path | None = None
+        text_file_path: Path | None = None
         try:
             phrase.set_audio_type(self.audio_type)
 
@@ -281,6 +289,18 @@ class VoiceCache:
             tmp_dir.mkdir(mode=0o777, parents=True, exist_ok=True)
             final_audio_path: Path
             final_audio_path = tmp_dir / Path(filename).with_suffix(self.audio_suffix)
+            if save_text:
+                text_file_path = final_audio_path.with_suffix('.txt')
+                try:
+                    with text_file_path.open(mode='wt') as text_file:
+                        text_file.write(phrase.text)
+                except:
+                    MY_LOGGER.exception(f'Could not write text to {text_file_path}')
+                    try:
+                        text_file_path.unlink(missing_ok=True)
+                    except:
+                        MY_LOGGER.exception(f'Could not delete {text_file_path}')
+
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'final_audio_path: {final_audio_path}')
 
@@ -310,6 +330,7 @@ class VoiceCache:
         result = CacheEntryInfo(final_audio_path=final_audio_path,
                                 use_cache=False,
                                 temp_voice_path=temp_voice_path,
+                                text_path=text_file_path,
                                 audio_exists=final_path_exists,
                                 text_exists=False,
                                 audio_suffixes=audio_suffixes)
@@ -321,11 +342,14 @@ class VoiceCache:
         return result
 
     def _get_path_to_cached_voice_file(self, phrase: Phrase,
+                                       save_text: bool,
                                        use_cache: bool = False) -> CacheEntryInfo:
         """
         See get_path_to_voice_file
 
         :param phrase:
+        :param save_text: If true, then the text will be written to the same path as
+                           the final audio file, except with a '.txt' suffix.
         :param use_cache:
         :return:
         """
@@ -336,6 +360,7 @@ class VoiceCache:
         cache_dir: Path | None = None
         final_audio_path: Path | None = None
         temp_voice_path: Path | None = None
+        text_file_path: Path | None = None
         try:
             path: Path | None = None
             cache_top: Path = self.cache_directory
@@ -344,7 +369,7 @@ class VoiceCache:
             voice_dir: str = str(phrase.voice_dir)
             filename: str = self.get_hash(phrase.text)
             subdir: str = filename[0:2]
-            cache_dir: str
+            cache_dir: Path
             if MY_LOGGER.isEnabledFor(DEBUG_V):
                 MY_LOGGER.debug_v(f'territory: {territory_dir} '
                                   f'cache_top: {cache_top} '
@@ -389,9 +414,11 @@ class VoiceCache:
                     return CacheEntryInfo(final_audio_path=None,
                                           use_cache=use_cache,
                                           temp_voice_path=None,
+                                          text_path=None,
                                           audio_exists=False,
-                                          text_exists=None,
+                                          text_exists=False,
                                           audio_suffixes=audio_suffixes)
+
             #  MY_LOGGER.debug(f'cache_dir: {cache_dir}')
             for file in cache_dir.glob(f'{filename}.*'):
                 file: Path
@@ -443,10 +470,23 @@ class VoiceCache:
         except Exception as e:
             MY_LOGGER.exception('')
 
+        if save_text and final_audio_path is not None:
+            text_file_path = final_audio_path.with_suffix('.txt')
+            try:
+                with text_file_path.open(mode='wt') as text_file:
+                    text_file.write(phrase.text)
+            except:
+                MY_LOGGER.exception(f'Could not write text to {text_file_path}')
+                try:
+                    text_file_path.unlink(missing_ok=True)
+                except:
+                    MY_LOGGER.exception(f'Could not delete {text_file_path}')
+
         result: CacheEntryInfo
         result = CacheEntryInfo(final_audio_path=final_audio_path,
                                 use_cache=use_cache,
                                 temp_voice_path=temp_voice_path,
+                                text_path=text_file_path,
                                 audio_exists=audio_exists,
                                 text_exists=text_exists,
                                 audio_suffixes=audio_suffixes)
@@ -612,11 +652,11 @@ class VoiceCache:
             for phrase in phrases:
                 phrase: Phrase
                 phrase.set_engine(engine_key)
-                self.create_txt_cache_file(phrase)
+                self.create_txt_file(phrase)
         except Exception as e:
             MY_LOGGER.exception('')
 
-    def create_txt_cache_file(self, phrase: Phrase) -> bool:
+    def create_txt_file(self, phrase: Phrase) -> bool:
         """
         Adds the text contained in the phrase if it is not already in
         the cache.
@@ -639,16 +679,15 @@ class VoiceCache:
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'text_file path: {text_file}')
             try:
-                if not text_file.is_file():
-                    with text_file.open('wt', encoding='utf-8') as f:
-                        f.write(text)
-                else:
+                if  text_file.is_file():
                     if text_file.stat().st_size != len(phrase.text):
-                        MY_LOGGER.debug(f'unlink text: {text_file}')
+                        MY_LOGGER.debug(f'unlink text: {text_file} size: '
+                                        f'{text_file.stat().st_size} text: {text}')
                         text_file.unlink(missing_ok=True)
                 if not text_file.is_file():
                     with text_file.open('wt', encoding='utf-8') as f:
                         f.write(text)
+                        MY_LOGGER.debug(f'Write text: {text}')
             except Exception as e:
                 if MY_LOGGER.isEnabledFor(ERROR):
                     MY_LOGGER.error(

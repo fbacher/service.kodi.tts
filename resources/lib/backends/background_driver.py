@@ -75,7 +75,7 @@ class BackgroundDriver(BaseServices):
 
           Example: cache_path =  ~/.kodi/userdata/addon_data/service.kodi.tts/cache
                    engine_code = goo (for google)
-                   lang_code = 'en'
+                   locale_id = 'en'
                    country_code = 'us'
                    voice_code = 'Vira' (for Windows TTS), '_' (when no voice)
                    first-two-chars-of-cache-file-name = d4

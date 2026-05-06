@@ -1,10 +1,16 @@
 # coding=utf-8
+from __future__ import annotations
+
 import json
 import os
+import signal
 import subprocess
+import sys
 import threading
 from collections import namedtuple
 from pathlib import Path
+
+import xbmc
 
 import langcodes
 from backends.engines.idownloader import IDownloader, OutputType
@@ -116,27 +122,11 @@ class PiperApi:
     #  REPLACE WITH SETTINGS
 
     PIPER_TTS_MAX_CHARS = 10000
-    PIPER_PYTHON_VENV_PATH: Path = Path.home() / 'Source/venvs/TTS'
-    MY_LOGGER.debug(f'HOME: {str(Path.home())} or {str(PIPER_PYTHON_VENV_PATH)}')
-    PIPER_PYTHON_PATH: str = 'python3'
-    # Just stuffed the binary version inside of the venv. No idea where users
-    # will have it.
-    PIPER_BINARY_PATH: Path = PIPER_PYTHON_VENV_PATH / 'piper' / 'piper'
-    PIPER_FULL_PYTHON_PATH: Path = (PIPER_PYTHON_VENV_PATH / 'bin'
-                                    / PIPER_PYTHON_PATH)
-    PIPER_HTTP_SERVER_HOST: str = 'localhost'
-    PIPER_HTTP_SERVER_PORT: str = '5000'
-    PIPER_VOICE_DATA_PATH: Path = Path.home() / ('.kodi_data/userdata/addon_data'
-                                                 '/service.kodi.tts/piper/data')
-    PIPER_DOWNLOAD_VOICES = 'piper.download_voices'
 
     DEFAULT_HTTP_VG: str = 'en_US-libritts-high'
-    PIPER_HTTP_SERVER_ARG: str = 'piper.http_server'
     PIPER_HTTP_SERVER_DEFAULT_VG_ARG: str = DEFAULT_HTTP_VG
-    PIPER_HTTP_SERVER_LOG: Path = Path('/tmp/piper_http.log')
 
     piper_api_type: PiperApiType | None = None
-
     default_piper_api: PiperApiType = PiperApiType.ANY_API
     default_piper_get_voice_api: PiperApiType = PiperApiType.ANY_API
 
@@ -154,6 +144,8 @@ class PiperApi:
     HTTP_RETRY_LIMIT: Final[int] = int(
         HTTP_RETRY_LIMIT_SECONDS / HTTP_RETRY_DELAY_SECONDS) + 1
 
+    _http_process: subprocess.Popen | None = None
+
     @classmethod
     def tts_langs(cls,
                   current_language: str) -> List[PiperSpeakerTuple] | None:
@@ -170,7 +162,7 @@ class PiperApi:
         """
         MY_LOGGER.debug(f'In tts_langs')
         result: Tuple[int, List[str]]
-        cls.PIPER_VOICE_DATA_PATH.mkdir(mode=0o775, parents=True, exist_ok=True)
+        Constants.PIPER_DATA_PATH.mkdir(mode=0o775, parents=True, exist_ok=True)
         result = cls.get_vg_names()
         if result[0] != 0:
             return None
@@ -337,7 +329,7 @@ class PiperApi:
         onnx_model_config: Dict[str, Any]
         onnx_model_config = cls.get_voice_data(onnx_model_file,
                                                keep_definition=True)
-        download_dir: Path = Path(f'{cls.PIPER_VOICE_DATA_PATH}')
+        download_dir: Path = Path(f'{Constants.PIPER_DATA_PATH}')
         onnx_model_path: Path = download_dir / onnx_model_file
         if onnx_model_path.exists():
             return onnx_model_path
@@ -359,7 +351,7 @@ class PiperApi:
         """
         MY_LOGGER.debug(f'get_voice_data voice_file_name: {voice_file_name}')
         results: Dict[str, Any] | None = None
-        download_dir: Path = Path(f'{cls.PIPER_VOICE_DATA_PATH}')
+        download_dir: Path = Path(f'{Constants.PIPER_DATA_PATH}')
         onnx_model_file: Path = download_dir / f'{voice_file_name}.onnx'
         onnx_model_config_file: Path = download_dir / f'{voice_file_name}.onnx.json'
         MY_LOGGER.debug(f'onnx_model_file: {onnx_model_file}\n'
@@ -371,10 +363,11 @@ class PiperApi:
 
         if (not onnx_model_config_file.exists() or
                 (keep_definition and not onnx_model_file.exists())):
-            env = os.environ.copy()
-            args = [f'{cls.PIPER_PYTHON_VENV_PATH}/bin/{cls.PIPER_PYTHON_PATH}', '-m',
-                    cls.PIPER_DOWNLOAD_VOICES, f'{voice_file_name}',
-                    '--data-dir', f'{cls.PIPER_VOICE_DATA_PATH}']
+            env = cls.get_basic_env()
+            args: list[str] = cls.get_basic_args()
+            args.extend(['-m',
+                         Constants.PIPER_DOWNLOAD_VOICES, f'{voice_file_name}',
+                         '--data-dir', f'{Constants.PIPER_DATA_PATH}'])
             MY_LOGGER.debug(f'About to run args: {args}')
             rc = PiperApi.run_command(args, env)
             MY_LOGGER.debug(f'rc: {rc}')
@@ -386,6 +379,8 @@ class PiperApi:
             with onnx_model_config_file.open(mode='r') as vcf:
                 results = json.load(vcf)
 
+        except AbortException:
+            reraise(*sys.exc_info())
         except Exception:
             MY_LOGGER.exception('')
         # Always keep the.json file
@@ -409,6 +404,8 @@ class PiperApi:
                 result = cls.get_vg_names_by_http()
                 if result[0] == 0:
                     return result
+        except AbortException:
+            reraise(*sys.exc_info())
         except Exception:
             MY_LOGGER.exception('')
         result = cls.get_vg_names_by_python_command()
@@ -426,15 +423,24 @@ class PiperApi:
 
         Called both during the startup of http server and after startup.
         """
-        host_port: str = f'{cls.PIPER_HTTP_SERVER_HOST}:{cls.PIPER_HTTP_SERVER_PORT}'
-        args: List[str] = ['curl', f'{host_port}/voices']
-        env = os.environ.copy()
-        json_str: str
-        rc, json_str = cls.run_command(args, env)
-        data: dict[str, Any] = {}
-        # MY_LOGGER.debug(f'http json_strs: |{json_strs}|END|')
-        # json_strs = f'{json_strs}\n'
-        data = json.loads(json_str)
+        rc: int = -1
+        data: Dict[str, Any] = {}
+        try:
+
+            args: List[str] = [str(Constants.CURL_PATH),
+                               f'{Constants.PIPER_HTTP_SERVER_HOST}:'
+                               f'{Constants.PIPER_HTTP_SERVER_PORT}/voices']
+            env = cls.get_basic_env()
+            json_str: str
+            rc, json_str = cls.run_command(args, env)
+            data: dict[str, Any] = {}
+            # MY_LOGGER.debug(f'http json_strs: |{json_strs}|END|')
+            # json_strs = f'{json_strs}\n'
+            data = json.loads(json_str)
+        except AbortException:
+            reraise(*sys.exc_info())
+        except Exception:
+            return -1, {}
         return rc, data
 
     @classmethod
@@ -497,15 +503,17 @@ class PiperApi:
                                 Seconds of silence after each sentence
           --volume VOLUME       Volume multiplier (default: 1.0)
           --no-normalize        Don't normalize audio
-          --data-dir DATA_DIR, --data_dir DATA_DIR
+          --data-dir DATA_DIR, --data-dir DATA_DIR
                                 Data directory to check for voice models (default:
                                 current directory)
           --debug               Print DEBUG messages to console
 
         """
-        env = os.environ.copy()
-        args = [f'{cls.PIPER_PYTHON_VENV_PATH}/bin/{cls.PIPER_PYTHON_PATH}', '-m',
-                cls.PIPER_DOWNLOAD_VOICES]
+        env = cls.get_basic_env()
+        args = cls.get_basic_args()
+        args: list[str]
+        args.extend(['-m',
+                     Constants.PIPER_DOWNLOAD_VOICES])
         process: subprocess.CompletedProcess | None = None
         '''
          Returns a list of voice names:
@@ -532,22 +540,51 @@ class PiperApi:
 
         /home/fbacher/Source/venvs/TTS/bin/python3 -m piper.http_server \
             -m en_US-libritts-high \
-            --data_dir /home/fbacher/.kodi_data/userdata/addon_data/service.kodi.tts
+            --data-dir /home/fbacher/.kodi_data/userdata/addon_data/service.kodi.tts
             /piper/data
 
         """
         # Already started?
         with (cls.http_server_lock):
+            # Is it running?
+            try:
+                Constants.PIPER_HTTP_SERVER_LOG.parent.mkdir(parents=True, exist_ok=True)
+            except Exception:
+                MY_LOGGER.debug(f'Could not create directory path for '
+                                f'{Constants.PIPER_HTTP_SERVER_LOG}')
+            if Constants.PIPER_HTTP_SERVER_PID.exists():
+                with Constants.PIPER_HTTP_SERVER_PID.open('rt') as f:
+                    pid: str = f.readline()
+                    try:
+                        pid_int = int(pid)
+                        try:
+                            if pid_int > 0:
+                                os.kill(pid_int, signal.SIGTERM)
+                        except OSError:
+                            MY_LOGGER.warning(
+                                f'Can not kill old Piper http server with pid: '
+                                f'{pid_int}')
+                    except ValueError:
+                        MY_LOGGER.warning(
+                            f'Can not read pid for Piper http server: {pid}')
+            try:
+                Constants.PIPER_HTTP_SERVER_PID.unlink(missing_ok=True)
+            except Exception:
+                MY_LOGGER.info(F'Could not delete {Constants.PIPER_HTTP_SERVER_PID}')
+
             if cls.http_server_run_state == cls.HTTP_SERVER_READY:
                 return
             if cls.http_server_run_state == cls.HTTP_SERVER_NOT_STARTED:
                 cls.http_server_run_state = cls.HTTP_SERVER_STARTING
             elif cls.http_server_run_state != cls.HTTP_SERVER_NOT_STARTED:
-                raise RuntimeError('Should not get here')
+                raise RuntimeError(f'Should not get here http_state:'
+                                   f' {cls.http_server_run_state}')
             retries: int = 0
             try:
-                MY_LOGGER.debug(f'Starting http_server')
-                cls._start_builtin_http_server()
+                MY_LOGGER.debug(f'Starting http_server Log: {Constants.PIPER_HTTP_SERVER_LOG}')
+                http_server_log = Constants.PIPER_HTTP_SERVER_LOG.open('tw')
+
+                cls._start_builtin_http_server(http_server_log)
                 cls.http_server_run_state = cls.HTTP_SERVER_RUNNING
                 while retries <= cls.HTTP_RETRY_LIMIT:
                     Monitor.wait_for_abort(0.2)
@@ -557,8 +594,10 @@ class PiperApi:
                         cls.http_server_run_state = cls.HTTP_SERVER_READY
                         return
                     retries += 1
-
+                # http_server_log.flush()
                 MY_LOGGER.debug(f'FAILED Retries to start http_server: {retries}')
+            except AbortException:
+                reraise(*sys.exc_info())
             except Exception as e:
                 MY_LOGGER.exception('')
                 cls.http_server_run_state = cls.HTTP_SERVER_BROKEN
@@ -566,7 +605,7 @@ class PiperApi:
                 pass
 
     @classmethod
-    def _start_builtin_http_server(cls) -> None:
+    def _start_builtin_http_server(cls, http_server_log) -> None:
         """
         Starts the builtin http server to provide services using cached data
         rather than just constantly reinitializing the TTS engine, etc. on every
@@ -580,19 +619,22 @@ class PiperApi:
 
         /home/fbacher/Source/venvs/TTS/bin/python3 -m piper.http_server \
             -m en_US-libritts-high \
-            --data_dir /home/fbacher/.kodi_data/userdata/addon_data/service.kodi.tts
+            ---/home/fbacher/.kodi_data/userdata/addon_data/service.kodi.tts
             /piper/data
-
         """
-
-        env = os.environ.copy()
-        args = [f'{cls.PIPER_PYTHON_VENV_PATH}/bin/{cls.PIPER_PYTHON_PATH}', '-m',
-                cls.PIPER_HTTP_SERVER_ARG, '-m', cls.PIPER_HTTP_SERVER_DEFAULT_VG_ARG,
-                '--data_dir', str(cls.PIPER_VOICE_DATA_PATH)]
+        env = cls.get_basic_env()
+        args: list[str] = cls.get_basic_args()
+        args.extend(['-m',
+                     Constants.PIPER_HTTP_SERVER_ARG, '-m',
+                     Constants.PIPER_HTTP_SERVER_DEFAULT_VG_ARG,
+                     '--host', Constants.PIPER_HTTP_SERVER_HOST,
+                     '--port', Constants.PIPER_HTTP_SERVER_PORT,
+                     '--data-dir', str(Constants.PIPER_DATA_PATH),
+                     '--download-dir', str(Constants.PIPER_DATA_PATH)])
         MY_LOGGER.debug(f'args: {args}')
-        http_server_log = cls.PIPER_HTTP_SERVER_LOG.open('tw')
-        process: subprocess.Popen | None = None
-
+        MY_LOGGER.debug(f'PATH: {env["PATH"]}')
+        if Constants.PYTHON_USE_VENV:
+            MY_LOGGER.debug(f'VIRTUAL_ENV: {env["VIRTUAL_ENV"]}')
         try:
             platform: str = 'Linux'
             if Constants.PLATFORM_WINDOWS:
@@ -600,29 +642,33 @@ class PiperApi:
             if MY_LOGGER.isEnabledFor(DEBUG_V):
                 MY_LOGGER.debug_v(f'Running command: {platform}: {args}')
             if Constants.PLATFORM_WINDOWS:
-                process = subprocess.Popen(args,
-                                           stdin=None,
-                                           stdout=subprocess.PIPE,
-                                           stderr=http_server_log,
-                                           shell=False,
-                                           text=True,
-                                           encoding='utf-8', env=env,
-                                           close_fds=True,
-                                           creationflags=subprocess.DETACHED_PROCESS)
+                cls._http_process = subprocess.Popen(args,
+                                                     stdin=None,
+                                                     stdout=subprocess.PIPE,
+                                                     stderr=http_server_log,
+                                                     shell=False,
+                                                     text=True,
+                                                     encoding='utf-8', env=env,
+                                                     close_fds=True,
+                                                     creationflags=subprocess.DETACHED_PROCESS)
             else:
-                process = subprocess.Popen(args,
-                                           stdin=None,
-                                           stdout=subprocess.PIPE,
-                                           stderr=http_server_log,
-                                           shell=False,
-                                           text=True,
-                                           encoding='utf-8', env=env,
-                                           close_fds=True)
+                cls._http_process = subprocess.Popen(args,
+                                                     stdin=None,
+                                                     stdout=subprocess.PIPE,
+                                                     stderr=http_server_log,
+                                                     shell=False,
+                                                     text=True,
+                                                     encoding='utf-8', env=env,
+                                                     close_fds=True)
             try:
                 MY_LOGGER.debug(f'http server started')
+            except AbortException:
+                reraise(*sys.exc_info())
             except Exception:
                 MY_LOGGER.exception('')
                 return
+        except AbortException:
+            reraise(*sys.exc_info())
         except Exception:
             MY_LOGGER.exception('')
             return
@@ -666,16 +712,56 @@ class PiperApi:
                     MY_LOGGER.debug(f'RC: {process.returncode} ')
                     if MY_LOGGER.isEnabledFor(DEBUG_V):
                         if out_file is not None and out_file.exists():
-                            MY_LOGGER.debug_v(f'\noutput: {"\n".join(output)}')
+                            #  Python 9 hates
+                            #  MY_LOGGER.debug_v(f'\noutput: {"\n".join(output)}')
+                            x = "\n".join(output)
+                            MY_LOGGER.debug_v(f'\noutput: {x}')
+            except AbortException:
+                reraise(*sys.exc_info())
             except Exception:
                 MY_LOGGER.exception('')
                 return -2, []
+        except AbortException:
+            reraise(*sys.exc_info())
         except Exception:
             MY_LOGGER.exception('')
             return -2, []
         lines: List[str]
         lines = output.split('\n')
         return rc, output
+
+    @classmethod
+    def get_basic_env(cls) -> Dict[str, str]:
+        env = os.environ.copy()
+        # for key, value in env.items():
+        #     MY_LOGGER.debug(f'env: {key} value: {value}\n')
+        if Constants.PYTHON_USE_VENV:
+            env['PATH'] = (f'{Constants.PYTHON_VENV_ENV["PATH"]}'
+                           f'{Constants.ENV_PATH_DELIM}'
+                           f'{env["PATH"]}')
+            env['VIRTUAL_ENV'] = Constants.PYTHON_VENV_ENV['VIRTUAL_ENV']
+        return env
+
+    @classmethod
+    def get_basic_args(cls) -> List[str]:
+        if Constants.PYTHON_USE_VENV:
+            pass
+        # args = [f'{Constants.PYTHON_VENV_COMMAND_PATH}']
+        args = [f'{Constants.PYTHON_COMMAND_PATH}']
+        return args
+
+    @classmethod
+    def abort_listener(cls) -> None:
+        xbmc.log('About to kill Piper http server. process None: '
+                 f'{cls._http_process is None}', xbmc.LOGDEBUG)
+
+        if cls._http_process is not None:
+            try:
+                xbmc.log('Killing Piper http server', xbmc.LOGDEBUG)
+                cls._http_process.kill()
+            except Exception:
+                xbmc.log(f'Failed to kill Piper http server', xbmc.LOGWARNING)
+            cls.http_process = None
 
 
 class PiperData(ITTSData):
@@ -878,7 +964,7 @@ class PiperDownloader(IDownloader):
         volume: float = 1.0
         voice_file_name: str = self.piper_data.piper_vg_id
         MY_LOGGER.debug(f'voiced_path: {voiced_path}')
-        onnx_model_path: Path = (PiperApi.PIPER_VOICE_DATA_PATH /
+        onnx_model_path: Path = (Constants.PIPER_DATA_PATH /
                                  self.piper_data.onnx_model_file)
         if not onnx_model_path.exists():
             MY_LOGGER.debug(f'onnx_model_path: {onnx_model_path} does NOT exist')
@@ -943,8 +1029,8 @@ class PiperDownloader(IDownloader):
         # curl -X POST -H 'Content-Type: application/json' -d '{ "text": "This is a
         # test." }' -o test.wav localhost:5000
 
-        env = os.environ.copy()
-        args = ['/usr/bin/curl',
+        env = PiperApi.get_basic_env()
+        args = [str(Constants.CURL_PATH),
                 '-X',
                 'POST',
                 '-H',
@@ -953,8 +1039,8 @@ class PiperDownloader(IDownloader):
                 f'{json_str}',
                 '-o',
                 f'{voiced_path}',
-                f'{PiperApi.PIPER_HTTP_SERVER_HOST}:'
-                f'{PiperApi.PIPER_HTTP_SERVER_PORT}'
+                f'{Constants.PIPER_HTTP_SERVER_HOST}:'
+                f'{Constants.PIPER_HTTP_SERVER_PORT}'
                 ]
         MY_LOGGER.debug(f'Generating voice for {phrase.text} voice_path: {voiced_path}')
         self.delete_path_if_exists(voiced_path, "before generating from http")
@@ -970,6 +1056,8 @@ class PiperDownloader(IDownloader):
             if path.exists():
                 MY_LOGGER.debug(f'{path} exists {msg}, deleting')
                 path.unlink(missing_ok=True)
+        except AbortException:
+            reraise(*sys.exc_info())
         except Exception:
             MY_LOGGER.exception(f'Could not delete {path}.')
 
@@ -1016,22 +1104,22 @@ READ FROM STDIN, not cmd line arg!!!
 { "text": "Second voice.", "vg_id": 1, "output_file": "/tmp/speaker_1.wav" }
 
         """
-        onnx_model_path: Path = (PiperApi.PIPER_VOICE_DATA_PATH /
+        onnx_model_path: Path = (Constants.PIPER_DATA_PATH /
                                  self.piper_data.onnx_model_file)
-        onnx_model_config_path: Path = (PiperApi.PIPER_VOICE_DATA_PATH /
+        onnx_model_config_path: Path = (Constants.PIPER_DATA_PATH /
                                         self.piper_data.onnx_model_config_file)
         MY_LOGGER.debug(f'tts_by_native_command voiced_path: {voiced_path}')
-        env = os.environ.copy()
+        env = PiperApi.get_basic_env()
         json_str: str = (f'{{ "text": "{phrase.text}", "vg_id": {speaker_id}, '
                          f' "output_file": "{voiced_path}" }}')
-        args = [
-            f'{PiperApi.PIPER_BINARY_PATH}',
-            '--model',
-            f'{onnx_model_path}',  # .onnx
-            '--download',
-            f'{onnx_model_config_path}',  # .onnx.json
-            '--json-input'
-        ]
+        args: list[str] = PiperApi.get_basic_args()
+        args.extend([str(Constants.PIPER_BINARY_PATH),
+                     '--model',
+                     f'{onnx_model_path}',  # .onnx
+                     '--download',
+                     f'{onnx_model_config_path}',  # .onnx.json
+                     '--json-input'
+                   ])
         MY_LOGGER.debug(f'Generating voice for {phrase.text}')
         self.delete_path_if_exists(voiced_path, "before native generation")
         rc, _ = PiperApi.run_command(args, env, cmd_input=json_str)
@@ -1083,14 +1171,14 @@ READ FROM STDIN, not cmd line arg!!!
                             Seconds of silence after each sentence
       --volume VOLUME       Volume multiplier (default: 1.0)
       --no-normalize        Don't normalize audio
-      --data-dir DATA_DIR, --data_dir DATA_DIR
+      --data-dir DATA_DIR, --data-dir DATA_DIR
                             Data directory to check for voice models (default:
                             current directory)
       --debug               Print DEBUG messages to console
     """
-        env = os.environ.copy()
+        env = PiperApi.get_basic_env()
+        args: list[str] = PiperApi.get_basic_args()
         args = [
-            f'{PiperApi.PIPER_FULL_PYTHON_PATH}',
             '-m',
             'piper',
             '-m',
@@ -1101,8 +1189,8 @@ READ FROM STDIN, not cmd line arg!!!
             f'{voiced_path}',
             '--volume',
             f'{volume}',
-            '--data_dir',
-            f'{PiperApi.PIPER_VOICE_DATA_PATH}',
+            '--data-dir',
+            f'{Constants.PIPER_DATA_PATH}',
             '--',
             f'{phrase.text}'
         ]
@@ -1136,3 +1224,7 @@ READ FROM STDIN, not cmd line arg!!!
     @property
     def creates_tmp(self) -> bool:
         return True
+
+
+Monitor.register_abort_listener(listener = PiperApi.abort_listener,
+                                name='piper_abort_listener', thread=None)

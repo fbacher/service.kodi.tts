@@ -888,7 +888,7 @@ class ThreadedTTSBackend(BaseEngineService):
     def threadedSay(self, phrase: Phrase):
         """Method accepting text to be spoken
 
-        Subclasses must override this method and should speak the unicode text.
+        Subclasses must override this method and should speak the text.
         Speech interruption is implemented in the stop() method.
         """
         raise Exception('Not Implemented')

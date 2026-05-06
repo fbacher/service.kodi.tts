@@ -586,7 +586,7 @@ class Phrase:
         if check_expired:
             self.test_expired()
         voice_cache: ForwardRef('VoiceCache') = active_engine.get_voice_cache()
-        return voice_cache.create_txt_cache_file(self)
+        return voice_cache.create_txt_file(self)
 
     def set_exists(self, text_exists: bool, check_expired: bool = True) -> None:
         if check_expired:

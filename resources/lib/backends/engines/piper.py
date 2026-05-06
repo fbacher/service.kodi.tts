@@ -45,7 +45,7 @@ class LangInfo:
     Manages the language choices for piper.
     """
 
-    lang_info_map: Dict[str, ForwardRef('LangInfo')] = {}
+    lang_info_map: Dict[str, 'LangInfo'] = {}
     initialized: bool = False
     voices_initialized_initialized: bool = False
     global_lang_initalized: bool = False

@@ -423,9 +423,7 @@ class SpeechGenerator(ISpeechGenerator):
     def update_voice_path(cls, engine_instance: SimpleTTSBackend,
                           phrase: Phrase) -> None:
         """
-        TODO: Move to ISpeechGenerator, or perhaps VoiceCache
-
-        Modify any cache path to reflect the given language and territory.
+        Modify any cache path to reflect the voice, language and territory.
         :param engine_instance: engine that owns the phrase
         :param phrase:
         :return:
@@ -446,7 +444,8 @@ class SpeechGenerator(ISpeechGenerator):
             MY_LOGGER.debug(
                 f'Setting voice_dir: voice_group_id: {e_voice.engine_vg_id} \n'
                 f'quality_id: {e_voice.voice_quality} \n')
-            MY_LOGGER.debug(f'voice_id.voice_id: {e_voice.e_voice_id}')
+            MY_LOGGER.debug(f'voice_id.voice_id: {e_voice.e_voice_id} '
+                            f'cache_path_segment: {e_voice.cache_path_segment}')
             phrase.e_voice = e_voice
             phrase.set_voice_dir(e_voice.cache_path_segment)
         else:

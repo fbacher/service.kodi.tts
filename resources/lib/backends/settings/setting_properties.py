@@ -111,8 +111,8 @@ class SettingProp:  # (ISettings):
     BACKGROUND_PROGRESS_INTERVAL: Final[str] = TTS_Type.BACKGROUND_PROGRESS_INTERVAL.value
     CACHE_PATH: Final[str] = TTS_Type.CACHE_PATH.value
     CACHE_EXPIRATION_DAYS: Final[str] = TTS_Type.CACHE_EXPIRATION_DAYS.value
-    START_CFG_GUI_ON_STARTUP: Final[str] = (
-        TTS_Type.CONFIGURE_TTS_ON_STARTUP
+    CONFIGURE_ON_STARTUP: Final[str] = (
+        TTS_Type.CONFIGURE_ON_STARTUP
     )
     CONFIGURE_DEPENDENCIES_ON_STARTUP: Final[str] = (
         TTS_Type.CONFIGURE_DEPENDENCIES_ON_STARTUP.value)
@@ -164,7 +164,7 @@ class SettingProp:  # (ISettings):
         CACHE_EXPIRATION_DAYS                 : None,
         CHANNELS                              : None,
         CONFIGURE_DEPENDENCIES_ON_STARTUP     : None,
-        START_CFG_GUI_ON_STARTUP              : None,
+        CONFIGURE_ON_STARTUP                  : None,
         CURRENT_ENGINE                        : None,
         DISABLE_BROKEN_SERVICES               : None,
         SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA: None,
@@ -231,7 +231,7 @@ class SettingProp:  # (ISettings):
         CHANNELS                         : None,
         COMMAND                          : None,
         COMMAND_PATH                     : None,
-        START_CFG_GUI_ON_STARTUP         : None,
+        CONFIGURE_ON_STARTUP             : None,
         CONFIGURE_DEPENDENCIES_ON_STARTUP: None,
         TRANSCODER                       : None,
         #  DEBUG_LOGGING: None,
@@ -385,7 +385,7 @@ class SettingProp:  # (ISettings):
             cls.CAPITAL_RECOGNITION              : SettingType.BOOLEAN_TYPE,
             cls.CHANNELS                         : SettingType.STRING_TYPE,
             cls.CURRENT_ENGINE                   : SettingType.STRING_TYPE,
-            cls.START_CFG_GUI_ON_STARTUP         : SettingType.BOOLEAN_TYPE,
+            cls.CONFIGURE_ON_STARTUP             : SettingType.BOOLEAN_TYPE,
             cls.CONFIGURE_DEPENDENCIES_ON_STARTUP: SettingType.BOOLEAN_TYPE,
             cls.CONFIGURE_KEYMAP_ON_STARTUP      : SettingType.BOOLEAN_TYPE,
             cls.TRANSCODER                       : SettingType.STRING_TYPE,

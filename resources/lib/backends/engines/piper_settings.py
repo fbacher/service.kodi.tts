@@ -52,7 +52,7 @@ class PiperSettings:
 
     # Maximum phrase length that a remote engine can convert to speech at a time
     # None indicates that the engine does not download from a remote server
-    MAXIMUM_PHRASE_LENGTH: int | None = 10000
+    MAXIMUM_PHRASE_LENGTH: int = 10000
 
     """
     In an attempt to bring some consistency between the various players, engines and 
@@ -262,6 +262,7 @@ class PiperSettings:
                                                 persist=True)
 
         Settings.set_current_output_format(PiperSettings.service_key, AudioType.WAV)
+
         SoundCapabilities.add_service(PiperSettings.service_key,
                                       service_types=[ServiceType.ENGINE],
                                       supported_input_formats=[],
@@ -345,8 +346,7 @@ class PiperSettings:
     @classmethod
     def check_is_supported_on_platform(cls) -> None:
         if cls._service_status.progress == Progress.START:
-            supported: bool = (SystemQueries.isLinux() or SystemQueries.isWindows()
-                               or SystemQueries.isOSX())
+            supported: bool = SystemQueries.isLinux() or SystemQueries.isWindows()
             cls._service_status.progress = Progress.SUPPORTED
             if not supported:
                 cls._service_status.status = Status.FAILED
@@ -387,7 +387,7 @@ class PiperSettings:
         else:
             cls._service_status.status = Status.FAILED
             cls._service_status.status_summary = StatusType.BROKEN
-            MY_LOGGER.debug(f'BROKEN')
+            MY_LOGGER.info(f'BROKEN')
             SettingsMap.define_setting(cls.service_key,
                                        setting_type=SettingType.STRING_TYPE,
                                        service_status=StatusType.BROKEN,

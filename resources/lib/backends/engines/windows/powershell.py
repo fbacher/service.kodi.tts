@@ -4,18 +4,14 @@ from __future__ import annotations  # For union operator |
 import json
 import os
 import subprocess
-import sys
-from io import StringIO
 
 import langcodes
 
 from pathlib import Path, WindowsPath
 
 from backends.engines.speech_generator import SpeechGenerator
-from backends.ispeech_generator import ISpeechGenerator
 from backends.settings.engine_voice import EngineVoice
 from backends.settings.engine_voice_manager import EngineVoiceManager
-from backends.settings.lang_utils import LangUtils
 from backends.settings.validators import NumericValidator
 from backends.transcoders.trans import TransCode
 from cache.voicecache import VoiceCache
@@ -26,26 +22,26 @@ from common.typing import *
 from backends.audio.sound_capabilities import ServiceType
 from backends.base import BaseEngineService, SimpleTTSBackend
 from backends.settings.i_validators import AllowedValue, INumericValidator
-from backends.settings.service_types import (LabeledType, QualityType, ServiceID,
+from backends.settings.service_types import (QualityType, ServiceID,
                                              ServiceKey, Services)
 from backends.settings.settings_map import SettingsMap
 from common.base_services import BaseServices
-from common.constants import Constants, ReturnCode
+from common.constants import Constants
 from common.exceptions import ExpiredException
 from common.logger import *
 from common.message_ids import MessageId
-from common.phrases import Phrase, PhraseList
+from common.phrases import Phrase
 from common.setting_constants import (Backends, Genders, PlayerMode,
                                       Players)
 from common.settings import Settings
 from common.settings_low_level import SettingProp
 from langcodes import LanguageTagError
-from test.google import LanguageInfo
 from windowNavigation.choice import Choice
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
+'''
 class Results:
     """
         Contains results of background thread/process
@@ -56,7 +52,7 @@ class Results:
     """
 
     def __init__(self):
-        self.rc: ReturnCode = ReturnCode.NOT_SET
+        self.rc: ReturnCode = ReturnCode.OK
         # self.download: io.BytesIO = io.BytesIO(initial_bytes=b'')
         self.finished: bool = False
         self.phrase: Phrase | None = None
@@ -87,34 +83,8 @@ class Results:
 
     def set_phrase(self, phrase: Phrase) -> None:
         self.phrase = phrase
-
-
 '''
-class SpeechGenerator_x(ISpeechGenerator):
 
-    def __init__(self, generator: ISpeechGenerator, engine: SimpleTTSBackend) -> None:
-        self.download_results: Results = Results()
-        self.engine: SimpleTTSBackend = engine
-        self.voice_cache: VoiceCache = VoiceCache(engine.service_key)
-
-    def set_rc(self, rc: ReturnCode) -> None:
-        self.download_results.set_rc(rc)
-
-    def get_rc(self) -> ReturnCode:
-        return self.download_results.get_rc()
-
-    def set_phrase(self, phrase: Phrase) -> None:
-        self.download_results.set_phrase(phrase)
-
-    # def get_download_bytes(self) -> memoryview:
-    #     return self.download_results.get_download_bytes()
-
-    def set_finished(self) -> None:
-        self.download_results.set_finished(True)
-
-    def is_finished(self) -> bool:
-        return self.download_results.is_finished()
-'''
 
 class PowerShellTTS(SimpleTTSBackend):
     """
@@ -181,15 +151,15 @@ class PowerShellTTS(SimpleTTSBackend):
         return cls.service_id
 
     @classmethod
-    def init_voices(cls):
+    def load_voices(cls):
         if cls._voices_initialized:
             return
-        cls.init_sapi_voices()
+        cls.load_sapi_voices()
         # cls.init_one_core_voices()
         cls._voices_initialized = True
 
     @classmethod
-    def get_cache_id(cls, voice_id: str) -> str:
+    def get_voice_id(cls, voice_name: str) -> str:
         """
         Given an official SAPI MS Name of the form: "Microsoft David Desktop"
         While a OneCore voice is of the form: "Microsoft David"
@@ -198,19 +168,19 @@ class PowerShellTTS(SimpleTTSBackend):
         Reduce 'Desktop" to 'DT'
         The cache_file directory becomes 'David_DT'
 
-        :param voice_id: Name of voice from application
+        :param voice_name: Name of voice from application
         :return: Tuple[
         """
-        cache_id: str = voice_id
-        segments: List[str] = voice_id.split(' ')
+        cache_id: str = voice_name
+        segments: List[str] = voice_name.split(' ')
         if len(segments) == 0:
-            MY_LOGGER.warning('SAPI voice id incorrect format: {vg_id}')
+            MY_LOGGER.warning(f'SAPI voice id incorrect format: {voice_name}')
         else:
             cache_id = segments[1]
             if len(segments) == 3:
-                name = f'{cache_id}_DT'
+                cache_id = f'{cache_id}_DT'
         MY_LOGGER.info(f'cache_id: {cache_id}')
-        cls._voice_dir_for_id[voice_id] = cache_id
+        cls._voice_dir_for_id[voice_name] = cache_id
         return cache_id
 
     @classmethod
@@ -252,7 +222,7 @@ class PowerShellTTS(SimpleTTSBackend):
         return voice_data
 
     @classmethod
-    def init_sapi_voices(cls):
+    def load_sapi_voices(cls):
         try:
             voice_data: List[Dict[str, str | List[Dict[str, Any]]]] | None
             voice_data = cls.get_sapi_json()
@@ -310,8 +280,8 @@ class PowerShellTTS(SimpleTTSBackend):
                    """
                 #  v_description: str = voice_entry.get('Description')
                 v_name: str = voice_entry.get('Name')
-                v_id: str = v_name
-                _: str = cls.get_cache_id(v_name)
+                v_id: str = cls.get_voice_id(v_name)
+                vg_id: str = v_id
                 v_culture: Dict[str, str]
                 v_culture = voice_entry.get('Culture')
                 v_additional_info: Dict[str, str]
@@ -334,30 +304,26 @@ class PowerShellTTS(SimpleTTSBackend):
                 except LanguageTagError:
                     MY_LOGGER.exception('')
                 l_locale_id: str = v_lang.to_tag().lower()
-                cache_path_segment: Path = Path(l_locale_id)
+
+                MY_LOGGER.debug(f'Adding language')
+                EngineVoiceManager.add_language(engine_key=PowerShellTTS.service_key,
+                                                ietf_tag=v_lang.to_tag(),
+                                                engine_lang_id=l_locale_id)
+                MY_LOGGER.debug(f'added language engine_lang_id: {l_locale_id} '
+                                f'v_name: {v_name} e_v_id: {v_id} e_vg_id: {vg_id}')
+                cache_path_segment: Path = Path(v_id)
+                MY_LOGGER.debug(f'cache_path_segment: {cache_path_segment}')
                 # Will create (dummy) Voice Group for each voice
                 EngineVoiceManager.add_voice(engine_key=PowerShellTTS.service_key,
                                              ietf_tag=v_lang.to_tag(),
                                              gender=v_gender,
                                              engine_lang_id=l_locale_id,
-                                             e_voice_id=l_locale_id,
-                                             engine_vg_id=l_locale_id,
+                                             e_voice_id=v_id,
+                                             real_voice_id=v_name,
+                                             engine_vg_id=vg_id,
                                              voice_quality=QualityType.HIGH,
                                              voice_label=v_name,
                                              cache_path_segment=cache_path_segment)
-
-                LanguageInfo.add_variant(engine_key=PowerShellTTS.service_key,
-                                         language_id=v_lang.language,
-                                         country_id=v_lang.territory,
-                                         ietf=v_lang,
-                                         region_id='',
-                                         gender=v_gender,
-                                         voice=v_name,
-                                         engine_lang_id=v_lang.language,
-                                         e_voice_id=v_name,
-                                         engine_name_msg_id=MessageId.ENGINE_POWERSHELL,
-                                         engine_quality=2,
-                                         voice_quality=-1)
         except Exception:
             MY_LOGGER.exception('')
         return
@@ -423,7 +389,7 @@ class PowerShellTTS(SimpleTTSBackend):
             for voice_entry in voice_data:
                 voice_entry: Dict[str, str | Dict[str, str]]
                 #  "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech_OneCore\\Voices\\Tokens\\MSTTS_V110_enUS_DavidM",
-                _ = cls.get_cache_id(voice_entry.get('Id'))
+                _ = cls.get_voice_id(voice_entry.get('Id'))
                 #  v_description: str = voice_entry.get('Description')
                 v_name: str = voice_entry.get('DisplayName')
                 v_ietf: str = voice_entry.get('Language')
@@ -444,6 +410,7 @@ class PowerShellTTS(SimpleTTSBackend):
                 except LanguageTagError:
                     MY_LOGGER.exception('')
 
+                '''
                 LanguageInfo.add_variant(engine_key=PowerShellTTS.service_key,
                                          language_id=lang.language,
                                          country_id=lang.territory,
@@ -456,33 +423,38 @@ class PowerShellTTS(SimpleTTSBackend):
                                          engine_name_msg_id=MessageId.ENGINE_POWERSHELL,
                                          engine_quality=2,
                                          voice_quality=-1)
+                '''
         except Exception:
             MY_LOGGER.exception('')
         return
+
+    def threadedSay(self, phrase: Phrase):
+        """
+        Powershell script implementing TTS api requires text to be in a file
+        """
+        self.voice_cache.create_txt_file(phrase)
+        super().threadedSay(phrase)
 
     @classmethod
     def get_voice_dir(cls, voice_id: str) -> str:
         return cls._voice_dir_for_id.get(voice_id)
 
+    '''
     def addCommonArgs(self, args, phrase: Phrase | None = None):
         clz = type(self)
         voice_id = Settings.get_voice_id(clz.service_key)
+        # voice_id: <engine_id>|<locale_id>|<voice_id>
+        #           'engine.powershell.id|en-us|Microsoft David Desktop'
         if voice_id is None or voice_id in ('unknown', ''):
             voice_id = ''
 
         speed = self.get_speed()
         volume = self.getVolume()
-        #  pitch = self.get_pitch()
         if phrase:
             args.append(phrase.get_text())
         if voice_id:
             args.extend(voice_id)
-        # if speed:
-        #     args.extend(('-s', str(speed)))
-        # if pitch:
-        #     args.extend(('-p', str(pitch)))
-
-        # args.extend(('-a', str(volume)))
+    '''
 
     def get_player_mode(self) -> PlayerMode:
         clz = type(self)
@@ -583,10 +555,12 @@ class PowerShellTTS(SimpleTTSBackend):
         sfx_player: bool = Settings.get_player().setting_id == Players.SFX
         use_cache: bool = Settings.is_use_cache() or sfx_player
         # Get path to audio-temp file, or cache location for audio
-        cache_entry_info: CacheEntryInfo | None = None
+        cache_entry_info: CacheEntryInfo | None
         cache_entry_info = self.get_voice_cache().get_path_to_voice_file(phrase,
                                                                          use_cache=use_cache,
                                                                          delete_tmp=False)
+        if cache_entry_info is None:
+            return None
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             MY_LOGGER.debug_v(f'phrase: {phrase.get_text()} {phrase.get_debug_info()} '
                               f'cache_path: {phrase.get_cache_path()} ')
@@ -599,10 +573,9 @@ class PowerShellTTS(SimpleTTSBackend):
                               f'PowerShell_out_file: {cache_entry_info.temp_voice_path.name}\n'
                               f'text: {phrase.text}')
         env = os.environ.copy()
-        args: List[str] = self.get_args(cache_entry_info.temp_voice_path)
+        wave_file: Path = cache_entry_info.temp_voice_path
+        args: List[str] = self.get_args(cache_entry_info.text_path, wave_file)
         text: str = phrase.text
-        if MY_LOGGER.isEnabledFor(DEBUG_V):
-            MY_LOGGER.debug_v(f'temp_voice_path type: {type(cache_entry_info.temp_voice_path)}')
         try:
             completed: subprocess.CompletedProcess | None = None
             if Constants.PLATFORM_WINDOWS:
@@ -646,10 +619,10 @@ class PowerShellTTS(SimpleTTSBackend):
             return None
         if cache_entry_info.temp_voice_path.stat().st_size <= 1000:
             if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debig(f'voice file too small. Deleting: '
+                MY_LOGGER.debug(f'voice file too small. Deleting: '
                                 f'{cache_entry_info.temp_voice_path}')
             try:
-                cache_entry_info.temp_voice_path.unlink(missing_ok=True)
+                # cache_entry_info.temp_voice_path.unlink(missing_ok=True)
                 if MY_LOGGER.isEnabledFor(DEBUG_V):
                     MY_LOGGER.debug_v(f'unlink {cache_entry_info.temp_voice_path}')
             except:
@@ -683,11 +656,18 @@ class PowerShellTTS(SimpleTTSBackend):
         clz = type(self)
         SpeechGenerator.update_voice_path(self, phrase)
         env = os.environ.copy()
-        args: List[str] = self.get_args()
+        use_cache: bool = Settings.is_use_cache()
+        # Get path to audio-temp file, or cache location for audio
+        cache_info: CacheEntryInfo | None
+        cache_info = self.get_voice_cache().get_path_to_voice_file(phrase,
+                                                                   use_cache=use_cache,
+                                                                   delete_tmp=False)
+        if cache_info is None:
+            return None
+        args: List[str] = self.get_args(cache_info.text_path, wave_output=None)
         text: str = phrase.text
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             MY_LOGGER.debug_v(f'args: {args}')
-
         try:
             completed: subprocess.CompletedProcess | None = None
             if Constants.PLATFORM_WINDOWS:
@@ -726,24 +706,6 @@ class PowerShellTTS(SimpleTTSBackend):
         if MY_LOGGER.isEnabledFor(DEBUG_V):
             MY_LOGGER.debug_v(f'COMMAND FINISHED phrase: {phrase.text}')
 
-    def seed_text_cache(self, phrases: PhraseList) -> None:
-        """
-        Provides means to generate voice files before actually needed. Currently
-        called by worker_thread to get a bit of a head-start on the normal path.
-
-        :param phrases:
-        :return:
-        """
-
-        clz = type(self)
-        self.get_voice_cache().seed_text_cache(phrases)
-
-    '''
-    @classmethod
-    def get_speech_generator(cls) -> SpeechGenerator:
-        return SpeechGenerator(None, engine=)
-    '''
-
     @classmethod
     def has_speech_generator(cls) -> bool:
         """
@@ -780,8 +742,7 @@ class PowerShellTTS(SimpleTTSBackend):
     @classmethod
     def load_languages(cls):
         """
-        Discover PowerShell's supported languages and report results to
-        LanguageInfo.
+        Discover PowerShell's supported voices for the current Kodi language
         :return:
         """
         cls.init_voices()
@@ -789,6 +750,7 @@ class PowerShellTTS(SimpleTTSBackend):
     @classmethod
     def settingList(cls, setting, *args) -> Tuple[List[Choice], str]:
         choices: List[Choice] = []
+        '''
         if setting == SettingProp.LANGUAGE:
             # Returns list of languages and index to the closest match to current
             # locale_id
@@ -829,7 +791,7 @@ class PowerShellTTS(SimpleTTSBackend):
                 default_setting = languages[longest_match].value
 
             return languages, default_setting
-
+        '''
         if setting == SettingProp.VOICE:
             cls.init_voices()
             current_lang = BaseEngineService.getLanguage()
@@ -893,14 +855,12 @@ class PowerShellTTS(SimpleTTSBackend):
             return choices, default_player
         return choices, ''
 
-    def get_args(self, wave_output: Path | None = None) -> List[str]:
+    def get_args(self, text_path: Path,
+                 wave_output: Path | None = None) -> List[str]:
         clz = type(self)
 
-        voice_id = Settings.get_voice_id(clz.service_key)
-        if voice_id is None or voice_id in ('unknown', ''):
-            voice_id = ''
-        else:
-            voice_id = f'-Voice "{voice_id}"'
+        e_voice: EngineVoice = EngineVoiceManager.get_e_voice(PowerShellTTS.service_key)
+        voice_id: str = e_voice.real_voice_id
 
         clz.suffix += 1
         t_file: str = f'temp_{clz.suffix}'
@@ -912,27 +872,18 @@ class PowerShellTTS(SimpleTTSBackend):
         # volume = self.getVolume()
         args = [clz.POWERSHELL_PATH,
                 f'& {{. \'{clz.script_path}\';  Voice-Sapi '
-                f'{voice_id} '
+                f'-TextPath {text_path} '
+                f'-Voice \'{voice_id}\' '
                 f'{windows_path}'
                 f'}}']
         if MY_LOGGER.isEnabledFor(DEBUG_V):
-            MY_LOGGER.debug_v(f'args: {args}')
+            MY_LOGGER.debug_v(f'e_voice: {e_voice} args: {args}')
         return args
 
-    '''
     @classmethod
-    def get_default_language(cls) -> str:
-        languages: List[str]
-        default_lang: str
-        languages, default_lang = cls.settingList(SettingProp.LANGUAGE)
-        return default_lang
-    '''
-
-    @classmethod
-    def get_voice_id_for_name(cls, name):
-        if len(cls.voice_map) == 0:
-            cls.settingList(SettingProp.VOICE)
-        return cls.voice_map[name]
+    def get_voice(cls) -> EngineVoice:
+        e_voice: EngineVoice = EngineVoiceManager.get_e_voice(cls.service_key)
+        return e_voice
 
     def getVolume(self) -> int:
         # All volumes in settings use a common TTS db scale.

@@ -259,7 +259,7 @@ class ESpeakSettings:
                                            is_integer=True, increment=45,
                                            define_setting=True,
                                            service_status=StatusType.OK,
-                                           persist=True)
+                                           persist=False)
 
     @classmethod
     def check_is_supported_on_platform(cls) -> None:

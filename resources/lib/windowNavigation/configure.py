@@ -387,7 +387,7 @@ class Configure:
                             f'e_voice: {e_voice} ')
             if raw_voice_id is None and e_voice is not None:
                 MY_LOGGER.debug(f'e_voice: {e_voice}')
-                EngineVoiceManager.set_voice(e_voice)
+                EngineVoiceManager.set_e_voice(e_voice)
             try:
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'configuring player with player_mode: {player_mode}')
@@ -1003,8 +1003,9 @@ class Configure:
                 player_mode = pm
                 break
         if MY_LOGGER.isEnabledFor(DEBUG):
+            players: str = ' '.join(p.label for p in matching_players)
             MY_LOGGER.debug(f'player_mode: {player_mode} matching_players: '
-                            f'{matching_players}')
+                            f'{players}')
         return matching_players, player_mode
 
     def filter_players_on_cache(self, players: List[PlayerType],
@@ -1360,7 +1361,8 @@ class Configure:
                 self.restore_settings(msg='exit select_defaults', initial_frame=False)
 
     def validate_repair(self, engine_key: ServiceID | None,
-                        commit_current_engine_on_repair: bool = False) -> ServiceID:
+                        commit_current_engine_on_repair: bool = False) ->\
+            ServiceID | None:
         """
         Verifies that the given engine's configuration is valid and repair as
         needed.
@@ -1401,37 +1403,14 @@ class Configure:
                                 f'{commit_current_engine_on_repair}')
 
             # Ensure settings for engine are loaded
-            engine_service: SimpleTTSBackend | None = None
-            try:
-                MY_LOGGER.debug(f'engine_key: {engine_key}')
-                engine_service = BaseServices.get_service(engine_key)
-
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'got service: {engine_key} '
-                                    f'commit repair as current: '
-                                    f'{commit_current_engine_on_repair}')
-            except ServiceUnavailable:
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.exception(f'Bad engine choice: {engine_key} choosing '
-                                        f'another engine.')
-                engine_key = None
-            except Exception:
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.exception(f'Bad engine choice: {engine_key} choosing '
-                                        f'another engine.')
-                engine_key = None
-                '''
-                active: bool = False
-                if engine_key.service_id == SettingsLowLevel.get_engine_id_ll(
-                        ignore_cache=True).service_id:
-                    active = True
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'Service Unavailable: {e}')
-                    MY_LOGGER.exception('')
-                raise ServiceUnavailable(service_key=engine_key,
-                                         reason=e.reason,
-                                         active=active)
-            '''
+            if engine_key is not None:
+                try:
+                    _ = BaseServices.get_service(engine_key)
+                except (ServiceUnavailable, Exception):
+                    if MY_LOGGER.isEnabledFor(DEBUG):
+                        MY_LOGGER.exception(f'Bad engine choice: {engine_key} choosing '
+                                            f'another engine.')
+                    engine_key = None
             EngineVoiceManager.discover()
             choices, current_choice_index, best_choice_idx = self.get_engine_choices(
                     engine_key=engine_key)
@@ -1445,15 +1424,15 @@ class Configure:
 
             choice: EngineChoice = choices[current_choice_index]
             if choice is not None:
+                save_as_current: bool = False
                 if (self.configure_engine(choice, repair=False, save_as_current=False)
                         is None):
                     if MY_LOGGER.isEnabledFor(DEBUG):
                         MY_LOGGER.debug(f'Can not use previous configuration. '
                                         f'Reconfiguring')
-                    result: EngineConfig
+                    result: EngineConfig | None
                     result = self.configure_engine(choice, repair=True,
-                                                   save_as_current=
-                                                   commit_current_engine_on_repair)
+                                                   save_as_current=save_as_current)
                     if (MY_LOGGER.isEnabledFor(DEBUG) and result is not None and
                             commit_current_engine_on_repair):
                         MY_LOGGER.debug(f'Just did commit_current_engine_on_repair '
@@ -1627,7 +1606,7 @@ class Configure:
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'language: {lang_id} voice: {e_voice}')
             Settings.set_language(lang_id, engine_key)
-            EngineVoiceManager.set_voice(e_voice)
+            EngineVoiceManager.set_e_voice(e_voice)
         except Exception as e:
             MY_LOGGER.exception('')
 
@@ -1666,7 +1645,7 @@ class Configure:
                 voice: EngineVoice = choice.voice
                 voice_id = voice.engine_voice
             '''
-            EngineVoiceManager.set_voice(engine_voice)
+            EngineVoiceManager.set_e_voice(engine_voice)
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'Setting voice to: {engine_voice}')
         except Exception as e:

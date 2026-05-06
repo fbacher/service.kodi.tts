@@ -53,6 +53,7 @@ class GttsTestDriver:
                         lang_code = lang_country[0]
                         country_code = lang_country[1]
                     else:
+                        lang_country: str
                         lang_code = lang_country
                         country_code = lang_country
                     lang_name: str = lang_map.get(lang_code, locale_id)

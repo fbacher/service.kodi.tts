@@ -1,20 +1,18 @@
 # coding=utf-8
 from __future__ import annotations
 
-
 from pathlib import Path
 
+from backends.settings.i_engine_voice import IEngineVoice
 from backends.settings.i_engine_voice_group import IEngineVoiceGroup
 from backends.settings.i_engine_voice_manager import IEngineVoiceManager
-from backends.settings.i_engine_voice import IEngineVoice
 
 try:
     from enum import StrEnum
 except ImportError:
     from common.strenum import StrEnum
 
-from backends.settings.service_types import (QualityType, ServiceID, ServiceKey,
-                                             SERVICES_BY_TYPE)
+from backends.settings.service_types import (QualityType, ServiceID)
 
 """
    Provides a consistent way to represent the important language
@@ -23,7 +21,7 @@ from backends.settings.service_types import (QualityType, ServiceID, ServiceKey,
    among those available on their platform.
 """
 
-from typing import Any, Dict, Final, ForwardRef, List, Tuple
+from typing import Dict
 
 from langcodes import Language
 
@@ -65,6 +63,7 @@ class EngineVoice(IEngineVoice):
                  gender: Genders,
                  engine_lang_id: str,
                  e_voice_id: str,
+                 real_voice_id: str,
                  engine_vg_id: str | None = None,
                  voice_quality: QualityType = QualityType.UNKNOWN,
                  voice_label: str = None,
@@ -75,6 +74,8 @@ class EngineVoice(IEngineVoice):
         :param gender: Specifies the gender, if known
         :param lang: langcodes.Language,
         :param e_voice_id: Identifies a Voice within its VoiceGroup
+        :param real_voice_id: Identifies a voice to the Engine for voicing. Default
+                              is e_voice_id.
         :param engine_lang_id: Specifies the engine's id for the language for
                                this voice (engine's don't always use ietf.tag
                                (ex. en-GB)).
@@ -95,6 +96,7 @@ class EngineVoice(IEngineVoice):
         self._gender: Genders = gender
         self._engine_lang_id: str = engine_lang_id
         self._e_voice_id: str = e_voice_id
+        self._real_voice_id: str = real_voice_id
         self._engine_vg_id: str | None = engine_vg_id
         self._voice_quality: QualityType = voice_quality
         self._gender_label: str | None = None
@@ -134,7 +136,23 @@ class EngineVoice(IEngineVoice):
 
     @property
     def e_voice_id(self) -> str:
+        """
+        A unique id within a voice group for this voice.
+
+        Used together with e_vg_id as part of the UID in settings. Also used for
+        table lookup.
+        """
         return self._e_voice_id
+
+    @property
+    def real_voice_id(self) -> str:
+        """
+        The voice id that the engine is expecting to generate a voice. Used in
+        tandem with the e_vg_id, as needed by the engine.
+
+        Default value is e_voice_id
+        """
+        return self._real_voice_id
 
     @property
     def voice_quality(self) -> QualityType:
@@ -226,7 +244,7 @@ class EngineVoice(IEngineVoice):
             raise ValueError(f'Invalid voice key: {voice_key}')
         engine_id: str = parts[0]
         voice_id: str = parts[1]
-        voices_for_engine: Dict[str, ForwardRef('EngineVoice')]
+        voices_for_engine: 'Dict[str, EngineVoice]'
         voices_for_engine = cls._voice_by_engine.get(engine_id)
         if voices_for_engine is None:
             raise ValueError(f'Invalid voice key: {voice_key}')

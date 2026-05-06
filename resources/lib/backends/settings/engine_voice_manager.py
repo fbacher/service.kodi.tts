@@ -3,6 +3,8 @@
 Module responsible for discovering, organizing the voice and language capabilities
 of the various engines.
 """
+from __future__ import annotations
+
 from pathlib import Path
 
 from backends.settings.engine_lang import EngineLang
@@ -74,7 +76,7 @@ class EngineVoiceManager(IEngineVoiceManager):
         avail_engines = SettingsMap.get_available_services(ServiceType.ENGINE)
 
         if MY_LOGGER.isEnabledFor(DEBUG_XV):
-            MY_LOGGER.debug_xv(f'discover_lang_info engine_keys: {len(avail_engines)}')
+            MY_LOGGER.debug_xv(f'discover_lang_info # engines: {len(avail_engines)}')
         failure: bool = False
         for engine_key in reversed(avail_engines):
             engine_key: ServiceID
@@ -82,17 +84,14 @@ class EngineVoiceManager(IEngineVoiceManager):
             if MY_LOGGER.isEnabledFor(DEBUG):
                 MY_LOGGER.debug(f'getting lang for {engine_key}')
             try:
-                new_active_engine = BaseServices.get_service(engine_key)
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'active_engine: {new_active_engine}')
+                new_active_engine: BaseServices = BaseServices.get_service(engine_key)
                 if new_active_engine is None:
-                    failure = True
+                    MY_LOGGER.debug(f'Failed to load engine: {engine_key}')
                     continue
+                # TODO: Fix undeclared load_voices
                 new_active_engine.load_voices()
-            except ServiceUnavailable:
-                MY_LOGGER.exception(f'Error getting languages from {engine_key}.'
-                                    f' Skipping')
-            except Exception:
+            except (ServiceUnavailable, Exception):
+                failure = True
                 MY_LOGGER.exception(f'Error getting languages from {engine_key}.'
                                     f' Skipping')
         if not failure:
@@ -107,11 +106,12 @@ class EngineVoiceManager(IEngineVoiceManager):
         """
         if engine_key is None:
             engine_key: ServiceID = Settings.get_engine_key()
-        # MY_LOGGER.debug(f'engine_key: {engine_key}')
+        MY_LOGGER.debug(f'engine_key: {engine_key}')
         raw_voice_id: str = Settings.get_voice_id(engine_key)
         #  MY_LOGGER.debug(f'raw_voice_id: {raw_voice_id}')
+        #  tmp: str = "\n".join(EngineVoiceManager.voice_by_uid.keys())
         #  MY_LOGGER.debug(f'voice_by_uid: '
-        #                  f'{"\n".join(EngineVoiceManager.voice_by_uid.keys())}')
+        #                  f'{tmp}')
         e_voice: EngineVoice = EngineVoiceManager.voice_by_uid.get(raw_voice_id)
         if e_voice is None:
             MY_LOGGER.debug(f'Voice is BAD raw_voice_id: '
@@ -123,7 +123,7 @@ class EngineVoiceManager(IEngineVoiceManager):
         return e_voice
 
     @classmethod
-    def set_voice(cls, e_voice: EngineVoice) -> None:
+    def set_e_voice(cls, e_voice: EngineVoice) -> None:
         engine_key: ServiceID = e_voice.engine_key
         raw_voice_id: str = e_voice.uid
         MY_LOGGER.debug(f'engine_key: {engine_key} raw_voice_id: {raw_voice_id}')
@@ -211,7 +211,7 @@ class EngineVoiceManager(IEngineVoiceManager):
         :param vg_label: defines the label of this voice-group.
         """
         vg_uid: str = ServiceID.get_uid(engine_key, engine_vg_id)
-        vg: EngineVoiceGroup = cls.vg_by_uid.get(vg_uid)
+        vg: EngineVoiceGroup | None = cls.vg_by_uid.get(vg_uid)
         if vg is not None:
             return vg
 
@@ -234,7 +234,8 @@ class EngineVoiceManager(IEngineVoiceManager):
         vgs: List[EngineVoiceGroup] = vgs_by_locale.setdefault(lang.to_tag(), [])
         vgs.append(vg)
         if MY_LOGGER.isEnabledFor(DEBUG_V):
-            MY_LOGGER.debug_v(f'Added {engine_key} to locale: {lang.to_tag()} {vg}')
+            MY_LOGGER.debug_v(f'Added {engine_key.service_id} tag: {lang.to_tag()} '
+                              f'vg: {vg}')
         return vg
 
     @classmethod
@@ -244,8 +245,9 @@ class EngineVoiceManager(IEngineVoiceManager):
                   gender: Genders,
                   engine_lang_id: str,
                   e_voice_id: str,
-                  engine_vg_id: str | None,
+                  engine_vg_id: str,
                   voice_quality: QualityType,
+                  real_voice_id: str = None,
                   voice_label: str = None,
                   cache_path_segment: Path | None = None) -> EngineVoice:
         """
@@ -269,6 +271,8 @@ class EngineVoiceManager(IEngineVoiceManager):
                is unique for the particular voice being used. Typicaly a concise
                representation of <vg_id>-<voice_id>. Default value is
                vg_id-voice_id
+        :param real_voice_id: When e_voice_id can't be used for both a key to the
+                              voice and for generating voice. Defaults to e_voice_id.
         :param voice_label: defines the label of this voice. Combined with Voice Group
                             label, as needed.
 
@@ -294,7 +298,7 @@ class EngineVoiceManager(IEngineVoiceManager):
         vg = cls.vg_by_uid.get(vg_uid)
         if vg is None:
             if MY_LOGGER.isEnabledFor(DEBUG_V):
-                MY_LOGGER.debug_V(f'Adding voice group for voice vg_uid: {vg_uid}')
+                MY_LOGGER.debug_v(f'Adding voice group for voice vg_uid: {vg_uid}')
             vg = cls.add_voice_group(engine_key=engine_key,
                                      ietf_tag=ietf_tag,
                                      gender=gender,
@@ -311,11 +315,14 @@ class EngineVoiceManager(IEngineVoiceManager):
                                    f'ev_id: {e_voice_id}')
             return ev
 
+        if real_voice_id is None:
+            real_voice_id = e_voice_id
         e_voice: EngineVoice = EngineVoice(engine_key=engine_key,
                                            lang=lang,
                                            gender=gender,
                                            engine_lang_id=engine_lang_id,
                                            e_voice_id=e_voice_id,
+                                           real_voice_id=real_voice_id,
                                            engine_vg_id=engine_vg_id,
                                            voice_quality=voice_quality,
                                            voice_label=voice_label,
@@ -333,7 +340,7 @@ class EngineVoiceManager(IEngineVoiceManager):
 
     @classmethod
     def get_vgs_by_locale(cls, engine_key: ServiceID) -> (
-            Dict[str, List[ForwardRef('EngineVoiceGroup')]]):
+            'Dict[str, List[EngineVoiceGroup]]'):
         """
         Gets voice-groups supported by a TTS engine, grouped by locale
 

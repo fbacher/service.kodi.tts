@@ -264,7 +264,7 @@ class TTS_Type(StrEnum):
     CURRENT_ENGINE = 'current_engine'
     CONFIGURE_DEPENDENCIES_ON_STARTUP = 'configure_dependencies_on_startup'
     CONFIGURE_KEYMAP_ON_STARTUP = 'configure_keymap_on_startup'
-    CONFIGURE_TTS_ON_STARTUP = 'configure_on_startup'
+    CONFIGURE_ON_STARTUP = 'configure_on_startup'
     DISABLE_BROKEN_SERVICES = 'disable_broken_services'
     SERVICE_ID = 'id'
     SPEAK_BACKGROUND_PROGRESS_DURING_MEDIA = 'speak_background_progress_during_media'
@@ -318,12 +318,14 @@ class EngineType(Service):
     ESPEAK = Services.ESPEAK_ID, 4, MessageId.ENGINE_ESPEAK
     # LOG_ONLY = Services.LOG_ONLY_ID, 100, MessageId.ENGINE_LOG_ONLY
     # SPEECH_DISPATCHER = Services.SPEECH_DISPATCHER_ID
-    NO_ENGINE = Services.NO_ENGINE_ID, 99, MessageId.ENGINE_NO_ENGINE
+    # TODO- Broken, needed for fail-safe, where pre-voiced phrases
+    #       are used with SFX player
+    # NO_ENGINE = Services.NO_ENGINE_ID, 99, MessageId.ENGINE_NO_ENGINE
     # SAPI_ID = 'sapi'
     DEFAULT = Services.DEFAULT_ENGINE_ID, 0, DEFAULT_MESSAGE_ID
 
 
-DUMMY_ENGINES: List[EngineType] = [# EngineType.AUTO_ENGINE,
+DUMMY_ENGINES: List[EngineType] = [  # EngineType.AUTO_ENGINE,
                                    EngineType.DEFAULT]
 ALL_ENGINES: List[EngineType] = list(EngineType)
 #  ALL_ENGINES.remove(EngineType.AUTO_ENGINE)
@@ -672,7 +674,7 @@ class ServiceKey:
     CACHE_EXPIRATION_DAYS = TTS_KEY.with_prop(TTS_Type.CACHE_EXPIRATION_DAYS)
     CHANNELS_KEY: ServiceID
     CHANNELS_KEY = TTS_KEY.with_prop(TTS_Type.CHANNELS)
-    CONFIGURE_TTS_ON_STARTUP = TTS_KEY.with_prop(TTS_Type.CONFIGURE_TTS_ON_STARTUP)
+    CONFIGURE_ON_STARTUP = TTS_KEY.with_prop(TTS_Type.CONFIGURE_ON_STARTUP)
     # CACHE_PATH: ServiceID  #
     # CACHE_PATH = TTS_KEY.with_prop(TTS_Type.CACHE_PATH)
     CURRENT_ENGINE_KEY: ServiceID

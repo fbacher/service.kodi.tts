@@ -202,24 +202,28 @@ class Settings(SettingsLowLevel):
                                           extended_help_enabled)
 
     @classmethod
-    def is_start_config_gui_on_startup(cls) -> bool:
+    def is_configure_on_startup(cls) -> bool:
         """
          Determines if TTS configure GUI should be run on the next startup
         """
         service_key: ServiceID
-        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.START_CFG_GUI_ON_STARTUP)
-        return SettingsLowLevel.get_setting_bool(service_key)
+        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.CONFIGURE_ON_STARTUP)
+        value: bool = SettingsLowLevel.get_setting_bool(service_key,
+                                                        ignore_cache=True)
+        MY_LOGGER.debug(f'value: {value} key: {service_key}')
+        return value
 
     @classmethod
-    def set_start_config_gui_on_startup(cls, start_config_gui: bool) -> None:
+    def set_configure_on_startup(cls, configure: bool) -> None:
         """
         Configures TTS to enter the GUI configure tool at startup
-        :param start_config_gui: If True, then the config gui will be displayed
+        :param configure: If True, then the config gui will be displayed
         on the next restart of TTS
         """
+        MY_LOGGER.debug(f'configure: {configure}')
         service_key: ServiceID
-        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.START_CFG_GUI_ON_STARTUP)
-        SettingsLowLevel.set_setting_bool(service_key, start_config_gui)
+        service_key = ServiceKey.TTS_KEY.with_prop(SettingProp.CONFIGURE_ON_STARTUP)
+        SettingsLowLevel.set_setting_bool(service_key, configure)
 
     @classmethod
     def is_configure_dependencies_on_startup(cls) -> bool:
@@ -337,8 +341,10 @@ class Settings(SettingsLowLevel):
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'initial_run key: {ServiceKey.INITIAL_RUN} short_key: '
                             f'{ServiceKey.INITIAL_RUN.short_key}')
-        return SettingsLowLevel.get_setting_bool(ServiceKey.INITIAL_RUN,
-                                                 ignore_cache=True)
+        value: bool = SettingsLowLevel.get_setting_bool(ServiceKey.INITIAL_RUN,
+                                                        ignore_cache=True)
+        MY_LOGGER.debug(f'{value}')
+        return value
 
     @classmethod
     def set_initial_run(cls, initial_run: bool) -> None:

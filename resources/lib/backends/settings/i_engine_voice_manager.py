@@ -3,6 +3,8 @@
 Module responsible for discovering, organizing the voice and language capabilities
 of the various engines.
 """
+from __future__ import annotations
+
 from pathlib import Path
 
 from backends.settings.i_engine_lang import IEngineLang
@@ -19,7 +21,7 @@ MY_LOGGER = BasicLogger.get_logger(__name__)
 
 class IEngineVoiceManager:
 
-    e_v_m: Union[ForwardRef('IEngineVoiceManager'), None] = None
+    e_v_m: 'Union[IEngineVoiceManager, None]' = None
 
     '''
     # Engine's ServiceID gives Dict[ietf_tag] of it's language
@@ -61,12 +63,12 @@ class IEngineVoiceManager:
         return cls.e_v_m.discover()
 
     @classmethod
-    def get_e_voice(cls, engine_key: ServiceID | None = None) -> IEngineVoice:
+    def get_e_voice(cls, engine_key: Union[ServiceID, None] = None) -> IEngineVoice:
         return cls.e_v_m.get_e_voice(engine_key)
 
     @classmethod
-    def set_voice(cls, e_voice: IEngineVoice) -> None:
-        return cls.e_v_m.set_voice(e_voice)
+    def set_e_voice(cls, e_voice: IEngineVoice) -> None:
+        return cls.e_v_m.set_e_voice(e_voice)
 
     @classmethod
     def add_language(cls, engine_key: ServiceID, ietf_tag: str,
@@ -185,7 +187,7 @@ class IEngineVoiceManager:
 
     @classmethod
     def get_vgs_by_locale(cls, engine_key: ServiceID) -> (
-            Dict[str, List[ForwardRef('EngineVoiceGroup')]]):
+            'Dict[str, List[EngineVoiceGroup]]'):
         """
         Gets voice-groups supported by a TTS engine, grouped by locale
 

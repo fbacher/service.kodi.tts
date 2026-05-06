@@ -1,4 +1,4 @@
-# SAPI voice
+# SAPI_voice
 # https://learn-powershell.net/2013/12/04/give-powershell-a-voice-using-the-speechsynthesizer-class/
 Function GetSapiVoices {
 

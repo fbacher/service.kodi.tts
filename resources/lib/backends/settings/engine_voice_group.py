@@ -1,6 +1,7 @@
 # coding=utf-8
 from __future__ import annotations
 
+from backends.settings.engine_voice import EngineVoice
 from backends.settings.i_engine_voice import IEngineVoice
 from backends.settings.i_engine_voice_group import IEngineVoiceGroup
 from backends.settings.lang_utils import LangUtils
@@ -57,7 +58,7 @@ class EngineVoiceGroup(IEngineVoiceGroup):
       be restarted. Therefore, every EngineVoice in this structure
       will be for the same language (and engine).
     """
-    vg_by_engine: Dict[ServiceID, Dict[str, List[ForwardRef('EngineVoiceGroup')]]] = {}
+    vg_by_engine: Dict[ServiceID, Dict[str, List['EngineVoiceGroup']]] = {}
 
     # vg_keys: Dict[str, EngineVoiceGroup] = {}
     # Lookup table for EngineVoiceGroup instances
@@ -110,7 +111,7 @@ class EngineVoiceGroup(IEngineVoiceGroup):
         self._locale_match: int = locale_match
 
         # Voices indexed by engine_voice id
-        self._voices: Dict[str, ForwardRef('EngineVoice')] = {}
+        self._voices: Dict[str, EngineVoice] = {}
         """
             label: Translated label in the format of:
                      f'voice_group:  {vg_name:20}')
@@ -121,9 +122,9 @@ class EngineVoiceGroup(IEngineVoiceGroup):
 
         if MY_LOGGER.isEnabledFor(DEBUG_XV):
             MY_LOGGER.debug_xv(f'{self}')
-        vg_by_locale: Dict[str, List[ForwardRef('EngineVoiceGroup')]]
+        vg_by_locale: Dict[str, List[EngineVoiceGroup]]
         vg_by_locale = clz.vg_by_engine.setdefault(engine_key, {})
-        vgs_in_locale: List[ForwardRef('EngineVoiceGroup')]
+        vgs_in_locale: List[EngineVoiceGroup]
         locale_id: str = lang.to_tag()  # .lower()
         vgs_in_locale = vg_by_locale.setdefault(locale_id, [])
         vgs_in_locale.append(self)
@@ -182,14 +183,14 @@ class EngineVoiceGroup(IEngineVoiceGroup):
         return self._vg_name
 
     @property
-    def e_voices(self) -> Dict[str, ForwardRef('EngineVoice')]:
+    def e_voices(self) -> Dict[str, EngineVoice]:
         """
         :returns: a dictionary[engine_voice, EngineVoice]
         """
         return self._voices
 
     @property
-    def default_e_voice(self) -> ForwardRef('EngineVoice'):
+    def default_e_voice(self) -> EngineVoice:
         """
         Default voice of the group
         """
@@ -203,9 +204,9 @@ class EngineVoiceGroup(IEngineVoiceGroup):
     def locale_match(self) -> int:
         return self._locale_match
 
-    def add_voice(self, voice: ForwardRef('EngineVoice')) -> None:
+    def add_voice(self, voice: EngineVoice) -> None:
         if MY_LOGGER.isEnabledFor(DEBUG_XV):
-            MY_LOGGER.debug_xv(f'Adding voice at idx: {voice.e_voice_id} type: '
+            MY_LOGGER.debug_xv(f'Adding voice id: {voice.e_voice_id} type: '
                                f'type: {type(voice.e_voice_id)}')
         self._voices[voice.e_voice_id] = voice
 
@@ -251,7 +252,7 @@ class EngineVoiceGroup(IEngineVoiceGroup):
                         that engine and locale_id/ietf-tag ('en-us')
         """
 
-        vgs_by_locale: Dict[str, List[ForwardRef('EngineVoiceGroup')]]
+        vgs_by_locale: Dict[str, List[EngineVoiceGroup]]
         vgs_by_locale = cls.vg_by_engine.get(engine_key)
         MY_LOGGER.debug(f'vgs_by_locale: {vgs_by_locale}')
         vgs: List[EngineVoiceGroup] = vgs_by_locale.get(locale)

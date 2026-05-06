@@ -34,8 +34,8 @@ Function Voice-Sapi {
     https://thesysadminchannel.com/powershell-text-to-speech-how-to-guide -
 
 .EXAMPLE
-    New-TextToSpeechMessage 'This is the text I want to have read out loud' -Voice Zira
-    or powershell.exe  "& { . '.\voice.ps1'; New-TextToSpeechMessage 'This is the text I want to have read out loud' Zira './foo.wav' }"
+    Voice-Sapi 'This is the text I want to have read out loud' -Voice Zira
+    or powershell.exe  "& { . '.\voice_sapi.ps1'; 'This is the text I want to have read out loud' -Voice Zira './foo.wav' }"
 #>
     [CmdletBinding()]
     param(
@@ -44,7 +44,7 @@ Function Voice-Sapi {
             Mandatory = $true
         )]
 
-        [string]    $Message,
+        [string]    $TextPath,
 
 
         [Parameter(
@@ -76,8 +76,8 @@ Function Voice-Sapi {
             if ($AudioPath -ne '') {
                 $NewMessage.SetOutputToWaveFile($AudioPath)
             }
-
-            $NewMessage.Speak($Message)
+            $Text = Get-Content -Path $TextPath -Raw
+            $NewMessage.Speak($Text)
             if ($AudioPath -ne '') {
                 $NewMessage.SetOutputToNull()
             }

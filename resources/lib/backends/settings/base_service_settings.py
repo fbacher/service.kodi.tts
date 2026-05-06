@@ -44,7 +44,7 @@ class BaseServiceSettings:
                                               minimum=0, maximum=99, default=50,
                                               is_decibels=False, is_integer=True,
                                               internal_scale_factor=1,
-                                              persist=True)
+                                              persist=False)
 
     tts_volume_validator: TTSNumericValidator
     tts_volume_validator = TTSNumericValidator(ServiceKey.VOLUME,
@@ -148,6 +148,11 @@ class BaseServiceSettings:
         settings_digest = BoolValidator(ServiceKey.SETTINGS_DIGEST, default=True)
         SettingsMap.define_setting(settings_digest.service_key,
                                    validator=settings_digest)
+                Settings.is_start_config_gui_on_startup() or
+                #  Settings.is_configure_dependencies_on_startup() or
+                Settings.is_config_help_on_startup() or
+                Settings.is_introduction_on_startup()):^C
+
         '''
 
         extended_help: BoolValidator
@@ -157,7 +162,7 @@ class BaseServiceSettings:
                                       persist=True)
 
         config_on_restart: BoolValidator
-        config_on_restart = BoolValidator(ServiceKey.CONFIGURE_TTS_ON_STARTUP,
+        config_on_restart = BoolValidator(ServiceKey.CONFIGURE_ON_STARTUP,
                                           default=True,
                                           define_setting=True,
                                           service_status=StatusType.OK,

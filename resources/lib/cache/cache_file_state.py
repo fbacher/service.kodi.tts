@@ -9,9 +9,6 @@ except ImportError:
 
 MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 
-MY_LOGGER.error("In cache_file_state")
-xbmc.log("In cache_file_state",  xbmc.LOGDEBUG)
-
 
 class StrEnumWithPriority(StrEnum):
     """

@@ -1792,16 +1792,8 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
         if engine_key is None:
             engine_key = Settings.get_engine_key()
         if update_ui:
-            kodi_lang, kodi_locale, kodi_friendly_locale, kodi_language = \
-                LangUtils.get_kodi_locale_info()
-            kodi_lang: str
-            kodi_locale: str
-            locale_name: str
-            kodi_language: langcodes.Language
-            engine_name: str
-            engine_name = engine_key.service_id
-            lang_name: str = LangUtils.get_translated_language_name(kodi_language)
-            self.engine_engine_value.setLabel(engine_name)
+            engine_label: str = Backends.get_label(engine_key.service_id)
+            self.engine_engine_value.setLabel(engine_label)
 
         # Start engine LAST, after everything is configured
         self.cfg.set_engine_field(engine_key)

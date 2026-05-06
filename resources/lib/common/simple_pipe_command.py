@@ -20,7 +20,7 @@ from common.logger import *
 from common.monitor import Monitor
 from common.phrases import PhraseList
 
-module_logger = BasicLogger.get_logger(__name__)
+MY_LOGGER = BasicLogger.get_logger(__name__)
 
 
 class RunState(Enum):
@@ -52,7 +52,6 @@ class SimplePipeCommand:
         self.stderr: TextIO | int | None = stderr
         self.stdout: TextIO | int | None = stdout
         clz = type(self)
-        SimplePipeCommand.logger = module_logger
         self.args: List[str] = args
         self.phrase_serial: int = phrase_serial
         self.thread_name = name
@@ -159,7 +158,7 @@ class SimplePipeCommand:
                         kill_countdown -= 1
                     elif kill_countdown == 0:
                         next_state = RunState.KILLED
-                        module_logger.debug(f'terminate not work, KILLING')
+                        MY_LOGGER.debug(f'terminate not work, KILLING')
                         clz.logger.debug(
                             f'Terminate not working, Killing {self.phrase_serial} '
                             f'{self.args[0]}',

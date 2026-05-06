@@ -50,7 +50,7 @@ class GoogleSettings:
 
     # Maximum phrase length that a remote engine can convert to speech at a time
     # None indicates that the engine does not download from a remote server
-    MAXIMUM_PHRASE_LENGTH: int | None = 100
+    MAXIMUM_PHRASE_LENGTH: int = 100
 
     """
     In an attempt to bring some consistency between the various players, engines and 
@@ -217,6 +217,7 @@ class GoogleSettings:
                                                 persist=True)
 
         Settings.set_current_output_format(GoogleSettings.service_key, AudioType.MP3)
+
         SoundCapabilities.add_service(GoogleSettings.service_key,
                                       service_types=[ServiceType.ENGINE],
                                       supported_input_formats=[],
@@ -296,6 +297,7 @@ class GoogleSettings:
                                          define_setting=True,
                                          service_status=StatusType.OK,
                                          persist=True)
+
     @classmethod
     def check_is_supported_on_platform(cls) -> None:
         if cls._service_status.progress == Progress.START:

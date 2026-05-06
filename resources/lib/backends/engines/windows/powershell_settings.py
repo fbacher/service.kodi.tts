@@ -261,7 +261,7 @@ class PowerShellTTSSettings:
             SettingsMap.define_setting(cls.service_key,
                                        setting_type=SettingType.STRING_TYPE,
                                        service_status=StatusType.OK,
-                                       persist=True)
+                                       persist=False)
             Settings.set_availability(cls.service_key, availability=StatusType.OK)
 
     @classmethod

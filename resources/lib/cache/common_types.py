@@ -8,7 +8,7 @@ CacheEntryInfo
     temp_voice_path: Temp path based on final_audio_path. Used during
         generation of the voice path and renamed to final_audio_path with
         successful completion.
-    text_exists: bool indicating if the accompaning .txt file text_exists in the cache
+    text_exists: bool indicating if the accompanying .txt file text_exists in the cache
     audio_suffixes: List of audio suffixes of files with the same name as the
     final_audio_path. Generally, there is only one entry with the same suffix as
     the final_audio_path. However, there can be, for example, a .mp3 and .wav
@@ -19,5 +19,6 @@ CacheEntryInfo
 from collections import namedtuple
 
 CacheEntryInfo = namedtuple('CacheEntryInfo',
-                            'use_cache, final_audio_path, temp_voice_path,'
+                            'use_cache, final_audio_path, text_path,'
+                            ' temp_voice_path,'
                             'audio_exists, text_exists, audio_suffixes')

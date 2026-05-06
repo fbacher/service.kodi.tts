@@ -30,6 +30,9 @@ class Constants:
     """
     INCLUDE_MODULE_PATH_IN_LOGGER = True
 
+    PLATFORM_WINDOWS: bool = xbmc.getCondVisibility('System.Platform.Windows')
+    KODI_TEMP_DIR: Path = Path(xbmcvfs.translatePath('special://temp'))
+
     ADDON_DATA = None
     ADDON_NAME = None
     ADDON_SHORT_NAME = 'service.kodi.tts'
@@ -43,6 +46,118 @@ class Constants:
     # There is a default location and then there is an environment
     # variable to fall back on. Should probably use 'where' command on
     # windows (command.com) or 'whereis' on Linux
+
+    CURL_PATH: Path = None
+    CURL_PATH_WINDOWS: Path = Path('C:/WINDOWS/system32/curl')
+    CURL_PATH_LINUX: Path = Path('/usr/bin/curl')
+
+    # The python paths here are for launching an external python command (such as Piper).
+    # It is NOT for the Python Kodi addon code.
+    #
+    # Two paths are given. One for piper and another for everything else. At this time
+    # the only externally launched Python code is for Piper, so both paths can probably
+    # be the same.
+    #
+    # Python can come from a 'normal' python installation, or a 'venv' installation.
+    # Just set the path up and python will know what to do.
+
+    if PLATFORM_WINDOWS:
+        PYTHON_USE_VENV: bool = False
+        if not PYTHON_USE_VENV:
+            PYTHON_TOP_PATH: Path
+            PYTHON_TOP_PATH = (Path.home() /
+                               'C:/Users/fbacher/AppData/Local/Programs/python/Python312')
+            PYTHON_COMMAND_PATH: Path = PYTHON_TOP_PATH / 'python.exe'
+            ENV_PATH_DELIM: str = ';'
+            PIPER_PYTHON_TOP_PATH: Path = PYTHON_TOP_PATH
+
+            # PIPER_PYTHON_PATH is the directory that contains the Python with Piper installed
+            # It can be venv, etc. Just need the path.
+            PIPER_PYTHON_PATH: Path = PYTHON_TOP_PATH
+            PIPER_BINARY_PATH: Path = PIPER_PYTHON_PATH / 'piper.exe'
+
+            # Path for downloaded TTS data, such as for Piper onnx (voice) data files.
+            # Not sure where to put these.
+
+            TTS_DATA_PATH: Path = Path.home() / 'AppData/Roaming/kodi_tts_data'
+            PIPER_DATA_PATH: Path = TTS_DATA_PATH / 'piper'
+        else:  # Windows, Use VENV
+            PYTHON_TOP_PATH: Path = Path.home() / 'AppData/Roaming/Python/venv_tts'
+            PYTHON_COMMAND_PATH: Path = PYTHON_TOP_PATH / 'scripts/python.exe'
+            PYTHON_VENV_BIN: Path = PYTHON_TOP_PATH / 'Scripts'
+
+            PYTHON_VENV_ENV: dict[str, str]
+            PYTHON_VENV_ENV = {'VIRTUAL_ENV': str(PYTHON_TOP_PATH),
+                               'PATH'       : str(PYTHON_VENV_BIN)}
+
+            ENV_PATH_DELIM: str = ';'
+
+            PIPER_PYTHON_TOP_PATH: Path = PYTHON_TOP_PATH
+
+            # PIPER_PYTHON_PATH is the directory that contains the Python with Piper installed
+            # It can be venv, etc. Just need the path.
+            PIPER_PYTHON_PATH: Path = Path.home() / 'AppData/Roaming/Python/Python313'
+            PIPER_BINARY_PATH: Path = PIPER_PYTHON_PATH / 'Scripts' / 'piper.exe'
+
+            # Path for downloaded TTS data, such as for Piper onnx (voice) data files.
+            # Not sure where to put these.
+
+            TTS_DATA_PATH: Path = Path.home() / 'AppData/Roaming/kodi_tts_data'
+            PIPER_DATA_PATH: Path = TTS_DATA_PATH / 'piper'
+    else:  # LINUX
+        PYTHON_USE_VENV: bool = True
+        if not PYTHON_USE_VENV:
+            PYTHON_TOP_PATH: Path = Path('/usr/bin')
+            PYTHON_COMMAND_PATH: Path = PYTHON_TOP_PATH / 'python3.12'
+            ENV_PATH_DELIM: str = ':'
+
+            PIPER_PYTHON_TOP_PATH: Path = PYTHON_TOP_PATH
+
+            # PIPER_PYTHON_PATH is the directory that contains the Python with Piper installed
+            # It can be venv, etc. Just need the path.
+            PIPER_PYTHON_PATH: Path = Path.home() / 'Source' / 'venvs' / 'TTS'
+            PIPER_BINARY_PATH: Path = PIPER_PYTHON_PATH / 'piper' / 'piper'
+
+            # Path for downloaded TTS data, such as for Piper onnx (voice) data files.
+            # Not sure where to put these.
+
+            TTS_DATA_PATH: Path = None
+            TTS_DATA_PATH_LINUX: Path = Path.home() / '.kodi_tts_data'
+            PIPER_DATA_PATH: Path = TTS_DATA_PATH / 'piper'
+        else:  # Linux, Use VENV
+            PYTHON_TOP_PATH: Path = Path.home() / 'Source' / 'venvs' / 'TTS'
+            PYTHON_COMMAND_PATH: Path = PYTHON_TOP_PATH / 'bin/python'
+            PYTHON_VENV_BIN: Path = PYTHON_TOP_PATH / 'bin'
+
+            PYTHON_VENV_ENV: dict[str, str]
+            PYTHON_VENV_ENV = {
+                'VIRTUAL_ENV': str(PYTHON_TOP_PATH),
+                'PATH'       : str(PYTHON_VENV_BIN)}
+
+            ENV_PATH_DELIM: str = ':'
+
+            # PIPER_PYTHON_TOP_PATH: Path = PYTHON_TOP_PATH
+
+            # PIPER_PYTHON_PATH is the directory that contains the Python with Piper installed
+            # It can be venv, etc. Just need the path.
+            # PIPER_PYTHON_PATH: Path = Path.home() / 'Source' / 'venvs' / 'TTS'
+            PIPER_BINARY_PATH: Path = PYTHON_TOP_PATH / 'piper' / 'piper'
+
+            # Path for downloaded TTS data, such as for Piper onnx (voice) data files.
+            # Not sure where to put these.
+
+            TTS_DATA_PATH: Path = Path.home() / '.kodi_tts_data'
+            PIPER_DATA_PATH: Path = TTS_DATA_PATH / 'piper'
+
+    PIPER_HTTP_SERVER_HOST: str = 'localhost'
+    PIPER_HTTP_SERVER_PORT: str = '5000'
+    PIPER_DOWNLOAD_VOICES = 'piper.download_voices'
+    PIPER_HTTP_SERVER_LOG: Path = None
+    PIPER_HTTP_SERVER_PID: Path = None
+
+    DEFAULT_HTTP_VG: str = 'en_US-libritts-high'
+    PIPER_HTTP_SERVER_ARG: str = 'piper.http_server'
+    PIPER_HTTP_SERVER_DEFAULT_VG_ARG: str = DEFAULT_HTTP_VG
 
     ESPEAK_PATH: Path = None
     ESPEAK_PATH_WINDOWS: Path = None
@@ -105,7 +220,6 @@ class Constants:
     # name when successful. TEMP_AUDIO_SUFFIX is appended to the file name, not
     # the type: ex sample.mp3 becomes sample.tmp.mp3
     TEMP_AUDIO_NAME_SUFFIX = '.tmp'
-    PLATFORM_WINDOWS: bool = xbmc.getCondVisibility('System.Platform.Windows')
     USE_LANGCODES_DATA: bool = not PLATFORM_WINDOWS
     # Don't voice while video is playing
     STOP_ON_PLAY: bool = True
@@ -159,7 +273,13 @@ class Constants:
         Constants.LOG_PATH = Path(xbmcvfs.translatePath('special://logpath')) / 'kodi.log'
         Constants.MEDIA_PATH = addon.MEDIA_PATH
         Constants.PROFILE = addon.PROFILE
-        Constants.PROFILE_PATH = xbmcvfs.translatePath(addon.PROFILE)
+        Constants.PROFILE_PATH = Path(xbmcvfs.translatePath(addon.PROFILE))
+        Constants.PIPER_HTTP_SERVER_LOG = (Constants.PROFILE_PATH / 'tmp' /
+                                           'http_server.log')
+        Constants.PIPER_HTTP_SERVER_PID = (Constants.PROFILE_PATH / 'tmp' /
+                                           'http_server.pid')
+        #  kodiaddon PROFILE: special://profile/addon_data/service.kodi.tts/
+        #     /home/fbacher/.kodi_data/userdata/addon_data/service.kodi.tts
         Constants.SHELL_SCRIPTS_PATH = Constants.RESOURCES_PATH / 'scripts'
         Constants.SCRIPT_PATH = os.path.join(
                 addon.PATH, 'resources', 'skins', 'Default', '720p')
@@ -174,6 +294,7 @@ class Constants:
         if Constants.PLATFORM_WINDOWS:
             lang_country: str = xbmc.getLanguage(xbmc.ISO_639_1, True)
             Constants.LOCALE = lang_country.lower().replace('_', '-')
+            Constants.CURL_PATH = Constants.CURL_PATH_WINDOWS
 
             espeak_path: Path = Constants.ESPEAK_PATH_WINDOWS
             if not espeak_path.exists():
@@ -227,6 +348,7 @@ class Constants:
             lang_country, _ = locale.getlocale()
             lang_country: str
             Constants.LOCALE = lang_country.lower().replace('_', '-')
+            Constants.CURL_PATH = Constants.CURL_PATH_LINUX
             Constants.MPV_PATH = Constants.MPV_PATH_LINUX
             Constants.MPLAYER_PATH = Constants.MPLAYER_PATH_LINUX
             Constants.ESPEAK_PATH = Constants.ESPEAK_PATH_LINUX

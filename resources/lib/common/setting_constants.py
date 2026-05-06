@@ -27,10 +27,13 @@ class BaseSettingsConstants:
     def get_label(cls, setting_id: str) -> str:
         msg_handle: MessageId = cls.settings_map.get(setting_id, setting_id)
         label = msg_handle.get_msg()
+        MY_LOGGER.debug(f'setting_id: {setting_id}, label: {label}')
         return label
 
     @classmethod
     def get_msg_handle(cls, setting_id: str) -> MessageId:
+        MY_LOGGER.debug(f'setting_id: {setting_id}, '
+                        f'{cls.settings_map.get(setting_id, None)}')
         return cls.settings_map.get(setting_id, None)
 
 
@@ -83,8 +86,6 @@ class Backends(BaseSettingsConstants):
         PICO_TO_WAVE_ID     : MessageId.CONVERT_PICO_TO_WAV,
         PIPER_ID            : MessageId.ENGINE_PIPER,
         POWERSHELL_ID       : MessageId.ENGINE_POWERSHELL,
-        # RECITE_ID           : MessageId.ENGINE_RECITE,
-        # RESPONSIVE_VOICE_ID : MessageId.ENGINE_RESPONSIVE_VOICE,
         SAPI_ID             : MessageId.ENGINE_SAPI,
         SPEECH_DISPATCHER_ID: MessageId.ENGINE_SPEECH_DISPATCHER
     }

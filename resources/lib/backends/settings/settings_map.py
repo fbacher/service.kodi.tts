@@ -298,7 +298,7 @@ class SettingsMap:
             registered: str = ''
             if service_info is None:
                 registered = 'is NOT registered'
-            MY_LOGGER.debug_v(f'{service_id} force: {force} service: '
+            MY_LOGGER.debug_v(f'service_id: {service_id} force: {force} service: '
                               f'service_info: {service_info} {registered}')
         service_status: StatusType = StatusType.UNCHECKED
         if service_info is None:
@@ -316,7 +316,7 @@ class SettingsMap:
     @classmethod
     def define_setting(cls, service_id: ServiceID,
                        setting_type: SettingType | None = None,
-                       service_status: StatusType | None = StatusType.OK,
+                       service_status: StatusType = StatusType.OK,
                        validator: (IBoolValidator |
                                    IChannelValidator |
                                    IConstraintsValidator |
@@ -338,7 +338,7 @@ class SettingsMap:
         :param persist: When True, values are persisted in settings.xml.
         """
         if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'define_settings: {service_id}')
+            MY_LOGGER.debug(f'define_setting: {service_id}')
         if not service_id.fully_qualified:
             raise ValueError(f'Fully Qualified service_id required: {service_id}')
 
@@ -388,7 +388,10 @@ class SettingsMap:
         const_value: int | float | str | bool | None = cls.get_const_value(service_id)
         default_value: int | float | str | bool | None
         default_value = SettingsMap.get_default_value(service_id)
-        return SettingsIO.load_setting(service_id, persist, const_value, default_value)
+        MY_LOGGER.debug(f'service_id: {service_id}, persist: {persist}, const_value: '
+                        f'{const_value} default_value: {default_value}')
+        return SettingsIO.load_setting(service_id, persist, default_value=default_value,
+                                       const_value=const_value)
 
     @classmethod
     def is_setting_available(cls, service_id: ServiceID, property_id: str) -> bool:
@@ -400,7 +403,7 @@ class SettingsMap:
     @classmethod
     def is_valid_setting(cls, service_id: ServiceID) -> bool:
         """
-        Verfies that a setting has been explicitly defined.
+        Verifies that a setting has been explicitly defined.
 
         Note that this can give FALSE results during startup, when the settings
         have not yet all been defined. This should be benign since things should
@@ -412,7 +415,9 @@ class SettingsMap:
         # Verify that
         if service_id.key not in cls.service_info_map.keys():
             if MY_LOGGER.isEnabledFor(DEBUG):
-                MY_LOGGER.debug(f'{service_id.key} not in service_info_map')
+                MY_LOGGER.error(f'{service_id.key} not in service_info_map')
+            return False
+        if not SettingsIO.is_persisted_setting(service_id):
             return False
         return True
 

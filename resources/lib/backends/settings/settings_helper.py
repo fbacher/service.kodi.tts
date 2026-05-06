@@ -209,13 +209,14 @@ class SettingsHelper:
                     raise ValueError('Could not get EngineChoices')
 
             engine_choice_idx: int = -1
-            idx: int = 0
-            for e_choice in e_choices:
-                e_choice: EngineChoice
-                if e_choice.engine_key == current_engine_key:
-                    engine_choice_idx = idx
-                    break
-                idx += 1
+            if current_engine_key is not None:
+                idx: int = 0
+                for e_choice in e_choices:
+                    e_choice: EngineChoice
+                    if e_choice.engine_key == current_engine_key:
+                        engine_choice_idx = idx
+                        break
+                    idx += 1
 
             best_choice_idx: int = 0
             return e_choices, engine_choice_idx, best_choice_idx
@@ -252,6 +253,7 @@ class SettingsHelper:
 
                 # Choose the best voice from the 'best' VoiceGroup this engine
                 # supports
+                MY_LOGGER.debug(f'engine: {engine_key}')
                 vg_choices: VGChoices = cls.get_vg_choices(engine_key=engine_key)
                 t_vg_choice: VGChoice | None = None
                 for vg_choice in vg_choices:
@@ -417,6 +419,9 @@ class SettingsHelper:
             for e_vg in all_e_vgs_for_engine:
                 e_vg: EngineVoiceGroup
                 MY_LOGGER.debug(f'VGroup: {e_vg.vg_name} #voices: {len(e_vg.e_voices)}')
+                if len(e_vg.e_voices) > 1:
+                    for ev in e_vg.e_voices:
+                        MY_LOGGER.debug(f'ev: {ev}')
                 v_choices: VoiceChoices
                 v_choices = cls.create_voice_choices_from_vg(e_vg)
                 qual: QualityType = e_vg.voice_quality

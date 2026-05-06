@@ -15,7 +15,6 @@ from backends.ispeech_generator import ISpeechGenerator
 from backends.players.iplayer import IPlayer
 from backends.settings.engine_voice import EngineVoice
 from backends.settings.engine_voice_manager import EngineVoiceManager
-from backends.settings.lang_utils import LangUtils
 from backends.settings.service_types import (EngineType, QualityType, ServiceID,
                                              ServiceKey, Services,
                                              ServiceType)
@@ -43,7 +42,7 @@ class LangInfo:
     Manages the language choices for gTTS.
     """
 
-    lang_info_map: Dict[str, ForwardRef('LangInfo')] = {}
+    lang_info_map: Dict[str, 'LangInfo'] = {}
     initialized: bool = False
     global_lang_initalized: bool = False
 
@@ -68,7 +67,7 @@ class LangInfo:
         """
           Only the keys are of interest. The key is usually a simple
           language code, but can be lang-territory.
-          The value is simple an English translation of the key. 
+          The value is a simple English translation of the key. 
           langcodes gives us the translation for many languages.
 
         The dictionary returned combines languages from two origins:
@@ -92,7 +91,7 @@ class LangInfo:
                 if ietf_lang.language != current_language:
                     continue
                 ietf_langs.append(ietf_lang)
-                #  MY_LOGGER.debug(f'ietf_langs added {ietf_lang}')
+                MY_LOGGER.debug(f'ietf_langs added {ietf_lang}')
             except AbortException as e:
                 reraise(*sys.exc_info())
             except LanguageTagError:
@@ -111,7 +110,7 @@ class LangInfo:
 
         ietf_lang_territories: List[langcodes.Language] = []
         for gtts_lang_territory in extra_locales.keys():
-            #  MY_LOGGER.debug(f'gtts_lang_territory: {gtts_lang_territory}')
+            MY_LOGGER.debug(f'gtts_lang_territory: {gtts_lang_territory}')
             gtts_lang_territory: str
             ietf_lang_terr: langcodes.Language
             try:
@@ -143,7 +142,11 @@ class LangInfo:
         # Make sure the primary language has an entry ('en')
         ietf_lang: langcodes.Language
         for ietf_lang in ietf_lang_territories:
-            #  MY_LOGGER.debug(f'ietf_lang: {ietf_lang}')
+            if MY_LOGGER.isEnabledFor(DEBUG_XV):
+                MY_LOGGER.debug_xv(f'ietf_lang: {ietf_lang}')
+            if ietf_lang.language is None:
+                MY_LOGGER.debug(f'No language for ietf_lang: {ietf_lang}')
+                continue
             lang_code: str = ietf_lang.language
             variants: Dict[str, None] = lang_variants.get(lang_code)
             if variants is None:
@@ -235,39 +238,8 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         player_mode: PlayerMode = Settings.get_player_mode(clz.service_key)
         return player_mode
 
-    '''
-    @classmethod
-    def update_voice_path(cls, phrase: Phrase) -> None:
-        """
-        If a language is specified for this phrase, then modify any
-        cache path to reflect the chosen language and territory.
-        :param phrase:
-        :return:
-        """
-        MY_LOGGER.debug(f'update_voice_path phrase: {phrase}')
-        locale_id: str = phrase.language  # IETF format
-        if phrase.language is None:
-            locale_id = LangUtils.kodi_locale
-        if MY_LOGGER.isEnabledFor(DEBUG):
-            MY_LOGGER.debug(f'orig Phrase locale_id: {locale_id}')
-        ietf_lang: langcodes.Language = langcodes.get(locale_id)
-        e_voice: EngineVoice = EngineVoiceManager.get_e_voice(cls.service_key)
-
-        if Settings.is_use_cache() and not phrase.is_lang_territory_set():
-            phrase.set_lang_dir(ietf_lang.language)
-            phrase.set_territory_dir(ietf_lang.territory.lower())
-            MY_LOGGER.debug(f'language/territory being set text: {phrase.text} '
-                            f'lang: {ietf_lang}')
-            phrase.e_voice = e_voice
-            phrase.set_voice_dir(e_voice.cache_path_segment)
-        else:
-            phrase.e_voice = e_voice
-            phrase.set_voice_dir(e_voice.cache_path_segment)
-        return
-    '''
-
     def create_speech_generator(self,
-                                tts_data: ITTSData | None = None) -> ISpeechGenerator | None:
+                                tts_data: ITTSData | None = None) -> ISpeechGenerator:
         """
         Provides a means to pass generator-specific data
 
@@ -423,6 +395,7 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         """
         language: str = Settings.get_language(cls.service_key)
         languages: List[Tuple[str, str]]  # lang_id, locale_id
+        MY_LOGGER.debug(f'languages: {languages}')
         languages, default_lang = cls.settingList(SettingProp.LANGUAGE)
         language = default_lang
         return language

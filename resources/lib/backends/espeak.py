@@ -156,13 +156,6 @@ class ESpeakTTSBackend(SimpleTTSBackend):
     def get_voice_cache(self) -> VoiceCache:
         return self.voice_cache
 
-    '''
-    @classmethod
-    def register_me(cls, what: Type[ITTSBackendBase]) -> None:
-        MY_LOGGER.debug(f'Registering {repr(what)}')
-        BaseServices.register(service=what)
-    '''
-
     @classmethod
     def get_backend_id(cls) -> str:
         return Backends.ESPEAK_ID
@@ -195,7 +188,6 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                 completed = subprocess.run(args, stdin=None, capture_output=True,
                                            text=True, env=env, close_fds=True,
                                            encoding='utf-8', shell=False, check=True)
-
             """
              Sample output:
              Pty Language       Age/Gender VoiceName          File                 
@@ -253,6 +245,10 @@ class ESpeakTTSBackend(SimpleTTSBackend):
                   bcp47-extensions language tags for accents that cannot be described 
                   using the available BCP 47 language tags.
             """
+            if completed is None:
+                rc = -1
+                raise ValueError('eSpeak fails to return list of voices')
+
             for line in completed.stdout.split('\n'):
                 if MY_LOGGER.isEnabledFor(DEBUG_V):
                     MY_LOGGER.debug_v(f'line: {line}')
@@ -799,47 +795,3 @@ class ESpeakTTSBackend(SimpleTTSBackend):
             speed_val: NumericValidator
             speed: int = speed_val.get_value()
         return speed
-
-'''
-    @classmethod
-    def update_voice_path(cls, phrase: Phrase) -> None:
-        """
-        If a language is specified for this phrase, then modify any
-        cache path to reflect the chosen language and territory.
-        :param phrase:
-        :return:
-        """
-
-        if Settings.is_use_cache() and not phrase.is_lang_territory_set():
-            if MY_LOGGER.isEnabledFor(DEBUG_XV):
-                MY_LOGGER.debug_xv(f'lang: {phrase.language} \n'
-                                   f'e_voice: {phrase.e_voice}\n'
-                                   f'lang_dir: {phrase.lang_dir}\n')
-            locale: str = phrase.language  # IETF format
-            e_voice: EngineVoice = EngineVoiceManager.get_e_voice(cls.service_key)
-            kodi_lang, kodi_locale, _, ietf_lang = LangUtils.get_kodi_locale_info()
-            if e_voice is None:
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug('Fix Settings.get_vg to use kodi_locale by '
-                                    'default')
-            if MY_LOGGER.isEnabledFor(DEBUG_V):
-                MY_LOGGER.debug_v(f'locale_id: {locale} kodi_lang: {kodi_lang} '
-                                  f'kodi_locale: {kodi_locale} '
-                                  f'ietf_lang: {ietf_lang}')
-            # MY_LOGGER.debug(f'orig Phrase locale_id: {locale_id}')
-            if locale is None:
-                locale = kodi_locale
-            ietf_lang: langcodes.Language = langcodes.get(locale)
-            if MY_LOGGER.isEnabledFor(DEBUG_V):
-                MY_LOGGER.debug_v(f'locale_id: {locale} ietf_lang: {ietf_lang.language} '
-                                  f'{ietf_lang.territory}')
-            phrase.set_lang_dir(ietf_lang.language)
-            phrase.e_voice = e_voice
-            phrase.set_voice_dir(e_voice.cache_path_segment)
-            # Horrible, crude, hack due to kodi xbmc.getLanguage bug
-            if ietf_lang.territory is not None:
-                phrase.set_territory_dir(ietf_lang.territory.lower())
-            else:
-                phrase.set_territory_dir('us')
-        return
-'''

@@ -10,6 +10,7 @@ from common import *
 
 from backends.base import BaseEngineService
 from backends.settings.settings_map import Status, SettingsMap
+from common.config_exception import UnusableServiceException
 from common.constants import Constants
 from backends.settings.service_unavailable_exception import ServiceUnavailable
 from common.logger import *
@@ -25,7 +26,7 @@ class BootstrapEngines:
     # Instances of ITTSBackendBase
     engine_ids_by_priority: List[str] = [
         # SAPITTSBackend(),
-        Services.NO_ENGINE_ID,
+        # Services.NO_ENGINE_ID,
         # OSXSayTTSBackend(),
         Services.ESPEAK_ID,
         # JAWSTTSBackend(),
@@ -83,7 +84,7 @@ class BootstrapEngines:
     @classmethod
     def configure_engine_settings(cls):
         service_status: ServiceStatus = ServiceStatus(status=Status.FAILED)
-        if Services.ESPEAK_ID in EngineType:
+        if EngineType.ESPEAK in EngineType:
             try:
                 from backends.espeak_settings import ESpeakSettings
                 ESpeakSettings.config_settings()
@@ -122,27 +123,32 @@ class BootstrapEngines:
             MY_LOGGER.exception('')
             SettingsMap.set_available(Services.FLITE_ID, Reason.BROKEN)
         '''
-        if Services.GOOGLE_ID in EngineType:
+        if EngineType.GOOGLE in EngineType:
             try:
                 from backends.engines.google_settings import GoogleSettings
                 GoogleSettings.config_settings()
             except AbortException:
                 reraise(*sys.exc_info())
+            except UnusableServiceException:
+                SettingsMap.set_available(ServiceKey.GOOGLE_KEY, StatusType.BROKEN)
             except Exception as e:
                 MY_LOGGER.exception('')
                 SettingsMap.set_available(ServiceKey.GOOGLE_KEY,
                                           StatusType.BROKEN)
-        if Services.PIPER_ID in EngineType:
+        if EngineType.PIPER in EngineType:
             try:
                 from backends.engines.piper_settings import PiperSettings
                 PiperSettings.config_settings()
             except AbortException:
                 reraise(*sys.exc_info())
+            except UnusableServiceException:
+                SettingsMap.set_available(ServiceKey.PIPER_KEY, StatusType.BROKEN)
             except Exception as e:
                 MY_LOGGER.exception('')
                 SettingsMap.set_available(ServiceKey.PIPER_KEY, StatusType.BROKEN)
 
-        if Services.NO_ENGINE_ID in EngineType:
+        '''
+        if EngineType.NO_ENGINE in EngineType:
             try:
                 from backends.no_engine_settings import NoEngineSettings
                 NoEngineSettings.config_settings()
@@ -152,6 +158,7 @@ class BootstrapEngines:
                 MY_LOGGER.exception('')
                 SettingsMap.set_available(ServiceKey.NO_ENGINE_KEY,
                                           StatusType.BROKEN)
+        '''
         '''
         try:
             from backends.settings.Pico2WaveSettings import Pico2WaveSettings
@@ -201,7 +208,7 @@ class BootstrapEngines:
             MY_LOGGER.exception('')
             SettingsMap.set_available(Services.SPEECH_DISPATCHER_ID, Reason.BROKEN)
         '''
-        if Constants.PLATFORM_WINDOWS and Services.POWERSHELL_ID in EngineType:
+        if Constants.PLATFORM_WINDOWS and EngineType.POWERSHELL in EngineType:
             try:
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'Loading PowerShell')
@@ -210,6 +217,8 @@ class BootstrapEngines:
                 PowerShellTTSSettings.config_settings()
             except AbortException:
                 reraise(*sys.exc_info())
+            except UnusableServiceException:
+                SettingsMap.set_available(ServiceKey.POWERSHELL_KEY, StatusType.BROKEN)
             except Exception as e:
                 MY_LOGGER.exception('')
                 SettingsMap.set_available(ServiceKey.POWERSHELL_KEY,
@@ -223,7 +232,7 @@ class BootstrapEngines:
                                        setting_id=TTS_Type.SERVICE_ID)
             if not SettingsMap.is_available(engine_service):
                 if MY_LOGGER.isEnabledFor(DEBUG):
-                    MY_LOGGER.debug(f'{engine_service} NOT SettingsMap.is_available')
+                    MY_LOGGER.debug(f'{engine_service} is NOT AVAILABLE')
                 return
 
             engine: BaseEngineService | None = None
@@ -240,7 +249,7 @@ class BootstrapEngines:
                 from backends.flite import FliteTTSBackend
                 engine = FliteTTSBackend()
                 '''
-            elif engine_id == EngineType.NO_ENGINE:
+            elif False:  # engine_id == EngineType.NO_ENGINE:
                 from backends.no_engine import NoEngine
                 engine = NoEngine()
                 '''

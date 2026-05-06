@@ -1725,6 +1725,7 @@ class TTSService:
             return [cls._cleanText(t) for t in text]
 
 
+xbmc.log(f'Enabling notification_callback for voice', xbmc.LOGDEBUG)
 UtilsLowLevel.reg_voice_notification_callback(TTSService.voice_notification)
 
 

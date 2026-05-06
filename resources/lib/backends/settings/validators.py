@@ -55,8 +55,6 @@ class Validator(IValidator):
         self._define_setting: bool = define_setting
         self._service_status: StatusType = service_status
         self._persist: bool = persist
-        if self._define_setting:
-            self.define_setting()
 
     @property
     def service_key(self) -> ServiceID:
@@ -67,6 +65,7 @@ class Validator(IValidator):
         return self._property_type
 
     def define_setting(self) -> None:
+        self._define_setting = True
         SettingsMap.define_setting(service_id=self._service_key,
                                    setting_type=self._property_type,
                                    service_status=self._service_status,
@@ -113,8 +112,9 @@ class BaseNumericValidator(Validator):
         property_type: SettingType = SettingType.INTEGER_TYPE
         if not is_integer:
             property_type = SettingType.FLOAT_TYPE
+        # Define the setting last, don't pass to super
         super().__init__(service_key, property_type, const=const,
-                         define_setting=define_setting,
+                         define_setting=False,
                          service_status=service_status,
                          persist=persist)
         self._service_key: ServiceID = service_key
@@ -128,6 +128,8 @@ class BaseNumericValidator(Validator):
             increment = (maximum - minimum) / 20.0
         self._increment = increment
         self.const: bool = const
+        if define_setting:
+            self.define_setting()
         return
 
     @property
@@ -194,7 +196,7 @@ class TTSNumericValidator(BaseNumericValidator):
                          is_integer=is_integer,
                          increment=increment,
                          const=False,
-                         define_setting=define_setting,
+                         define_setting=False,
                          service_status=service_status,
                          persist=persist)
         MY_LOGGER.debug(f'is_decibels: {is_decibels}')
@@ -208,6 +210,8 @@ class TTSNumericValidator(BaseNumericValidator):
             self.set_value(default)
             super().const = const
             self.const = const
+        if define_setting:
+            self.define_setting()
         return
 
     @property
@@ -403,7 +407,7 @@ class NumericValidator(BaseNumericValidator):
                          is_integer=is_integer,
                          increment=increment,
                          const=False,
-                         define_setting=define_setting,
+                         define_setting=False,
                          service_status=service_status,
                          persist=persist)
         self.tts_validator: TTSNumericValidator | None = None
@@ -411,6 +415,8 @@ class NumericValidator(BaseNumericValidator):
             self.set_value(default)
             super().const = const
             self.const = const
+        if define_setting:
+            self.define_setting()
         return
 
     def is_const(self) -> bool:
@@ -554,7 +560,7 @@ class IntValidator(Validator):
                  service_status: StatusType = StatusType.OK,
                  persist: bool = True) -> None:
         super().__init__(service_key, property_type=SettingType.INTEGER_TYPE,
-                         define_setting=define_setting,
+                         define_setting=False,
                          service_status=service_status,
                          persist=persist)
         self._service_key: ServiceID = service_key
@@ -563,7 +569,8 @@ class IntValidator(Validator):
         self._default = default
         self.step: int = step
         self.scale_internal_to_external: int = scale_internal_to_external
-
+        if define_setting:
+            self.define_setting()
         return
 
     @property
@@ -672,8 +679,6 @@ class StringValidator(IStringValidator):
         self._define_setting: bool = define_setting
         self._service_status: StatusType = service_status
         self._persist: bool = persist
-        if self._define_setting:
-            self.define_setting()
 
         """
         TODO: DISABLED allowed /is_available checking. For this to work properly
@@ -714,6 +719,8 @@ class StringValidator(IStringValidator):
         if not self._allow_default:
             default = None
         self._default: str = default
+        if self._define_setting:
+            self.define_setting()
         return
 
     def define_setting(self) -> None:
@@ -842,6 +849,7 @@ class StringValidator(IStringValidator):
         for p in self.allowed_values:
             if p.value == value:
                 return p
+        return None
 
     def setUIValue(self, ui_value: str) -> None:
         pass
@@ -871,7 +879,10 @@ class StringValidator(IStringValidator):
             MY_LOGGER.debug(f'{self.service_key} value: {value} '
                             f'internal_value: {internal_value}')
         if value is None:
-            value = internal_value
+            value: str = internal_value
+        if isinstance(value, AllowedValue):
+            value: str = value.value
+
         if (self.allowed_values is not None) and (len(self.allowed_values) > 0):
             found_value: AllowedValue = self.get_allowed_value(value)
             if found_value is None or not found_value.enabled:
@@ -1149,7 +1160,7 @@ class BoolValidator(Validator):
                  persist: bool = True) -> None:
         super().__init__(service_key, property_type=SettingType.BOOLEAN_TYPE,
                          default=default, const=const,
-                         define_setting=define_setting,
+                         define_setting=False,
                          service_status=service_status, persist=persist)
         self._service_key: ServiceID = service_key
         self._default: bool = default
@@ -1157,6 +1168,12 @@ class BoolValidator(Validator):
         if const:
             self.set_tts_value(default)
             self.const = const
+        if define_setting:
+            SettingsMap.define_setting(service_id=self._service_key,
+                                       setting_type=SettingType.BOOLEAN_TYPE,
+                                       service_status=service_status,
+                                       validator=self,
+                                       persist=persist)
 
     @property
     def service_key(self) -> ServiceID:

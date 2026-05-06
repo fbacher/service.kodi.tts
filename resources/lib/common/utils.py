@@ -91,6 +91,7 @@ class TempFileUtils:
                 tmpfs = cls.getTmpfs()
                 if tmpfs is None:
                     tmpfs = Path(Constants.PROFILE_PATH)
+                tmpfs: Path
                 tmpfs = tmpfs / 'kodi_speech'
                 if tmpfs.exists():
                     cls.clean_tmp_dir(tmpfs)

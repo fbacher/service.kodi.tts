@@ -19,7 +19,7 @@ from common.phrases import Phrase
 
 MY_LOGGER: BasicLogger = BasicLogger.get_logger(__name__)
 
-
+'''
 class Results:
     """
         Contains results of background thread/process
@@ -60,7 +60,7 @@ class Results:
 
     def set_phrase(self, phrase: Phrase) -> None:
         self.phrase = phrase
-
+'''
 
 class MyGTTS(IDownloader):
 

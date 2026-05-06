@@ -145,14 +145,14 @@ class IEngineVoiceGroup:
         raise NotImplemented
 
     @property
-    def e_voices(self) -> Dict[str, ForwardRef('EngineVoice')]:
+    def e_voices(self) -> 'Dict[str, EngineVoice]':
         """
         :returns: a ditionary[engine_voice, EngineVoice]
         """
         raise NotImplemented
 
     @property
-    def e_voice(self) -> ForwardRef('EngineVoice'):
+    def e_voice(self) -> 'EngineVoice':
         """
         Default voice of the group
         """

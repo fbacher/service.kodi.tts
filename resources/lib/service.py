@@ -48,6 +48,7 @@ definitions: Dict[str, int]
 
 from common.logger import *
 
+xbmc.log(f'About to configure MY_LOGGER', xbmc.LOGDEBUG)
 # Default logging is info, otherwise debug_v
 if False:
     definitions = {'tts': INFO}
@@ -58,32 +59,32 @@ else:
         'tts.backends.driver': INFO,
         'tts.backends.google': INFO,
         'tts.backends.engines.google_voice_id': INFO,
-        'tts.backends.engines.piper': INFO,
-        'tts.backends.engines.piper_settings': INFO,
-        'tts.backends.engines.piper_data': INFO,
-        'tts.backends.engines.piper_api': INFO,
+        'tts.backends.engines.piper': DEBUG,
+        'tts.backends.engines.piper_settings': DEBUG,
+        'tts.backends.engines.piper_data': DEBUG,
+        'tts.backends.engines.piper_api': DEBUG,
         'tts.backends.engines.piper_downloader': DEBUG,
-        'tts.backends.engines.piper_voice_id': INFO,
+        'tts.backends.engines.piper_voice_id': DEBUG,
         'tts.backends.espeak': INFO,
         'tts.backends.espeak_settings': INFO,
         'tts.backends.no_engine': INFO,
         'tts.backends.no_engine_settings': INFO,
         'tts.backends.engines.google_downloader': INFO,
         'tts.backends.engines.google_settings': INFO,
-        'tts.backends.engines.speech_generator': INFO,
+        'tts.backends.engines.speech_generator': DEBUG,
         'tts.backends.engines.windows.powershell': INFO,
         'tts.backends.engines.windows.powershell_settings': INFO,
         'tts.backends.settings.engine_voice_manager': DEBUG,
         'tts.backends.settings.engine_voice_group': DEBUG,
-        'tts.backends.settings.language_info': INFO,
-        'tts.backends.settings.lang_utils': INFO,
+        'tts.backends.settings.language_info': DEBUG,
+        'tts.backends.settings.lang_utils': DEBUG,
         'tts.backends.settings.engine_voice': DEBUG,
         'tts.backends.settings.voice_group': DEBUG,
-        'tts.backends.settings.engine_lang': INFO,
+        'tts.backends.settings.engine_lang': DEBUG,
         'tts.backends.settings.langcodes_wrapper': INFO,
         'tts.backends.settings.service_types': INFO,
         'tts.backends.settings.settings_helper': DEBUG,
-        'tts.backends.settings.settings_map': INFO,
+        'tts.backends.settings.settings_map': DEBUG,
         'tts.backends.settings.validators': INFO,
         'tts.backends.base': INFO,
         'tts.backends.audio.base_audio': INFO,
@@ -102,9 +103,10 @@ else:
         'tts.common.monitor': INFO,
         'tts.common.phrases': INFO,
         'tts.common.phrase_manager': INFO,
-        'tts.common.settings_cache': INFO,
         'tts.common.settings_low_level': INFO,
         'tts.common.settings': INFO,
+        'tts.common.settings_cache': INFO,
+        'tts.common.setting_constants': INFO,
         'tts.common.simple_run_command': INFO,
         'tts.common.simple_pipe_command': INFO,
         'tts.common.slave_communication': INFO,
@@ -142,7 +144,7 @@ else:
         'tts.gui.window_structure': INFO,
         'tts.gui.parser': INFO,
         'tts.service': INFO,
-        'tts.service_worker': INFO,
+        'tts.service_worker': DEBUG,
         'tts.startup.bootstrap_engines': INFO,
         'tts.startup.bootstrap_converters': INFO,
         'tts.backends.audio.bootstrap_players': INFO,
@@ -166,6 +168,7 @@ MY_LOGGER = BasicLogger.get_logger('service')
 BasicLogger.config_debug_levels(replace=False, default_log_level=DEBUG,
                                 definitions=definitions)
 
+xbmc.log(f'Configured BasicLogger', xbmc.LOGINFO)
 from common import *
 from common.minimal_monitor import MinimalMonitor
 from common.python_debugger import PythonDebugger
@@ -218,11 +221,7 @@ except Exception as e:
 
 from common.logger import *
 from common.settings import Settings
-from backends.settings.setting_properties import SettingProp, SettingType
-
 from common.constants import Constants
-from common.system_queries import SystemQueries
-import enabler
 
 __version__ = Constants.VERSION
 
@@ -354,6 +353,8 @@ def startService():
     :return:
     """
     configure_something: bool = False
+    something_configured: bool = False
+    something_failed: bool = False
     try:
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug('starting service.startservice thread')
@@ -361,9 +362,10 @@ def startService():
 
         BaseServiceSettings.define_settings()
         if Settings.is_initial_run():
+            MY_LOGGER.debug(f'is_initial_run')
             Settings.set_configure_dependencies_on_startup(True)
             Settings.set_configure_keymap_on_startup(True)
-            Settings.set_start_config_gui_on_startup(True)
+            Settings.set_configure_on_startup(True)
 
             # Hints are embedded in new screen scraper metadata, which download only
             # uses at this time.
@@ -376,17 +378,23 @@ def startService():
 
         if (Settings.is_configure_keymap_on_startup() or
                 Settings.is_introduction_on_startup() or
-                Settings.is_start_config_gui_on_startup() or
-                #  Settings.is_configure_dependencies_on_startup() or
+                Settings.is_configure_on_startup() or
                 Settings.is_config_help_on_startup() or
                 Settings.is_introduction_on_startup()):
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                MY_LOGGER.debug(f'configure_keymap: '
+                                f'{Settings.is_configure_keymap_on_startup()}\n'
+                                f'intro_on_startup: {Settings.is_introduction_on_startup()}\n'
+                                f'config_on_startup: {Settings.is_configure_on_startup()}\n'
+                                f'config_help_on_startup: {Settings.is_config_help_on_startup()}\n'
+                                f'intro: {Settings.is_introduction_on_startup()} ')
             configure_something = True
 
-        something_configured: bool = False
-        something_failed: bool = False
         if Settings.is_configure_dependencies_on_startup():
+            MY_LOGGER.debug(f'configure_dependencies_on_startup')
             # Configure dependent packages: Paths, permissions, etc.
             if Constants.PLATFORM_WINDOWS:
+                MY_LOGGER.debug(f'configure_windows')
                 something_configured = configure_dependencies_windows()
 
         # if preInstalledFirstRun():
@@ -463,8 +471,8 @@ def startService():
 
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'is_start_config_gui_on_startup: '
-                            f'{Settings.is_start_config_gui_on_startup()}')
-        if Settings.is_start_config_gui_on_startup():
+                            f'{Settings.is_configure_on_startup()}')
+        if Settings.is_configure_on_startup():
             time_s: float = 5.0
             UtilsLowLevel.show_and_say_notification(
                     message=MessageId.OPEN_CONFIG_DIALOG.get_msg(),
@@ -472,7 +480,7 @@ def startService():
             TTSService.config_settings()
 
         Settings.set_configure_dependencies_on_startup(False)
-        Settings.set_start_config_gui_on_startup(False)
+        Settings.set_configure_on_startup(False)
         Settings.set_hint_text_on_startup(False)
         Settings.set_config_help_on_startup(False)
         Settings.set_extended_help_on_startup(False)
@@ -491,6 +499,8 @@ def startService():
         UtilsLowLevel.show_and_say_notification(
                 message=MessageId.CONFIGURATION_COMPLETE.get_msg(),
                 time_s=time_s, block=True)
+    MY_LOGGER.debug(f'something_configured: {something_configured} '
+                    f'something_failed: {something_failed}')
     # while True:
     #     if xbmc.abortRequested(100):
     #         break
@@ -591,11 +601,11 @@ class MainThreadLoop:
 
 if __name__ == '__main__':
     import threading
-    from common.garbage_collector import GarbageCollector
 
     if MY_LOGGER.isEnabledFor(DEBUG):
         MY_LOGGER.debug('starting service.py service.kodi.tts service thread')
     try:
+        from common.garbage_collector import GarbageCollector
         MainThreadLoop().event_processing_loop()
     except:
         pass
