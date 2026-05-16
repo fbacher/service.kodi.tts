@@ -155,9 +155,7 @@ class Constants:
     PIPER_HTTP_SERVER_LOG: Path = None
     PIPER_HTTP_SERVER_PID: Path = None
 
-    DEFAULT_HTTP_VG: str = 'en_US-libritts-high'
     PIPER_HTTP_SERVER_ARG: str = 'piper.http_server'
-    PIPER_HTTP_SERVER_DEFAULT_VG_ARG: str = DEFAULT_HTTP_VG
 
     ESPEAK_PATH: Path = None
     ESPEAK_PATH_WINDOWS: Path = None

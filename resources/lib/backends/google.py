@@ -265,7 +265,8 @@ class GoogleTTSEngine(base.SimpleTTSBackend):
         cache_file_state: CacheFileState
         cache_file_state = generator.get_voiced_file(phrase,
                                                      player_mode=PlayerMode.SLAVE_FILE)
-        MY_LOGGER.debug(f'cache_file_state: {cache_file_state} phrase: {phrase}')
+        MY_LOGGER.debug(f'cache_file_state: {cache_file_state} phrase: {phrase} '
+                        f'{phrase.cache_path}')
         return cache_file_state == CacheFileState.OK
 
     @property

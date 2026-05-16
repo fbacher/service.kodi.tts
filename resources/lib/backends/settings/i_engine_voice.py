@@ -83,7 +83,7 @@ class IEngineVoice:
         raise NotImplemented
 
     @property
-    def engine_vg_id(self) -> str:
+    def e_vg_id(self) -> str:
         raise NotImplemented
 
     @property
@@ -140,7 +140,7 @@ class IEngineVoice:
         the engine, what voice to use for voice generation.
 
         Since the engine supplies the methods to create and read the UID engine-specific
-        interpreation of the uid can be performed. So if, for example, voice_quality,
+        interpreation of the uid can be performed. So if, for example, quality,
         makes no difference in identifying the voice, then it can be ommitted or
         ignored.
         """

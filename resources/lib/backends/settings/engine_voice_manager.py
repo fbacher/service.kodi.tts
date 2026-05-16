@@ -128,7 +128,7 @@ class EngineVoiceManager(IEngineVoiceManager):
         raw_voice_id: str = e_voice.uid
         MY_LOGGER.debug(f'engine_key: {engine_key} raw_voice_id: {raw_voice_id}')
 
-        Settings.set_voice(raw_voice_id, engine_key)
+        Settings.set_voice_id(raw_voice_id, engine_key)
 
     @classmethod
     def add_language(cls, engine_key: ServiceID, ietf_tag: str,
@@ -189,7 +189,8 @@ class EngineVoiceManager(IEngineVoiceManager):
                         engine_lang_id: str,
                         engine_vg_id: str,
                         voice_quality: QualityType,
-                        vg_label: str = None) -> EngineVoiceGroup:
+                        vg_label: str = None,
+                        model_present: bool = True) -> EngineVoiceGroup:
         """
         Defines a Voice Group.
 
@@ -205,10 +206,14 @@ class EngineVoiceManager(IEngineVoiceManager):
         :param gender: defines the gender of the voice.
         :param default_voice_id: defines the default voice for the group
         :param engine_lang_id: specifies the engine-specific code to use for using
-                         this voicegroup or one of the voices contained in it
+                         this voice group or one of the voices contained in it
         :param engine_vg_id: engine-specific code for the voice-group id.
         :param voice_quality: defines the voice quality of the voice. Zero is best.
         :param vg_label: defines the label of this voice-group.
+        :param model_present: For all engines except piper, just leave as default = True,
+                              For Piper, True indicates the model file has been downloaded.
+                              Used to inform the user and the engine that the file must
+                              first be downloaded prior to use.
         """
         vg_uid: str = ServiceID.get_uid(engine_key, engine_vg_id)
         vg: EngineVoiceGroup | None = cls.vg_by_uid.get(vg_uid)
@@ -223,7 +228,8 @@ class EngineVoiceManager(IEngineVoiceManager):
                                                 engine_lang_id=engine_lang_id,
                                                 engine_vg_id=engine_vg_id,
                                                 voice_quality=voice_quality,
-                                                vg_name=vg_label)
+                                                vg_name=vg_label,
+                                                model_present=model_present)
         cls.vg_by_uid[vg.uid] = vg
         engine_vgs: Dict[str, EngineVoiceGroup]
         engine_vgs = cls.engine_vg_by_engine_id.setdefault(engine_key, {})
@@ -252,7 +258,7 @@ class EngineVoiceManager(IEngineVoiceManager):
                   cache_path_segment: Path | None = None) -> EngineVoice:
         """
         Defines a Voice, which may or may not be a member of a voice group.
-        Automatically adds a voice group if engine_vg_id is defined and
+        Automatically adds a voice group if e_vg_id is defined and
         voice-group does not already exist. Use add_voice_group to explicitly
         add a voice-group.
 
@@ -280,7 +286,7 @@ class EngineVoiceManager(IEngineVoiceManager):
           The voice groups':
               vg_label is set to voice_label.
               voice_id is set to engine_voice
-              engine_key,lang, gender, engine_lang_id, engine_vg_id are all set
+              engine_key,lang, gender, engine_lang_id, e_vg_id are all set
               to the voice's value.
           The VoiceGroup is created when first Voice is added, so all above values
           are taken from the FIRST voice added for that group.
@@ -291,7 +297,7 @@ class EngineVoiceManager(IEngineVoiceManager):
         lang: Language = Language(ietf_tag)
         # engine_vgs: Dict[str, EngineVoiceGroup]
         # engine_vgs = cls.engine_vgs.setdefault(engine_key, {})
-        # engine_vgs[engine_vg_id] = vg
+        # engine_vgs[e_vg_id] = vg
         vg_uid: str = ServiceID.get_uid(engine_key, engine_vg_id)
         #  MY_LOGGER.debug(f'vg_uid: {vg_uid}')
         vg: EngineVoiceGroup
@@ -323,7 +329,7 @@ class EngineVoiceManager(IEngineVoiceManager):
                                            engine_lang_id=engine_lang_id,
                                            e_voice_id=e_voice_id,
                                            real_voice_id=real_voice_id,
-                                           engine_vg_id=engine_vg_id,
+                                           e_vg_id=engine_vg_id,
                                            voice_quality=voice_quality,
                                            voice_label=voice_label,
                                            cache_path_segment=cache_path_segment)

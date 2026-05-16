@@ -129,12 +129,13 @@
                <left>1800</left>
                <top>5</top>
                <width>100></width>
+               <height>65</height>
                <control type="button">
                   <description>Close Window icon button</description>
                   <left>0</left>
-                  <top>40</top>
-                  <width>64</width>
-                  <height>40</height>
+                  <top>20</top>
+                  <width>94</width>
+                  <height>62</height>
                   <label/>
                   <font/>
                   <onclick>PreviousMenu</onclick>
@@ -161,10 +162,10 @@
                   <left>20</left>
                   <top>0</top>
                   <width>1800</width>
-                  <height>620</height>
+                  <height>640</height>
                   <visible>true</visible>
                   <control type="list" id="1103">
-                     <description>My first list container</description>
+                     <description>Choices List Container</description>
                      <topic name="choices" rank="3">
                         <topic_type>heading</topic_type>
                         <heading_label></heading_label>
@@ -177,7 +178,7 @@
                      <left>0</left>
                      <top>0</top>
                      <width>1780</width>
-                     <height>620</height>
+                     <height>630</height>
                      <visible>true</visible>
                      <onup>9001</onup>  <!-- OK-Exit buttons -->
                      <ondown>9001</ondown>
@@ -247,6 +248,8 @@
                   <control type="scrollbar" id="200">
                      <left>35r</left>
                      <width>35</width>
+                     <top>0</top>
+                     <height>560</height>
                      <texturesliderbackground border="0,14,0,14">ScrollBarV.png</texturesliderbackground>
                      <texturesliderbar border="0,14,0,14">ScrollBarV_bar.png</texturesliderbar>
                      <texturesliderbarfocus border="0,14,0,14">ScrollBarV_bar_focus.png
@@ -254,10 +257,6 @@
                      <textureslidernib>ScrollBarNib.png</textureslidernib>
                      <textureslidernibfocus>ScrollBarNib.png</textureslidernibfocus>
                      <onleft condition="Control.IsVisible(1103)">1103</onleft>
-                     <!-- <onleft condition="Control.IsVisible(201)">201</onleft>
-                     <onleft condition="Control.IsVisible(301)">301</onleft>
-                     <onleft condition="Control.IsVisible(401)">401</onleft> -->
-
                      <onright>9001</onright>
                      <ondown>9001</ondown>
                      <onup>200</onup>

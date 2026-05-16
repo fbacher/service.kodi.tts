@@ -338,7 +338,7 @@ class Choice:
     def __init__(self, label: str, value: str, choice_idx: int,
                  sort_key: str = None, enabled: bool = True,
                  engine_key: ServiceID = None,
-                 match_distance: int = 1000, hint: str = None) -> None:
+                 locale_distance: int = 1000, hint: str = None) -> None:
         """
 
         """
@@ -352,7 +352,7 @@ class Choice:
         self._engine_key: ServiceID = engine_key
         self._sort_key: str = sort_key
         self._enabled: bool = enabled
-        self._match_distance: int = match_distance
+        self._locale_distance: int = locale_distance
 
     @property
     def label(self) -> str:
@@ -402,11 +402,11 @@ class Choice:
         return self._enabled
 
     @property
-    def match_distance(self) -> int:
-        return self._match_distance
+    def locale_distance(self) -> int:
+        return self._locale_distance
 
-    def set_match_distance(self, match_distance: int) -> None:
-        self._match_distance = match_distance
+    def set_locale_distance(self, locale_distance: int) -> None:
+        self._locale_distance = locale_distance
 
     def __str__(self) -> str:
         result: str = ''
@@ -420,7 +420,7 @@ class Choice:
                       f'engine_key: {self.engine_key}\n'
                       f'sort_key: {self.sort_key}\n'
                       f'enabled: {self.enabled}\n'
-                      f'match_distance: {self.match_distance}\n')
+                      f'locale_distance: {self.locale_distance}\n')
         return result
 
     def __rpr__(self) -> str:
@@ -435,7 +435,7 @@ class EngineChoice(Choice):
     def __init__(self, label: str, value: EngineType, choice_index: int = -1,
                  sort_key: str = None, enabled: bool = True,
                  engine_key: ServiceID = None,
-                 match_distance: int = 1000, hint: str = None,
+                 locale_distance: int = 1000, hint: str = None,
                  lang: EngineLang = None,
                  voice: EngineVoice | None = None,
                  new_voice: EngineVoice | None = None) -> None:
@@ -452,7 +452,7 @@ class EngineChoice(Choice):
         :param lang: language information
         :param voice: default voice to use when this engine is selected
         :param new_voice: Voice to use when this engine is selected
-        :param match_distance: for language related settings. Represents how close
+        :param locale_distance: for language related settings. Represents how close
                                this choice is to the desired language. For example,
                                a voice for en-GB is not as close to en-US as an
                                en-US one, but close enough to use. Comes from
@@ -465,7 +465,7 @@ class EngineChoice(Choice):
                          enabled=enabled,
                          engine_key=engine_key,
                          hint=hint,
-                         match_distance=match_distance)
+                         locale_distance=locale_distance)
         if MY_LOGGER.isEnabledFor(DEBUG):
             if lang is not None:
                 if MY_LOGGER.isEnabledFor(DEBUG):
@@ -536,7 +536,7 @@ class VGChoice(Choice):
     group. It will give its name, a voice quality of the group and other basic
     info.
 
-    A VGChoice with just one voice will have slighly different information
+    A VGChoice with just one voice will have slightly different information
     presented. It will give the voice name and its target locale; the quality,
     gender, if any, among other things.
 
@@ -566,7 +566,7 @@ class VGChoice(Choice):
         :param choice_idx: When from a list of choices, this is its place in list.
         :param default_idx: 0 before sorting of voices. Recalculated after sorting
         :param hint: User-friendly, translated hint
-        :param enabled:   Some settings may not be useable depending on other settings
+        :param enabled:   Some settings may not be usable depending on other settings
                           We want to include disabled choices to show a consistent list,
                           but marked in UI as disabled
         :param v_choices: VoiceChoices to add to this VGChoice
@@ -600,17 +600,17 @@ class VGChoice(Choice):
         """
         :param e_vg: EngineVoiceGroup (required)
         :param label: User-friendly, translated label (required)
-        :param choice_idx: When from a list of choices, this is its place in list.
+        :param choice_idx: This VGChoice index in VGChoices.
         :param default_idx: 0 before sorting of voices. Recalculated after sorting
         :param hint: User-friendly, translated hint
-        :param enabled:   Some settings may not be useable depending on other settings
+        :param enabled:   Some settings may not be usable depending on other settings
                           We want to include disabled choices to show a consistent list,
                           but marked in UI as disabled
         :param v_choices: VoiceChoices to add to this VGChoice
         """
         engine_key = e_vg.engine_key
-        value = e_vg.engine_vg_id
-        match_distance = e_vg.locale_match
+        value = e_vg.e_vg_id
+        locale_distance = e_vg.locale_distance
         kodi_ietf_tag = LangUtils.kodi_locale
         e_lang_uid: str = EngineLang.get_uid(e_vg.engine_key, kodi_ietf_tag)
         e_lang = EngineVoiceManager.get_eng_lang_by_uid(e_lang_uid)
@@ -618,8 +618,8 @@ class VGChoice(Choice):
 
         # Improve heuristic. These expand to two fixed-width numbers.
         # Less is better
-        qual: str = f'{e_vg.voice_quality.ordinal:0d}'
-        match: str = f'{match_distance:04d}'
+        qual: str = f'{e_vg.quality.ordinal:0d}'
+        match: str = f'{locale_distance:04d}'
         sort_key = f'{qual}:{match}:{label}'
         #  MY_LOGGER.debug(f'sort_key: {sort_key}')
 
@@ -629,12 +629,12 @@ class VGChoice(Choice):
                          choice_idx=choice_idx,
                          sort_key=sort_key,
                          enabled=enabled,
-                         match_distance=match_distance,
+                         locale_distance=locale_distance,
                          hint=hint)
 
         self.e_lang: EngineLang = e_lang
         self._selected: bool = False
-        # Track which voice is selected, default is
+        # TODO: This looks very half-baked. Is updated elsewhere.
         self._best_v_idx: int = -1
         self._selected_v_idx: int = -1
         self._selected_v_obj: 'VoiceChoice | None' = None
@@ -667,6 +667,16 @@ class VGChoice(Choice):
             raise ValueError(f'default_voice_idx is out of range: {idx} max: '
                              f'{len(self.v_choices) - 1}')
         self._default_v_idx = idx
+
+    @property
+    def model_present(self) -> bool:
+        """
+        Currently, Piper is the only engine that has downloadable voice models.
+        The Configuration code and UI use this to 1) avoid using a model that is
+        not present 2) trigger a download of the model 3) inform the UI so that
+        user can choose whether to download or not, and what voice to use
+        """
+        return self.e_vg.model_present
 
     def select_vg(self) -> None:
         """
@@ -723,10 +733,10 @@ class VGChoice(Choice):
     def dbg_print2(self) -> None:
         e_vg: EngineVoiceGroup = self.e_vg
         result: str = (f'VGC: {self.e_lang} '
-                       f'dist: {self.match_distance} '
+                       f'dist: {self.locale_distance} '
                        f'qual: {e_vg.voice_quality_label} '
                        f'lbl: {self.label} '
-                       f'mtch: {self.match_distance} '
+                       f'mtch: {self.locale_distance} '
                        f'srt: {self.sort_key} '
                        f'enbl: {self.enabled}')
         MY_LOGGER.debug(result)
@@ -736,8 +746,8 @@ class VGChoice(Choice):
         return self._e_vg
 
     @property
-    def engine_vg_id(self) -> str:
-        return self._e_vg.engine_vg_id
+    def e_vg_id(self) -> str:
+        return self._e_vg.e_vg_id
 
     @property
     def has_single_voice(self) -> bool:
@@ -756,9 +766,9 @@ class VGChoice(Choice):
         """
         Sets the selected voice index. Also sets the selected_v_obj
         Note the initial selected voice is the currently configured voice
-
         """
-        MY_LOGGER.debug(f'VGChoice.Setting selected_v_idx to {value} VGroup:'
+        MY_LOGGER.debug(f'VGChoice.Setting selected_v_idx to {value} value: '
+                        f'{self.v_choices[value].label} VGroup:'
                         f' {self._label}')
         if value >= len(self.v_choices):
             raise ValueError(f'Setting selected_v_idx out of RANGE. \n'
@@ -892,7 +902,7 @@ class VoiceChoice(Choice):
                           We want to include disabled choices to show a consistent list,
                           but marked in UI as disabled
         # :param engine_key: Identifies which engine this setting is associated with
-        # :param match_distance: for language related settings. Represents how close
+        # :param locale_distance: for language related settings. Represents how close
         #                        this choice is to the desired language. For example,
         #                        a voice for en-GB is not as close to en-US as a
         #                        en-US one, but close enough to use. Comes from
@@ -910,12 +920,12 @@ class VoiceChoice(Choice):
         e_lang_uid: str = EngineLang.get_uid(e_vg.engine_key, kodi_ietf_tag)
         e_lang = EngineVoiceManager.get_eng_lang_by_uid(e_lang_uid)
 
-        match_distance = e_vg.locale_match
-        v_quality: QualityType = e_vg.voice_quality
+        locale_distance = e_vg.locale_distance
+        v_quality: QualityType = e_vg.quality
         # Improve heuristic. These expand to two fixed-width numbers.
         # Less is better
         qual: str = f'{v_quality.ordinal:0d}'
-        match: str = f'{match_distance:04d}'
+        match: str = f'{locale_distance:04d}'
         sort_key = f'{qual}:{match}:{label}'
         #  MY_LOGGER.debug(f'sort_key: {sort_key}')
 
@@ -926,7 +936,7 @@ class VoiceChoice(Choice):
                          choice_idx=choice_idx,
                          engine_key=engine_key,
                          hint=hint,
-                         match_distance=match_distance)
+                         locale_distance=locale_distance)
 
         self._vg_choice: VGChoice = None
         self._e_lang: EngineLang = e_lang
@@ -1005,10 +1015,10 @@ class VoiceChoice(Choice):
 
     def dbg_print2(self) -> None:
         result: str = (f'VGC: {self.e_voice.lang} '
-                       f'dist: {self.match_distance} '
+                       f'dist: {self.locale_distance} '
                        f'qual: {self.e_voice.voice_quality_label} '
                        f'lbl: {self.label} '
-                       f'mtch: {self.match_distance} '
+                       f'mtch: {self.locale_distance} '
                        f'srt: {self.sort_key} '
                        f'enbl: {self.enabled}')
         MY_LOGGER.debug(result)
@@ -1037,7 +1047,7 @@ class VoiceChoice(Choice):
                   f'voice: {self._e_voice}\n'
                   f'sort_key: {self.sort_key}\n'
                   f'enabled: {self.enabled}\n'
-                  f'match_distance: {self.match_distance}\n')
+                  f'locale_distance: {self.locale_distance}\n')
         return result
 
     def __rpr__(self) -> str:

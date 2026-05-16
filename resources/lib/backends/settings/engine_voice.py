@@ -54,7 +54,7 @@ class EngineVoice(IEngineVoice):
      a family as a 'voice'. When different voices from the same voice,
      the Piper/TTS engine does not have go through the expense of loading
      a different model. Therefore, when the text being voiced has multiple 
-     voices, it is more efficient to use voices from a common Voice.
+     voices, it is more efficient to use voices from a common Voice Group.
      
     """
 
@@ -64,7 +64,7 @@ class EngineVoice(IEngineVoice):
                  engine_lang_id: str,
                  e_voice_id: str,
                  real_voice_id: str,
-                 engine_vg_id: str | None = None,
+                 e_vg_id: str | None = None,
                  voice_quality: QualityType = QualityType.UNKNOWN,
                  voice_label: str = None,
                  cache_path_segment: Path | None = None) -> None:
@@ -80,7 +80,7 @@ class EngineVoice(IEngineVoice):
                                this voice (engine's don't always use ietf.tag
                                (ex. en-GB)).
         :param voice_quality: QualityType
-        :param engine_vg_id: Engine specific code to identify the voice-group
+        :param e_vg_id: Engine specific code to identify the voice-group
                              that this voice belongs
         :param voice_label: Names the voice, or collection of voices. Does not
                             include Voice Group label
@@ -97,18 +97,18 @@ class EngineVoice(IEngineVoice):
         self._engine_lang_id: str = engine_lang_id
         self._e_voice_id: str = e_voice_id
         self._real_voice_id: str = real_voice_id
-        self._engine_vg_id: str | None = engine_vg_id
+        self._e_vg_id: str | None = e_vg_id
         self._voice_quality: QualityType = voice_quality
         self._gender_label: str | None = None
         self._voice_label: str = voice_label
         self._voice_uid: str | None = None
         if cache_path_segment is None:
-            cache_path_segment = f'{engine_vg_id}-{e_voice_id}'
+            cache_path_segment = f'{e_vg_id}-{e_voice_id}'
         self._cache_path_segment: Path = Path(cache_path_segment)
         if MY_LOGGER.isEnabledFor(DEBUG_XV):
             MY_LOGGER.debug_xv(f'cache_path_segment: {self._cache_path_segment} '
                                f'engine_key: {engine_key} '
-                               f'engine_vg_id: {engine_vg_id} e_voice_id: '
+                               f'e_vg_id: {e_vg_id} e_voice_id: '
                                f'{e_voice_id} voice_label: {self.voice_label}')
 
         # if MY_LOGGER.isEnabledFor(DEBUG):
@@ -131,8 +131,8 @@ class EngineVoice(IEngineVoice):
         return self._engine_lang_id
 
     @property
-    def engine_vg_id(self) -> str:
-        return self._engine_vg_id
+    def e_vg_id(self) -> str:
+        return self._e_vg_id
 
     @property
     def e_voice_id(self) -> str:
@@ -184,7 +184,7 @@ class EngineVoice(IEngineVoice):
         :return: desired label
         """
         if e_vg is None:
-            e_vg: IEngineVoiceGroup = IEngineVoiceManager.get_vg(self._engine_vg_id,
+            e_vg: IEngineVoiceGroup = IEngineVoiceManager.get_vg(self.e_vg_id,
                                                                  self.engine_key)
         if with_group:
             if e_vg.has_single_voice:
@@ -225,13 +225,13 @@ class EngineVoice(IEngineVoice):
         the engine, what voice to use for voice generation.
 
         Since the engine supplies the methods to create and read the UID engine-specific
-        interpreation of the uid can be performed. So if, for example, voice_quality,
+        interpreation of the uid can be performed. So if, for example, quality,
         makes no difference in identifying the voice, then it can be ommitted or
         ignored.
         """
         # MY_LOGGER.debug(f'voice_uid: {self._voice_uid}')
         if self._voice_uid is None:
-            self._voice_uid = (f'{self.engine_key}|{self.engine_vg_id}|'
+            self._voice_uid = (f'{self.engine_key}|{self.e_vg_id}|'
                                f'{self.e_voice_id}')
             if MY_LOGGER.isEnabledFor(DEBUG_XV):
                 MY_LOGGER.debug_xv(f'voice_uid is now {self._voice_uid}')
@@ -282,7 +282,7 @@ class EngineVoice(IEngineVoice):
             result = f'EV label: {self.voice_label} e_v_id: {self.e_voice_id}'
         if MY_LOGGER.isEnabledFor(DEBUG_XV):
             gender_str: str = f'   gender: {self.gender}{field_sep}'
-            vg_id_str: str = f' vg_id: {self.engine_vg_id}{field_sep}'
+            vg_id_str: str = f' vg_id: {self.e_vg_id}{field_sep}'
             voice_quality_str: str = (f'   vg_quality: {self.voice_quality}'
                                       f'{field_sep} ')
             translated_gender_name_str: str = (f'   gender_label: '

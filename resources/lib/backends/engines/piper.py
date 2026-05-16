@@ -9,28 +9,23 @@ from backends import base
 from backends.engines.idownloader import OutputType
 from backends.engines.piper_api import (PiperApi, PiperData,
                                         PiperDownloader,
-                                        PiperSpeakerTuple)
+                                        PiperModel)
 from backends.engines.speech_generator import SpeechGenerator
 from backends.ispeech_generator import ISpeechGenerator
 from backends.players.iplayer import IPlayer
 from backends.settings.engine_voice import EngineVoice
 from backends.settings.engine_voice_group import EngineVoiceGroup
 from backends.settings.engine_voice_manager import EngineVoiceManager
-from backends.settings.lang_utils import LangUtils
 from backends.settings.service_types import (EngineType, QualityType, ServiceID,
                                              ServiceKey, Services,
                                              ServiceType)
 from backends.settings.setting_properties import SettingProp
-from cache.common_types import CacheEntryInfo
 from cache.cache_file_state import CacheFileState
 from cache.voicecache import VoiceCache
 from common import *
 from common.base_services import BaseServices
 from common.constants import Constants
-from common.debug import Debug
-from common.exceptions import ExpiredException
 from common.logger import *
-from common.monitor import Monitor
 from common.phrases import Phrase, PhraseList
 from common.setting_constants import Backends, Genders, PlayerMode
 from common.settings import Settings
@@ -55,10 +50,7 @@ class LangInfo:
     @classmethod
     def load_voices(cls):
         """
-        Get all supported languages from piper. Using 'langcodes', convert
-        them into standard IETF format, get translated names, etc.... Finally,
-        hand off the entries to Kodi TTS.
-
+        Converts Piper's Model information into Voice Groups and Voices.
         :return:
         """
         MY_LOGGER.debug(f'load_voices')
@@ -69,69 +61,41 @@ class LangInfo:
             current_language: str = langcodes.Language.get(Constants.LOCALE).language
             engine_quality: int = EngineType.PIPER.ordinal
 
-            cls.start_http_server()
+            #  TODO: Change keep_definitions so that it is controlled by user in UI
 
-            speakers: List[PiperSpeakerTuple] | None
-            speakers = PiperApi.tts_langs(current_language)
+            p_models: List[PiperModel]
+            p_models = PiperApi.get_tts_voice_details(current_language,
+                                                      include_uninstalled=True,
+                                                      keep_definitions=True)
             """
-            Each entry can represent either a single voice, or it can represent
-            a voice with multiple speakers.
-            
-            When the entry is for a single voice, then a vg_id of '0'
-            is returned. Otherwise, None is returned. 
-            
-            Entries with non-0 id speakers are added immediately after an entry with
-            a vg_id of None.
-            
+            A p_model contains information about a Piper Model which describes
+            a group of voices. The UI will present the group as well as the voices
+            within it. The models are not necessarily downloaded. For those not 
+            downloaded all of the information is derived from the model's name. 
+            The primary thing missing is information about the model's voices.
+            Once a user chooses to explore a model it will be downloaded along
+            with the voice information.            
             """
-            # Convert to langcodes
-            ietf_langs: List[langcodes.Language] = []
-            for piper_lang in speakers:
-                MY_LOGGER.debug(f'piper_lang: {piper_lang}')
-                piper_lang: PiperSpeakerTuple = piper_lang
-                lang_territory_code: str = piper_lang.lang_territory_code
-                # The voice_group always refers to the filename prefix describing the
-                # voice or voice group.
-                #
-                # The vg_label refers to either the name of the single voice
-                # of the voice group, or one of the speakers in the group.
-                #
-                # The vg_id refers to the index of a defined voice, or
-                # zero when there are no defined speakers, or '', when
-                # the entry is for the group description preceding the voice
-                # entries.
-
-                speaker_id: str = piper_lang.speaker_id
-                speaker_name: str = piper_lang.speaker_name
-
-                # TEST
-                # if speaker_name != 'semaine':
-                #     continue
-
-                voice_group_id: str = piper_lang.voice_id
-                voice_quality: int = piper_lang.quality.ordinal
+            for v_group in p_models:
+                v_group: PiperModel
+                # MY_LOGGER.debug(f'v_group: {v_group.vg_label}')
                 ietf_lang: langcodes.Language
                 try:
-                    ietf_lang = langcodes.Language.get(lang_territory_code)
-                    if ietf_lang.language != current_language:
+                    # We are only interested in the current language (i.e. "en")
+                    if v_group.language.language != current_language:
                         continue
-
-                    ietf_langs.append(ietf_lang)
-                    voice_id: str = f'{voice_group_id}-{speaker_id}'
-                    voice_name: str = speaker_name
-
-                    MY_LOGGER.debug(f'speaker_name: {speaker_name}\n'
-                                    f'voice_name: {voice_name}\n'
-                                    f'vg_id: {voice_id}')
+                    # Add the language variant (en_US vs en_GB). Dupes will be ignored
+                    ietf_tag: str = v_group.language.to_tag()
+                    engine_ietf_tag: str = PiperModel.current_ietf_tag
                     EngineVoiceManager.add_language(engine_key=PiperTTSEngine.service_key,
-                                                    ietf_tag=ietf_lang.to_tag(),
-                                                    engine_lang_id=ietf_lang.to_tag())
+                                                    ietf_tag=ietf_tag,
+                                                    engine_lang_id=engine_ietf_tag)
                 except AbortException:
                     reraise(*sys.exc_info())
                 except LanguageTagError:
                     MY_LOGGER.exception('')
 
-            cls.load_speakers(speakers)
+            cls.load_speakers(p_models)
 
     @classmethod
     def start_http_server(cls):
@@ -139,130 +103,97 @@ class LangInfo:
 
 
     @classmethod
-    def load_speakers(cls, speakers_data: List[PiperSpeakerTuple]):
+    def load_speakers(cls, p_models: List[PiperModel]) -> None:
         """
         Get all supported languages from piper. Using 'langcodes', convert
         them into standard IETF format, get translated names, etc.... Finally,
         hand off the entries to Kodi TTS.
 
-        :return:
+        :param p_models: Contains information about Piper Models, which become
+                         Voice Groups
+        :return: None
         """
-        if MY_LOGGER.isEnabledFor(DEBUG_V):
-            MY_LOGGER.debug_v(f'In load_speakers')
         if not cls.voices_initialized_initialized:
             cls.voices_initialized_initialized = True
 
-            # User can only choose a voice that belongs to the current major
-            # language
-            current_language: str = langcodes.Language.get(Constants.LOCALE).language
+            #  Each entry represents a voice group with one or more voices
 
-            """
-            Each entry can represent either a voice with one speaker, or it can represent
-            a voice with multiple speakers.
-
-            When the entry is for a voice of one voice, then a vg_id of '0'
-            is returned. Otherwise, None is returned. 
-
-            Entries the different speakers are added immediately after an entry with
-            a vg_id of None.
-
-            """
-            # Convert to langcodes
-            ietf_langs: List[langcodes.Language] = []
-            for speaker_data in speakers_data:
-                if MY_LOGGER.isEnabledFor(DEBUG_V):
-                    MY_LOGGER.debug_v(f'speaker_data: {speaker_data}')
-                speaker_data: PiperSpeakerTuple
-                lang_territory_code: str = speaker_data.lang_territory_code
-                # The voice_group always refers to the filename prefix describing the
-                # voice or voice group.
+            for v_group in p_models:
+                v_group: PiperModel
+                # The vg_id always refers to the filename prefix describing the
+                # voice group.
                 #
-                # The vg_label refers to either the name of the single voice
+                # The v_label refers to either the name of the single voice
                 # of the voice group, or one of the speakers in the group.
                 #
-                # The vg_id refers to the index of a defined voice, or
+                # The voice_id refers to the index of a defined voice, or
                 # zero when there are no defined speakers, or '', when
                 # the entry is for the group description preceding the voice
                 # entries.
-                vg_name: str = speaker_data.vg_name
-                speaker_id: str = speaker_data.speaker_id
-                speaker_name: str = speaker_data.speaker_name
-                # TEST
-                # if speaker_name != 'semaine':
-                #     continue
-
-                vg_id: str = speaker_data.voice_id
-                voice_quality: QualityType = speaker_data.quality
-                ietf_lang: langcodes.Language
+                vg_id: str = v_group.vg_id
+                voice_quality: QualityType = v_group.quality
                 try:
-                    ietf_lang = langcodes.Language.get(lang_territory_code)
-                    if ietf_lang.language != current_language:
-                        continue
-                    ietf_langs.append(ietf_lang)
-                    if MY_LOGGER.isEnabledFor(DEBUG_V):
-                        MY_LOGGER.debug_v(f'ietf_langs added {ietf_lang}')
-                    voice_name: str = speaker_name
-                    locale_id: str = ietf_lang.to_tag()  # Mixed case
-                    lower_locale_id: str = locale_id.lower()
                     if False:
                         MY_LOGGER.debug(f'engine_key: {PiperTTSEngine.service_key}\n'
                                         f'ietf_tag: {locale_id}\n'
                                         f'gender: {Genders.ANY}\n'
                                         f'default_voice_id: {speaker_id}\n'
                                         f'engine_lang_id: {lower_locale_id}\n'
-                                        f'engine_vg_id: {vg_id}\n'
-                                        f'voice_quality: {voice_quality.label}\n'
+                                        f'e_vg_id: {vg_id}\n'
+                                        f'quality: {voice_quality.label}\n'
                                         f'vg_label: {vg_name}\n'
                                         f'speaker_name: {speaker_name}\n'
                                         f'voice_name: {voice_name}\n'
                                         f'voice_id: {speaker_id}'
                                         f'vg_id: {vg_id}')
-                    if MY_LOGGER.isEnabledFor(DEBUG_V):
-                        MY_LOGGER.debug_v(f'speaker_id: {speaker_id} type: '
-                                          f'{type(speaker_id)}')
-                    if speaker_id == '0':
-                        if MY_LOGGER.isEnabledFor(DEBUG_V):
-                            MY_LOGGER.debug_v(f'VOICE GROUP\n'
-                                        f'engine_key: {PiperTTSEngine.service_key}\n'
-                                        f'ietf_tag: {locale_id}\n'
-                                        f'gender: {Genders.ANY}\n'
-                                        f'default_voice_id: {speaker_id}\n'
-                                        f'engine_lang_id: {lower_locale_id}\n'
-                                        f'engine_vg_id: {vg_id}\n'
-                                        f'voice_quality: {voice_quality.label}\n'
-                                        f'vg_name: {vg_name}')
-                            MY_LOGGER.debug_v(f'vg_name: {vg_name}')
-                        current_vg = EngineVoiceManager.add_voice_group(
-                                engine_key=PiperTTSEngine.service_key,
-                                ietf_tag=locale_id,
-                                gender=Genders.ANY,
-                                default_voice_id=speaker_id,
-                                engine_lang_id=locale_id,
-                                engine_vg_id=vg_id,
-                                voice_quality=voice_quality,
-                                vg_label=vg_name)
-                    if MY_LOGGER.isEnabledFor(DEBUG_V):
+
+                    if False:  #  MY_LOGGER.isEnabledFor(DEBUG_V):
+                        MY_LOGGER.debug_v(f'VOICE GROUP\n'
+                                    f'engine_key: {PiperTTSEngine.service_key}\n'
+                                    f'ietf_tag: {locale_id}\n'
+                                    f'gender: {Genders.ANY}\n'
+                                    f'default_voice_id: {speaker_id}\n'
+                                    f'engine_lang_id: {lower_locale_id}\n'
+                                    f'e_vg_id: {vg_id}\n'
+                                    f'quality: {voice_quality.label}\n'
+                                    f'vg_label: {v_group.vg_label}')
+                        MY_LOGGER.debug_v(f'vg_name: {v_group.vg_name}')
+                    EngineVoiceManager.add_voice_group(
+                            engine_key=PiperTTSEngine.service_key,
+                            ietf_tag=v_group.language.to_tag(),
+                            gender=Genders.ANY,
+                            default_voice_id='0',
+                            engine_lang_id=PiperModel.current_ietf_tag.lower(),
+                            engine_vg_id=vg_id,
+                            voice_quality=voice_quality,
+                            vg_label=v_group.vg_label,
+                            model_present=v_group.model_present)
+                    if False:  # if MY_LOGGER.isEnabledFor(DEBUG_V):
                         MY_LOGGER.debug_v(f'VOICE\n'
                                     f'engine_key: {PiperTTSEngine.service_key}\n'
                                     f'ietf_tag: {locale_id}\n'
                                     f'gender: {Genders.ANY}\n'
                                     f'engine_lang_id: {lower_locale_id}\n'
                                     f'e_voice_id: {speaker_id}\n'
-                                    f'engine_vg_id: {vg_id}\n'
-                                    f'voice_quality: {voice_quality.label}\n'
+                                    f'e_vg_id: {vg_id}\n'
+                                    f'quality: {voice_quality.label}\n'
                                     f'voice_label: {voice_name}')
 
-                    current_voice = EngineVoiceManager.add_voice(
-                            engine_key=PiperTTSEngine.service_key,
-                            ietf_tag=locale_id,
-                            gender=Genders.ANY,
-                            engine_lang_id=lower_locale_id,
-                            e_voice_id=speaker_id,
-                            engine_vg_id=vg_id,
-                            voice_quality=voice_quality,
-                            voice_label=voice_name)
-                    if MY_LOGGER.isEnabledFor(DEBUG_V):
-                        MY_LOGGER.debug_v(f'VOICE\n new_voice: {current_voice}')
+                    for v_name, v_id in v_group.voice_id_map.items():
+                        v_name: str
+                        v_id: int
+                        EngineVoiceManager.add_voice(
+                                engine_key=PiperTTSEngine.service_key,
+                                ietf_tag=v_group.language.to_tag(),
+                                gender=Genders.ANY,
+                                engine_lang_id=PiperModel.current_ietf_tag.lower(),
+                                e_voice_id=f'{v_id}',
+                                real_voice_id=f'{v_id}',
+                                engine_vg_id=vg_id,
+                                voice_quality=voice_quality,
+                                voice_label=v_name)
+                        if MY_LOGGER.isEnabledFor(DEBUG_XV):
+                            MY_LOGGER.debug_xv(f'{vg_id} new_voice: {v_name} v_id: {v_id}')
                 except AbortException as e:
                     reraise(*sys.exc_info())
                 except LanguageTagError:
@@ -296,9 +227,9 @@ class PiperTTSEngine(base.SimpleTTSBackend):
         super().__init__(*args, **kwargs)
         clz = type(self)
 
-        MY_LOGGER.debug(f'In piper.init')
+        MY_LOGGER.debug(f'In PiperTTSEngine.init')
 
-        PiperApi.start_builtin_http_server()
+        PiperApi.init_piper_data()
 
         self.f = False
         self.voice_cache: VoiceCache = VoiceCache(service_key=PiperTTSEngine.service_key)
@@ -323,7 +254,7 @@ class PiperTTSEngine(base.SimpleTTSBackend):
                 for vg_id, vg in vgs_by_engine.items():
                     vg_id: str
                     vg: EngineVoiceGroup
-                    MY_LOGGER.debug(f'vg_id: {vg_id} vg: {vg.engine_vg_id}')
+                    MY_LOGGER.debug(f'vg_id: {vg_id} vg: {vg.e_vg_id}')
                     for v_id, v in vg.e_voices.items():
                         v_id: str
                         v: EngineVoice
@@ -386,7 +317,7 @@ class PiperTTSEngine(base.SimpleTTSBackend):
 
     def create_speech_generator(self,
                                 tts_data: PiperData | None = None) \
-            -> ISpeechGenerator | None:
+            -> ISpeechGenerator:
         """
         Provides a means to pass generator-specific data
 
@@ -419,7 +350,8 @@ class PiperTTSEngine(base.SimpleTTSBackend):
         cache_file_state: CacheFileState
         cache_file_state = generator.get_voiced_file(phrase,
                                                      player_mode=PlayerMode.PIPE)
-        MY_LOGGER.debug(f'cache_file_state: {cache_file_state} phrase: {phrase}')
+        MY_LOGGER.debug(f'cache_file_state: {cache_file_state} phrase: {phrase} '
+                        f'{phrase.cache_path}')
         return cache_file_state == CacheFileState.OK
 
     def runCommandAndPipe(self, phrase: Phrase) -> BinaryIO | None:

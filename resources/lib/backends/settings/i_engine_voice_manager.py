@@ -145,7 +145,7 @@ class IEngineVoiceManager:
                   cache_path_segment: Path | None = None) -> IEngineVoice:
         """
         Defines a Voice, which may or may not be a member of a voice group.
-        Automatically adds a voice group if engine_vg_id is defined and
+        Automatically adds a voice group if e_vg_id is defined and
         voice-group does not already exist. Use add_voice_group to explicitly
         add a voice-group.
 
@@ -171,7 +171,7 @@ class IEngineVoiceManager:
           The voice groups':
               vg_label is set to voice_label.
               voice_id is set to engine_voice
-              engine_key,lang, gender, engine_lang_id, engine_vg_id are all set
+              engine_key,lang, gender, engine_lang_id, e_vg_id are all set
               to the voice's value.
           The VoiceGroup is created when first Voice is added, so all above values
           are taken from the FIRST voice added for that group.

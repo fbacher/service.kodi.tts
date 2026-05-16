@@ -434,19 +434,20 @@ class Settings(SettingsLowLevel):
         return
 
     @classmethod
-    def get_voice_id(cls, engine_key: ServiceID | None = None) -> str | None:
+    def get_voice_id(cls, engine_key: ServiceID | None = None) -> str:
         """
             Gets the "raw" voice used by the TTS engine to identify the current voice
             The format of the voice is purely engine defined.
         """
         if engine_key is None:
             engine_key = Settings.get_engine_key()
+        engine_key: ServiceID
         voice_key: ServiceID = engine_key.with_prop(SettingProp.VOICE)
         # voice_validator: StringListValidator | None
         # voice_validator = SettingsMap.get_validator(voice_key)
         # MY_LOGGER.debug(f'validator_type: {type(voice_validator)} key: {voice_key}')
-        raw_voice: str | None = SettingsLowLevel.get_setting_str(voice_key,
-                                                                 load_on_demand=True)
+        raw_voice: str = SettingsLowLevel.get_setting_str(voice_key,
+                                                          load_on_demand=True)
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'raw_voice: {raw_voice} voice_key: {voice_key} '
                             f'short_key: {voice_key.short_key}')
@@ -461,7 +462,7 @@ class Settings(SettingsLowLevel):
         return raw_voice
 
     @classmethod
-    def set_voice(cls, voice: str | List[str], engine_key: ServiceID | None) -> None:
+    def set_voice_id(cls, voice: str, engine_key: ServiceID | None) -> None:
         """
                sets the vg_id used by the TTS engine to identify the current voice
                The format of the voice is purely engine defined.
@@ -471,16 +472,6 @@ class Settings(SettingsLowLevel):
         voice_key: ServiceID = engine_key.with_prop(SettingProp.VOICE)
         if MY_LOGGER.isEnabledFor(DEBUG):
             MY_LOGGER.debug(f'{voice_key} value: {voice}')
-            if not isinstance(voice, str):
-                MY_LOGGER.debug(f'voice is not str: {type(voice)}\n '
-                                f'voice: {voice}')
-                raise ValueError(f'voice is not str type: {type(voice)}: {voice}')
-        # voice_validator: StringListValidator | None
-        # voice_validator = SettingsMap.get_validator(voice_key)
-        # if voice_validator is not None:
-        #     voice_validator.set_value(voice)
-        #     return
-
         SettingsLowLevel.set_setting_str(voice_key, voice)
         return None
 

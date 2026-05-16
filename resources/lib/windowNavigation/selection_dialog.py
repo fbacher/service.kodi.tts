@@ -19,6 +19,7 @@ from common.message_ids import MessageId
 from common.monitor import Monitor
 from common.setting_constants import DialogSubj
 from welcome.subjects import (Load, MessageRef)
+from windowNavigation.action_debug import Action
 from windowNavigation.choice import (Choice, ChoiceDict, Choices, EngineChoice,
                                      EngineChoices,
                                      VGChoice, VGChoices,
@@ -175,12 +176,23 @@ class SelectionData:
 
     @property
     def selected_idx(self) -> int | None:
+        """
+        A value of -1 indicates there is no selection. Occurs when user chooses to
+        exit dialog (menu back, or escape) canceling any previous selection.
+        """
         return self._selected_idx
 
     @selected_idx.setter
     def selected_idx(self, idx: int) -> None:
-        self._selected_idx = max(idx, 0)
+        """
+       A value of -1 indicates there is no selection. Occurs when user chooses to
+       exit dialog (menu back, or escape) canceling any previous selection.
+       """
+        self._selected_idx = max(idx, -1)
         MY_LOGGER.debug(f'selected_idx: {self._selected_idx} choices: {len(self.choices)}')
+        if self._selected_idx == -1:
+            self.selected_obj = None
+            return
         if len(self.choices) > 0:
             self.selected_obj = self.choices[self._selected_idx]
 
@@ -473,7 +485,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         self.sel_data: SelectionData = SelectionData.current_config
         self.new_sel_data: SelectionData | None = None
         MY_LOGGER.debug(f'# choices: {len(self.sel_data.choices)} selected_idx: '
-                        f'{self.sel_data.selected_idx} chosen_object:'
+                        f'{self.sel_data.selected_idx} selected_obj:'
                         f'{self.sel_data.selected_obj.label}')
         new_list_items: List[ListItem] = []
         for choice in self.sel_data.choices:
@@ -636,10 +648,43 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
 
     def onAction(self, action: xbmcgui.Action) -> None:
         """
+         (From Super)
 
-        :param action:
-        :return:
+        **onAction method.**
+
+        This method will receive all actions that the main program will send to this
+        window.
+
+        :param self: Own base class pointer
+        :param action: The action id to perform, see `Action` to get use of them
+
+        .. note::
+            By default, only the ``PREVIOUS_MENU`` and ``NAV_BACK`` actions are
+            handled. Overwrite this method to let your script handle all
+            actions.Don't forget to capture ``ACTION_PREVIOUS_MENU``
+            or ``ACTION_NAV_BACK``, else the user can't close this window.
+
+        Example::
+
+            ..
+            # Define own function where becomes called from Kodi
+            def onAction(self, action):
+            if action.getId() == ACTION_PREVIOUS_MENU:
+            print('action received: previous')
+            self.close()
+            if action.getId() == ACTION_SHOW_INFO:
+            print('action received: show info')
+            if action.getId() == ACTION_STOP:
+            print('action received: stop')
+            if action.getId() == ACTION_PAUSE:
+            print('action received: pause')
+            ..
         """
+        MY_LOGGER.debug(f'ACTION: onAction')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            msg: str = Action.dump_action(action, log_all=True)
+            MY_LOGGER.debug(f'Back from call dump_action msg: {msg}')
+
         if self.closing:
             return
         try:
@@ -648,9 +693,10 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
 
             Monitor.exception_on_abort(timeout=0.01)
             focus_id: int = self.getFocusId()
-            action_id = action.getId()
-            if action_id in (107, xbmcgui.ACTION_MOUSE_DOUBLE_CLICK):  # Mouse Move
-                return
+            action_id: int = action.getId()
+            # if action_id in (xbmcgui.ACTION_MOUSE_MOVE,
+            #                  xbmcgui.ACTION_MOUSE_DOUBLE_CLICK):
+            #     return
             button_code: int = action.getButtonCode()
             MY_LOGGER.debug(f'SelectionDialog.onAction focus_id: {self.getFocusId()}'
                             f' action_id: {action_id} buttonCode: {button_code}')
@@ -685,7 +731,8 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
 
             if action_id in (xbmcgui.ACTION_MOVE_DOWN, xbmcgui.ACTION_MOVE_UP,
                              xbmcgui.ACTION_MOUSE_WHEEL_DOWN,
-                             xbmcgui.ACTION_MOUSE_WHEEL_UP):
+                             xbmcgui.ACTION_MOUSE_WHEEL_UP,
+                             xbmcgui.ACTION_MOUSE_MOVE):
                 # Cursor up/down will almost certainly change the position
                 # of the list container. Could add check to see if selected
                 # position changed.
@@ -722,6 +769,156 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         # if display_value is not None:
         #    MY_LOGGER.debug('SelectionDialog.onAction selectedItem: {}'.
         #                     format(display_value.getLabel()))
+
+    def onControl(self, controlId):
+        """
+           (From Super)
+           **onControl method.**
+
+           This method will receive all click events on owned and selected controls when
+           the control itself doesn't handle the message.
+
+           :param controlId:
+
+           Example::
+
+               ..
+               # Define own function where becomes called from Kodi
+               def onControl(self, control):
+               print("Window.onControl(control=[%s])"%control)
+               ..
+        """
+        clz = type(self)
+        MY_LOGGER.debug(f'ACTION: onControl')
+
+    def onClick(self, controlId) -> None:
+        """
+            (From Super)
+            **onClick method.**
+
+            This method will receive all click events that the main program will send to
+            this window.
+
+            :param controlId: The clicked GUI control identifier
+
+        """
+        clz = type(self)
+        if self.closing:
+            return
+        try:
+            MY_LOGGER.debug(f'ACTION: onClick')
+            if MY_LOGGER.isEnabledFor(DEBUG):
+                focus_id = self.getFocusId()
+                MY_LOGGER.debug('ON_CLICK FocusId: ' + str(focus_id))
+            if controlId == clz.OK_BUTTON_ID:
+                # OK button
+                self.closing = True
+                MY_LOGGER.info(f'ok button closing. selected_obj: '
+                               f'{self.sel_data.selected_obj} '
+                               f'selected_idx: {self.sel_data.selected_idx}')
+                self.close()
+            elif controlId == clz.CANCEL_BUTTON_ID:
+                # Cancel button
+                # MY_LOGGER.debug(f'cancel button')
+                self.closing = True
+                self.close()
+        except AbortException:
+            self.abort = True
+            self.closing = True
+            reraise(*sys.exc_info())
+            self.close()
+
+        except Exception as e:
+            MY_LOGGER.exception('')
+
+    def onDoubleClick(self, controlId):
+        """
+            (From Super)
+
+            **onDoubleClick method.**
+
+            This method will receive all double click events that the main program will send
+            to this window.
+
+            :param controlId: The double-clicked GUI control identifier
+
+        """
+        clz = type(self)
+        if not (self.initialized or self.selection_list_group.isVisible()):
+            MY_LOGGER.debug(f'not initialzed or visible')
+            return
+        MY_LOGGER.debug(f'ACTION: onDoubleClick control_id: {controlId}')
+
+        if controlId == clz.OK_BUTTON_ID:
+            self.closing = True
+            # MY_LOGGER.info(f'ok button closing')
+            self.close()
+        elif controlId == clz.CANCEL_BUTTON_ID:
+            # MY_LOGGER.debug(f'cancel button')
+            self.closing = True
+            self.close()
+        elif (controlId == clz.LIST_CONTROL_ID and
+              self.sel_data.dialog_subject == 'VGroups'):
+            # Only for list of VGroups
+
+            sel_idx, changed = self.get_selected_position()
+            sel_idx: int
+            changed: bool
+            MY_LOGGER.debug(f'sel_id: {sel_idx} changed: {changed} choices_len: '
+                            f'{len(self.sel_data.choices)}')
+            vg_choice: VGChoice = self.sel_data.choices[sel_idx]
+            if isinstance(vg_choice, VGChoice) and not vg_choice.e_vg.has_single_voice:
+                self.handle_voice_group(vg_choice)
+                # On return, select voice (or Voice Group's voice)
+                # that was selected in dialog returned from
+                self.sel_data.selected_idx = sel_idx
+                MY_LOGGER.debug(
+                        f'DOUBLE-CLICK call_on_select SELECT_ITEM choice: {vg_choice} sel_idx: {sel_idx}')
+                self.sel_data.selected_obj = vg_choice
+
+    def onFocus(self, controlId: int):
+        """
+        (From Super)
+
+        **onFocus method.**
+
+        This method will receive all focus events that the main program will send to
+        this window.
+
+        :param self: Own base class pointer
+        :param controlId: The focused GUI control identifier
+
+        Example::
+
+            ..
+            # Define own function where becomes called from Kodi
+            def onDoubleClick(self,controlId):
+            if controlId == 10:
+            print("The control with Id 10 is focused")
+            ..
+        """
+        clz = type(self)
+        MY_LOGGER.debug(f'ACTION: onFocus controlId: {controlId}')
+        try:
+            if not self.initialized or not self.selection_list_group.isVisible():
+                return
+            if (controlId == clz.LIST_CONTROL_ID and
+                    self.sel_data.dialog_subject == 'VGroups'):
+                # ONLY for list of VGroups
+                sel_idx, changed = self.get_selected_position()
+                sel_idx: int
+                changed: bool
+                MY_LOGGER.debug(f'sel_idx: {sel_idx} changed: {changed}')
+                if changed:
+                    choice: EngineChoice = self.sel_data.choices[sel_idx]
+                    MY_LOGGER.debug(f'choice: {choice}')
+                    self.sel_data.call_on_focus(choice, sel_idx)
+        except AbortException:
+            self.abort = True
+            reraise(*sys.exc_info())
+            self.close()
+        except Exception as e:
+            MY_LOGGER.exception('')
 
     def handle_select_common(self, sel_idx: int,
                              engine_choices: EngineChoices) -> None:
@@ -819,13 +1016,13 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
             prev_config.selected_obj = vg_choice
 
             MY_LOGGER.debug(f'prev_selected_idx: {prev_config.selected_idx} '
-                            f'prev_chosen_obj: {prev_config.selected_obj}')
+                            f'prev_selected_obj: {prev_config.selected_obj}')
             self.post_onInit(push_pop=ConfigStackEnum.POP)
             # sel_idx is index of chosen voice within it's voice group
             # self.sel_data.selected_idx = vg
             # self.sel_data.selected_idx =
             MY_LOGGER.debug(f'selected_idx: {self.sel_data.selected_idx} '
-                            f'chosen_obj: {self.sel_data.selected_obj}')
+                            f'selected_obj: {self.sel_data.selected_obj}')
             MY_LOGGER.debug(
                     f'SELECT_ITEM-2 vg_choice: {vg_choice.label} '
                     f'vg selected_idx: {vg_choice.choice_idx} '
@@ -870,7 +1067,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         # The current engine is always set to the one we are interested in.
         # The current engine is always set to the one we are intexbrested in.
         current_e_voice: EngineVoice = EngineVoiceManager.get_e_voice()
-        e_vg: IEngineVoiceGroup = EngineVoiceManager.get_vg(current_e_voice.engine_vg_id,
+        e_vg: IEngineVoiceGroup = EngineVoiceManager.get_vg(current_e_voice.e_vg_id,
                                                             current_e_voice.engine_key)
         current_vg_choice: VGChoice = ChoiceDict.vg_by_uid.get(e_vg.uid)
         choice_idx: int = -1
@@ -927,102 +1124,6 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
         # MY_LOGGER.debug(
         #         f'idx returned by call_on_select: {selected_idx} '
         #         f'selected_v_idx: {vg_choice.selected_v_idx}')
-
-    def onControl(self, controlId):
-        clz = type(self)
-        MY_LOGGER.debug(
-                'SelectionDialog.onControl controlId: {:d}'.format(controlId))
-
-    def onClick(self, controlId):
-        """
-        Called when a 'clickable' control is 'clicked' by a mouse. Typicaly
-        a button or anything selectable.
-
-        :param controlId:
-        :return:
-        """
-        clz = type(self)
-        if self.closing:
-            return
-        try:
-            focus_id = self.getFocusId()
-            MY_LOGGER.debug('ON_CLICK FocusId: ' + str(focus_id))
-            if controlId == clz.OK_BUTTON_ID:
-                # OK button
-                self.closing = True
-                MY_LOGGER.info(f'ok button closing. chosen_obj: '
-                               f'{self.sel_data.selected_obj} '
-                               f'selected_idx: {self.sel_data.selected_idx}')
-                self.close()
-            elif controlId == clz.CANCEL_BUTTON_ID:
-                # Cancel button
-                # MY_LOGGER.debug(f'cancel button')
-                self.closing = True
-                self.close()
-        except AbortException:
-            self.abort = True
-            self.closing = True
-            reraise(*sys.exc_info())
-            self.close()
-
-        except Exception as e:
-            MY_LOGGER.exception('')
-
-    def onDoubleClick(self, controlId):
-        clz = type(self)
-        if not (self.initialized or self.selection_list_group.isVisible()):
-            MY_LOGGER.debug(f'not initialzed or visible')
-            return
-        if controlId == clz.OK_BUTTON_ID:
-            self.closing = True
-            # MY_LOGGER.info(f'ok button closing')
-            self.close()
-        elif controlId == clz.CANCEL_BUTTON_ID:
-            # MY_LOGGER.debug(f'cancel button')
-            self.closing = True
-            self.close()
-        elif (controlId == clz.LIST_CONTROL_ID and
-              self.sel_data.dialog_subject == 'VGroups'):
-            # Only for list of VGroups
-
-            sel_idx, changed = self.get_selected_position()
-            sel_idx: int
-            changed: bool
-            MY_LOGGER.debug(f'sel_id: {sel_idx} changed: {changed} choices_len: '
-                            f'{len(self.sel_data.choices)}')
-            vg_choice: VGChoice = self.sel_data.choices[sel_idx]
-            if isinstance(vg_choice, VGChoice) and not vg_choice.e_vg.has_single_voice:
-                self.handle_voice_group(vg_choice)
-                # On return, select voice (or Voice Group's voice)
-                # that was selected in dialog returned from
-                self.sel_data.selected_idx = sel_idx
-                MY_LOGGER.debug(
-                        f'DOUBLE-CLICK call_on_select SELECT_ITEM choice: {vg_choice} sel_idx: {sel_idx}')
-                self.sel_data.selected_obj = vg_choice
-
-    def onFocus(self, controlId: int):
-        clz = type(self)
-        MY_LOGGER.debug(f'ON_FOCUS controlId: {controlId}')
-        try:
-            if not self.initialized or not self.selection_list_group.isVisible():
-                return
-            if (controlId == clz.LIST_CONTROL_ID and
-                    self.sel_data.dialog_subject == 'VGroups'):
-                # ONLY for list of VGroups
-                sel_idx, changed = self.get_selected_position()
-                sel_idx: int
-                changed: bool
-                MY_LOGGER.debug(f'sel_idx: {sel_idx} changed: {changed}')
-                if changed:
-                    choice: EngineChoice = self.sel_data.choices[sel_idx]
-                    MY_LOGGER.debug(f'choice: {choice}')
-                    self.sel_data.call_on_focus(choice, sel_idx)
-        except AbortException:
-            self.abort = True
-            reraise(*sys.exc_info())
-            self.close()
-        except Exception as e:
-            MY_LOGGER.exception('')
 
     def addItem(self, item: str, position: int = 20000) -> None:
         """

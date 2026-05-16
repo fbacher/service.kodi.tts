@@ -28,7 +28,7 @@ from common.messages import Messages
 from common.setting_constants import (Backends, DialogSubj, Genders)
 from common.settings import Settings
 from utils.util import get_language_code
-from windowNavigation.action_map import Action
+from windowNavigation.action_debug import Action
 from windowNavigation.choice import (Choice, Choices, EngineChoice, EngineChoices,
                                      VGChoice, VoiceChoice,
                                      VoiceChoices, VGChoices)
@@ -737,38 +737,10 @@ class SettingsDialog(xbmcgui.WindowXMLDialog):
                 return
 
             if MY_LOGGER.isEnabledFor(DEBUG_XV):
-                action_mapper = Action.get_instance()
-                matches = action_mapper.getKeyIDInfo(action)
+                Action.dump_action(action)
 
-                # for line in matches:
-                #     MY_LOGGER.debug_xv(line)
-
-                button_code: int = action.getButtonCode()
-                # These return empty string if not found
-                action_key: str = action_mapper.getActionIDInfo(action)
-                remote_button: str = action_mapper.getRemoteKeyButtonInfo(action)
-                remote_key_id: str = action_mapper.getRemoteKeyIDInfo(action)
-
-                # Returns found button_code, or 'key_' +  action_button
-                action_button = action_mapper.getButtonCodeId(action)
-
-                key_codes: List[str] = []
-
-                if action_key != '':
-                    key_codes.append(action_key)
-                if remote_button != '':
-                    key_codes.append(remote_button)
-                if remote_key_id != '':
-                    key_codes.append(remote_key_id)
-                if len(key_codes) == 0:
-                    key_codes.append(str(action_button))
-                #  MY_LOGGER.debug(
-                #         f'Key found: {",".join(key_codes)}')
-
-                MY_LOGGER.debug_xv(f'action_id: {action_id}')
             if (action_id == xbmcgui.ACTION_PREVIOUS_MENU
                     or action_id == xbmcgui.ACTION_NAV_BACK):
-                exit_dialog = True
                 self.close()
         except Exception as e:
             MY_LOGGER.exception('')

@@ -69,7 +69,8 @@ class IEngineVoiceGroup:
                  engine_vg_id: str,
                  voice_quality: QualityType,
                  vg_label: str = None,
-                 locale_match: int = -1
+                 locale_match: int = -1,
+                 model_present: bool = True
                  ):
         """
         Note: Not called directly. Call EngineVoiceManager.add_voice_group instead
@@ -129,11 +130,11 @@ class IEngineVoiceGroup:
         raise NotImplemented
 
     @property
-    def engine_vg_id(self) -> str:
+    def e_vg_id(self) -> str:
         raise NotImplemented
 
     @property
-    def voice_quality(self) -> QualityType:
+    def quality(self) -> QualityType:
         raise NotImplemented
 
     @property
@@ -159,7 +160,7 @@ class IEngineVoiceGroup:
         raise NotImplemented
 
     @property
-    def locale_match(self) -> int:
+    def locale_distance(self) -> int:
         raise NotImplemented
 
     def add_voice(self, voice: ForwardRef('IEngineVoice')) -> None:

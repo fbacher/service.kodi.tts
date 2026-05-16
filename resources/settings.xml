@@ -503,7 +503,6 @@
                <constraints>
                   <allowempty>true</allowempty>
                </constraints>
-               <default></default>
                <control type="edit" format="string">
                   <heading>32178</heading>
                </control>
@@ -579,7 +578,6 @@
                <constraints>
                   <allowempty>true</allowempty>
                </constraints>
-               <default>en</default>
                <control type="edit" format="string">
                   <heading>32178</heading>
                </control>
@@ -621,7 +619,6 @@
                <constraints>
                   <allowempty>true</allowempty>
                </constraints>
-               <default></default>
                <control type="edit" format="string">
                   <heading>32178</heading>
                </control>

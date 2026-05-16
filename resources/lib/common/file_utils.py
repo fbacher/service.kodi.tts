@@ -1,6 +1,7 @@
 # coding=utf-8
 from __future__ import annotations
 
+import os
 import math
 import queue
 import sys
@@ -18,6 +19,21 @@ from utils.util import runInThread
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
 
+
+class FileUtils:
+
+    @classmethod
+    def delete_path_if_exists(cls, path: Path | None, msg: str) -> None:
+        try:
+            if path is None or str(path) == os.devnull:
+                return
+            if path.exists():
+                MY_LOGGER.debug(f'{path} exists {msg}, deleting')
+                path.unlink(missing_ok=True)
+        except AbortException:
+            reraise(*sys.exc_info())
+        except Exception:
+            MY_LOGGER.exception(f'Could not delete {path}.')
 
 class Delay:
 

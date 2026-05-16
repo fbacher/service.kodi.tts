@@ -7,16 +7,10 @@ import tempfile
 import threading
 from pathlib import Path
 
-import langcodes
 from backends.engines.utils.igenerator_deps import ITTSData
-from backends.settings.engine_voice import EngineVoice
-from backends.settings.engine_voice_manager import EngineVoiceManager
-from backends.settings.lang_utils import LangUtils
 from backends.settings.service_types import ServiceID, ServiceKey
 from backends.settings.service_unavailable_exception import ServiceUnavailable
-from cache.cache_file_state import CacheFileState
 from common import *
-
 from backends.audio.sound_capabilities import ServiceType, SoundCapabilities
 from backends.i_tts_backend_base import ITTSBackendBase
 from backends.players.iplayer import IPlayer
@@ -34,7 +28,6 @@ from common.garbage_collector import GarbageCollector
 from common.kodi_player_monitor import KodiPlayerMonitor, KodiPlayerState
 from common.logger import *
 from common.message_ids import MessageId
-from common.messages import Messages
 from common.monitor import Monitor
 from common.phrases import Phrase, PhraseList
 from common.setting_constants import AudioType, Genders, PlayerMode
@@ -1019,7 +1012,6 @@ class SimpleTTSBackend(ThreadedTTSBackend):
 
         try:
             self.initialize_player()
-            #  self.config_mode()
             player_mode: PlayerMode = Settings.get_player_mode(clz.service_key)
             #  MY_LOGGER.debug(f'player_mode {player_mode}')
             if phrase.get_interrupt():

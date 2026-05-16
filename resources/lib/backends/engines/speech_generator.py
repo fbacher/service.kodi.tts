@@ -442,7 +442,7 @@ class SpeechGenerator(ISpeechGenerator):
             phrase.set_lang_dir(ietf_lang.language)
             phrase.set_territory_dir(ietf_lang.territory.lower())
             MY_LOGGER.debug(
-                f'Setting voice_dir: voice_group_id: {e_voice.engine_vg_id} \n'
+                f'Setting voice_dir: voice_group_id: {e_voice.e_vg_id} \n'
                 f'quality_id: {e_voice.voice_quality} \n')
             MY_LOGGER.debug(f'voice_id.voice_id: {e_voice.e_voice_id} '
                             f'cache_path_segment: {e_voice.cache_path_segment}')

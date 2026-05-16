@@ -73,7 +73,8 @@ class EngineVoiceGroup(IEngineVoiceGroup):
                  engine_vg_id: str,
                  voice_quality: QualityType,
                  vg_name: str = None,
-                 locale_match: int = -1
+                 locale_distance: int = -1,
+                 model_present= True
                  ):
         """
         Note: Not called directly. Call EngineVoiceManager.add_voice_group instead
@@ -90,10 +91,11 @@ class EngineVoiceGroup(IEngineVoiceGroup):
         :param voice_quality: 0-5
         :param vg_name: Names the collection that a voice
                                    belongs.
-        :param locale_match: Measure of how much THIS lang's locale differs from the
+        :param locale_distance: Measure of how much THIS lang's locale differs from the
                              current Kodi locale. (Using langcodes.tag_distance).
                              Gives some vague hint it how much the langs may differ
                              in speech.
+        :param model_present:
         """
         clz = EngineVoiceGroup
         self._engine_key = engine_key
@@ -103,12 +105,13 @@ class EngineVoiceGroup(IEngineVoiceGroup):
         self._lang: Language = lang
         self._engine_lang_id: str = engine_lang_id
         self._engine_vg_id: str = engine_vg_id
-        self._voice_quality: QualityType = voice_quality
+        self._quality: QualityType = voice_quality
         self._vg_name: str = vg_name
         self._vg_label: str | None = None
-        if locale_match < 0:
-            locale_match = clz.kodi_language.distance(supported=lang)
-        self._locale_match: int = locale_match
+        if locale_distance < 0:
+            locale_distance = clz.kodi_language.distance(supported=lang)
+        self._locale_distance: int = locale_distance
+        self._model_present: bool = model_present
 
         # Voices indexed by engine_voice id
         self._voices: Dict[str, EngineVoice] = {}
@@ -167,16 +170,31 @@ class EngineVoiceGroup(IEngineVoiceGroup):
         return self._engine_lang_id
 
     @property
-    def engine_vg_id(self) -> str:
+    def e_vg_id(self) -> str:
         return self._engine_vg_id
 
     @property
-    def voice_quality(self) -> QualityType:
-        return self._voice_quality
+    def model_present(self) -> bool:
+        """
+        Currently, Piper is the only engine that has downloadable voice models.
+        The Configuration code and UI use this to 1) avoid using a model that is
+        not present 2) trigger a download of the model 3) inform the UI so that
+        user can choose whether to download or not
+        """
+        return self._model_present
+
+    @model_present.setter
+    def model_present(self, model_present: bool) -> None:
+        self._model_present = model_present
+        return
+
+    @property
+    def quality(self) -> QualityType:
+        return self._quality
 
     @property
     def voice_quality_label(self) -> str:
-        return self._voice_quality.label
+        return self._quality.label
 
     @property
     def vg_name(self) -> str:
@@ -201,8 +219,44 @@ class EngineVoiceGroup(IEngineVoiceGroup):
             MY_LOGGER.debug(f'{self}')
 
     @property
-    def locale_match(self) -> int:
-        return self._locale_match
+    def locale_distance(self) -> int:
+        return self._locale_distance
+
+    def __ge__(self, other):
+        if self.__class__ is other.__class__:
+            if self._locale_distance > other._locale_distance:
+                return True
+            if self._locale_distance == other._locale_distance:
+                return self._quality <= other._quality
+            return False
+        return NotImplemented
+
+    def __gt__(self, other):
+        if self.__class__ is other.__class__:
+            if self._locale_distance > other._locale_distance:
+                return True
+            if self._locale_distance == other._locale_distance:
+                return self._quality < other._quality
+            return False
+        return NotImplemented
+
+    def __le__(self, other):
+        if self.__class__ is other.__class__:
+            if self._locale_distance < other._locale_distance:
+                return True
+            if self._locale_distance == other._locale_distance:
+                return self._quality >= other._quality
+            return False
+        return NotImplemented
+
+    def __lt__(self, other):
+        if self.__class__ is other.__class__:
+            if self._locale_distance < other._locale_distance:
+                return True
+            if self._locale_distance == other._locale_distance:
+                return self._quality > other._quality
+            return False
+        return NotImplemented
 
     def add_voice(self, voice: EngineVoice) -> None:
         if MY_LOGGER.isEnabledFor(DEBUG_XV):
@@ -292,11 +346,11 @@ class EngineVoiceGroup(IEngineVoiceGroup):
         e_voice: IEngineVoice = self.voices[voice_id]
         if self.has_single_voice:
             label = (f'{e_voice.voice_label},  {self.lang_tag}, '
-                     f'{self.voice_quality.label} Quality')
+                     f'{self.quality.label} Quality')
         else:
             label = (f'{self.vg_name} / {e_voice.voice_label}  '
                      f'({len(self.voices)} Voices), {self.lang_tag}, '
-                     f'{self.voice_quality.label} Quality')
+                     f'{self.quality.label} Quality')
         return f'{label}'
 
     @property
@@ -316,8 +370,8 @@ class EngineVoiceGroup(IEngineVoiceGroup):
             engine_key_str = f'   eng: {self.engine_key} '
             voice_str: str = f'   voice: {self.vg_name}{field_sep}'
             engine_vg_id_str: str = (f'   e_vg_id: '
-                                     f'{self.engine_vg_id}{field_sep}')
-            vg_quality_str: str = f'   vg_quality: {self.voice_quality}{field_sep} '
+                                     f'{self.e_vg_id}{field_sep}')
+            vg_quality_str: str = f'   vg_quality: {self.quality}{field_sep} '
             gender_label_str: str = (f'   gender_label: '
                                      f'{self.gender_label}{field_sep}')
             result = (f'{result}\n'

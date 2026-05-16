@@ -287,8 +287,8 @@ class LangUtils(ILangUtils):
             # get how close of a match this language is to
             # Kodi's setting
 
-            match_distance: int
-            match_distance = langcodes.tag_distance(desired=kodi_ietf,
+            locale_distance: int
+            locale_distance = langcodes.tag_distance(desired=kodi_ietf,
                                                     supported=lang_info.ietf)
             display_engine_name: str = lang_info.translated_engine_name
             voice_name: str = lang_info.translated_voice

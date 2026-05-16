@@ -1,9 +1,7 @@
 # coding=utf-8
 from __future__ import annotations  # For union operator |
 
-import socket
 from io import BytesIO
-from pathlib import Path
 
 from backends.engines.piper_api import PiperApi
 from backends.settings.setting_properties import SettingType
@@ -84,19 +82,18 @@ class PiperSettings:
         # Define each engine's default settings here, afterward, they can be
         # overridden by this class.
         if PiperSettings.initialized:
+            MY_LOGGER.debug(f'Already initialized')
             return
 
+        MY_LOGGER.debug(f'Initializing')
         # Basic checks that don't depend on download
         cls.check_is_supported_on_platform()
+
         cls.check_is_installed()
         if cls._service_status.status != Status.OK:
             raise UnusableServiceException(cls.service_key,
                                            cls._service_status,
                                            msg='')
-        cls.check_is_available()
-        cls.check_is_usable()
-        if not cls.is_usable():
-            return
 
         PiperSettings.initialized = True
         BaseEngineSettings.config_settings(cls.service_key,
@@ -127,7 +124,12 @@ class PiperSettings:
                                             define_setting=True,
                                             service_status=StatusType.OK,
                                             persist=False)
+        MY_LOGGER.debug('Calling piper_settings._config')
         cls._config()
+        cls.check_is_available()
+        cls.check_is_usable()
+        if not cls.is_usable():
+            return
 
     @classmethod
     def _config(cls):
@@ -164,7 +166,7 @@ class PiperSettings:
            Currently, the Piper engine can be run as a Python script, an executable
            command, or as an http server.
         """
-
+        MY_LOGGER.debug(f'In piper_settings._config')
         t_key = cls.service_key.with_prop(SettingProp.LANGUAGE)
         SettingsMap.define_setting(t_key, SettingType.STRING_TYPE,
                                    service_status=StatusType.OK,
@@ -202,6 +204,7 @@ class PiperSettings:
                                               service_status=StatusType.OK,
                                               persist=True)
         '''
+        MY_LOGGER.debug(f'Defining Piper VOICE')
         voice_service_key: ServiceID = cls.service_key.with_prop(SettingProp.VOICE)
         SettingsMap.define_setting(voice_service_key, SettingType.STRING_TYPE,
                                    service_status=StatusType.OK,
@@ -379,6 +382,7 @@ class PiperSettings:
 
         :return:
         """
+        MY_LOGGER.debug(f'In check_is_available()')
         if (cls._service_status.progress == Progress.INSTALLED
                 and cls._service_status.status == Status.OK):
             # Test requires actually using Piper TTS. Delay until on first
@@ -412,16 +416,16 @@ class PiperSettings:
                 resut: Tuple[int, List[str]]
                 try:
                     result = PiperApi.get_vg_names()
-                    MY_LOGGER.debug(f'rc: {result[0]} #names: {len(result[1])}')
+                    MY_LOGGER.debug(f'rc: {result[0]} #names: {len(result[1])} {result[1]}')
                     if result[0] == 0:
                         rc, vg_names = result
                         rc: int
                         vg_names: List[str]
-                        if vg_names is not None and len(vg_names) >= 2:
+                        if vg_names is not None and len(vg_names) > 0:
                             MY_LOGGER.debug(f'Piper is usable')
                             status = StatusType.OK
                         else:
-                            MY_LOGGER.debug(f'Piper is not usable len: {len(vg_names)}')
+                            MY_LOGGER.debug(f'Piper is not usable len: {len(vg_names)} {vg_names}')
                 except Exception:
                     MY_LOGGER.exception('Blew up')
                     status = StatusType.BROKEN

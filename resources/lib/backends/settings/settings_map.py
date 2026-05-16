@@ -3,6 +3,7 @@ from __future__ import annotations  # For union operator |
 
 from backends.settings.service_types import ALL_ENGINES, ServiceID, SERVICES_BY_TYPE
 from backends.settings.setting_properties import SettingProp, SettingType
+from common.monitor import Monitor
 from common.service_status import Progress, ServiceStatus, Status, StatusType
 from common.settings_cache import SettingsIO
 
@@ -37,6 +38,7 @@ class ServiceInfo:
         status of the service (does not apply to a service's property)
         validator, if any
     """
+
     def __init__(self, service_id: ServiceID,
                  property_type: SettingType | None,
                  service_status: StatusType = StatusType.UNCHECKED,
@@ -58,6 +60,7 @@ class ServiceInfo:
         :param persist: If True, then the value is saved in settings.xml, otherwise
                         the value is not saved.
         """
+
         if property_type is None:
             if validator is None or validator.property_type is None:
                 MY_LOGGER.warning(f'property_type not specified and not found in '
@@ -196,6 +199,7 @@ class SettingsMap:
     #
     # Example, EngineType GoogleTTS is able to use specific instances
     svc_to_cand_svc: Dict[ServiceID, Dict[ServiceID, List[str]]] = {}
+    _shutdown: bool = False
 
     @classmethod
     def get_available_services(cls, service_type: ServiceType | None) -> List[ServiceID]:
@@ -513,3 +517,11 @@ class SettingsMap:
             return None
         value = validator.get_tts_value()
         return value
+
+    @classmethod
+    def onAbortRequested(cls):
+        cls._shutdown = True
+        cls.svc_to_cand_svc.clear()
+
+
+Monitor.register_abort_listener(SettingsMap.onAbortRequested, name='SetMap')

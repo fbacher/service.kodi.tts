@@ -258,26 +258,43 @@ class SettingsHelper:
                 t_vg_choice: VGChoice | None = None
                 for vg_choice in vg_choices:
                     t_vg_choice = vg_choice
-                    MY_LOGGER.debug(f'vg_choice: {vg_choice.label} choices: '
+                    MY_LOGGER.debug(f'engine: {engine_key.service_id} '
+                                    f'vg_choice: {vg_choice.label} choices: '
                                     f'{len(vg_choice.v_choices)}')
                 if len(vg_choices.choices) == 0:
                     MY_LOGGER.debug(f'zero choices for {t_vg_choice}')
                     continue
+                # Selected value should 'default' to the default value
+                '''
                 default_vg_idx: int = vg_choices.default_vg_idx
                 default_vg_choice: VGChoice = vg_choices[default_vg_idx]
-                default_ev: EngineVoice = default_vg_choice.e_vg.default_e_voice
-                MY_LOGGER.debug(f'default_vg_idx: {default_vg_idx}, default_vg_choice:'
-                                f' {default_vg_choice.label}')
+                default_v_idx: int = default_vg_choice.default_v_idx
+                default_v_choice: VoiceChoice = default_vg_choice.v_choices[default_v_idx]
+                default_ev: EngineVoice = default_v_choice.e_voice
+                '''
+
+                selected_vg_idx: int = vg_choices.selected_vg_idx
+                selected_vg_choice: VGChoice = vg_choices[selected_vg_idx]
+                sel_v_idx: int = selected_vg_choice.selected_v_idx
+                selected_v_choice: VoiceChoice = selected_vg_choice.v_choices[sel_v_idx]
+                selected_ev: EngineVoice = selected_v_choice.e_voice
+
+                # MY_LOGGER.debug(f'default_vg_idx: {default_vg_idx}, default_vg_choice:'
+                #                 f' {default_vg_choice.label}')
                 MY_LOGGER.debug(f'selected_vg_idx: {vg_choices.selected_vg_idx} '
                                 f'{vg_choices[vg_choices.selected_vg_idx].label}')
+
+                # TODO. This looks wrong. Shouldn't be creating a new EngineChoice,
+                #       should be reusing what is already defined.
+
                 engine_choice: EngineChoice
                 engine_choice = EngineChoice(label=engine_type.label,
                                              value=engine_type,
                                              choice_index=len(e_choices),
                                              sort_key=f'engine_type',
                                              engine_key=engine_key,
-                                             lang=default_vg_choice.e_lang,
-                                             voice=default_ev)
+                                             lang=selected_vg_choice.e_lang,
+                                             voice=selected_ev)
                 e_choices.append(engine_choice)
             return e_choices
         except Exception as e:
@@ -336,8 +353,8 @@ class SettingsHelper:
             e_voice: EngineVoice = v_choice.e_voice
             engine_key: ServiceID = v_choice.engine_key
             v_choice.choice_idx = idx
-            if v_choice.match_distance < closest_match:
-                closest_match = v_choice.match_distance
+            if v_choice.locale_distance < closest_match:
+                closest_match = v_choice.locale_distance
                 closest_match_index = idx
 
             if current_e_voice_id == e_voice.e_voice_id:
@@ -374,7 +391,7 @@ class SettingsHelper:
                          for. A ValueError is thrown if None is passed.
         :return:  supported voice_groups, current_vg_idx, current_voice_idx and
                   voice_idx for the given engine. VoiceGroups sorted by: quality,
-                  match_distance between Kodi's locale (i.e. en_GB) and the voice's
+                  locale_distance between Kodi's locale (i.e. en_GB) and the voice's
                   locale and Voice Group's Label.
         """
         if engine_key is None:
@@ -401,9 +418,9 @@ class SettingsHelper:
                     e_vg: EngineVoiceGroup
                     if MY_LOGGER.isEnabledFor(DEBUG_XV):
                         MY_LOGGER.debug_xv(f'e_vg lang_tag: {e_vg.lang_tag} match: '
-                                           f'{e_vg.locale_match} quality:'
-                                           f' {e_vg.voice_quality}')
-                    locale_match: int = e_vg.locale_match
+                                           f'{e_vg.locale_distance} quality:'
+                                           f' {e_vg.quality}')
+                    locale_match: int = e_vg.locale_distance
                     # Less is a closer match to our locale
                     if locale_match < best_locale_match:
                         best_locale_match = locale_match
@@ -418,19 +435,20 @@ class SettingsHelper:
 
             for e_vg in all_e_vgs_for_engine:
                 e_vg: EngineVoiceGroup
-                MY_LOGGER.debug(f'VGroup: {e_vg.vg_name} #voices: {len(e_vg.e_voices)}')
-                if len(e_vg.e_voices) > 1:
-                    for ev in e_vg.e_voices:
-                        MY_LOGGER.debug(f'ev: {ev}')
+                if MY_LOGGER.isEnabledFor(DEBUG_XV):
+                    MY_LOGGER.debug_xv(f'VGroup: {e_vg.vg_name} #voices:'
+                                       f' {len(e_vg.e_voices)}')
+                    if len(e_vg.e_voices) > 1:
+                        for ev in e_vg.e_voices:
+                            MY_LOGGER.debug_xv(f'ev: {ev}')
                 v_choices: VoiceChoices
                 v_choices = cls.create_voice_choices_from_vg(e_vg)
-                qual: QualityType = e_vg.voice_quality
 
-                count: int = len(v_choices)
-                MY_LOGGER.debug(f'Adding VGChoice {e_vg.vg_name}')
-                MY_LOGGER.debug(f'e_vg lang_tag: {e_vg.lang_tag} match: '
-                                f'{e_vg.locale_match} quality: '
-                                f'{e_vg.voice_quality_label}')
+                if MY_LOGGER.isEnabledFor(DEBUG_XV):
+                    MY_LOGGER.debug_xv(f'Adding VGChoice {e_vg.vg_name}')
+                    MY_LOGGER.debug_xv(f'e_vg lang_tag: {e_vg.lang_tag} match: '
+                                    f'{e_vg.locale_distance} quality: '
+                                    f'{e_vg.voice_quality_label}')
                 vg_choice: VGChoice
                 vg_choice = VGChoice.add(label=e_vg.vg_name,
                                          choice_idx=len(vg_choice_list),
@@ -486,7 +504,7 @@ class SettingsHelper:
                 best_vg.v_choices.best_idx = 0
                 if current_e_voice is None:
                     current_e_voice = best_voice.e_voice
-                current_vg_id: str = current_e_voice.engine_vg_id
+                current_vg_id: str = current_e_voice.e_vg_id
                 MY_LOGGER.debug(f'current_vg_id: {current_vg_id}')
                 current_voice: VoiceChoice | None
                 current_voice = ChoiceDict.voice_by_uid.get(current_e_voice.uid,None)
@@ -508,8 +526,8 @@ class SettingsHelper:
                         if vg_choice.has_single_voice:
                             MY_LOGGER.debug_xv(f'simple voice: {vg_choice}')
 
-                        MY_LOGGER.debug_xv(f'vg_choice.engine_vg_id: '
-                                           f'{vg_choice.engine_vg_id} '
+                        MY_LOGGER.debug_xv(f'vg_choice.e_vg_id: '
+                                           f'{vg_choice.e_vg_id} '
                                            f'current_vg_id: {current_vg_id}')
             except Exception as e:
                 MY_LOGGER.exception('')

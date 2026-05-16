@@ -465,7 +465,7 @@ class Monitor(MinimalMonitor):
                 listener_name = cls.get_listener_name(listener, name)
 
                 cls._abort_listeners[listener] = listener_name
-            else:
+            if cls.is_abort_requested():
                 raise AbortException()
 
     @classmethod

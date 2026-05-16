@@ -178,11 +178,11 @@ class LabeledInt(IntEnum):
 
 
 class QualityType(LabeledType):
-    UNKNOWN = 'unknown', -1, MessageId.UNKNOWN_QUALITY
+    UNKNOWN = 'unknown', 1000, MessageId.UNKNOWN_QUALITY
     HIGH = 'high', 1, MessageId.HIGH_QUALITY
     MEDIUM = 'medium', 2, MessageId.MEDIUM_QUALITY
     LOW = 'low', 3, MessageId.LOW_QUALITY
-    X_LOW = 'xlow', 4, MessageId.X_LOW_QUALITY
+    X_LOW = 'x_low', 4, MessageId.X_LOW_QUALITY
 
 
 

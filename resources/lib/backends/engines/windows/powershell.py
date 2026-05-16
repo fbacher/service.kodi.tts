@@ -422,7 +422,7 @@ class PowerShellTTS(SimpleTTSBackend):
                                          e_voice_id=v_name,  # Probably can use v_id
                                          engine_name_msg_id=MessageId.ENGINE_POWERSHELL,
                                          engine_quality=2,
-                                         voice_quality=-1)
+                                         quality=-1)
                 '''
         except Exception:
             MY_LOGGER.exception('')
