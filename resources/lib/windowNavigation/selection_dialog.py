@@ -745,7 +745,7 @@ class SelectionDialog(xbmcgui.WindowXMLDialog):
                         if self.sel_data.call_on_focus is not None:
                             sel_idx, changed = self.get_selected_position()
                             if changed:
-                                choice: Choice | EngineChoice | VGChoice | VoiceChoices
+                                choice: Choice | EngineChoice | VGChoice | VoiceChoice
                                 choice = self.sel_data.choices[sel_idx]
                                 # MY_LOGGER.debug(f'choice: {choice} sel_idx: {sel_idx}')
                                 self.sel_data.call_on_focus(choice, sel_idx)

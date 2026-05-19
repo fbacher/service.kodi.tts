@@ -42,7 +42,8 @@ from common.setting_constants import (AudioType, Genders,
 from common.settings import Settings
 from common.settings_low_level import SettingsLowLevel, SettingsManager
 from backends.settings.service_types import ServiceID
-from windowNavigation.choice import (Choices, EngineChoice, EngineChoices, VGChoices,
+from windowNavigation.choice import (Choices, EngineChoice, EngineChoices, VGChoice,
+                                     VGChoices,
                                      VoiceChoice, VoiceChoices)
 
 MY_LOGGER = BasicLogger.get_logger(__name__)
@@ -380,8 +381,10 @@ class Configure:
                 engine_audio = AudioType.WAV
                 use_cache = True
 
-            lang: EngineLang = choice.lang
-            e_voice: EngineVoice = choice.voice
+            v_choice: VoiceChoice = VGChoice.get_selected_voice(engine_key)
+            vg_choice: VGChoice = VGChoice.get_selected_vg_choice(engine_key)
+            lang: EngineLang = vg_choice.e_lang
+            e_voice: EngineVoice = v_choice.e_voice
             raw_voice_id: str = Settings.get_voice_id(engine_key)
             MY_LOGGER.debug(f'raw_voice_id: {raw_voice_id} '
                             f'e_voice: {e_voice} ')
@@ -1942,7 +1945,7 @@ class Configure:
                 choice: EngineChoice
                 if MY_LOGGER.isEnabledFor(DEBUG):
                     MY_LOGGER.debug(f'engine: {choice.engine_key} '
-                                    f'voice: {choice.voice} idx: {idx}')
+                                    f'idx: {idx}')
                 choice.hint = f'choice {idx}'
                 idx += 1
             if MY_LOGGER.isEnabledFor(DEBUG_V):

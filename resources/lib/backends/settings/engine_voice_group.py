@@ -382,5 +382,5 @@ class EngineVoiceGroup(IEngineVoiceGroup):
         return result
 
     @property
-    def voices(self):
+    def voices(self) -> Dict[str, EngineVoice]:
         return self._voices

@@ -429,26 +429,6 @@ class PiperTTSEngine(base.SimpleTTSBackend):
         e_voice: EngineVoice = EngineVoiceManager.get_e_voice(cls.service_key)
         return e_voice
 
-    '''
-    @classmethod
-    def getLanguage(cls) -> str:
-        """
-        Gets the current locale_id ex: en-us
-
-        :return:
-        """
-        MY_LOGGER.debug(f'In getLanguage')
-        language: str = Settings.get_language(cls.service_key)
-        languages: List[Tuple[str, str]]  # lang_id, locale_id
-        languages, default_lang = cls.settingList(SettingProp.LANGUAGE)
-        language = default_lang
-        # language_validator: StringValidator
-        # language_validator = cls.get_validator(cls.setting_id,
-        #                                        setting_id=SettingProp.LANGUAGE)
-        # language = language_validator.get_tts_value()
-        return language
-    '''
-
     @classmethod
     def getPitch(cls) -> float:
         """

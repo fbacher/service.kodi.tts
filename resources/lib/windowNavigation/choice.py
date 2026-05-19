@@ -1,9 +1,8 @@
 # coding=utf-8
 from __future__ import annotations
 
-import logging
 from collections import UserList
-from typing import Any, Dict, ForwardRef, List
+from typing import Dict, List, Tuple
 
 from backends.settings.engine_lang import EngineLang
 from backends.settings.engine_voice import EngineVoice
@@ -118,12 +117,6 @@ class Choices(UserList):
     def sort_by_engine_label(self) -> None:
         self.sort(key=lambda entry: entry.label)
 
-    def sort_by_sort_key(self) -> None:
-        if MY_LOGGER.isEnabledFor(DEBUG_XV):
-            for choice in self:
-                MY_LOGGER.debug_xv(f'sort_key: {choice.sort_key}')
-        self.sort(key=lambda entry: entry.sort_key)
-
     def dbg_print(self) -> str:
         result: str = ''
         for choice in self.data:
@@ -194,6 +187,31 @@ class VGChoices(Choices):
             raise ValueError(f'No VGChoices for {engine_key}')
 
         return vg_choices
+
+    @classmethod
+    def get_selected_vg(cls, engine_key: ServiceID) -> 'VGChoice':
+        """
+        Returns the currently selected (or default) VoiceGroup for the
+        given engine.
+
+        :param engine_key: Identifies the engine to get the VGChoice for.
+        :return: Currently selected, or default VoiceGroup
+        """
+        MY_LOGGER.debug(f'engine: {engine_key}')
+        vg_choices: VGChoices = cls.get_vg_choices(engine_key=engine_key)
+        t_vg_choice: VGChoice | None = None
+        for vg_choice in vg_choices:
+            t_vg_choice = vg_choice
+            MY_LOGGER.debug(f'engine: {engine_key.service_id} '
+                            f'vg_choice: {vg_choice.label} choices: '
+                            f'{len(vg_choice.v_choices)}')
+        if len(vg_choices.choices) == 0:
+            MY_LOGGER.debug(f'zero choices for {t_vg_choice}')
+        selected_vg_idx: int = vg_choices.selected_vg_idx
+        selected_vg_choice: VGChoice = vg_choices[selected_vg_idx]
+        MY_LOGGER.debug(f'selected_vg_idx: {vg_choices.selected_vg_idx} '
+                        f'{vg_choices[vg_choices.selected_vg_idx].label}')
+        return selected_vg_choice
 
     @classmethod
     def add(cls, engine_key: ServiceID,
@@ -305,6 +323,14 @@ class VGChoices(Choices):
 
         self.selected_vg_idx = voice_group.choice_idx
 
+    def do_sort(self) -> None:
+        self.data.sort(key=lambda item: item.sort_value)
+        self.data.sort(key=lambda item: item.locale_distance)
+        self.data.sort(key=lambda item: item.qual_ordinal)
+        for entry in self.data:
+            MY_LOGGER.debug(f'value: {entry.value} locale_dist: {entry.locale_distance}'
+                            f' ord: {entry.qual_ordinal} label: {entry.label}')
+
     def dbg_print2(self) -> None:
         for choice in self:
             choice: VGChoice
@@ -325,6 +351,13 @@ class VoiceChoices(Choices):
                     MY_LOGGER.debug(f'Expected VoiceChoice not: {type(item)}')
         super().__init__(new_list)
 
+    def do_sort(self) -> None:
+        self.data.sort(key=lambda item: item.sort_value)
+        self.data.sort(key=lambda item: item.locale_distance)
+        self.data.sort(key=lambda item: item.qual_ordinal)
+        for entry in self.data:
+            MY_LOGGER.debug(f'value: {entry.value} locale_dist: {entry.locale_distance}'
+                            f' ord: {entry.qual_ordinal} label: {entry.label}')
 
 class Choice:
     """
@@ -336,21 +369,18 @@ class Choice:
     """
 
     def __init__(self, label: str, value: str, choice_idx: int,
-                 sort_key: str = None, enabled: bool = True,
+                 enabled: bool = True,
                  engine_key: ServiceID = None,
-                 locale_distance: int = 1000, hint: str = None) -> None:
+                 locale_distance: int = 1000, hint: str = '') -> None:
         """
 
         """
-        if sort_key is None:
-            sort_key = label
         self._label: str = label
         self._hint: str = hint
         self._value: str = value
         self._choice_idx: int = -1
         self.choice_idx = choice_idx
         self._engine_key: ServiceID = engine_key
-        self._sort_key: str = sort_key
         self._enabled: bool = enabled
         self._locale_distance: int = locale_distance
 
@@ -390,23 +420,8 @@ class Choice:
         self._engine_key = engine_key
 
     @property
-    def sort_key(self) -> str:
-        return self._sort_key
-
-    def _set_sort_key(self, sort_key: str) -> None:
-        self._sort_key = sort_key
-        MY_LOGGER.debug(f'sort_key: {sort_key}')
-
-    @property
     def enabled(self) -> bool:
         return self._enabled
-
-    @property
-    def locale_distance(self) -> int:
-        return self._locale_distance
-
-    def set_locale_distance(self, locale_distance: int) -> None:
-        self._locale_distance = locale_distance
 
     def __str__(self) -> str:
         result: str = ''
@@ -418,9 +433,7 @@ class Choice:
                       f'value: {self.value}\n'
                       f'choice_index: {self.choice_idx}\n'
                       f'engine_key: {self.engine_key}\n'
-                      f'sort_key: {self.sort_key}\n'
-                      f'enabled: {self.enabled}\n'
-                      f'locale_distance: {self.locale_distance}\n')
+                      f'enabled: {self.enabled}\n')
         return result
 
     def __rpr__(self) -> str:
@@ -433,25 +446,18 @@ class EngineChoice(Choice):
     """
 
     def __init__(self, label: str, value: EngineType, choice_index: int = -1,
-                 sort_key: str = None, enabled: bool = True,
+                 enabled: bool = True,
                  engine_key: ServiceID = None,
-                 locale_distance: int = 1000, hint: str = None,
-                 lang: EngineLang = None,
-                 voice: EngineVoice | None = None,
-                 new_voice: EngineVoice | None = None) -> None:
+                 locale_distance: int = 1000, hint: str = '') -> None:
         """
         :param label: User-friendly, translated label
         :param hint: User-friendly, translated hint
         :param value: value used in settings, etc.
         :param choice_index: When from a list of choices, this is its place in list.
-        :param sort_key:  Key to use when sorting list
         :param enabled:   Some settings may not be usable depending on other settings
                           We want to include disabled choices to show a consistent list,
                           but marked in UI as disabled
         :param engine_key: Identifies which engine this setting is associated with
-        :param lang: language information
-        :param voice: default voice to use when this engine is selected
-        :param new_voice: Voice to use when this engine is selected
         :param locale_distance: for language related settings. Represents how close
                                this choice is to the desired language. For example,
                                a voice for en-GB is not as close to en-US as an
@@ -461,33 +467,10 @@ class EngineChoice(Choice):
         super().__init__(label=label,
                          value=value,
                          choice_idx=choice_index,
-                         sort_key=sort_key,
                          enabled=enabled,
                          engine_key=engine_key,
                          hint=hint,
                          locale_distance=locale_distance)
-        if MY_LOGGER.isEnabledFor(DEBUG):
-            if lang is not None:
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    if not isinstance(lang, EngineLang):
-                        MY_LOGGER.debug(f'Expected EngineLang not {type(lang)}')
-            if voice is not None:
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    if not isinstance(voice, EngineVoice):
-                        MY_LOGGER.debug(f'Expected EngineVoice not {type(voice)}')
-
-            if new_voice is not None:
-                if MY_LOGGER.isEnabledFor(DEBUG):
-                    if not isinstance(new_voice, EngineVoice):
-                        MY_LOGGER.debug(f'Expected EngineVoice not {type(new_voice)}')
-        lang: EngineLang
-        voice: EngineVoice
-        self.lang: EngineLang = lang
-        self.voice: EngineVoice = voice
-        if new_voice is not None:
-            self.new_voice: EngineVoice = new_voice
-        else:
-            self.new_voice: EngineVoice = voice
 
     @property
     def label(self) -> str:
@@ -503,22 +486,55 @@ class EngineChoice(Choice):
     def __str__(self) -> str:
         result: str = ''
         if MY_LOGGER.isEnabledFor(DEBUG):
-            result = (f'EngineChoice: {self.label} \n'
-                      f'lang: {self.lang}\n'
-                      f'voice: {self.voice}\n'
-                      f'new_voice: {self.new_voice}\n')
+            result = f'EngineChoice: {self.label} \n'
         elif MY_LOGGER.isEnabledFor(DEBUG_XV):
-            result = (f'EngineChoice: {super().__str__()}\n'
-                      f'lang: {self.lang}\n'
-                      f'voice: {self.voice}\n'
-                      f'new_voice: {self.new_voice}\n')
+            result = f'EngineChoice: {super().__str__()}\n'
         return result
 
     def __rpr__(self) -> str:
         return self.__str__()
 
 
-class VGChoice(Choice):
+class VChoiceCommon:
+
+    def __init__(self, value: str | int, locale_distance: int,
+                 quality: QualityType) -> None:
+
+        self._value: str | int = value
+        self._quality: QualityType = quality
+        self._locale_distance: int = locale_distance
+        self._objs_to_compare: List[str | int]
+        self._objs_to_compare = [self._quality.ordinal, self._locale_distance,
+                                 self._value]
+
+    @property
+    def qual_ordinal(self) -> int:
+        return self._quality.ordinal
+
+    @property
+    def value(self) -> str | int:
+        return self._value
+
+    @property
+    def sort_value(self) -> str | int:
+        try:
+            return int(self._value)
+        except ValueError:
+            return self._value
+
+    @property
+    def locale_distance(self) -> int:
+        return self._locale_distance
+
+    @locale_distance.setter
+    def locale_distance(self, locale_distance: int) -> None:
+        self._locale_distance = locale_distance
+
+    @property
+    def quality(self) -> QualityType:
+        return self._quality
+
+class VGChoice(Choice, VChoiceCommon):
     """
     Encapsulates information for making a Voice choice.
 
@@ -558,7 +574,7 @@ class VGChoice(Choice):
             choice_idx: int = -1,
             default_idx: int = -1,
             enabled: bool = True,
-            hint: str = None,
+            hint: str = '',
             v_choices: 'VoiceChoices' = VoiceChoices()) -> 'VGChoice':
         """
         :param e_vg: EngineVoiceGroup (required)
@@ -571,7 +587,7 @@ class VGChoice(Choice):
                           but marked in UI as disabled
         :param v_choices: VoiceChoices to add to this VGChoice
         """
-        vg_choice: VGChoice
+        vg_choice: VGChoice | None
         vg_choice = ChoiceDict.vg_by_uid.get(e_vg.uid)
         if MY_LOGGER.isEnabledFor(DEBUG):
             if not isinstance(e_vg, EngineVoiceGroup):
@@ -585,9 +601,39 @@ class VGChoice(Choice):
                                  enabled,
                                  hint,
                                  v_choices)
+            vg_choice: VGChoice
 
             ChoiceDict.vg_by_uid[e_vg.uid] = vg_choice
         return vg_choice
+
+    @classmethod
+    def get_selected_vg_choice(cls, engine_key: ServiceID) -> 'VGChoice':
+        """
+        Returns the currently selected (or default) VGChoice for the
+        given engine.
+
+        :param engine_key: Identifies the engine to get the Voice Group Choice for.
+        :return: Currently selected, or default voice
+        """
+        MY_LOGGER.debug(f'engine: {engine_key}')
+        vg_choices: VGChoices = VGChoices.get_vg_choices(engine_key=engine_key)
+        vg_choice: VGChoice = vg_choices.selected_vg_obj
+        return vg_choice
+
+    @classmethod
+    def get_selected_voice(cls, engine_key: ServiceID) -> 'VoiceChoice':
+        """
+        Returns the currently selected (or default) Voice for the
+        given engine.
+
+        :param engine_key: Identifies the engine to get the voice for.
+        :return: Currently selected, or default voice
+        """
+        MY_LOGGER.debug(f'engine: {engine_key}')
+        vg_choices: VGChoices = VGChoices.get_vg_choices(engine_key=engine_key)
+        vg_choice: VGChoice = vg_choices.selected_vg_obj
+        selected_v_choice: VoiceChoice = vg_choice.selected_v_obj
+        return selected_v_choice
 
     def __init__(self,
                  e_vg: EngineVoiceGroup,
@@ -595,7 +641,7 @@ class VGChoice(Choice):
                  choice_idx: int = -1,
                  default_idx: int = -1,
                  enabled: bool = True,
-                 hint: str = None,
+                 hint: str = '',
                  v_choices: 'VoiceChoices' = VoiceChoices()) -> None:
         """
         :param e_vg: EngineVoiceGroup (required)
@@ -616,23 +662,16 @@ class VGChoice(Choice):
         e_lang = EngineVoiceManager.get_eng_lang_by_uid(e_lang_uid)
         e_lang: EngineLang
 
-        # Improve heuristic. These expand to two fixed-width numbers.
-        # Less is better
-        qual: str = f'{e_vg.quality.ordinal:0d}'
-        match: str = f'{locale_distance:04d}'
-        sort_key = f'{qual}:{match}:{label}'
-        #  MY_LOGGER.debug(f'sort_key: {sort_key}')
-
         super().__init__(label=label,
                          value=value,
                          engine_key=engine_key,
                          choice_idx=choice_idx,
-                         sort_key=sort_key,
                          enabled=enabled,
-                         locale_distance=locale_distance,
+                         # locale_distance=locale_distance,
                          hint=hint)
-
-        self.e_lang: EngineLang = e_lang
+        VChoiceCommon.__init__(self, value=label, locale_distance=locale_distance,
+                               quality=e_vg.quality)
+        self._e_lang: EngineLang = e_lang
         self._selected: bool = False
         # TODO: This looks very half-baked. Is updated elsewhere.
         self._best_v_idx: int = -1
@@ -737,7 +776,6 @@ class VGChoice(Choice):
                        f'qual: {e_vg.voice_quality_label} '
                        f'lbl: {self.label} '
                        f'mtch: {self.locale_distance} '
-                       f'srt: {self.sort_key} '
                        f'enbl: {self.enabled}')
         MY_LOGGER.debug(result)
 
@@ -795,9 +833,9 @@ class VGChoice(Choice):
 
     @property
     def label(self) -> str:
-        if MY_LOGGER.isEnabledFor(DEBUG_XV):
-            MY_LOGGER.debug_xv(f'selected_v_idx: {self._selected_v_idx}'
-                               f' choice_idx {self.choice_idx}')
+        if MY_LOGGER.isEnabledFor(DEBUG):
+            MY_LOGGER.debug(f'selected_v_idx: {self._selected_v_idx}'
+                            f' choice_idx {self.choice_idx}')
         self.select_voice()
         selected_voice: VoiceChoice = self.v_choices[self.selected_v_idx]
         #  return selected_voice._label
@@ -818,6 +856,10 @@ class VGChoice(Choice):
             choice: Choice
             MY_LOGGER.debug(f'Choice {choice}')
             MY_LOGGER.debug('')
+
+    @property
+    def e_lang(self) -> EngineLang:
+        return self._e_lang
 
     @property
     def uid(self) -> str:
@@ -847,7 +889,7 @@ class VGChoice(Choice):
         return self.__str__()
 
 
-class VoiceChoice(Choice):
+class VoiceChoice(Choice, VChoiceCommon):
     """
     Encapsulates information for making a Voice choice.
     """
@@ -891,7 +933,7 @@ class VoiceChoice(Choice):
                  label: str | None = None,
                  choice_idx: int = -1,
                  enabled: bool = True,
-                 hint: str = None) -> None:
+                 hint: str = '') -> None:
         """
         :param e_voice: EngineVoice
         :param e_vg: Voice Group that this voice is a member of
@@ -926,23 +968,25 @@ class VoiceChoice(Choice):
         # Less is better
         qual: str = f'{v_quality.ordinal:0d}'
         match: str = f'{locale_distance:04d}'
-        sort_key = f'{qual}:{match}:{label}'
-        #  MY_LOGGER.debug(f'sort_key: {sort_key}')
 
         super().__init__(label=label,
                          value=value,
-                         sort_key=sort_key,
                          enabled=enabled,
                          choice_idx=choice_idx,
                          engine_key=engine_key,
                          hint=hint,
                          locale_distance=locale_distance)
 
+        VChoiceCommon.__init__(self, value=e_voice.real_voice_id,
+                               locale_distance=locale_distance,
+                               quality=e_vg.quality)
+
         self._vg_choice: VGChoice = None
         self._e_lang: EngineLang = e_lang
         self._e_vg: EngineVoiceGroup = e_vg
         self._e_voice: EngineVoice = e_voice
         self._enabled: bool = enabled
+        self._quality: QualityType = v_quality
 
     @property
     def e_voice(self) -> EngineVoice:
@@ -1019,13 +1063,13 @@ class VoiceChoice(Choice):
                        f'qual: {self.e_voice.voice_quality_label} '
                        f'lbl: {self.label} '
                        f'mtch: {self.locale_distance} '
-                       f'srt: {self.sort_key} '
                        f'enbl: {self.enabled}')
         MY_LOGGER.debug(result)
 
+    '''
     def __eq__(self, other):
         """
-        Allow for equality checks. DOES NOT handle hash comparisions (maps)
+        Allow for equality checks. DOES NOT handle hash comparisons (maps)
         :param other:
         :return:
         """
@@ -1034,6 +1078,11 @@ class VoiceChoice(Choice):
             return self.e_voice == other.e_voice
         return ValueError(f'Both operands must be VoiceChoice objects. Second is'
                           f' {type(other)}')
+    '''
+
+    @property
+    def locale_distance(self) -> int:
+        return self._locale_distance
 
     def __str__(self) -> str:
         if not MY_LOGGER.isEnabledFor(DEBUG):
@@ -1045,7 +1094,6 @@ class VoiceChoice(Choice):
             result = f'VoiceChoice: {super().__str__()}'
         result = (f'{result}\n'
                   f'voice: {self._e_voice}\n'
-                  f'sort_key: {self.sort_key}\n'
                   f'enabled: {self.enabled}\n'
                   f'locale_distance: {self.locale_distance}\n')
         return result

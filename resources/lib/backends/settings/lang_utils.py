@@ -259,54 +259,6 @@ class LangUtils(ILangUtils):
                                 f'{self.ietf.autonym()}')
         return display_autonym_choice
 
-    '''
-    @classmethod
-    def prepare_for_display(cls, translate: bool,
-                            engine_langs_in_family: List[ForwardRef('LanguageInfo')],
-                            ietf_locale: str,
-                            kodi_ietf: str) -> None:
-        """
-        Translates any fields that require into the current language.
-
-        Note: Changes are made in-place for the argments.
-
-        :param translate: If False, then this serves as a no-op
-        :param engine_langs_in_family: List of languages that the engine calling
-        this method supports.
-        :param ietf_locale:  The IETF language code to translate into
-        :param kodi_ietf:  Kodi's current IETF language code
-        :return: None, the changes are made to the given arguments
-        """
-        if not translate:
-            return
-
-        for lang_info in engine_langs_in_family:
-            lang_info: ForwardRef('LanguageInfo')
-            # Get name of the language in its native language
-            display_autonym_choice: str = lang_info.autonym
-            # get how close of a match this language is to
-            # Kodi's setting
-
-            locale_distance: int
-            locale_distance = langcodes.tag_distance(desired=kodi_ietf,
-                                                    supported=lang_info.ietf)
-            display_engine_name: str = lang_info.translated_engine_name
-            voice_name: str = lang_info.translated_voice
-            label: str = ''
-            if display_autonym_choice != lang_info.translated_country_name:
-                label = (f'{display_engine_name:10} '
-                         f'{lang_info.translated_country_name:20} / '
-                         f'{display_autonym_choice:10} '
-                         f'voice:  {voice_name:20}')
-            else:
-                label = (f' {display_engine_name:10} '
-                         f'{lang_info.translated_country_name:32}   '
-                         f'voice:  {voice_name:20}')
-            lang_info.label = label
-            #  MY_LOGGER.debug(f'label: {label}')
-        return
-    '''
-
     @property
     def locale_id(self) -> str:
         clz = type(self)

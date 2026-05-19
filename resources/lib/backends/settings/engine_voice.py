@@ -259,7 +259,7 @@ class EngineVoice(IEngineVoice):
 
     def __eq__(self, other) -> bool:
         """
-        Allow for equality checks. DOES NOT handle hash comparisions (maps)
+        Allow for equality checks. DOES NOT handle hash comparisons (maps)
         :param other:
         :return:
         """

@@ -108,6 +108,7 @@ class Mpg3ToWaveTranscoder(StrEnum):
     # MPLAYER = TranscoderType.MPLAYER.value
     # FFMPEG = TranscoderType.FFMPEG.value
 
+
 class LabeledType(StrEnum):
     """
         A StrEnum that also includes an ordinal value (for preference
@@ -123,9 +124,10 @@ class LabeledType(StrEnum):
         #  MY_LOGGER.debug(f'ord_value: {ord_value}')
         return member
 
-    # def __init__(self, ordinal: int) -> None:
-    #     MY_LOGGER.debug(f'ordinal: {ordinal}')
-    #     self.ordinal = ordinal
+    '''
+     __eq__ NOT defined because it would break hash.
+     Sorting with list.sort and sorted only requires __lt__
+    '''
 
     def __ge__(self, other):
         if self.__class__ is other.__class__:

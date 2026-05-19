@@ -239,14 +239,13 @@ class SettingsHelper:
         """
         engine_keys: List[ServiceID] | None
         engine_keys = cls.get_active_engines()
-
+        e_choices: EngineChoices = EngineChoices()
         try:
             # Get the first Voice Group for each engine
             # Get every voice the engine supports for the current language.
             # The list is sorted by Quality, Match-distance, vg_label
             # best_vg_choices: List[VGChoices] = []
 
-            e_choices: EngineChoices = EngineChoices()
             for engine_key in engine_keys:
                 engine_key: ServiceID
                 engine_type: EngineType = EngineType(engine_key.service_id)
@@ -264,42 +263,15 @@ class SettingsHelper:
                 if len(vg_choices.choices) == 0:
                     MY_LOGGER.debug(f'zero choices for {t_vg_choice}')
                     continue
-                # Selected value should 'default' to the default value
-                '''
-                default_vg_idx: int = vg_choices.default_vg_idx
-                default_vg_choice: VGChoice = vg_choices[default_vg_idx]
-                default_v_idx: int = default_vg_choice.default_v_idx
-                default_v_choice: VoiceChoice = default_vg_choice.v_choices[default_v_idx]
-                default_ev: EngineVoice = default_v_choice.e_voice
-                '''
-
-                selected_vg_idx: int = vg_choices.selected_vg_idx
-                selected_vg_choice: VGChoice = vg_choices[selected_vg_idx]
-                sel_v_idx: int = selected_vg_choice.selected_v_idx
-                selected_v_choice: VoiceChoice = selected_vg_choice.v_choices[sel_v_idx]
-                selected_ev: EngineVoice = selected_v_choice.e_voice
-
-                # MY_LOGGER.debug(f'default_vg_idx: {default_vg_idx}, default_vg_choice:'
-                #                 f' {default_vg_choice.label}')
-                MY_LOGGER.debug(f'selected_vg_idx: {vg_choices.selected_vg_idx} '
-                                f'{vg_choices[vg_choices.selected_vg_idx].label}')
-
-                # TODO. This looks wrong. Shouldn't be creating a new EngineChoice,
-                #       should be reusing what is already defined.
-
                 engine_choice: EngineChoice
                 engine_choice = EngineChoice(label=engine_type.label,
                                              value=engine_type,
                                              choice_index=len(e_choices),
-                                             sort_key=f'engine_type',
-                                             engine_key=engine_key,
-                                             lang=selected_vg_choice.e_lang,
-                                             voice=selected_ev)
+                                             engine_key=engine_key)
                 e_choices.append(engine_choice)
-            return e_choices
         except Exception as e:
             MY_LOGGER.exception('')
-        return None
+        return e_choices
 
     @classmethod
     def get_active_engines(cls) -> List[ServiceID]:
@@ -411,6 +383,7 @@ class SettingsHelper:
 
         try:
             v_gs_for_a_locale: List[EngineVoiceGroup]
+            v_vgs_items: Dict[str, List[EngineVoiceGroup]]
             v_gs_items = EngineVoiceManager.get_vgs_by_locale(engine_key).items()
             for locale, v_gs_for_a_locale in v_gs_items:
                 all_e_vgs_for_engine.extend(v_gs_for_a_locale)
@@ -453,7 +426,7 @@ class SettingsHelper:
                 vg_choice = VGChoice.add(label=e_vg.vg_name,
                                          choice_idx=len(vg_choice_list),
                                          enabled=True,
-                                         hint=None,
+                                         hint='',
                                          e_vg=e_vg,
                                          v_choices=v_choices)
                 vg_choice_list.append(vg_choice)
@@ -465,7 +438,8 @@ class SettingsHelper:
                                        new_list=vg_choice_list)
             if MY_LOGGER.isEnabledFor(DEBUG_XV):
                 MY_LOGGER.debug_xv(f'vg_choices: {vg_choices}')
-            vg_choices.sort_by_sort_key()
+            MY_LOGGER.debug(f'Sorting vg_choices')
+            vg_choices.do_sort()
             vg_idx: int = -1
             vg_choices.best_idx = 0  # 'Best' group is the first
             vg_choices.selected_vg_idx = 0
@@ -479,7 +453,8 @@ class SettingsHelper:
                 if MY_LOGGER.isEnabledFor(DEBUG_V):
                     MY_LOGGER.debug_v(f'vg: {vg_choice.label} uid: '
                                       f'{vg_choice.e_vg.vg_uid}')
-                vg_choice.v_choices.sort_by_sort_key()
+                MY_LOGGER.debug(f'Sorting v_choices')
+                vg_choice.v_choices.do_sort()
                 if MY_LOGGER.isEnabledFor(DEBUG_XV):
                     for v_choice in vg_choice.v_choices:
                         v_choice: VoiceChoice
